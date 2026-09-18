@@ -253,6 +253,57 @@ Proof using.
 Qed.
 
 (* ===================================================================== *)
+(*  CAT'S OWN END CURSOR (lane CAT-GEOM-2).                               *)
+(*                                                                       *)
+(*  Every alternative cat's round can take is `<cat's own output> ++      *)
+(*  u_prompt`, and THE PROMPT IS THE SHELL'S -- cat exits before it is    *)
+(*  written.  So the cursor cat leaves the era at is the round's length   *)
+(*  MINUS the prompt's two bytes: [|bs|] on the content arm and NINETEEN  *)
+(*  on the diagnostic.  [UEchoOut.echo_uexec_slot_at] has had the right   *)
+(*  shape all along -- it files at [length (wl_line (drop 1 ws))], the    *)
+(*  PROGRAM's own output length -- and [catq_filed] below is restated at  *)
+(*  this.                                                                *)
+(* ===================================================================== *)
+Definition cat_out_len (cs0 : list nat) (s0 : fst) (I0 : list (bv 8))
+    (a : nat) : nat :=
+  (length (cont (cat_st cs0 s0 I0) LCat (ralt_dec a)) - length u_prompt)%nat.
+
+Lemma cat_prompt_len : length u_prompt = 2%nat.
+Proof using. vm_compute. reflexivity. Qed.
+
+Lemma cat_out_len_ran_some (cs0 : list nat) (s0 : fst) (I0 : list (bv 8))
+    (s : dst) (i : Z) (bs : list (bv 8)) :
+  cat_tie cs0 s0 I0 s -> s = Some (i, bs) ->
+  cat_out_len cs0 s0 I0 (ralt_enc RCRan) = length bs.
+Proof using.
+  intros Htie Hs. rewrite /cat_out_len ralt_dec_enc.
+  rewrite (cat_out_of_tie cs0 s0 I0 s i bs Htie Hs).
+  rewrite length_app cat_prompt_len. lia.
+Qed.
+
+Lemma cat_out_len_ran_none (cs0 : list nat) (s0 : fst) (I0 : list (bv 8))
+    (s : dst) :
+  cat_tie cs0 s0 I0 s -> s = None ->
+  cat_out_len cs0 s0 I0 (ralt_enc RCRan) = 19%nat.
+Proof using.
+  intros Htie Hs. rewrite /cat_out_len ralt_dec_enc.
+  rewrite (cat_out_of_tie_none cs0 s0 I0 s Htie Hs).
+  vm_compute. reflexivity.
+Qed.
+
+(* ...and at [RCNoOpen] it is NINETEEN at EVERY state: the alternative's
+   continuation is the diagnostic whatever the file holds
+   ([cat_cont_noopen]). *)
+Lemma cat_out_len_noopen (cs0 : list nat) (s0 : fst) (I0 : list (bv 8)) :
+  cat_out_len cs0 s0 I0 (ralt_enc RCNoOpen) = 19%nat.
+Proof using.
+  rewrite /cat_out_len ralt_dec_enc.
+  rewrite (cat_cont_noopen (cat_st cs0 s0 I0)).
+  vm_compute. reflexivity.
+Qed.
+
+
+(* ===================================================================== *)
 (*  3.  THE CURSOR FAMILY, AND ONE BYTE THROUGH THE ERA'S WRITE LINK      *)
 (*                                                                       *)
 (*  [UEchoOut]'s S1-S3 at the FILE stage.  [p] of cat's output bytes are  *)
@@ -416,11 +467,18 @@ Section UCatOut.
   (*  content arm and 1 on the diagnostic arm, and what the parent is owed  *)
   (*  is the same either way.                                              *)
   (* ===================================================================== *)
+  (* ...AT CAT'S OWN END CURSOR and not at the round's (lane CAT-GEOM-2;
+     see [cat_out_len] above).  The two bytes between them are the
+     SHELL's prompt: cat exits before they are written, so what SH-ROUND
+     files at them is its OWN prompt write -- through
+     [FileLinks.file_write_link] at the choice list cat's first byte
+     already extended, and through [file_write_link_blk] only in the
+     EMPTY-CONTENT case, where cat wrote nothing and the prompt's first
+     byte IS the block's ([cch_empty_unfiled], CAT-ENTRY's ruling (b)). *)
   Definition catq_filed (v : era_pins) (vf : file_era)
       (ps0 cs0 : list nat) (s0 : fst) (I0 : list (bv 8)) (a P : nat)
     : Z -> iProp Σ :=
-    fun _ => cch v vf ps0 cs0 s0 I0 a P
-               (length (cont (cat_st cs0 s0 I0) LCat (ralt_dec a))).
+    fun _ => cch v vf ps0 cs0 s0 I0 a P (cat_out_len cs0 s0 I0 a).
 
   Definition catq_unfiled (v : era_pins) (vf : file_era)
       (ps0 cs0 : list nat) (s0 : fst) (I0 : list (bv 8)) (P : nat)

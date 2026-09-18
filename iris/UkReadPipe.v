@@ -137,6 +137,7 @@ Section UkReadPipe.
        of_Fex    := of_Fex f0;
        of_Fo     := of_Fo f0;
        of_Ft     := of_Ft f0;
+       of_om    := OffParked;
        wf_Q      := wf_Q f0;
        nf_P      := nf_P f0;
        nf_Pmiss  := nf_Pmiss f0;

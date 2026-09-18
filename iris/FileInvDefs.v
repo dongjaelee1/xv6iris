@@ -278,14 +278,24 @@ Record fpnames := MkFPNames
        fresh there, and what [FdSlots.FdInode]'s [γo] reports -- the tie
        is [fdstate_ok]'s FD_INODE arm.  Meaningless off that arm, exactly
        as [fp_inum] is on a pipe. *)
-    fp_ooff : gname }.
+    fp_ooff : gname;
+    (* THE ROW'S OFFSET MODE (lane OFF-LINK-6, design/app-file.md SS3).
+       Set at the same publish as [fp_obox] and [fp_ooff], from the family
+       the OPENING PROCESS runs under, and what [fdstate_ok]'s FD_INODE arm
+       pins [FdSlots.FdInode]'s [m] to.  It is a per-FILE constant, not a
+       per-descriptor one, and it has to be: dup and fork hand out a second
+       descriptor on the SAME [struct file], hence on the same [f->off], so
+       two rows of one file cannot disagree about who owns the offset.
+       Meaningless off the FD_INODE arm, exactly as [fp_inum] is on a
+       pipe. *)
+    fp_om : offmode }.
 
 Global Instance fpnames_inhabited : Inhabited fpnames :=
   populate (MkFPNames 1%positive
               (MkPipeNames 1%positive 1%positive 1%positive 1%positive 1%positive)
               1%positive 1%Qp 1%positive (mword_of_int 0)
               (BoxNames 1%positive 1%positive 1%positive 1%positive)
-              1%positive).
+              1%positive OffParked).
 
 Definition fpayUR : ucmra :=
   gmapUR nat (prodR fracR (agreeR (leibnizO fpnames))).
@@ -537,7 +547,8 @@ Record fcontent := MkFContent {
    will be handed a half of is the one that sits beside THIS file's
    [f->off].  Like the inum it is a per-publish constant read off the
    payload names, so two holders of one file agree on it for free. *)
-Definition fdstate_ok (inum : mword 32) (γo : gname) (γp : pipe_names) (C : fcontent) (st : fdstate) : Prop :=
+Definition fdstate_ok (inum : mword 32) (γo : gname) (om : offmode)
+    (γp : pipe_names) (C : fcontent) (st : fdstate) : Prop :=
   match st with
   | FdClosed => fc_type C = FD_NONE
   | FdOpen r w t =>
@@ -561,7 +572,7 @@ Definition fdstate_ok (inum : mword 32) (γo : gname) (γp : pipe_names) (C : fc
             [hand] is exactly the act of relaxing this conjunct, and it
             comes with the mode-split arms of design/user-read.md SS8.2. *)
          | FdInode n g m => fc_type C = FD_INODE /\ n = bv_unsigned inum /\ g = γo
-                            /\ m = OffParked
+                            /\ m = om
          | FdDevice mj   => fc_type C = FD_DEVICE /\ mj = bv_unsigned (fc_major C)
          end
   end.
@@ -572,8 +583,8 @@ Definition fdstate_ok (inum : mword 32) (γo : gname) (γp : pipe_names) (C : fc
    up with the arm the code took.  The mode flags come out with it, since a
    typed state cannot fail to name them.  (The converse direction is the
    definition above and needs no lemma.) *)
-Lemma fdstate_ok_pipe (inum : mword 32) (γo : gname) (γp : pipe_names) (C : fcontent) (st : fdstate) :
-  fdstate_ok inum γo γp C st -> fc_type C = FD_PIPE ->
+Lemma fdstate_ok_pipe (inum : mword 32) (γo : gname) (om : offmode) (γp : pipe_names) (C : fcontent) (st : fdstate) :
+  fdstate_ok inum γo om γp C st -> fc_type C = FD_PIPE ->
   ∃ r w : bool, st = FdOpen r w (FdPipe γp).
 Proof.
   destruct st as [|r w [n g m|g'|mj]]; cbn; intros Hok Ht.
@@ -586,9 +597,9 @@ Proof.
     apply (f_equal bv_unsigned) in Hc. by vm_compute in Hc.
 Qed.
 
-Lemma fdstate_ok_inode (inum : mword 32) (γo : gname) (γp : pipe_names) (C : fcontent) (st : fdstate) :
-  fdstate_ok inum γo γp C st -> fc_type C = FD_INODE ->
-  ∃ r w : bool, st = FdOpen r w (FdInode (bv_unsigned inum) γo OffParked).
+Lemma fdstate_ok_inode (inum : mword 32) (γo : gname) (om : offmode) (γp : pipe_names) (C : fcontent) (st : fdstate) :
+  fdstate_ok inum γo om γp C st -> fc_type C = FD_INODE ->
+  ∃ r w : bool, st = FdOpen r w (FdInode (bv_unsigned inum) γo om).
 Proof.
   destruct st as [|r w [n g m|g'|mj]]; cbn; intros Hok Ht.
   - exfalso. rewrite Ht in Hok. apply (f_equal bv_unsigned) in Hok.
@@ -600,8 +611,8 @@ Proof.
     apply (f_equal bv_unsigned) in Hc. by vm_compute in Hc.
 Qed.
 
-Lemma fdstate_ok_device (inum : mword 32) (γo : gname) (γp : pipe_names) (C : fcontent) (st : fdstate) :
-  fdstate_ok inum γo γp C st -> fc_type C = FD_DEVICE ->
+Lemma fdstate_ok_device (inum : mword 32) (γo : gname) (om : offmode) (γp : pipe_names) (C : fcontent) (st : fdstate) :
+  fdstate_ok inum γo om γp C st -> fc_type C = FD_DEVICE ->
   ∃ r w : bool, st = FdOpen r w (FdDevice (bv_unsigned (fc_major C))).
 Proof.
   destruct st as [|r w [n g m|g'|mj]]; cbn; intros Hok Ht.
@@ -614,8 +625,8 @@ Proof.
   - destruct Hok as (_ & _ & _ & ->). by exists r, w.
 Qed.
 
-Lemma fdstate_ok_none (inum : mword 32) (γo : gname) (γp : pipe_names) (C : fcontent) (st : fdstate) :
-  fdstate_ok inum γo γp C st -> fc_type C = FD_NONE -> st = FdClosed.
+Lemma fdstate_ok_none (inum : mword 32) (γo : gname) (om : offmode) (γp : pipe_names) (C : fcontent) (st : fdstate) :
+  fdstate_ok inum γo om γp C st -> fc_type C = FD_NONE -> st = FdClosed.
 Proof.
   destruct st as [|r w [n g m|g'|mj]]; cbn; intros Hok Ht; [reflexivity | | |];
     exfalso;
@@ -626,8 +637,8 @@ Qed.
 
 (* THE MODE FLAGS, read off the cells.  What a proof that has just branched
    on [beqz f->readable] learns about the state it was handed. *)
-Lemma fdstate_ok_rw (inum : mword 32) (γo : gname) (γp : pipe_names) (C : fcontent) (r w : bool) (t : fdtype) :
-  fdstate_ok inum γo γp C (FdOpen r w t) ->
+Lemma fdstate_ok_rw (inum : mword 32) (γo : gname) (om : offmode) (γp : pipe_names) (C : fcontent) (r w : bool) (t : fdtype) :
+  fdstate_ok inum γo om γp C (FdOpen r w t) ->
   fc_readable C = ((if r then mword_of_int 1 else mword_of_int 0) : mword 8)
   /\ fc_writable C = ((if w then mword_of_int 1 else mword_of_int 0) : mword 8).
 Proof. destruct t; cbn; intros (H1 & H2 & _); by split. Qed.
@@ -650,22 +661,22 @@ Qed.
    descriptor's state twice cannot give two answers.  What the relation drops
    is only the other half -- the obligation to invent a state for a file
    whose [f->type] is none of the four codes. *)
-Lemma fdstate_ok_inj (inum : mword 32) (γo : gname) (γp : pipe_names) (C : fcontent) (st1 st2 : fdstate) :
-  fdstate_ok inum γo γp C st1 -> fdstate_ok inum γo γp C st2 -> st1 = st2.
+Lemma fdstate_ok_inj (inum : mword 32) (γo : gname) (om : offmode) (γp : pipe_names) (C : fcontent) (st1 st2 : fdstate) :
+  fdstate_ok inum γo om γp C st1 -> fdstate_ok inum γo om γp C st2 -> st1 = st2.
 Proof.
   destruct st1 as [|r1 w1 [n1 g1 om1| |m1]]; cbn; intros H1 H2.
-  - by rewrite (fdstate_ok_none inum γo γp C st2 H2 H1).
+  - by rewrite (fdstate_ok_none inum γo om γp C st2 H2 H1).
   - destruct H1 as (Hr & Hw & Ht & -> & -> & ->).
-    destruct (fdstate_ok_inode inum γo γp C st2 H2 Ht) as (r2 & w2 & ->).
-    destruct (fdstate_ok_rw inum γo γp C r2 w2 _ H2) as [Hr2 Hw2].
+    destruct (fdstate_ok_inode inum γo om γp C st2 H2 Ht) as (r2 & w2 & ->).
+    destruct (fdstate_ok_rw inum γo om γp C r2 w2 _ H2) as [Hr2 Hw2].
     by rewrite (fdstate_bit_inj r1 r2 _ Hr Hr2) (fdstate_bit_inj w1 w2 _ Hw Hw2).
   - destruct H1 as (Hr & Hw & Ht & ->).
-    destruct (fdstate_ok_pipe inum γo γp C st2 H2 Ht) as (r2 & w2 & ->).
-    destruct (fdstate_ok_rw inum γo γp C r2 w2 _ H2) as [Hr2 Hw2].
+    destruct (fdstate_ok_pipe inum γo om γp C st2 H2 Ht) as (r2 & w2 & ->).
+    destruct (fdstate_ok_rw inum γo om γp C r2 w2 _ H2) as [Hr2 Hw2].
     by rewrite (fdstate_bit_inj r1 r2 _ Hr Hr2) (fdstate_bit_inj w1 w2 _ Hw Hw2).
   - destruct H1 as (Hr & Hw & Ht & ->).
-    destruct (fdstate_ok_device inum γo γp C st2 H2 Ht) as (r2 & w2 & ->).
-    destruct (fdstate_ok_rw inum γo γp C r2 w2 _ H2) as [Hr2 Hw2].
+    destruct (fdstate_ok_device inum γo om γp C st2 H2 Ht) as (r2 & w2 & ->).
+    destruct (fdstate_ok_rw inum γo om γp C r2 w2 _ H2) as [Hr2 Hw2].
     by rewrite (fdstate_bit_inj r1 r2 _ Hr Hr2) (fdstate_bit_inj w1 w2 _ Hw Hw2).
 Qed.
 
@@ -676,9 +687,9 @@ Qed.
    existentially quantifying them.  [fdstate_ok] says [fc_readable C] IS the
    0/1 encoding of [r]; the encoding is injective on booleans, so two
    readings of the same field agree. *)
-Lemma fdstate_ok_flags (inum : mword 32) (γo : gname) (γp : pipe_names) (C : fcontent)
+Lemma fdstate_ok_flags (inum : mword 32) (γo : gname) (om : offmode) (γp : pipe_names) (C : fcontent)
     (r w : bool) (t : fdtype) (rb wb : bool) :
-  fdstate_ok inum γo γp C (FdOpen r w t) ->
+  fdstate_ok inum γo om γp C (FdOpen r w t) ->
   fc_readable C = ((if rb then mword_of_int 1 else mword_of_int 0) : mword 8) ->
   fc_writable C = ((if wb then mword_of_int 1 else mword_of_int 0) : mword 8) ->
   r = rb /\ w = wb.
@@ -695,15 +706,16 @@ Qed.
 (* TWO NAMES FOR ONE FILE AGREE.  A proof that reads its descriptor's state
    off two openings of the same payload -- [file_pay_st_ok]'s and the carve's
    -- has two [fdstate_ok] facts about one [st]; on an inode file they name
-   the same inum and the same offset shadow, since the state records both. *)
-Lemma fdstate_ok_inode_names (inum1 inum2 : mword 32) (γ1 γ2 : gname)
+   the same inum, the same offset shadow AND the same offset mode, since
+   the state records all three (lane OFF-LINK-6 added the third). *)
+Lemma fdstate_ok_inode_names (inum1 inum2 : mword 32) (γ1 γ2 : gname) (om1 om2 : offmode)
     (γp1 γp2 : pipe_names) (C : fcontent) (st : fdstate) :
-  fdstate_ok inum1 γ1 γp1 C st -> fdstate_ok inum2 γ2 γp2 C st -> fc_type C = FD_INODE ->
-  bv_unsigned inum1 = bv_unsigned inum2 /\ γ1 = γ2.
+  fdstate_ok inum1 γ1 om1 γp1 C st -> fdstate_ok inum2 γ2 om2 γp2 C st -> fc_type C = FD_INODE ->
+  bv_unsigned inum1 = bv_unsigned inum2 /\ γ1 = γ2 /\ om1 = om2.
 Proof.
   intros H1 H2 Ht.
-  destruct (fdstate_ok_inode inum1 γ1 γp1 C st H1 Ht) as (r1 & w1 & E1).
-  destruct (fdstate_ok_inode inum2 γ2 γp2 C st H2 Ht) as (r2 & w2 & E2).
+  destruct (fdstate_ok_inode inum1 γ1 om1 γp1 C st H1 Ht) as (r1 & w1 & E1).
+  destruct (fdstate_ok_inode inum2 γ2 om2 γp2 C st H2 Ht) as (r2 & w2 & E2).
   rewrite E1 in E2. inversion E2. auto.
 Qed.
 
@@ -711,28 +723,28 @@ Qed.
    [FdOpen] at some mode and type.  [sys_open]'s post wants exactly this and
    nothing finer -- which mode and which type are facts about the omode
    argument and the resolved inode, not about the descriptor table. *)
-Lemma fdstate_ok_opened (inum : mword 32) (γo : gname) (γp : pipe_names) (C : fcontent) (st : fdstate) :
-  fdstate_ok inum γo γp C st ->
+Lemma fdstate_ok_opened (inum : mword 32) (γo : gname) (om : offmode) (γp : pipe_names) (C : fcontent) (st : fdstate) :
+  fdstate_ok inum γo om γp C st ->
   fc_type C = FD_PIPE \/ fc_type C = FD_INODE \/ fc_type C = FD_DEVICE ->
   ∃ (r w : bool) (t : fdtype), st = FdOpen r w t.
 Proof.
   intros Hok [H|[H|H]].
-  - destruct (fdstate_ok_pipe   inum γo γp C st Hok H) as (r & w & ->). by exists r, w, (FdPipe γp).
-  - destruct (fdstate_ok_inode  inum γo γp C st Hok H) as (r & w & ->).
-    by exists r, w, (FdInode (bv_unsigned inum) γo OffParked).
-  - destruct (fdstate_ok_device inum γo γp C st Hok H) as (r & w & ->).
+  - destruct (fdstate_ok_pipe   inum γo om γp C st Hok H) as (r & w & ->). by exists r, w, (FdPipe γp).
+  - destruct (fdstate_ok_inode  inum γo om γp C st Hok H) as (r & w & ->).
+    by exists r, w, (FdInode (bv_unsigned inum) γo om).
+  - destruct (fdstate_ok_device inum γo om γp C st Hok H) as (r & w & ->).
     by exists r, w, (FdDevice (bv_unsigned (fc_major C))).
 Qed.
 
-Lemma fdstate_ok_open (inum : mword 32) (γo : gname) (γp : pipe_names) (C : fcontent) (st : fdstate) :
-  fdstate_ok inum γo γp C st ->
+Lemma fdstate_ok_open (inum : mword 32) (γo : gname) (om : offmode) (γp : pipe_names) (C : fcontent) (st : fdstate) :
+  fdstate_ok inum γo om γp C st ->
   fc_type C = FD_PIPE \/ fc_type C = FD_INODE \/ fc_type C = FD_DEVICE ->
   st <> FdClosed.
 Proof.
   intros Hok [H|[H|H]].
-  - destruct (fdstate_ok_pipe   inum γo γp C st Hok H) as (? & ? & ->). discriminate.
-  - destruct (fdstate_ok_inode  inum γo γp C st Hok H) as (? & ? & ->). discriminate.
-  - destruct (fdstate_ok_device inum γo γp C st Hok H) as (? & ? & ->). discriminate.
+  - destruct (fdstate_ok_pipe   inum γo om γp C st Hok H) as (? & ? & ->). discriminate.
+  - destruct (fdstate_ok_inode  inum γo om γp C st Hok H) as (? & ? & ->). discriminate.
+  - destruct (fdstate_ok_device inum γo om γp C st Hok H) as (? & ? & ->). discriminate.
 Qed.
 
 (* ------------------------------------------------------------------ *)
@@ -1664,7 +1676,7 @@ Section FileInv.
      in BOTH directions, which is what lets [file_ref] hide [C]. *)
   Definition file_pay_st (γ : gname) (k : nat) (q : Qp) (C : fcontent)
       (st : fdstate) : iProp Σ :=
-    (∃ pn, ⌜fdstate_ok (fp_inum pn) (fp_ooff pn) (fp_pipe pn) C st⌝ ∗ fpay_tok γ k q pn ∗
+    (∃ pn, ⌜fdstate_ok (fp_inum pn) (fp_ooff pn) (fp_om pn) (fp_pipe pn) C st⌝ ∗ fpay_tok γ k q pn ∗
            file_core k q pn C)%I.
 
   (* the forgetful direction only.  There is no [file_pay -∗ ∃ st,
@@ -1711,10 +1723,11 @@ Section FileInv.
      learn it. *)
   Lemma file_pay_st_ok γ k q C st :
     file_pay_st γ k q C st -∗
-    ⌜∃ (inum : mword 32) (γo : gname) (γp : pipe_names), fdstate_ok inum γo γp C st⌝ ∧ file_pay_st γ k q C st.
+    ⌜∃ (inum : mword 32) (γo : gname) (om : offmode) (γp : pipe_names), fdstate_ok inum γo om γp C st⌝ ∧ file_pay_st γ k q C st.
   Proof using .
     iIntros "H". iSplit; [| iExact "H"].
-    iDestruct "H" as (pn) "(%Hok & _)". iPureIntro. by exists (fp_inum pn), (fp_ooff pn), (fp_pipe pn).
+    iDestruct "H" as (pn) "(%Hok & _)". iPureIntro.
+    by exists (fp_inum pn), (fp_ooff pn), (fp_om pn), (fp_pipe pn).
   Qed.
 
   Lemma file_pay_st_agree γ k q1 st1 q2 st2 C :
@@ -1722,7 +1735,7 @@ Section FileInv.
   Proof using .
     iIntros "(%pn1 & %H1 & Hn1 & _) (%pn2 & %H2 & Hn2 & _)".
     iDestruct (fpay_tok_agree with "Hn1 Hn2") as %<-.
-    iPureIntro. exact (fdstate_ok_inj _ _ _ _ _ _ H1 H2).
+    iPureIntro. exact (fdstate_ok_inj _ _ _ _ _ _ _ H1 H2).
   Qed.
 
   (* ---- THE predicate: holding one reference on file slot [k] ----
@@ -1984,16 +1997,18 @@ End FileLiveEq.
 Section FoffRow.
   Context `{!riscvGS Σ, !offboxG Σ}.
 
-  Lemma foff_row_of_ok (inum : mword 32) (γo : gname) (γp : pipe_names)
+  Lemma foff_row_of_ok (inum : mword 32) (γo : gname) (om : offmode) (γp : pipe_names)
       (C : fcontent) (st : fdstate) :
-    fdstate_ok inum γo γp C st ->
-    (if bool_decide (fc_type C = FD_INODE) then off_user_inv γo else True) -∗
+    fdstate_ok inum γo om γp C st ->
+    (if bool_decide (fc_type C = FD_INODE)
+     then foff_row (FdOpen true true (FdInode 0 γo om)) else True) -∗
     foff_row st.
   Proof using .
     intros Hok. destruct st as [|r w [n g m|g'|mj]]; cbn;
       [by iIntros "_" | | by iIntros "_" | by iIntros "_"].
     destruct Hok as (_ & _ & Ht & _ & -> & ->).
-    rewrite (bool_decide_eq_true_2 _ Ht). cbn. iIntros "$".
+    rewrite (bool_decide_eq_true_2 _ Ht). destruct om; cbn;
+      [iIntros "$" | by iIntros "_"].
   Qed.
 
 End FoffRow.

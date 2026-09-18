@@ -161,38 +161,15 @@ Record uk_names (Σ : gFunctors) := MkUkNames {
      [UkFork.wp_uk_ecall_fork]'s [⌜pidc <> 1⌝], name the literal and an
      entry constructor has nothing left to choose. *)
   ukn_pid : gname;
-  (* WHICH DESCRIPTORS THIS PROCESS MAY HOLD AN OFFSET HALF OF (lane
-     OFF-HAND-4, S1; design/app-file.md SS3 fact 4).  A STATIC SET ON THE
-     RECORD, and not a ghost, for the reason
-     [ExecEntry.image_entry_taint]'s note names: the fact a taint arm has
-     to pay is a fact about the WHOLE table, spent inside [urun]'s own
-     existential at a key the U tier cannot name ([UkSh.ush_gen_run]), so
-     whatever carries it has to be free to thread through every leaf of a
-     program's walk.  A resource is not -- an exclusive half would appear
-     in every statement between the entry and the exec -- and a
-     PERSISTENT resource cannot be revoked, which is what a hand-open
-     needs (lane OFF-HAND-3's finding 1 refutes all three ghost shapes).
-
-     A SET AND NOT A BIT, AND NOT A COUNT.  A program that execs or forks
-     while it holds a row has to SURRENDER exactly those rows
-     ([FdPark.uoff_surrs] is a big-op over the table), so the carrier has
-     to say WHICH slots they are: a bit cannot, and a count cannot
-     (OFF-HAND-3's finding 2).  [empty] is what the bit's [true] was --
-     the record answers for every offset it has -- and [ukn_parked] is
-     that as a class, [ukn_triv]'s mould.
-
-     [urun] carries the pure row [fdv_held_in (ukn_held N) fdv]
-     ([urun_rows]): every UNPARKED row of the table is one of these
-     slots.  It is free at every leaf and re-established across a round by
-     [UsysMemOk.usys_fd_ok_held].  Which set a record carries is fixed
-     where every other field is -- by the entry constructor
-     ([uslot_of_urun*]'s [hs] argument), out of a pure premise about the
-     key's table -- or, for a forked child, by its PARENT
-     ([UkFork.wp_uk_ecall_fork]'s [hs]: the child's table is the parent's,
-     so any superset of the parent's set is honest). *)
-  ukn_held : gset nat
+  (* [ukn_held] IS DELETED (lane OFF-LINK-2, L6).  It was the set of
+     descriptors a record might hold an offset half of, and it existed to
+     carry "every unparked row of this table is one of these" through the
+     generic tier -- the fact design/app-file.md SS3.5's principle retires
+     (the generic tier pays the TAINT, and is told nothing about offsets).
+     It had been dead data since lane OFF-HAND-6's H3 deleted its one
+     consumer; every row and premise that mentioned it goes with it. *)
 }.
-Global Arguments MkUkNames {_} _ _ _ _ _ _ _ _ _.
+Global Arguments MkUkNames {_} _ _ _ _ _ _ _ _.
 Global Arguments ukn_t {_} _.
 Global Arguments ukn_d {_} _.
 Global Arguments ukn_s {_} _.
@@ -201,16 +178,9 @@ Global Arguments ukn_cwd {_} _.
 Global Arguments ukn_ch {_} _.
 Global Arguments ukn_pay {_} _.
 Global Arguments ukn_pid {_} _.
-Global Arguments ukn_held {_} _.
 
-(* THE PARKED RECORD, AS A CLASS ([ukn_triv]'s mould).  A program file
-   that reads its own table's all-parkedness carries one of these as a
-   section hypothesis; the entry constructor that minted the record is
-   what fixes it.  It is the EMPTY held set -- a record that may hold no
-   offset half answers for every offset it has -- so no landed site's
-   spelling moved when the bit became a set. *)
-Class ukn_parked {Σ : gFunctors} (N : uk_names Σ) : Prop :=
-  ukn_parked_eq : ukn_held N = ∅.
+(* [ukn_parked] IS DELETED WITH THE FIELD (lane OFF-LINK-2, L6): the class
+   said [ukn_held N = ∅], and there is no such field to constrain. *)
 
 (* THE TRIVIAL PAYLOAD, AS A CLASS.  A program whose exit owes its parent
    nothing has to be able to SAY so at its exit ecall
@@ -433,7 +403,7 @@ Section UkRun.
         that CALLS pipe(2) exits by: it gives up [fdv_nopipe] at the pipe
         leaf and carries the credential instead. *)
      ⌜ forall (W : uvis) (Q : Z -> iProp Σ),
-         ⊢ □ Dsup -∗ □ riscv_kill_cred ==∗ sbundle_pay uslot USYS_exit Q W ⌝)%I.
+         ⊢ □ Dsup -∗ app_taint ==∗ sbundle_pay uslot USYS_exit Q W ⌝)%I.
 
   Global Instance udep_persistent : Persistent udep.
   Proof using . rewrite /udep. apply _. Qed.
@@ -489,7 +459,7 @@ Section UkRun.
 
   (* ...and the same row out of the taint, at ANY table *)
   Lemma udep_exit_taint (W : uvis) (Q : Z -> iProp Σ) :
-    □ riscv_kill_cred -∗ udep -∗ |==> sbundle_pay uslot USYS_exit Q W.
+    app_taint -∗ udep -∗ |==> sbundle_pay uslot USYS_exit Q W.
   Proof using .
     iIntros "#Ht [#Hs [_ [_ [_ %Hlaw]]]]".
     iApply (Hlaw W Q with "Hs Ht").
@@ -654,11 +624,20 @@ Section UkRun.
   (* LEFT: the caller KNOWS its descriptor is not a pipe -- a console, an    *)
   (* inode, a device -- and owes nothing at all; the leaf mints the row out  *)
   (* of the key-guarded law above, off the [udep] its own run carries.       *)
-  (* RIGHT: the caller does NOT know (a descriptor [open] returned carries   *)
-  (* an existential type: [UsysMemOk.usys_fd_ok]'s open row does not pin     *)
-  (* it), and then it hands over a deposit at 21 like any other flagged      *)
-  (* number ([udepw_law], which the pipe arm makes payable out of the        *)
-  (* taint -- [UexecExecMint.udepw_law_of_sup_close]).                       *)
+  (* RIGHT: the caller does NOT know -- it holds a descriptor whose type   *)
+  (* nothing told it, an fd read out of a table it did not fill -- and then  *)
+  (* it hands over a deposit at 21 like any other flagged number             *)
+  (* ([udepw_law], which the pipe arm makes payable out of the taint --      *)
+  (* [UexecExecMint.udepw_law_of_sup_close]).                                *)
+  (*                                                                        *)
+  (* THE OLD READING OF THE RIGHT ARM IS GONE (survey R4, lane SUP-ONE).     *)
+  (* It used to say that a descriptor [open] RETURNED forced the right arm,  *)
+  (* because "[UsysMemOk.usys_fd_ok]'s open row does not pin the type".      *)
+  (* The row pins [fdst_nopipe] and has since the pipe landing; what was     *)
+  (* missing was the EXPORT, and the five [UkRunSys.wp_uk_ecall_open*]       *)
+  (* leaves carry it now.  So a program that opened its own descriptor takes *)
+  (* [udepw_cl_nopipe] below and owes NOTHING -- which is what took          *)
+  (* [udepw_law 21] out of [UkCat.cat_deps].                                 *)
   (* ------------------------------------------------------------------- *)
   Definition udepw_cl (N : uk_names Σ) (m : regfile) (pc : mword 64)
       (st : fdstate) : iProp Σ :=
@@ -671,6 +650,18 @@ Section UkRun.
     (forall (rb wb : bool) (gp : pipe_names), st <> FdOpen rb wb (FdPipe gp)) ->
     ⊢ udepw_cl N m pc st.
   Proof using . intros Hnp. rewrite /udepw_cl. iLeft. by iPureIntro. Qed.
+
+  (* ...AND THE FREE ROUTE AT THE FACT THE OPEN LEAVES EXPORT (survey R4):
+     [FdSlots.fdst_nopipe] is the shape [UsysMemOk.usys_fd_ok]'s open row
+     states and the leaves hand out, and this is the one line that turns it
+     into the left arm. *)
+  Lemma udepw_cl_nopipe (N : uk_names Σ) (m : regfile) (pc : mword 64)
+      (st : fdstate) :
+    fdst_nopipe st -> ⊢ udepw_cl N m pc st.
+  Proof using .
+    intros Hnp. apply udepw_cl_nonpipe.
+    intros rb wb gp Heq. rewrite Heq in Hnp. exact Hnp.
+  Qed.
 
   Lemma udepw_cl_of_udepw (N : uk_names Σ) (m : regfile) (pc : mword 64)
       (st : fdstate) :
@@ -751,7 +742,7 @@ Section UkRun.
      [PipeReg.pipe_reg] is a [□] over a fupd-producing wand.  No consumer
      strips a later off it. *)
   Definition urun_nopipe (fdv : list fdstate) : iProp Σ :=
-    (([∗ list] st ∈ fdv, srow_reg st) ∨ □ riscv_kill_cred)%I.
+    (([∗ list] st ∈ fdv, srow_reg st) ∨ app_taint)%I.
 
   Global Instance urun_nopipe_persistent (fdv : list fdstate) :
     Persistent (urun_nopipe fdv).
@@ -773,7 +764,7 @@ Section UkRun.
   Proof using . apply urun_nopipe_intro, fdv_nopipe_closed. Qed.
 
   Lemma urun_nopipe_taint (fdv : list fdstate) :
-    □ riscv_kill_cred -∗ urun_nopipe fdv.
+    app_taint -∗ urun_nopipe fdv.
   Proof using . iIntros "#H". rewrite /urun_nopipe. by iRight. Qed.
 
   (* THE ONE BIG-OP MOVE the three row-shaped readings below run on: a row
@@ -886,7 +877,7 @@ Section UkRun.
         [ iApply (urun_nopipe_copy fdv (Z.to_nat (usys_argfd tf)) fd1 with "Hr")
         | iExact "Hr" ]. }
     destruct (decide (n = USYS_open)) as [_ | _].
-    { destruct Hok as [(fd & rd & wr & t & _ & _ & He & _ & Hop) | [_ ->]];
+    { destruct Hok as [(fd & rd & wr & t & _ & _ & He & Hop) | [_ ->]];
         [ | iExact "Hr" ].
       rewrite He.
       iApply (urun_nopipe_insert fdv fd (FdOpen rd wr t) Hop with "Hr"). }
@@ -913,21 +904,13 @@ Section UkRun.
   (* NEEDS the fact, so an escape hatch on the right would make the row      *)
   (* useless exactly where it is spent.                                      *)
   (* ===================================================================== *)
-  (* ...AND THE OFFSET HALF OF IT IS GONE (lane OFF-HAND-6, H3).  It used
-     to be [fdv_held_in (ukn_held N) fdv] -- "every UNPARKED row of this
-     table is one the record says it holds" -- and its ONE consumer was
-     the exec crossing's taint arm ([ExecEntry.image_entry_taint]), which
-     asks for nothing now: a held row's half is in the DESCRIPTOR BUNDLE
-     and the kernel holds it at every fire (design/app-file.md SS3 fact
-     4).  So the row is [True] and [ukn_held] is dead data on [uk_names]
-     until a cleanup lane deletes the field; the side conditions the
-     steps below still take are left in place unread, so no leaf's
-     statement moves. *)
-  Definition urun_parked_row (N : uk_names Σ) (fdv : list fdstate) : Prop :=
-    True.
-
+  (* ...AND THE OFFSET HALF OF IT IS GONE (lane OFF-HAND-6's H3 emptied
+     [urun_parked_row] and lane OFF-LINK-2's L6 deleted it): the rows a run
+     carries between traps are about PIPES and nothing else.  A held row's
+     coupling is the box's arm and the node's link (design/app-file.md SS3),
+     neither of which any tier has to be told about. *)
   Definition urun_rows (N : uk_names Σ) (fdv : list fdstate) : iProp Σ :=
-    (urun_nopipe fdv ∗ ⌜urun_parked_row N fdv⌝)%I.
+    urun_nopipe fdv.
 
   Global Instance urun_rows_persistent (N : uk_names Σ) (fdv : list fdstate) :
     Persistent (urun_rows N fdv).
@@ -937,29 +920,27 @@ Section UkRun.
      alone (exit's deposit) *)
   Lemma urun_rows_nopipe (N : uk_names Σ) (fdv : list fdstate) :
     urun_rows N fdv -∗ urun_nopipe fdv.
-  Proof using . iIntros "[$ _]". Qed.
+  Proof using . iIntros "$". Qed.
 
   Lemma urun_rows_intro (N : uk_names Σ) (fdv : list fdstate) :
-    fdv_nopipe fdv -> urun_parked_row N fdv -> ⊢ urun_rows N fdv.
+    fdv_nopipe fdv -> ⊢ urun_rows N fdv.
   Proof using .
-    intros Hnp Hpk. rewrite /urun_rows.
-    iSplitR; [ iApply (urun_nopipe_intro fdv Hnp) | by iPureIntro ].
+    intros Hnp. rewrite /urun_rows. iApply (urun_nopipe_intro fdv Hnp).
   Qed.
 
   Lemma urun_rows_closed (N : uk_names Σ) (n : nat) :
     ⊢ urun_rows N (replicate n FdClosed).
   Proof using .
-    apply urun_rows_intro; [ apply fdv_nopipe_closed | exact I ].
+    apply urun_rows_intro, fdv_nopipe_closed.
   Qed.
 
   (* THE TAINT'S PIPE ROW, with the offset row still owed.  A tainted
      process pays the pipe half out of the kill credential; the offset half
      is not tainted-escapable and has to come from the table. *)
   Lemma urun_rows_taint (N : uk_names Σ) (fdv : list fdstate) :
-    urun_parked_row N fdv -> □ riscv_kill_cred -∗ urun_rows N fdv.
+    app_taint -∗ urun_rows N fdv.
   Proof using .
-    intros Hpk. iIntros "#H". rewrite /urun_rows.
-    iSplitR; [ iApply (urun_nopipe_taint fdv with "H") | by iPureIntro ].
+    iIntros "#H". rewrite /urun_rows. iApply (urun_nopipe_taint fdv with "H").
   Qed.
 
   (* THE ROUND'S EFFECT ON BOTH ROWS, at every number but pipe(2).  The
@@ -973,9 +954,8 @@ Section UkRun.
     n <> USYS_pipe -> usys_fd_ok n tf r fdv fdv' ->
     urun_rows N fdv -∗ urun_rows N fdv'.
   Proof using .
-    intros Hne Hok. iIntros "[Hnp %Hpk]". rewrite /urun_rows.
-    iSplitL "Hnp"; [ iApply (urun_nopipe_step n tf r fdv fdv' Hne Hok with "Hnp") | ].
-    by iPureIntro.
+    intros Hne Hok. iIntros "Hnp". rewrite /urun_rows.
+    iApply (urun_nopipe_step n tf r fdv fdv' Hne Hok with "Hnp").
   Qed.
 
   Lemma urun_rows_quiet (N : uk_names Σ) (fdv fdv' : list fdstate) :
@@ -989,9 +969,7 @@ Section UkRun.
     fdst_nopipe st ->
     urun_rows N fdv -∗ urun_rows N (<[k := st]> fdv).
   Proof using .
-    intros Hnp. iIntros "[Hn %Hp]". rewrite /urun_rows.
-    iSplitL "Hn"; [ iApply (urun_nopipe_insert fdv k st Hnp with "Hn") | ].
-    by iPureIntro.
+    intros Hnp. iIntros "Hn". rewrite /urun_rows. iApply (urun_nopipe_insert fdv k st Hnp with "Hn").
   Qed.
 
   (* ...AND DUP'S, WITH ITS ONE GUARD (lane OFF-HAND-4, S1).  The copied
@@ -1004,17 +982,13 @@ Section UkRun.
     fdv !! k = Some st ->
     urun_rows N fdv -∗ urun_rows N (<[j := st]> fdv).
   Proof using .
-    intros Hk. iIntros "[Hn %Hp]". rewrite /urun_rows.
-    iSplitL "Hn"; [ iApply (urun_nopipe_dup fdv k j st Hk with "Hn") | ].
-    by iPureIntro.
+    intros Hk. iIntros "Hn". rewrite /urun_rows. iApply (urun_nopipe_dup fdv k j st Hk with "Hn").
   Qed.
 
   Lemma urun_rows_copy (N : uk_names Σ) (fdv : list fdstate) (k j : nat) :
     urun_rows N fdv -∗ urun_rows N (<[j := fdv !!! k]> fdv).
   Proof using .
-    iIntros "[Hn %Hp]". rewrite /urun_rows.
-    iSplitL "Hn"; [ iApply (urun_nopipe_copy fdv k j with "Hn") | ].
-    by iPureIntro.
+    iIntros "Hn". rewrite /urun_rows. iApply (urun_nopipe_copy fdv k j with "Hn").
   Qed.
 
   (* ...AND WHAT IT BUYS: exit's deposit at the key the leaf has destructed
@@ -1512,7 +1486,7 @@ Section UkRun.
           receives and mints the record at. *)
        my_pay gn (ukn_pay N) ∗
        (* THE PAYLOAD AT THE KILL STATUS IS NOT HERE ANY MORE (lane
-          SELF-KILL, P6).  The run used to carry [□ riscv_kill_cred -∗
+          SELF-KILL, P6).  The run used to carry [app_taint -∗
           ukn_pay N (-1)] between traps, hand it to the kernel at every
           entry and take it back at every resume.  Nothing is deposited at
           a trap now -- the price of a KILL is the killer's, paid into
@@ -1692,7 +1666,7 @@ Section UkRun.
     (* THE RUN CARRIES NO PAYLOAD (lane SELF-KILL, P6) and the TAINT ARM
        ASKS FOR NONE (P6b): a tainted process runs on the generic family,
        whose constant payload is carried PERSISTENTLY
-       ([UexecExecMint.uslot_mint_all] at [□ (riscv_kill_cred -∗ R)]) and
+       ([UexecExecMint.uslot_mint_all] at [□ (app_taint -∗ R)]) and
        is built out of [T] itself ([UserConsole.ucons_pay_taint]).  So all
        that crosses here is the taint and the key's own pay fact. *)
     □ (∀ W : uvis,
@@ -1702,7 +1676,6 @@ Section UkRun.
     intros Hal. iIntros "#Hgen HT Hrun".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv)
       "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
-    iDestruct "Hnpx" as "[#Hnp %Hpkr]".
     iDestruct (uvb_x0 with "Hb") as "[%Hx0 Hb]".
     iDestruct ("Hgen" $! (uvis_of_run m pc M pm sz fdv cw gn cs pidv false)
                  with "HT []") as "Hslot".
@@ -2044,8 +2017,7 @@ Section UkRun.
   (* needs it: sh reads and writes its line buffer, which the lossy entry  *)
   (* would drop.                                                          *)
   (* ------------------------------------------------------------------- *)
-  Lemma uslot_of_urun_all (W : uvis) (avail : nat) (Q : Z -> iProp Σ)
-      (hs : gset nat) :
+  Lemma uslot_of_urun_all (W : uvis) (avail : nat) (Q : Z -> iProp Σ) :
     uint (tf_resume_gpr0 (uvis_tf W) !!! Regidx csp_rs1) mod 8 = 0 ->
     8 * Z.of_nat avail
       <= uint (tf_resume_gpr0 (uvis_tf W) !!! Regidx csp_rs1) ->
@@ -2066,11 +2038,11 @@ Section UkRun.
        eager ([SpecKexec.exec_slot_pre]'s success wands; lane LAZY-FLAG's
        K4 is what puts the fact on them). *)
     uvis_lazy W = false ->
-    (* ...AND NO HONESTY ROW ON THE HELD SET (lane OFF-HAND-6, H3): the
-       record's [ukn_held] is dead data now ([urun_parked_row]'s note), so
-       a constructor mints at any set and an entry may be taken at a key
-       with a HELD descriptor -- which is what makes a redirect child's
-       exec provable (design/app-file.md SS3 fact 4). *)
+    (* ...AND NO HONESTY ROW ON THE HELD SET (lane OFF-HAND-6's H3 emptied
+       it, lane OFF-LINK-2's L6 deleted the field): a constructor says
+       nothing about offsets and an entry may be taken at a key with a HELD
+       descriptor, which is what makes a redirect child's exec provable
+       (design/app-file.md SS3). *)
     (* ...and the deposit supplier, exactly as [uslot_of_urun] takes it *)
     udep -∗
     (* ...AND THE PROCESS'S OWN KNOWLEDGE OF ITS EXIT PAYLOAD.  A [urun]
@@ -2106,9 +2078,6 @@ Section UkRun.
        (* the record's payload IS the one that came in, which is what lets
           the program's proof read its own [ukn_pay] *)
        ⌜ ukn_pay N = Q ⌝ -∗
-       (* ...and the record's HELD SET is the one that came in, which is
-          what lets the program's proof carry [ukn_parked] *)
-       ⌜ ukn_held N = hs ⌝ -∗
        ⌜ usz_ok (uvis_sz W) ⌝ -∗
        usz (ukn_s N) (uvis_sz W) -∗
        utext_all (ukn_t N) (uvis_M W) (uvis_perm W) -∗
@@ -2215,9 +2184,9 @@ Section UkRun.
       unfold f. rewrite Hb'. reflexivity. }
     iDestruct (ubytes_of_map γd _ base (8 * avail) f Hf with "Dmid") as "Hbs".
     iDestruct (ustack_of_ubytes γd sp avail f Hal8 Hroom with "Hbs") as "Hstk".
-    iSpecialize ("Hprog" $! (MkUkNames γt γd γs γfd γc γch Q γpid hs) h
-                   with "[%] [%] [%] Hszf Ht Hstd Hcwf Hchf Hpidf Dlo Dtop");
-      [ reflexivity | reflexivity | exact Hsz | ].
+    iSpecialize ("Hprog" $! (MkUkNames γt γd γs γfd γc γch Q γpid) h
+                   with "[%] [%] Hszf Ht Hstd Hcwf Hchf Hpidf Dlo Dtop");
+      [ reflexivity | exact Hsz | ].
     iApply "Hprog".
     iExists xi, C, pt, Rfd, Rut, sz, (uvis_M W), (uvis_perm W), (uvis_fd W),
       (uvis_cwd W), (uvis_gen W), (uvis_ch W), (uvis_pid W).
@@ -2228,19 +2197,16 @@ Section UkRun.
     (* the record is minted at [Q], so the payload the constructor was
        handed IS the run's [ukn_pay N (-1)] *)
     (* the two identity authorities go in as ONE conjunct ([urun_ids]) *)
-    iDestruct (urun_ids_intro (MkUkNames γt γd γs γfd γc γch Q γpid hs)
+    iDestruct (urun_ids_intro (MkUkNames γt γd γs γfd γc γch Q γpid)
                  (uvis_ch W) (uvis_pid W) with "Hcha Hpida") as "Hcha".
     iFrame "Hheap Hstk Hufd Hcwa Hcha Hpay Hdep".
-    iSplitR;
-      [ rewrite /urun_rows; iSplitR;
-        [ iExact "Hnpx" | by iPureIntro ] | ].
+    iSplitR; [ rewrite /urun_rows; iExact "Hnpx" | ].
     rewrite /uvb /uvb_F /user_ptm_inv_x.
     iFrame "Hamb Hregs Hfrag Hcfg Hgpr Hpc Hrut Hkont Htlb Hlazy".
     iPureIntro. split_and!; [ exact Hsz | exact Hinj | exact Hacc ].
   Qed.
 
-  Lemma uslot_of_urun (W : uvis) (avail : nat) (Q : Z -> iProp Σ)
-      (hs : gset nat) :
+  Lemma uslot_of_urun (W : uvis) (avail : nat) (Q : Z -> iProp Σ) :
     (* the resume sp is word-aligned -- what [ustack] now asserts, and the
        one place it is an obligation rather than a consequence, since it is
        a fact about the process the kernel set up *)
@@ -2267,11 +2233,11 @@ Section UkRun.
        bv_unsigned p * 4096 < UserPtTree.pgroundup (uvis_sz W)) ->
     (* ...AND THE KEY'S LAZY BIT IS [false] -- see [uslot_of_urun_all]. *)
     uvis_lazy W = false ->
-    (* ...AND NO HONESTY ROW ON THE HELD SET (lane OFF-HAND-6, H3): the
-       record's [ukn_held] is dead data now ([urun_parked_row]'s note), so
-       a constructor mints at any set and an entry may be taken at a key
-       with a HELD descriptor -- which is what makes a redirect child's
-       exec provable (design/app-file.md SS3 fact 4). *)
+    (* ...AND NO HONESTY ROW ON THE HELD SET (lane OFF-HAND-6's H3 emptied
+       it, lane OFF-LINK-2's L6 deleted the field): a constructor says
+       nothing about offsets and an entry may be taken at a key with a HELD
+       descriptor, which is what makes a redirect child's exec provable
+       (design/app-file.md SS3). *)
     (* THE DEPOSIT SUPPLIER, at the key the slot is being built for.  This
        is the one obligation the ARM adds to an entry constructor: whoever
        hands a program a [urun] says which syscall bundles it can pay and
@@ -2312,9 +2278,6 @@ Section UkRun.
        (* the record's payload IS the one that came in, which is what lets
           the program's proof read its own [ukn_pay] *)
        ⌜ ukn_pay N = Q ⌝ -∗
-       (* ...and the record's HELD SET is the one that came in, which is
-          what lets the program's proof carry [ukn_parked] *)
-       ⌜ ukn_held N = hs ⌝ -∗
        ⌜ usz_ok (uvis_sz W) ⌝ -∗
        usz (ukn_s N) (uvis_sz W) -∗
        utext_all (ukn_t N) (uvis_M W) (uvis_perm W) -∗
@@ -2393,9 +2356,9 @@ Section UkRun.
       unfold f. unfold D, base in *. rewrite Hb. reflexivity. }
     iDestruct (ubytes_of_map γd D base (8 * avail) f Hf with "Hd") as "Hbs".
     iDestruct (ustack_of_ubytes γd sp avail f Hal8 Hroom with "Hbs") as "Hstk".
-    iSpecialize ("Hprog" $! (MkUkNames γt γd γs γfd γc γch Q γpid hs) h
-                   with "[%] [%] [%] Hszf Ht Hstd Hcwf Hchf Hpidf");
-      [ reflexivity | reflexivity | exact Hsz | ].
+    iSpecialize ("Hprog" $! (MkUkNames γt γd γs γfd γc γch Q γpid) h
+                   with "[%] [%] Hszf Ht Hstd Hcwf Hchf Hpidf");
+      [ reflexivity | exact Hsz | ].
     iApply "Hprog".
     iExists xi, C, pt, Rfd, Rut, sz, (uvis_M W), (uvis_perm W), (uvis_fd W),
       (uvis_cwd W), (uvis_gen W), (uvis_ch W), (uvis_pid W).
@@ -2406,12 +2369,10 @@ Section UkRun.
     (* the record is minted at [Q], so the payload the constructor was
        handed IS the run's [ukn_pay N (-1)] *)
     (* the two identity authorities go in as ONE conjunct ([urun_ids]) *)
-    iDestruct (urun_ids_intro (MkUkNames γt γd γs γfd γc γch Q γpid hs)
+    iDestruct (urun_ids_intro (MkUkNames γt γd γs γfd γc γch Q γpid)
                  (uvis_ch W) (uvis_pid W) with "Hcha Hpida") as "Hcha".
     iFrame "Hheap Hstk Hufd Hcwa Hcha Hpay Hdep".
-    iSplitR;
-      [ rewrite /urun_rows; iSplitR;
-        [ iExact "Hnpx" | by iPureIntro ] | ].
+    iSplitR; [ rewrite /urun_rows; iExact "Hnpx" | ].
     rewrite /uvb /uvb_F /user_ptm_inv_x.
     iFrame "Hamb Hregs Hfrag Hcfg Hgpr Hpc Hrut Hkont Htlb Hlazy".
     iPureIntro. split_and!; [ exact Hsz | exact Hinj | exact Hacc ].
@@ -2432,8 +2393,7 @@ Section UkRun.
   (* disjoint from any other, so no caller and no entry gate ever has to   *)
   (* decide whether two argv slots point at the same string.               *)
   (* ------------------------------------------------------------------- *)
-  Lemma uslot_of_urun_ro (W : uvis) (avail : nat) (Q : Z -> iProp Σ)
-      (hs : gset nat) :
+  Lemma uslot_of_urun_ro (W : uvis) (avail : nat) (Q : Z -> iProp Σ) :
     uint (tf_resume_gpr0 (uvis_tf W) !!! Regidx csp_rs1) mod 8 = 0 ->
     8 * Z.of_nat avail
       <= uint (tf_resume_gpr0 (uvis_tf W) !!! Regidx csp_rs1) ->
@@ -2453,11 +2413,11 @@ Section UkRun.
        bv_unsigned p * 4096 < UserPtTree.pgroundup (uvis_sz W)) ->
     (* ...AND THE KEY'S LAZY BIT IS [false] -- see [uslot_of_urun_all]. *)
     uvis_lazy W = false ->
-    (* ...AND NO HONESTY ROW ON THE HELD SET (lane OFF-HAND-6, H3): the
-       record's [ukn_held] is dead data now ([urun_parked_row]'s note), so
-       a constructor mints at any set and an entry may be taken at a key
-       with a HELD descriptor -- which is what makes a redirect child's
-       exec provable (design/app-file.md SS3 fact 4). *)
+    (* ...AND NO HONESTY ROW ON THE HELD SET (lane OFF-HAND-6's H3 emptied
+       it, lane OFF-LINK-2's L6 deleted the field): a constructor says
+       nothing about offsets and an entry may be taken at a key with a HELD
+       descriptor, which is what makes a redirect child's exec provable
+       (design/app-file.md SS3). *)
     (* THE DEPOSIT SUPPLIER, at the key the slot is being built for.  This
        is the one obligation the ARM adds to an entry constructor: whoever
        hands a program a [urun] says which syscall bundles it can pay and
@@ -2498,9 +2458,6 @@ Section UkRun.
        (* the record's payload IS the one that came in, which is what lets
           the program's proof read its own [ukn_pay] *)
        ⌜ ukn_pay N = Q ⌝ -∗
-       (* ...and the record's HELD SET is the one that came in, which is
-          what lets the program's proof carry [ukn_parked] *)
-       ⌜ ukn_held N = hs ⌝ -∗
        ⌜ usz_ok (uvis_sz W) ⌝ -∗
        usz (ukn_s N) (uvis_sz W) -∗
        utext_all (ukn_t N) (uvis_M W) (uvis_perm W) -∗
@@ -2596,9 +2553,9 @@ Section UkRun.
                  (base.filter (fun kv : Z * bv 8 => kv.1 < uint sp) D)
                  base (8 * avail) f Hf with "Dlo") as "Hbs".
     iDestruct (ustack_of_ubytes γd sp avail f Hal8 Hroom with "Hbs") as "Hstk".
-    iSpecialize ("Hprog" $! (MkUkNames γt γd γs γfd γc γch Q γpid hs) h
-                   with "[%] [%] [%] Hszf Ht Hstd Hcwf Hchf Hpidf Dhi");
-      [ reflexivity | reflexivity | exact Hsz | ].
+    iSpecialize ("Hprog" $! (MkUkNames γt γd γs γfd γc γch Q γpid) h
+                   with "[%] [%] Hszf Ht Hstd Hcwf Hchf Hpidf Dhi");
+      [ reflexivity | exact Hsz | ].
     iApply "Hprog".
     iExists xi, C, pt, Rfd, Rut, sz, (uvis_M W), (uvis_perm W), (uvis_fd W),
       (uvis_cwd W), (uvis_gen W), (uvis_ch W), (uvis_pid W).
@@ -2609,12 +2566,10 @@ Section UkRun.
     (* the record is minted at [Q], so the payload the constructor was
        handed IS the run's [ukn_pay N (-1)] *)
     (* the two identity authorities go in as ONE conjunct ([urun_ids]) *)
-    iDestruct (urun_ids_intro (MkUkNames γt γd γs γfd γc γch Q γpid hs)
+    iDestruct (urun_ids_intro (MkUkNames γt γd γs γfd γc γch Q γpid)
                  (uvis_ch W) (uvis_pid W) with "Hcha Hpida") as "Hcha".
     iFrame "Hheap Hstk Hufd Hcwa Hcha Hpay Hdep".
-    iSplitR;
-      [ rewrite /urun_rows; iSplitR;
-        [ iExact "Hnpx" | by iPureIntro ] | ].
+    iSplitR; [ rewrite /urun_rows; iExact "Hnpx" | ].
     rewrite /uvb /uvb_F /user_ptm_inv_x.
     iFrame "Hamb Hregs Hfrag Hcfg Hgpr Hpc Hrut Hkont Htlb Hlazy".
     iPureIntro. split_and!; [ exact Hsz | exact Hinj | exact Hacc ].

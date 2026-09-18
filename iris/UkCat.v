@@ -109,14 +109,19 @@ Section UkCat.
      nothing outside [UkCat*.v] requires this file -- so nobody discharges
      these yet; naming them is what keeps cat off the generic supplier
      ([AppInv.app_sup], the taint) along with init, sh and echo. *)
-  (* ...AND close(21) IS IN THE LIST NOW (design/pipe.md, "The byte
-     queue").  A pipe descriptor's close steps the pipe's exact ghost
-     state, so 21 left [UexecSG.free_num]; cat closes the descriptor its
-     own [open] returned, whose TYPE [UsysMemOk.usys_fd_ok]'s open row
-     leaves existential, so cat cannot take the free route
-     ([UkRun.udepw_cl_nonpipe]) and names the deposit here instead. *)
+  (* ...AND close(21) IS NOT IN THE LIST (survey R4, lane SUP-ONE).  A
+     pipe descriptor's close steps the pipe's exact ghost state, so 21
+     left [UexecSG.free_num] and cat used to name a deposit for it -- on
+     the reading that "the TYPE [UsysMemOk.usys_fd_ok]'s open row returns
+     is existential".  The row pins [FdSlots.fdst_nopipe] and the open
+     leaves EXPORT it now, so cat closes the descriptor its own [open]
+     returned on the FREE route ([UkRun.udepw_cl_nopipe]) and owes
+     nothing.  That matters beyond tidiness: the only producer of
+     [udepw_law 21] at a claim-bearing instance is the taint
+     ([UexecExecMint.udepw_law_of_sup_close]), so naming it here forced a
+     TAINTED entry on a verified cat. *)
   Definition cat_deps : iProp Σ :=
-    (udepw_law 5 ∗ udepw_law 15 ∗ udepw_law 16 ∗ udepw_law 21)%I.
+    (udepw_law 5 ∗ udepw_law 15 ∗ udepw_law 16)%I.
 
   Global Instance cat_deps_persistent : Persistent cat_deps.
   Proof using . rewrite /cat_deps. apply _. Qed.
@@ -160,7 +165,12 @@ Section UkCat.
           it is what cat's own [close] will spend. *)
        ((∃ (fd : nat) (rd wr : bool) (t : fdtype),
            ⌜ret = (mword_of_int (Z.of_nat fd) : mword 64)
-            /\ (fd < NOFILE)%nat⌝ ∗
+            /\ (fd < NOFILE)%nat
+            (* ...AND IT IS NOT A PIPE (survey R4), forwarded from
+               [UkRunSys.wp_uk_ecall_open]: cat's own close is FREE at
+               this fact ([UkRun.udepw_cl_nopipe]), which is why 21 is
+               not in [cat_deps]. *)
+            /\ fdst_nopipe (FdOpen rd wr t)⌝ ∗
            ufd γfd fd (FdOpen rd wr t))
         ∨ ⌜ret = (mword_of_int (-1) : mword 64)⌝) -∗
        ustd γfd l -∗
@@ -215,7 +225,9 @@ Section UkCat.
        is closed -- so it is a handle, and the ledger did not move *)
     iAssert (((∃ (fd : nat) (rd wr : bool) (t : fdtype),
                  ⌜ret = (mword_of_int (Z.of_nat fd) : mword 64)
-                  /\ (fd < NOFILE)%nat⌝ ∗ ufd γfd fd (FdOpen rd wr t))
+                  /\ (fd < NOFILE)%nat
+                  /\ fdst_nopipe (FdOpen rd wr t)⌝ ∗
+                 ufd γfd fd (FdOpen rd wr t))
               ∨ ⌜ret = (mword_of_int (-1) : mword 64)⌝) ∗ ustd γfd l)%I
       with "[Hal]" as "[Hfdh Hstd]".
     { iDestruct "Hal" as "[Hal | [%Hrm Hstd]]";
@@ -253,30 +265,26 @@ Section UkCat.
      makes close(21) a claim number: a pipe descriptor's last close steps
      the pipe's ghost state.  Whether cat's row is free is a fact about
      the TYPE its own open returned, and the two arms differ:
-     [wp_kcat_open]'s U-tier row leaves the type existential and the close
-     is paid from the flagged deposit ([kcat_cldep_of_law]), while
-     [UkFileOpen.wp_uk_ecall_open_read_deed]'s hands back
-     [FdInode i γo OffParked], which is not a pipe, and the close costs
-     NOTHING ([kcat_cldep_nonpipe]).  So THE DEED ARM MOVES 21 OUT OF
-     [cat_deps]: it is the one law of the four a deed-aware entry does not
-     have to supply. *)
+     [wp_kcat_open]'s U-tier row and [UkFileOpen.wp_uk_ecall_open_read_
+     deed]'s BOTH say the descriptor is not a pipe now (survey R4: the
+     free leaf exports [FdSlots.fdst_nopipe], the deed leaf hands back
+     [FdInode i γo OffParked]), so both arms take the FREE route and
+     [kcat_cldep_nopipe] is the only instance left.  [kcat_cldep_of_law]
+     -- the flagged deposit at 21, whose only claim-bearing producer is
+     the taint -- is GONE with it, and so is [udepw_law 21] from
+     [cat_deps]. *)
   Definition kcat_cldep (st : fdstate) : iProp Σ :=
     (□ ∀ (m : regfile) (pc : mword 64), udepw_cl N m pc st)%I.
 
-  Lemma kcat_cldep_of_law (st : fdstate) : udepw_law 21 -∗ kcat_cldep st.
-  Proof using .
-    iIntros "#H !>" (m pc).
-    iApply (udepw_cl_of_udepw N m pc st).
-    iApply (udepw_of_law N m pc 21 with "H").
-  Qed.
-
-  Lemma kcat_cldep_nonpipe (st : fdstate) :
-    (forall (rb wb : bool) (gp : pipe_names),
-       st <> FdOpen rb wb (FdPipe gp)) ->
-    ⊢ kcat_cldep st.
+  (* AT THE SHAPE THE OPEN LEAVES EXPORT (survey R4, lane SUP-ONE).  ONE
+     instance, not two: the ∀-form ([UkRun.udepw_cl_nonpipe]) and
+     [FdSlots.fdst_nopipe] say the same thing, and the fact travels in the
+     latter's spelling. *)
+  Lemma kcat_cldep_nopipe (st : fdstate) :
+    fdst_nopipe st -> ⊢ kcat_cldep st.
   Proof using .
     intros Hnp. iIntros "!>" (m pc).
-    iApply (udepw_cl_nonpipe N m pc st Hnp).
+    iApply (udepw_cl_nopipe N m pc st Hnp).
   Qed.
 
   Lemma wp_kcat_close (h : CpuId) (m : regfile) (fd : nat) (st : fdstate)
@@ -871,17 +879,27 @@ Section UkCat.
     end.
 
   (* the free chain: every write paid from the flagged deposit, nothing
-     carried.  [UEchoKernel.echo_uexec_slot]'s one instance at cat. *)
+     carried.  [UEchoKernel.echo_uexec_slot]'s one instance at cat.
+
+     THE EXIT PAYLOAD IS A PERSISTENT RESOURCE AND NOT A COQ ENTAILMENT
+     (lane CAT-GEOM-4).  It used to be [(⊢ Cend)], which is satisfiable
+     only at the TRIVIAL payload -- and that is what made this chain
+     unusable to a payer whose payload is a CLAIM: at a tainted era cat's
+     own [UCatOut.cch] is persistent (its right disjunct IS
+     [AppFile.file_taint]) but it is a HYPOTHESIS, not derivable from
+     nothing.  [□ Cend] is strictly weaker as a premise -- [⊢ P] gives
+     [⊢ □ P] in an affine BI, because [□ emp ⊣⊢ emp] -- so every caller
+     that had the old one still has this one, by [iModIntro]. *)
   Lemma kcat_pay_seq_of_law (fdw : mword 64) (fb : nat -> bv 8)
       (k : nat) (Cend : iProp Σ) :
-    (⊢ Cend) ->
-    forall i : nat, udepw_law 16 -∗ kcat_pay_seq fdw fb i k emp%I Cend.
+    forall i : nat,
+      □ Cend -∗ udepw_law 16 -∗ kcat_pay_seq fdw fb i k emp%I Cend.
   Proof using .
-    intros HC. induction k as [| k IH]; intros i; iIntros "#Hwr".
-    - iIntros "_". iApply HC.
+    induction k as [| k IH]; intros i; iIntros "#HC #Hwr".
+    - iIntros "_". iExact "HC".
     - iExists emp%I. iSplitR.
       + iApply (kcat_wb_of_law _ _ _ _ ltac:(reflexivity) with "Hwr").
-      + iApply (IH (S i) with "Hwr").
+      + iApply (IH (S i) with "HC Hwr").
   Qed.
 
   (* the output side is MONOTONE, as one write's is *)
@@ -1228,7 +1246,9 @@ Section UkCat.
       (fun ret : mword 64 =>
          (((∃ (fd : nat) (rd wr : bool) (t : fdtype),
               ⌜ret = (mword_of_int (Z.of_nat fd) : mword 64)
-               /\ (fd < NOFILE)%nat⌝ ∗ ufd γfd fd (FdOpen rd wr t))
+               /\ (fd < NOFILE)%nat
+               /\ fdst_nopipe (FdOpen rd wr t)⌝ ∗
+              ufd γfd fd (FdOpen rd wr t))
            ∨ ⌜ret = (mword_of_int (-1) : mword 64)⌝)
           ∗ ustd γfd l)%I).
   Proof using .

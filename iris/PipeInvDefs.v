@@ -690,14 +690,14 @@ Section PipeInv.
     ((∃ (ws : list (bv 8)) (rp : nat),
         ⌜pipe_queue_ok ws rp nr nw bs⌝ ∗
         pipe_qauth (pn_queue γp) (MkPipeSt ws rp (pflag_bool ro) (pflag_bool wo)))
-     ∨ pipe_taint_cred)%I.
+     ∨ app_taint)%I.
 
   Global Instance pipe_qres_timeless γp nr nw ro wo bs : Timeless (pipe_qres γp nr nw ro wo bs).
   Proof using . rewrite /pipe_qres. apply _. Qed.
 
   (* the disconnect, at the taint's price *)
   Lemma pipe_qres_taint γp nr nw ro wo bs :
-    pipe_taint_cred -∗ pipe_qres γp nr nw ro wo bs.
+    app_taint -∗ pipe_qres γp nr nw ro wo bs.
   Proof using . iIntros "#H". rewrite /pipe_qres. by iRight. Qed.
 
   (* ...AND IT IS THE LAST CONJUNCT of the payload, so every older intro

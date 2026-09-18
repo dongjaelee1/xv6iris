@@ -7802,3 +7802,3010 @@ statement, at the mask, at the persistence, and at the home across exec):
 - What they still cannot do is OPEN in hand mode or READ/WRITE a held row:
   that is L2+L3+L4, whose remaining blocker is the node's LEND (REFUTED 2) and
   whose statements are all above.
+
+### WRITE-RELAY-2 (2026-09-17) — RELAY 4's CARRYING HALF LANDS UP TO THE NODE, AND THE REFUTATION IS A THEOREM; THE SINGLE-BLOCK CONJUNCT WAS ALREADY IN writei's POST
+
+**The lane's verdict in one line: `SysWriteDefs.wr_fail_why` rides
+`either_copyin`'s failure through writei's post, filewrite's fold and into
+`FsAbsWriteFire.awrite_part_at`, and at a mapped source with a single-block chunk
+the partial arm is now REFUTED OUTRIGHT
+(`awrite_part_at_mapped_single` / `awrite_chain_mapped_single`) — and the
+single-block half needed NO new writei clause at all, because
+`SpecWritei.wi16_atomic` (the sixteen-byte seam's, landed long ago) IS
+`wi_blocks off n = 1 -> tot = 0 \/ tot = n`.**
+
+Branch `app-file/write-relay`, one commit on top of main (`27c79fdd7`).  Whole
+tree green on the lane's remote tree (`--proofs -k`, `EXIT=0`, zero `Error`,
+1592/1592 `.vo`, no non-empty `.vos`); `make audit-all-only` / `audit-tree-only`
+/ `audit-file-only` all `EXIT=0` and unchanged (echo FOURTEEN, system THIRTEEN,
+tree THIRTEEN, file FOURTEEN); no new `Admitted` (`UEchoFile.ef_node` /
+`ef_chain` stay SKELETON's); `Proof using` on every new result;
+`tools/comment_quote_check.py iris` clean.
+
+**THE ONE THING THAT WAS CHEAPER THAN PRICED.**  The brief's second conjunct —
+`⌜wi_blocks off n = 1%nat -> (tot < n)%nat -> tot = 0%nat \/ wr_fail_why P src n⌝`
+— is implied by a clause writei's post has carried since the sixteen-byte seam:
+`SpecWritei.wi16_atomic off n tot := wi_blocks off n = 1%nat -> tot = 0%nat \/
+tot = n` (`iris/SpecWritei.v:516`), whose own header already says "every break
+arm exits WITHOUT advancing `tot`, the part-way copy included".  It is STRONGER
+than the brief's (no reason disjunct) and it was already relayed to
+`ProofFilewrite` as `%Hwi16at`.  So writei's post gained exactly ONE clause, and
+`ProofWritei`'s five exits needed exactly ONE new obligation each.
+
+**WHAT LANDED, file by file.**
+
+1. `SysWriteDefs.v` — `wr_fail_why P src n := ∃ d, (d < n)%nat /\ ~ uva_rmapped P
+   (uint (add_vec_int src (Z.of_nat d)))` (`:192`), the exact twin of
+   `SysReadDefs.rd_fail_why` one test weaker (`uva_rmapped`, not `uva_wmapped`:
+   copyin has no PTE_R re-walk), with `wr_nrmapped_entry`, `wr_fail_why_entry`,
+   `wr_fail_why_mono`, `wr_fail_why_shift` (the chunk's base moved to the
+   request's — what filewrite's fold needs) and `wr_fail_why_refute`.  The file
+   gains `Require Import UserPtTree` / `ProcPtOwn`.
+2. `SpecWritei.v` — BOTH bodies (`wp_writei_sconf_body`, `wp_writei_gen_body`)
+   gain ONE post clause, after `⌜user = false -> dist = 0%nat⌝`:
+   `⌜(0 < dist)%nat -> wr_fail_why (pv_upt (us_V U)) src n⌝`.  Nothing else in
+   the contract moved; `wi16_atomic` was already there.
+3. `ProofWritei.v` — the relay, `ProofReadi.v:1887-1913` mirrored.  `wi_cont`
+   and the three block lemmas (`wi_ret`, `wi_join`, `wi_size`) gain the clause;
+   the copyin break's `Hnorm` carries the failing byte in its `-1` disjunct and
+   `wr_nrmapped_entry` brings it to the entry table; the four `dist = 0%nat`
+   exits discharge it by `lia`.  The reason's index is `tot + d` off writei's own
+   a2 (`InstrBytes.pa_add_add`) and is inside the request because
+   `d < mm <= n - tot`.
+4. `FsAbsWriteFire.awrite_part_at` — gains `(P : uptd)` and TWO arrows:
+   `⌜(r < length bs)%nat -> wr_fail_why P ua (Z.to_nat n)⌝` (the unnamed tail's
+   reason) and `⌜wi_blocks off (Z.to_nat (wchunk_at n k)) = 1%nat -> r = 0%nat⌝`
+   (`wi16_atomic` read at this arm).
+5. `FsAbsWriteFire.awrite_chain_at` — NEW: the chain, INDEXED BY `P`.
+   **`awrite_chain` keeps its name, arity and every argument** and is now
+   `∀ P : uptd, awrite_chain_at … P …`.  That is the whole trick that kept
+   `SpecFilewrite.filewrite_in` BYTE-IDENTICAL, and with it `xv6_sbundle`'s row
+   16, `SpecSysWrite`, `ProofSyscall.sysc_dep_write` and all six U-tier write
+   suppliers.  Lane WRITE-RELAY-3 replaces the bare `∀ P` with the guarded
+   `∀ P, ⌜TB P⌝ -∗` at `filewrite_in`, and nothing else moves then either.
+   Consequent: `awrite_chain_at_0/_S/_cursor/_unit` (the real lemmas),
+   `awrite_chain_0/_cursor/_unit` (the wrapper's, via `uptd0`),
+   `awrite_chain_at_of` (the kernel's one-table reading).
+6. `FsAbsWriteFire.wrf_apart_fire_gen` / `wrf_apart_fire` / `wrf_apart_fire_held`
+   — gain `(P : uptd)` and the two matching premises.  `wrf_awrite_fire*` (lane
+   OFF-LINK's) did NOT move.
+7. **`FsAbsWriteFire.awrite_part_at_mapped_single`** — THE REFUTATION.  At a
+   source run every byte of which is `uva_rmapped` in `P`, and a chunk that
+   cannot straddle a block boundary at any offset the fire can be at, the node
+   is VACUOUS: the reason arrow gives `r = length bs` (nothing unnamed landed),
+   the single-block arrow then gives `r = 0`, and `wri_pre`'s own
+   `0 < length bs` closes it.  `⊢ awrite_part_at …` — the arm costs its client
+   nothing, at any `REST`.
+8. **`FsAbsWriteFire.awrite_fchain` / `awrite_chain_mapped_single`** — the
+   chain of FULL nodes alone, and the lemma that turns it into the real chain.
+   This is design/app-file.md section 0's limit 1 AS A THEOREM, at the two
+   premises the U tier and the deed supply: `UkRunSys.usrc_ok`'s SECOND conjunct
+   is the mapped row, and the line's own length bound
+   (`FileDeltas.f_bytes_typed_short`, `EchoDisc.line_max` = 100 < BSIZE) is the
+   straddle premise.
+9. `ProofFilewriteChain.fw_au_raw` and its five moves — gain `(P : uptd)`;
+   `_init` fixes the walk's table once out of the `∀ P` chain
+   (`awrite_chain_at_of`).
+10. `SpecFilewrite.write_post_ok_at` / `write_post_fail_at` / `write_arms_at` /
+    `write_arms_at_ret` / `write_arms_at_neg` / `filewrite_extra`'s inode branch
+    — gain `(P : uptd)`, fed by the `P` `filewrite_extra` ALREADY carries for
+    the console arm's short return.  **`filewrite_in` is untouched**, so
+    nothing above `filewrite_extra` moved — the read side's finding, again.
+11. `ProofFilewrite.v` — the partial fire supplies both node facts: `Hwhyn`
+    (writei's reason, shifted to the request's base by `wr_fail_why_shift` and
+    brought to the entry table by `wr_fail_why_entry`, since filewrite calls
+    writei at the already-grown `PI`) and `Hsb1n` (`wi16_atomic` at `Hcw`'s
+    `c = wchunk_at n p`, with `rz <> c` ruling out the `tot = n` disjunct).
+12. `TreeMove.tree_awrite_chain` — `iIntros (P)`; it introduces and drops both
+    arrows, as before.  `UkWriteFile.write_arms_file_learn` gains `(P : uptd)`.
+    `FsAbsInvFire`, `UexecExecMint`, `UkTreeWrite` — UNTOUCHED (their statements
+    are the wrapper's).
+13. `ProofDirlink.v`, `ProofSysUnlinkW5F.v`, `ProofSysUnlinkW5D.v` —
+    PROOF-SCRIPT ONLY: one extra `%` in the writei continuation's intro pattern,
+    the write side's twin of READ-RELAY's six `discriminate` sites.
+14. `UEchoFile.v` — **THREE HYPOTHESES BECOME LEMMAS**: `Hoff_link` is
+    `ef_off_link` (the advanced node IS a kernel node, by `OffGv.off_ret_adv`),
+    `Hrelay3` is `ef_full_adv_of` (by `SpecCopyin.ubytes_at_inj` at the node's
+    length arrow), and `Hrelay4` is `ef_relay4` (by
+    `awrite_part_at_mapped_single` at `usrc_ok`'s second conjunct).  Only
+    `Hdep1` and `Hwrite1` (the two ledger-slot pieces the engine owes) remain
+    hypotheses; `ef_node` / `ef_chain` stay `Admitted` skeletons, as SKELETON
+    left them.
+
+**WHAT IS NOT LANDED, AND WHY IT IS COUPLED (OFF-LINK's REFUTED 2).**  The ask
+is that phase 1's LENT half become `UserOff.off_link γo (Z.of_nat off)` =
+`off_gv γo (1/2) off ∨ □ riscv_kill_cred`, so a DISCONNECTED box can still run
+the node.  **It cannot land alone, and the reason is a resource home, checked at
+the statement (process rule §3.6).**  A node LENT the taint has no half to give
+back, so phase 2's answer must gain a taint arm too — and then a node lent a REAL
+half may answer with the taint and the fire LOSES the half it lent.  So
+`UserOff.off_supply`'s output and the fire's conclusion must become
+`off_link γo (Z.of_nat (off + d)) ∗ R`, which is exactly OFF-LINK's
+`UserOff.off_settle` (branch `app-file/off-hand`, commit `e274708f7`) — and the
+fires' CALLERS (`ProofFilewrite`, `ProofFileread`) then owe their posts on the
+taint branch, which needs `FileOffCell.off_resident`'s taint arm.  **The two
+halves are one change**, and the order that works is: merge `app-file/off-hand`
+(it holds `off_link`, `off_settle`, `off_ret_case` and does NOT touch
+`FsAbsWriteFire.v`, `SpecFilewrite.v`, `ProofFilewriteChain.v`, `TreeMove.v`,
+`SpecWritei.v`, `ProofWritei.v` or `SysWriteDefs.v`, so the merge is small), then
+land phase 1's `off_link` and phase 2's third disjunct against `off_settle` in
+ONE commit.  `off_ret`'s shape for that step is
+`∃ v : Z, off_link γo v ∗ ⌜v = Z.of_nat off \/ v = Z.of_nat (off + d)⌝`
+— the disjunction INSIDE, so "what it was lent, moved or not" stays one
+definition and `off_ret_keep` / `off_ret_adv` keep their statements through
+`off_link_of`.
+
+### SUP-ONE (2026-09-17) — one name for the taint, one law for the licence; the supply is NOT the taint
+
+Branch `app-file/sup-one`.  Whole tree green on the lane's remote tree
+(`EXIT=0`, zero `Error`); the four audits unchanged (system thirteen, echo
+fourteen, tree thirteen, file fourteen); no `Admitted`; `Proof using`
+everywhere.
+
+#### U0 — `riscv_kill_cred` is `app_taint`, and it is written bare
+
+`RiscvPtsto.app_taint` (was `riscv_kill_cred`, `:632`), with
+`app_taint_persistent` / `app_taint_timeless`.  A textual rename over
+`iris/*.v`, comments included; **50 files, 212 occurrences**, of which
+**98 were `□ app_taint` and lost the box** — the `Persistent` instance
+already said what the box said.  `□ (app_taint -∗ R)`-shaped wands are
+UNCHANGED: that box is the wand's, not the credential's.  Highest counts:
+`UexecRet` 11, `UexecExecMint` 11, `UkInitMain` 7, `SchedCtx` 7,
+`ProofUsertrapArms` 7, `UkRun` 6, `UkStore` 5, `UkLoad` 4,
+`UexecExecInst` 4, `UShEchoPay` 4, `ProofUsertrapTail` 4.
+
+`PipeQueue.pipe_taint_cred` is **DELETED**, not kept as an alias: one
+resource, one name.  Its 31 uses (`PipeQueue`, `PipeInvDefs`,
+`ProofPipewrite`, `ProofPiperead`, `SpecFileclose`, `FsAbsInvFire`,
+`SpecUsertrap`, `UexecExecInst`) name `app_taint`, and
+`pipe_taint_cred_persistent` / `_timeless` went with it — the same two
+instances live one file lower.
+
+Eleven proof sites in six files paid for the box's disappearance, all of
+one shape — a goal that WAS `□ app_taint` and is now `app_taint`, so the
+`iModIntro` that stripped the box goes: `UInitTree:305`,
+`UInitTreeExec:153`, `SystemAdequacy:1076` and `:1855`,
+`UTreeAdequacy:145`, `UInitBoot:852/:891/:972`,
+`UShEchoPay:188/:247/:320`.  Nothing else in the tree noticed.
+
+#### U1 — the licence is a LAW OF THE INTERFACE; the supply is a pair
+
+The licence was a credential in three places and a hand proof in two, and
+all five spell ONE fact: **an application's kill price buys the right to
+move its console claim**.  So it is one field.
+
+- `RiscvPtsto.app_iface` gains a ninth field
+  `ai_lic : ai_kill ⊢ □ (∀ k h H ev, ai_cons k h H ==∗ ai_cons k h
+  (cons_step H ev))`, read at the machine's own ambient interface, so it
+  needs NO record equation and holds at every altitude.  Discharged at all
+  four interface literals: `app_iface_triv` by the new
+  `RiscvPtsto.cons_res_triv_lic` (the trivial claim is `emp`),
+  `AppEcho.echo_ifc` by the new `AppEcho.echo_cons_lic` (which IS
+  `UInitBoot:821`'s hand proof, moved to where the interface is built),
+  `AppFileRec.file_ifc` by the new `AppFileRec.file_cons_lic`, and the
+  client interface in `SystemAdequacy.xv6_power_adequacy_client` by the
+  theorem's own `Hout_lic`.
+- `WpUart.cons_licence_of_taint : app_taint -∗ cons_licence` — the one
+  line that reads it.
+- `UexecExecInst.xv6_ssupply := (app_sup ∗ app_taint)` — the TRIPLE is a
+  PAIR.
+
+STATEMENTS THAT CHANGED SHAPE — exhaustively, 17:
+
+1. `RiscvPtsto.app_iface` — ninth field `ai_lic`; `Arguments MkAppIface`
+   takes nine; `Arguments ai_lic`.
+2. `RiscvPtsto.cons_res_triv_lic` — NEW.
+3. `RiscvPtsto.app_iface_triv` — one more component.
+4. `WpUart.cons_licence_of_taint` — NEW.
+5. `AppEcho.echo_cons_lic` — NEW; `AppEcho.echo_ifc` takes it.
+6. `AppFileRec.file_cons_lic` — NEW; `AppFileRec.file_ifc` takes it.
+7. `UexecExecInst.xv6_ssupply` — `app_sup ∗ app_taint ∗ □ cons_licence`
+   → `app_sup ∗ app_taint`.
+8. `FsAbsInvFire.fsabs_fileread_in` — lost `WpUart.cons_licence -∗`.
+9. `FsAbsInvFire.fsabs_filewrite_in` — lost `cons_licence -∗`.
+10. `UexecExecMint.udep_gen` — lost `cons_licence -∗`.
+11. `UexecExecMint.filewrite_in_of_sup` — lost `cons_licence -∗`.
+12. `UexecExecMint.udepw_of_sup_write` — lost `cons_licence -∗`.
+13. `UexecExecMint.udepw_law_of_sup_write` — lost `cons_licence -∗`.
+14. `UexecExecMint.uslot_mint` — lost `cons_licence -∗`.
+15. `UexecExecMint.uslot_mint_pay` — lost `cons_licence -∗`.
+16. `UexecExecMint.uslot_mint_all` — lost `cons_licence -∗`.
+17. `SystemAdequacy.init_boot_of_sup` — lost the Coq-level premise
+    `(app_sup ⊢ cons_licence)`; and `SystemAdequacy.init_boot_of_triv`
+    lost `riscv_cons_res = cons_res_triv`, which existed only to found the
+    licence.
+
+Call sites adapted (proof text, no statement moved):
+`App.app_triv_init_boot`, `UInitBoot.echo_Hinit_boot` (its hand-made
+`Hlic` and the three uses are gone), `UInitTree.tree_init_deps`,
+`UInitTreeExec.tree_gen_slot`, `UTreeAdequacy.tree_Hinit_boot`,
+`UexecExecInst.xv6_sbundle_of_supply{,_ne}`, `SystemAdequacy`'s three
+`init_boot_of_triv` discharges.
+
+#### WHAT WAS REFUTED, AND WHY
+
+**(a) `xv6_ssupply := app_taint` — the supply is NOT the taint.**  Two
+independent reasons, either one fatal.
+
+- THE ALTITUDE.  `AppInv.app_sup` is `□ ∀ av, app_pred app_run av` at the
+  ambient `AppCfg.appcfg` (reached through `FileInvDefs.fileG`'s
+  `file_app`); `app_taint` is `ai_kill riscvF_app_iface` at the ambient
+  `RiscvPtsto.riscvFixedGS`.  The two records are INDEPENDENT: the
+  equations that tie them — `file_app = MkAppcfg (app_names A)
+  (app_pred A c) r` and `riscvF_app_iface = app_ifc A c` — are PREMISES of
+  each boot obligation and are ambient NOWHERE, so no lemma below the boot
+  (`xv6_sbundle_of_supply_ne` and `udep_gen` included) can derive one
+  credential from the other.  Closing that gap costs either a new ambient
+  class threaded through ~60 section contexts — and hence through the
+  `uexecSG_xv6` GLOBAL INSTANCE, i.e. every consumer of the deposit class
+  — or a new field on `appcfg`, which breaks the ~200
+  `file_app = MkAppcfg …` equations in `FileOpen`, `UkFileOpen`,
+  `UkCatDeed`, `TreeMove`, `UkTreeCreate` and twenty more files, four
+  other lanes' among them.  Neither is a ~20-site change.  **The licence
+  half escapes this only because `ai_lic` lives on the interface record
+  itself** — `cons_licence` is spelled in `riscv_cons_res`, which is the
+  SAME record's projection, so no equation is needed.  There is no such
+  home for `app_sup`.
+- THE SEMANTICS.  Even granted the equation, "the kill price IS the
+  supply" is FALSE at `app_tree`: `AppTree`'s `app_ifc` is
+  `app_iface_triv`, so its kill credential is `kill_cred_triv = True`
+  while its claim `tree_pred c r av = tree_taint c ∨ tree_body r av` is
+  not trivial.  `True ⊢ app_sup_raw (tree_pred c) r` read at `av = ∅`
+  gives `True ⊢ tree_taint c` (the right arm needs
+  `adir_at ∅ ROOTINO`), which `AppTree.tree_taint_needs_a_row` refutes.
+  That is `AppTree.tree_bump_free_is_vacuous`'s own argument one level up.
+
+**(b) `App.xv6_app_laws.al_sup_of_kill` — STOPPED, not added.**  By (a)'s
+second half the field cannot be discharged at `app_tree` as the tree
+application stands, and `xv6_app_laws` has a tree instance
+(`UTreeAdequacy.tree_laws`).  THE RECIPE, for whoever takes it — it is a
+lane of its own and it publishes a NEW fact about the tree application, so
+it wants the owner's say:
+
+  1. give `AppTree` a real interface `tree_ifc c := MkAppIface
+     rx_tag_triv … (tree_taint c) … cons_res_triv … `, so the machine's
+     `app_taint` for a tree run IS `tree_taint c`;
+  2. prove `tree_taint_of_sup : app_sup_raw (tree_pred c) r ⊢ tree_taint c`
+     by `AppEcho.echo_taint_of_sup`'s `∅`-view argument (eight lines:
+     `tree_body r ∅` needs `adir_at ∅ ROOTINO`), and re-prove `al_kill`
+     from it — today it is trivial because the target is `True`;
+  3. discharge `al_sup_of_kill` by the existing `AppTree.tree_sup_of_taint`
+     (and echo's by `echo_sup_of_taint`, the file's by
+     `AppFile.file_sup_of_taint`, `app_triv`'s by
+     `AppInv.app_sup_raw_triv`);
+  4. sweep the premise `app_taint = kill_cred_triv`, which becomes
+     `app_taint = tree_taint c`, through `UInitTree`, `UInitTreeExec` (six
+     occurrences), `UTreeAdequacy` — it is only those three files, plus
+     `SystemAdequacy.init_boot_of_triv`'s own trivial reading.
+
+  The change is a PRICE and not a gift: the kernel never mints
+  `app_taint`, it only ever reads one out of a deposit that already
+  carries it (`ProofSyscall.sysc_dep_kill` reads row 6's).  So it makes a
+  killer under the tree discipline owe the tree's taint; the risk to price
+  before taking it is whether any tree program is killed or calls
+  `kill(2)`.
+
+**(c) Dropping `app_taint` from beside `□ ssupply` — REFUTED; survey R1 is
+internally inconsistent here.**  R1 says "`UexecSG.ssupply` stays opaque
+(the class carries only `ctokG` and cannot name the taint); nothing at the
+class moves" AND "what it removes: the `□ riscv_kill_cred` argument beside
+`□ ssupply` on `uslot_of_creds`, `uexec_wp_uslot{,_mint,_triv}`,
+`uexec_dep_F_of_supply`, `cond_entry_slot`".  Those cannot both hold:
+those five lemmas live in `UexecRet` / `UexecCond`, stated at the ABSTRACT
+class, so `□ ssupply ⊢ app_taint` is not available to them — the second
+credential is the ABSTRACTION BOUNDARY, not a redundancy.  Removing it
+needs `Class uexecSG` to take `` `{!riscvFixedGS Σ} `` and carry a field
+`ssupply_taint : ssupply ⊢ app_taint`; that is a class change, which R1
+forbids in the same paragraph.  Recorded rather than taken.  (The
+`uslot_mint*` family never had the duplication: it takes the supply's two
+COMPONENTS at the instance, and what it lost is the licence, item 14–16
+above.)
+
+#### U2 — the open leaves export `fdst_nopipe`, and cat's close is free
+
+`UsysMemOk.usys_fd_ok`'s open row has pinned `fdst_nopipe (FdOpen rd wr t)`
+since the pipe landing — `ProofSyscall`'s arm 15 proves it and
+`SpecSysOpen.open_arms_split` carries it out — and every
+`UkRunSys.wp_uk_ecall_open*` leaf already DESTRUCTS it (`… & Hpko & Hnpo`)
+and spends `Hnpo` on `UkRun.urun_rows_insert`.  **Where the pure fact comes
+from at the leaf: it is already in hand, off the row; all that changed is
+that it is now exported.**
+
+- The five leaves' fd arms gain the conjunct, inside the pure block they
+  already carry: `wp_uk_ecall_open` (`:834`), `_recv` (`:3861`),
+  `_recv_img` (`:4707`), `_recv_gimg` (`:4953`), `_recv_dimg` (`:5127`,
+  which relays `_recv_gimg`).
+- `UConsOpen.uk_open_fd_arm` gains it too — it is the shape the `_img`
+  leaves' callers rewrite against.
+- `UkRun.udepw_cl_nopipe : fdst_nopipe st -> ⊢ udepw_cl N m pc st` — NEW,
+  the one line from the exported fact to the free left arm.
+  `UkRun.udepw_cl`'s stale paragraph ("a descriptor `open` returned
+  carries an existential type: `usys_fd_ok`'s open row does not pin it")
+  is rewritten: the row pins it; the EXPORT was the gap.
+- `UkCat.cat_deps` is `udepw_law 5 ∗ 15 ∗ 16` — `udepw_law 21` is GONE.
+  It mattered beyond tidiness: the only producer of `udepw_law 21` at a
+  claim-bearing instance is the taint
+  (`UexecExecMint.udepw_law_of_sup_close`), so naming it forced a TAINTED
+  entry on a VERIFIED cat.
+- `UkCat.kcat_cldep_of_law` and `kcat_cldep_nonpipe` are both deleted and
+  replaced by ONE instance `kcat_cldep_nopipe` at the exported spelling;
+  `UkCat.wp_kcat_open` and `kcat_o_of_law` forward the conjunct.
+- `UkCatMain.kcat_file_of_law`, `kcat_pay_of_law`, `kcat_pay_all_of_law`
+  lose `udepw_law 21 -∗` and take the close at the exported fact.
+
+COORDINATION.  `UkCat.v` / `UkCatMain.v` are not CAT-ENTRY-2's files (it
+owns `UkCatCat.v`, `UCatKernel.v`, `UkWriteLeaf.v`; its branch's log
+touches `UkCatMain.v` only at `1d3048750`, in `kcat_round`'s write arm,
+which this lane does not go near).  The leaf's extra pure conjunct reaches
+six further files as PROOF TEXT and nothing else — `destruct Hb as
+(Hr1 & Hlt1 & Hfdv1)` becomes `(… & _)`: `UkFileOpen.v` (F-OPEN-6's, six
+sites), `UInitConsK.v` (LINK-GEN's, one), `UShConsK.v`,
+`UInitTreeCons.v`, `UkTreeCreate.v`, `UkTreeRead.v`.  No statement in any
+of those moved.
+
+### SH-CHILD (2026-09-17) — the line the loop reads is a TYPED line and WHICH lines an era admits is a parameter; the redirect body is the ECHO body at another line shape, and what is left of obligation 18 is THREE named things
+
+Branch `app-file/sh-redir`, on top of SH-LEX-REDIR's, merged from `main` at
+`ba34a9c5f` (SUP-ONE's rename, OFF-LINK, WRITE-RELAY-2, CAT-GEOM, LINK-GEN
+and the fix-forward).  Whole tree green on the lane's remote tree
+(`--proofs -k`, `EXIT=0`, zero `Error`); `make audit-all-only` unchanged
+(system THIRTEEN, echo FOURTEEN, both lists textually identical); `make
+gen-ucode` prints all seven catalogs unchanged; no `Admitted`; the ONE
+thing owed is a named `Hypothesis` (`Hcat_body`); every new result carries
+`Proof using`.
+
+#### 1. THE RULING THE LANE TURNS ON
+
+**sh's body reads its line EXACTLY ONCE — at 0x97a, and only to see that
+the first byte is not a `c`.**  Everything else the walk does with the line
+is hand it to the CHILD's law.  Three things follow, and they are the whole
+lane:
+
+1. **The redirect line needs NO new walk.**  `echo a b` and `echo a b > f`
+   both begin with 'e', so both take the `bne a5,s5` at 0x97a and run the
+   same fork1, the same diagnostic and the same runcmd call.
+   `UkShFork.wp_kshm_body_at` is the landed body ABSTRACT IN THE LINE SHAPE
+   and `UkShRedirBody.wp_kshm_body_redir` is that lemma at the redirect
+   shape; the one thing it costs is `ushs_line_is_byte0` — "the redirect
+   line's first byte is 'e'", off the `EchoDisc.line_ok` the shape already
+   carries.
+2. **THE THREE LEXER PREMISES WERE DEAD.**  `wp_kshf_fork` and
+   `wp_kshm_body` took `ushp_no_symbols`, `ushp_tokens` and
+   `length toks < 10`, and NEITHER PROOF READ THEM: the parse happens in
+   the CHILD, whose law re-derives it from the line fact
+   (`UkShEcho.ush_line_toks_holds` inside `wp_kshm_child_echo_holds`).
+   They are gone, and with them `UkShLoop.ush_line_lexable` as a premise of
+   `UkShFork.ushf_rest_of_body`.  They could not have survived anyway: a
+   redirect line HAS a symbol byte, so at the widened premise the landed
+   statement was not weakenable but false.
+3. **`cat f` is the only arm that is a different walk**, because it begins
+   with 'c': the `bne` is NOT taken and control goes into the three-byte
+   `cd` test, which this tree deleted with `UkShCd.wp_kshc_cd` when the
+   disciplined line made the arm unreachable.  That is `Hcat_body`, and it
+   is stated at exactly the law the other two arms are.
+
+#### 2. THE SHAPE: THE LINE IS TYPED, AND THE ERA SAYS WHICH LINES
+
+`UkSh.ush_rest_line`'s payload was `⌜ush_line_is ws f k len⌝` — echo's line
+and nothing else — and `UkShRedirLine.ushs_line_is_nosym` proves no such
+line carries a '>'.  **So today's tree forces a redirect line to the TAINT
+at sh's prompt.**  What replaces it is not a three-way disjunction but the
+observation that all three lines are lines of ONE discipline:
+
+```coq
+  Definition ush_line_at (l : FileDisc.uline) (f : nat -> bv 8)
+      (k len : nat) : Prop :=
+    FileDisc.uline_ok l
+    /\ len = length (FileDisc.line_bytes l)
+    /\ (forall j : nat, (j < len)%nat ->
+          f (k + j)%nat = FileDisc.line_bytes l !!! j).
+
+  Definition ush_rest_line_at (D : FileDisc.uline -> Prop)
+      (ws : list (list (bv 8))) (f : nat -> bv 8) (k : nat) : iProp Σ :=
+    ((∀ len : nat,
+        ⌜forall j : nat, (j < len)%nat -> f (k + j)%nat <> ubyte0⌝ -∗
+        ⌜f (k + len)%nat = ubyte0⌝ -∗
+        ⌜exists l : FileDisc.uline,
+           D l /\ FileDisc.uline_ws l = ws /\ ush_line_at l f k len⌝)
+     ∨ T)%I.
+```
+
+with `ush_line_echo l := ∃ ws, l = LEcho ws` the echo era's `D` and
+`ush_line_at (LEcho ws) f k len` CONVERTIBLE to `ush_line_is ws f k len`
+(`ush_line_at_echo` is `split; intro H; exact H`).  **`UkSh.ush_line_is`
+did not move and neither did `ush_rest_line` / `ush_rest_l`**: they are the
+`D := ush_line_echo` instances, so `UShKernel` (three sites), `UInitSh`
+(two), `UShRound` and `UInitBootAdequacy` name them at their landed arity
+and were not edited at all.  Only a walk that CASE-SPLITS pays, and there
+is exactly one.
+
+#### 3. WHAT LANDED, file by file
+
+- **`iris/UkSh.v`** — `ush_line_at`, `ush_line_at_echo`, `ush_line_echo`,
+  `ush_line_echo_of_is` (the echo era's producer, one line),
+  `ush_rest_line_at` (+ its persistence and taint constructor),
+  `ush_rest_l_at`; `ush_rest_line` and `ush_rest_l` are the echo instances
+  by definition.  `Require Import FileDisc` — pure, like `EchoDisc`, and
+  `FileDisc` is `_CoqProject` 1489 against `UkSh`'s 1531.
+- **`iris/UkShFork.v`** — `ushf_child_law_at Lp` (`ushf_child_law` is it at
+  `UkSh.ush_line_is`), `wp_kshf_fork_at Lp`, `wp_kshm_body_at Lp` (+
+  `Hlp0`, the one reading), `ushf_lp0_echo`, and **`ushf_body_law D sz`** —
+  the body as a LAW over the lines an era admits, which is what
+  `ushf_rest_of_body_at D` now takes in place of the two child laws, the
+  panic law and the lexability:
+
+```coq
+  Definition ushf_body_law (D : FileDisc.uline -> Prop) (sz : Z) : iProp Σ :=
+    (□ (∀ (lu : FileDisc.uline) (h : CpuId) (m : regfile) (f : nat -> bv 8)
+          (k len : nat) (l : list fdstate) (n : nat),
+          ⌜ D lu ⌝ -∗ ⌜ UkSh.ush_line_at lu f k len ⌝ -∗ ... -∗
+          ush_bstate l (FileDisc.uline_ws lu) -∗ ... -∗
+          urun N h m (mword_of_int 0x97a) (16 + (UkSh.ush_Dbody + n)) -∗
+          WP (Loop : expr riscv_lang)))%I.
+```
+
+  `ushf_body_law_echo` is the echo era's (one constructor, one walk, and
+  where `ushf_child_law` is spent) and `ushf_rest_of_body` is the landed
+  discharger at it — same statement as before MINUS the lexability.
+- **`iris/UkShRedirLine.v`** — the typed bridge: `ushs_line_is_of_at`
+  (`ush_line_at (LEchoF ws) f k len -> ushs_line_is ws fname_f f k len`),
+  `ushs_line_is_byte0`, `ushs_line_is_shift`, and the four suffix bytes
+  (`suf_gtf_0`..`_3`, `fname_f_word`, `fname_f_len`, moved down from
+  `UShLexRedir` so the command loop's case can use them).
+- **`iris/UkShRedirBody.v` (NEW)** — `ushs_lp` (the redirect shape, file
+  name existential — the WALK never reads it), `ushs_lp0`, `ushs_lp_of_at`,
+  **`wp_kshm_body_redir`** (deliverable 2), **`sh_redir_child_law`**
+  (`UShRound`'s statement verbatim) with BOTH directions of its bridge to
+  `ushf_child_law_at Wc ushs_lp`, **`ushf_body_law_file`** (deliverable 3 —
+  the three-way case) and `ushf_rest_of_body_file`, the obligation at the
+  file era's lines, which is what `UShRound.sh_round_holds_file` applies:
+
+```coq
+  Lemma ushf_rest_of_body_file (sz : Z) :
+    8344 <= sz -> UserPtTree.pgroundup sz = sz -> usz_ok (sz + 65536) ->
+    (forall I : list (bv 8), ⊢ Wc I 3%nat -∗ Wc I 0%nat) ->
+    UkShFork.ushf_kill_law Wc -∗
+    UkShFork.ushf_child_law Wc -∗
+    sh_redir_child_law -∗
+    UkShDiag.ush_panic_law Wc Wb -∗
+    UkSh.ush_rest_l_at N γp T Wc Wb Pm ush_line_file
+      (UkShLoop.ushl_R N sz).
+```
+
+#### 4. THE TWO EDITS IN OTHER LANES' FILES, exactly
+
+- **`iris/UShRest.v`** (LINK-GEN-3's), TWO tokens and no proof text:
+  the argument `ush_line_lexable_holds` is removed from the
+  `UkShFork.ushf_rest_of_body` application (it is not a premise any more),
+  and `rewrite /UkSh.ush_rest_l` becomes
+  `rewrite /UkSh.ush_rest_l /UkSh.ush_rest_l_at` (one more layer to unfold,
+  because the landed name is now the echo instance).  `ush_line_lexable_holds`
+  itself is untouched and still proved.
+- **`iris/UkShEcho.v`**, ONE token: `rewrite /UkShFork.ushf_child_law`
+  becomes `rewrite /UkShFork.ushf_child_law /UkShFork.ushf_child_law_at`
+  in `ushf_child_law_holds`.
+
+#### 5. WHAT IS LEFT OF OBLIGATION 18, and it is THREE named things
+
+`sh_redir_child_law` is STATED and its bridge to the body walk is proved,
+so the THREAD is closed: the loop's line fact now reaches the redirect
+child.  The child's own walk is not proved, and assembling it from
+`UkShRedirSeam.wp_kshm_child_alloc_redir` needs, in this order:
+
+1. **The seam's EXIT PAYMENT is the wrong shape.**
+   `wp_kshm_child_alloc_redir` takes `(⊢ ukn_pay N (-1))` — the payload is
+   free — because the parser's walk can die at malloc's NULL store.  At the
+   PAID child the payload is `UkShFork.ushf_wq Wc I`, i.e. `Wc I 3 ∨ Wc I 0`,
+   which is NOT derivable from nothing.  The echo child's walk does it
+   properly: `wp_kshm_child_echo` carries the lend `Cr` and
+   `□ (Cr -∗ Q (-1))` and hands `Cr` back on the arm where the allocation
+   succeeded.  So `wp_kshm_child_redir` / `_alloc_redir` have to take
+   `Cr` + `Hcq` in place of that premise — the walk itself does not change.
+2. **The EXEC ARM at fd 1 = the FILE.**  `UkShEcho.wp_kshr_exec_echo` is
+   the arm from `runcmd`, and it names fd 1 TWICE: `UkSh.ush_fd1p ld` and,
+   inside `sh_exec_sup_echo`, the same row as the supply's premise.  The
+   redirect child's fd 1 is `FdOpen false true ty`.  Both are one
+   parameter: `ush_fd1p` becomes an abstract `Fd1 : list fdstate -> Prop`
+   and the supply is stated at it — echo's console arm is the instance at
+   `ush_fd1p`, the redirect child's is K1's `UEchoFile.efile_image_entry`
+   wrapped as that supply.
+3. **`echo_argv_bytes` at the REDIRECT CUT.**
+   `UkShEcho.echo_argv_bytes_of_line_holds` is proved at
+   `ushp_nulfold (echo_toks ws) (ushp_ext len f)`; the redirect child's
+   tree is built over `UkShRedirPc.ushs_nulcut args len f fe`, which NULs
+   the file name's end as well.  SH-LEX-REDIR's ruling makes the token list
+   the SAME (`args = wl_toks ws = echo_toks ws`), so this is that lemma at
+   one more terminator and nothing else.
+
+**And one more thing this lane changes about the graph:**
+`UkShLoop.ush_line_lexable` and `ush_line_lexable_redir` now have NO
+consumer in the tree — the body walk never needed them and the child's walk
+is not written yet.  Both stay: `UShRest.ush_line_lexable_holds` and
+`UShLexRedir.ush_line_lexable_redir_holds` are what item 2 above will spend
+when the redirect child's parse is walked, exactly as
+`UkShEcho.wp_kshm_child_echo_holds` spends `ush_line_toks_holds` today.
+
+### LINK-GEN-2 (2026-09-17) — THE FILE MODEL'S CREDENTIAL ALGEBRA LANDS; `file_link_inst` IS BLOCKED BY THREE RECORD FIELDS WHOSE TYPE IS WRONG, AND THE DIFF IS EXACT
+
+Branch `app-file/link-gen`, merged with `main` (`93fb91316`).  New file
+`iris/FileLinksLine.v`: `FileLinks`' credential families — the eleven pure
+shapes at `pro_pin_f` / `proc_before_f` / `proc_stream_f` / `pro_idx_f` /
+`FileDisc.fst_upto`, their ~30 lemmas, and the resource families with
+their laws.  No echo file is edited, no `Admitted` is added.
+
+**THE LANE'S VERDICT IN ONE LINE.**  The file model's algebra ports
+cleanly — `FileOutPure` already has every extension lemma the echo proofs
+spend, so the shapes and steps are transcriptions — but `file_link_inst`
+cannot be built against `LinkRec` as it stands, because THREE of its
+fields are typed as if there were ONE line shape: `lk_pan` and `lk_exf`
+are `nat` where they must be `list (bv 8) -> nat`, and the exec-failed
+diagnostic's BYTES are per-line too.
+
+#### 1. THE BLOCKING FINDING, exactly
+
+`FileDisc.ralt_ok` admits an alternative ONLY at its own line shape:
+
+    LEcho ws  -> REcho k (k < 4) and nothing else
+    LEchoF ws -> RFRan sel / RFExec / RFOpenU / RFOpenM / RFSilent / RFFork
+    LCat      -> RCRan / RCNoOpen / RCExec / RCSilent / RCFork
+
+So sh's FORK PANIC is `REcho 3` at an echo line, `RFFork` at a redirect
+one and `RCFork` at a cat one, and its EXEC-FAILED diagnostic is
+`REcho 1` / `RFExec` / `RCExec`.  At the echo application there is one
+line shape, so `lk_pan := 3` and `lk_exf := 1` are constants and
+`lk_ab_pan : ∀ I, lk_ab I lk_pan = alt_panic` holds; at the file
+`lk_ab I 3 = []` at every line that is not an `LEcho`, because `fab`
+guards on admissibility.  **`lk_ab_pan` and `lk_ab_exf` are therefore
+UNINHABITABLE at the file instance as stated, and a record needs all its
+fields — so there is no `file_link_inst` until the three change.**
+
+THE DIFF, for lane LINK-GEN-3 (five lines of `LinkRec.v`, and echo's
+instance stays definitional because `fun _ => 3` applied is `3`):
+
+    lk_pan  : list (bv 8) -> nat;          (* was [nat]; echo: fun _ => 3%nat *)
+    lk_exf  : list (bv 8) -> nat;          (* was [nat]; echo: fun _ => 1%nat *)
+    lk_exfb : list (bv 8) -> list (bv 8);  (* NEW; echo: fun _ => alt_execfail *)
+    lk_ab_pan   : forall I, lk_ab I (lk_pan I) = alt_panic;
+    lk_ab_exf   : forall I, lk_ab I (lk_exf I) = lk_exfb I;
+    lk_apr_exf  : forall I, lk_apr I (lk_exf I);
+    lk_panic_done : forall k v I,
+      ⊢ lk_blk k v I (lk_pan I) (length (lk_ab I (lk_pan I))) -∗ lk_ban k v I 0%nat;
+
+`alt_panic` itself stays a constant: `FileDisc.cont` answers it at
+`RFFork` AND `RCFork`, and `EchoDisc.line_alts_of ws !!! 3` is the same
+five bytes — `FileLinksLine.cont_fpan` proves the three cases agree.  The
+exec diagnostic does NOT: `cont _ LCat RCExec = alt_execcat`
+("exec cat failed"), which is why `lk_exfb` is a new field.
+
+**AND IT REACHES ONE LAYER FURTHER DOWN**, which is a finding for lane
+SKELETON rather than for me: `UkShDiag.ush_execfail_law Cr Cd` hard-codes
+`⌜alt_execfail !! p = Some b⌝` in its byte step, so even with `lk_exfb`
+the law cannot be stated at a cat line.  sh's walk prints
+`"exec %s failed\n"` with the command name, so the literal belongs in a
+parameter: `ush_execfail_law (dg : list (bv 8)) (Cr Cd : iProp Σ)` with
+echo's instance at `dg := alt_execfail`.  Until that lands,
+`UShPanic.ush_execfail_law_hold_at` (LINK-GEN's framed law, which is
+lane SKELETON's `Hexecfail`) is available at the ECHO and REDIRECT line
+shapes only.
+
+#### 2. WHAT LANDED — `iris/FileLinksLine.v`
+
+**S0, the line model.**  `fline I` (the last complete body's parse),
+`fst_free` (the alternatives whose output does NOT read the file's state
+— every `ralt` but `RCRan`), `cont_state_free` (one `destruct`), and the
+record's `lk_ab` at the file:
+
+    Definition fab (I : list (bv 8)) (a : nat) : list (bv 8) :=
+      if decide (ralt_ok (fline I) (ralt_dec a) /\ fst_free (ralt_dec a) = true)
+      then cont None (fline I) (ralt_dec a) else [].
+
+with `fab_ok` (a byte lookup implies BOTH guards, so the block-byte step
+needs no premise, exactly as `EchoDisc.line_alts_lt` gives echo),
+`fab_at` (the guarded value is `cont` at ANY state), `fab_len_ge2`,
+`fab_dollar`, `fab_space` (the block's last two bytes are the prompt, read
+off the twelve cases; `FileDisc.cont_shape` says so too but under
+`uline_ok`, which a writer does not hold), and the three per-line
+alternatives `fpan_of` / `fexf_of` / `fnoc_of` with their
+`_ok` / `_free` / `_panic` / `cont_*` readings.
+
+**S1, the eleven shapes.**  `wr_pro_f`, `wr_blk_f`, `wr_open_f`,
+`wr_sp_f`, `wr_owed_f`, `wr_ban_f` (with `wr_pre_f`), `wr_tail_f`,
+`wr_blk_t_f`, `wr_sp_t_f`, `wr_open_t_f`, `blkcs_f`, `wr_banp_f` — each
+`EchoLinks`/`EchoLinksLine`'s with the era's BOOT STATE `s0` threaded and
+`cs !!! (nlines I - 1) = 3` replaced by
+`ralt_panic (ralt_at cs (nlines I - 1)) = true`, so the two new line
+shapes' fork alternatives open a round too.
+
+**S2–S7, the ~30 pure lemmas.**  `pro_pin_f_nil`/`_at`,
+`wr_blk_nonnil_f`, `wr_blk_lines_f`, `wr_blk_started_f`,
+`wr_blk_t_stage_f`, `wr_blk_pin_snoc_f`, `wr_blk_low_f`,
+`wr_blk_pending_f`, `wr_blk_pending_pre_f`, `wr_blk_byte_f`,
+`fd_snoc_lookup_total`, `pro_idx_f_snoc_ne`, `pro_idx_f_snoc_pan`,
+`wr_tail_snoc_f`, `pending_at_f_round_snoc`, `wr_ban_pro_f`,
+`wr_ban_low_f`, `wr_ban_filed_f`, `wr_ban_byte_f`, `wr_ban_done_f`,
+`wr_ban_round0_f`, `proc_before_from_gap_f`, `proc_before_line_f`,
+`wr_pro_dollar_f`, `wr_blk_dollar_f`, `wr_sp_open_f`, `wr_open_read_f`,
+`wr_blk_open_f`, `wr_blk_sp_f`, `wr_sp_open_t_f`, `wr_open_read_t_f`,
+`wr_pro_tail_f`, `wr_pro_dollar_t_f`, `wr_blk_pending_pan_f`,
+`wr_blk_ban_f`, `pending_at_f_nonnil_at`, `wr_owed_read_refute_f`.
+
+**THE PROLOGUE IS NOT TWINNED.**  `EchoLinks.pro_of_open_snoc_eq`,
+`wr_prompt_len`, `wr_pro_alts_0`, `wr_prompt_head`, `wr_prompt_tail`,
+`wr_line_alts_2`, `nlines_app_nonl`, `rest_of_app_nonl`,
+`pro_rounds_one` and `EchoLinksLine.line_alts_len_ge2` / `line_alts_dollar`
+/ `line_alts_space` / `line_alts_len3` are IMPORTED: the file application
+runs the same /init, so its prologue, its banner and its prompt are
+echo's, byte for byte.
+
+**S8, the resource families.**  `f0w` (the era's boot state pinned by its
+file pin, with `f0w_agree`), `fcur`, `f0pre`/`fhead` (below), `fwc_pro`,
+`fwc_blk`, `fwc_owed`, `fwc_sp`, `fwc_open`, `fwc_sp_t`, `fwc_open_t`,
+`fwc_ban`, `fwc_line`, `fwc_lend`, `fwc_pr`, `fwc_lpr`, `fwc_rres`, their
+timeless instances and taint routes, and the conversions
+`fwc_pro_owed`, `fwc_blk_owed`, `fwc_sp_t_sp`, `fwc_open_t_open`,
+`fwc_blk_0`, `fwc_line_of_blk0`, `fwc_line_of_post`, `fwc_line_of_pro`,
+`fwc_lend_of_blk0`, `fwc_blk_sp`, `fwc_ban_pro`, `fwc_ban_owed`,
+`fwc_ban_done`, `fwc_ban_done_line`, `fwc_ban_inp`, `fwc_read`,
+`fwc_read_t`, `fwc_panic_done`.
+
+#### 3. THREE MORE RECORD-SHAPE FINDINGS FOR LANE LINK-GEN-3
+
+1. **The era's HEAD is a new arm, and four families must admit it.**  At
+   the file the era's FIRST process byte has no boot state to pin: it is
+   `FileLinks.file_write_link_first` that FILES one, out of the deed's own
+   typed witness.  So `fwc_pro`, `fwc_owed`, `fwc_line` and `fwc_ban` (at
+   `i = 0`) carry a third arm `fhead` — "nothing written, `turn v 0`, the
+   three empty bounds, and `f0pre`" — beside the informative one and the
+   taint.  Nothing in `LinkRec` has to change for this (the families are
+   fields), and no law is weakened: `lk_prompt_dollar` /
+   `lk_prompt_dollar_line` / `lk_ban_step` all take the head arm through
+   `file_write_link_first` and land in the INFORMATIVE arm, because the
+   era's first byte is a prologue-choice write.  It is recorded because it
+   is the one place the file's families are not echo's shape.
+2. **`lk_rres` needs the era index.**  `lk_rres : era_pins -> list (bv 8)
+   -> iProp Σ` is `k`-free because echo's `UShLine.rd_res` needs no pin;
+   the file's residue must carry `f0_lb` at the era's FILE pin, and
+   `lk_ban_read_taint`'s agreement (`file_era_pin_agree`, then
+   `f0_lb_agree`) is at an index.  `FileLinksLine.fwc_rres` pins it at
+   `S gen_id` — the one era the console tier runs at — and `f0w` carries
+   `⌜k = S gen_id⌝` so the law holds at every `k`.  The honest field is
+   `lk_rres : nat -> era_pins -> list (bv 8) -> iProp Σ`.
+3. **`lk_turn` must carry the deed's typed witness.**  `lk_turn0` has to
+   produce the head arm, and `FileOut.fturn` alone cannot: the witness
+   comes from `AppFile.file_boot`, which `App.al_programs` hands /init
+   BESIDE the turn.  The file instance sets
+   `lk_turn k := ⌜k = S gen_id⌝ ∗ FileOut.fturn g k ∗ f0pre`; echo's stays
+   `eturn γ`, so `UInitBanner.kinit_ban0_of_eturn` does not move.
+
+#### 4. THE ONE-LINE CHANGE `UShRound.v` NEEDS (lane SKELETON owns the file)
+
+Restated from LINK-GEN's findings, unchanged:
+
+    (* was: Hypothesis Hcltaint : forall I p, ⊢ T -∗ Wcl I p. *)
+    Hypothesis Hcltaint : forall (I : list (bv 8)) (p : nat)
+        (v : era_pins) (vf : file_era),
+      ⊢ era_pin (fgn_echo g) (S gen_id) v -∗ file_era_pin g (S gen_id) vf -∗
+        T -∗ Wcl I p.
+
+`Wcl I p` carries the era's pin under an existential and the taint does
+not produce a `ghost_map` element; `sh_round_holds_file` already takes
+both pins, and `sh_kill_law_file` — the only consumer — holds them.
+
+### LINK-GEN-2 (2026-09-17) — THE FILE INSTANCE IS GREEN: `file_link_inst` EXISTS, THE THREE MIS-TYPED FIELDS ARE FIXED, AND `UkShDiag`'s EXEC DIAGNOSTIC IS A PARAMETER OF THE LAW
+
+Branch `app-file/link-gen`, merged with `main` (`ba34a9c5f`).  New files
+`iris/FileLinksLine.v` (2,057 lines) and `iris/FileLinkInst.v`, both in
+`_CoqProject` and both compiling; `iris/LinkRec.v`, `iris/UkShDiag.v`,
+`iris/UShPanic.v` changed.  No `Admitted`; echo's instance is still
+DEFINITIONAL and the fourteen `echo_inst_*` `reflexivity` checks are
+unmoved.
+
+**THE LANE'S VERDICT IN ONE LINE.**  `LinkRec` is inhabited at the file
+application, so the console tier above the links is now a genuine
+instantiation at both ends; the record needed exactly the three-field
+change LINK-GEN-2 priced, and the one thing that reached a layer further
+down was the exec-failed child's DIAGNOSTIC, which is per-line and
+therefore a parameter of `UkShDiag`'s law.
+
+#### 1. THE RECORD CHANGE, AS RULED
+
+    lk_pan  : list (bv 8) -> nat;          (* echo: fun _ => 3%nat *)
+    lk_exf  : list (bv 8) -> nat;          (* echo: fun _ => 1%nat *)
+    lk_exfb : list (bv 8) -> list (bv 8);  (* NEW; echo: fun _ => alt_execfail *)
+    lk_ab_pan  : forall I, lk_ab I (lk_pan I) = alt_panic;
+    lk_ab_exf  : forall I, lk_ab I (lk_exf I) = lk_exfb I;
+    lk_apr_exf : forall I, lk_apr I (lk_exf I);
+    lk_panic_done : forall k v I,
+      ⊢ lk_blk k v I (lk_pan I) (length (lk_ab I (lk_pan I))) -∗ lk_ban k v I 0%nat;
+
+`fun _ => 3` applied IS `3`, so echo's instance stays definitional and
+`UShPanic`/`UInitBanner`'s echo re-exports are still `Definition`s at
+their landed statements with no proof text.  At the file the three are
+`fun I => fpan_of (fline I)` / `fexf_of (fline I)` / `fexfb (fline I)`:
+`REcho 3` / `REcho 1` / `alt_execfail` at an `LEcho` line, `RFFork` /
+`RFExec` / `alt_execfail` at an `LEchoF` one, `RCFork` / `RCExec` /
+**`alt_execcat`** at an `LCat` one.  `FileLinksLine.cont_fpan` proves the
+panic's bytes ARE uniform across the three.
+
+#### 2. `UkShDiag.ush_execfail_law` GAINS THE DIAGNOSTIC, ON THE LAW ONLY
+
+    Definition ush_execfail_law_at (dg : list (bv 8)) (n : nat)
+        (Cr Cd : iProp Σ) : iProp Σ := (* the byte step at [dg !! p],
+                                          the end at [Pf n] *)
+    Definition ush_execfail_law (Cr Cd : iProp Σ) : iProp Σ :=
+      ush_execfail_law_at alt_execfail 17%nat Cr Cd.
+
+The index `n` is a parameter for the same reason as `dg` (it is the
+diagnostic's length less the prompt's two bytes).  **WHAT MOVED, and what
+did not.**  `ush_execfail_law`'s body is the landed one VERBATIM, so
+`UkShDiag.wp_kshd_execfail_paid` — the walk, which spends sh's own
+.rodata literal and whose argv premise names `"echo"` — is untouched, and
+so are `UkShEcho.ush_execfail_law_wq` and its two uses in `UkShEcho`.
+What moved is `UShPanic`'s two generic laws, now stated at
+`ush_execfail_law_at (lk_exfb L I) (length (lk_exfb L I) - 2)`:
+`ush_execfail_law_holds_at` and the framed `ush_execfail_law_hold_at`
+(lane SKELETON's `Hexecfail`).  Their echo re-export
+`UShPanic.ush_execfail_law_holds` is still a `Definition` at the landed
+statement — which also settles that `length alt_execfail - 2` and `17`
+are convertible.
+
+#### 3. WHAT `iris/FileLinksLine.v` CONTAINS
+
+- **the line model**: `fline I` (the last complete body's parse),
+  `fst_free` (every `ralt` but `RCRan` — the alternatives whose output
+  does not read the file's state), `cont_state_free`, and
+
+      Definition fab (I : list (bv 8)) (a : nat) : list (bv 8) :=
+        if decide (ralt_ok (fline I) (ralt_dec a)
+                   /\ fst_free (ralt_dec a) = true)
+        then cont None (fline I) (ralt_dec a) else [].
+
+  GUARDED, so that a byte lookup alone says the alternative is admissible
+  AND state-free (`fab_ok`) and the block-byte step needs no premise —
+  exactly as `EchoDisc.line_alts_lt` gives echo.  With `fab_at`,
+  `fab_len_ge2`, `fab_dollar`, `fab_space` (read off the twelve cases,
+  because `FileDisc.cont_shape` says the same under `uline_ok`, which a
+  writer does not hold), and the three per-line alternatives.
+- **the eleven shapes**: `wr_pro_f`, `wr_blk_f`, `wr_open_f`, `wr_sp_f`,
+  `wr_owed_f`, `wr_ban_f` (with `wr_pre_f`, `wr_banp_f`), `wr_tail_f`,
+  `wr_blk_t_f`, `wr_sp_t_f`, `wr_open_t_f`, `blkcs_f`, with the era's
+  boot state threaded and `cs !!! (nlines I - 1) = 3` replaced by
+  `ralt_panic (ralt_at cs (nlines I - 1)) = true`.
+- **~40 pure lemmas**, up to and including `wr_owed_read_refute_f`.
+- **the credential families**: `f0w` (the boot state pinned by the era's
+  file pin, with `f0w_agree`), `fcur`, `f0pre`/`fhead`, `fwc_pro`,
+  `fwc_blk`, `fwc_owed`, `fwc_sp`, `fwc_open`, `fwc_sp_t`, `fwc_open_t`,
+  `fwc_ban`, `fwc_line`, `fwc_lend`, `fwc_pr`, `fwc_lpr`, `fwc_rres`, and
+  their laws.
+- **the steps through `FileLinks.file_links`**: `fban_step`, `fblk_step`,
+  `fhead_dollar`, `fprompt_dollar`, `fprompt_space`,
+  `fprompt_dollar_ban`, `fprompt_dollar_post`, `fprompt_space_t`,
+  `fprompt_dollar_line`, `fwc_read`, `fwc_read_t`, `fwc_panic_done`,
+  `fowed_read_taint`, `fban_read_taint`, `fturn0`.
+
+**THE PROLOGUE IS NOT TWINNED.**  The file application runs the same
+/init, so `EchoLinks.pro_of_open_snoc_eq` / `wr_prompt_len` /
+`wr_pro_alts_0` / `wr_prompt_head` / `wr_prompt_tail` / `wr_line_alts_2` /
+`nlines_app_nonl` / `rest_of_app_nonl` / `pro_rounds_one` and
+`EchoLinksLine.line_alts_len_ge2` / `_dollar` / `_space` / `line_alts_len3`
+are IMPORTED.
+
+#### 4. THREE RECORD-SHAPE FINDINGS, RESOLVED INSIDE THE INSTANCE
+
+None of the three needed another `LinkRec` change.
+
+1. **The era's HEAD is a third arm, in four families.**  At the file the
+   era's FIRST process byte has no boot state to pin: it is
+   `FileLinks.file_write_link_first` that FILES one, out of the deed's own
+   typed witness.  So `fwc_pro`, `fwc_owed`, `fwc_line` and `fwc_ban` (at
+   `i = 0`) carry `fhead` — `⌜I = []⌝ ∗ ⌜k = S gen_id⌝ ∗ turn v 0` ∗ the
+   three empty bounds ∗ the era's file pin ∗ `f0pre` — beside the
+   informative arm and the taint.  NO LAW IS WEAKENED: `lk_ban_step`,
+   `lk_prompt_dollar` and `lk_prompt_dollar_line` take the head arm
+   through `file_write_link_first` (at `a = 3` and `a = 0`) and land in
+   the INFORMATIVE arm, because the era's first byte is a prologue-choice
+   write; `fhead_dollar` and `wr_sp_f_head` are that step.
+2. **`lk_rres` does NOT need the era index.**  `fwc_rres` pins the file
+   era at the console era `S gen_id` and `f0w k s0` carries
+   `⌜k = S gen_id⌝`, so `lk_ban_read_taint` is provable at EVERY `k` with
+   the field `k`-free as it stands.
+3. **`lk_turn` carries the deed's typed witness**, as a field value:
+   `fturn_pre g k := ⌜k = S gen_id⌝ ∗ FileOut.fturn g k ∗ f0pre`.  Echo's
+   stays `eturn γ`, so `UInitBanner.kinit_ban0_of_eturn` does not move.
+
+#### 5. THE EXACT STATEMENTS LANE SH-ROUND APPLIES
+
+At `Wcl := FileLinkInst.file_Wcl g` and
+`Wbl := FileLinkInst.file_Wbl g` (both in `iris/FileLinkInst.v`):
+
+| `UShRound.v` | what to apply | shape |
+| --- | --- | --- |
+| `Hwbl` | `FileLinkInst.file_Hwbl g I` | `⊢ file_Wcl g I 3 -∗ file_Wcl g I 0` |
+| `Hwbwc` | `FileLinkInst.file_Hwbwc g I` | `⊢ file_Wbl g I -∗ file_Wcl g I 0` |
+| `Hcltaint` | `FileLinkInst.file_Hcltaint g I p v` | `⊢ era_pin (fgn_echo g) (S gen_id) v -∗ file_taint (fgn_cl g) -∗ file_Wcl g I p` |
+| `Hwc` | `FileLinkInst.file_Hwc g I l v Hl` | `⊢ era_pin (fgn_echo g) (S gen_id) v -∗ inp_lb v (I++l++[wl_nl]) -∗ file_Wcl g I 2 -∗ file_Wcl g (I++l++[wl_nl]) 3` |
+| `Hwbr` | `FileLinkInst.file_Hwbr g I l v Hl` | `⊢ era_pin (fgn_echo g) (S gen_id) v -∗ lk_rres (file_link_inst g) v (I++l++[wl_nl]) -∗ file_Wbl g I -∗ file_taint (fgn_cl g)` |
+| `Hpanic` | `UShPanic.ush_panic_law_hold_at (file_link_inst g) sh_hold` | `lk_links L -∗ UkShDiag.ush_panic_law (fun I p => lk_lcred L (S gen_id) I p ∗ sh_hold I) (fun I => (∃ v, lk_pin L (S gen_id) v ∗ lk_ban L (S gen_id) v I 0) ∗ sh_hold I)` |
+| `Hexecfail` | `UShPanic.ush_execfail_law_hold_at (file_link_inst g) sh_hold I`, wrapped in one `iIntros "!>" (I)` | `lk_links L -∗ UkShDiag.ush_execfail_law_at (lk_exfb L I) (length (lk_exfb L I) - 2) (lk_lcred L (S gen_id) I 3 ∗ sh_hold I) (lk_lcred L (S gen_id) I 0 ∗ sh_hold I)` |
+| `Hchild_echo` | — | still open; it needs lane LINK-GEN-3's `StageRec` (`UEchoOut`/`UShEchoPay` read an EXPLICIT stage, not a credential) |
+| item 20 | `FileLinks.file_links g` + seven projections + `file_links_holds` | landed |
+| item 21 | `UkSh.ush_tag_law_at D` / `ush_tag_law_of_at` / `ush_tag_law_echo`; the file side owes only the pure `disc_f h -> obs_ends_in Uart0 h b -> bv_unsigned (cons_xlate b) = 4 -> False` (`FileOutPure.disc_seg_f_no_ctrl_d`'s reading) | landed |
+
+#### 6. WHAT `UShRound.v` NEEDS CHANGED (lane SKELETON owns the file)
+
+**ONE HYPOTHESIS, ONE LINE.**
+
+    (* was: Hypothesis Hcltaint : forall I p, ⊢ T -∗ Wcl I p. *)
+    Hypothesis Hcltaint : forall (I : list (bv 8)) (p : nat) (v : era_pins),
+      ⊢ era_pin (fgn_echo g) (S gen_id) v -∗ T -∗ Wcl I p.
+
+`Wcl I p` carries the era's pin under an existential and the taint does
+not produce a `ghost_map` element.  `sh_round_holds_file` already takes
+`(∃ v, era_pin (fgn_echo g) (S gen_id) v)`, and `sh_kill_law_file` — the
+only consumer — holds it.  (The file's `Wcl` needs only the ECHO-side pin,
+not the era's file pin: `lk_pin (file_link_inst g) = era_pin (fgn_echo g)`
+and the file pin lives inside the families, in `f0w`.)
+
+**AND ONE SHAPE.**  `Hexecfail` is stated at `UkShEcho.ush_execfail_law_wq
+Wcf`, which unfolds to `UkShDiag.ush_execfail_law` — echo's instance at
+`alt_execfail`/`17`.  A cat line prints `alt_execcat`, so that hypothesis
+must read `□ ∀ I, UkShDiag.ush_execfail_law_at (dg I) (n I) (Wcf I 3)
+(Wcf I 0)` for the era's own diagnostic family; at the file instance
+`dg := lk_exfb (file_link_inst g)` and `n I := length (dg I) - 2`.
+`UkShEcho.ush_execfail_law_wq` should gain the same two parameters, with
+echo's instance a `Definition` at `alt_execfail`/`17`.
+
+### LINK-GEN-3 (2026-09-17) — THE STAGE RECORD; THE CURSOR IS WHAT CARRIES A LINEAR RESOURCE ACROSS A CHILD'S WALK, AND `Hchild_echo`/`Hwbr`/`Hwc` ARE ONE APPLICATION EACH
+
+Branch `app-file/link-stage`, merged with `main` (SUP-ONE's `app_taint`
+rename, OFF-LINK, WRITE-RELAY-2, CAT-GEOM).  Whole tree GREEN on the
+lane's remote tree (`--proofs -k`, `EXIT=0`, zero `Error`); all four
+audits unchanged (`audit-only` thirteen, `audit-echo-only` FOURTEEN with
+the identical list, `audit-tree-only` thirteen, `audit-file-only`
+fourteen); no `Admitted` added; `Proof using` everywhere.
+
+**THE LANE'S VERDICT IN ONE LINE.**  `UEchoOut`/`UShEchoPay` could not be
+swept over `LinkRec` because they read an EXPLICIT STAGE; the abstraction
+they need is not "the stage" but **the CURSOR and its byte step**, and the
+reason it must be a record of its own — not more fields on `LinkRec` — is
+that a forked child at the file application has to carry a LINEAR resource
+(sh's deed fraction) across its whole walk, and the walk's exit wand is a
+BOX, so the only thing that can carry it is the cursor.
+
+#### 1. THE TWO RECORDS (`iris/StageRec.v`, new, ~420 lines)
+
+`Record CurRec (L : LinkRec Σ)` — six fields, and that is ALL `UEchoOut`
+takes of an era:
+
+| field | type | echo's |
+| --- | --- | --- |
+| `ck_stg` | `Type` | `Record echo_stg := MkEchoStg { es_ps; es_cs; es_I; es_P }` — the brief's `list nat * list nat * list (bv 8) * nat`, named |
+| `ck_ok` | `ck_stg -> list (list (bv 8)) -> Prop` | `fun st ws => echo_stage (es_ps st) (es_cs st) (es_I st) ws (es_P st)` |
+| `ck_alt` | `list (list (bv 8)) -> list (bv 8)` | `fun ws => line_alts_of ws !!! 0%nat` |
+| `ck_cur` | `nat -> era_pins -> ck_stg -> nat -> iProp Σ` | `UEchoOut.ech`'s body |
+| `ck_cur_tl` | `Timeless (ck_cur k v st p)` | — |
+| `ck_step` | `ck_ok st ws -> ck_alt ws !! i = Some b -> lk_pin L k v -∗ lk_links L -∗ ck_cur k v st i -∗ (ck_cur k v st (S i) -∗ Φ) -∗ out_link Uart0 k b Φ` | `UEchoOut.ech_step`'s content |
+
+`Record StageRec (L : LinkRec Σ)` — `sk_cur : CurRec L` plus exactly two
+laws:
+
+```coq
+    sk_lend_stage : forall (k : nat) (v : era_pins) (I : list (bv 8)),
+      ⊢ lk_lend L k v I -∗
+        (∃ st : ck_stg sk_cur,
+           ⌜ck_ok sk_cur st (last_ws I)⌝
+           ∗ ⌜ck_alt sk_cur (last_ws I) = line_alts_of (last_ws I) !!! 0%nat⌝
+           ∗ ck_cur sk_cur k v st 0%nat
+           ∗ □ (ck_cur sk_cur k v st
+                  (length (wl_line (drop 1 (last_ws I)))) -∗
+                lk_post L k v I 0%nat))
+        ∨ lk_T L;
+    sk_apr0 : forall I : list (bv 8), lk_apr L I 0%nat;
+```
+
+and the DERIVED cursor
+
+```coq
+  Definition cur_hold (C : CurRec L) (R : iProp Σ) (HRT : Timeless R)
+    : CurRec L   (* ck_cur := fun k v st p => ck_cur C k v st p ∗ R *)
+```
+
+echo's instance `echo_cur_inst` / `echo_stage_inst` is DEFINITIONAL, with
+five `reflexivity` checks (`echo_stage_inst_cur`, `_ok`, `_alt`,
+`_cur_body`, `_ok_body`).  `UEchoOut.echo_stage` and `UEchoOut.echcs` MOVE
+into `StageRec.v` (the instance is built out of them and sits below
+`UEchoOut`); nothing outside referenced them in code.
+
+**THREE DESIGN FACTS WORTH KEEPING.**
+
+1. **The LINE is an index, not a component of the stage.**  `ck_ok st ws`
+   and `ck_alt ws` take the word list separately.  If `ws` lived inside
+   `ck_stg`, `UEchoOut.ech` (which does not mention `ws`) would only be
+   recoverable at an arbitrary dummy line and every `iApply` would be a
+   conversion gamble.  With the line as an index, `ech v ps0 cs0 I0 P p :=
+   ck_cur CE (S gen_id) v (MkEchoStg ps0 cs0 I0 P) p` and
+   `echo_stage ps0 cs0 I0 ws P = ck_ok CE (MkEchoStg ps0 cs0 I0 P) ws` are
+   both `eq_refl`.
+2. **ONE alternative, not four.**  `ck_alt` is the alternative the PROGRAM
+   writes (the "good" one, index 0) and is not indexed by `a`: the shell's
+   own diagnostics go through `LinkRec.lk_blk_step` and never through a
+   cursor.  This is why `LinkRec`'s `lk_pan`/`lk_exf`/`lk_noc` are
+   **nowhere in this lane's files** — LINK-GEN-2's change of their type to
+   `list (bv 8) -> nat` and its new `lk_exfb` touch nothing here.
+3. **`cur_hold` is the whole reason the cursor is its own record.**
+   `UShRound`'s round lends its child `Wcf I 3 = Wcl I 3 ∗ sh_hold I` and
+   is owed `Wcf I 0 = Wcl I 0 ∗ sh_hold I` back.  `sh_hold I` is LINEAR (a
+   deed fraction).  `UEchoOut.echo_uexec_slot_at`'s exit wand is
+   `□ (cursor -∗ Q (-1))`, so a box cannot produce it; the walk's ONE
+   linear thread is the cursor, so the resource rides it.  `cur_hold C R`
+   is a valid `CurRec` (the step frames `R`) but NOT a valid `StageRec`
+   (`sk_lend_stage` would have to conjure `R`), which is exactly why the
+   two are separate records.
+
+#### 2. WHAT LANDED, file:lemma
+
+- `iris/StageRec.v` — `CurRec`, `StageRec`, `cur_hold`, `echo_stage` and
+  its three lemmas, `echcs`/`echcs_pos`, `echo_stg`, `echo_cur`,
+  `echo_cur_inst`, `echo_stage_inst`, the five conversion checks.
+- `iris/UEchoOut.v` — `Section UEchoOutGen` over `{L : LinkRec Σ}
+  (C : CurRec L)`: `ech_chain_at`, `kecho_w_of_link_data_at`,
+  `kecho_w_of_link_txt_at`, `kecho_pay_of_link_from_at`,
+  `kecho_pay_of_link_at`, `echo_uexec_slot_at_at`.  `Section UEchoOutEcho`
+  recovers `ech`, `ech_timeless`, `echq`, `ech_step`, `ech_chain`,
+  `kecho_w_of_link_data`, `kecho_w_of_link_txt`, `kecho_pay_of_link_from`,
+  `kecho_pay_of_link`, `echo_uexec_slot_at` as `Definition`s at
+  `echo_cur_inst` with NO PROOF TEXT.  New top-level `out_argv_at A ws
+  args`, with `echo_out_argv ws args := out_argv_at (line_alts_of ws !!! 0)
+  ws args` (byte-identical premise at echo; `UShEchoOut` unchanged).
+- `iris/UShEchoPay.v` — `Section UShEchoPayGen` over `{L} (St : StageRec L)`:
+  `echo_slot_of_kexec_at_at`, `sh_exec_sup_echo_wq_holds_at`,
+  `ushf_child_law_hold_at`.  `Section UShEchoPayEcho` recovers
+  `sh_exec_sup_echo_wq_holds` VERBATIM and `echo_slot_of_kexec_at` with one
+  added `emp` slot, as `Definition`s.
+- `iris/UShLine.v` — `ush_mid_at (Rres) γ γp I` with
+  `ush_mid := ush_mid_at rd_res`, `ush_mid_wc_read_t_at`,
+  `ush_wb_read_holds_at`, `ep_refl`; `ush_mid_wc_read_t` and
+  `ush_wb_read_holds` recovered as `Definition`s.
+- `iris/UShRest.v` — `Section UShRestGen`: `sh_rest_holds_at`.
+**MAIN WAS RED IN THREE PLACES AND THIS LANE FIXED TWO OF THEM.**  None
+of these is this lane's own work; they are recorded so the next lane does
+not re-discover them.
+
+1. `iris/UEchoFile.v` — the three write-node statements had not been
+   re-typed after WRITE-RELAY put `n : Z` on `awrite_full_at` /
+   `awrite_part_at` / `awrite_chain`.  Fixed here AND independently on
+   `main`; the merge took main's.
+2. `iris/UkFileOpen.v` (`:234`, `:809`, `:1019`, `:1198`) — the open's fd
+   arm gained a `∧ fdst_nopipe (FdOpen rd wr ty)` conjunct, so
+   `destruct Hb as (Hr1 & Hlt1 & Hfdv1)` leaves `Hfdv1` a conjunction and
+   `*_open_fd_tie` wants only the equality.  This lane used
+   `(proj1 Hfdv1)`; `main` fixed it by destructuring four ways, as
+   `UkTreeRead` / `UkTreeCreate` already did, and the merge took main's.
+3. `iris/UShCat.v:1011` and `iris/UCatKernel.v:1214` — SUP-ONE's survey R4
+   dropped `udepw_law 21` from `UkCatMain.kcat_pay_all_of_law` (cat closes
+   nothing), but both callers still handed it a fourth wand.  One token
+   each.
+
+#### 3. THE GENERIC STATEMENTS' SHAPES — what a second application sees
+
+```coq
+  (* UEchoOut *)
+  Lemma echo_uexec_slot_at_at (W : uvis) (v : era_pins) (st : ck_stg C)
+      (ws : list (list (bv 8))) (rb : bool) (Q : Z -> iProp Σ) :
+    ck_alt C ws = line_alts_of ws !!! 0%nat ->     (* NEW, first premise *)
+    (forall x y : Z, Q x = Q y) -> (2 <= length ws)%nat ->
+    ck_ok C st ws ->                               (* was [echo_stage …] *)
+    out_argv_at (ck_alt C ws) ws (echo_args …) ->  (* was [echo_out_argv ws …] *)
+    … the eighteen key/stack/argv rows, verbatim … ->
+    □ (ck_cur C (S gen_id) v st (length (wl_line (drop 1 ws))) -∗ Q (-1)) -∗
+    lk_pin L (S gen_id) v -∗ lk_links L -∗ UkRun.urun_nopipe (uvis_fd W) -∗
+    udep -∗ my_pay (uvis_gen W) Q -∗ ck_cur C (S gen_id) v st 0%nat -∗ uslot W.
+
+  (* UShEchoPay -- THIS is what [UShRound.Hchild_echo] is ONE application of *)
+  Lemma sh_exec_sup_echo_wq_holds_at
+      (Wc : list (bv 8) -> nat -> iProp Σ) (Hold : list (bv 8) -> iProp Σ) :
+    (forall I0, Timeless (Hold I0)) ->
+    (forall I0, ⊢ Wc I0 3%nat -∗ ∃ v, lk_pin L (S gen_id) v
+                  ∗ lk_lpr L (S gen_id) v I0 3%nat ∗ Hold I0) ->
+    (forall I0 v0, ⊢ lk_pin L (S gen_id) v0 -∗ lk_lpr L (S gen_id) v0 I0 3%nat
+                  -∗ Hold I0 -∗ Wc I0 3%nat) ->
+    (forall I0 v0, ⊢ lk_pin L (S gen_id) v0 -∗ lk_post L (S gen_id) v0 I0 0%nat
+                  -∗ Hold I0 -∗ Wc I0 0%nat) ->
+    (forall I0 v0, ⊢ lk_pin L (S gen_id) v0 -∗ lk_T L -∗ Wc I0 0%nat) ->
+    (⊢ app_taint -∗ lk_T L) ->
+    ⊢ lk_links L -∗ udep (PS := uprogSG_free) -∗ sh_echo_slot (lk_T L) -∗
+      UkShEcho.sh_exec_sup_echo_wq Wc.
+
+  (* ...and at the ONE family the campaign uses, the four [Wc] laws are the
+     RECORD's own and only [Hold]'s two properties are owed -- plus the
+     exec-failed diagnostic's law, which is a PREMISE for section 6.0's
+     reason: *)
+  Lemma ushf_child_law_hold_at (Hold : list (bv 8) -> iProp Σ) :
+    (forall I0, Timeless (Hold I0)) -> (forall I0, ⊢ lk_T L -∗ Hold I0) ->
+    (⊢ app_taint -∗ lk_T L) ->
+    ⊢ lk_links L -∗ udep (PS := uprogSG_free) -∗ sh_echo_slot (lk_T L) -∗
+      UkShEcho.ush_execfail_law_wq (PS := uprogSG_free)
+        (fun I p => lk_lcred L (S gen_id) I p ∗ Hold I)%I -∗
+      UkShFork.ushf_child_law (PS := uprogSG_free)
+        (fun I p => lk_lcred L (S gen_id) I p ∗ Hold I)%I.
+
+  Lemma ush_execfail_law_wq_hold_at (Hold : list (bv 8) -> iProp Σ) :
+    (forall I0, lk_exfb L I0 = alt_execfail) ->
+    ⊢ lk_links L -∗
+      UkShEcho.ush_execfail_law_wq (PS := uprogSG_free)
+        (fun I p => lk_lcred L (S gen_id) I p ∗ Hold I)%I.
+
+  (* UShLine -- [Hwc] and [Hwbr] *)
+  Lemma ush_mid_wc_read_t_at (L : LinkRec Σ) (γ : echo_gn) (γp : gname)
+      (k : nat) (I l : list (bv 8)) :
+    wl_nl ∉ l ->
+    (forall v, ⊢ era_pin γ (S gen_id) v -∗ lk_epin L k v) ->
+    ush_mid_at (lk_rres L) γ γp (I ++ l ++ [wl_nl]) -∗ lk_lcred L k I 2%nat -∗
+    ush_mid_at (lk_rres L) γ γp (I ++ l ++ [wl_nl])
+    ∗ lk_lcred L k (I ++ l ++ [wl_nl]) 3%nat.
+
+  Lemma ush_wb_read_holds_at (L : LinkRec Σ) (γ : echo_gn) (γp : gname)
+      (k : nat) (I l : list (bv 8)) :
+    wl_nl ∉ l ->
+    (forall v, ⊢ era_pin γ (S gen_id) v -∗ lk_epin L k v) ->
+    ush_mid_at (lk_rres L) γ γp (I ++ l ++ [wl_nl]) -∗
+    (∃ v, lk_pin L k v ∗ lk_ban L k v I 0%nat) -∗
+    ush_mid_at (lk_rres L) γ γp (I ++ l ++ [wl_nl]) ∗ lk_T L.
+
+  (* UShRest -- the whole tail obligation, at [UShRound]'s own family *)
+  Lemma sh_rest_holds_at (Hold) (γ : echo_gn) (γp : gname) (N : uk_names Σ) :
+    (forall I0, Timeless (Hold I0)) -> (forall I0, ⊢ lk_T L -∗ Hold I0) ->
+    (⊢ app_taint -∗ lk_T L) ->
+    ⊢ lk_links L -∗ udep (PS := uprogSG_free) -∗
+      UShEcho.sh_echo_slot (lk_T L) -∗
+      UkShEcho.ush_execfail_law_wq (PS := uprogSG_free)
+        (fun I p => lk_lcred L (S gen_id) I p ∗ Hold I)%I -∗
+      (∃ v, lk_pin L (S gen_id) v) -∗
+      UkSh.ush_rest_l (PS := uprogSG_free) N γp (lk_T L)
+        (fun I p => lk_lcred L (S gen_id) I p ∗ Hold I)%I
+        (fun I => (∃ v, lk_pin L (S gen_id) v
+                    ∗ lk_ban L (S gen_id) v I 0%nat) ∗ Hold I)%I
+        (UShLine.ush_mid_at (lk_rres L) γ γp)
+        (UInitSh.sh_Rsh (ukn_t N) (ukn_d N) (ukn_s N)).
+```
+
+#### 4. `UShRound`'s TABLE, UPDATED
+
+| `UShRound.v` | delivered by | how |
+| --- | --- | --- |
+| `Hchild_echo` | `UShEchoPay.sh_exec_sup_echo_wq_holds_at file_stage_inst Wcf sh_hold …` | ONE application; the four `Wc` laws are `LinkRec`'s (`lk_lcred`'s definition, `lk_lcred_of_post_a` at `sk_apr0`, `lk_lcred_taint`) framed with `sh_hold` |
+| `Hwc` | `UShLine.ush_mid_wc_read_t_at file_link_inst (fgn_echo g) γp (S gen_id) I l` | ONE application, at `ush_mid_at (lk_rres file_link_inst)` |
+| `Hwbr` | `UShLine.ush_wb_read_holds_at file_link_inst (fgn_echo g) γp (S gen_id) I l` | ONE application |
+| `Hwbl` / `Hwbwc` / `Hcltaint` / `Hexecfail` / `Hpanic` | LINK-GEN's, unchanged | — |
+| the WHOLE of `ush_rest_l` (minus the redirect child) | `UShRest.sh_rest_holds_at` | ONE application; it is `ushf_kill_law` + `ushf_child_law_hold_at` + `UShPanic.ush_panic_law_hold_at` assembled |
+
+**`ush_mid` CHANGES AT THE FILE APPLICATION, and `UShRound.v` must follow.**
+`UShRound.sh_round_holds_file` names `UShLine.ush_mid (fgn_echo g) γp`.
+That is `ush_mid_at rd_res`, i.e. the ECHO writer's cursor bound
+(`rd_stage` / `proc_before`), which is FALSE at the file era.  SH-ROUND
+must write `UShLine.ush_mid_at (lk_rres file_link_inst) (fgn_echo g) γp`
+in all four places (`:198`, `:199`, `:203`, `:204`, `:443`).  The ghost
+algebra is unchanged — `ush_mid_at` still carries `EchoOut.era_pin γ`,
+`dl_cnt`, `inp_lb`; only the RESIDUE is the record's.
+
+#### 5. WHAT THE FILE INSTANCE MUST SUPPLY, FIELD BY FIELD
+
+Written against LINK-GEN-2's `iris/FileLinksLine.v` and
+`iris/FileLinkInst.v`, which landed while this lane ran.  Everything a
+`StageRec FileLinkInst.file_link_inst` needs is now one lemma away:
+
+| field | what the file must give, at LINK-GEN-2's names |
+| --- | --- |
+| `ck_stg` | `Record file_stg := { fs_ps; fs_cs; fs_s0 : fst; fs_I; fs_P }` — exactly `FileLinksLine.fcur`'s five arguments besides `v` and `k` |
+| `ck_ok st ws` | `wr_blk_t_f (fs_ps st) (fs_cs st) (fs_s0 st) (fs_I st) (fs_P st) /\ last_ws (fs_I st) = ws` (`wr_blk_t_f` is `FileLinksLine.v:423`; its `wr_tail_f` half is what the LEND carries and what the post law needs) |
+| `ck_alt ws` | `line_alts_of ws !!! 0%nat` — **the same list as echo's** (see the obligation below) |
+| `ck_cur k v st p` | `(turn v (fs_P st + p) ∗ ps_lb v (fs_ps st) ∗ cs_lb v (blkcs_f (fs_cs st) 0%nat p) ∗ inp_lb v (fs_I st) ∗ f0w k (fs_s0 st)) ∨ FT` — i.e. `FileLinksLine.fwc_blk g k v I 0%nat p` with the stage NAMED instead of existential.  `blkcs_f` is already `echcs`'s twin (`:432`) |
+| `ck_cur_tl` | `apply _` (`fcur_timeless`, `f0w_timeless` are there) |
+| `ck_step` | `FileLinks.file_write_link_blk` at `i = 0` (files the alternative) and `file_write_link_w` after, taint arm from `file_write_link_taint`.  Its pure inputs are `FileLinksLine`'s `wr_blk_pin_snoc_f` / `wr_blk_byte_f` family (the `fab I a !! j = Some b -> proc_stream_f … !! (P + j) = Some b` lemma at `:533`), which is `UCatOut` section 1's shape at a general alternative |
+| `sk_lend_stage` | `lk_lend file_link_inst = FileLinksLine.fwc_lend g`, whose untainted arm IS `∃ ps cs s0 P, ⌜wr_blk_t_f …⌝ ∗ fcur v ps cs s0 I P k` — the stage falls straight out.  The `□` half is the file twin of `EchoLinksLine.ewc_post_of_ech`: from the cursor at `length (wl_line (drop 1 (last_ws I)))` to `fwc_blk g k v I 0 (length (fab I 0) - 2)`, i.e. `lk_post file_link_inst k v I 0` |
+| `sk_apr0` | `lk_apr file_link_inst = FileLinksLine.fapr`, so it is `ralt_ok (fline I) (ralt_dec 0) /\ fst_free (ralt_dec 0) = true /\ ralt_panic (ralt_dec 0) = false` — three `cbn`s at an echo line |
+
+**THE ONE NON-OBVIOUS OBLIGATION, now exact.**  `sk_lend_stage`'s second
+conjunct is
+
+```coq
+    FileLinksLine.fab I 0%nat = EchoDisc.line_alts_of (last_ws I) !!! 0%nat
+```
+
+and by `FileLinksLine.fab_free` (`:99`) that is
+`FileDisc.cont None (fline I) (ralt_dec 0) = line_alts_of (last_ws I) !!! 0`
+— **the GOOD alternative of a line is echo's own output, byte for byte, at
+either application**.  It is forced and it is not free.  Without it the
+shell's program tier cannot read the forked child's bytes off `EchoDisc`
+at all and `UEchoOut` would have to be twinned (~900 lines).  It is the
+exact analogue of LINK-GEN's finding that `FileDisc.cont` returns
+`alt_panic` / `alt_execfail` VERBATIM at `RFFork` / `RFExec`.
+
+**`Hwbr` AND `Hwc` NEED NOTHING NEW AT ALL.**  `lk_rres file_link_inst`
+is already `FileLinksLine.fwc_rres g` (`:1307`: `rd_stage_f` +
+`turn_lb (length (proc_before_f …))` + `f0w`), and `lk_ban_read_taint` is
+already a field of `file_link_inst`.  So `UShRound.Hwbr` is
+`UShLine.ush_wb_read_holds_at file_link_inst (fgn_echo g) γp (S gen_id)`
+and `Hwc` is `UShLine.ush_mid_wc_read_t_at` at the same arguments, both
+with `Hep := fun v => (identity)` — one application each, today.
+
+#### 6. WHAT COULD NOT BE ABSTRACTED, AND WHY
+
+0. **`UkShEcho.ush_execfail_law_wq` NAMES THE DIAGNOSTIC AND MUST STOP.**
+   LINK-GEN-2 made `UkShDiag.ush_execfail_law_at dg n` take the bytes and
+   their length, and `UShPanic.ush_execfail_law_hold_at L Hold I` now
+   delivers it at `lk_exfb L I`.  But `UkShEcho.ush_execfail_law_wq Wc`
+   still asks for `UkShDiag.ush_execfail_law` (= `ush_execfail_law_at
+   alt_execfail 17`) at EVERY input, and at the file
+   `FileLinksLine.fexfb LCat = alt_execcat`, so the ∀-`I` form is FALSE
+   there.  This lane therefore takes it as a PREMISE:
+   `UShEchoPay.ushf_child_law_hold_at` and `UShRest.sh_rest_holds_at` both
+   receive `UkShEcho.ush_execfail_law_wq Wcf` and
+   `UShEchoPay.ush_execfail_law_wq_hold_at` discharges it at any era whose
+   exec-failed bytes are constant (`forall I, lk_exfb L I = alt_execfail`).
+   **The fix is the one LINK-GEN-2 already made one level down**:
+   `ush_execfail_law_wq` gains `dg : list (bv 8) -> list (bv 8)` and uses
+   `ush_execfail_law_at (dg I) (length (dg I) - 2)`, and
+   `UkShFork.ushf_child_law`'s own use follows.  Until then the file's
+   round owes it by hand.
+
+1. **`UShLine`'s READ LEAF is not swept, and the reason is a THIRD record
+   this lane did not need.**  `Hwbr` and `Hwc` — the two `UShRound` owes —
+   need only the residue and two `LinkRec` laws, so `ush_mid_at` plus
+   `ush_wb_read_holds_at` / `ush_mid_wc_read_t_at` deliver them.  The
+   LEAF (`ush_rd_in`, `ush_read_pay_era`, `ush_read_sup_era`,
+   `ush_read_recv_era`, `ush_read_recv_leaf_holds`) additionally opens
+   `EchoOut.read_ret`'s body and spends `EchoLinks.echo_link_rd` /
+   `echo_link_rd_taint`, which `LinkRec` does NOT carry (it has the read
+   RETURN `lk_rr` but not the read LINK).  Since `LinkRec` is frozen, that
+   is a `ReadRec (L : LinkRec Σ)` with four fields:
+   - `rk_link_rd : lk_links L -∗ □ (∀ k v n ws Φ, lk_pin L k v -∗
+     dl_cnt v (1/2) n -∗ (lk_rr L k v n ws -∗ Φ) -∗
+     cons_link Uart0 k (ConsLog.EvRead ws) Φ)`,
+   - `rk_link_rd_taint` (its twin at the taint),
+   - `rk_disc : list (bv 8) -> Prop` (the input's discipline;
+     `EchoDisc.disc_input` at echo, `FileDisc.disc_input_f` at the file),
+   - `rk_rr_arms` — the window arm, packaged at exactly what
+     `ush_read_recv_era` consumes:
+     ```coq
+     forall k v I ws sl sl' hs dc g,
+       length ws = dc -> cons_window sl (length I) dd g hs ->
+       sl `prefix_of` sl' ->
+       (forall j, (j < dc)%nat -> ws !! j = sl' !! (length I + j)%nat) ->
+       ⊢ lk_epin L k v -∗ inp_lb v I -∗ lk_rr L k v (length I) ws -∗
+         (dl_cnt v (1/2) (length I + dc)%nat
+          ∗ ∃ J, ⌜length J = dc⌝ ∗ ⌜rk_disc (I ++ J)⌝
+                 ∗ ⌜(0 < dd)%nat -> g 0%nat = J !!! 0%nat⌝
+                 ∗ inp_lb v (I ++ J) ∗ lk_rres L v (I ++ J))
+         ∨ lk_T L
+     ```
+   **AND IT HAS A WALL THAT IS NOT IN ANY EARLIER BLOCK.**
+   `UkSh.ush_read_ans` (`iris/UkSh.v:2008`) carries `⌜disc_input (I ++ J)⌝`
+   — *echo's* discipline, with no parameter — and `UkSh` relays it through
+   `ush_read_ans_1` (`:2368`), `ush_read_ans_pm` (`:2048`) and the loop's
+   own line assembly (`:2164`, `:3875`, `:4104`, `:4252`, `:4305`).  So
+   `rk_disc` cannot simply be the file's `disc_input_f`: EITHER the file
+   proves `disc_input_f I -> disc_input I` (which is exactly lane STAGE's
+   refuted shape one level down — a `cat` line is not an echo line), OR
+   `UkSh.ush_read_ans`'s discipline becomes a parameter, which is a sweep
+   of `UkSh.v` (seven statements and the loop's line assembly) and a lane
+   of its own.  **This is the finding to act on before anyone writes
+   `ReadRec`.**
+2. **`echo_slot_of_kexec_at` gained an `emp` slot and that is unavoidable.**
+   The generic takes `… -∗ lk_lpr L k v I 3%nat -∗ Hold I -∗ uslot W'`;
+   at echo `Hold I := emp` and `P -∗ emp -∗ Q` is not convertible to
+   `P -∗ Q`.  The lemma's only consumer is in its own file, no landed echo
+   THEOREM moves, and the audit does not change.  `sh_exec_sup_echo_wq_holds`
+   IS recovered verbatim.
+3. **`ck_alt` cannot be dropped in favour of `lk_ab`.**  `LinkRec.lk_ab I a`
+   is indexed by the era's INPUT; `UEchoOut` names the line `ws` and the
+   input `I0` separately (its argv premise is at `ws`), and the equation
+   `last_ws I0 = ws` lives inside `ck_ok` and is not definitional.  A
+   generic statement at `lk_ab L I0 0` therefore cannot recover
+   `echo_out_argv ws args` by conversion.  Indexing the alternative by the
+   LINE (`ck_alt ws`) is what makes every recovery `eq_refl`.
+4. **`ech_step` is a field, not a derived lemma.**  It is `ck_step`
+   itself; the echo recovery is `Definition ech_step … := ck_step CE …`.
+   Nothing about the block-first byte (`EchoLinks.echo_link_blk` files the
+   alternative; every byte after it goes through `echo_link_w` at the
+   extended choice list) survives abstraction — it IS the field's proof.
+
+#### 7. BUILD NOTES
+
+- **`_CoqProject` edits are invisible to the remote build until the remote
+  `CoqMakefile` is deleted** (CAT-PIN said it for `user-rocq`; it is true
+  for `iris/` too).  The loop that works for a NEW file is
+  `run-on-gcp --sync-only` then
+  `run-on-gcp --no-sync bash -c 'cd <remote>/iris && rm -f CoqMakefile
+  CoqMakefile.conf && coq_makefile -f _CoqProject -o CoqMakefile &&
+  make -f CoqMakefile -j8 <F>.vo'`.
+- **`S` is a terrible name for a record variable.**  `Context (S : CurRec L)`
+  shadows the successor constructor and `ck_cur S k v st (S i)` stops
+  parsing as anything sane.  The record variables here are `C` and `St`.
+- **A record with a PARAMETER does not elaborate from `{| … |}` under a
+  type ascription** — the parameter stays an evar while the fields are
+  checked and the first dependent field fails.  Use the constructor
+  applied to the parameter (`MkCurRec LE echo_stg … `), as this file does.
+- **`Global Arguments` on a record projection must use `_`, not names.**
+  `Global Arguments ck_stg {Σ _ _ L} C.` is refused (*Flag "rename"
+  expected to rename c into C*) because the projection's binder names come
+  from the field's own definition; `Global Arguments ck_stg {_ _ _ _} _.`
+  is right.
+
+### OFF-LINK-2 (kernel/U tier, 2026-09-17) — THE PARKED DISCIPLINE LEAVES THE TREE, AND THE BOX'S TAINT ARM LANDS AS **ONE** CHANGE: THE LEND, THE BOX, THE SUPPLIER AND BOTH FIRE WALKS AT `OffGv.off_link`
+
+**The lane's verdict in one line: L6 landed whole — `ukn_held` (the record
+field), `ukn_parked`, `urun_parked_row`, `fdv_all_parked` and its kit,
+`fdv_held_in`, `usys_fd_ok_parked`, `usys_fd_ok_held`, `ush_gen_slot`'s row,
+`kexec_image_ok_parked`/`exec_key_ok_parked`, `kfk_at_parked` and the four dead
+premises with the three `Hpark` contexts are GONE, and `tools/lemma_diff.py`
+reports exactly that list; then L3 landed as the ONE coupled change
+WRITE-RELAY-2 handed over — the nodes' LEND, the box, the supplier and both
+fire walks are all at `OffGv.off_link γo z := off_gv γo (1/2) z ∨ app_taint`,
+so a file's offset ghost may be DISCONNECTED and the disconnect is permanent;
+L2's `fp_om` is written and REVERTED again, and this time the blocker is named
+at one line — `ProofFilewrite.v:5016` / `ProofFileread.v`'s twin, where the
+fire reads `foff_row_inode_of` at a mode that is no longer pinned and there is
+no contract arm yet to hand it the held row's supplier.**
+
+**WHAT LANDED** (whole tree green on the lane's remote tree, `--proofs -k`,
+`EXIT=0`, zero `Error`, 430 files rebuilt on the confirming run; `make
+audit-all-only` / `audit-tree-only` / `audit-file-only` UNCHANGED — system
+THIRTEEN, echo FOURTEEN, tree THIRTEEN, file FOURTEEN; `Proof using`
+everywhere; no `Admitted` of this lane's.)
+
+*`378b23778` — L6: the parked discipline leaves the tree*
+
+Every deletion below carried the generic tier's PARKED DISCIPLINE — "no
+descriptor in this table has had its offset half handed out" — across a round,
+a fork, an exec or a Löb step, which is the precondition §3.5's principle
+retires.  `tools/lemma_diff.py` reports these and nothing else (its only other
+lines are lane SKELETON's five `Admitted` in `UShRound.v`):
+
+| GONE | file | reason |
+|---|---|---|
+| `ukn_held` (the FIELD; `MkUkNames` loses an argument) | `UkRun.v` | dead data since OFF-HAND-6's H3 deleted its one consumer |
+| `ukn_parked` (Class) | `UkRun.v` | it constrained the deleted field |
+| `urun_parked_row` | `UkRun.v` | `True` since OFF-HAND-6; `urun_rows` is now `urun_nopipe` verbatim |
+| `usys_fd_ok_parked`, `usys_fd_ok_held`, `fdv_held_in`, `_of_parked`, `_empty`, `_mono`, `_insert`, `_closed` | `UsysMemOk.v` | no consumer outside a comment |
+| `fdv_all_parked`, `_dec`, `_lookup`, `_lookup_total`, `_insert`, `_replicate`, `_closed`, `_app`, `_take`, `_drop`, `_fdt0`, `fdst_parked_closed`, `fdst_parked_pipe` | `FdSlots.v` | their last consumers are the rows above |
+| `kfk_at_parked`, `kfk_at_parked_fdt0` | `ProofKforkB3.v` | ditto |
+| `kexec_image_ok_parked`, `exec_key_ok_parked` | `SpecKexec.v` | ditto; the two `_ok_fd` readings they were stated over stand |
+| `ush_gen_slot`'s row, `ush_gen_slot_held` | `UkSh.v` | the slot said sh holds no offset half |
+
+WHAT SURVIVES, and why: `fdst_parked` itself with `fdst_parked_dev` /
+`_inode` — `UsysMemOk.usys_fd_ok`'s OPEN row still carries `fdst_parked (FdOpen
+rd wr t)` as "an open installs an inode or a device", and `SpecSysOpen`'s three
+arms pay it; relaxing THAT to the caller's mode is L4.  `usys_fd_ok_nopipe`
+survives too: a pipe row is still a fact the generic tier carries (exit's close
+payments are free only at a table that holds none) and it has nothing to do
+with offsets.
+
+The sweep's shape, for the next lane that does one like it: the three
+constructors (`uslot_of_urun{,_all,_ro}`) lose their `hs` binder and their
+`⌜ukn_held N = hs⌝` row, `UkFork.wp_uk_ecall_fork{,_argv}` lose `hs` and the
+`ukn_held N ⊆ hs` premise, and the `⌜ukn_held N' = _⌝` rows go from
+`UkShEcho` / `UkShFork` / `UkShRun` / `UkShDiag` / `UkInit` / `UkInitMain` /
+`UShRound` / `UInitSh` / `UInitTreeExec` / `UShEchoPay` / `UShKernel` /
+`UShCat` / `UEchoKernel` / `UEchoOut` / `USyncKernel` / `UInitKernel`.  Every
+one of those is an intro pattern with one fewer `%H` and a specialisation with
+one fewer `[%]`; nothing about any of them is subtle, and the build finds them
+all.
+
+*`0b04eefe6`, `f25530e76` — the merge of main (SUP-ONE's `app_taint`,
+WRITE-RELAY-2's node) and its fix-forward*
+
+Three conflicts, all mechanical: `UkRun.urun_rows_taint` (this lane's premise
+gone, main's taint renamed), `UInitTreeExec` and `UkInitMain` (main restated
+the exec supply as `init_exec_sup_pos` while this lane deleted its
+`⌜ukn_held N' = ∅⌝` argument), plus `UShCat`'s slot mint at the deleted `hs`.
+
+*`4919630d6` — L3: THE BOX'S TAINT ARM, as one coupled change*
+
+  `OffGv.off_link γo z := off_gv γo (1/2) z ∨ app_taint`
+
+is the arm, and it is stated in `OffGv` because everything above is stated at
+it.  What changed shape, exhaustively:
+
+- `OffGv.off_ret` carries it (`∃ v, off_link γo v ∗ ⌜v = off ∨ v = off + d⌝`);
+  `off_ret_keep` / `off_ret_adv` keep their landed statements, NEW
+  `off_ret_taint` and `off_ret_of_link` (the generic node's one-liner) and
+  `off_ret_case` (the fire's split: unmoved → the settle, advanced → the arm).
+- THE LEND: `FsAbsWriteFire.awrite_full_at`, `awrite_part_at` and
+  `FsAbsReadFire.aread_commit_at` are lent `off_link γo (Z.of_nat off)`.  That
+  is the change WRITE-RELAY-2 measured and stopped at: a node at a
+  disconnected object has no half to be lent, and the generic node frames its
+  borrow straight back (`off_ret_of_link`), so it costs the generic tier
+  nothing.  It is also what closes OFF-LINK's REFUTED 2 — the reason the
+  SECOND fire at a disconnected object was unpayable.
+- THE BOX: `FileOffCell.off_resident γo k := ∃ v, a_foff k ↦₄ v ∗ ⌜off_wf v⌝ ∗
+  off_link γo (bv_unsigned v)`.  The CELL is kept in both arms (the store
+  `f->off += r` needs it); only the tie to the shadow is dropped, permanently
+  (a `ghost_var` half cannot be re-minted at an existing name).
+- THE SUPPLIER: `UserOff.off_supply` keeps its name and arity and its OUTPUT
+  widens to the arm — which is what this lane landed as `off_settle` while the
+  lend was still the bare half, so the two are one proposition now and
+  `off_settle`/`off_settle_parked`/`off_settle_taint` are deleted.  Payers:
+  `off_supply_parked` (today's invariant, at BOTH arms of the lend), NEW
+  `off_supply_taint` (the generic tier's, and the disconnect itself), and
+  `off_supply_held`, whose post is now `pipe_wpost`'s shape —
+  `uoff γo (off + d) ∨ (uoff γo off ∗ app_taint)`, "fired, or the taint with
+  the payment back".
+- THE FIRES: `wrf_awrite_fire{,_gen,_held}`, `wrf_apart_fire{,_gen,_held}`,
+  `arf_read_fire{,_gen,_held,_1,_q}` take the arm in and hand the arm back; the
+  `_held` ones' post carries the disjunction above.
+- THE CLIENTS: `FileWrite.file_awrite_full_anchored`'s lend,
+  `UEchoFile.ef_full_adv{,_raw}`'s lend and answer (lane SKELETON's — its
+  `Hoff_link`, addressed to this lane, is now an `iExact`), and
+  `FileOffProtocol` / `TreeMove` / `UkTreeRead` / `FileOpen` /
+  `ProofFilewrite`'s local assertion, which follow the arm and say nothing new.
+- THE VACUITY CHECK stands, restated where the widening moved it:
+  `vacuity_supply_not_taint` is now spelled AT THE OLD OUTPUT (the bare
+  advanced half), so it keeps saying what it said — a supplier that must hand
+  the half back is not payable by the taint, which is why the arm is in the
+  box; `off_supply_taint` is the same fact read forwards.
+  `vacuity_link_not_taint` and `vacuity_lend_not_taint` are unchanged, and the
+  second is exactly what the landed lend answers.
+
+**WHAT DID NOT LAND, and the one line it stops at.**
+
+- **L2 (`fpnames.fp_om` and the pin) — WRITTEN AND REVERTED A SECOND TIME, and
+  the blocker is now a single line rather than a shape.**  The sweep itself is
+  done and mechanical (the recipe in lane OFF-LINK's REFUTED 3 is exact, and
+  the downstream sites are: `SpecFileread.fileread_pay_carve` and
+  `ProofFilewrite.fwau_pay_carve` quantify `om` existentially;
+  `fileread_st_inode_rd`'s conclusion names it; `ProofSysOpenParts` mints
+  `MkFPNames … OffParked` and `ProofSysOpenPub` reads `stpub` at it; the four
+  `destruct Hokx as (inumx & γox & γpx & omx & Hok)` in `ProofFile{read,write,
+  close,stat}`; one extra `_` at every `fdstate_ok_*` application).  Where it
+  stops is `ProofFilewrite.v:5016` and its read twin: with the pin at
+  `fp_om pn` the fire site's `Hstx` names an EXISTENTIAL mode, so
+  `FdSlots.foff_row_inode_of st rx true … Hstx` no longer applies, and at a
+  held row `foff_row st` is `emp` — the supplier has to come from the
+  CONTRACT's held arm, which is the half of L3 this lane did not reach.  The
+  two land together, and with the box's arm in place nothing else blocks them.
+- **L3's contract arms** (`SpecFilewrite.filewrite_in` /
+  `SpecFileread.fileread_in` keyed on the mode, the held arm `(advancing
+  chain) ∨ (today's chain ∗ app_taint)`, the posts at a held row carrying
+  `uoff γo (off + d)` and `⌜off = off0⌝`) — not attempted.  Shape it with the
+  mode's match OUTSIDE the `∀ P`, so WRITE-RELAY-3's deferred
+  `TB : uptd -> Prop` guard fits in front of the chain on both arms.
+- **L4 (the mint)** — `ProofSysOpenPub` is one swap (`off_pub_park` →
+  `off_pub_hand_0`, the receipt carrying `uoff g 0`), and `usys_fd_ok`'s open
+  arm's `fdst_parked` is now free to relax: `usys_fd_ok_parked` is DELETED, so
+  nothing reads the pin any more.  What the generic Löb needs is nothing: the
+  row's successor table does not move at open (only the row's own entry does),
+  and the fact the Löb used to carry about it went with `fdv_all_parked`.
+- **L5's held deposit suppliers** — the parked leaves do not move; what a held
+  descriptor needs is a new `udepwf_st_{read,write}_file_held` beside the
+  landed ones, carrying `uoff γo off` into the contract's held arm.  Blocked
+  on that arm and nothing else.
+
+**WHAT ECHO-FILE / CAT-ENTRY-2 / SH-ROUND HAND IN, as of this lane.**
+- The generic tier is told NOTHING about offsets any more: no record field, no
+  table row, no Löb premise, no exec row, no slot conjunct.  A verified program
+  that opens in hand mode is now invisible to every tier but the one that
+  fires.
+- The box may be DISCONNECTED and the fire may disconnect it: `off_link` is in
+  `OffGv`, the three nodes are lent it, `off_supply_taint` pays it, and
+  `off_resident` is it.  Nothing re-couples: there is no lemma from
+  `app_taint` back to `off_gv`.
+- `UEchoFile.v`'s `Hoff_link` is discharged (an `iExact` over the landed node),
+  and `Hdep1`/`Hwrite1` were discharged by lane OFF-LINK's L5 — so the program
+  tier's write side owes the kernel only the contract's held arm.
+
+### LINK-GEN-4 (2026-09-17) — THE DISCIPLINE AND THE DIAGNOSTIC BECOME PARAMETERS; `ReadRec` LANDS AND sh's READ LEAF IS GENERIC; THE WALK'S THREE READINGS ARE THE WHOLE RESIDUE
+
+Branch `app-file/link-stage`, on top of LINK-GEN-2 and LINK-GEN-3.  Whole
+tree GREEN on the lane's remote tree (`--proofs -k`, `EXIT=0`, zero
+`Error`); all four audits unchanged (`audit-only` thirteen,
+`audit-echo-only` FOURTEEN with the identical list, `audit-tree-only`
+thirteen, `audit-file-only` fourteen); no `Admitted` added outside
+`UShRound.v`'s skeleton, which gains none; `Proof using` everywhere.
+
+**THE LANE'S VERDICT IN ONE LINE.**  LINK-GEN-3 named two walls —
+`UkSh.ush_read_ans`'s hard-coded `EchoDisc.disc_input` and
+`UkShEcho.ush_execfail_law_wq`'s hard-coded `alt_execfail` — and both come
+down to the SAME one-line pattern SH-CHILD used for `ush_tag_law_at`: the
+era-specific thing becomes a parameter, the landed name becomes that at the
+echo value BY DEFINITION, and no consumer moves.  What does NOT come down
+that way is the WALK, and the walk's dependence on the discipline is
+exactly three readings, named below.
+
+#### 1. THE SEVEN `UkSh` STATEMENTS, AND THEIR ECHO INSTANCES
+
+Every one is `X_at (Dsc : list (bv 8) -> Prop) …`, and every landed name is
+`X … := X_at disc_input …` — a `Definition`, no proof text, so
+`UShKernel`, `UInitSh`, `UInitBoot`, `UConsLine` and `UShLine` are
+untouched.
+
+| generic | echo instance | what `Dsc` replaces |
+| --- | --- | --- |
+| `ush_read_ans_at` | `ush_read_ans` | the receipt's `⌜disc_input (I ++ J)⌝` conjunct |
+| `ush_read_ans_pm_at` | `ush_read_ans_pm` | (relay) |
+| `ush_read_ans_1_at` | `ush_read_ans_1` | `⌜disc_input (I ++ [g 0])⌝` on the delivered arm |
+| `ush_read_recv_leaf_at` | `ush_read_recv_leaf` | (relay, through `ush_read_ans_at`) |
+| `ush_gline_p_at` | `ush_gline_p` | `J <> [] -> disc_input (I0 ++ J)` |
+| `ush_gets_line_at` | `ush_gets_line` | (relay) |
+| `ush_gets_done_line_at` | `ush_gets_done_line` | its `ush_gline_p` premise |
+
+plus `ush_gets_line_split_at`, `ush_gets_line_0_at`,
+`ush_gets_line_of_posb_at` with their instances (three more relays).
+
+**`ush_gets_done_line` KEEPS `EchoDisc.body_ok J`, AND THAT IS THE FINDING
+UNDER THE FINDING.**  It was tempting to weaken the premise to the one
+equation the proof spends (`wl_body (wl_words J) = J`, the join's round
+trip).  It cannot be: the SECOND conjunct, `line_ok (wl_words J)`, is spent
+too — through `ush_line_is` inside `ush_gets_done`.  So the LINE predicate
+is a second axis, orthogonal to the input discipline, and it is the one
+`UkSh.ush_rest_line_at`'s `D` and `UkShFork.ushf_child_law_at`'s `Lp`
+already own (lane SH-CHILD).  A second era parameterizes the discipline
+here and the line predicate there; neither subsumes the other.
+
+#### 2. `ReadRec` (`iris/ReadRec.v`, new)
+
+```coq
+  Record ReadRec (L : LinkRec Σ) := MkReadRec {
+    rk_disc : list (bv 8) -> Prop;
+    rk_rd : forall (k n : nat) (v : era_pins)
+                   (ws : list (list mobs * bv 8)) (Φ : iProp Σ),
+      ⊢ lk_links L -∗ lk_pin L k v -∗ dl_cnt v (1/2) n -∗
+        (lk_rr L k v n ws -∗ Φ) -∗ cons_link Uart0 k (ConsLog.EvRead ws) Φ;
+    rk_rd_taint : forall (k : nat) (ws : list (list mobs * bv 8))
+                         (Φ : iProp Σ),
+      ⊢ lk_links L -∗ lk_T L -∗ (lk_T L -∗ Φ) -∗
+        cons_link Uart0 k (ConsLog.EvRead ws) Φ;
+    rk_arms : forall (k : nat) (v : era_pins) (I : list (bv 8))
+                (ws sl sl' : list (list mobs * bv 8))
+                (hs : list (list mobs)) (dd dc : nat) (g : nat -> bv 8),
+      (dd <= dc)%nat -> length ws = dc ->
+      cons_window sl (length I) dd g hs ->
+      sl `prefix_of` sl' ->
+      (forall j : nat, (j < dc)%nat -> ws !! j = sl' !! (length I + j)%nat) ->
+      ⊢ lk_epin L k v -∗ inp_lb v I -∗ lk_rres L v I -∗
+        lk_rr L k v (length I) ws -∗
+        (dl_cnt v (1/2) (length I + dc)%nat
+         ∗ ∃ J : list (bv 8),
+             ⌜length J = dc⌝ ∗ ⌜rk_disc (I ++ J)⌝
+             ∗ ⌜(0 < dd)%nat -> g 0%nat = J !!! 0%nat⌝
+             ∗ inp_lb v (I ++ J) ∗ lk_rres L v (I ++ J))
+        ∨ lk_T L;
+  }.
+```
+
+`rk_rd` / `rk_rd_taint` exist because `LinkRec` carries the read's RETURN
+(`lk_rr`) but NOT the read LINK — `EchoLinks.echo_link_rd` is a projection
+of `lk_links` that the record does not expose, and `LinkRec` is frozen.
+`rk_arms` is `UShLine.ush_read_recv_era`'s own era block, verbatim, as a
+law: opening `EchoOut.read_ret`'s body is what that lemma did by hand, and
+it does it through this one field now.  `EchoDisc.disc_input_no_cr` and
+`UShLine.ush_rd_byte_of_rows` MOVE into `ReadRec.v` (as
+`disc_input_no_cr` / `rr_byte_of_rows`) because the echo instance is what
+needs them.  `echo_read_inst` is definitional.
+
+#### 3. `UShLine`'s READ LEAF IS GENERIC
+
+`ush_rd_pin_at (Rres)`, `ush_rd_x_at (Rres)`, `ush_rd_in_at R`,
+`ush_read_fam_era_at R`, `ush_read_pay_era_at R`, `ush_read_sup_era_at R`,
+`ush_read_recv_era_at R`, `ush_read_recv_leaf_holds_at R` — all over
+`{L : LinkRec Σ} (R : ReadRec L)`, with ONE extra premise everywhere:
+
+```coq
+    (forall v : era_pins, ⊢ era_pin γ (S gen_id) v -∗ lk_pin L (S gen_id) v)
+```
+
+the bridge from the PIECES' own pin to the record's.  It is the identity at
+echo (`rr_ep_refl`) and at the file (`lk_pin file_link_inst :=
+era_pin (fgn_echo g)`).  Every landed echo name is recovered as a
+`Definition` at `echo_read_inst`, with no proof text.
+
+**WHAT SH-ROUND APPLIES.**
+
+```coq
+  Lemma ush_read_recv_leaf_holds_at {L : LinkRec Σ} (R : ReadRec L)
+      (γ : echo_gn) (Wb : list (bv 8) -> iProp Σ)
+      (N : uk_names Σ) (γp : gname) (l : list fdstate) :
+    ukn_pay N
+      = ucons_pay fsc_cons γp (lk_T L) (ush_rd_x_at (lk_rres L) γ Wb) ->
+    (⊢ app_sup -∗ lk_T L) ->
+    (⊢ lk_T L -∗ app_sup) ->
+    (forall v : era_pins, ⊢ era_pin γ (S gen_id) v -∗ lk_pin L (S gen_id) v) ->
+    (⊢ lk_links L) ->
+    ⊢ UkSh.ush_read_recv_leaf_at (PS := uprogSG_free) N γp (lk_T L)
+        (ush_mid_at (lk_rres L) γ γp) (rk_disc L R) fsc_cons l.
+```
+
+so the file's read leaf is ONE application once `FileLinkInst` gains a
+`ReadRec` (four fields, §6 below).
+
+#### 4. `ush_execfail_law_wq_at` (`iris/UkShEcho.v`)
+
+```coq
+  Definition ush_execfail_law_wq_at (dg : list (bv 8) -> list (bv 8))
+      (nn : list (bv 8) -> nat) (Wc : list (bv 8) -> nat -> iProp Σ)
+      : iProp Σ :=
+    (□ (∀ I : list (bv 8),
+          UkShDiag.ush_execfail_law_at (dg I) (nn I)
+            (Wc I 3%nat) (Wc I 0%nat)))%I.
+
+  Definition ush_execfail_law_wq (Wc) : iProp Σ :=
+    ush_execfail_law_wq_at (fun _ => alt_execfail) (fun _ => 17%nat) Wc.
+
+  Lemma ush_execfail_law_wq_of_at dg nn Wc :
+    (forall I, dg I = alt_execfail) -> (forall I, nn I = 17%nat) ->
+    ush_execfail_law_wq_at dg nn Wc -∗ ush_execfail_law_wq Wc.
+```
+
+and, in `UShEchoPay`, the discharge that needs NO equation at any era:
+
+```coq
+  Lemma ush_execfail_law_wq_at_hold (Hold : list (bv 8) -> iProp Σ) :
+    ⊢ lk_links L -∗
+      UkShEcho.ush_execfail_law_wq_at (PS := uprogSG_free)
+        (lk_exfb L) (fun I => (length (lk_exfb L I) - 2)%nat)
+        (fun I p => lk_lcred L (S gen_id) I p ∗ Hold I)%I.
+```
+
+(`UShPanic.ush_execfail_law_hold_at` already delivers the law at
+`lk_exfb L I`; the constant carrier was the only thing in the way.)
+`ush_execfail_law_wq_hold_at`, the bridge to the landed carrier, keeps its
+`forall I, lk_exfb L I = alt_execfail` premise — true at echo, FALSE at the
+file (`FileLinksLine.fexfb LCat = alt_execcat`).
+
+#### 5. `UShRound.v` — THE THREE HYPOTHESIS RESHAPES (skeleton only; every proof still `Admitted`)
+
+1. The five `UShLine.ush_mid (fgn_echo g) γp` sites are
+   `UShLine.ush_mid_at (lk_rres FI) (fgn_echo g) γp` at
+   `FI := FileLinkInst.file_link_inst g` (`Hwc` ×2, `Hwbr` ×2, and the
+   round's own `Pm`).  The ghost algebra is unchanged; only the RESIDUE is
+   the record's, and `lk_rres FI` is `FileLinksLine.fwc_rres g`.
+2. `Hcltaint` takes the echo-side era pin:
+   `forall I p v, ⊢ era_pin (fgn_echo g) (S gen_id) v -∗ T -∗ Wcl I p`.
+   ONE pin, not two: `lk_pin FI` IS `era_pin (fgn_echo g)`, so
+   `LinkRec.lk_lcred_taint` discharges it and
+   `FileLinkInst.file_Hcltaint` is already written at that shape.
+3. `Hexecfail` is
+   `⊢ UkShEcho.ush_execfail_law_wq_at (lk_exfb FI)
+       (fun I => (length (lk_exfb FI I) - 2)%nat) Wcf`
+   and is **dischargeable today** by
+   `UShEchoPay.ush_execfail_law_wq_at_hold`.
+
+`UShRound.v` gained `Require Import LinkRec. Require Import FileLinkInst.`
+and a `Local Notation FI`; nothing else there moved and no proof text was
+added or removed.
+
+#### 6. WHAT IS STILL OPEN FOR `sh_round_holds_file`, EXACTLY
+
+1. **THE WALK'S THREE READINGS OF THE DISCIPLINE.**  After §1 the ONLY
+   `EchoDisc.disc_input` left in `UkSh.v` above the statements is inside
+   `wp_kshg_loop`, at three sites (`iris/UkSh.v:3961`, `:4190`, `:4338`):
+   - `:3961` — "the input grew by that byte and is disciplined still", the
+     row that decides every branch (`EchoDisc.disc_input_byte_val`, through
+     `ush_disc_snoc_val`);
+   - `:4190` — `disc_input_snoc_nl`: the line a newline closed is an
+     admissible BODY;
+   - `:4338` — `disc_input_rest_short`: the remainder is short enough that
+     its newline still fits.
+   Those three are the whole law set a generic `wp_kshg_loop` needs, and at
+   `FileDisc.disc_input_f` the first and third are immediate (the
+   definitions are the same shape at `fbody_byte` / `fbody_ok`); the second
+   lands in `fbody_ok`, not `EchoDisc.body_ok`, which is the LINE axis of
+   §1's second paragraph.  Making the walk generic means a section variable
+   `Dsc` plus those three hypotheses from `UkSh.v:2461` on, which re-signs
+   every walk lemma after it and `UShKernel`'s three
+   `ush_read_recv_leaf` hypothesis lines.  **That is a lane, and it is the
+   last one between the file era and sh's loop.**
+2. **`UkShEcho.ushf_child_law_holds` STILL NAMES THE CONSTANT CARRIER.**
+   It takes `ush_execfail_law_wq Wc`, i.e. `alt_execfail` at EVERY input.
+   The file supplies `ush_execfail_law_wq_at (lk_exfb FI) …`, and the gap
+   is exactly `forall I, lk_exfb FI I = alt_execfail`, which is false at an
+   `LCat` line and TRUE at the inputs the echo child law is about.  The fix
+   is to let `UkShFork.ushf_child_law_at`'s own `Lp` imply it:
+   `ushf_child_law_at Lp` already carries `⌜Lp ws g 0 len⌝` and
+   `⌜ws = last_ws I⌝`, so `ushf_child_law_holds` should take
+   `ush_execfail_law_wq_at dg nn Wc` plus
+   `forall ws g len I, Lp ws g 0%nat len -> ws = last_ws I ->
+      dg I = alt_execfail /\ nn I = 17%nat`.
+   That is a one-statement change in `UkShEcho.v` and it is the natural
+   companion to SH-CHILD-2's fd-1 generalisation of the same file.
+3. **`FileLinkInst` OWES A `ReadRec`**, four fields:
+   `rk_disc := FileDisc.disc_input_f`; `rk_rd` / `rk_rd_taint` off
+   `FileLinks.file_links`' read projections (`FileLinks.fread_ret` is
+   already `lk_rr file_link_inst`); `rk_arms` the file twin of
+   `ReadRec.eri_arms` — the same proof with `FileOut`'s `ein_read_byte`
+   twin and `fwc_rres` in place of `echo_rres`.  With it, `Hread` for the
+   file round is `UShLine.ush_read_recv_leaf_holds_at` at one application.
+4. Everything LINK-GEN-3's §4 listed for `Hchild_echo`, `Hwc`, `Hwbr` and
+   `ush_rest_l` stands unchanged; `Hexecfail` has moved from "not stated
+   truthfully" to "dischargeable today".
+
+#### 7. BUILD NOTES
+
+- **A section variable added mid-file re-signs everything after it.**  That
+  is why §1 parameterizes the STATEMENTS (whose `Dsc` is a definition
+  parameter, before `UkSh.v`'s `Context (cn)`) and not the walk: a
+  `Context (Dsc)` at `:2461` would have carried `Dsc` and its three laws
+  into every walk lemma and out to `UShKernel`.
+- **`Global Arguments` on a record projection is worth skipping.**  The
+  implicit count depends on which section variables the record actually
+  uses, and getting it wrong costs a build; `ReadRec` keeps its parameter
+  `L` EXPLICIT on every projection (`rk_rd L R k n v ws Φ`), as
+  `LinkRec`'s own fields keep theirs.
+- **A `Definition` recovery of an Iris lemma works exactly as a `Lemma`
+  does** — the `bi_emp_valid` coercion fires in a definition's codomain
+  too — so `Definition f … : <landed statement> := f_at <instance> …` is
+  the whole of an echo recovery, with the instance's own laws passed as
+  named lemmas.
+
+### CAT-GEOM-2 (2026-09-17) — cat's PAYMENT AT THE CLAIM: BOTH ARMS ASSEMBLED, THE TAINTED OPEN KEEPS ITS LEDGER, AND THE ROUND LOSES A VACUOUS PREMISE
+
+Branch `app-file/cat-entry`, merged with `main` three times more
+(SKELETON's `5894e21dc`, SUP-ONE / OFF-LINK / WRITE-RELAY-2's
+`2b2922598`, and the fix-forward `ba34a9c5f`).  Nothing in this lane's
+files named `riscv_kill_cred`, `pipe_taint_cred` or
+`kcat_cldep_nonpipe`; what SUP-ONE's U2 did change under this lane is
+`UkCatMain.kcat_pay_all_of_law`, which lost its `udepw_law 21` premise
+(the close is FREE at a descriptor whose leaf exports
+`FdSlots.fdst_nopipe`), so `UShCat.cat_uexec_slot` /
+`cat_slot_of_kexec` and `UCatKernel.cat_pay_at_of_law` drop that
+premise too rather than carry it unused.
+
+**THE LANE'S VERDICT IN ONE LINE: all five items land, and two of them
+close residues CAT-ENTRY-2 and CAT-GEOM had left open — lane OFF-LINK's
+count bound makes `cat_round_at`'s `Hw` provable outright
+(`cat_hw_of_link`) and makes the `cat: read error` tail REFUTABLE, so the
+round drops a premise that was UNSATISFIABLE at a claim and therefore
+made it vacuously true.**
+
+**(2) THE TAINTED OPEN KEEPS THE LEDGER.  `iris/UkFileOpen.v`.**
+
+`UkFileOpen.uk_open_taint_fd gf l r` — "either the call failed and the
+ledger is UNTOUCHED, or it allocated and the handle came with it" — is
+`UConsOpen.uk_open_fd_arm` minus the two kernel-side lists the caller
+cannot name.  It replaces `UserFd.ustd_any` on the taint disjunct of
+**exactly six statements**: `wp_uk_ecall_open_read_deed`,
+`wp_uk_ecall_open_miss_deed` and their `_v` and `_d` twins.  The leaf had
+the disjunction in hand and threw it away.  Two readings come with it:
+`uk_open_taint_fd_of_arm` (the leaf's own arm) and
+**`uk_open_taint_fd_std`** — at `fd_lowest_closed l = None` the ledger
+comes home on BOTH sub-arms, because `fdalloc` could not have landed on a
+standard stream (`UserFd.ualloc_hi`).  That is what a tainted cat needs
+and what `ustd_any` could not give: `ustd_any` does not say the program's
+fd 2 is still the console, so `kcat_wb_of_link` could not be run after a
+tainted open.  `UkCatDeed.v` relays it in four places
+(`wp_kcat_open_read_deed`, `wp_kcat_open_miss_deed`, `kcat_o_of_deed`,
+`kcat_o_of_deed_miss`).  The CREATE corollary is untouched.
+
+**(3) `UCatOut.catq_filed` FILES AT CAT'S OWN END CURSOR.**
+
+`UCatOut.cat_out_len cs0 s0 I0 a := length (cont (cat_st cs0 s0 I0) LCat
+(ralt_dec a)) - length u_prompt`, with the two readings
+`cat_out_len_ran_some` (`= length bs` at a present deed) and
+`cat_out_len_ran_none` (`= 19` at an absent one).  Every alternative
+cat's round can take is `<cat's own output> ++ u_prompt`, and **the
+prompt is the SHELL's** — cat exits before it is written.
+`catq_filed_const` is still `reflexivity`, so the `forall x y, Q x = Q y`
+the record wants is unchanged.  **WHAT SH-ROUND THEN FILES at the two
+bytes between `cat_out_len` and the round's length**: its own prompt
+write, through `FileLinks.file_write_link` at the choice list cat's FIRST
+byte already extended — except in the EMPTY-CONTENT case, where cat wrote
+nothing, the prompt's first byte IS the block's, and it goes through
+`file_write_link_blk` (CAT-ENTRY's ruling (b), `UCatOut.cch_empty_unfiled`).
+
+**(5) `UShRound.Hchild_cat` TAKES THE NODE PREMISES.**  `iris/UShRound.v`,
+that hypothesis and nothing else; the file's proofs stay `Admitted`.  It
+now quantifies `ws`, `sv`, `t`, `gn`, takes `line_ok ws`,
+`UShEcho.echo_node_img ws M sv t gn`, `UkShEcho.echo_argv_bytes ws gn`,
+`length ws = 2`, `UkShEcho.echo_alen ws 1 = 1` and the file name's one
+byte, and concludes at `av := mword_of_int (t + 8)`.  Free `M` and `av`
+made it a claim about EVERY argument vector, and cat's diagnostic names
+`f`.  It is now ONE application of `UCatKernel.cat_image_entry`.
+
+**(1) THE ABSENT ARM, WHOLE.**
+
+`UShCat.cat_kexec_argpath` reads `ArgPath.arg_path_of` at `argv[i]` out
+of the PERSISTED area: the block is above the entry sp
+(`cat_kexec_geom`'s `kxc_sp_final < kxc_sp (S i)`), so it is exactly the
+half `cat_entry_run` persists, and `UEchoKernel.echo_area_lookup` is the
+one step back to the image's map.  `cat_pay_at` carries it as a PURE
+premise — a resource cannot serve, because `kcat_o_of_deed_miss`'s
+premise is quantified over the image the KERNEL will read — and
+`cat_image_entry` derives it.  `cat_pay_at` also gained
+`UCodeCat.cat_code` and `UserCwd.ucwd` (the deed open resolves a RELATIVE
+path, which echo's entry drops).
+
+    Lemma cat_pay_absent (W : uvis) (v : era_pins) (vf : file_era)
+        (ps0 cs0 : list nat) (s0 : fst) (I0 : list (bv 8)) (P : nat)
+        (c : file_fixed) (r : file_names) (q : Qp) (rb : bool)
+        (Q : Z -> iProp Σ) (s : dst) :
+      file_app = MkAppcfg file_names (file_pred c) r ->
+      c = fgn_cl g ->
+      UCatOut.cat_stage ps0 cs0 s0 I0 P ->
+      cat_tie cs0 s0 I0 s -> s = None ->
+      uvis_cwd W = FsImg.ROOTINO ->
+      take NSTD (uvis_fd W) !! 2%nat
+        = Some (FdOpen rb true (FdDevice CONSOLE)) ->
+      fd_lowest_closed (take NSTD (uvis_fd W)) = None ->
+      app_inv fsc_fs -∗
+      era_pin (fgn_echo g) (S gen_id) v -∗
+      file_era_pin g (S gen_id) vf -∗
+      □ (UCatOut.cch g v vf ps0 cs0 s0 I0 (ralt_enc RCRan) P 19%nat
+         -∗ Q (-1)) -∗
+      (∀ N' : uk_names Σ,
+         cat_taint_open N' c (take NSTD (uvis_fd W)) (Q (-1))) -∗
+      cat_pay_at W Q
+        (fdq r q None
+         ∗ UCatOut.cch g v vf ps0 cs0 s0 I0 (ralt_enc RCRan) P 0%nat).
+
+`kcat_o_of_deed_miss` with the console cursor framed across the call
+(`kcat_o_frame`, which `UkCat.kcat_o` had no law for), then
+`cat_dg_open_absent` on the `-1` arm AND on the taint arm — the latter
+only because item (2) gave the ledger back.
+
+**(4) THE PRESENT ARM.**
+
+    Lemma cat_pay_present (W : uvis) (v : era_pins) (vf : file_era)
+        (ps0 cs0 : list nat) (s0 : fst) (I0 : list (bv 8)) (P : nat)
+        (c : file_fixed) (r : file_names) (q1 q2 : Qp) (i : Z)
+        (bs : list (bv 8)) (om : offmode) (rb : bool) (Q : Z -> iProp Σ) :
+      c = fgn_cl g ->
+      UCatOut.cat_stage ps0 cs0 s0 I0 P ->
+      cat_tie cs0 s0 I0 (Some (i, bs)) ->
+      take NSTD (uvis_fd W) !! 1%nat
+        = Some (FdOpen rb true (FdDevice CONSOLE)) ->
+      take NSTD (uvis_fd W) !! 2%nat
+        = Some (FdOpen rb true (FdDevice CONSOLE)) ->
+      fd_lowest_closed (take NSTD (uvis_fd W)) = None ->
+      era_pin (fgn_echo g) (S gen_id) v -∗
+      file_era_pin g (S gen_id) vf -∗
+      (∀ (N' : uk_names Σ) (ga : uarg),
+         ⌜UShCat.cat_args W !! 1%nat = Some ga⌝ -∗
+         cat_open_hand N' c r q1 q2 i bs (take NSTD (uvis_fd W)) om
+           (mword_of_int (UserHeap.ua_ptr ga))) -∗
+      (∀ (N' : uk_names Σ) (fd : nat) (gamo : gname),
+         ⌜(fd < NOFILE)%nat⌝ -∗
+         cat_held_read (cat_hold_at N' r q1 i bs om fd gamo) c fd bs) -∗
+      □ (∀ p : nat, ⌜(p <= length bs)%nat⌝ -∗
+           UCatOut.cch g v vf ps0 cs0 s0 I0 (ralt_enc RCRan) P p -∗
+           Q (-1)) -∗
+      □ (UCatOut.cch g v vf ps0 cs0 s0 I0 (ralt_enc RCNoOpen) P 19%nat
+         -∗ Q (-1)) -∗
+      (∀ N' : uk_names Σ,
+         cat_taint_open N' c (take NSTD (uvis_fd W)) (Q (-1))) -∗
+      cat_pay_at W Q
+        (fdq r q1 (Some (i, bs)) ∗ fdq r q2 (Some (i, bs))
+         ∗ UCatOut.cch g v vf ps0 cs0 s0 I0 (ralt_enc RCRan) P 0%nat).
+
+the open, the ROUND (`cat_round_at` at `cat_hold_at`, with
+`cat_hw_of_link` discharging `Hw`), and the CLOSE (`cat_cl_of_in`, which
+reads the descriptor out of the round's OUTPUT — `UkCat.kcat_cl_of_dep`
+wants it in hand when the obligation is built, and cat's is inside the
+round's invariant until the loop stops; `FdSlots.fdst_nopipe_inode` is
+the close's licence, SUP-ONE's `kcat_cldep_nopipe`).
+
+- **`om : offmode` IS A PARAMETER THROUGHOUT** — never `OffParked`,
+  never `OffHeld` literally — in `cat_hold_at`, `cat_open_hand` and
+  `cat_pay_present`, so whatever shape OFF-LINK's publish lands on plugs
+  in.  `cat_hold_at` is `UShRound.cat_hold` with `wb` pinned to `false`
+  (cat opens `O_RDONLY`, so the open's fd arm is `FdOpen true false`).
+- **The PRESENT file whose open FAILS files `RCNoOpen`** and prints the
+  same nineteen bytes (`cat_dg_open_noopen`).  The alternative is not
+  decided before the first byte (`UCatOut.cch_0_alt`), so a payer holding
+  the cursor at ZERO re-indexes it to whichever the deed turns out to
+  name — which is what makes CAT-ENTRY's ruling (a) implementable at all.
+
+**WHAT REMAINS, AND WHO OWNS EACH.**
+
+1. **`cat_open_hand` — lane OFF-LINK's publish.**  `kcat_o_of_deed`'s fd
+   arm hands `ualloc … (FdInode i γo OffParked)` and NO `UserOff.uoff`;
+   `UserOff.off_pub_hand_0` (in `ProofSysOpenPub`) is the split that
+   gives the program its half.  Everything else in `cat_open_hand` is
+   `kcat_o_of_deed`'s post verbatim, so it is one `iApply` when the
+   publish lands.
+2. **`cat_held_read` at the held row — lane OFF-LINK's held read leaf.**
+   Its COUNT BOUND is no longer owed: OFF-LINK landed it and this lane
+   threaded it through `UkCatDeed.kcat_r_of_deed` / `_at` into
+   `cat_held_read`'s post on BOTH arms.
+3. **`cat_taint_open` — THE TAINT'S DESCRIPTOR SUB-ARM, and it is a real
+   gap, not a proof effort.**  At a tainted era the open may still return
+   a handle, and what cat does next is READ — which the taint does NOT
+   buy back: `UexecExecMint.udepw_law_of_sup` mints 15 and 17 off
+   `AppInv.app_sup`, `_write` mints 16 and `_close`/`_exit` mint 21 and
+   93, but **FIVE is excluded by construction**, and
+   `AppFile.file_sup_of_taint` only runs taint → sup.  So a tainted cat's
+   LOOP needs a supplier of its own.  `cat_taint_open` is EXACTLY the
+   right conjunct of `UkCatMain.kcat_file`'s output, so whoever supplies
+   it plugs in by `iApply`.  **Owner: whoever gives a tainted verified
+   program its generic continuation mid-walk (the entry's
+   `image_entry_taint` is the shape one level up).**
+4. **THE EXIT CURSOR IS NOT PINNED.**  `cat_pay_present`'s payload wand
+   is `∀ p ≤ length bs` and not `length bs`, because
+   `UCatKernel.cat_round_at`'s `Cend` wand takes the console cursor and
+   the handle's position SEPARATELY and the loop's exit condition
+   (`read` returned zero, hence `ard_count 512 p' (length bs) = 0`, hence
+   `p' = length bs`) is not in it.  Pinning it is `ard_count`'s own
+   arithmetic inside `cat_round_at`, and until it is done a caller
+   cannot instantiate `Q := UCatOut.catq_filed …` (which is now at
+   `cat_out_len`, i.e. `length bs`).  **Owner: this lane's next item.**
+
+**TWO RESIDUES CLOSED THAT WERE NOT ON THE LIST.**
+
+- **`cat_round_at`'s `Hw` IS `cat_w_of_link` OUTRIGHT** (`cat_hw_of_link`).
+  CAT-ENTRY-2's stop was that the cap `Z.to_nat (bv_unsigned rv) <= 512`
+  rode only in `Hw`'s CONTENT disjunct.  With OFF-LINK's count bound in
+  `cat_held_read`'s post on both arms, `cat_round_at` hands the cap to
+  `Hw` on both, `Hw`'s taint disjunct becomes
+  `⌜cap⌝ ∗ file_taint c`, and the write payment is discharged for every
+  turn the round can take.
+- **`cat_round_at` LOSES ITS `□ UkCatCat.kcat_dg_cr N` PREMISE, AND THAT
+  IS A VACUITY FIX.**  The `cat: read error` tail is sixteen bytes the
+  model's continuation does not hold at ANY cursor, so no console
+  credential can file them: the premise is UNSATISFIABLE at a
+  claim-bearing era and a round taking it is VACUOUSLY TRUE.  With the
+  count bound the arm is REFUTED instead — the count is at most 512, so
+  the returned word's SIGNED reading is its unsigned one and
+  `bv_signed ret < 0` is a contradiction — on both arms of the read.
+  **This is the defect class durable-notes names: a premise nobody can
+  supply, in a contract that compiles and whose callers apply it.**
+
+**EVERY STATEMENT THAT MOVED, EXHAUSTIVELY.**  `UkFileOpen.v`: the taint
+disjunct of SIX corollaries (read/miss × base/`_v`/`_d`), plus the new
+`uk_open_taint_fd` and its two readings.  `UkCatDeed.v`: the same
+disjunct relayed in four places, and the COUNT BOUND added to
+`kcat_r_of_deed` / `kcat_r_of_deed_at`'s posts (OFF-LINK's row, which its
+proof already had in hand).  `UCatOut.v`: `catq_filed`'s cursor, plus
+`cat_out_len` and its two readings.  `UCatKernel.v`: `cat_pinned_read_at`
+and `cat_held_read`'s posts gain the bound, `cat_round_at`'s `Hw` gains
+the cap on its taint disjunct and LOSES the `kcat_dg_cr` premise, and
+`cat_pay_at` gains `cat_code`, `ucwd` and the path row; everything else
+is additive.  `UShRound.v`: `Hchild_cat` only.  `UShCat.v`: additive
+(`cat_kexec_argpath`), plus the `udepw_law 21` premise dropped from
+`cat_uexec_slot` / `cat_slot_of_kexec` (SUP-ONE).
+
+**THE ENTRY TIER IS ITS OWN SECTION, AND THAT IS A FINDING.**  Everything
+up to and including [Hw] is stated at ONE `uk_names` record -- the
+section's `N` -- because a walk runs at the record its own
+`UkRun.urun` was minted with.  An ENTRY does not: it ALLOCATES the
+record, so its payment is owed at whatever `UkRun.uslot_of_urun_all`
+hands out and must be quantified over it.  **Applying a section-`N`
+lemma under that `∀` is durable-notes' class-instance trap in its purest
+form**: the two records print identically, do not unify, and the
+`iApply` NEVER TERMINATES -- 2.5 GB of stable RSS, thirty minutes, no
+error, and `coqc -time` streaming is the only thing that localises it
+(the last line printed is the `{` that opens the failing block).  So
+`UCatKernel.v` now closes `Section UCatKernel` after [Hw] and opens
+`Section UCatEntry` without `Context (N)`, and §7-§9 use every result
+above at an EXPLICIT record.  The same discipline applies to any future
+entry-level result in that file.
+
+**THE BAR.**  Whole tree green on the lane's remote tree
+(`./gcp-rocq/run-on-gcp --proofs -k`: `EXIT=0`, ZERO `Error`).  Nothing
+is `Admitted` outside `UShRound.v`'s skeleton; `grep -c "^ *Proof\.$"` is
+0 in every touched file; `tools/comment_quote_check.py iris` reports 0
+sites.  `make audit-all-only`, `make audit-tree-only` and `make
+audit-file-only`: `AUDIT_EXIT=0` / `AUDITTREE_EXIT=0` /
+`AUDITFILE_EXIT=0`, and the four axiom lists are UNCHANGED -- the ECHO
+theorem's FOURTEEN, the SYSTEM theorem's THIRTEEN, the TREE theorem's
+THIRTEEN and the FILE theorem's FOURTEEN.  `make gen-ucode` prints
+*unchanged* for all seven catalogs.  `Print Assumptions`:
+`cat_image_entry` and `cat_pay_absent` are `UShEcho.echo_image_entry`'s
+FOURTEEN exactly; `cat_pay_present` and `cat_hw_of_link` are the three
+non-primitive ones alone (`resv_matches`, `resv_is_valid`,
+`functional_extensionality_dep`); `UkFileOpen.uk_open_taint_fd_std` is
+*Closed under the global context*.
+
+### OFF-LINK-3 (kernel/U tier, 2026-09-17) — THE MERGE, AND THE ONE DERIVATION THE COUPLED REMAINDER TURNS ON: THE KERNEL HOLDS THE `uoff`, THE NODE IS **ANCHORED**, AND THE FIRE DOES NOT MOVE
+
+**The lane's verdict in one line: the merge of main (LINK-GEN-2/3, and this
+lane's own OFF-LINK-2 coming back through it) landed green with a four-file
+fix-forward, and the coupled remainder — L3's contract arms, L2, L4, L5 — is
+NOT landed; what this lane produces instead is the derivation that decides its
+shape, which every earlier attempt in this campaign got wrong in the same way:
+the program's half must be in the KERNEL's hands at the fire and the equation
+`off = off0` must be RELAYED INTO the node, not derived inside it, and once it
+is, `UserOff.off_supply_held` applies at the node's UNMOVED arm and the fire
+lemmas do not move at all.**
+
+**WHAT LANDED** (whole tree green on the lane's remote tree, `EXIT=0`, zero
+`Error`; audits unchanged — system THIRTEEN, echo FOURTEEN, tree THIRTEEN,
+file FOURTEEN.)
+
+*`792f02143`, `5b9e998a0` — the merge of main and its fix-forward*
+
+Two conflicts, both where LINK-GEN-3 had replaced an echo proof by a
+`Definition` at a generic `_at` lemma while this lane's L6 had edited the old
+proof text (`UEchoOut.v`, `UShEchoPay.v`): main's versions taken, as the
+coordinator ruled.  Four files then needed L6's deletions applied to main's new
+text: `UEchoOut`'s slot mint (the deleted `hs` argument and its row),
+`UShEchoPay`'s and `UkShRedirBody`'s child laws (the `⌜ukn_held N' = ∅⌝` row
+and its two discharges), and `UkShRedirBody`'s two interderivability lemmas.
+
+**THE DERIVATION, and it is the whole of what the remainder waits on.**
+
+The held write arm has to make FOUR things true at once, and exactly one
+arrangement does it:
+
+1. the NODE's claim step needs `off = off0` (echo appends at `|bs0|`, and
+   `FileWrite.file_awrite_full_anchored` carries that as a premise);
+2. the FIRE's settle needs the program's half (`off_supply_held`), because at
+   a held row `FdSlots.foff_row st` is `emp` and the box's coupled arm cannot
+   be moved by one half;
+3. a `ghost_var` half cannot be split between the two (1 requires it inside
+   the node's closure, 2 requires it in the kernel's hands, and a fraction of
+   a half cannot move the ghost);
+4. the generic tier must be able to pay the arm at all.
+
+(1) and (2) are irreconcilable ONLY if the equation has to be DERIVED inside
+the node.  It does not: the KERNEL knows `off` at the fire and, holding the
+program's `uoff γo off0`, learns `off = off0` by `UserOff.uoff_agree_k` against
+the box's own half — and can then RELAY it into the node as a pure premise.
+That is the "premise slot in `awrite_full_at` that does not exist" of the
+review's §A1, and it exists the moment the arm is stated at an ANCHORED node
+instead of the plain one.  So:
+
+    (* [FsAbsWriteFire], additive: [awrite_full_at] with ONE arrow added *)
+    awrite_full_anch Γ E i γo M ua n k (off0 : nat) REST :=
+      ∀ I off bs bs0 nl,
+        ⌜wri_pre …⌝ -∗ ⌜ubytes_at …⌝ -∗ ⌜length bs = wchunk_at n k⌝ -∗
+        (⌜off = off0⌝ ∨ app_taint) -∗           (* THE ANCHOR, or the taint *)
+        ghost_map_auth … -∗ off_link γo (Z.of_nat off) ={E}=∗ …
+        (… off_ret γo off (length bs) ∗ REST)
+
+    awrite_chain_anch … Q k cnt off0 :=
+      match cnt with O => Q k
+      | S cnt' => Q k ∧ (awrite_full_anch … k off0
+                           (awrite_chain_anch … (S k) cnt'
+                              (off0 + Z.to_nat (wchunk_at n k)))
+                         ∧ awrite_part_anch … k off0 (…)) end
+
+    (* [SpecFilewrite.filewrite_in]'s inode arm, keyed on the ROW'S MODE,
+       with the match OUTSIDE the ∀ P so WRITE-RELAY-3's [TB] guard fits in
+       front of the chain on both arms *)
+    | FdOpen _ true (FdInode i γo OffParked) => awrite_chain … n Q 0 (wchunks n)
+    | FdOpen _ true (FdInode i γo OffHeld)   =>
+        (∃ off0 : nat, uoff γo off0 ∗ awrite_chain_anch … n Q 0 (wchunks n) off0)
+        ∨ (awrite_chain … n Q 0 (wchunks n) ∗ app_taint)
+
+and THE FIRE DOES NOT MOVE.  At the coupled box the kernel agrees, feeds
+`iLeft`, fires, and settles with `off_supply_held` — whose post this lane
+already landed at `pipe_wpost`'s shape, `uoff γo (off + d) ∨ (uoff γo off ∗
+app_taint)`.  At a DISCONNECTED box it feeds the box's own `app_taint` into
+the anchor's right arm (the node goes to its claim's taint arm), fires, and
+settles with `off_supply_taint`.  The generic tier pays the RIGHT arm of the
+contract (4), and `awrite_chain`'s own `awrite_chain_unit` is what builds it.
+The loop carries `uoff γo (off + |bs|)` out of the post into the next node's
+anchor, which is `off0 + wchunk_at n k` — the value the fixpoint already
+names.
+
+THE READ SIDE NEEDS NO ANCHOR AT ALL, and that is worth saying separately:
+`FsAbsReadFire.aread_commit_at` REPORTS the offset to the client's receipt
+(`F.(pf_recv) av off a d`), so the program learns `off` from the POST rather
+than inside the commit.  Its held arm is therefore
+
+    | FdOpen true _ (FdInode i γo OffHeld) =>
+        (∃ off0 : nat, uoff γo off0 ∗ pf_at (aread_commit_at …) F)
+        ∨ (pf_at (aread_commit_at …) F ∗ app_taint)
+
+with `read_arms`' fired arm gaining `⌜off = off0⌝ ∗ uoff γo (off + d)` (the
+kernel's own agreement, reported) or the taint with the payment back.  That is
+exactly CAT-ENTRY-2's `Hpin`: from `Hold p := ufd … ∗ uoff γo p ∗ fdq …` the
+read reports `off = p` and hands `uoff γo (p + count)` back.
+
+**WHAT REMAINS, in the order it must be done, with its price.**
+
+- (a) the two arms above, their `_of_*` readings, and the two fire sites
+  casing on the row's mode.  The arms are cheap (`Spec*` files, small cones);
+  the WRITE fire site is not, because `ProofFilewrite`'s loop invariant has to
+  carry `uoff γo (current offset)` and the anchored chain across iterations —
+  that is the one piece of real surgery left in this campaign, and it is a
+  lane of its own.  The READ fire site is a single commit and is cheap.
+- (b) L2 (`fpnames.fp_om`) — the recipe in lane OFF-LINK's REFUTED 3 is exact
+  and was re-walked here; it lands WITH (a) because the moment the pin moves,
+  `ProofFilewrite.v:5016` and its read twin must case on the mode and take the
+  held row's supplier off the contract's arm.
+- (c) L4 (the mint) — `ProofSysOpenPub` at `off_pub_hand_0` with the receipt
+  carrying `uoff g 0` and `fp_om` set to match, and `usys_fd_ok`'s open arm's
+  `fdst_parked` relaxed to the caller's family's mode.  Nothing depends on
+  the pin any more (lane OFF-LINK-2 deleted `usys_fd_ok_parked`), and the
+  generic Löb needs nothing: open moves one row of the table, not the
+  discipline.
+- (d) L5 — the held deposit suppliers are the landed parked ones at
+  `FdOpen _ _ (FdInode i γo OffHeld)` carrying `uoff γo off` into the held
+  arm; `UkReadFile.wp_uk_ecall_read_file` / `UkWriteFile.wp_uk_ecall_write_file`
+  and the ledger-slot `wp_uk_ecall_write_std` DO NOT MOVE (they are already
+  state-generic), so L5 is two deposits, one deed corollary
+  (`wp_uk_read_deed_learns_held`, the landed `_mapped` one with `⌜off = p⌝`
+  from the post) and `UEchoFile`'s `ef_node`/`ef_chain` re-instantiated at
+  `awrite_chain_anch`.
+
+**WHAT ECHO-FILE / CAT-GEOM-2 / SH-ROUND APPLY, as of this lane.**
+- Everything lane OFF-LINK-2 listed still holds: the generic tier is told
+  nothing about offsets, the box may be disconnected, `Hoff_link` /
+  `Hdep1` / `Hwrite1` are discharged.
+- The write side's program obligation is now NAMED: `UEchoFile.ef_node` is to
+  be stated at `awrite_full_anch` (the anchor arrow in front of the phases),
+  and its `⌜off = off0⌝` comes from the KERNEL, not from an agreement inside
+  the node — so `efq`'s cursor need not hold `uoff` at all, which is one
+  linear resource fewer in echo's chain.
+- cat's read obligation is unchanged in shape and gains the two conjuncts
+  above on the fired arm.
+
+### LINK-GEN-5 (2026-09-17) — THE GETS WALK TAKES THE DISCIPLINE; THE FILE'S READ LEAF IS ONE APPLICATION; THE LAST WALL IS THE LINE AXIS AND IT IS ONE LAW
+
+Branch `app-file/link-stage`, on top of LINK-GEN-4 and main's OFF-LINK-2.
+Whole tree GREEN on the lane's remote tree (`--proofs -k`, `EXIT=0`, zero
+`Error`); all four audits unchanged (`audit-only` thirteen,
+`audit-echo-only` FOURTEEN with the identical list, `audit-tree-only`
+thirteen, `audit-file-only` fourteen); no `Admitted` added; `Proof using`
+everywhere.
+
+**THE LANE'S VERDICT IN ONE LINE.**  LINK-GEN-4 said the walk's dependence
+on the discipline was three readings; it is, and TWO of the three are true
+of any discipline whose bytes are body bytes — the third is not about the
+discipline at all.  `Hdsc_nl` is `EchoDisc.body_ok`-valued, and `body_ok`
+asks `ws !! 0 = Some cmd_echo`; so the last wall between the file era and
+sh's loop is the LINE AXIS (`ush_line_is` inside `ush_gets_done`), it is
+ONE law, and it is named exactly below.
+
+#### 1. THE WALK'S THREE LAWS (`iris/UkSh.v`)
+
+```coq
+  Context (Dsc : list (bv 8) -> Prop).
+
+  Hypothesis Hdsc_ncr : forall (I : list (bv 8)) (b : bv 8),
+    Dsc (I ++ [b]) -> bv_unsigned b <> 13%Z.
+  Hypothesis Hdsc_nl : forall I : list (bv 8),
+    Dsc (I ++ [wl_nl]) -> body_ok (rest_of I).
+  Hypothesis Hdsc_short : forall I : list (bv 8),
+    Dsc I -> (S (length (rest_of I)) < line_max)%nat.
+
+  Hypothesis ush_read_leaf :
+    forall l : list fdstate, ⊢ ush_read_recv_leaf_at Dsc cn l.
+```
+
+placed beside `Context (cn : cons_names)`, so every walk lemma from
+`wp_ksh_read` on is generic in them and nothing below is.
+
+**`Hdsc_ncr` IS ONE NEGATION AND THAT IS THE FINDING.**  The walk's only
+use of the byte's VALUE is at `iris/UkSh.v:4432`, an `exfalso` against the
+`'\r'` branch — it never needs the alphanumeric range `ush_disc_snoc_val`
+gives.  Stated as the range, the law is FALSE at a discipline that admits
+`'>'` (`FileDisc.fbody_byte`); stated as the negation it is true of both.
+`UkSh.ush_disc_snoc_ncr` is echo's, new here, and it is what makes the echo
+instance one lemma rather than a re-proof.
+
+**THE CHAIN THAT WAS RE-SIGNED, and no further.**  `UkSh`'s walk →
+`UShKernel`'s three `Hrl` hypothesis lines (now
+`UkSh.ush_read_recv_leaf_at N γp T Pm Dsc cn l`) and its three lemmas
+(`sh_uexec_slot`, `sh_slot_of_kexec`, `sh_image_entry_at`, each gaining
+`Dsc` and the three laws) → `UInitSh.v`'s two `sh_slot_of_kexec` call
+sites, which pass `EchoDisc.disc_input` with
+`UkSh.ush_disc_snoc_ncr` / `EchoDisc.disc_input_snoc_nl` /
+`EchoDisc.disc_input_rest_short`.  **`UInitSh.cons_cred_holds` and
+`UInitBoot` do not move at all**, because `ush_read_recv_leaf` IS
+`ush_read_recv_leaf_at disc_input` by definition (lane LINK-GEN-4).
+
+#### 2. THE FILE'S SIDE OF THE THREE — TWO PROVED, ONE REFUTED
+
+`FileDisc` has `disc_input_f` and its CLOSURE laws — `disc_input_f_nil`,
+`_snoc`, `_prefix`, `_body`, `_at`, `_dec` — and `fbody_ok_bytes`, but it
+has NO byte-level reading (no twin of `EchoDisc.disc_input_byte` or the
+three consequences under it).  Those are new, in `iris/FileReadInst.v`:
+
+| new lemma | what it says |
+| --- | --- |
+| `disc_input_f_byte` | every byte of a disciplined file input is `fbody_byte` or the newline (`EchoDisc.disc_input_byte`'s twin, same `wl_cut_join` decomposition, with `fbody_ok_bytes` in place of `wl_body_bytes`) |
+| `fbody_byte_val` | `fbody_byte b` reads as `32`, `62`, `48..57`, `65..90` or `97..122` — **the `62` is `FileDisc.wl_gt`, and it is why the echo range is not the shape that travels** |
+| `disc_input_f_byte_ncr` | no byte is `0x0d` |
+| `disc_input_f_no_cr` | `ConsoleInv.cons_xlate` is the identity on it (`ReadRec.disc_input_no_cr`'s twin; `rr_byte_of_rows` takes it) |
+| `disc_input_f_snoc_ncr` | **`Hdsc_ncr` at the file** |
+| `disc_input_f_rest_short` | **`Hdsc_short` at the file** |
+
+**`Hdsc_nl` IS FALSE AT `disc_input_f`, AND THE REASON IS NOT THE
+DISCIPLINE.**  It reads `Dsc (I ++ [wl_nl]) -> EchoDisc.body_ok (rest_of I)`
+and `body_ok l := wl_body (wl_words l) = l /\ line_ok (wl_words l)` with
+`line_ok ws` demanding `ws !! 0 = Some cmd_echo`.  A `cat f` line parses to
+`FileDisc.LCat`, whose `uline_ws` is `[]`, so `body_ok` fails on it.  The
+hypothesis is `body_ok`-valued because `ush_gets_done_line` spends BOTH its
+conjuncts: the first for "the buffer holds `J ++ [nl]`", the second for
+`line_ok ws` inside `ush_line_is`, inside `ush_gets_done`.
+
+**THE FIX, EXACTLY (one law, one lane).**  `ush_gets_done` must go from
+`ush_line_is ws f 0 i` (a WORD LIST) to SH-CHILD's own
+`UkSh.ush_line_at (l : FileDisc.uline) f k len` (a LINE), which is the
+vocabulary `ush_rest_line_at`'s `D` and `ushf_child_law_at`'s `Lp` already
+speak.  Concretely: `ush_gets_done_at (Lp : ... -> Prop)` with `ush_posw`
+unchanged (it is era-free), `ush_gets_done_line_at` taking `Lp` and the
+line the newline closed, and `Hdsc_nl` restated as
+
+```coq
+  Hypothesis Hdsc_line : forall (I : list (bv 8)) (f : nat -> bv 8),
+    Dsc (I ++ [wl_nl]) ->
+    (forall j : nat, (j < length (rest_of I))%nat -> f j = rest_of I !!! j) ->
+    f (length (rest_of I)) = wl_nl ->
+    exists ws : list (list (bv 8)),
+      Lp ws f 0%nat (S (length (rest_of I)))
+      /\ (S (length (rest_of I)) = length (line_bytes_of ws))
+```
+
+— at echo `Lp := ush_line_is` and `ws := wl_words (rest_of I)`, which IS
+`disc_input_snoc_nl`; at the file `Lp` is the wider one SH-CHILD-2 is
+already writing for `ushf_child_law_at`, and `ws` comes off
+`FileDisc.fbody_ok_line`.  **That is the last wall.**
+
+#### 3. `FileReadInst.v` — THE FILE'S `ReadRec`, AND `file_read_leaf_holds`
+
+```coq
+  Definition file_read_inst : ReadRec FI :=
+    MkReadRec FI disc_input_f fri_rd fri_rd_taint fri_arms.
+```
+
+- `rk_disc := FileDisc.disc_input_f`;
+- `rk_rd` / `rk_rd_taint` are `FileLinks.file_links_rd` /
+  `file_links_rd_taint` at `FileLinks.fread_ret`;
+- `rk_arms` is `ReadRec.eri_arms`'s proof at the file model: the same
+  `inp_lb_cmp` prefix argument, with `FileLinks.fread_ret`'s trailing
+  disjunct — which carries the era's FILE pin and the boot state's lower
+  bound beside the writer's cursor — rebuilt as `FileLinksLine.fwc_rres`
+  (`f0w (S gen_id) s0` is exactly the conjunct it has over
+  `LinkRec.echo_rres`).
+
+and the application the lane was asked for:
+
+```coq
+  Lemma file_read_leaf_holds (Wb : list (bv 8) -> iProp Σ)
+      (N : uk_names Σ) (γp : gname) (l : list fdstate) :
+    ukn_pay N
+      = ucons_pay fsc_cons γp (lk_T FI)
+          (UShLine.ush_rd_x_at (lk_rres FI) (fgn_echo g) Wb) ->
+    (⊢ app_sup -∗ lk_T FI) -> (⊢ lk_T FI -∗ app_sup) ->
+    (⊢ lk_links FI) ->
+    ⊢ UkSh.ush_read_recv_leaf_at (PS := uprogSG_free) N γp (lk_T FI)
+        (UShLine.ush_mid_at (lk_rres FI) (fgn_echo g) γp)
+        (rk_disc FI (file_read_inst g)) fsc_cons l.
+```
+
+ONE `iApply` of `UShLine.ush_read_recv_leaf_holds_at`, with the pin bridge
+`file_ep_refl` the identity (`lk_pin FI` IS `era_pin (fgn_echo g)`).
+
+**TWO SMALL DESIGN NOTES.**  `ReadRec.rk_arms` is PINNED at `S gen_id`
+(the two LINK fields stay generic in `k`): a reader's residue names the
+era's FILE state at that generation (`FileLinksLine.f0w`'s own
+`⌜k = S gen_id⌝`), so a `∀ k` window arm is not provable at the file.  And
+`rr_byte_of_rows` now takes the discipline's no-CR reading as a premise
+rather than naming `disc_input`, which is what lets one lemma serve both
+instances.  `FileLinkInst.v` is UNTOUCHED — the file's read record and its
+one consumer live together in `FileReadInst.v`, above `UShLine.v`.
+
+#### 4. WHAT `sh_round_holds_file` STILL OWES
+
+1. **THE LINE AXIS (§2's `Hdsc_line`).**  Until `ush_gets_done` speaks
+   `uline` rather than `wl_words`, the file cannot instantiate `UkSh`'s
+   walk, and therefore cannot instantiate `UShKernel.sh_image_entry_at`.
+   Everything else on the read side is done: the leaf is
+   `file_read_leaf_holds`, today.
+2. **`UkShEcho.ushf_child_law_holds`'s constant carrier** — LINK-GEN-4's
+   residue 2, now lane SH-CHILD-2's: `ush_execfail_law_wq_at dg nn` plus
+   `forall ws g len I, Lp ws g 0%nat len -> ws = last_ws I ->
+   dg I = alt_execfail /\ nn I = 17%nat`, off `ushf_child_law_at`'s own
+   `Lp`.
+3. Everything LINK-GEN-3's §4 listed for `Hchild_echo`, `Hwc`, `Hwbr` and
+   `ush_rest_l` stands: each is one application.  `Hexecfail` is
+   dischargeable (LINK-GEN-4).  `Hcltaint`, `Hwbl`, `Hwbwc` are
+   `FileLinkInst`'s own (`file_Hcltaint`, `file_Hwbl`, `file_Hwbwc`).
+4. The FILE'S `StageRec` (LINK-GEN-3 §5) is still owed, field by field as
+   listed there; `Hchild_echo` waits on it and on nothing else.
+
+#### 5. BUILD NOTES
+
+- **Main was RED in three files after OFF-LINK-2** (which deleted
+  `UkRun.ukn_held` and the held-set argument of `uslot_of_urun_ro`):
+  `iris/UEchoOut.v` (the `∅` argument and one `%Hparkeq`),
+  `iris/UShEchoPay.v` (one `%Hheq`), `iris/UkShRedirBody.v` (the
+  `⌜ukn_held N' = ∅⌝` row of `sh_redir_child_law` and the two intro
+  patterns that read it).  All three fixed here.
+- **`lia` does not split a five-way disjunction introduced by
+  `pose proof`** where the goal is a disequality on a term it cannot see
+  through; `destruct … as [H | [H | [H | [H | H]]]]; lia` does.  The same
+  proof reads fine at echo because the term there is already the bare
+  byte.
+- **stdpp's `Forall_forall` is not Stdlib's.**  In a file that requires
+  both, `proj1 (Forall_forall _ _) Hfb b Hbl` elaborates against Stdlib's
+  `In`-based statement and fails on an `∈`; `elem_of_list_lookup` then
+  `proj1 (Forall_lookup _ _)` is import-order-proof.
+
+### CAT-GEOM-3 (2026-09-17) — THE EXIT CURSOR IS PINNED, READ(5) GETS ITS FREE LAW, AND CAT'S PAYLOAD IS `catq_filed` AT CAT'S OWN END
+
+Branch `app-file/cat-entry`, merged with `main` at `d68506285`
+(CAT-GEOM-2, OFF-LINK-3's merge, LINK-GEN-4; clean).
+
+**(1) THE EXIT CURSOR.**  `UCatKernel.cat_round_at`'s `Cend` wand took
+the console cursor `p` and the handle's position `p'` as two unrelated
+numbers below `length bs`, so a payload owed AT `length bs` — which is
+what `UCatOut.catq_filed` is, restated at `cat_out_len` in CAT-GEOM-2 —
+was not instantiable.  It is pinned now, **by the loop's own exit
+condition and nothing else**: cat stops when `read` returns ZERO, the
+count is `SysReadDefs.ard_count 512 p (length bs)`, and `ard_count` is
+`Nat.min 512 (length bs - p)`, which is zero exactly at `p = length bs`.
+The wand gained one row,
+
+    (⌜p = length bs /\ p' = length bs⌝ ∨ file_taint c) -∗
+
+— the disjunct is the TAINT, where the model says nothing and the
+cursor's own right arm funds the payload anyway.  `cat_signed_small` is
+what turns the walk's `⌜bv_signed ret = 0⌝` into `bv_unsigned ret = 0`
+(lane OFF-LINK's count bound caps it at 512, so the two readings agree).
+
+**(2) READ(5)'s FREE LAW, AND A CORRECTION TO CAT-GEOM-2.**
+`UexecExecMint.udepw_of_sup_read` / `udepw_law_of_sup_read`, the twin of
+`_write`:
+
+    Lemma udepw_law_of_sup_read `{PSx : uprogSG Σ} :
+      app_sup -∗ app_taint -∗ udepw_law (PS := PSx) 5.
+
+**CAT-GEOM-2's "read(5) is excluded by construction" WAS WRONG, and the
+way it was wrong is worth recording.**  What that lane read was the
+`destruct (decide ((15 : Z) = 5)) as [He | _]; [exfalso; discriminate He | ]`
+chain inside `udepw_of_sup` — and those are not an exclusion at all, they
+are the UNREACHABLE branches of a lemma stated at `n = 15 \/ n = 17`,
+which must walk past 5 to reach its own row.  Row 5 has ALWAYS been
+payable out of `app_sup ∗ app_taint`: `xv6_sbundle_of_supply_ne` pays it
+with `FsAbsInvFire.fsabs_fileread_in` (`iModIntro`, no update), and
+`fsabs_fileread_in` is stated at ANY `P` — the inode arm is
+`fsabs_aread`, the pipe arm the taint, the console arm the DIRTY
+credential a tokenless reader pays.  It simply had no consumer.  **Read a
+`decide` chain as the lemma's own path to its row, not as a statement
+about the rows it walks past.**
+
+**IS THE TWIN HONEST?  YES.**  The free read WRITES THE CALLER'S BUFFER,
+and that is precisely what the generic tier does for every tainted
+process: `fsabs_fileread_in` hands the caller's own `P` back at the ONE
+position the read landed on (`∀ cur dc, |==> P ∗ True`, and a `∀` over a
+constant is that constant), so nothing is duplicated and no claim is
+made about the bytes.  A tainted era has already lost the discipline;
+what the law adds is the ability to keep WALKING, not the ability to
+say anything.
+
+**WHAT THE TWIN DOES NOT CLOSE, and why `cat_taint_open` stays.**  With
+row 5 in hand a tainted cat can fund its read, its write (row 16) and
+its close (`UkCat.kcat_cldep_nopipe`, free since SUP-ONE) — but NOT its
+ROUND, because `UkCatCat.kcat_round_of_law` and
+`UkCat.kcat_pay_seq_of_law` take the exit payload as a COQ ENTAILMENT
+`(⊢ ukn_pay N (-1))`, which is satisfiable only at the TRIVIAL payload.
+At `catq_cat` the payload is a `cch`, whose taint disjunct is
+`file_taint (fgn_cl g)` — PERSISTENT, but a hypothesis, not `⊢`-derivable.
+**So the remaining obstacle is not a missing law but two `⊢`-premises
+that want to be `□`-premises**: `kcat_pay_seq_of_law` and
+`kcat_round_of_law` generalised from `(⊢ Cend)` to `□ Cend`.  Those are
+`UkCat.v` / `UkCatCat.v`, which this lane does not own; with them,
+`cat_taint_open` is discharged outright from `file_taint c` (which gives
+`app_sup` by `AppFile.file_sup_of_taint`) plus `app_taint`.  **The
+generic-slot route is NOT available here**: the taint arrives MID-WALK,
+after the open, where the process already holds a `UkRun.urun` and there
+is no `uslot` to hand back.
+
+**(3) THE TWO HYPOTHESES OFF-LINK-4 MUST DISCHARGE, VERBATIM.**
+
+    Definition cat_hold_at (N' : uk_names Σ) (r : file_names) (q : Qp)
+        (i : Z) (bs : list (bv 8)) (om : offmode)
+        (fd : nat) (gamo : gname) (p : nat) : iProp Σ :=
+      (UserFd.ufd (ukn_fd N') fd (FdOpen true false (FdInode i gamo om))
+       ∗ UserOff.uoff gamo p ∗ fdq r q (Some (i, bs)))%I.
+
+**(a) THE HELD READ** — `UCatKernel.cat_held_read N' (cat_hold_at N' r q1
+i bs om fd gamo) c fd bs`, i.e. `cat_held_read` at that `Hold`: at a
+cursor `p ≤ length bs` the descriptor HELD AT `p` reads the deed at `p`
+(the count is `ard_count 512 p (length bs)`, byte `j` is
+`bs !!! (p + j)`, and it is AT MOST 512 on both arms — OFF-LINK's bound,
+which this lane threaded through `UkCatDeed.kcat_r_of_deed`) and comes
+back HELD AT `p + count`; or the era is tainted and the handle comes back
+at some position.  **`om` IS A PARAMETER** — never `OffParked`, never
+`OffHeld` literally.
+
+**(b) THE HAND-MODE OPEN** — `UCatKernel.cat_open_hand`, now
+KEY-INDEPENDENT so that OFF-LINK-4's `wp_uk_ecall_open_read_deed_hand`
+matches it directly (it takes the path row and the cwd row the way
+`UkCatDeed.kcat_o_of_deed` does, and nothing about the calling key):
+
+    Definition cat_open_hand (N' : uk_names Σ) (c : file_fixed)
+        (r : file_names) (q1 q2 : Qp) (i : Z) (bs : list (bv 8))
+        (l : list fdstate) (cwv : Z) (om : offmode) : iProp Σ :=
+      (∀ (Img : gmap Z (bv 8)) (pv : mword 64),
+         ⌜forall M : gmap Z (bv 8), uimg_sub Img M ->
+            arg_path_of M pv FsImgCheck.fname_f⌝ -∗
+         ⌜um_start_of cwv FsImgCheck.fname_f = FsImg.ROOTINO⌝ -∗
+         ([∗ map] a ↦ b ∈ Img, ubyteq (ukn_d N') DfracDiscarded a b) -∗
+         UkCat.kcat_o N' pv
+           (UserFd.ustd (ukn_fd N') l
+            ∗ fdq r q1 (Some (i, bs)) ∗ fdq r q2 (Some (i, bs)))
+           (fun ret : mword 64 =>
+              ((⌜ret = (mword_of_int (-1) : mword 64)⌝
+                ∗ UserFd.ustd (ukn_fd N') l)
+               ∨ (∃ (fd : nat) (gamo : gname),
+                    ⌜ret = (mword_of_int (Z.of_nat fd) : mword 64)
+                     /\ (fd < NOFILE)%nat⌝
+                    ∗ UserFd.ustd (ukn_fd N') l
+                    ∗ cat_hold_at N' r q1 i bs om fd gamo 0%nat
+                    ∗ fdq r q2 (Some (i, bs)))
+               ∨ (UkFileOpen.uk_open_taint_fd (ukn_fd N') l ret
+                  ∗ file_taint c))%I))%I.
+
+It is `UkCatDeed.kcat_o_of_deed`'s post VERBATIM with one change: the fd
+arm hands `cat_hold_at … 0` — the held row AND the program's own half of
+the offset AT ZERO (`UserOff.off_pub_hand_0`) — where the landed
+corollary hands `ualloc … (FdInode i γo OffParked)` and no `uoff`.
+
+**WHAT SH-ROUND APPLIES FOR THE cat CHILD.**  The payload is a
+DISJUNCTION, and that is the model's own shape and not a hedge:
+
+    Definition catq_cat (v : era_pins) (vf : file_era)
+        (ps0 cs0 : list nat) (s0 : fst) (I0 : list (bv 8)) (P : nat)
+      : Z -> iProp Σ :=
+      fun _ =>
+        (UCatOut.catq_filed g v vf ps0 cs0 s0 I0 (ralt_enc RCRan) P (-1)
+         ∨ UCatOut.catq_filed g v vf ps0 cs0 s0 I0 (ralt_enc RCNoOpen) P (-1))%I.
+
+An ABSENT deed and a CONTENT round file `RCRan`; a PRESENT file whose
+open returned `-1` files `RCNoOpen`; **WHICH ONE is decided by the open's
+own return, which the entry cannot know** — so what crosses the exit is
+"one of the two", and `catq_cat_const` is still `reflexivity`.  Both
+disjuncts are `catq_filed` at CAT'S OWN END CURSOR: `cat_out_len` is
+`length bs` at `RCRan` with a present deed
+(`cat_out_len_ran_some`), NINETEEN at `RCRan` with an absent one
+(`cat_out_len_ran_none`) and NINETEEN at `RCNoOpen` always
+(`cat_out_len_noopen`, new).
+
+`UCatKernel.cat_pay_filed_some` and `cat_pay_filed_none` are cat's
+payment at that payload, with all three payload wands DISCHARGED; feeding
+either to `cat_image_entry` — whose payment premise now also receives
+`⌜uvis_fd W' = sts⌝` and `⌜uvis_cwd W' = cw⌝`, which is what lets a payer
+state its fd rows and its `fd_lowest_closed` about `sts` — is the
+`image_entry` `UShRound.Hchild_cat` applies.
+
+**ONE STRUCTURAL RESIDUE, NAMED.**  `image_entry` is `□`-quantified over
+the key, so a payment premise of the form `□ (∀ W', … cat_pay_at W' Q
+Pay)` cannot HOLD linear resources: the two rows above and the deed
+fractions must travel in `Pay`, as echo's credential does.  Making
+`cat_open_hand` key-independent (this lane) was the first half of that;
+the second is for sh's lend (`UShRound.cat_pay`) to carry the two rows.
+Until it does, `cat_pay_filed_*` is applied at a fixed key and the
+composition into `image_entry` is one `iApply` away.
+
+**THE BAR.**  Whole tree green (`--proofs -k`: `EXIT=0`, ZERO `Error`).
+No `Admitted` outside `UShRound.v`'s skeleton; `Proof using` everywhere;
+`tools/comment_quote_check.py iris` 0 sites.  `make audit-all-only` /
+`audit-tree-only` / `audit-file-only`: `AUDIT_EXIT=0` /
+`AUDITTREE_EXIT=0` / `AUDITFILE_EXIT=0`, the four axiom lists UNCHANGED
+(SYSTEM 13, ECHO 14, TREE 13, FILE 14).  `make gen-ucode` *unchanged* for
+all seven catalogs.  `Print Assumptions`: `cat_image_entry` and
+`cat_pay_filed_none` are `UShEcho.echo_image_entry`'s FOURTEEN exactly;
+`cat_pay_filed_some` is the three non-primitive ones; and
+`UexecExecMint.udepw_law_of_sup_read` is TWO (`resv_matches`,
+`resv_is_valid`) and nothing else.
+
+### OFF-LINK-4 (kernel tier, 2026-09-17) — THE ANCHORED NODE AND BOTH HELD ARMS LAND; THE READ SIDE NEEDS NO ANCHOR, AND THE WRITE SIDE'S LOOP IS THE ONE THING LEFT
+
+**The lane's verdict in one line: (a)'s and (b)'s STATEMENTS are landed and
+green — `FsAbsWriteFire.awrite_full_anch` / `awrite_part_anch` /
+`awrite_chain_anch` (the one extra arrow, `⌜off = off0⌝ ∨ app_taint`),
+`SpecFilewrite.filewrite_in`'s inode arm keyed on the row's mode with
+`filewrite_in_held := (∃ off0, uoff γo off0 ∗ ∀ P, awrite_chain_anch … off0) ∨
+(awrite_chain … ∗ app_taint)`, `SpecFileread.fileread_in`'s twin (with NO
+anchor, because the read commit reports the offset), the generic tier paying
+both held arms for nothing, and echo's held ledger deposit
+`UkWriteFile.udepwf_std_write_file_held`; what is NOT landed is the WRITE
+FIRE's loop — `ProofFilewrite`'s invariant carrying `uoff γo (current offset)`
+and the anchored chain across iterations — and with it the two fire sites,
+L2, L4 and L5's remaining leaves.**
+
+**WHAT LANDED** (whole tree green on the lane's remote tree, `EXIT=0`, zero
+`Error`; `make audit-all-only` / `audit-tree-only` / `audit-file-only`
+UNCHANGED — system THIRTEEN, echo FOURTEEN, tree THIRTEEN, file FOURTEEN;
+`tools/lemma_diff.py` against the merge base reports CLEAN — nothing dropped,
+nothing admitted, no new assumption; `Proof using` everywhere.)
+
+*`d68506285` — the merge of main (CAT-GEOM-2, OFF-LINK-3), green with no
+fix-forward needed.*
+
+*`8e4ffb667` — (a)'s statements: the anchored node and the held write arm*
+
+    awrite_full_anch Γ E i γo M ua n k off0 REST :=
+      ∀ I off bs bs0 nl,
+        ⌜wri_pre (abs_view I) i off bs bs0 nl⌝ -∗
+        ⌜ubytes_at M (add_vec_int ua (FW_MAX * k)) bs⌝ -∗
+        ⌜Z.of_nat (length bs) = wchunk_at n k⌝ -∗
+        (⌜off = off0⌝ ∨ app_taint) -∗                       (* THE ONE ARROW *)
+        ghost_map_auth (γtop Γ) (1/2) I -∗ off_link γo (Z.of_nat off) ={E}=∗
+        ghost_map_auth (γtop Γ) (1/2) I ∗
+          app_step i I (delta_write i off bs (abs_view I)) ∗
+          (∀ I', ⌜abs_view I' = delta_write i off bs (abs_view I)⌝ -∗
+             ghost_map_auth (γtop Γ) (1/2) I' ={E}=∗
+             ghost_map_auth (γtop Γ) (1/2) I' ∗
+             off_ret γo off (length bs) ∗ REST)
+
+`awrite_part_anch` is the partial arm at the same arrow; `awrite_chain_anch`
+is the chain at those two, the anchor advancing by `wchunk_at n k` — the very
+ladder the kernel's own `f->off` walks.  `awrite_chain_anch_0` / `_S` /
+`_cursor` are its kit; `awrite_full_anch_of_full`, `awrite_part_anch_of_part`
+and `awrite_chain_anch_of_at` are the reading that makes the anchored node
+STRICTLY WEAKER than the plain one — which is what lets the generic tier's own
+chain pay a held row without knowing anything about offsets.
+
+    filewrite_in's inode arm, the match OUTSIDE the chains' [∀ P]:
+      FdOpen _ true (FdInode i γo OffParked) => awrite_chain …      (today)
+      FdOpen _ true (FdInode i γo OffHeld)   => filewrite_in_held i γo n M ua Q
+    filewrite_in_held := (∃ off0 : nat,
+                            uoff γo off0
+                            ∗ ∀ P, awrite_chain_anch … P n Q 0 (wchunks n) off0)
+                         ∨ (awrite_chain … n Q 0 (wchunks n) ∗ app_taint)
+
+with `filewrite_in_inode_held` / `filewrite_in_of_inode_held` its readings,
+`write_arms_at_neg_held` the negative-count exit, and `write_held_post γo off0
+d := (⌜…⌝ ∗ uoff γo (off0 + d)) ∨ (uoff γo off0 ∗ app_taint)` the post's shape
+at a held row (`PipeQueue.pipe_wpost`'s).  THE GENERIC TIER PAYS IT FOR
+NOTHING: `FsAbsInvFire.fsabs_filewrite_in` and `UexecExecMint`'s twin take the
+RIGHT arm — the same chain they always built, beside the taint they already
+hold.  And `UkWriteFile.udepwf_std_write_file_held` is echo's fd-1 deposit at
+the LINK (the parked twin is now stated at `OffParked` rather than at a free
+mode).
+
+*`237b50d21` — (b)'s statements: the held read arm, and why it is cheaper*
+
+    fileread_in's inode arm:
+      FdOpen true _ (FdInode i γo OffParked) => P ∗ pf_at (aread_commit_at …) F
+      FdOpen true _ (FdInode i γo OffHeld)   =>
+        P ∗ ((∃ off0 : nat, uoff γo off0 ∗ pf_at (aread_commit_at …) F)
+             ∨ (pf_at (aread_commit_at …) F ∗ app_taint))
+
+THE READ SIDE NEEDS NO ANCHOR, and this is the fact worth keeping:
+`aread_commit_at` REPORTS the offset to the client's receipt (`F.(pf_recv) av
+off a d`), so a reader learns `off` from the POST and nothing has to be
+relayed INTO the commit.  The kernel agrees against the box's half, reports
+`off = off0` and hands the half back advanced; the generic tier takes the
+taint arm; the sign guard hands the piece back whole on both.
+
+**WHAT REMAINS, and the shape it must take.**
+
+- **THE WRITE FIRE'S LOOP — the one piece of surgery left in this campaign.**
+  `ProofFilewriteChain.fw_au_raw` is the carrier the loop threads (`∃ bss, …
+  ∗ awrite_chain_at Γ appE i γo M ua P n Q (p + x) (wchunks n - p - x)`), and
+  the held walk's carrier is that with two conjuncts added, both indexed by
+  the count `t` the loop ALREADY carries:
+
+      fw_au_anch Γ i γo P n M ua Q (off0 : nat) (t : Z) (p x : nat) :=
+        ∃ bss, … the same four pure rows … ∗
+          uoff γo (off0 + Z.to_nat t) ∗
+          awrite_chain_anch Γ appE i γo M ua P n Q (p + x)
+            (wchunks n - p - x) (off0 + Z.to_nat t)
+
+  Its five moves are the landed ones' twins (`_init`, `_take`, `_spend_part`,
+  `_ok`, `_fail`), and the fire site's addition is three steps: agree
+  (`uoff_agree_k` against the box's half, giving `off = off0 + t`), feed the
+  anchor's LEFT arm, and put the advanced half back from `off_supply_held`'s
+  post.  At a DISCONNECTED box the site feeds the anchor's RIGHT arm with the
+  box's own `app_taint` and settles with `off_supply_taint`; that is the only
+  place in the walk that has to know the box has two arms.
+- **L2** (`fpnames.fp_om`) lands with the loop, not before: the recipe is lane
+  OFF-LINK's REFUTED 3 and it was re-walked in OFF-LINK-2 — the blocker is
+  `ProofFilewrite.v`'s `foff_row_inode_of` at a mode that is no longer pinned,
+  which is exactly what the loop's held branch answers.
+- **L4** (the mint) is unblocked on the kernel side and is four edits:
+  `ProofSysOpenPub` at `off_pub_hand_0` with the receipt carrying `uoff g 0`
+  and `fp_om` set to match; `usys_fd_ok`'s open arm's `fdst_parked` relaxed to
+  the caller's family's mode (nothing reads the pin since OFF-LINK-2 deleted
+  `usys_fd_ok_parked`); `UkRunSys.wp_uk_ecall_open_recv_img_hand` beside the
+  parked leaf and its `_dimg_hand` twin; `UkFileOpen`'s two `_hand` deed
+  corollaries by the one swap.
+- **L5** — the write half of the deposits is landed
+  (`udepwf_std_write_file_held`); what is left is
+  `udepwf_st_{read,write}_file_held` (the landed parked bodies at `FdOpen _ _
+  (FdInode i γo OffHeld)`, carrying `uoff γo off0` into the held arm),
+  `UkFileOpen.wp_uk_read_deed_learns_held` (the landed `_mapped` corollary
+  with `⌜off = p⌝` and `uoff γo (p + count)` read off the post), and
+  `FileWrite.file_awrite_node` re-instantiated at `awrite_full_anch` so
+  `UEchoFile.v`'s `ef_node` / `ef_chain` discharge by `iExact`.
+
+**WHAT ECHO-FILE / CAT-GEOM-2 / SH-ROUND APPLY.**
+- echo's write obligation is now a STATEMENT it can be written against:
+  `ef_node` is `awrite_full_anch`'s shape, and its `⌜off = off0⌝` arrives as a
+  premise from the kernel — so `efq`'s cursor need not carry `uoff` at all,
+  and echo's fd-1 deposit (`udepwf_std_write_file_held`) is landed.
+- cat's read obligation is `fileread_in`'s held arm with the pin arriving in
+  the post; no anchor, no new node, and the deed corollary is the landed
+  `_mapped` one plus two conjuncts.
+- Neither program's arm costs the generic tier anything: both are paid by the
+  taint it already holds.
+
+### CAT-GEOM-4 (2026-09-17) — THE WALK'S EXIT PAYLOAD IS A RESOURCE, THE TAINT'S ARM IS DISCHARGED, AND SH LENDS CAT ITS TWO ROWS
+
+Branch `app-file/cat-entry`, fast-forward merge of `main` at `6ec7e5337`
+(LINK-GEN-5 and CAT-GEOM-3).
+
+**(1) `(⊢ Cend)` BECOMES `□ Cend`, AND THAT IS THE WHOLE OF THE TAINT
+GAP.**  Five statements move, all in cat's own walk:
+`UkCat.kcat_pay_seq_of_law`, `UkCatCat.kcat_round_of_law`,
+`UkCatMain.kcat_file_of_law` / `kcat_pay_of_law` / `kcat_pay_all_of_law`.
+Each took its exit payload as a COQ ENTAILMENT and now takes it as a
+PERSISTENT RESOURCE.
+
+**Why the old form was the obstacle and the new one is free.**
+`(⊢ ukn_pay N (-1))` is satisfiable only at the TRIVIAL payload; at a
+CLAIM the payload is a `UCatOut.cch`, whose taint disjunct
+(`AppFile.file_taint`) is persistent but is a HYPOTHESIS, not derivable
+from nothing.  **`□ Cend` is strictly WEAKER as a premise** — in an
+affine BI `⊢ P` gives `⊢ □ P`, because `□ emp ⊣⊢ emp` and `□` is
+monotone — so every caller that could supply the old one can supply the
+new one by `iModIntro`, and the free chain's corollaries at the trivial
+payload are unchanged but for that one line.
+
+**AND WITH IT `cat_taint_open` IS DISCHARGED OUTRIGHT** —
+`UCatKernel.cat_taint_open_of_law` and `cat_taint_open_of_taint`.  At a
+tainted era the open may still return a handle; what cat does next is
+now fully paid:
+
+- the ROUND is the free one (`kcat_round_of_law` at `□ (ukn_pay N' (-1))`,
+  which the taint itself gives through `cch`'s right disjunct);
+- the CLOSE is free at the `FdSlots.fdst_nopipe` **the open's own leaf
+  exports** — SUP-ONE's U2 put it on `UConsOpen.uk_open_fd_arm` and
+  CAT-GEOM-2's `UkFileOpen.uk_open_taint_fd` had dropped it; it is kept
+  now, and it is exactly what `UkCat.kcat_cldep_nopipe` wants;
+- rows 5 and 16 come from `AppInv.app_sup ∗ app_taint` through
+  `UexecExecMint.udepw_law_of_sup_read` (CAT-GEOM-3) and `_write`, and
+  `UCatKernel.cat_app_sup_of_taint` is the one-line bridge:
+  `AppFile.file_sup_of_taint` at the era's record
+  (`file_app = MkAppcfg file_names (file_pred c) r`, `cbn` on the
+  projections).
+
+So the sequence CAT-GEOM-2 opened closes here: *the gap was never a
+missing law* — it was two premises stated in the wrong logic.
+
+**(2)/(3) THE LEND, AND THE ONE NAME SH-ROUND APPLIES.**
+`ExecEntry.image_entry` is `□`-quantified over the key, so its payment
+premise CANNOT HOLD a linear resource; `Pay` is what the entry hands over
+per invocation, which is how echo's credential travels.  So cat's two
+OFF-LINK-4 rows travel there:
+
+    Definition cat_lend (c : file_fixed) (r : file_names) (q1 q2 : Qp)
+        (i : Z) (bs : list (bv 8)) (om : offmode)
+        (sts : list fdstate) (cw : Z) (v : era_pins) (vf : file_era)
+        (ps0 cs0 : list nat) (s0 : fst) (I0 : list (bv 8)) (P : nat)
+      : iProp Σ :=
+      ((∀ N' : uk_names Σ,
+          cat_open_hand N' c r q1 q2 i bs (take NSTD sts) cw om)
+       ∗ ((∀ (N' : uk_names Σ) (fd : nat) (gamo : gname),
+             ⌜(fd < NOFILE)%nat⌝ -∗
+             cat_held_read N' (cat_hold_at N' r q1 i bs om fd gamo) c fd bs)
+          ∗ (fdq r q1 (Some (i, bs)) ∗ fdq r q2 (Some (i, bs))
+             ∗ UCatOut.cch g v vf ps0 cs0 s0 I0 (ralt_enc RCRan) P 0%nat)))%I.
+
+`cat_pay_at_lend` is the framing law (`(R -∗ cat_pay_at W Q Pay) -∗
+cat_pay_at W Q (R ∗ Pay)`), and **`UCatKernel.cat_child_of_entry`** is
+the one name: given the node premises, `cw = ROOTINO`, the child's fd 1
+and fd 2 rows and `fd_lowest_closed` on `sts`, plus `app_taint`, the two
+era pins, `urun_nopipe` and `udep`, it yields
+
+    image_entry ElfUser.cat_elf Mn (mword_of_int (t + 8) : mword 64) sts
+      cw cs pidv (catq_cat v vf ps0 cs0 s0 I0 P)
+      (cat_lend c r q1 q2 i bs om sts cw v vf ps0 cs0 s0 I0 P) uslot
+
+with NO remaining Iris premise — the taint arm included.
+`UShRound.cat_pay` and `Hchild_cat` are restated to match; the payload
+conversion (`catq_cat … (-1) -∗ UkShFork.ushf_wq Wcf I`) stays SH's,
+because it is a fact about the era's links and not about cat, which is
+why `cat_image_entry` takes `Q` as a parameter.
+
+**THE TWO HYPOTHESES OFF-LINK-4 MUST DISCHARGE, VERBATIM** (unchanged
+from CAT-GEOM-3 except that the open is now key-independent, so
+`wp_uk_ecall_open_read_deed_hand` matches it directly):
+
+    Definition cat_hold_at (N' : uk_names Σ) (r : file_names) (q : Qp)
+        (i : Z) (bs : list (bv 8)) (om : offmode)
+        (fd : nat) (gamo : gname) (p : nat) : iProp Σ :=
+      (UserFd.ufd (ukn_fd N') fd (FdOpen true false (FdInode i gamo om))
+       ∗ UserOff.uoff gamo p ∗ fdq r q (Some (i, bs)))%I.
+
+**(a)** `UCatKernel.cat_held_read N' (cat_hold_at N' r q1 i bs om fd gamo)
+c fd bs` — at a cursor `p ≤ length bs` the descriptor HELD AT `p` reads
+the deed at `p` (count `ard_count 512 p (length bs)`, byte `j` is
+`bs !!! (p + j)`, and AT MOST 512 on both arms) and comes back HELD AT
+`p + count`; or the era is tainted and the handle comes back at some
+position.
+
+**(b)**
+
+    Definition cat_open_hand (N' : uk_names Σ) (c : file_fixed)
+        (r : file_names) (q1 q2 : Qp) (i : Z) (bs : list (bv 8))
+        (l : list fdstate) (cwv : Z) (om : offmode) : iProp Σ :=
+      (∀ (Img : gmap Z (bv 8)) (pv : mword 64),
+         ⌜forall M : gmap Z (bv 8), uimg_sub Img M ->
+            arg_path_of M pv FsImgCheck.fname_f⌝ -∗
+         ⌜um_start_of cwv FsImgCheck.fname_f = FsImg.ROOTINO⌝ -∗
+         ([∗ map] a ↦ b ∈ Img, ubyteq (ukn_d N') DfracDiscarded a b) -∗
+         UkCat.kcat_o N' pv
+           (UserFd.ustd (ukn_fd N') l
+            ∗ fdq r q1 (Some (i, bs)) ∗ fdq r q2 (Some (i, bs)))
+           (fun ret : mword 64 =>
+              ((⌜ret = (mword_of_int (-1) : mword 64)⌝
+                ∗ UserFd.ustd (ukn_fd N') l)
+               ∨ (∃ (fd : nat) (gamo : gname),
+                    ⌜ret = (mword_of_int (Z.of_nat fd) : mword 64)
+                     /\ (fd < NOFILE)%nat⌝
+                    ∗ UserFd.ustd (ukn_fd N') l
+                    ∗ cat_hold_at N' r q1 i bs om fd gamo 0%nat
+                    ∗ fdq r q2 (Some (i, bs)))
+               ∨ (UkFileOpen.uk_open_taint_fd (ukn_fd N') l ret
+                  ∗ file_taint c))%I))%I.
+
+It is `UkCatDeed.kcat_o_of_deed`'s post VERBATIM with ONE change: the fd
+arm hands `cat_hold_at … 0` — the held row AND the program's own half of
+the offset at ZERO (`UserOff.off_pub_hand_0`) — where the landed
+corollary hands `ualloc … (FdInode i γo OffParked)` and no `uoff`.
+**`om` is a PARAMETER everywhere**: never `OffParked`, never `OffHeld`
+literally.
+
+**EVERY STATEMENT THAT MOVED.**  The five `_of_law`s (item 1);
+`UkFileOpen.uk_open_taint_fd` (the `fdst_nopipe` conjunct kept);
+`UCatKernel.cat_open_hand` (key-independent), `cat_pay_present` /
+`cat_pay_absent` / `cat_pay_filed_*` (the taint premise now takes the
+payload equation, and `cat_pay_present` takes the cwd row);
+`UShRound.cat_pay` and `Hchild_cat`.  Everything else is additive.
+
+**THE BAR.**  Whole tree green (`--proofs -k`: `EXIT=0`, ZERO `Error`;
+a re-run is *Nothing to be done*).  No `Admitted` outside `UShRound.v`'s
+skeleton; `Proof using` everywhere; `tools/comment_quote_check.py iris` 0
+sites.  `make audit-all-only` / `audit-tree-only` / `audit-file-only`:
+all `EXIT=0`, the four axiom lists UNCHANGED (SYSTEM 13, ECHO 14, TREE
+13, FILE 14).  `make gen-ucode` *unchanged* for all seven catalogs.
+`Print Assumptions`: `cat_child_of_entry` and `cat_taint_open_of_taint`
+are `UShEcho.echo_image_entry`'s FOURTEEN exactly;
+`UkCatCat.kcat_round_of_law` is the three non-primitive ones.
+
+### LINK-GEN-6 (2026-09-17) — THE LOOP LEAF SPEAKS `uline`; THE LINE AXIS CLOSES, AND WHAT IS LEFT OF sh's ROUND IS THE THREE CHILDREN, THE DEED, AND ONE MODEL FACT
+
+Branch `app-file/link-stage`, on top of LINK-GEN-5 and main (which already
+carries SH-CHILD-1's line vocabulary -- `ush_line_at`, `ush_rest_line_at`,
+`ush_rest_l_at`, `ushf_body_law D`, `UkShRedirBody.ush_line_file`; lane
+SH-CHILD-2's `app-file/sh-redir` has NOT landed and is NOT merged, see
+§6).  Whole tree GREEN
+on the lane's remote tree (`--proofs -k`, `EXIT=0`, zero `Error`); all four
+audits unchanged (`audit-only` thirteen, `audit-echo-only` FOURTEEN with
+the identical list, `audit-tree-only` thirteen, `audit-file-only`
+fourteen); no `Admitted` added; `Proof using` everywhere.
+
+**THE LANE'S VERDICT IN ONE LINE.**  LINK-GEN-5 said the last wall was one
+law; it was, and it is gone: `UkSh.ush_gets_done` now says "the era admits
+some LINE whose words are the body's parse and whose bytes are in the
+buffer" instead of "the buffer holds `wl_line ws` for an echo `ws`", and
+the loop's three readings of that line are facts about
+`FileDisc.uline_ok` — proved once, for all three constructors.  What the
+file era still owes sh's LOOP is ONE MODEL FACT, and it is a one-line
+choice in `FileDisc`.
+
+#### 1. THE LOOP'S PAYLOAD (`iris/UkSh.v`)
+
+```coq
+  Definition ush_gets_done_at (Dl : FileDisc.uline -> Prop)
+      (l : list fdstate) (i : nat) (f : nat -> bv 8) : iProp Σ :=
+    ((⌜i = 0%nat⌝ ∗ ush_pos)
+     ∨ (∃ lu : FileDisc.uline,
+          ⌜Dl lu /\ i = length (FileDisc.line_bytes lu)
+           /\ ush_line_at lu f 0%nat i⌝
+          ∗ ush_posw l (FileDisc.uline_ws lu))
+     ∨ (T ∗ ush_pos))%I.
+
+  Definition ush_gets_done (l : list fdstate) (i : nat) (f : nat -> bv 8)
+      : iProp Σ := ush_gets_done_at ush_line_echo l i f.
+```
+
+The middle arm is `UkSh.ush_rest_line_at`'s premise VERBATIM — a
+constructor the discipline admits, its words, its bytes — so the loop now
+hands `UkShFork.ushf_body_law D`'s walk exactly what that walk asks for and
+nothing is re-derived in between.  `ush_gets_done_0_at`,
+`ush_gets_done_line_at`, `ush_gets_done_line_t_at`,
+`ush_gets_done_taint_at`, `ush_gets_done_set_at` follow, with the landed
+echo names recovered as `Definition`s at `ush_line_echo`.
+
+`ush_gets_done_line_at` is where `EchoDisc.body_ok J` used to sit; it takes
+instead
+
+```coq
+    Dl lu ->
+    FileDisc.uline_ws lu = wl_words J ->
+    length (FileDisc.line_bytes lu) = S (length J) ->
+    ush_line_at lu f 0%nat (S (length J)) ->
+```
+
+and `Hdsc_nl` becomes, as LINK-GEN-5's §2 wrote it,
+
+```coq
+  Context (Dl : FileDisc.uline -> Prop).
+
+  Hypothesis Hdsc_line : forall (I : list (bv 8)) (f : nat -> bv 8),
+    Dsc (I ++ [wl_nl]) ->
+    (forall j : nat, (j < length (rest_of I))%nat -> f j = rest_of I !!! j) ->
+    f (length (rest_of I)) = wl_nl ->
+    exists lu : FileDisc.uline,
+      Dl lu
+      /\ FileDisc.uline_ws lu = wl_words (rest_of I)
+      /\ length (FileDisc.line_bytes lu) = S (length (rest_of I))
+      /\ ush_line_at lu f 0%nat (S (length (rest_of I))).
+```
+
+with echo's witness `UkSh.ush_disc_line_echo` — one line off
+`EchoDisc.disc_input_snoc_nl` through the new `ush_line_echo_of_body` —
+and the file's `FileReadInst.file_disc_line` off `FileDisc.fbody_ok_line`.
+
+#### 2. THE LOOP'S THREE READINGS OF A LINE ARE `uline_ok` FACTS, NOT `Dl` PREMISES
+
+This is the finding worth keeping.  Each of the loop's uses of the line
+went through `EchoDisc.line_ok`, which demands `ws !! 0 = Some cmd_echo`;
+each is really a fact about `FileDisc.uline_ok`, and `ush_line_at` carries
+that.  So they are LEMMAS, proved once for all three constructors, and the
+loop gains no era-specific premise at all:
+
+| new lemma (`UkSh.v`) | what it replaces | why it holds at every constructor |
+| --- | --- | --- |
+| `ush_uline_bytes_pos` | `LineWords.wl_line_pos` | `line_bytes l = line_body l ++ [wl_nl]` |
+| `ush_uline_body_val` / `ush_uline_no_nul` | `ush_line_no_nul` at `line_ok_wf` | the body's bytes are `fbody_byte` (`wl_body_bytes` at the two echo shapes, `FileDisc.suf_gtf_bytes` for the redirect suffix, a closed computation for `cmd_cat_f`) and the newline is 10 |
+| `ush_uline_head_nonblank` | `EchoDisc.line_ok_head_byte0` (= 'e') | the first byte is 'e' at `LEcho`/`LEchoF` and 'c' at `LCat`; what the walk needs is only that it is neither a tab nor a space, and THAT is the reading that travels |
+
+(`ush_wl_body_pos` is the small step under the second echo shape: a body of
+no bytes would make the line's first byte the newline, which
+`line_ok_head_byte0` refutes.)
+
+#### 3. THE CHAIN RE-SIGNED
+
+`UkSh`'s loop (`wp_kshg_loop`, `wp_ksh_gets`, `wp_ksh_getcmd`,
+`wp_ksh_blank_entry`, `wp_ksh_loop`, `wp_ksh_cmd_head`, `wp_ksh_start`)
+now carries `Dl` and `Hdsc_line` and produces `ush_rest_l_at Dl R` — which
+is SH-CHILD's own parameter, so `UkShFork.ushf_rest_of_body_at` and
+`UkShRedirBody.ushf_rest_of_body_file` (already stated at
+`ush_rest_l_at N … ush_line_file (UkShLoop.ushl_R N sz)`) plug straight
+in: the entry's obligation and the file era's discharger now have the SAME
+shape, and only `Hcat_body` stands between them.  `UShKernel`'s three
+lemmas take `Dl` and `Hdline` beside `Dsc` and its two byte laws;
+`UInitSh` passes `EchoDisc.disc_input`, `UkSh.ush_disc_snoc_ncr`,
+`EchoDisc.disc_input_rest_short`, `UkSh.ush_line_echo`,
+`UkSh.ush_disc_line_echo`.  **`UInitSh.cons_cred_holds` and `UInitBoot` do
+not move**: `ush_rest_l` IS `ush_rest_l_at ush_line_echo` and
+`ush_read_recv_leaf` IS `ush_read_recv_leaf_at disc_input`, both by
+definition.
+
+#### 4. THE FILE'S SIDE (`iris/FileReadInst.v`)
+
+- `disc_input_f_snoc_nl` — `EchoDisc.disc_input_snoc_nl`'s twin: the body a
+  newline completed is `fbody_ok`.
+- `file_disc_line` — the file era's `Hdsc_line`, off `FileDisc.fbody_ok_line`.
+- `file_gets_holds` — the three bundled, in the order
+  `UShKernel.sh_image_entry_at` takes them
+  (`disc_input_f_snoc_ncr`, `disc_input_f_rest_short`, `file_disc_line`).
+
+**BOTH TAKE ONE PREMISE, AND IT IS THE LANE'S OPEN ITEM:**
+
+```coq
+    Hws : forall J : list (bv 8),
+      FileDisc.fbody_ok J -> FileDisc.uline_ws (FileDisc.uline_of J) = wl_words J
+```
+
+`UkSh.ush_posw l ws` indexes by `LineWords.last_ws` of the input — it is
+`(∃ I, ⌜rest_of I = [] /\ last_ws I = ws⌝ ∗ …)` — so the loop's `ws` is
+forced to `wl_words J`, while `UkShFork.ushf_body_law D`'s walk is handed
+`ush_bstate l (FileDisc.uline_ws lu)`.  The two agree at `LEcho` and
+`LEchoF`, whose `uline_ws` IS the parse, and **not** at `LCat`, whose
+`FileDisc.uline_ws` is `[]` while a `cat f` line's words are
+`wl_words cmd_cat_f`.  It is a one-line model choice and it is SH-CHILD-2's
+(it owns the shape `ushf_body_law` reads):
+
+1. `FileDisc.uline_ws LCat := wl_words cmd_cat_f` — then `Hws` is
+   `FileDisc.fbody_ok_line` plus `wl_words (line_body l) = uline_ws l` per
+   constructor, and everything above closes; or
+2. `ushf_body_law` stops indexing by `uline_ws` and takes the words as a
+   separate argument tied to `last_ws`.
+
+Option 1 is the smaller edit and it is the one this lane recommends: no
+consumer of `uline_ws` reads `LCat`'s value today (`UCatKernel`'s round is
+stated at `UCatOut.cat_tie`, not at `uline_ws`).
+
+#### 5. WHAT `sh_round_holds_file` OWES AFTER THIS LANE
+
+The read side and the line side are done.  What is left is what the
+coordinator predicted — the three children and the deed's own steps — plus
+§4's one model fact:
+
+1. **`Hws` (§4)** — the `uline_ws LCat` choice.  Without it the file's
+   `Hdsc_line` is a lemma with an unmet premise; with it, `file_gets_holds`
+   is unconditional and sh's loop at the file era is one application of
+   `UShKernel.sh_image_entry_at`.
+2. **`Hchild_echo`** — `UShEchoPay.sh_exec_sup_echo_wq_holds_at` at the
+   file's `StageRec`, which is still owed field by field (LINK-GEN-3 §5,
+   written against `FileLinksLine`'s names in LINK-GEN-3's revision).
+3. **`Hchild_redir`** — `UkShRedirBody.sh_redir_child_law`, whose open is
+   `Hopen_hand` (OFF-LINK's publish, F-OPEN-6's device arm).
+4. **`Hchild_cat`** — `UCatKernel`'s entry (lane CAT-ENTRY-2 / CAT-GEOM).
+5. **`UkShEcho.ushf_child_law_holds`'s constant carrier** — LINK-GEN-4's
+   residue 2, SH-CHILD-2's: `ush_execfail_law_wq_at dg nn` off
+   `ushf_child_law_at`'s own `Lp`.
+6. **the deed's own steps** — `sh_prompt_alt_of_deed` and `sh_hold`'s
+   round trip, which are `UShRound`'s own and were never a generalisation
+   question.
+
+Everything else LINK-GEN-3/4/5 listed is an application:
+`Hwc`/`Hwbr`/`Hwbl`/`Hwbwc`/`Hcltaint` from `FileLinkInst` and
+`UShLine.*_at`, `Hexecfail` from `UShEchoPay.ush_execfail_law_wq_at_hold`,
+the read leaf from `FileReadInst.file_read_leaf_holds`, and the whole tail
+obligation from `UShRest.sh_rest_holds_at`.
+
+#### 6. BUILD NOTES, AND THE ONE THAT COST THE LANE AN HOUR
+
+**A LINE PREDICATE THAT IS A VARIABLE MAKES A TRANSPARENT OBLIGATION'S
+`Persistent` SEARCH DIVERGE.**  `UkSh.ush_rest_l_at` has had a named
+instance since SH-CHILD-1 wrote it (`ush_rest_l_at_persistent`, with the
+comment "NOT `apply _`: with the obligation transparent the search walks
+its whole body").  The named instance is not enough: the CONSTANT is still
+transparent, so resolution may delta-unfold it while matching, and against
+a goal whose line predicate is a VARIABLE rather than the closed
+`ush_line_echo` the search walks the obligation's whole wand chain and
+does not return.  `UShKernel.sh_uexec_slot`'s opening
+`iIntros "#Hpay #Hnpw … #Hrest …"` wedged `UShKernel.v` for over half an
+hour -- a file that normally compiles in seconds -- the moment its
+`ush_rest_l` became `ush_rest_l_at … Dl …`.  The fix is one line, at the
+head of `UShKernel.v`:
+
+```coq
+#[local] Typeclasses Opaque UkSh.ush_rest_l_at.
+```
+
+Proofs may still `rewrite /ush_rest_l_at`; only resolution is sealed, so
+the named instance becomes the only way in -- which is what it was written
+for.  **Rule for the campaign: every generic obligation that a named
+`Persistent` instance closes wants that seal.**  Generalising a closed
+definition to a parameter is exactly the edit that turns a harmless
+transparent constant into a divergence.
+
+**AND THE SEAL IS ONE-WAY, WHICH IS WHY IT IS `#[local]`.**  `FromModal`
+cannot see the `□` through a sealed constant either, so every proof that
+opens the obligation with a bare `iModIntro` fails with
+`iModIntro: the goal is not a modality` the moment the seal reaches it --
+`UkShFork.ushf_rest_of_body_at` and `UShRest.sh_rest_holds_at` both do.
+The seal's natural home is beside the instance in `UkSh.v`; put there (or
+put un-attributed at the head of `UShKernel.v`, which exports it to
+`UShRest`) it breaks those two.  A `#[local]` seal in the ONE file whose
+line predicate is a variable costs them nothing.  If it is ever made
+global, each such proof needs `rewrite /UkSh.ush_rest_l_at` before its
+`iModIntro`.  **Note that plain `Typeclasses Opaque` at the top level of
+a file IS exported to importers** (verified: a `Fail` that resolves in the
+defining file still fails after `Require Import`), so the attribute is not
+decoration.
+
+**Localising it took three builds and is worth copying.**  `rocq compile
+-time` is block-buffered, so its last line only says which sentence
+STARTED; what pins the wedge is the durable notes' instrument -- wrap the
+suspect tactics in `timeout N (...)` with `idtac "MARK-n"` between them,
+and a single compile prints the marks up to the wedge and then
+`Error: Tactic failure: [Proofview.tclTIMEOUT] Tactic timeout!`.  For an
+`iIntros` of a bundle, split it into one `iIntros` PER NAME with a mark
+each: the run names the exact hypothesis (here the seventh, `#Hrest`),
+which is the whole diagnosis.
+
+**Do not merge a lane branch that has not landed.**  This lane merged
+`app-file/sh-redir` on the brief's "if SH-CHILD-2 has landed" -- it had
+not: its tip is a WIP commit whose `UkShEcho.v` had been compiling for
+fifty-one minutes in its own tree and has no `.vo` anywhere.  Main ALREADY
+carried everything LINK-GEN-6 needs of SH-CHILD (`ush_rest_l_at`,
+`ushf_body_law D`, `ush_line_file`), so the merge bought nothing and cost
+a wedged tree.  Backed out by `git checkout main -- <the four files>`;
+the merge commit stays in history and SH-CHILD-2's work will arrive
+through main.  **Check `git branch --contains` before merging a lane
+branch, and check that the files it brings have `.vo`s.**  And note what
+backing a merge out by file does NOT catch: the merge had also taken
+SH-CHILD-2's `UkSh.ush_Dbody := 88` (the redirect parse is eight words
+deeper), which lives in a file this lane keeps, so the restored
+`UkShFork.v` failed at
+`iSpecialize: cannot instantiate ... (16 + (ush_Dbody + n)) ... with
+... (16 + (80 + n))`.  When you restore files from main, diff the files
+you KEEP against main too and revert the incoming branch's own edits in
+them.
+
+**An interrupted remote build leaves ZERO-LENGTH `.vo` files, and the next
+build's error names the WRONG file.**  When `run-on-gcp` exits while
+workers are still writing (here: its post-build dump verification flaked,
+reporting an empty remote checksum list, and took the build down with it),
+the in-flight `.vo`s are left truncated.  The next build then fails in
+whatever file REQUIRES them, with
+`Error when parsing .vo ... premature end of file. Try to rebuild it.` --
+naming `UkShDiag.v` for a truncated `UkSh.vo`.  Do not read that as a
+proof error: `ls -la` the `.vo`s the message names (they are 0 or 4096
+bytes), delete the artifacts of every file the interrupted build listed,
+and rebuild.  `ROCQ compile F.v` in the log means F STARTED, never that it
+finished.
+
+**Never run two builds against the same remote tree.**  `--proofs` and a
+`make <F>.vo` drive the same `CoqMakefile` in the same directory; started
+concurrently they race on the same `.vo` files and one of them reports a
+stale error that costs an hour of reading.  One build, wait for the
+sentinel.
+
+**Hoisting a definition out of a section is the cheap way to reorder.**
+`ush_line_at` and its three companions were defined 4,600 lines below
+`ush_gets_done` and use no section variable; moving them to top level
+(de-indenting by two) is a no-op for every consumer and is what let the
+loop's payload name them.
+
+**`iApply` against a section-variable-indexed lemma reports the
+INSTANTIATED goal.**  When `wp_ksh_start` began taking `Dl`, the error
+named `ush_rest_line_at ush_line_echo ws g kk` against
+`ush_rest_line_at Dl ws g kk` -- i.e. the walk's own statement had not
+been widened yet.  Reading the two sides of that message is the fastest
+way to find the next statement to move.
+
+### OFF-LINK-5 (kernel tier, 2026-09-17) — THE ANCHOR IS **UNNECESSARY**: THE HALF BELONGS IN THE *CLIENT'S NODE*, AND THE HELD FIRE LOSES ITS SUPPLIER; BOTH LOOPS ARE ONE WALK AT BOTH MODES
+
+**Commits** (branch `app-file/off-hand`): `53860d4ab` (the anchored fire + carrier, since superseded), `fc69d2631` (the client-advanced node), `b1227c959` (the write fire's loop), `4f9be67fd` (the read fire's site). Whole tree green at each (`EXIT=0`, zero `Error`); all four audits byte-identical throughout — system THIRTEEN, echo FOURTEEN, tree THIRTEEN, file FOURTEEN; `tools/lemma_diff.py` clean on the last two.
+
+#### 1. THE ONE FINDING, AND IT REPLACES LANE OFF-LINK-4's SHAPE
+
+OFF-LINK-4 ruled (and the coordinator accepted) that the program's half must be in the **kernel's** hands at the fire, so that `UserOff.off_supply_held` can pay it, and that the equation `off = off0` must therefore be **RELAYED** into an **ANCHORED** node as a pure premise — because a node's own `off` is bound by its `∀` and a client that means to append cannot name it.
+
+The first half of that is true of a node **that does not hold the half**. It is false of a node that does. Put the half in the **client's own closure** — where cat already keeps it (`UCatKernel.cat_hold_at`'s `UserOff.uoff`) — and:
+
+* the node reads `off = off0` off the half **at the instant**, by `UserOff.uoff_agree_k` against the very `off_link` it was lent, **INSIDE its own `∀ off`**. No anchor, no relay, no premise slot.
+* the node can then **move both halves itself** (`UserOff.uoff_advance`) and hand the box's arm back **already advanced**. Lane WRITE-RELAY widened phase 2 to `OffGv.off_ret` precisely to allow this; the advanced disjunct is what a held node always takes.
+* and then **the fire needs no `UserOff.off_supply` at all**. The step the parked path spends on the row's invariant has nothing left to do.
+
+So a held descriptor costs the kernel **nothing**: no carried `uoff`, no supplier, no second post, no second chain shape above the fire. That is the whole of mode *hand* at this coupling.
+
+**REFUTED (my own OFF-LINK-4 statement), and this is the third statement-level refutation of the campaign.** `SpecFilewrite.write_held_post γo off0 d := uoff γo (off0 + d) ∨ (uoff γo off0 ∗ app_taint)` is **unstatable as landed**, independently of the anchor: its `off0` was the payment's **EXISTENTIAL** (`filewrite_in_held`'s `∃ off0, uoff γo off0 ∗ …`), and a caller that has handed the half in **cannot line the post's witness up with the one it named**. There is no fix inside the match — `filewrite_in`/`filewrite_extra` are keyed on `st` alone and `FdInode` is payload-free by ruling — so the only two repairs were (a) give both contracts an `off0 : nat` parameter, widening the arity for **every** client and the whole generic tier, or (b) never let the half leave the client. (b) is this lane's answer and it is free.
+
+#### 2. WHAT LANDED
+
+`FsAbsWriteFire.v` — section 2b is now the **client-advanced chain**:
+
+* `awrite_full_adv` / `awrite_part_adv` — `awrite_full_at` / `awrite_part_at` **verbatim** with `off_ret γo off d` replaced by `off_link γo (off + d)` in phase 2. The partial arm advances by the **COUNT** `r`, the run the kernel moved `f->off` by.
+* `awrite_chain_adv` (+ `_0`/`_S`/`_cursor`) — `awrite_chain_at`'s letter for letter; **no anchor index**, because the position each node fires at is the client's own business.
+* `awrite_full_at_of_adv` / `awrite_part_at_of_adv` / `awrite_chain_at_of_adv` — the adv node is **STRICTLY STRONGER**, and that is the direction that matters: the kernel's exits report the **LANDED** post at the plain chain, so a held call's residue converts down and **no consumer above the fire changes**. There is no converse and there must not be — `UserOff.vacuity_lend_not_taint` is the refutation.
+* `wrf_awrite_fire_adv` / `wrf_apart_fire_adv` — the `_gen` bodies with their **last two lines deleted** (the supplier step). They cannot be wrappers over the plain fires, which *consume* a supplier nothing can conjure.
+
+`FsAbsReadFire.v` — `aread_commit_adv`, `aread_commit_at_of_adv`, `pf_at_aread_commit_at_of_adv`, `arf_read_fire_adv`; plus the mode-keyed pair the walk calls:
+
+* `aread_in_om om Γ E i γo F` — `OffParked`: the landed `pf_at (aread_commit_at …) F`. `OffHeld`: the adv commit **∨** (the landed commit ∗ `app_taint`).
+* `arf_read_fire_om` — **the one fire, and the only place the mode is read.** Its supplier comes off the **ROW** (`FdSlots.foff_row`, which *is* `off_user_inv` at a parked inode row and `emp` at a held one), off the taint on the disconnected arm, or — on the link arm — **not at all**. Post identical to `arf_read_fire`'s.
+
+`ProofFilewriteChain.v` — `fw_au_adv` and its **five** moves (`_init`/`_take`/`_spend_part`/`_ok`/`_fail`); and the mode-keyed tier:
+
+* `fw_supply γo := off_user_inv γo ∨ app_taint` (persistent; `fw_supply_off` answers `off_supply` at either).
+* `fw_au_st om` — `OffParked`: `fw_supply` beside the landed `fw_au_raw`. `OffHeld`: `fw_au_adv`, **or** `fw_au_raw` beside the supply, which is `filewrite_in_held`'s taint arm.
+* `fw_au_st_init_parked` / `_held` / `_taint`, `fw_au_st_ok`, `fw_au_st_fail` (both exits at the **landed** `write_post_ok_at` / `write_post_fail_at`).
+* `fw_st_fire_full` / `fw_st_fire_part` — **the peel, the fire and the closer in ONE step**. The three branches differ in exactly one line: which fire lemma runs.
+
+`SpecFilewrite.v` — `filewrite_in_held`'s LINK arm is `∀ P, awrite_chain_adv … 0 (wchunks n)`; `write_arms_at_neg_held` loses its `off0`. `filewrite_extra` is `write_arms_at` at **both** modes, untouched.
+
+`SpecFileread.v` — `fileread_in`'s two inode arms **collapse into one**: `| FdOpen true _ (FdInode i γo om) => P ∗ aread_in_om om … F`. `fileread_in_inode`/`_of` and `fileread_extra_inode`/`_of` take the mode as a parameter instead of pinning `OffParked`.
+
+`ProofFilewrite.v` — **the loop is one walk at both modes.** `fw_loop` gains `(omx : offmode)`, its descriptor premise is `stx = FdOpen rx true (FdInode nx γx omx)`, its carrier is `fw_au_st omx …`, **its `off_user_inv γx` hypothesis is GONE** (at park the supplier rides inside the carrier, persistent, so the induction pays nothing; at hand there is none), its two fire sites are one `iMod (fw_st_fire_* omx …)` each, and its two exits are `fw_au_st_ok`/`_fail`. Its one caller passes `OffParked` and pays `fw_au_st_init_parked`.
+
+`ProofFileread.v` — the `off_user_inv` derivation is gone; the walk carries the **row** and hands it to `arf_read_fire_om` at both fire sites (advance 0 and advance `tot`).
+
+`UkWriteFile.v` — `udepwf_std_write_file_held` **loses its `uoff` premise**: the half is inside the chain the caller builds.
+
+**DELETED** (each with `lemma_diff`'s line, in `fc69d2631`): `awrite_full_anch`, `awrite_part_anch`, `awrite_chain_anch`, `awrite_chain_anch_0`/`_S`/`_cursor`, `awrite_full_anch_of_full`, `awrite_part_anch_of_part`, `awrite_chain_anch_of_at`, `wrf_awrite_fire_anch`, `wrf_apart_fire_anch` (FsAbsWriteFire.v — the anchor and its two fires); `fw_au_anch`, `fw_au_anch_init`/`_take`/`_ok` (ProofFilewriteChain.v — the anchored carrier had no partial and no fail move, because the half it carried had no name at `off0 + t + r`; the carrier that carries no half has both); `write_held_post`, `write_held_post_fired`, `write_held_post_taint` (SpecFilewrite.v — §1's refutation).
+
+#### 3. WHAT THE CLIENT NOW OWES, AND WHAT IT GETS
+
+A held caller proves one extra thing per node and gets its cursor back through its **own** `Q`:
+
+> inside `awrite_full_adv`'s `∀ I off bs bs0 nl`, holding `uoff γo off0` in the closure and given `off_link γo off`: take the LEFT arm of the lent link, agree (`uoff_agree_k`) to get `off = off0`, run the commit at that offset, `uoff_advance` both halves to `off + |bs|`, return `off_link γo (off + |bs|)` and put `uoff γo (off + |bs|)` in `REST`. On the RIGHT (taint) arm there is no half to agree against: hand `app_taint` back as the advanced link (`OffGv.off_link_taint`, good at any value) and take the client's own taint arm.
+
+That is the same three moves the coordinator briefed for the **fire site**, moved one level in — which is why they are now free of the kernel.
+
+#### 4. WHAT IS LEFT, AND THE DEPENDENCY IS EXACT
+
+**`FileInvDefs.fdstate_ok` still pins `m = OffParked` on every live inode row.** That single conjunct is now the *only* thing between a verified program and a held descriptor: both kernel walks are mode-generic and both held arms are proved, but nothing can *mint* a held row. So:
+
+* **(2) L2 — `fpnames.fp_om`.** Add the field, give `fdstate_ok` a mode parameter and pin `m = om` at it, and relax `fdstate_ok_inode`'s conclusion. **COST MEASURED: 145 occurrences of `fdstate_ok*` across 15 files** — mechanical, but it also flips `file_pay_st_ok`'s existential from `∃ inum γo γp` to `∃ inum γo om γp`, which every consumer destructures.
+* **L2 AND L4 ARE ONE CHANGE, and that is a finding.** The open path writes `OffParked` **literally** in `FileOpen.v`, `ProofSysOpenParts/Shared/Stores/CreArm/Alloc/Pub.v`; once `fdstate_ok` reads `fp_om pn`, the publish must produce `FdInode … (fp_om pn)` — and `pn` is **minted at the publish**, so choosing `fp_om` there *is* the choice between `UserOff.off_pub_park` and `off_pub_hand_0`. L2 cannot land green without L4's mint, and L4 cannot be stated without L2's field.
+* **(3) L4 and (4) L5 are therefore blocked behind that one coupled landing**, and with them CAT-GEOM-4's two premises. `UCatKernel.cat_open_hand` and `cat_held_read` are both stated at a **parameter** `om`, so I checked whether `om := OffParked` could discharge them and it cannot: `cat_hold_at` hands `UserOff.uoff gamo p` **beside** the row, and at a parked row that half is inside `off_user_inv` — there is exactly one, and `off_pub_park` already spent it. `om := OffHeld` is **forced**, hence L2/L4 are forced. (Everything else those two premises need is in place: the read leaf's count bound landed in OFF-LINK-2, and `arf_read_fire_om`'s held arm is what `cat_held_read`'s `Hold (p + rv)` is paid from — cat's cursor comes back inside `F.(pf_recv)`, which is where `cat_hold_at` puts it.)
+
+#### 5. TWO SMALLER THINGS WORTH RECORDING
+
+* **`--check-proof` is unusable after touching a low file**: the runner *drops stale artifacts* for every changed `.v`, so a `vok` check of anything downstream fails with `Cannot find library … in loadpath`, and **reverting the edit does not restore the artifacts**. Touch a low file only immediately before a whole-tree `--proofs -k`.
+* **A packaged fire is worth its statement.** `ProofFilewrite.fw_loop`'s body carries ~300 hypotheses; branching on the mode *there* would have duplicated ~200 lines twice. Moving peel+fire+close into `fw_st_fire_full`/`_part` made the loop's diff three lines per site and put the `destruct om` in a file where the context is five hypotheses long.

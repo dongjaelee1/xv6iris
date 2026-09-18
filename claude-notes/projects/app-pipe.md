@@ -148,6 +148,13 @@ arm is the theorem's one named premise (`pipe_both_law`).
   record's laws; `pipe_fs_pure`.  Mould: upstream's STAGE / STAGE-2 /
   FILE-DEC findings and `AppFileRec.v`.
 
+- [ ] **PIPE-CLAIM** (= PIPE-STAGE part 2, design §5.6; after the upstream
+  merge is green).  `pipe_pred` at `file_fs_pure`; `AppPipe.app_pipe` at
+  `app_pred := pipe_pred`; the record's laws re-derived; `pipe_Happ_init`
+  with `era0_cat_pins` off the image; the program-tier laws at `pipe_pred`
+  (`init_cons_laws_at`, INIT-FILE's mould minus the f-state).  Also: merge
+  main (upstream's `StageRec.v`/`FileLinkInst.v`, `app_taint`) into the
+  branch first and re-read the mould.
 ## Wave 3 — the round and the theorem
 
 - [ ] **SH-PIPE-ROUND** (design §4.2): sh's round at the claim — the
@@ -824,7 +831,6 @@ For anyone who wants the arm CLOSED at today's kernel: R-1, the `-1` in
 hand back the two `ush_cldep`s (or whatever `pipe_reg` becomes), because
 that is what the six closes are paid with and the taint is the only
 source today.
-
 ### PIPE-MODEL-2 (2026-09-18) — the coordinator's two rulings, landed
 
 Commit `27e95d086` on `app-pipe/pipe-model` (after `fd925474d`).  Whole
@@ -1061,10 +1067,11 @@ re-run and UNMOVED — exactly the FOURTEEN of `durable-notes.md`'s
 baseline, textually — and that is the audit that matters here: its cone is
 the one that walks the `Uk*`/`USh*`/`UInit*`/`UEcho*` program tier, where
 every file this lane touched lives. `audit-tree-only` and `audit-only`
-were started against the quiescent tree and had not returned when the lane
-handed off, with the mirror saturated (six lanes plus the coordinator's
-gate; `Print Assumptions` is the heaviest thing on the box). They cannot
-move: every new result is a theorem, no `Axiom`/`Admitted` was added, and
+were started against the quiescent tree and never returned: the lane's
+REMOTE CLONE was reclaimed underneath them (`/shared/xv6iris-pipe-reg` is
+gone from the mirror, along with most other lanes' clones — 13 GB
+freed), which happened AFTER the final whole-tree build came back `RC=0`,
+so the green result stands. They cannot move: every new result is a theorem, no `Axiom`/`Admitted` was added, and
 `urun_nopipe`'s definition became strictly WEAKER. **The coordinator
 should still see both green on the merge gate.**
 
@@ -1224,112 +1231,123 @@ to place `emp`). SH-PIPE should take the close deposits as parameters, as
 its brief already says, and the ruling belongs with whoever states sh's
 round.
 
-### PIPE-NEG1 (2026-09-18) — the pipe row names its −1; the discharge was already there and was being DROPPED, and deliverable 4 is BLOCKED (SH-PIPE is not in main)
+### SH-PARSE-PIPE-2 (2026-09-18) — the RIGHT command needs NO walk (a suffix of a `ustr` IS a `ustr`), `parsepipe` TURNS, and the left loop is uniform
 
-Branch `app-pipe/pipe-neg1`, base `372b70c46` (the PIPE-REG merge + notes;
-`main` has since gained SH-PARSE-PIPE part 2 — nothing this lane touched).
-Five landed files edited, ZERO new files, no `Admitted`, no `Axiom`.
+Branch `app-pipe/sh-parse-pipe`, FOUR more files and five commits
+(`ef4c32dd4`, `a639803e3`, `61b8673df`, `8da3cc91c`, and this note) on top
+of part 1.  Whole tree green (`build`, RC=0); still not one landed
+statement touched; no `Admitted`; every result carries `Proof using`; all
+NINE of the lane's files are LEAVES (`grep -l UkShPipe iris/*.v` returns
+only themselves), so no audited cone contains any of them.  **The audits
+were run and are as expected: `audit-echo-only` FOURTEEN, `audit-only`
+THIRTEEN.  `audit-tree-only` is THIRTEEN, not the ten this worklist's
+rules claim** — upstream's tree-claim second app moved it (spec-cleanup's
+"audit 13") and this lane's files are not in its cone; the rules line
+should be corrected.
 
-**WHAT LANDED**
+**WHAT LANDED.**
 
-- `iris/UsysMemOk.v` — the pipe row's failure arm, VERBATIM (was
-  `else sts' = sts`):
+- `iris/UkShPipeRight.v` — **`wp_kshp_parsepipe_right`: the pipe line's
+  RIGHT command needs NO new walk at all.**  `ustr_split` (with
+  `ubytesq_app`, which is `UserHeap.ubytes_app` at an arbitrary `dfrac`),
+  `ushq_nosym_shift`, `ushq_toks_right`, `ushq_shift` /
+  `ushp_exec_at_rebase`.
+- `iris/UkShPipePr.v` — `wp_kshp_parseredirs_miss`: the zero-turn walk at
+  the WEAKEST premise (the peek MISS), because the landed one's premise is
+  "the byte is not a symbol" and the `|` falsifies it.
+- `iris/UkShPipeEx2.v` — **`wp_kshp_pex_loop_bar`**: the argument loop,
+  UNIFORM (no tail split), two premises and one allocator capability
+  lighter than the redirect loop.
+- `iris/UkShPipeCm.v` — **`wp_kshp_parsepipe_bar`: the TURN**, the
+  thirteen instructions 0x6c2..0x6e0 nobody had walked, with `gettoken`
+  and THE RECURSION discharged and two call premises (`ushq_pex_left`,
+  `ushq_pipecmd_call`) in SH-REDIR's `ush_open_call` style;
+  `ushq_pex_left_nosym` witnesses that the first premise's SHAPE is
+  inhabited.
 
-      else (r = (mword_of_int (-1) : mword 64) /\ sts' = sts))
+**THE FINDING OF THE PART, and it replaced a 1,600-line copy with forty
+lines: A SUFFIX OF A `ustr` IS A `ustr`.**  `parsepipe`'s recursive call
+runs entirely above the `|`, and a `ustr`'s suffix is a `ustr` — its bytes
+are non-NUL because the whole string's are, and the terminator it needs is
+the whole string's own.  So the recursion is handed the line's own suffix
+at base `s0 + (p + 2)`, where the line IS symbol-free
+(`ushq_pipe_nosym_from`), and it is `UkShParseCmd.wp_kshp_parsepipe` — the
+LANDED symbol-free walk — applied ONCE.  Three small things make it fit,
+and each is a finding in its own right:
 
-  i.e. the row now reads
-  `if decide (uint r = 0) then (∃ a b γp, …) else (r = mword_of_int (-1) /\ sts' = sts)`,
-  the open and dup rows' spelling. NEW `usys_fd_ok_pipe_neg1` — the row
-  read at the guard a leaf case-splits on (`usys_fd_ok USYS_pipe tf r sts
-  sts' -> uint r <> 0 -> r = mword_of_int (-1) /\ sts' = sts`), so no
-  consumer unfolds the row. `usys_fd_ok_length` / `_parked` / `_held`
-  re-proved (one `subst` each became `destruct … as [_ ->]`); every other
-  lemma in the file is untouched, statements byte-identical.
-- `iris/ProofSyscall.v` — arm 4's failure branch threads the fact instead
-  of dropping it (`rewrite decide_False; [ exact (conj Hr eq_refl) | …]`).
-- `iris/UkRunSys.v` — `wp_uk_ecall_pipe`'s post failure arm is now
-  `(⌜ r = (mword_of_int (-1) : mword 64) ⌝ ∗ ustd (ukn_fd N) l)` (the
-  sibling open/dup leaves' spelling — `uint r <> 0` is a consequence and is
-  not restated); its `Hjoin` summary's last conjunct became
-  `uint r <> 0 -> r = mword_of_int (-1) /\ fdv' = fdv`, discharged by the
-  new reading; `ufd_auth_move`'s pipe branch re-proved.
-- `iris/UkReadPipe.v` — `wp_uk_pipe_read_end` relays the same arm.
-- `iris/UkRunBr.v` — NEW `uv_btaken_bltz_neg1` /
-  `uv_btaken_bltz_one`: `uv_btaken BLT (mword_of_int (-1)) zero_reg = true`
-  and `uv_btaken BLT (mword_of_int 1) zero_reg = false`. The exhibit at the
-  statement for why the row had to name the VALUE: `r = 1` is equally
-  nonzero and does not take sh's `bltz a0`, so the old row admitted a state
-  in which the pipeline ran on two garbage descriptors, and the gap was not
-  bridgeable by a premise (`∀ r, uint r <> 0 -> r = -1` is refuted by the
-  second line — durable-notes.md, "Vacuity").
+1. `ustr_split` takes the length equation as a premise (`len = k + n`) so
+   `intros ->` puts the goal in the split form: NO length is ever
+   rewritten under an iProp.  The prefix comes out as bare bytes (it has
+   no terminator), the suffix as a string, and the closing wand carries
+   the two pure facts the pieces cannot reconstruct.
+2. `ushp_slot` stores an ABSOLUTE address, so the node the recursive call
+   builds at the shifted base IS the node of the SHIFTED token list at the
+   line's base (`ushp_exec_at_rebase`).  The resource does not move, only
+   its reading — which is what lets `UkShPipeSeam.ush_cmd_of_ushp_pipe`
+   take both sides at one `s0`, with the right list coming out as
+   `[(S (S gp), ge)]`.
+3. The right command is ONE token of the suffix, measured by the same two
+   scans and assembled with `UkShParseSym`'s own `ushs_toks` constructors,
+   so `ushp_tokens` comes out of `ushs_toks_tokens` and not a second
+   induction.
 
-**WHAT THE DESIGN GOT WRONG**
+**THE TURN, AND WHAT IS STILL A PREMISE.**  Of its three calls, 0x6ca
+`gettoken` is discharged by part 1's `wp_kshp_gettoken_syms` (it answers
+124 and leaves the cursor at `S (S gp)`) and 0x6d2 `parsepipe` by
+`wp_kshp_parsepipe_right`; the guard itself turns on part 1's
+`ushq_peek_pipe_hit_pipe`.  The two premises are the LEFT `parseexec` and
+`pipecmd`.  Both premises take the RETURN PC as a parameter with the
+caller supplying `ret_pc (m ra) = rpc` — the trick that keeps a pc out of
+a rewrite under an iProp, and worth copying.
 
-1. **`ProofSysPipe.v` and `SpecSysPipe.v` needed NO change at all** (the
-   brief's deliverable 2, "the discharge — each failure arm returns −1").
-   `SpecSysPipe.sys_pipe_post` has ONE failure arm and it already reads
-   `⌜r = (mword_of_int (-1) : mword 64)⌝`, and `ProofSysPipe` walks FIVE
-   failure paths onto it — pipealloc (1650), each fdalloc scan (1848,
-   2041), and BOTH copyouts (2801, 3191, which share the C's one cleanup
-   tail, hence four `iLeft. iSplitR; [done|]` sites at 1692/1914/2196/2798
-   and one relay). So the −1 was PROVED against the model all along; the
-   only thing missing was the ROW, and `ProofSyscall`'s arm 4 was USING the
-   fact (to refute the success guard: `rewrite Hr in Hz; vm_compute in Hz;
-   discriminate`) and then throwing it away. The whole lane is one conjunct
-   in the row and a `reflexivity` turned into a `conj`. **The brief's
-   failure-arm inventory is short by two**: it lists pipealloc and the two
-   fdallocs and forgets the `copyout` pair (`sys_pipe`'s three `return -1`
-   statements cover five paths; the object code merges them into two
-   `li a5,-1`, at 0x800055b2 and 0x8000563c).
-2. **The leaf's failure arm occurs TWICE in `UkRunSys.v`** and only one
-   copy is in the statement. `wp_uk_ecall_pipe` builds its post's two arms
-   as an intermediate `iAssert (|==> ufd_auth … ∗ (… ∨ (⌜uint r <> 0⌝ ∗
-   ustd …)))` before framing them, so a `check` of the file passes with the
-   inner copy stale and the real build fails 40 lines later with
-   `The term "proj1 (Hfail Hr0)" has type "r = mword_of_int (-1)" while it
-   is expected to have type "uint r ≠ 0"`. Anyone editing a leaf's post
-   should grep the whole proof for the arm's text, not just the statement.
-3. **The row's cone is smaller than the brief feared.** Only FIVE places in
-   the tree destruct the pipe row's else-branch (three lemmas in
-   `UsysMemOk.v`, `UkRunSys.ufd_auth_move`, and `wp_uk_ecall_pipe`'s
-   `Hjoin`); every other `usys_fd_ok` site either carries `n <> USYS_pipe`
-   or is a consumer of a different row. And strengthening a row is safe by
-   construction here: the row is SUPPLIED in exactly two places
-   (`ProofSyscall`'s arm 4, and `usys_fd_ok_refl_at`, which excludes pipe).
-4. **`uint r <> 0` was not kept beside the new conjunct**, deliberately:
-   the open and dup leaves' failure arms say only `r = mword_of_int (-1)`,
-   and a redundant conjunct in a post is a second thing every consumer has
-   to pattern-match. Anything that wants nonzeroness computes it.
+**A THIRD "ONE LINE OF N", and the rule it suggests.**  `parseexec`'s loop
+calls `parseredirs` after EVERY argument, so its last call sits ON the
+`|`; `UkShRedirPr.wp_kshp_parseredirs_ns` cannot serve it because its
+premise is "no symbol at the cursor", spent in ONE line of its 584.  Three
+landed walks have now been re-stated by this campaign for exactly this
+reason (`gettoken`'s dispatch, `parseredirs`' zero turn, `parseexec`'s
+loop).  **The rule: a walk's premise should be the WEAKEST fact its proof
+spends, and for a peek that fact is `ushp_peek_res … = 0/1`, never a
+property of the whole line.**  `ushp_peek_res_miss` and
+`UkShRedirLex.ushp_peek_res_hit` are the pair to state everything at.
 
-**BLOCKED — deliverable 4 cannot be done from `main`.**
-`iris/UkShPipe.v` DOES NOT EXIST in `main`: lane SH-PIPE is landed on
-`app-pipe/sh-pipe` and has not been merged (its four commits are still
-outside `main`; `main` has SH-PARSE-PIPE's `UkShPipe*` parser files and not
-the arm file). So `ush_pipe_call_weak_of_leaf` could not be upgraded here.
-Worse, **SH-PIPE branched BEFORE PIPE-REG** (merge-base `6a7fa4fb1`), so
-its `ush_pipe_call_weak_of_leaf` calls `wp_uk_ecall_pipe` with the
-`□ riscv_kill_cred` premise PIPE-REG deleted: that file does not compile
-against today's `main` for a reason that has nothing to do with this lane.
-It needs a port at the merge, and the port is two edits:
+**WHAT IS LEFT OF THE LEFT SIDE — one mechanical copy, no unknowns.**
+`ushq_pex_left` is instantiated by `wp_kshp_parseexec_bar`, which is
+`UkShRedirPex.wp_kshp_parseexec_gt` (1,403 lines) with: `ushs_redir` →
+`ushq_pipe`; its two `parseredirs` calls → `wp_kshp_parseredirs_miss`; its
+loop → `wp_kshp_pex_loop_bar` (landed); and its post's answer the EXEC
+node `p` rather than the REDIR node `t` (the only part that is more than a
+name change, because the landed walk relays a node the pipe line does not
+build).  Everything it calls is landed.
 
-- the leaf's registrar, in place of the old `Hkc` argument, at
-  `Rp := fun _ _ _ _ _ _ _ => emp`:
-  `iIntros (fdep W r M' fdv' cw' cs') "_ _ _"; iModIntro; iSplitL;
-   [ iApply (UkRun.urun_nopipe_taint _ with "Hkc") | done ]`
-  (the leaf's registrar goal is `urun_nopipe fdv' ∗ Rp …`, and a tainted
-  program answers the first from the credential it already holds);
-- then `ush_pipe_ans_weak` / `ush_pipe_call_weak` /
-  `ush_pipe_call_weak_of_leaf` DELETE, and the same proof body closes the
-  FULL `ush_pipe_call N l (fun _ => emp)%I` with two token changes: the
-  final `rewrite /ush_pipe_ans_weak` becomes `rewrite /ush_pipe_ans`, and
-  the failure branch's `iDestruct "Hans" as "[ Hok | [%Hrne Hstd] ]"` now
-  binds `Hrne : r = mword_of_int (-1)` — which is exactly what
-  `iRight. iSplitR; [ by iPureIntro | ]` already discharges. Nothing else
-  in the arm moves, because SH-PIPE's `ush_pipe_ans` failure arm was
-  already WRITTEN at `⌜ r = (mword_of_int (-1) : mword 64) ⌝`.
-  `wp_kshr_runcmd_pipe` then closes with NO premise.
+**ITEM (3), pipecmd's catalog row: STOPPED, and here is exactly what it
+needs.**  `make gen-ucode` is NOT a dump rule — `tools/gen_ucode.py` reads
+`user-rocq/<Module>{Instrs,Data,Syms}.v` (the TRACKED dump) plus
+`tools/ucode_shp.txt`, and never opens `xv6-riscv/`; `tools/dump_elf.py`
+is the tool that reads the ELF, and `make dump`/`dump-force` are the rules
+that call it.  So the mirror's old `xv6-riscv` clone is IRRELEVANT to it.
+What blocks it is the other half of its own header: **it shells out to
+`coqc` and that `coqc` needs a BUILT `iris/`** (the probe imports
+`WpDecodeBridge`), and this lane's local worktree has no `.vo` at all
+(`ls iris/*.vo` = 0) — the build lives on the mirror.  So the row can only
+be regenerated where a built tree is, i.e. on the mirror, which the lane's
+instructions forbid.  To land it, someone needs: (a) `skipfunc pipecmd` →
+`func pipecmd` in `tools/ucode_shp.txt`; (b) `make gen-ucode` in a tree
+with a built `iris/`; (c) the regenerated `iris/UCodeShP.v` COMMITTED
+(`make check-ucode`'s second half is `git diff --exit-code`); (d) the
+ELEVEN `destruct shp_syms_pins as (…)` patterns in
+`iris/UkShParse.v:857-877` each gaining one `_` (proof text only, no
+statement moves), because the pins tuple gains a conjunct; (e) a rebuild
+of the whole parser cone.  Then `pipecmd`'s 48 instructions are
+`UkShRedirCmd.wp_kshp_redircmd`'s walk with five field stores instead of
+seven, and `ushq_pipecmd_call` is its conclusion.
 
-**THE ONE THING THE NEXT LANE NEEDS FIRST.** The coordinator has to merge
-SH-PIPE (with the PIPE-REG port above) before anything can consume this;
-after that, the −1 is in the row, in the leaf, and in `UkReadPipe`'s
-relay, and no `Uk*` file has to reason about it again.
+**THE ONE THING THE NEXT LANE NEEDS FIRST.**  `wp_kshp_parseexec_bar` (the
+copy above) — it discharges `ushq_pex_left` and leaves `pipecmd` as the
+turn's only premise.  After that the parser theorem at the pipe shape is
+`parseline`/`parsecmd` at the same shape (the landed `_gt` versions with
+the same substitutions) plus part 1's `wp_kshp_nulterminate_pipe` and
+`ush_cmd_of_ushp_pipe`, which are landed.  The line-disjunct's FOURTH arm
+stays where SH-LEX-REDIR §4 put it: coupled with the pipe child walk, so
+it belongs to SH-PIPE-ROUND and not here.
+

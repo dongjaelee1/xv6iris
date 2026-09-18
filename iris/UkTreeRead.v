@@ -154,7 +154,7 @@ Section UkTreeRead.
       (sts : list fdstate) (r : mword 64) (fdv' : list fdstate) :
     pin_resolves_abs Pin cw pl hops ino (AFile bs) ->
     arg_path_of M pv pl ->
-    open_receipt_plain (fs_gamma_L γfs) γfs cw M pv vom
+    open_receipt_plain OffParked (fs_gamma_L γfs) γfs cw M pv vom
       (pobs_P T hops) (pobs_Pmiss T) (pobs_Fo Pin T) Ft sts r fdv' -∗
       (* the walk missed, or the call failed after it: nothing moved *)
       ((⌜r = (mword_of_int (-1) : mword 64)⌝ ∗ ⌜fdv' = sts⌝)
@@ -180,13 +180,14 @@ Section UkTreeRead.
       destruct Hid as [_ Hnode]. cbn [an_node] in Hnode. discriminate Hnode.
     - (* FILE: the identification names the INUM, which is the whole
          corollary -- the descriptor is on the node the tree records *)
-      iDestruct "Hfile" as (bs0 nl) "(%Hrow & Hrecv & _ & %Hfdr)".
+      iDestruct "Hfile" as (bs0 nl) "(%Hrow & Hrecv & _ & Hfdr)".
       iDestruct (pobs_node_abs Pin T cw pl hops ino (AFile bs)
                    av i (MkAnode (AFile bs0) nl) Hres with "HP Hrecv")
         as "[%Hid | #HT]"; last first.
       { iRight. iRight. iExact "HT". }
       destruct Hid as [Hi _]. subst i.
-      iRight. iLeft. iPureIntro. exact Hfdr.
+      iDestruct "Hfdr" as (γo) "[%Hfdr _]".
+      iRight. iLeft. iExists γo. iPureIntro. exact Hfdr.
     - (* DIRECTORY: refuted the same way *)
       iDestruct "Hdir" as (ents nl) "(%Hrow & _ & Hrecv & _ & _)".
       iDestruct (pobs_node_abs Pin T cw pl hops ino (AFile bs)
@@ -206,7 +207,7 @@ Section UkTreeRead.
      from the caller's persistent view of its own rodata. *)
   Definition tree_open_fam (T : iProp Σ) (Pin : aview -> Prop)
       (hops : list Z) (Q : Z -> iProp Σ) : sfam :=
-    xfam_open (pobs_P T hops) (pobs_Pmiss T) (pobs_Fo Pin T) Q.
+    xfam_open OffParked (pobs_P T hops) (pobs_Pmiss T) (pobs_Fo Pin T) Q.
 
   Lemma tree_open_sup (N : uk_names Σ) (c : tree_fixed) (r : tree_names)
       (g : gname) (root d i : Z) (t : ttree) (bs : list (bv 8))
@@ -260,14 +261,15 @@ Section UkTreeRead.
      keeps is at the pinned node.  [UInitConsK]'s console block is this at
      [FdDevice CONSOLE]; the arithmetic lemmas are [UConsOpen]'s. *)
   Lemma tree_open_fd_tie (l sts fdv' : list fdstate) (rv : mword 64)
-      (rb wb : bool) (i : Z) (γo : gname) (fd : nat) (rd wr : bool)
+      (rb wb : bool) (i : Z) (γo : gname) (omo : offmode)
+      (fd : nat) (rd wr : bool)
       (ty : fdtype) :
     length sts = NOFILE ->
     rv = (mword_of_int (Z.of_nat fd) : mword 64) ->
     (fd < NOFILE)%nat ->
     fdv' = <[fd := FdOpen rd wr ty]> sts ->
-    open_fd_rcpt rb wb (FdInode i γo OffParked) sts rv fdv' ->
-    FdOpen rd wr ty = FdOpen rb wb (FdInode i γo OffParked).
+    open_fd_rcpt rb wb (FdInode i γo omo) sts rv fdv' ->
+    FdOpen rd wr ty = FdOpen rb wb (FdInode i γo omo).
   Proof using .
     intros Hlen Hrv Hlt Hfdv (fd0 & Hr0 & Hcl0 & Hfdv0).
     assert (Hlt0 : (fd0 < NOFILE)%nat).
@@ -278,11 +280,11 @@ Section UkTreeRead.
     subst fd0.
     assert (Hfdlt : (fd < length sts)%nat) by (rewrite Hlen; exact Hlt).
     assert (Hins : <[fd := FdOpen rd wr ty]> sts
-                   = <[fd := FdOpen rb wb (FdInode i γo OffParked)]> sts)
+                   = <[fd := FdOpen rb wb (FdInode i γo omo)]> sts)
       by exact (eq_trans (eq_sym Hfdv) Hfdv0).
     pose proof (list_lookup_insert sts fd (FdOpen rd wr ty) Hfdlt) as Hl1.
     pose proof (list_lookup_insert sts fd
-                  (FdOpen rb wb (FdInode i γo OffParked)) Hfdlt) as Hl2.
+                  (FdOpen rb wb (FdInode i γo omo)) Hfdlt) as Hl2.
     rewrite Hins in Hl1. rewrite Hl2 in Hl1. congruence.
   Qed.
 
@@ -374,10 +376,10 @@ Section UkTreeRead.
         { rewrite <- Hlen. exact (lookup_lt_Some _ _ _ Hcl0). }
         exact (init_cons_moi_nat_m1 fd0 Hlt0 (eq_trans (eq_sym Hr0) Hrm)). }
       iDestruct "Hal" as (fd rd wr ty) "[%Hb Hal]".
-      destruct Hb as (Hr1 & Hlt1 & Hfdv1).
+      destruct Hb as (Hr1 & Hlt1 & Hfdv1 & _).
       rewrite (tree_open_fd_tie l (uvis_fd W) fdv' rv
                  (om_readable (m !!! Regidx a1_idx))
-                 (om_writable (m !!! Regidx a1_idx)) i γo fd rd wr ty
+                 (om_writable (m !!! Regidx a1_idx)) i γo OffParked fd rd wr ty
                  Hlen Hr1 Hlt1 Hfdv1 Hrcpt).
       iRight. iLeft. iExists fd, γo. iFrame "Hal". iPureIntro.
       exact (conj Hr1 Hlt1).
@@ -431,7 +433,7 @@ Section UkTreeRead.
     { iNext. rewrite /app_body. iExists I. iFrame "Hh Hp Hx".
       iPureIntro. exact Hdom. }
     iModIntro. iFrame "Hka".
-    iSplitL "Hoff"; [iApply (off_ret_keep with "Hoff") |]. iExact "Hc".
+    iSplitL "Hoff"; [iApply (off_ret_of_link with "Hoff") |]. iExact "Hc".
   Qed.
 
   (* ...AND THE ARMS, READ.  [UkReadFile.read_arms_file_learn] with the

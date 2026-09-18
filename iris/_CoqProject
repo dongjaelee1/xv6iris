@@ -1321,6 +1321,7 @@ SpecSysFstat.v
 SpecSysRead.v
 SpecSysWrite.v
 FsAbsCreateFire.v
+FsAbsCreateNm.v
 SpecCreate.v
 CreateBudget.v
 ProofCreateParts.v
@@ -1500,6 +1501,8 @@ EchoLinksPro.v
 EchoLinksLine.v
 EchoLinksBan.v
 LinkRec.v
+StageRec.v
+ReadRec.v
 EchoFsPure.v
 FileFsPure.v
 AppEcho.v
@@ -1509,6 +1512,8 @@ FileDeltas.v
 FileWrite.v
 FileOut.v
 FileLinks.v
+FileLinksLine.v
+FileLinkInst.v
 AppFileRec.v
 AppTree.v
 
@@ -1534,6 +1539,7 @@ UkSh.v
 UkShRun.v
 UkShDiag.v
 UkShRedir.v
+UkShPipe.v
 
 UCodeShP.v
 UkShParse.v
@@ -1572,6 +1578,11 @@ UkShPipeTok.v
 UkShPipeParse.v
 UkShPipeSeam.v
 UkShPipeEx.v
+UkShPipeRight.v
+UkShPipePr.v
+UkShPipeEx2.v
+UkShPipeCm.v
+UkShRedirBody.v
 UInitCons.v
 UConsOpen.v
 UInitConsK.v
@@ -1579,6 +1590,7 @@ UShConsK.v
 
 UShEcho.v
 UShLine.v
+FileReadInst.v
 
 UImgWordDefs.v
 UInitSh.v
@@ -1621,11 +1633,22 @@ UInitTreeBoot.v
 UInitTreeExec.v
 # TreeAssumptions.v
 
+UShLineHold.v
+UShLineAtHold.v
+UShPanicHold.v
+FileLinksAt.v
+FileLinksAtBan.v
+FileLinksAtLine.v
+FileLinksAtInp.v
+FileLinksAtPro.v
+AppFileCons.v
+UInitConsFile.v
 UFileBootAdequacy.v
 # FileAssumptions.v
 
-# lane SKELETON: the verified PROGRAM TIER's statements (proofs Admitted).
-# Nothing imports these, so neither audit cone reaches them.
+UInitFileCons.v
+
 UEchoFile.v
+UShRedirPay.v
 UShRound.v
 UInitFile.v

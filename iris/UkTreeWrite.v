@@ -198,7 +198,7 @@ Section UkTreeWrite.
     iEval (rewrite Hkey Hcnt;
            cbn [write_file_fam xfam_wr wf_Q];
            rewrite /filewrite_extra /=) in "Hp".
-    iDestruct (write_arms_file_learn i γo nb rv (uvis_M W)
+    iDestruct (write_arms_file_learn i γo P nb rv (uvis_M W)
                  (m !!! Regidx a1_idx) f
                  (fun _ : nat => tree_wq c r g root i t)
                  (proj1 Hsrc) with "Hp") as "Harm".

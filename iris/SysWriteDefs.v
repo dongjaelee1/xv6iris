@@ -28,6 +28,9 @@ Require Import SailStdpp.Base SailStdpp.Values SailStdpp.MachineWord.
 Require Import BioDefs.        (* [BSIZE]                                   *)
 Require Import InodeInv.       (* [MAXFILE]                                 *)
 Require Import FsAbsDefs.          (* the abstract state (lane A, landed)       *)
+Require Import UserPtTree.         (* [uptd] / [uva_rmapped]: the write's
+                                      failure reason, below                   *)
+Require Import ProcPtOwn.          (* [uptd_ext_sz]: the round's table grew    *)
 
 Local Open Scope Z_scope.
 
@@ -154,3 +157,89 @@ Qed.
 
 Lemma wchunk_at_0 (n : Z) : n <= FW_MAX -> wchunk_at n 0 = n.
 Proof. intro H. rewrite /wchunk_at /=. lia. Qed.
+
+(* ===================================================================== *)
+(*  1d.  WHY A WRITE LEAVES BYTES NOBODY NAMED -- THE COPYIN'S REASON     *)
+(*       (lane WRITE-RELAY-2; RELAY 4's carrying half)                    *)
+(* ===================================================================== *)
+
+(* writei's DISTURBED TAIL exists for exactly one reason: [either_copyin]
+   gave up part-way on the USER arm, having already written a prefix of the
+   chunk into the block it had [bread] (kernel defect D1's fix commits that
+   block rather than stranding it).  copyin's only failing test is
+   walkaddr's, taken again after vmfault declined, so the byte it died on is
+   an address of the SOURCE run the process's page table does not map for
+   READING -- [uva_rmapped] (present and V&U) and NOT [uva_wmapped]: there
+   is no PTE_R re-walk on this side ([SpecCopyin.copyin_read]'s -1 arm
+   states it, and [SpecEitherCopyin.either_copyin_post] relays it).
+
+   THE EXACT TWIN of [SysReadDefs.rd_fail_why], one test weaker, and it is
+   read the same way: STATED AT THE ENTRY DESCRIPTOR [P], which is the
+   WEAKER and therefore usable form -- the round's table only GREW
+   ([uptd_ext_sz]) and a byte the entry table can read the grown one can
+   read too ([UserPtTree.uva_rmapped_mono]), so [wr_nrmapped_entry] below is
+   how a proof brings the round's verdict back to the entry.
+
+   WHICH byte is EXISTENTIAL and the bound is the REQUEST: copyin walks
+   whole pages, so the failing round may have copied a prefix of its own
+   chunk first, and all the caller is promised is that the bad byte is
+   inside the run it asked for.  That is enough: a caller whose whole source
+   run is readable-mapped refutes the arm outright ([wr_fail_why_refute]),
+   which is what [UkRunSys.usrc_ok]'s second conjunct buys the U tier.
+
+   KEYED BY THE 64-BIT VA, like every image equation in the tower, so this
+   promises nothing about [src + n] not wrapping. *)
+Definition wr_fail_why (P : uptd) (src : mword 64) (n : nat) : Prop :=
+  exists d : nat, (d < n)%nat
+    /\ ~ uva_rmapped P (uint (add_vec_int src (Z.of_nat d))).
+
+(* the round's verdict, brought back to the ENTRY table *)
+Lemma wr_nrmapped_entry (szv : mword 64) (P Pc : uptd) (va : Z) :
+  uptd_ext_sz szv P Pc -> ~ uva_rmapped Pc va -> ~ uva_rmapped P va.
+Proof.
+  intros Hext Hn Hc. apply Hn.
+  destruct (uptd_ext_sz_ext szv P Pc Hext) as (_ & _ & Hsub).
+  exact (uva_rmapped_mono P Pc va Hsub Hc).
+Qed.
+
+(* ...and the same for the whole reason, at a request the round's count sits
+   inside *)
+Lemma wr_fail_why_entry (szv : mword 64) (P Pc : uptd) (src : mword 64)
+    (n : nat) :
+  uptd_ext_sz szv P Pc -> wr_fail_why Pc src n -> wr_fail_why P src n.
+Proof.
+  intros Hext (d & Hd & Hn). exists d. split; [exact Hd |].
+  exact (wr_nrmapped_entry szv P Pc _ Hext Hn).
+Qed.
+
+(* the reason survives a WIDER request: a caller that asked for more still
+   has the bad byte inside its run *)
+Lemma wr_fail_why_mono (P : uptd) (src : mword 64) (n n' : nat) :
+  (n <= n')%nat -> wr_fail_why P src n -> wr_fail_why P src n'.
+Proof. intros Hle (d & Hd & Hn). exists d. split; [lia | exact Hn]. Qed.
+
+(* THE REASON, MOVED TO THE WHOLE RUN'S BASE: a chunk's failing byte is a
+   byte of the request the chunk sits inside.  This is what filewrite's fold
+   does with what writei answered -- the chunk's base is [ua + FW_MAX*k] and
+   the node states the reason at [ua].  No no-wrap side condition, because
+   [add_vec_int] composes modulo 2^64
+   ([UserPtTree.add_vec_int_nat_assoc]). *)
+Lemma wr_fail_why_shift (P : uptd) (src : mword 64) (b c n : nat) :
+  (b + c <= n)%nat ->
+  wr_fail_why P (add_vec_int src (Z.of_nat b)) c -> wr_fail_why P src n.
+Proof.
+  intros Hle (d & Hd & Hn). exists (b + d)%nat. split; [lia |].
+  rewrite -add_vec_int_nat_assoc. exact Hn.
+Qed.
+
+(* THE REFUTATION, and it is one line: a caller whose whole source run is
+   readable-mapped in the table the reason is stated at has no copyin fault
+   to answer for.  The write's twin of [SysReadDefs.rd_fail_why_refute]. *)
+Lemma wr_fail_why_refute (P : uptd) (src : mword 64) (k n : nat) :
+  (n <= k)%nat ->
+  (forall j : nat, (j < k)%nat ->
+     uva_rmapped P (uint (add_vec_int src (Z.of_nat j)))) ->
+  wr_fail_why P src n -> False.
+Proof.
+  intros Hnk Hmap (d & Hd & Hn). exact (Hn (Hmap d ltac:(lia))).
+Qed.

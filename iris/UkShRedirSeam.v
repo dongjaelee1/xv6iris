@@ -413,7 +413,7 @@ Section UkShRedirSeam.
       (s0 cwdv : Z) (len : nat) (f : nat -> bv 8)
       (args : list (nat * nat)) (gp fe : nat)
       (ld : list fdstate) (st1 : fdstate) (n : nat)
-      (K : fdtype -> iProp Σ) :
+      (K : fdtype -> iProp Σ) (Cr : iProp Σ) :
     m !!! Regidx s1_idx = (mword_of_int s0 : mword 64) ->
     ushs_redir len f gp fe ->
     ushs_toks len f gp 0%nat args ->
@@ -424,7 +424,11 @@ Section UkShRedirSeam.
     st1 <> FdClosed ->
     (forall (rb wb : bool) (gn : PipeNames.pipe_names),
        st1 <> FdOpen rb wb (FdPipe gn)) ->
-    (⊢ ukn_pay N (-1)) ->
+    (* THE EXIT IS PAID FROM THE LEND (lane SH-CHILD-2), not from a free
+       payload: this walk is the PAID child's, whose [ukn_pay] is the block
+       credential it was lent ([UkShFork.ushf_wq]).  Both places that can
+       exit -- the parser's NULL store and the open's failure -- take the
+       pair, and the lend comes back on the arm where neither fired. *)
     UkSh.sh_deps -∗
     shk_code γt -∗
     ush_jtab γt -∗
@@ -437,6 +441,8 @@ Section UkShRedirSeam.
     UM0 -∗
     UkShRedir.ush_open_call N cwdv (s0 + Z.of_nat (S (S gp))) 1537
       (<[1%nat := FdClosed]> ld) K -∗
+    □ (Cr -∗ ukn_pay N (-1)) -∗
+    Cr -∗
     urun N h m (mword_of_int 0x9c0)
       (68 + (8 + (UkShDiag.ush_Dg + n))) -∗
     (∀ (h' : CpuId) (m' : regfile) (q : Z) (ty : fdtype),
@@ -448,14 +454,15 @@ Section UkShRedirSeam.
        UserCwd.ucwd γcwd cwdv -∗
        K ty -∗
        UM2 -∗
+       Cr -∗
        urun N h' m' (mword_of_int ShSyms.runcmd)
          (UkShDiag.ush_Dg + (70 + n)) -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
   Proof using Hpay.
-    intros Hs1 Hred Htoks Hpos Htlen Hs0 Hs64 Hs38 Hst1 Hne Hnp Hpx.
+    intros Hs1 Hred Htoks Hpos Htlen Hs0 Hs64 Hs38 Hst1 Hne Hnp.
     iIntros "#Hdp #Hcode #Hjt #Hpcode #Hpro Hline Hws Hsy Hstd Hcwd HM Hopen
-             Hrun Hcont".
+             #Hpxw Hcr Hrun Hcont".
     iDestruct (ustr_nonul with "Hline") as %Hnn0.
     iDestruct (ustr_len with "Hline") as %Hlen31.
     (* ---- 0x9c0  c.mv a0,s1 ---- *)
@@ -504,16 +511,13 @@ Section UkShRedirSeam.
       by (rewrite /m2 (upd_eq m1 (Regidx (mword_of_int 1 : mword 5)) _);
           apply bv_eq; vm_compute; reflexivity).
     (* ---- parsecmd, at the redirect shape ---- *)
-    iPoseProof Hpx as "Hpay".
-    iAssert (□ (ukn_pay N (-1) -∗ ukn_pay N (-1)))%I as "#Hpxw";
-      [ iIntros "!> $" | ].
     iApply (UkShRedirPc.wp_kshp_parsecmd_gt N UM0 UM1 UM2 Hm0 Hm1
               h2 m2 dw dv s0 len f args gp fe
               (8 + (UkShDiag.ush_Dg + n))
               Ha0_2 Hred Htoks Hpos Htlen Hs0 Hs64
-              with "Hpcode Hpro Hline Hws Hsy HM Hpxw Hpay Hrun").
+              with "Hpcode Hpro Hline Hws Hsy HM Hpxw Hcr Hrun").
     iIntros (p pe) "Hrnode Hnode Hline Hws Hsy".
-    iIntros (h3 m3) "%Hcs3 %Ha0_3 HM2 _ Hrun".
+    iIntros (h3 m3) "%Hcs3 %Ha0_3 HM2 Hcr Hrun".
     rewrite Hra_2.
     (* ---- 0x9c6  jal ra,runcmd ---- *)
     iApply (wp_uk_jal N h3 m3 (mword_of_int 0x9c6)
@@ -542,14 +546,15 @@ Section UkShRedirSeam.
     (* ---- runcmd's REDIR arm: close(1), open(file), then the sub-tree ---- *)
     replace (68 + (8 + (UkShDiag.ush_Dg + n)))%nat
       with (6 + (UkShDiag.ush_Dg + (70 + n)))%nat by lia.
-    iApply (UkShRedir.wp_kshr_redir_arm N
+    iApply (UkShRedir.wp_kshr_redir_arm_at N
               (UExec (ush_args s0 (ushs_nulcut args len f fe) args))
               (ushs_file s0 len f args gp fe) 1537
-              h4 m4 p cwdv ld st1 (70 + n) K
-              ltac:(unfold Z31; lia) Hpx Ha0_4 Hst1 Hne Hnp
-              with "Hdp Hcode Hjt Htree Hstd Hcwd Hopen Hrun").
-    iIntros (hf mf q ty) "%Ha0f Hsub Hstd Hcwd HK Hrun".
-    iApply ("Hcont" $! hf mf q ty with "[%//] Hsub Hstd Hcwd HK HM2 Hrun").
+              h4 m4 p cwdv ld st1 (70 + n) K Cr
+              ltac:(unfold Z31; lia) Ha0_4 Hst1 Hne Hnp
+              with "Hdp Hcode Hjt Htree Hstd Hcwd Hopen Hpxw Hcr Hrun").
+    iIntros (hf mf q ty) "%Ha0f Hsub Hstd Hcwd HK Hcr Hrun".
+    iApply ("Hcont" $! hf mf q ty
+              with "[%//] Hsub Hstd Hcwd HK HM2 Hcr Hrun").
   Qed.
 
   (* ===================================================================== *)
@@ -586,7 +591,7 @@ Section UkShRedirSeam.
       (s0 cwdv : Z) (len : nat) (f : nat -> bv 8)
       (args : list (nat * nat)) (gp fe : nat)
       (sz : Z) (ld : list fdstate) (st1 : fdstate) (n : nat)
-      (K : fdtype -> iProp Σ) :
+      (K : fdtype -> iProp Σ) (Cr : iProp Σ) :
     m !!! Regidx s1_idx = (mword_of_int s0 : mword 64) ->
     ushs_redir len f gp fe ->
     ushs_toks len f gp 0%nat args ->
@@ -603,7 +608,6 @@ Section UkShRedirSeam.
     8344 <= sz ->
     UserPtTree.pgroundup sz = sz ->
     usz_ok (sz + 65536) ->
-    (⊢ ukn_pay N (-1)) ->
     UkSh.sh_deps -∗
     shk_code γt -∗
     ush_jtab γt -∗
@@ -616,6 +620,8 @@ Section UkShRedirSeam.
     UkShMalloc.ushm_fresh N sz -∗
     UkShRedir.ush_open_call N cwdv (s0 + Z.of_nat (S (S gp))) 1537
       (<[1%nat := FdClosed]> ld) K -∗
+    □ (Cr -∗ ukn_pay N (-1)) -∗
+    Cr -∗
     urun N h m (mword_of_int 0x9c0)
       (68 + (8 + (UkShDiag.ush_Dg + n))) -∗
     (∀ (h' : CpuId) (m' : regfile) (q : Z) (ty : fdtype),
@@ -627,15 +633,16 @@ Section UkShRedirSeam.
        UserCwd.ucwd γcwd cwdv -∗
        K ty -∗
        UkShMalloc.ushm_one_ge N (sz + 65536) 4072 -∗
+       Cr -∗
        urun N h' m' (mword_of_int ShSyms.runcmd)
          (UkShDiag.ush_Dg + (70 + n)) -∗
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
   Proof using Hpay Hpsok_free.
     intros Hs1 Hred Htoks Hpos Htlen Hs0 Hs64 Hs38 Hst1 Hne Hnp
-           Hszlo Hszal Hszok Hpx.
+           Hszlo Hszal Hszok.
     iIntros "#Hdp #Hcode #Hjt #Hpcode #Hpro Hline Hws Hsy Hstd Hcwd HM Hopen
-             Hrun Hcont".
+             #Hpxw Hcr Hrun Hcont".
     iApply (wp_kshm_child_redir
               (UkShMalloc.ushm_fresh N sz)
               (UkShMalloc.ushm_one_ge N (sz + 65536) 4084)
@@ -643,10 +650,10 @@ Section UkShRedirSeam.
               (UkShMalloc.ushm_malloc_le_exec N Hpsok_free sz
                  Hszlo Hszal Hszok)
               (UkShMalloc.ushm_malloc_le_next N (sz + 65536))
-              h m dw dv s0 cwdv len f args gp fe ld st1 n K
-              Hs1 Hred Htoks Hpos Htlen Hs0 Hs64 Hs38 Hst1 Hne Hnp Hpx
+              h m dw dv s0 cwdv len f args gp fe ld st1 n K Cr
+              Hs1 Hred Htoks Hpos Htlen Hs0 Hs64 Hs38 Hst1 Hne Hnp
               with "Hdp Hcode Hjt Hpcode Hpro Hline Hws Hsy Hstd Hcwd HM
-                    Hopen Hrun Hcont").
+                    Hopen Hpxw Hcr Hrun Hcont").
   Qed.
 
 End UkShRedirSeam.

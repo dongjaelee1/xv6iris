@@ -845,7 +845,10 @@ Section UkRunSys.
               descriptor back to close/dup needs to read it as a C [int],
               and [fd < NOFILE] is what makes that reading exact *)
            ⌜r = (mword_of_int (Z.of_nat fd) : mword 64)
-            /\ (fd < NOFILE)%nat⌝ ∗
+            /\ (fd < NOFILE)%nat
+            (* ...AND IT IS NOT A PIPE (survey R4, lane SUP-ONE) -- see
+               the [_recv_img] leaf below for why the fact is exported. *)
+            /\ fdst_nopipe (FdOpen rd wr t)⌝ ∗
            ualloc (ukn_fd N) l fd (FdOpen rd wr t))
         ∨ (⌜r = (mword_of_int (-1) : mword 64)⌝ ∗ ustd (ukn_fd N) l)) -∗
        urun N h' (<[Regidx (mword_of_int 10) := r]> m)
@@ -933,7 +936,7 @@ Section UkRunSys.
     cbn [uvis_M uvis_perm uvis_fd uvis_of_run] in Hfdok |- *.
     iDestruct (ufd_auth_len with "Hufd") as %Hfdlen.
     iApply uslot_bupd.
-    destruct Hfdok as [(fd & rd & wr & t & Hr & Hcl & -> & Hpko & Hnpo) | [Hrm ->]].
+    destruct Hfdok as [(fd & rd & wr & t & Hr & Hcl & -> & Hnpo) | [Hrm ->]].
     - (* A DESCRIPTOR CAME BACK, at the LOWEST free slot -- which is the
          promise [sys_open_post] makes and the row carries, and which the
          caller's ledger turns into a NUMBER. *)
@@ -953,7 +956,7 @@ Section UkRunSys.
       iIntros (h') "Hrun".
       iApply ("Hcont" $! h' r with "[Hh] Hrun").
       iLeft. iExists fd, rd, wr, t. iFrame "Hh". iPureIntro.
-      split; [ exact Hr | ].
+      split_and!; [ exact Hr | | exact Hnpo ].
       (* the slot the kernel chose is a slot of the table *)
       rewrite <- Hfdlen. exact (fd_least_closed_lt _ _ Hcl).
     - (* the call failed: nothing moved, and the ledger comes straight back *)
@@ -998,7 +1001,6 @@ Section UkRunSys.
        it does not already know.  (Duplicating a HELD descriptor is the
        next lane's: design/app-file.md SS3 has dup share the object's
        surrender.) *)
-    ukn_held N = ∅ ->
     is_aligned_vaddr (Virtaddr (add_vec_int pc 4)) 2 = true ->
     uinstr_is (ukn_t N) pc false (ECALL tt) -∗
     urun N h m pc avail -∗
@@ -1026,7 +1028,7 @@ Section UkRunSys.
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
   Proof using .
-    intros Hn Harg Hstne Hhd Hal4.
+    intros Hn Harg Hstne Hal4.
     iIntros "#Hi Hrun Hsb Hstd Hh0 Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
     iMod (udepw_mint N m pc _ M pm _ fdv cw gn cs pidv
@@ -1182,7 +1184,6 @@ Section UkRunSys.
       (m : regfile) (pc : mword 64) (l : list fdstate) (avail : nat) :
     usysno m = USYS_dup ->
     (* ...and the record holds no offset half -- [wp_uk_ecall_dup]'s note *)
-    ukn_held N = ∅ ->
     is_aligned_vaddr (Virtaddr (add_vec_int pc 4)) 2 = true ->
     uinstr_is (ukn_t N) pc false (ECALL tt) -∗
     urun N h m pc avail -∗
@@ -1195,7 +1196,7 @@ Section UkRunSys.
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
   Proof using .
-    intros Hn Hhd Hal4.
+    intros Hn Hal4.
     iIntros "#Hi Hrun Hsb Hstd Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
     iMod (udepw_mint N m pc _ M pm _ fdv cw gn cs pidv
@@ -2038,7 +2039,7 @@ Section UkRunSys.
   (*                                                                       *)
   (* SO THE LEAF BELOW IS THE TAINT-SHAPED KILL: the program pays the       *)
   (* application's kill price through its own deposit at number 6           *)
-  (* ([RiscvPtsto.riscv_kill_cred], which for echo IS the taint) and gets   *)
+  (* ([RiscvPtsto.app_taint], which for echo IS the taint) and gets   *)
   (* back a run and a number it knows nothing about.  It is named rather    *)
   (* than left implicit because a caller should not have to rediscover      *)
   (* which of [wp_uk_ecall_quiet]'s eleven side conditions kill discharges. *)
@@ -2055,7 +2056,7 @@ Section UkRunSys.
     uinstr_is (ukn_t N) pc false (ECALL tt) -∗
     urun N h m pc avail -∗
     (* THE PRICE IS IN HERE.  Number 6's row of the process's own bundle is
-       what carries [riscv_kill_cred] down to kkill ([SpecSysKill]'s
+       what carries [app_taint] down to kkill ([SpecSysKill]'s
        premise); a program with nothing to pay it with cannot mint this
        deposit at this number. *)
     udepw N m pc USYS_kill -∗
@@ -3011,9 +3012,10 @@ Section UkRunSys.
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hrws & Hb)".
     (* THE RUN'S OWN READING IS KEPT NOW, not thrown away (design/
        app-pipe.md SS2): it is one half of what the registrar takes, and
-       the two new rows' registrations are the other.  The OFFSET half is
-       dead data ([urun_parked_row]) and comes back by [exact I]. *)
-    iDestruct "Hrws" as "[#Hnp %Hpkr]".
+       the two new rows' registrations are the other.  ([urun_rows] IS
+       [urun_nopipe] since upstream's OFF-LINK-2 L6 deleted the offset
+       half.) *)
+    iDestruct "Hrws" as "#Hnp".
     iMod (udepw_mint N m pc _ M pm _ fdv cw gn cs pidv
                 with "Hdep Hmy Hsb Hheap Hufd") as "(Hheap & Hufd & Hdepn)".
     iDestruct (uinstr_is_uk_instr with "Hheap Hi") as %Hui.
@@ -3259,8 +3261,7 @@ Section UkRunSys.
             with "[%] Hnp Hsp") as "[#Hnpr HRp]";
       [ exact (fun Hc => proj2 (Hfail Hc)) | ].
     iModIntro.
-    iAssert (urun_rows N fdv') as "#Hnpo";
-      [ rewrite /urun_rows; iSplitR; [ iExact "Hnpr" | by iPureIntro ] | ].
+    iAssert (urun_rows N fdv') as "#Hnpo"; [ rewrite /urun_rows; iExact "Hnpr" | ].
     iDestruct (urun_close_upd N (umem_write M (uint dst) dd gg) pm m
                  (mword_of_int 10) r sz fdv' cw' gn cs pidv (add_vec_int pc 4) avail
                  ltac:(unfold unot_sp; vm_compute; discriminate)
@@ -3932,7 +3933,10 @@ Section UkRunSys.
        (* the ledger, exactly [wp_uk_ecall_open]'s two arms *)
        ((∃ (fd : nat) (rd wr : bool) (t : fdtype),
            ⌜r = (mword_of_int (Z.of_nat fd) : mword 64)
-            /\ (fd < NOFILE)%nat⌝ ∗
+            /\ (fd < NOFILE)%nat
+            (* ...AND IT IS NOT A PIPE (survey R4, lane SUP-ONE) -- see
+               the [_recv_img] leaf below for why the fact is exported. *)
+            /\ fdst_nopipe (FdOpen rd wr t)⌝ ∗
            ualloc (ukn_fd N) l fd (FdOpen rd wr t))
         ∨ (⌜r = (mword_of_int (-1) : mword 64)⌝ ∗ ustd (ukn_fd N) l)) -∗
        (* ...AND THE POST, at the TRAPPING key and the resume view *)
@@ -4008,7 +4012,7 @@ Section UkRunSys.
     cbn [uvis_M uvis_perm uvis_fd uvis_of_run] in Hfdok |- *.
     iDestruct (ufd_auth_len with "Hufd") as %Hfdlen.
     iApply uslot_bupd.
-    destruct Hfdok as [(fd & rd & wr & t & Hr & Hcl & -> & Hpko & Hnpo) | [Hrm ->]].
+    destruct Hfdok as [(fd & rd & wr & t & Hr & Hcl & -> & Hnpo) | [Hrm ->]].
     - (* A DESCRIPTOR CAME BACK, at the LOWEST free slot, and the RECEIPT
          says at which type *)
       iMod (ufd_alloc_least (ukn_fd N) fdv l fd (FdOpen rd wr t) Hcl
@@ -4031,7 +4035,7 @@ Section UkRunSys.
       { exact (uvis_of_run_cwd m pc M pm sz fdv c gn cs pidv false). }
       { rewrite (uvis_of_run_fd m pc M pm sz fdv c gn cs pidv false). exact Htake. }
       iLeft. iExists fd, rd, wr, t. iFrame "Hh". iPureIntro.
-      split; [ exact Hr | ].
+      split_and!; [ exact Hr | | exact Hnpo ].
       rewrite <- Hfdlen. exact (fd_least_closed_lt _ _ Hcl).
     - (* the call failed: nothing moved, and the ledger comes straight back *)
       iModIntro.
@@ -4791,7 +4795,13 @@ Section UkRunSys.
               TYPE the receipt names to the SLOT its ledger decided. *)
            ⌜r = (mword_of_int (Z.of_nat fd) : mword 64)
             /\ (fd < NOFILE)%nat
-            /\ fdv' = <[fd := FdOpen rd wr t]> (uvis_fd W)⌝ ∗
+            /\ fdv' = <[fd := FdOpen rd wr t]> (uvis_fd W)
+            (* ...AND IT IS NOT A PIPE (survey R4, lane SUP-ONE).  open
+               installs an inode or a device and [UsysMemOk.usys_fd_ok]'s
+               open row says so; exporting the fact here is what lets a
+               holder of this handle take [UkRun.udepw_cl_nopipe]'s FREE
+               close instead of a flagged deposit at 21. *)
+            /\ fdst_nopipe (FdOpen rd wr t)⌝ ∗
            ualloc (ukn_fd N) l fd (FdOpen rd wr t))
         ∨ (⌜r = (mword_of_int (-1) : mword 64)
              /\ fdv' = uvis_fd W⌝ ∗ ustd (ukn_fd N) l)) -∗
@@ -4877,7 +4887,7 @@ Section UkRunSys.
     cbn [uvis_M uvis_perm uvis_fd uvis_of_run] in Hfdok |- *.
     iDestruct (ufd_auth_len with "Hufd") as %Hfdlen.
     iApply uslot_bupd.
-    destruct Hfdok as [(fd & rd & wr & t & Hr & Hcl & -> & Hpko & Hnpo) | [Hrm ->]].
+    destruct Hfdok as [(fd & rd & wr & t & Hr & Hcl & -> & Hnpo) | [Hrm ->]].
     - (* A DESCRIPTOR CAME BACK, at the LOWEST free slot, and the RECEIPT
          says at which type *)
       iMod (ufd_alloc_least (ukn_fd N) fdv l fd (FdOpen rd wr t) Hcl
@@ -4902,7 +4912,7 @@ Section UkRunSys.
       { exact (uvis_of_run_cwd m pc M pm sz fdv c gn cs pidv false). }
       { rewrite (uvis_of_run_fd m pc M pm sz fdv c gn cs pidv false). exact Htake. }
       iLeft. iExists fd, rd, wr, t. iFrame "Hh". iPureIntro.
-      split_and!; [ exact Hr | | ].
+      split_and!; [ exact Hr | | | exact Hnpo ].
       { rewrite <- Hfdlen. exact (fd_least_closed_lt _ _ Hcl). }
       rewrite (uvis_of_run_fd m pc M pm sz fdv c gn cs pidv false). reflexivity.
     - (* the call failed: nothing moved, and the ledger comes straight back *)
@@ -5038,7 +5048,13 @@ Section UkRunSys.
               TYPE the receipt names to the SLOT its ledger decided. *)
            ⌜r = (mword_of_int (Z.of_nat fd) : mword 64)
             /\ (fd < NOFILE)%nat
-            /\ fdv' = <[fd := FdOpen rd wr t]> (uvis_fd W)⌝ ∗
+            /\ fdv' = <[fd := FdOpen rd wr t]> (uvis_fd W)
+            (* ...AND IT IS NOT A PIPE (survey R4, lane SUP-ONE).  open
+               installs an inode or a device and [UsysMemOk.usys_fd_ok]'s
+               open row says so; exporting the fact here is what lets a
+               holder of this handle take [UkRun.udepw_cl_nopipe]'s FREE
+               close instead of a flagged deposit at 21. *)
+            /\ fdst_nopipe (FdOpen rd wr t)⌝ ∗
            ualloc (ukn_fd N) l fd (FdOpen rd wr t))
         ∨ (⌜r = (mword_of_int (-1) : mword 64)
              /\ fdv' = uvis_fd W⌝ ∗ ustd (ukn_fd N) l)) -∗
@@ -5119,7 +5135,7 @@ Section UkRunSys.
     cbn [uvis_M uvis_perm uvis_fd uvis_of_run] in Hfdok |- *.
     iDestruct (ufd_auth_len with "Hufd") as %Hfdlen.
     iApply uslot_bupd.
-    destruct Hfdok as [(fd & rd & wr & t & Hr & Hcl & -> & Hpko & Hnpo) | [Hrm ->]].
+    destruct Hfdok as [(fd & rd & wr & t & Hr & Hcl & -> & Hnpo) | [Hrm ->]].
     - (* A DESCRIPTOR CAME BACK, at the LOWEST free slot, and the RECEIPT
          says at which type *)
       iMod (ufd_alloc_least (ukn_fd N) fdv l fd (FdOpen rd wr t) Hcl
@@ -5144,7 +5160,7 @@ Section UkRunSys.
       { exact (uvis_of_run_cwd m pc M pm sz fdv c gn cs pidv false). }
       { rewrite (uvis_of_run_fd m pc M pm sz fdv c gn cs pidv false). exact Htake. }
       iLeft. iExists fd, rd, wr, t. iFrame "Hh". iPureIntro.
-      split_and!; [ exact Hr | | ].
+      split_and!; [ exact Hr | | | exact Hnpo ].
       { rewrite <- Hfdlen. exact (fd_least_closed_lt _ _ Hcl). }
       rewrite (uvis_of_run_fd m pc M pm sz fdv c gn cs pidv false). reflexivity.
     - (* the call failed: nothing moved, and the ledger comes straight back *)
@@ -5194,7 +5210,13 @@ Section UkRunSys.
        ((∃ (fd : nat) (rd wr : bool) (t : fdtype),
            ⌜r = (mword_of_int (Z.of_nat fd) : mword 64)
             /\ (fd < NOFILE)%nat
-            /\ fdv' = <[fd := FdOpen rd wr t]> (uvis_fd W)⌝ ∗
+            /\ fdv' = <[fd := FdOpen rd wr t]> (uvis_fd W)
+            (* ...AND IT IS NOT A PIPE (survey R4, lane SUP-ONE).  open
+               installs an inode or a device and [UsysMemOk.usys_fd_ok]'s
+               open row says so; exporting the fact here is what lets a
+               holder of this handle take [UkRun.udepw_cl_nopipe]'s FREE
+               close instead of a flagged deposit at 21. *)
+            /\ fdst_nopipe (FdOpen rd wr t)⌝ ∗
            ualloc (ukn_fd N) l fd (FdOpen rd wr t))
         ∨ (⌜r = (mword_of_int (-1) : mword 64)
              /\ fdv' = uvis_fd W⌝ ∗ ustd (ukn_fd N) l)) -∗

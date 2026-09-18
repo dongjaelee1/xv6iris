@@ -3244,7 +3244,7 @@ Section SyscallArms.
   Lemma sysc_dep_kill (U : ustate) (sts : list fdstate) (gn : gname)
       (cs : gset gname) (pid : mword 32) (f : sfam) :
     sysc_num (us_V U) = 6 ->
-    sysc_sys_in U sts gn cs pid f -∗ □ riscv_kill_cred.
+    sysc_sys_in U sts gn cs pid f -∗ app_taint.
   Proof using .
     intros Hn. iIntros "H".
     iDestruct (sysc_sys_in_at U sts gn cs pid f 6 Hn ltac:(vm_compute; discriminate) with "H") as "H".
@@ -3512,7 +3512,7 @@ Section SyscallArms.
     sysc_num (us_V U) = 15 ->
     pv_tf (us_V U) !! tf_arg_idx 0 = Some v0 ->
     pv_tf (us_V U) !! tf_arg_idx 1 = Some v1 ->
-    open_receipt (fs_gamma_L fsc_fs) fsc_fs (pv_cwi (us_V U)) (us_M U) v0 v1
+    open_receipt (of_om f) (fs_gamma_L fsc_fs) fsc_fs (pv_cwi (us_V U)) (us_M U) v0 v1
       (of_P f) (of_Pmiss f) (of_Farm f) (of_Fun f) (of_Fok f) (of_Fex f)
       (of_Fo f) (of_Ft f) sts r sts' -∗
     sysc_sys_out U sts gn cs pid f r M' sts' cw' cs'.
@@ -6951,11 +6951,12 @@ Section SyscallArms.
         split_and!; [exact Htfpe | reflexivity | reflexivity | reflexivity | reflexivity | reflexivity | exact Huptz | reflexivity | reflexivity | |].
         (* ...AND THE ROW'S FAILURE ARM NAMES THAT -1 (lane PIPE-NEG1): the
            post's own [Hr] is exactly the new conjunct, so the row is
-           discharged where it was already being refuted.  Every failure
-           exit of sys_pipe is a bare `return -1' ([kernel/sysfile.c]:
-           pipealloc failing, and each of the two fdalloc scans), which is
-           why [SpecSysPipe.sys_pipe_post] has ONE failure arm and it
-           carries the value. *)
+           discharged where it was already being refuted.  All FIVE of
+           sys_pipe's failure paths -- pipealloc, each fdalloc scan and
+           each of the two copyouts -- leave through one of its three bare
+           `return -1's ([kernel/sysfile.c]), which is why
+           [SpecSysPipe.sys_pipe_post] has ONE failure arm and it carries
+           the value. *)
         { rewrite decide_False; [ exact (conj Hr eq_refl) |].
           rewrite Hr. vm_compute. discriminate. }
         (* a failed pipe returned -1, so the joined row's [uint r = 0]
@@ -7535,19 +7536,20 @@ Section SyscallArms.
                   /\ UW' = us_ofile (us_upt U P') fd (fnode k)
                   /\ sts !! fd = Some FdClosed
                   /\ sts' = <[fd := FdOpen rb wb t]> sts
-                  (* ...AND THE ROW IT INSTALLS IS PARKED, which is what
-                     this arm owes [UsysMemOk.usys_fd_ok]'s open row
-                     (design/user-read.md SS8.1) -- AND IT IS NOT A PIPE
-                     END, which the same row owes now (design/pipe.md, "The
+                  (* ...AND IT IS NOT A PIPE END (design/pipe.md, "The
                      exit path"): open resolves a path, so every arm of it
                      installs an inode or a device and the exit deposit at
-                     the successor key can be minted from nothing. *)
-                  /\ fdst_parked (FdOpen rb wb t)
+                     the successor key can be minted from nothing.  THE
+                     PARKED CONJUNCT IS GONE (lane OFF-LINK-6's L4): an open
+                     installs the descriptor at the mode its caller's family
+                     asked for, and nothing reads all-parkedness off this
+                     row any more -- [UsysMemOk.usys_fd_ok_parked] and its
+                     kit went with the parked discipline. *)
                   /\ fdst_nopipe (FdOpen rb wb t))⌝
            ∗ proc_priv γf (proc_addr j) pid UW'
            ∗ fd_frags (pv_fdg (us_V (us_upt U P'))) sts'
            ∗ fd_slot
-           ∗ open_receipt (fs_gamma_L fsc_fs) fsc_fs (pv_cwi (us_V U))
+           ∗ open_receipt (of_om fdep) (fs_gamma_L fsc_fs) fsc_fs (pv_cwi (us_V U))
                (us_M U) v0 v1
                (of_P fdep) (of_Pmiss fdep) (of_Farm fdep) (of_Fun fdep)
                (of_Fok fdep) (of_Fex fdep) (of_Fo fdep) (of_Ft fdep) sts
@@ -7555,7 +7557,7 @@ Section SyscallArms.
         WP (Loop : expr riscv_lang)) -∗ WP (Loop : expr riscv_lang))%I
       with "[Hcg Hcpu Htcx Hccx Hpc Hbs Hir Hfd0 Hpriv Hufrag Hxin]" as "Hk".
     { iIntros "Hcont'".
-      iApply (SysOpen.wp_sys_open γft γf γs j γl
+      iApply (SysOpen.wp_sys_open (of_om fdep) γft γf γs j γl
                 (fcn_pd fn) (fcn_pav fn) (fcn_pu fn) IREFSPARE
                 DfracDiscarded DfracDiscarded DfracDiscarded DfracDiscarded
                 v0 v1 pid U sts M (av - 4)%nat true true ∅
@@ -7622,7 +7624,7 @@ Section SyscallArms.
                fd_frags (pv_fdg (us_V U)) sts' ∗
                (* ...AND THE RECEIPT, at that same resume view: the split's
                   process half, which [sysc_out_open] hands to the depositor *)
-               open_receipt (fs_gamma_L fsc_fs) fsc_fs (pv_cwi (us_V U))
+               open_receipt (of_om fdep) (fs_gamma_L fsc_fs) fsc_fs (pv_cwi (us_V U))
                  (us_M U) v0 v1
                  (of_P fdep) (of_Pmiss fdep) (of_Farm fdep) (of_Fun fdep)
                  (of_Fok fdep) (of_Fex fdep) (of_Fo fdep) (of_Ft fdep) sts
@@ -7635,7 +7637,7 @@ Section SyscallArms.
       destruct (decide (15 = USYS_open)) as [_ | Hco]; [| exfalso; exact (Hco eq_refl)].
       destruct Hdisj as
         [(Hr & -> & ->)
-        | (fd & ll & kf & rb & wb & tp & Hr & Hfrees & -> & Hcl & -> & Hpk & Hnp)].
+        | (fd & ll & kf & rb & wb & tp & Hr & Hfrees & -> & Hcl & -> & Hnp)].
       - iExists (upd_upt (us_V U) P'), sts. iFrame "Hpv Hb Hrc". iPureIntro.
         split_and!; [exact Htfpe | reflexivity | reflexivity | reflexivity | reflexivity | reflexivity | exact Hextz | reflexivity | reflexivity |].
         (* the failure arm installs nothing: the row's right disjunct *)
@@ -7674,7 +7676,7 @@ Section SyscallArms.
            key off this entry. *)
         left. exists fd, rb, wb, tp.
         split_and!;
-          [exact Hr | exact Hleast | reflexivity | exact Hpk | exact Hnp]. }
+          [exact Hr | exact Hleast | reflexivity | exact Hnp]. }
     assert (Hmfsp : mf !!! Regidx csp_rs1 = pa_stk (m !!! Regidx csp_rs1) 4).
     { rewrite (callee_saved_lookup Hcs csp_rs1 ltac:(vm_compute; reflexivity)). exact HMsp. }
     assert (Hmfs2 : mf !!! Regidx Rs2 = page_base (ud_tfp (pv_upt V'))).

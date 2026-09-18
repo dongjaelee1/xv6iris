@@ -7,6 +7,8 @@
 #   ec2-lane.sh <lane> build [make targets] sync, then make -j6 targets in iris/ (default: the whole iris tree);
 #                                           prints errors with context and "RC=<n>" LAST -- trust ONLY that line
 #   ec2-lane.sh <lane> run '<shell>'        run a command in the remote clone's iris/ with the opam env set
+#   ec2-lane.sh <lane> pull <path> [...]    copy files FROM the remote clone into this worktree (paths relative to the
+#                                           tree root, e.g. iris/UCodeShP.v) -- for generated tracked files (make gen-ucode)
 #
 # <lane> names the local worktree /shared/xv6iris-pipe-<lane> and the remote clone of the same name.
 # The remote clone is FULLY BUILT at the base SHA, so dependencies never need building -- never run
@@ -50,5 +52,6 @@ case "$CMD" in
   build) sync
          remote "make -f CoqMakefile -j6 $*" ;;
   run)   remote "$*" ;;
+  pull)  for f in "$@"; do scp -q -i "$KEY" "ubuntu@$HOST:$REMOTE/$f" "$LOCAL/$f" && echo "pulled $f"; done ;;
   *) echo "unknown command $CMD" >&2; exit 2 ;;
 esac

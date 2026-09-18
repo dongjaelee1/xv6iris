@@ -87,7 +87,7 @@ Require Import SpecConsolewrite.   (* [cons_out_chain_of_licence]: the
                                       of the supply's OUTPUT LICENCE *)
 Require Import SpecFilewrite.      (* [filewrite_in]: the one keyed input *)
 Require Import SpecFileread.       (* [fileread_in]: read's keyed input *)
-Require Import PipeQueue.          (* [pipe_taint_cred], [pipe_rpay_taint] / [pipe_wpay_taint]: the pipe arms' price *)
+Require Import PipeQueue.          (* [pipe_rpay_taint] / [pipe_wpay_taint]: the pipe arms' price, paid by [RiscvPtsto.app_taint] *)
 Require Import PieceFam.        (* [pfam]: a one-shot piece's receipt beside its refund *)
 Import Defs.
 Require Import CtxIdDefs.
@@ -295,29 +295,41 @@ Section FsAbsInvFire.
      takes its [P] back at ONE position, the one the read landed on. *)
   (* ...AND THE CONSOLE LICENCE PAYS THE CONSOLE ARM'S SECOND HALF (lane
      CONS-IO, milestone B, B4).  Read's console deposit carries the
-     boundary's read link as well as the ring's payment, and the generic
-     slot's supply already holds [WpUart.cons_licence]
-     ([UexecExecInst.xv6_ssupply]'s third conjunct) -- which since the
-     redesign is the port's ONE licence, good for any event -- so this arm
-     costs the generic process nothing new: it claims nothing about what
-     came in ([rf_in] at [fun _ => True]) and the licence hands over a link
-     at any [ws] whatever. *)
+     boundary's read link as well as the ring's payment, and the licence
+     that pays it comes off the TAINT ([WpUart.cons_licence_of_taint],
+     lane SUP-ONE; it used to be a third conjunct of
+     [UexecExecInst.xv6_ssupply]) -- which since the redesign is the
+     port's ONE licence, good for any event -- so this arm costs the
+     generic process nothing new: it claims nothing about what came in
+     ([rf_in] at [fun _ => True]) and the licence hands over a link at any
+     [ws] whatever. *)
   (* ...AND THE PIPE ARM IS PAID BY THE TAINT (design/pipe.md, "The byte
      queue"): the generic process holds no fragment of any pipe, so its
      read disconnects the pipe's ghost state at the application's taint --
      the kill credential, which the supply already carries. *)
+  (* ...AND THE LICENCE IS THE TAINT'S (lane SUP-ONE): it was a premise
+     here, carried in the generic supply beside the taint; it is now the
+     interface's own law ([RiscvPtsto.ai_lic],
+     [WpUart.cons_licence_of_taint]) and is read off the credential the
+     pipe arm already takes. *)
   Lemma fsabs_fileread_in (st : fdstate) (n : Z) (P : iProp Σ) :
-    WpUart.cons_licence -∗
-    app_sup -∗ pipe_taint_cred -∗
+    app_sup -∗ app_taint -∗
     fileread_in st n (pfam_triv (fun _ _ _ _ => True%I))
                      (fun _ _ => True%I) (fun _ => True%I)
                      (fun _ => True%I) (fun _ _ => True%I) P.
   Proof using .
-    rewrite /fileread_in. iIntros "#Hilic #Hsup #Htaint HP".
+    rewrite /fileread_in. iIntros "#Hsup #Htaint HP".
+    iDestruct (WpUart.cons_licence_of_taint with "Htaint") as "#Hilic".
     destruct st as [| rb wb ty]; [iExact "HP" |].
     destruct rb; [| iExact "HP"].
     destruct ty as [i γo om | γp | ma].
-    - iFrame "HP". iApply (fsabs_aread (fs_gamma_L fsc_fs) i γo).
+    - (* the inode arm at the row's mode (lane OFF-LINK-4): at a HELD row
+         the generic tier has no [UserOff.uoff] to lend and takes the RIGHT
+         arm -- the same commit beside the taint it already holds *)
+      destruct om as [|].
+      + iFrame "HP". iApply (fsabs_aread (fs_gamma_L fsc_fs) i γo).
+      + iFrame "HP". iRight. iSplitL; [| iExact "Htaint"].
+        iApply (fsabs_aread (fs_gamma_L fsc_fs) i γo).
     - iFrame "HP". by iApply pipe_rpay_taint.
     - case_decide; [| iExact "HP"].
       iSplitL "HP".
@@ -352,23 +364,35 @@ Section FsAbsInvFire.
      mintable by anyone.  Under the resource claim the point of the whole
      lane is that the kernel can say WHO may write, so an arbitrary
      process's [write(2)] on the console is paid out of the OUTPUT LICENCE
-     its supply carries ([WpUart.cons_licence], the last conjunct of
-     [UexecExecInst.xv6_ssupply]) -- and the application sets that
-     licence's price ([App]'s [al_sup]).  The licence is
-     therefore a PREMISE here, exactly as [app_sup] is. *)
+     -- and the application sets that licence's price.  IT IS NOT A
+     PREMISE HERE ANY MORE (lane SUP-ONE): the price is a law of the
+     application's interface ([RiscvPtsto.ai_lic]), so the TAINT this
+     lemma already takes for the pipe arm buys the licence too
+     ([WpUart.cons_licence_of_taint]). *)
   Lemma fsabs_filewrite_in (st : fdstate) (n : Z)
       (M : gmap Z (bv 8)) (ua : mword 64) :
-    app_sup -∗ cons_licence -∗ pipe_taint_cred -∗
+    app_sup -∗ app_taint -∗
     |==> filewrite_in st n M ua (fun _ => True%I) (fun _ _ => True%I).
   Proof using .
-    iIntros "#Hsup #Hlic #Htaint".
+    iIntros "#Hsup #Htaint".
+    iDestruct (cons_licence_of_taint with "Htaint") as "#Hlic".
     rewrite /filewrite_in.
     destruct st as [| rb wb ty]; [by iModIntro |].
     destruct wb; [| by iModIntro].
     destruct ty as [i γo om | γp | ma].
-    - iModIntro.
-      iApply (fsabs_awrite_chain fsc_fs i γo M ua n 0%nat (wchunks n)
-                with "Hsup").
+    - (* THE INODE ARM, keyed on the row's offset mode (lane OFF-LINK-4).
+         At a PARKED row the supply builds the chain as it always did; at a
+         HELD one the generic tier has no [UserOff.uoff] to lend and takes
+         the RIGHT arm -- the same chain beside the taint it already holds
+         (the survey's Fact A).  That is the owner's principle at this
+         coupling, and it is why a held descriptor costs the generic proof
+         nothing. *)
+      destruct om as [|]; iModIntro.
+      + iApply (fsabs_awrite_chain fsc_fs i γo M ua n 0%nat (wchunks n)
+                  with "Hsup").
+      + rewrite /filewrite_in_held. iRight. iSplitR; [| iExact "Htaint"].
+        iApply (fsabs_awrite_chain fsc_fs i γo M ua n 0%nat (wchunks n)
+                  with "Hsup").
     - (* the pipe arm: the taint *)
       iModIntro. by iApply pipe_wpay_taint.
     - iModIntro. iApply (cons_out_chain_of_licence with "Hlic").

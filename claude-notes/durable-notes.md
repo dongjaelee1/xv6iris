@@ -733,6 +733,18 @@ trap one class in: a second `ghost_varG`/`ctokG` beside `!xv6G Σ` (which
 already carries both). The hoist is still worth doing first — it is what
 turns the hang into a readable failure. (CAT-WALK-2, 2026-09-17)
 
+### A fourth silent hang: a transparent obligation under a variable predicate
+
+Once a definition's argument becomes a section VARIABLE (a line predicate
+`Dl`, a discipline `Dsc`), typeclass resolution for a `Persistent` /
+`FromModal` obligation on the definition delta-unfolds it, and an opening
+`iIntros` on a 6000-line file wedges for 30+ minutes with no error. A
+named `Persistent` instance does not protect a TRANSPARENT obligation.
+Fix: `#[local] Typeclasses Opaque X.` in the file that opens it — `local`
+because the seal is one-way (`FromModal` cannot see a `□` through it
+either, so a global seal breaks the consumers that intro the modality).
+(LINK-GEN-6, 2026-09-17)
+
 ### Two more silent hangs: a `Prop`-valued restatement, and a budget that does not line up
 
 - **Growing a row on an arm that has `exact`-proved restatements is a HANG,
@@ -917,6 +929,33 @@ Five ways to be silently miscounted, all of them green builds:
   but it instantiates nothing, and the report counts only instantiations — so
   the function reads *assumed*. `LinkPrputc.v` was that shape; the fix is the
   ordinary one, a functor in `Proof<F>.v` and a one-line link.
+- **A statement that leaves `uprogSG` implicit can hang its consumer.**
+  Discharging it by a lemma stated at `uprogSG_free` makes the conversion
+  between two deposit instances never come back (`iApply` and `exact`
+  alike, 10+ minutes, no output).  Annotate `(PS := uprogSG_free)` in the
+  STATEMENT and both proofs close in milliseconds.  `--check` (vos) passes
+  either way, so a statement-only check cannot see it.  RULE for the
+  program tier: every statement mentioning a deposit or exec instance pins
+  it — `(PS := uprogSG_free)`, `(SG := uexecSG_xv6)` — on both the lemma
+  and its consumer's goal; implicit does not fail, it hangs (seen twice,
+  two hours lost on `sh_child_law_file`).  The rule covers the CAMERAS
+  too: `UserCwd.ucwd`'s `ghost_varG Σ Z` resolves to a section variable in
+  the U-tier files and to `Xv6Cameras.offbox_offG` in the kernel's, the
+  two print identically, and `iSpecialize: cannot instantiate` is the
+  symptom (`(ghost_varG0 := offbox_offG)` on the call).  Localise FIRST:
+  `Local Set Printing Implicit` and turn the failing premise into its own
+  goal.  A section `Context` for the deposit instance does NOT work in a
+  large file (35 minutes of elaboration, unfinished): bind it per lemma
+  (`` `{PSx : uprogSG Σ} ``), as `UEchoFile.v`'s header says.
+- **Tree-wide sweeps: pick the sentinel with `grep -c` on the tree first.**
+  A sed/python sweep that used `§` as a placeholder rewrote 3,327 comment
+  lines in 442 files into nonsense because the tree already contains `§`
+  (it still compiled; only `grep` caught it).  Check the sentinel is absent
+  from `iris/` before expanding it, and diff the sweep's file count against
+  the intended site count before committing.
+- **`iris/_CoqProject` is a file list, not a log.** No lane names, deliverable
+  numbers or explanations as `#` comments beside the entries (owner's rule);
+  the `.v` file's own header is where a file explains itself.
 - **The scan is keyed off `iris/_CoqProject`**, so adding a file to `iris/` means
   adding it there. A file deliberately out of the build is descoped by commenting
   its row to a bare `# Foo.v`, which is the syntax `--check` recognizes; a

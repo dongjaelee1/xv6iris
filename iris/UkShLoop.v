@@ -17,9 +17,11 @@
 (*   the break [usz γs sz], which the child's [sbrk] moves in ITS copy of *)
 (*     the address space and not in the parent's;                          *)
 (*                                                                        *)
-(* and [16 + (80 + n)] rather than [16 + n]: fork1's own 2 words, the     *)
+(* and [16 + (ush_Dbody + n)] rather than [16 + n]: fork1's own 2 words,  *)
 (* diagnostic subtree's 28, the parser's 60 and the runner's 8.  The      *)
-(* [cd] arm's 26 (fprintf's frame) fits inside the same 80.               *)
+(* [cd] arm's 26 (fprintf's frame) fits inside the same room, and the     *)
+(* REDIRECT line's parse takes eight more than the symbol-free one (lane   *)
+(* SH-CHILD-2), which is why [UkSh.ush_Dbody] is 88 and not 80.            *)
 (*                                                                        *)
 (* NOTHING HERE IS PROVED -- it is two definitions and the one-line       *)
 (* accessor that turns the data half into what the allocator's contract   *)
@@ -199,7 +201,7 @@ Section UkShLoop.
        UkSh.ush_pstate N γp T Wc Wb Pm l -∗
        ushl_dat γd -∗ usz γs sz -∗
        ubytes γd sh_buf sh_nbuf f -∗
-       urun N h m (mword_of_int 0x938) (16 + (80 + n)) -∗
+       urun N h m (mword_of_int 0x938) (16 + (UkSh.ush_Dbody + n)) -∗
        WP (Loop : expr riscv_lang))%I.
 
   (* [UkSh.ush_rest]'s opaque [R], AT THIS SHELL.  The re-cut left [R] a
@@ -210,7 +212,7 @@ Section UkShLoop.
   Definition ushl_R (sz : Z) : iProp Σ := (ushl_dat γd ∗ usz γs sz)%I.
 
   (* ...and then [UkSh.ush_loop_head] AT that [R] IS [ushl_head]: the same
-     four binders, the same budget ([UkSh.ush_Dbody] is 80), and the two
+     four binders, the same budget ([UkSh.ush_Dbody]), and the two
      halves of [ushl_R] uncurried. *)
   (* ...AND THE PROMPT'S PAYMENT RIDES INSIDE THE PROCESS STATE (lane
      IO-LEAF, M6a(3), step 3): the era's credential is in [UkSh.ush_posb]'s

@@ -577,6 +577,33 @@ inum 3 — `FsCatPin`).  `iris/UPipeBootAdequacy.v`:
 file audits (bar: ≤ echo's fourteen, plus `pipe_both_law` until PIPE-2W
 lands, reported as such).
 
+### 5.6 RULED (2026-09-18, after PIPE-STAGE's finding): the claim pins /cat
+
+`AppEcho.echo_pred γ r av := echo_taint γ ∨ (⌜echo_fs_pure av⌝ ∗ cons_state
+r av)` and `echo_fs_pure` pins /init, /sh and /echo only — so a record at
+`app_pred := echo_pred` typechecks but cannot resolve `/cat` from the
+claim, and SH-PIPE-ROUND's exec of cat would have nothing to stand on.
+RULED, route (a): the pipe claim is echo's SHAPE with the stronger pure
+conjunct,
+
+    pipe_pred γ r av := echo_taint γ ∨ (⌜file_fs_pure av⌝ ∗ cons_state r av)
+    -- FileFsPure.file_fs_pure av = echo_fs_pure av /\ era0_cat_pins av, upstream's landed predicate, imported
+
+`app_fixed`/`app_names`/`app_boot`/`cons_state` stay echo's.  What it
+costs (lane PIPE-CLAIM = PIPE-STAGE part 2): the record's laws re-derived
+at `pipe_pred` (mould: `AppEcho`'s proofs; the pure conjunct crosses the
+transport as a Prop, `Happ_init` computes `era0_cat_pins` off the image
+through `FsCatPin.era0_boot_cat_pins` exactly as `AppFileRec` does), and
+the PROGRAM-TIER LAWS at `pipe_pred` — /init's console dance
+(`init_cons_laws_at` at a non-echo claim: upstream's INIT-FILE rounds are
+the mould, minus the f-state; the one real move, the console `mknod`,
+must preserve `era0_cat_pins` — `FileDeltas`' pin-preservation lemmas
+cover the legs) and whatever sh's round reads of the claim.  Route (b),
+confining the pipeline round to era 0 where `era0_boot_cat_pins` is
+free, is rejected: the theorem is about every era.  The design's §0
+sentence "the file system unmodified, echo's invariant verbatim" is
+corrected to "echo's invariant plus /cat's pin, same shape".
+
 ## 6. Lanes
 
 Wave 1, independent, in parallel (each in its own clone with its own

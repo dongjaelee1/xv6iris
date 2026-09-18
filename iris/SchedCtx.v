@@ -186,7 +186,7 @@ Section SchedCtx.
      every consequence -- usertrap's [kexit(-1)], consoleread's -1, wait()'s
      -1 status, init reprinting its banner -- was unexplained.  The row
      below is the explanation: the flag is zero, OR the application's KILL
-     CREDENTIAL has been paid ([RiscvPtsto.riscv_kill_cred]).
+     CREDENTIAL has been paid ([RiscvPtsto.app_taint]).
 
      PERSISTENT, both arms, and that is what keeps the cost at one conjunct:
      every party that opens the lock may keep a copy and every re-bundle
@@ -263,7 +263,7 @@ Section SchedCtx.
      "The exit path", 2026-09-16).  A kill closes every descriptor of the
      victim, and a pipe descriptor's last close steps the pipe's exact
      ghost state -- a price the KILLER pays, and the only thing a killer can
-     pay it with is the taint ([RiscvPtsto.riscv_kill_cred]), since it
+     pay it with is the taint ([RiscvPtsto.app_taint]), since it
      cannot name the victim's table.  So the payment arm is the death
      payload AND the credential.  A process that kills ITSELF pays
      differently: its own trap deposit carries the closes of the table it
@@ -274,7 +274,7 @@ Section SchedCtx.
   Definition kill_row (gn : gname) (kl : mword 32) : iProp Σ :=
     ((⌜kl = (mword_of_int 0 : mword 32)⌝ ∗ ChildTok.kill_pend gn)
      ∨ (⌜kl <> (mword_of_int 0 : mword 32)⌝ ∗ ChildTok.kill_shot gn ∗
-        ((ChildTok.kill_owed gn ∗ □ riscv_kill_cred) ∨ ChildTok.taken_at gn)))%I.
+        ((ChildTok.kill_owed gn ∗ app_taint) ∨ ChildTok.taken_at gn)))%I.
 
   (* WHOSE ROW IT IS, and the tie that says so: an eighth of the pid's
      registration ([SlotGen.pid_reg]), which is the one resource in the
@@ -316,9 +316,9 @@ Section SchedCtx.
      target's resources -- it scans the proc table and lands on whatever
      slot the pid names.  So the row itself carries the price: the
      persistent reading of the incarnation's payload, and a persistent WAND
-     from [RiscvPtsto.riscv_kill_cred] to that payload at -1.
+     from [RiscvPtsto.app_taint] to that payload at -1.
 
-     AND [riscv_kill_cred] IS NO LONGER A KILL CREDENTIAL.  It is the
+     AND [app_taint] IS NO LONGER A KILL CREDENTIAL.  It is the
      APPLICATION'S TAINT on the fixed record (echo instantiates it as
      [AppEcho.echo_taint]; [App.al_kill] is where the supply buys it),
      and after this lane it survives ONLY as the antecedent of this wand.
@@ -337,12 +337,12 @@ Section SchedCtx.
      is [{!riscvGS} {!ufdG} {!ctokG}] and nothing else.  Naming [app_sup]
      there would force [fileG] on 76 more files -- the whole U tier, every
      verified program -- which is exactly what lane SUPPLY-SPLIT exists to
-     prevent.  [riscv_kill_cred] lives at [RiscvPtsto]'s altitude and both
+     prevent.  [app_taint] lives at [RiscvPtsto]'s altitude and both
      ends can name it; [UexecSlot.upay_neg] was stated against it for the
      same reason.
 
      FOUNDED ONCE, AT ALLOCPROC, out of [SpecAllocproc]'s
-     [□ (riscv_kill_cred -∗ Q (-1))] premise: <init>'s payload is trivial
+     [□ (app_taint -∗ Q (-1))] premise: <init>'s payload is trivial
      and kfork's comes from the forking process, whose payload admits the
      taint on its taint arm.  Both conjuncts are PERSISTENT, so re-bundling
      the lock's payload costs nothing and the row stays linear only in
@@ -352,7 +352,7 @@ Section SchedCtx.
      ∨ (⌜bv_unsigned pid <> 0⌝ ∗
         ∃ (gn : gname) (Q : Z -> iProp Σ),
           pid_reg pid (DfracOwn qeighth) gn ∗
-          ChildTok.my_pay gn Q ∗ □ (riscv_kill_cred -∗ Q (-1)) ∗
+          ChildTok.my_pay gn Q ∗ □ (app_taint -∗ Q (-1)) ∗
           kill_row gn kl))%I.
 
   Definition proc_pub (pa : mword 64) : iProp Σ :=
@@ -370,7 +370,7 @@ Section SchedCtx.
 
   Lemma kill_row_of_owed (gn : gname) (kl : mword 32) :
     kl <> (mword_of_int 0 : mword 32) ->
-    ChildTok.kill_shot gn -∗ □ riscv_kill_cred -∗ ChildTok.kill_owed gn -∗
+    ChildTok.kill_shot gn -∗ app_taint -∗ ChildTok.kill_owed gn -∗
     kill_row gn kl.
   Proof using .
     intro Hnz. rewrite /kill_row. iIntros "#Hs #Hc H". iRight.
@@ -460,7 +460,7 @@ Section SchedCtx.
       (Q : Z -> iProp Σ) :
     bv_unsigned pid <> 0 ->
     pid_reg pid (DfracOwn qeighth) gn -∗ ChildTok.my_pay gn Q -∗
-    □ (riscv_kill_cred -∗ Q (-1)) -∗ kill_row gn kl -∗ kill_paid pid kl.
+    □ (app_taint -∗ Q (-1)) -∗ kill_row gn kl -∗ kill_paid pid kl.
   Proof using .
     intro Hnz. rewrite /kill_paid. iIntros "Hr #Hmy #Hw Hk". iRight.
     iSplitR; [ iPureIntro; exact Hnz | ]. iExists gn, Q.
@@ -489,7 +489,7 @@ Section SchedCtx.
   Lemma kill_paid_kill (pid : mword 32) (kl kl' : mword 32) :
     bv_unsigned pid <> 0 ->
     ⌜kl' <> (mword_of_int 0 : mword 32)⌝ -∗
-    □ riscv_kill_cred -∗ kill_paid pid kl ==∗ kill_paid pid kl'.
+    app_taint -∗ kill_paid pid kl ==∗ kill_paid pid kl'.
   Proof using .
     intro Hpnz. rewrite /kill_paid.
     iIntros "%Hknz #Hsup [[%Hz _] | [%Hnz Hr]]".
@@ -517,7 +517,7 @@ Section SchedCtx.
       (gn : gname) :
     bv_unsigned pid <> 0 ->
     ⌜kl' <> (mword_of_int 0 : mword 32)⌝ -∗
-    pid_reg pid dq gn -∗ □ riscv_kill_cred -∗ ChildTok.kill_owed gn -∗
+    pid_reg pid dq gn -∗ app_taint -∗ ChildTok.kill_owed gn -∗
     kill_paid pid kl ==∗
     pid_reg pid dq gn ∗ kill_paid pid kl'.
   Proof using .
@@ -556,10 +556,10 @@ Section SchedCtx.
        kexit two critical sections later, and gets it back below.  KEYED
        on the party, so the caller knows which side comes back. *)
     (if self then ChildTok.kill_owed gn ∗ ChildTok.taken_at gn
-     else □ riscv_kill_cred) -∗
+     else app_taint) -∗
     kill_paid pid kl ==∗
     pid_reg pid dq gn ∗ ChildTok.kill_shot gn ∗ kill_paid pid kl' ∗
-    (if self then ChildTok.kill_owed gn else □ riscv_kill_cred).
+    (if self then ChildTok.kill_owed gn else app_taint).
   Proof using .
     intro Hpnz. rewrite /kill_paid.
     iIntros "%Hknz Hmine Hpay [[%Hz _] | [%Hnz Hr]]".
@@ -614,7 +614,7 @@ Section SchedCtx.
      ∨ (⌜bv_unsigned pid <> 0⌝ ∗
         ∃ Q : Z -> iProp Σ,
           pid_reg pid (DfracOwn qeighth) gn ∗ ChildTok.my_pay gn Q ∗
-          □ (riscv_kill_cred -∗ Q (-1)) ∗ kill_row gn kl)) ∗
+          □ (app_taint -∗ Q (-1)) ∗ kill_row gn kl)) ∗
     pid_reg pid dq gn.
   Proof using .
     rewrite /kill_paid. iIntros "[[%Hz #Hf] | [%Hnz Hr]] Hmine".
@@ -679,7 +679,7 @@ Section SchedCtx.
     kill_paid pid kl -∗ pid_reg pid dq gn -∗ ChildTok.taken_at gn -∗
     kill_paid pid kl ∗ pid_reg pid dq gn ∗ ChildTok.taken_at gn ∗
     (⌜kl = (mword_of_int 0 : mword 32)⌝
-     ∨ (ChildTok.kill_shot gn ∗ □ riscv_kill_cred)).
+     ∨ (ChildTok.kill_shot gn ∗ app_taint)).
   Proof using .
     iIntros "Hkp Hmine Ht".
     iDestruct (kill_paid_agree pid kl dq gn with "Hkp Hmine")

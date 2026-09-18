@@ -70,6 +70,35 @@ Require Import FdSlots.
 Require Import ProcGeom.
 Require Import UserFd.
 Require Import UCodeShK UkSh.
+
+(* ===================================================================== *)
+(*  THE LINE-PARAMETRIC OBLIGATION IS SEALED FOR INSTANCE RESOLUTION      *)
+(*  (lane LINK-GEN-6).                                                   *)
+(*                                                                       *)
+(*  [UkSh.ush_rest_l_at] has a named [Persistent] instance                *)
+(*  ([ush_rest_l_at_persistent]), but the constant is TRANSPARENT, so     *)
+(*  resolution may delta-unfold it while matching -- and against a goal   *)
+(*  whose line predicate is a VARIABLE (which is exactly what this file's *)
+(*  three lemmas now quantify over) the search walks the obligation's     *)
+(*  whole wand chain and does not return: [sh_uexec_slot]'s opening       *)
+(*  [iIntros] of its bundle ([#Hrest] among them) wedged this file for    *)
+(*  over half an hour                                                    *)
+(*  the moment the era's line predicate stopped being the closed          *)
+(*  [UkSh.ush_line_echo].  Sealing it for resolution makes the named      *)
+(*  instance the only way in, which is what that instance was written     *)
+(*  for.                                                                 *)
+(*                                                                       *)
+(*  IT IS [local] AND IT IS DECLARED HERE, not beside the instance,       *)
+(*  because the seal is one-way: [FromModal] cannot see the [□] through   *)
+(*  a sealed constant either, so every proof that opens the obligation    *)
+(*  with a bare [iModIntro] -- [UkShFork.ushf_rest_of_body_at],           *)
+(*  [UShRest.sh_rest_holds_at] -- fails with [the goal is not a           *)
+(*  modality] as soon as the seal reaches it.  A [local] seal at the one  *)
+(*  file whose line predicate is a VARIABLE costs those files nothing.    *)
+(*  If it is ever made global, each of them needs                         *)
+(*  [rewrite /UkSh.ush_rest_l_at] before its [iModIntro].                 *)
+(* ===================================================================== *)
+#[local] Typeclasses Opaque UkSh.ush_rest_l_at.
 Require Import LineWords.   (* [wl_nl]: the read's law is stated at a line *)
 Require Import UkRun.          (* [udep] / [uslot_of_urun_all] / [urun] *)
 Require Import PageGeom.       (* [PGSIZE] *)
@@ -434,8 +463,28 @@ Section UShKernel.
          arm: carried unchanged through the prompt, into the payload at
          the shut-fd-0 exit ([Hpmwb]). *)
       (Wb : list (bv 8) -> iProp Σ)
+      (* THE INPUT'S DISCIPLINE (lane LINK-GEN-5): [UkSh]'s walk spends
+         exactly three readings of it and this entry only relays them. *)
+      (Dsc : list (bv 8) -> Prop)
+      (Hdncr : forall (I : list (bv 8)) (b : bv 8),
+         Dsc (I ++ [b]) -> bv_unsigned b <> 13%Z)
+      (Hdshort : forall I : list (bv 8),
+         Dsc I -> (S (length (rest_of I)) < EchoDisc.line_max)%nat)
+      (* ...AND THE LINE THE NEWLINE CLOSES (lane LINK-GEN-6): the era's
+         own constructor, its words and its bytes in the buffer. *)
+      (Dl : FileDisc.uline -> Prop)
+      (Hdline : forall (I : list (bv 8)) (f : nat -> bv 8),
+         Dsc (I ++ [wl_nl]) ->
+         (forall j : nat, (j < length (rest_of I))%nat ->
+            f j = rest_of I !!! j) ->
+         f (length (rest_of I)) = wl_nl ->
+         exists lu : FileDisc.uline,
+           Dl lu
+           /\ FileDisc.uline_ws lu = wl_words (rest_of I)
+           /\ length (FileDisc.line_bytes lu) = S (length (rest_of I))
+           /\ UkSh.ush_line_at lu f 0%nat (S (length (rest_of I))))
       (Hrl : forall (N : uk_names Σ) (l : list fdstate),
-         ukn_pay N = Q -> ⊢ UkSh.ush_read_recv_leaf N γp T Pm cn l)
+         ukn_pay N = Q -> ⊢ UkSh.ush_read_recv_leaf_at N γp T Pm Dsc cn l)
       (Hpm1 : forall (N : uk_names Σ) (i : nat),
          ukn_pay N = Q ->
          ⊢ UkSh.ush_at N γp i -∗
@@ -584,7 +633,7 @@ Section UShKernel.
        it at this record against sh's own .rodata. *)
     sh_prompt_law Wc -∗
     (∀ N : uk_names Σ,
-       ush_rest_l N γp T Wc Wb Pm (R (ukn_t N) (ukn_d N) (ukn_s N))) -∗
+       ush_rest_l_at N γp T Wc Wb Pm Dl (R (ukn_t N) (ukn_d N) (ukn_s N))) -∗
     (* THE ENTRY'S ONE DESCRIPTOR ROW, at its three arms
        ([UkSh.ush_fd0]).  Persistent, and the walk reads none of the three
        -- which is what makes the CLOSED arm this same application. *)
@@ -635,11 +684,11 @@ Section UShKernel.
     iIntros "#Hpay #Hnpw #Hdep #Hdp #Htag #Hplaw #Hrest #Hfd0 Hin #Hgen #Hmp Hpos
              Hlease Hwcp".
     iApply (uslot_of_urun_all W (2 + (8 + (16 + (ush_Dbody + n0)))) Q
-              ∅ Hal8 Hroom Hstk Hfdlen Hstop Hlzf with "Hdep Hnpw Hmp").
+              Hal8 Hroom Hstk Hfdlen Hstop Hlzf with "Hdep Hnpw Hmp").
     (* sh's own half of its children set travels in [UkSh.ush_pstate]
        beside the ledger and the cwd: fork1 MOVES the set, so the fragment
        goes down the chain index-free ([UserChildren.uch_any]). *)
-    iIntros (N h) "%Hpayeq %Hheldeq %Hsz Hszf #Ht Hstd Hcwf Hchf Hpidf Dlo _ Hrun".
+    iIntros (N h) "%Hpayeq %Hsz Hszf #Ht Hstd Hcwf Hchf Hpidf Dlo _ Hrun".
     (* THE RECORD'S PAYLOAD IS SH'S, and it is CONSTANT: that is the whole
        of what the walk below needs of it ([UkRun.ukn_const]). *)
     pose proof (ukn_const_of_eq N Q Hpayeq HQc) as Hti.
@@ -658,8 +707,7 @@ Section UShKernel.
       - iRight. iRight. iExact "HT". }
     (* ...and the taint's continuation at this record's own payload *)
     iAssert (UkSh.ush_gen_slot N T) as "#Hgen'".
-    { rewrite /UkSh.ush_gen_slot Hpayeq.
-      iSplitR; [ iPureIntro; exact Hheldeq | iExact "Hgen" ]. }
+    { rewrite /UkSh.ush_gen_slot Hpayeq. iExact "Hgen". }
     (* sh's OWN READ-ONLY IMAGE, off the same text: the jump table, the
        "console" literal the pinned open resolves and the prompt's two
        bytes all live in it, so it is read out once here. *)
@@ -672,7 +720,7 @@ Section UShKernel.
               (fun I => Hpmwb N I Hpayeq)
               Hwbr
               Hwc
-              cn
+              cn Dsc Hdncr Hdshort Dl Hdline
               (fun l0 => Hrl N l0 Hpayeq)
               (R (ukn_t N) (ukn_d N) (ukn_s N)) K h _ f n0
               (take NSTD (uvis_fd W))
@@ -717,8 +765,28 @@ Section UShKernel.
          Unguarded: it names no payload. *)
       (Wc : list (bv 8) -> nat -> iProp Σ)
       (Wb : list (bv 8) -> iProp Σ)
+      (* THE INPUT'S DISCIPLINE (lane LINK-GEN-5): [UkSh]'s walk spends
+         exactly three readings of it and this entry only relays them. *)
+      (Dsc : list (bv 8) -> Prop)
+      (Hdncr : forall (I : list (bv 8)) (b : bv 8),
+         Dsc (I ++ [b]) -> bv_unsigned b <> 13%Z)
+      (Hdshort : forall I : list (bv 8),
+         Dsc I -> (S (length (rest_of I)) < EchoDisc.line_max)%nat)
+      (* ...AND THE LINE THE NEWLINE CLOSES (lane LINK-GEN-6): the era's
+         own constructor, its words and its bytes in the buffer. *)
+      (Dl : FileDisc.uline -> Prop)
+      (Hdline : forall (I : list (bv 8)) (f : nat -> bv 8),
+         Dsc (I ++ [wl_nl]) ->
+         (forall j : nat, (j < length (rest_of I))%nat ->
+            f j = rest_of I !!! j) ->
+         f (length (rest_of I)) = wl_nl ->
+         exists lu : FileDisc.uline,
+           Dl lu
+           /\ FileDisc.uline_ws lu = wl_words (rest_of I)
+           /\ length (FileDisc.line_bytes lu) = S (length (rest_of I))
+           /\ UkSh.ush_line_at lu f 0%nat (S (length (rest_of I))))
       (Hrl : forall (N : uk_names Σ) (l : list fdstate),
-         ukn_pay N = Q -> ⊢ UkSh.ush_read_recv_leaf N γp T Pm cn l)
+         ukn_pay N = Q -> ⊢ UkSh.ush_read_recv_leaf_at N γp T Pm Dsc cn l)
       (Hpm1 : forall (N : uk_names Σ) (i : nat),
          ukn_pay N = Q ->
          ⊢ UkSh.ush_at N γp i -∗
@@ -807,7 +875,7 @@ Section UShKernel.
        see [sh_uexec_slot] and SS1c *)
     sh_prompt_law Wc -∗
     (∀ N : uk_names Σ,
-       ush_rest_l N γp T Wc Wb Pm (R (ukn_t N) (ukn_d N) (ukn_s N))) -∗
+       ush_rest_l_at N γp T Wc Wb Pm Dl (R (ukn_t N) (ukn_d N) (ukn_s N))) -∗
     (* the entry row, the pay fact, the lend, the position and the
        credential slot, all passed straight through: see [sh_uexec_slot] *)
     UkSh.ush_fd0 T (take NSTD sts) -∗
@@ -914,7 +982,8 @@ Section UShKernel.
     (* the entry row is stated at the EXEC'ING process's table, which is
        the one the image fact says the new key carries *)
     rewrite <- Hfd.
-    iApply (sh_uexec_slot R γp cn T K Q Ql Pm Wc Wb Hrl Hpm1 Hpm3 Hpmwb
+    iApply (sh_uexec_slot R γp cn T K Q Ql Pm Wc Wb Dsc Hdncr Hdshort
+              Dl Hdline Hrl Hpm1 Hpm3 Hpmwb
               Hwc Hwbwc Hwbl Hwbr W' n0 n Hbd).
     - exact HQc.
     - rewrite Hpc. exact sh_start_pc.
@@ -966,8 +1035,28 @@ Section UShKernel.
       `{!Persistent T} `{!Persistent K}
       (Q Ql : Z -> iProp Σ) (Pm : list (bv 8) -> iProp Σ)
       (Wc : list (bv 8) -> nat -> iProp Σ) (Wb : list (bv 8) -> iProp Σ)
+      (* THE INPUT'S DISCIPLINE (lane LINK-GEN-5): [UkSh]'s walk spends
+         exactly three readings of it and this entry only relays them. *)
+      (Dsc : list (bv 8) -> Prop)
+      (Hdncr : forall (I : list (bv 8)) (b : bv 8),
+         Dsc (I ++ [b]) -> bv_unsigned b <> 13%Z)
+      (Hdshort : forall I : list (bv 8),
+         Dsc I -> (S (length (rest_of I)) < EchoDisc.line_max)%nat)
+      (* ...AND THE LINE THE NEWLINE CLOSES (lane LINK-GEN-6): the era's
+         own constructor, its words and its bytes in the buffer. *)
+      (Dl : FileDisc.uline -> Prop)
+      (Hdline : forall (I : list (bv 8)) (f : nat -> bv 8),
+         Dsc (I ++ [wl_nl]) ->
+         (forall j : nat, (j < length (rest_of I))%nat ->
+            f j = rest_of I !!! j) ->
+         f (length (rest_of I)) = wl_nl ->
+         exists lu : FileDisc.uline,
+           Dl lu
+           /\ FileDisc.uline_ws lu = wl_words (rest_of I)
+           /\ length (FileDisc.line_bytes lu) = S (length (rest_of I))
+           /\ UkSh.ush_line_at lu f 0%nat (S (length (rest_of I))))
       (Hrl : forall (N : uk_names Σ) (l : list fdstate),
-         ukn_pay N = Q -> ⊢ UkSh.ush_read_recv_leaf N γp T Pm cn l)
+         ukn_pay N = Q -> ⊢ UkSh.ush_read_recv_leaf_at N γp T Pm Dsc cn l)
       (Hpm1 : forall (N : uk_names Σ) (i : nat),
          ukn_pay N = Q ->
          ⊢ UkSh.ush_at N γp i -∗
@@ -1026,7 +1115,7 @@ Section UShKernel.
     UkSh.ush_tag_law T -∗
     sh_prompt_law Wc -∗
     (∀ N : uk_names Σ,
-       ush_rest_l N γp T Wc Wb Pm (R (ukn_t N) (ukn_d N) (ukn_s N))) -∗
+       ush_rest_l_at N γp T Wc Wb Pm Dl (R (ukn_t N) (ukn_d N) (ukn_s N))) -∗
     UkSh.ush_fd0 T (take NSTD sts) -∗
     (□ (∀ N : uk_names Σ, UkSh.ush_open_console_leaf N T)
      ∨ (□ (∀ N : uk_names Σ, UkSh.ush_open_absent_leaf N T K) ∗ K)
@@ -1045,7 +1134,8 @@ Section UShKernel.
     assert (Hch0 : uvis_ch W' = ∅) by exact Hchq.
     assert (Hpid1' : bv_unsigned (uvis_pid W') <> 1)
       by (rewrite Hpiq; exact Hpid1).
-    iApply (sh_slot_of_kexec R γp cn T K Q Ql Pm Wc Wb Hrl Hpm1 Hpm3 Hpmwb
+    iApply (sh_slot_of_kexec R γp cn T K Q Ql Pm Wc Wb Dsc Hdncr Hdshort
+              Dl Hdline Hrl Hpm1 Hpm3 Hpmwb
               Hwc Hwbwc Hwbl Hwbr na alen afun sts W' n0 n Hbd HQc Hok Hcwd0
               Hroom Hlen Hlzf Hch0 Hpid1'
               with "[] Hnpw Hdep Hdp Htag Hplaw Hrest Hfd0 [] [] Hmp Hpos Hlease

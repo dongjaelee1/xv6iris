@@ -565,7 +565,7 @@ Section ProofPiperead.
   Definition pr_pay (γp : pipe_names) (Q : list (bv 8) -> iProp Σ)
       (Qe : list (bv 8) -> pipe_st -> iProp Σ)
       (acc : list (bv 8)) (n : nat) : iProp Σ :=
-    (pipe_rchain (pn_queue γp) Q Qe acc (n - length acc) ∨ pipe_taint_cred)%I.
+    (pipe_rchain (pn_queue γp) Q Qe acc (n - length acc) ∨ app_taint)%I.
 
   Lemma pr_pay_0 (γp : pipe_names) Q Qe n :
     pipe_rpay (pn_queue γp) Q Qe n -∗ pr_pay γp Q Qe [] n.

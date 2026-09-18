@@ -61,11 +61,13 @@ Require Import AppInv.           (* [app_inv], [app_body], [app_step], [appE] *)
 Require Import SysWriteDefs.     (* [wri_pre], [wchunks] *)
 Require Import FsAbsDelta.       (* [cre_pre], [delta_ent], [delta_unl_ent] *)
 Require Import FsAbsWriteFire.   (* [awrite_full_at] / [awrite_part_at] / chain *)
+Require Import UserPtTree.       (* [uptd]: the partial arm's table *)
 Require Import SysUnlinkDefs.    (* [uent_commit_at], [unl_pre] (lane TL-3C
                                     section 3c: the MOVE CONSUMED)         *)
 Require Import PieceFam.         (* [pfam] / [pf_at]: a piece's receipt
                                     beside its refund                      *)
 Require Import FsAbsCreateFire.  (* create's four commits, [cre_arm_fired] *)
+Require Import FsAbsCreateNm.    (* the create commit at a NAME PREDICATE, and its bridges *)
 Require Import SpecCreate.       (* [cre_commits], [cre_dots_leg]          *)
 Require Import FsAbsEra.         (* [ep_start], [np_elems], [um_start_of]  *)
 Require Import SysMknodDefs.     (* [npar_cur], [npar_elems]               *)
@@ -387,17 +389,19 @@ Section TreeMove.
      existential in everything the kernel picks, so each node is payable at
      any [(I, off, bs, bs0, nl)] whatever the relays say.  They are
      introduced and dropped.  ([FileWrite]'s node is where they are spent.) *)
-  Lemma tree_awrite_chain (γfs : fs_names) (c : tree_fixed) (r : tree_names)
+  (* the chain AT ONE TABLE; [tree_awrite_chain] below owes every table and
+     the tree reads none of them (lane WRITE-RELAY-2's [∀ P]) *)
+  Lemma tree_awrite_chain_at (γfs : fs_names) (c : tree_fixed) (r : tree_names)
       (g : gname) (root i : Z) (t : ttree) (γo : gname)
-      (M : gmap Z (bv 8)) (ua : mword 64) (nn : Z) (cnt k : nat) :
+      (M : gmap Z (bv 8)) (ua : mword 64) (P : uptd) (nn : Z) (cnt k : nat) :
     file_app = MkAppcfg tree_names (tree_pred c) r ->
     app_inv γfs -∗ tree_wq c r g root i t -∗
-    awrite_chain (fs_gamma_L γfs) appE i γo M ua nn
+    awrite_chain_at (fs_gamma_L γfs) appE i γo M ua P nn
       (fun _ : nat => tree_wq c r g root i t) k cnt.
   Proof.
     intros Heq. revert k. induction cnt as [| cnt IH]; intros k.
-    { iIntros "#Hinv Hq". rewrite awrite_chain_0. iExact "Hq". }
-    iIntros "#Hinv Hq". rewrite awrite_chain_S. iSplit; [iExact "Hq" |].
+    { iIntros "#Hinv Hq". rewrite awrite_chain_at_0. iExact "Hq". }
+    iIntros "#Hinv Hq". rewrite awrite_chain_at_S. iSplit; [iExact "Hq" |].
     iSplit.
     - rewrite /awrite_full_at.
       iIntros (I off bs bs0 nl) "%Hpre %Hby %Hlen Hka Hoff".
@@ -407,18 +411,32 @@ Section TreeMove.
       iModIntro. iFrame "Hka Hstep". iIntros (I') "%Hav Hka'".
       iMod ("Hph2" $! I' with "[//] Hka'") as "[Hka' Hq']".
       iModIntro. iFrame "Hka'".
-      iSplitL "Hoff"; [iApply (off_ret_keep with "Hoff") |].
+      iSplitL "Hoff"; [iApply (off_ret_of_link with "Hoff") |].
       iApply (IH (S k) with "Hinv Hq'").
     - rewrite /awrite_part_at.
-      iIntros (I off n bs bs0 nl) "%Hpre %Hn %Hgap %Hshort %Hby Hka Hoff".
+      iIntros (I off n bs bs0 nl)
+        "%Hpre %Hn %Hgap %Hshort %Hwhy %Hsb1 %Hby Hka Hoff".
       destruct Hpre as (Hrow & _ & _ & _).
       iMod (tree_awrite_phases γfs c r g root i t I off bs bs0 nl Heq Hrow
               with "Hinv Hq Hka") as "(Hka & Hstep & Hph2)".
       iModIntro. iFrame "Hka Hstep". iIntros (I') "%Hav Hka'".
       iMod ("Hph2" $! I' with "[//] Hka'") as "[Hka' Hq']".
       iModIntro. iFrame "Hka'".
-      iSplitL "Hoff"; [iApply (off_ret_keep with "Hoff") |].
+      iSplitL "Hoff"; [iApply (off_ret_of_link with "Hoff") |].
       iApply (IH (S k) with "Hinv Hq'").
+  Qed.
+
+  Lemma tree_awrite_chain (γfs : fs_names) (c : tree_fixed) (r : tree_names)
+      (g : gname) (root i : Z) (t : ttree) (γo : gname)
+      (M : gmap Z (bv 8)) (ua : mword 64) (nn : Z) (cnt k : nat) :
+    file_app = MkAppcfg tree_names (tree_pred c) r ->
+    app_inv γfs -∗ tree_wq c r g root i t -∗
+    awrite_chain (fs_gamma_L γfs) appE i γo M ua nn
+      (fun _ : nat => tree_wq c r g root i t) k cnt.
+  Proof.
+    intros Heq. rewrite /awrite_chain. iIntros "#Hinv Hq" (P).
+    iApply (tree_awrite_chain_at γfs c r g root i t γo M ua P nn cnt k Heq
+              with "Hinv Hq").
   Qed.
 
   (* =================================================================== *)
@@ -936,11 +954,12 @@ Section TreeMove.
   (* ---- ...AND THE WHOLE BUNDLE, FROM ONE DEED ----------------------- *)
 
   Lemma tree_cre_commits (γfs : fs_names) (c : tree_fixed) (r : tree_names)
-      (g : gname) (t : ttree) (tyz ma mi dpar : Z) :
+      (g : gname) (t : ttree) (tyz ma mi dpar : Z) (Nm : fname -> Prop)
+      (Nd : absnode -> Prop) :
     file_app = MkAppcfg tree_names (tree_pred c) r ->
     dpar ∈ dom (tv_nodes t) ->
     app_inv γfs -∗ tree_own r g FsImg.ROOTINO t -∗
-    cre_commits (fs_gamma_L γfs) tyz ma mi (fun d : Z => ⌜d = dpar⌝%I)
+    cre_commits (fs_gamma_L γfs) tyz ma mi Nm Nd (fun d : Z => ⌜d = dpar⌝%I)
       (tree_arm_fam c r g t)
       (pfam_triv (fun _ _ _ _ => True%I))
       (tree_unarm_fam c r g t)
@@ -956,8 +975,14 @@ Section TreeMove.
       iApply (tree_dots_commit γfs c r Heq). }
     iSplitR.
     { rewrite /pf_at. iSplit; [| cbn [pf_refund]; done].
+      iApply (aunarm_of_arm_nd_of (fs_gamma_L γfs) appE Nd
+                (tree_arm_fam c r g t) _).
       iApply (tree_unarm_commit γfs c r g t Heq with "Hinv"). }
     rewrite /pf_at. iSplit; [| cbn [pf_refund]; done].
+    (* a provider that answers at EVERY name answers at the ones [Nm]
+       admits ([FsAbsCreateNm.acre_commit_at_gen_nm_of]) *)
+    iApply (acre_commit_at_gen_nm_of (fs_gamma_L γfs) appE
+              (cre_child tyz ma mi) Nm _ _ _).
     iApply (tree_acre_commit γfs c r g t (cre_child tyz ma mi) dpar Heq
               (fun d i => tabs_leaf_cre_child tyz ma mi d i) Hdd with "Hinv").
   Qed.
@@ -1017,17 +1042,25 @@ Section TreeMove.
         iApply pf_at_triv. iApply dlookup_commit_at_unit. }
       (* THE CHILD'S TWO LEGS: the deed goes in HERE and comes back out in
          the arm's receipt *)
-      rewrite /cre_child_unfired. iSplitL "Hown".
+      rewrite /cre_child_unfired_nd. iSplitL "Hown".
       - rewrite /pf_at /tree_arm_fam /=. iSplit; [| iExact "Hown"].
         iApply (tree_arm_commit γfs c r g t (ADev ma mi) Heq
                   (tabs_leaf_dev ma mi) with "Hinv Hown").
       - rewrite /pf_at /tree_unarm_fam /=. iSplit; [| done].
+        (* the unarm at the node sys_mknod PINS: a provider that answers at
+           EVERY node answers at that one
+           ([FsAbsCreateNm.aunarm_of_arm_nd_of]) *)
+        iApply (aunarm_of_arm_nd_of (fs_gamma_L γfs) appE
+                  (fun c' : absnode => c' = ADev ma mi)
+                  (tree_arm_fam c r g t) _).
         iApply (tree_unarm_commit γfs c r g t Heq with "Hinv"). }
     (* THE PARENT LEG, at the guarded cursor: the move between the two
        readings is the ISO, and it costs nothing because the cursor is
        PURE at this prefix. *)
     rewrite /pf_at /tree_acre_fam /=. iSplit; [| done].
-    rewrite /acre_commit_at.
+    rewrite /acre_commit_at_nm.
+    iApply (acre_commit_at_gen_nm_of (fs_gamma_L γfs) appE
+              (fun _ _ => ADev ma mi) (npar_nm M pv) _ _ _).
     iApply (acre_commit_at_gen_mono (fs_gamma_L γfs) appE
               (fun _ _ => ADev ma mi)
               (fun d : Z => ⌜d = FsImg.ROOTINO⌝%I)
@@ -1152,7 +1185,7 @@ Section TreeMove.
       - iApply (ep_hops_done γfs _ _ pl 0%nat). rewrite Hnp /=. lia. }
     iSplitR.
     { iApply pf_at_triv. iApply dlookup_commit_at_unit. }
-    iApply (cre_commits_mono (fs_gamma_L γfs) _ _ _
+    iApply (cre_commits_mono (fs_gamma_L γfs) _ _ _ _ _
               (fun d : Z => ⌜d = FsImg.ROOTINO⌝%I)
               (npar_cur M pv (fun (_ : nat) (d : Z) => ⌜d = FsImg.ROOTINO⌝%I))
               with "[] [] [Hown]").
@@ -1160,7 +1193,7 @@ Section TreeMove.
       iApply ("H" $! pl). iPureIntro. exact Hpath.
     - iIntros "!>" (d) "%Hd". rewrite /npar_cur. iIntros (pl0) "_".
       by iPureIntro.
-    - iApply (tree_cre_commits γfs c r g t _ _ _ FsImg.ROOTINO Heq Hdd
+    - iApply (tree_cre_commits γfs c r g t _ _ _ FsImg.ROOTINO _ _ Heq Hdd
                 with "Hinv Hown").
   Qed.
 

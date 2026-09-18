@@ -251,6 +251,30 @@ Section UkReadFile.
     rewrite Hkey. rewrite /fileread_in /=. iIntros "$". iExact "Hau".
   Qed.
 
+  (* ...AND THE HELD ROW'S (kernel stream, item 2): the same deposit at the
+     CLIENT-ADVANCED commit, which is the LINK arm of [SpecFileread]'s
+     held reading.  Nothing else about the leaf changes -- the mode is read
+     off the descriptor's own state and the arm is keyed on it. *)
+  Lemma udepwf_st_read_file_held (N : uk_names Σ) (m : regfile) (pc : mword 64)
+      (wb : bool) (i : Z) (γo : gname)
+      (F : pfam Σ (aview -> nat -> anode -> nat -> iProp Σ)) :
+    pf_at (aread_commit_adv (fs_gamma_L fsc_fs) appE i γo) F -∗
+    udepwf_st N m pc USYS_read (read_file_fam (ukn_pay N) F)
+      (FdOpen true wb (FdInode i γo OffHeld)).
+  Proof using .
+    iIntros "Hau". rewrite /udepwf_st.
+    iSplitR; [ iPureIntro; reflexivity | ].
+    iIntros (M pm sz fdv cw gn cs pidv) "%Hkey _ Hheap Hufd".
+    iFrame "Hheap Hufd".
+    iApply (sbundle_at_read_intro uslot (xfam_rdf (ukn_pay N) F)
+              (uvis_of_run m pc M pm sz fdv cw gn cs pidv false)
+              (m !!! Regidx a0_idx) (m !!! Regidx a2_idx) fdv
+              (tf_of_arg0 m pc) (tf_of_arg2 m pc)
+              (uvis_of_run_fd m pc M pm sz fdv cw gn cs pidv false)).
+    rewrite Hkey. rewrite /fileread_in /=. iIntros "$".
+    rewrite /aread_in_om. by iLeft.
+  Qed.
+
   (* =================================================================== *)
   (*  6.  THE FILE ROW, READ OFF THE POST                                 *)
   (* =================================================================== *)

@@ -251,6 +251,56 @@ Qed.
 
 
 (* ===================================================================== *)
+(* §4½ WHAT THE RIGHT COMMAND'S PARSE NEEDS: NO SYMBOL AT OR ABOVE ITS    *)
+(* CURSOR                                                                 *)
+(*                                                                        *)
+(* The pipe line's RIGHT command is parsed by a SECOND run of [parseexec]  *)
+(* (through [parsepipe]'s recursive call), and that run is symbol-free --  *)
+(* but not because the LINE is: the '|' is behind its cursor.  Every use   *)
+(* [UkShParseExec.wp_kshp_parseexec] and the landed [parsepipe] /          *)
+(* [parseline] walks make of [UkShParse.ushp_no_symbols] is at or above    *)
+(* THEIR OWN cursor (a peek that must miss, a gettoken answer), so this is *)
+(* the premise those walks want re-stated at, and the pipe line satisfies  *)
+(* it at [S (S p)].  Stating it here means the re-statement above is       *)
+(* mechanical and carries no new obligation.                              *)
+(* ===================================================================== *)
+
+Definition ushq_nosym_from (len : nat) (f : nat -> bv 8) (c : nat) : Prop :=
+  forall j : nat, (c <= j < len)%nat -> ushp_is_sym (f j) = false.
+
+(* at the bottom of the line it IS the landed premise, both ways *)
+Lemma ushq_nosym_from_0 (len : nat) (f : nat -> bv 8) :
+  ushq_nosym_from len f 0%nat <-> ushp_no_symbols len f.
+Proof using.
+  split.
+  - intros H j Hj. exact (H j ltac:(lia)).
+  - intros H j Hj. exact (H j ltac:(lia)).
+Qed.
+
+Lemma ushq_nosym_from_mono (len : nat) (f : nat -> bv 8) (c c' : nat) :
+  (c <= c')%nat -> ushq_nosym_from len f c -> ushq_nosym_from len f c'.
+Proof using. intros Hle H j Hj. exact (H j ltac:(lia)). Qed.
+
+(* ...and the pipe line satisfies it AT THE RIGHT COMMAND'S CURSOR *)
+Lemma ushq_pipe_nosym_from (len : nat) (f : nat -> bv 8) (p e : nat) :
+  ushq_pipe len f p e -> ushq_nosym_from len f (S (S p)).
+Proof using.
+  intros Hq j Hj.
+  exact (ushq_one_some_off len f p j (ushq_pipe_one _ _ _ _ Hq)
+           ltac:(lia) ltac:(lia)).
+Qed.
+
+(* the mirror fact, for the LEFT command: its whole parse runs below the
+   '|', and there the line IS symbol-free ([ushq_one_nosym_below]) -- which
+   is why the left [parseexec]'s peeks miss exactly as the landed ones do,
+   and only its argument loop's LAST round differs. *)
+Lemma ushq_pipe_nosym_below (len : nat) (f : nat -> bv 8) (p e : nat) :
+  ushq_pipe len f p e -> ushp_no_symbols p f.
+Proof using.
+  intro Hq. exact (ushq_one_nosym_below len f p (ushq_pipe_one _ _ _ _ Hq)).
+Qed.
+
+(* ===================================================================== *)
 (* §5 ONE PREMISE FOR gettoken, COVERING BOTH SYMBOL BYTES                *)
 (*                                                                        *)
 (* [UkShRedirGtk.wp_kshp_gettoken_sym] is stated at                        *)

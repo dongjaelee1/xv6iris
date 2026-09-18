@@ -1488,6 +1488,7 @@ EchoDisc.v
 FileDisc.v
 FileDiscDec.v
 PipeDisc.v
+PipeDiscDec.v
 LogEntryDefs.v
 ConsLog.v
 EchoOutPure.v

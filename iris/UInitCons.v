@@ -97,6 +97,7 @@ Require Import FsAbsCreateNm.      (* [acre_commit_at_nm], [npar_nm]: the create
 Require Import SpecSysMknod.       (* [mknod_au_at], [mknod_post_ok] *)
 Require Import ConsoleInv.         (* [CONSOLE] *)
 Require Import FsConsPin.          (* the console's two states, and its pin *)
+Require Import FsImgCheck.         (* [fname_f] -- the name the FILE claim tracks *)
 Require Import PinnedObs.
 Require Import PinnedOpen.
 Require Import AppEcho.            (* [echo_taint], [cons_made], [cons_tok],
@@ -1070,6 +1071,19 @@ Section UInitCons.
             (nl : nat) (i : Z),
             ⌜cre_pre av d nmn ents nl i (ADev CONSOLE 0)⌝ -∗
             ⌜d <> FsImg.ROOTINO \/ nmn <> fname_console⌝ -∗
+            (* ...AND NOT AT THE FILE APPLICATION'S OWN NAME EITHER (lane
+               INIT-FILE).  The first side condition admits [d = ROOTINO]
+               with [nmn = fname_f], and there the FILE claim's deed
+               conjunct cannot survive at ANY deed value -- a create of a
+               DEVICE called `f` in the root makes [AppFile.f_ok] false at
+               an absent deed and is refuted by [cre_pre] at a present one
+               ([UInitConsFile.file_cons_create_other_refuted] checks it).
+               The syscall never reaches it: the name it creates is the
+               path's last element, which [SpecSysMknod.mknod_au_at] pins.
+               Echo's dischargers ignore this premise; the ONE consumer
+               ([init_cons_laws_mknod_bundle] below) has [d <> ROOTINO] in
+               hand and pays it by [left]. *)
+            ⌜d <> FsImg.ROOTINO \/ nmn <> FsImgCheck.fname_f⌝ -∗
             app_pred app_run av -∗
             app_pred app_run (delta_create d nmn i (ADev CONSOLE 0) av))
      (* (h) the SHOOT: phase 2 of the commit, and the flag out *)
@@ -1159,8 +1173,8 @@ Section UInitCons.
        only at the names the syscall can reach, and the laws supply it at
        every name. *)
     iIntros "!>" (av d nmn ents nl i) "%Hpre %Hnmc %Hd Hp".
-    iApply ("Hg" $! av d nmn ents nl i with "[%] [%] Hp");
-      [ exact Hpre | by left ].
+    iApply ("Hg" $! av d nmn ents nl i with "[%] [%] [%] Hp");
+      [ exact Hpre | by left | by left ].
   Qed.
 
   Lemma init_cons_laws_open_absent (γfs : fs_names)
@@ -1242,7 +1256,7 @@ Section UInitCons.
       iApply (echo_cons_unarm γ r av0 av i Hfree Hp0 Hab with "Hp").
     - iIntros "!>" (av ents nl i) "%Hpre Hk Hp".
       iApply (echo_cons_mknod γ r av ents nl i Hpre with "Hk Hp").
-    - iIntros "!>" (av d nmn ents nl i) "%Hpre %Hne Hp".
+    - iIntros "!>" (av d nmn ents nl i) "%Hpre %Hne _ Hp".
       iApply (echo_cons_create_other γ r av d nmn ents nl i CONSOLE 0
                 Hpre Hne with "Hp").
     - iIntros "!>" (av i) "%Hpr Hp".
@@ -1284,7 +1298,7 @@ Section UInitCons.
                 with "Hm Hp").
     - iIntros "!>" (av ents nl i) "%Hpre Hk Hp".
       iApply (echo_cons_mknod_present γ r av ents nl i i0 Hpre with "Hk Hp").
-    - iIntros "!>" (av d nmn ents nl i) "%Hpre %Hne Hp".
+    - iIntros "!>" (av d nmn ents nl i) "%Hpre %Hne _ Hp".
       iApply (echo_cons_create_other γ r av d nmn ents nl i CONSOLE 0
                 Hpre Hne with "Hp").
     - iIntros "!>" (av i) "%Hpr Hp".

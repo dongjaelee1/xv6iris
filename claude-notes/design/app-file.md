@@ -557,7 +557,16 @@ unowned critical item (WRITE-RELAY-3's `TB` guard).  RULES, replacing
   INIT-FILE's first lane (9/11/1, fabe6c805); checkpoint 35 = both merged
   plus the file stage instance (e3b70b6d3), audits 27/14/13 unchanged; 19
   at checkpoint 36 (7/11/1: KERNEL STREAM's L2+L4, `Hdep1`/`Hwrite1`
-  discharged, 6d645865c).
+  discharged, 6d645865c); `cat_open_hand` discharged and `redir_K`
+  restated with its taint arm at 023d1fff8 (no metric change).
+- RULING READ-HELD (2026-09-18, KERNEL-STREAM §3a): the read's hand mode
+  is the WRITE side's landed shape mirrored — `file_read_piece_adv` as
+  `awrite_full_adv`'s twin (the half in the closure, agree/advance/return
+  `off_link` inside the node), the receipt family carrying `uoff γo
+  (off+d) ∨ app_taint` where the write's client cursor rides, the refund
+  returning the half unfired; `fileread_in`'s held arm is
+  `filewrite_in_held`'s twin.  The deed opens take the row's mode as a
+  PARAMETER (no second walk; every landed caller passes `OffParked`).
 - RULING H' (2026-09-18, INIT-FILE findings 3.1/3.2): the round's hold is
   tied to the era's boot state BY A SHARED INDEX, not by `f0_lb` (which
   only exists after the era's first console byte, so `Wbf []` was

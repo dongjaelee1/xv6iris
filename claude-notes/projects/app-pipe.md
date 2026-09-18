@@ -157,8 +157,13 @@ moves a descriptor pins a pipe row -- so the pipe-typed dup/close twins
 SS5.4 provisioned for do not exist and lane SH-PIPE takes the generic leaves
 as they stand.**  Whole `iris` tree green on the lane's remote clone
 (`ec2-lane.sh std build`, RC=0, plus a confirming re-run with nothing left
-to compile); `Proof using` everywhere; no `Admitted`; commits `53b170ec6`,
-`e074e4691`.
+to compile); `make audit-echo-only` UNMOVED at FOURTEEN (the same
+`PrimInt63`/`PrimString`/`resv_*`/`functional_extensionality_dep` set);
+`Proof using` everywhere; no `Admitted`; commits `53b170ec6`, `e074e4691`.
+The audits could not have moved anyway: NOTHING in the tree `Require`s
+`UkReadPipe.v`, `UkWritePipe.v` or the new `UkPipeMoves.v` (every other
+mention of the two is in a comment), so no audit cone reaches this lane, and
+the only edit to pre-existing content was two comment lines.
 
 **WHAT LANDED**
 

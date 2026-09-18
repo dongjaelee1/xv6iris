@@ -315,6 +315,7 @@ Require Import RiscvExtras.
 Require Import StackOwn CalleeSaved.
 Require Import SpecFdalloc.  (* [fd_frees_head_lt] *)
 Require Import SpecArgfd.  (* [arg_fd_lookup]/[arg_fd_index] *)
+Require Import UserPerm.   (* [uperm], [perm_of] -- RULING WR-TB *)
 Require Import UsysMemOk.  (* [usys_retfd]/[usys_argfd] -- the C [int] decodes *)
 Require Import VcGen.
 Require Import KernelText KernelDataInv RiscvModelBytes.
@@ -3259,7 +3260,12 @@ Section SyscallArms.
     pv_tf (us_V U) !! tf_arg_idx 1 = Some v1 ->
     pv_tf (us_V U) !! tf_arg_idx 2 = Some v2 ->
     sysc_sys_in U sts gn cs pid f -∗
-    filewrite_in (fd_st_of_key v0 sts) (sys_rw_count v2) (us_M U) v1
+    (* RULING WR-TB: the row is at the TRAPPING KEY's own three values,
+       which [UexecSlot.uvis_of] makes definitionally the caller's table's
+       permission map at the break, the break, and the lazy bit. *)
+    filewrite_in (perm_of (ud_um (pv_upt (us_V U))) (uint (pv_sz (us_V U))))
+      (uint (pv_sz (us_V U))) (pv_lazy (us_V U))
+      (fd_st_of_key v0 sts) (sys_rw_count v2) (us_M U) v1
       (wf_Q f) (wf_Qe f).
   Proof using .
     intros Hn Hv0 Hv1 Hv2. iIntros "H".
@@ -5786,15 +5792,31 @@ Section SyscallArms.
     iDestruct (sysc_dep_write U sts gn cs pid fdep v0 v1 v2
                  ltac:(rewrite Hnum; reflexivity) Hv0 Hv1 Hv2 with "Hxin")
       as "Hdepw".
-    iAssert (sys_write_in (us_V U) v0 sts (sys_rw_count v2) (us_M U) v1
+    (* THE WRITE GUARD, AT THE BLOCK'S OWN THREE VALUES (RULING WR-TB): the
+       dispatcher is the party holding [proc_priv], so it is the party that
+       can say the table the arms are keyed on IS this process's.  Two facts
+       out of the block and one reflexivity -- see [SpecFilewrite.wr_tb]. *)
+    iDestruct (ProcInv.proc_priv_pt_wf with "Hpriv") as %Hptwfw.
+    iDestruct (ProcInv.proc_priv_lazy with "Hpriv") as %Hlzfw.
+    assert (Htbw : SpecFilewrite.wr_tb
+                     (perm_of (ud_um (pv_upt (us_V U))) (uint (pv_sz (us_V U))))
+                     (uint (pv_sz (us_V U))) (pv_lazy (us_V U))
+                     (pv_upt (us_V U)))
+      by (split; [exact Hptwfw | split; [reflexivity | exact Hlzfw]]).
+    iAssert (sys_write_in
+               (perm_of (ud_um (pv_upt (us_V U))) (uint (pv_sz (us_V U))))
+               (uint (pv_sz (us_V U))) (pv_lazy (us_V U))
+               (us_V U) v0 sts (sys_rw_count v2) (us_M U) v1
                (wf_Q fdep) (wf_Qe fdep)) with "[Hdepw]" as "Hswin".
     { rewrite /sys_write_in Hfdk. iExact "Hdepw". }
     iApply (SysWrite.wp_sys_write_sconf γf γs j γl
               (sysc_fwrite_names γtxl γs j γl fn)
               pid U sts v0 v1 v2 M (av - 4)%nat true true ∅
               (wf_Q fdep) (wf_Qe fdep)
+              (perm_of (ud_um (pv_upt (us_V U))) (uint (pv_sz (us_V U))))
+              (uint (pv_sz (us_V U))) (pv_lazy (us_V U))
               ltac:(lia) Hj Hgamma Hlen eq_refl eq_refl Hv0
-              Hv1 Hv2 eq_refl eq_refl eq_refl
+              Hv1 Hv2 eq_refl eq_refl eq_refl Htbw
               with "Hcg Hcpu Htext Hdata Hpc Hpanic Hpriv Hufrag Hkalloc Hprocs
                     Hfse Hcaps Htbl Hswin").
     iIntros (CIDy Hsy mf r P') "%Hcs %Hextz %Hmfa0 Hcg Hcpu Hpc Hpriv Hufrag _ Hout Harms".

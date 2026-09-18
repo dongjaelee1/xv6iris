@@ -64,10 +64,10 @@ Section file_link_inst.
           record carry the field too, and therefore what keeps the program
           stream off [file_link_inst_at] if it wants to be. ---- *)
   Definition fwc_pban_ex (k : nat) (v : era_pins) (I : list (bv 8))
-    : iProp Σ := (∃ s0 : fst, fwc_pban_at g s0 k v I)%I.
+    : iProp Σ := (∃ s0 : fstate, fwc_pban_at g s0 k v I)%I.
 
   Definition fwc_pdiag_ex (k : nat) (v : era_pins) (I : list (bv 8))
-      (a i : nat) : iProp Σ := (∃ s0 : fst, fwc_pdiag_at g s0 k v I a i)%I.
+      (a i : nat) : iProp Σ := (∃ s0 : fstate, fwc_pdiag_at g s0 k v I a i)%I.
 
   (* NAME THE LEAF, do not search: with 455 [Timeless] instances in the
      tree under mostly transparent definitions the hint net cannot
@@ -144,6 +144,19 @@ Section file_link_inst.
     iApply (fwc_pdiag_at_done_1 g s0 k v I i Hi with "H").
   Qed.
 
+  (* [lk_ban_read_taint] at the record's own residue, which carries the
+     typed lines' witness beside the cursor bounds: the refutation reads
+     only the bounds *)
+  Local Lemma fi_ban_read_taint (k : nat) (v : era_pins)
+      (I l : list (bv 8)) :
+    wl_nl ∉ l ->
+    ⊢ fwc_ban g k v I 0%nat -∗
+      fwc_rresw g v (I ++ l ++ [wl_nl]) -∗ file_taint (fgn_cl g).
+  Proof using .
+    intros Hnl. iIntros "Hc [Hr _]".
+    iApply (fban_read_taint g k v I l Hnl with "Hc Hr").
+  Qed.
+
   Definition file_link_inst : LinkRec Σ :=
     {| lk_T := file_taint (fgn_cl g);
        lk_pin := era_pin (fgn_echo g);
@@ -168,7 +181,7 @@ Section file_link_inst.
        lk_lpr := fwc_lpr g;
        lk_lend := fwc_lend g;
        lk_rr := fun k v n ws => FileLinks.fread_ret g k v n ws;
-       lk_rres := fwc_rres g;
+       lk_rres := fwc_rresw g;
        lk_turn := fturn_pre g;
 
        lk_T_pers := _;
@@ -193,8 +206,8 @@ Section file_link_inst.
        lk_pr_tl := fwc_pr_timeless g;
        lk_lpr_tl := fwc_lpr_timeless g;
        lk_lend_tl := fwc_lend_timeless g;
-       lk_rres_pers := fwc_rres_persistent g;
-       lk_rres_tl := fwc_rres_timeless g;
+       lk_rres_pers := fwc_rresw_persistent g;
+       lk_rres_tl := fwc_rresw_timeless g;
 
        lk_pr_0 := fun _ _ _ => eq_refl;
        lk_pr_1 := fun _ _ _ => eq_refl;
@@ -250,7 +263,8 @@ Section file_link_inst.
        lk_ab_exf := fab_exf;
        lk_apr_exf := fapr_exf;
 
-       lk_ban_read_taint := fban_read_taint g;
+       lk_ban_read_taint := fun k v I l Hnl =>
+         fi_ban_read_taint k v I l Hnl;
        lk_turn0 := fturn0 g;
        lk_panic_done := fwc_panic_done g;
            lk_pban := fwc_pban_ex;
@@ -368,7 +382,7 @@ Section sh_round_facing.
     intro Hl. rewrite Hl file_ralt0. cbn [ralt_ok]. lia.
   Qed.
 
-  Lemma file_ralt0_free : fst_free (ralt_dec 0%nat) = true.
+  Lemma file_ralt0_free : fstate_free (ralt_dec 0%nat) = true.
   Proof using . reflexivity. Qed.
 
   Lemma file_fab0 (I : list (bv 8)) :
@@ -479,7 +493,7 @@ Section file_link_inst_at.
   Context (g : file_gn).
   Context `{HRg : !riscvGS Σ}.
   Context `{GEN : GenId}.
-  Context (s0 : fst).
+  Context (s0 : fstate).
 
   (* [lk_ban_read_taint] is stated at the record's OWN [lk_rres], which
      here is the indexed residue; the ported lemma takes the unindexed one,
@@ -488,9 +502,9 @@ Section file_link_inst_at.
       (I l : list (bv 8)) :
     wl_nl ∉ l ->
     ⊢ fwc_ban_at g s0 k v I 0%nat -∗
-      fwc_rres_at g s0 v (I ++ l ++ [wl_nl]) -∗ file_taint (fgn_cl g).
+      fwc_rresw_at g s0 v (I ++ l ++ [wl_nl]) -∗ file_taint (fgn_cl g).
   Proof using .
-    intros Hnl. iIntros "Hc Hr".
+    intros Hnl. iIntros "Hc [Hr _]".
     iDestruct (fwc_rres_at_pack with "Hr") as "Hr".
     iApply (fban_read_taint_at g s0 k v I l Hnl with "Hc Hr").
   Qed.
@@ -519,7 +533,7 @@ Section file_link_inst_at.
        lk_lpr := fwc_lpr_at g s0;
        lk_lend := fwc_lend_at g s0;
        lk_rr := fun k v n ws => FileLinks.fread_ret g k v n ws;
-       lk_rres := fwc_rres_at g s0;
+       lk_rres := fwc_rresw_at g s0;
        lk_turn := fturn_pre_at g s0;
 
        lk_T_pers := _;
@@ -544,8 +558,8 @@ Section file_link_inst_at.
        lk_pr_tl := fwc_pr_at_timeless g s0;
        lk_lpr_tl := fwc_lpr_at_timeless g s0;
        lk_lend_tl := fwc_lend_at_timeless g s0;
-       lk_rres_pers := fwc_rres_at_persistent g s0;
-       lk_rres_tl := fwc_rres_at_timeless g s0;
+       lk_rres_pers := fwc_rresw_at_persistent g s0;
+       lk_rres_tl := fwc_rresw_at_timeless g s0;
 
        lk_pr_0 := fun _ _ _ => eq_refl;
        lk_pr_1 := fun _ _ _ => eq_refl;
@@ -749,7 +763,7 @@ Section file_W_unpack.
   Context `{GEN : GenId}.
 
   Lemma file_Wcl_unpack (I : list (bv 8)) (p : nat) :
-    file_Wcl g I p -∗ ∃ s0 : fst, file_Wcl_at g s0 I p.
+    file_Wcl g I p -∗ ∃ s0 : fstate, file_Wcl_at g s0 I p.
   Proof using .
     rewrite /file_Wcl /lk_lcred.
     iIntros "H". iDestruct "H" as (v) "[#Hpin Hc]".
@@ -760,7 +774,7 @@ Section file_W_unpack.
   Qed.
 
   Lemma file_Wbl_unpack (I : list (bv 8)) :
-    file_Wbl g I -∗ ∃ s0 : fst, file_Wbl_at g s0 I.
+    file_Wbl g I -∗ ∃ s0 : fstate, file_Wbl_at g s0 I.
   Proof using .
     rewrite /file_Wbl.
     iIntros "H". iDestruct "H" as (v) "[#Hpin Hc]".

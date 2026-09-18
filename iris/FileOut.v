@@ -12,10 +12,10 @@
    WHAT THE FILE ADDS, and where it lives.
 
    - ONE VALUE PER ERA.  [FileOutPure.fostage] is [EchoOut.ostage] with
-     [fo_f0 : option fst]: [None] until the era's first process byte files
+     [fo_f0 : option fstate]: [None] until the era's first process byte files
      it, [Some s0] from then on.  [feout_pure]'s two extra clauses are that
      [None] only ever occurs at the empty stage and that the state is a
-     CONTENT ([FileDisc.fst_ok]) -- the second is what the determinacy
+     CONTENT ([FileDisc.fstate_ok]) -- the second is what the determinacy
      argument spends.
    - A SECOND PER-ERA RECORD.  [EchoOut.era_pins] is not edited, so the
      boot state's [mono_list] gets its own gname in a record of its own
@@ -55,9 +55,8 @@ Require Import AppEcho.          (* [echo_fixed] *)
 Require Import AppFile.          (* [file_fixed], [fl_auth], [f_bytes_typed] *)
 Local Open Scope list_scope.
 
-(* [FileState.fst] shadows the pair projection, so nothing below writes
-   [x.1]. *)
-Local Notation ehist := (@Datatypes.fst (list mobs) (bv 8)).
+(* the history of an entry of E *)
+Local Notation ehist := (@fst (list mobs) (bv 8)).
 
 (* ====================================================================== *)
 (*  1.  THE PURE HISTORY LAYER                                             *)
@@ -193,11 +192,11 @@ Proof using.
     + intros e He. apply elem_of_app in He as [He | He].
       * exact (Hdsc e He).
       * apply elem_of_list_singleton in He as ->.
-        cbn [le_hist Datatypes.fst snd]. exact Hdseg.
+        cbn [le_hist fst snd]. exact Hdseg.
     + intros e He. apply elem_of_app in He as [He | He].
       * exact (Hbts e He).
       * apply elem_of_list_singleton in He as ->.
-        cbn [le_hist Datatypes.fst snd]. exact Hboots.
+        cbn [le_hist fst snd]. exact Hboots.
     + destruct (decide (log_echoed (h, c, take j cs))) as [Hy | Hn].
       * rewrite (echoed_snoc_yes _ _ Hy).
         by apply (prefix_app_r _ _ [(le_hist (h, c, take j cs),
@@ -270,12 +269,12 @@ Proof using.
   - rewrite -Hseg. apply Forall_lookup_2. intros j x Hx.
     rewrite /seg_of list_lookup_fmap in Hx.
     destruct (echoed L !! j) as [y |] eqn:Hy; [| discriminate].
-    cbn in Hx. injection Hx as Hx. rewrite -Hx. cbn [Datatypes.fst].
+    cbn in Hx. injection Hx as Hx. rewrite -Hx. cbn [fst].
     assert (Hyin : y ∈ echoed L) by (by eapply elem_of_list_lookup_2).
     destruct (echoed_elem_inv L y Hyin) as (e & He & _ & Hye).
     apply open_seg_prefix_boots.
-    + rewrite -Hye. cbn [Datatypes.fst]. by destruct (Hord e He) as [Hpre _].
-    + rewrite -Hye. cbn [Datatypes.fst]. rewrite (Hstamp e He). by rewrite Hk.
+    + rewrite -Hye. cbn [fst]. by destruct (Hord e He) as [Hpre _].
+    + rewrite -Hye. cbn [fst]. rewrite (Hstamp e He). by rewrite Hk.
     + exact Hsh.
   - right. exact Hk.
 Qed.
@@ -379,7 +378,7 @@ Proof using.
   assert (Hsy : seg_of (echoed pops) !! ((length (echoed pops) - 1)%nat)
                 = Some (open_seg (ehist y), y.2))
     by (by rewrite /seg_of list_lookup_fmap Hy).
-  destruct (Hidx _ _ Hsy) as [_ Hylen]. cbn [Datatypes.fst] in Hylen.
+  destruct (Hidx _ _ Hsy) as [_ Hylen]. cbn [fst] in Hylen.
   assert (Hyin : y ∈ echoed pops) by (by eapply elem_of_list_lookup_2).
   destruct (echoed_elem_inv pops y Hyin) as (e & He & _ & Hye).
   assert (Hoe : open_seg (le_hist e) = open_seg (ehist y)) by (by rewrite -Hye).
@@ -410,28 +409,28 @@ Record file_gn := MkFileGn {
   fgn_era : gname;        (* ghost_map nat file_era: the era's BOOT STATE *)
 }.
 
-Definition fgn_echo (g : file_gn) : echo_fixed := Datatypes.fst (fgn_cl g).
+Definition fgn_echo (g : file_gn) : echo_fixed := fst (fgn_cl g).
 
 Record file_era := MkFEra {
-  fe_f0 : gname;   (* mono_list fst: [] before the era's boot state is
+  fe_f0 : gname;   (* mono_list fstate: [] before the era's boot state is
                       filed, [s0] after; the persistent witness is the lower
                       bound at [[s0]] *)
 }.
 
 Class fileOutG (Σ : gFunctors) := FileOutG {
   fog_era : ghost_mapG Σ nat file_era;
-  fog_f0  : inG Σ (mono_listR (leibnizO fst));
+  fog_f0  : inG Σ (mono_listR (leibnizO fstate));
 }.
 #[global] Existing Instances fog_era fog_f0.
 
 Definition fileOutΣ : gFunctors :=
-  #[ ghost_mapΣ nat file_era; GFunctor (mono_listR (leibnizO fst)) ].
+  #[ ghost_mapΣ nat file_era; GFunctor (mono_listR (leibnizO fstate)) ].
 
 Global Instance subG_fileOutΣ {Σ} : subG fileOutΣ Σ -> fileOutG Σ.
 Proof. solve_inG. Qed.
 
-(* the stage's [option fst] as the monotone list sees it *)
-Definition opt_list (f0 : option fst) : list fst :=
+(* the stage's [option fstate] as the monotone list sees it *)
+Definition opt_list (f0 : option fstate) : list fstate :=
   match f0 with None => [] | Some s => [s] end.
 
 Section file_out.
@@ -457,10 +456,10 @@ Section file_out.
     iDestruct (ghost_map_elem_agree with "H1 H2") as %Heq. by iPureIntro.
   Qed.
 
-  Definition f0_auth (v : file_era) (l : list fst) : iProp Σ :=
-    own (fe_f0 v) (●ML (l : list (leibnizO fst))).
-  Definition f0_lb (v : file_era) (s0 : fst) : iProp Σ :=
-    own (fe_f0 v) (◯ML ([s0] : list (leibnizO fst))).
+  Definition f0_auth (v : file_era) (l : list fstate) : iProp Σ :=
+    own (fe_f0 v) (●ML (l : list (leibnizO fstate))).
+  Definition f0_lb (v : file_era) (s0 : fstate) : iProp Σ :=
+    own (fe_f0 v) (◯ML ([s0] : list (leibnizO fstate))).
 
   Global Instance f0_lb_persistent v s : Persistent (f0_lb v s).
   Proof using . rewrite /f0_lb. apply _. Qed.
@@ -471,7 +470,7 @@ Section file_out.
 
   (* the lower bound READS the era's boot state: a one-element lower bound
      of a list of length at most one pins the list *)
-  Lemma f0_auth_lb_agree (v : file_era) (f0 : option fst) (s : fst) :
+  Lemma f0_auth_lb_agree (v : file_era) (f0 : option fstate) (s : fstate) :
     f0_auth v (opt_list f0) -∗ f0_lb v s -∗ ⌜f0 = Some s⌝.
   Proof using .
     rewrite /f0_auth /f0_lb. iIntros "Ha Hb".
@@ -489,7 +488,7 @@ Section file_out.
      lower bounds are comparable and hence equal.  This is what lets the
      ledger check a later drain's state against the one it fixed at the
      era's first. *)
-  Lemma f0_lb_agree (v : file_era) (s s' : fst) :
+  Lemma f0_lb_agree (v : file_era) (s s' : fstate) :
     f0_lb v s -∗ f0_lb v s' -∗ ⌜s = s'⌝.
   Proof using .
     rewrite /f0_lb. iIntros "H1 H2".
@@ -502,35 +501,35 @@ Section file_out.
          rewrite length_app in Hz; cbn [length] in Hz; lia ]).
   Qed.
 
-  Lemma f0_lb_get (v : file_era) (s : fst) :
+  Lemma f0_lb_get (v : file_era) (s : fstate) :
     f0_auth v [s] -∗ f0_auth v [s] ∗ f0_lb v s.
   Proof using .
     rewrite /f0_auth /f0_lb. iIntros "Ha".
-    iDestruct (own_mono _ _ (◯ML ([s] : list (leibnizO fst))) with "Ha")
+    iDestruct (own_mono _ _ (◯ML ([s] : list (leibnizO fstate))) with "Ha")
       as "#Hb"; [ apply mono_list_included |].
     iFrame "Ha Hb".
   Qed.
 
   (* THE ERA'S FIRST PROCESS BYTE FILES THE BOOT STATE, once and for all *)
-  Lemma f0_file (v : file_era) (s : fst) :
+  Lemma f0_file (v : file_era) (s : fstate) :
     f0_auth v [] ==∗ f0_auth v [s] ∗ f0_lb v s.
   Proof using .
     rewrite /f0_auth. iIntros "Ha".
-    iMod (own_update _ _ (●ML ([s] : list (leibnizO fst))) with "Ha") as "Ha".
+    iMod (own_update _ _ (●ML ([s] : list (leibnizO fstate))) with "Ha") as "Ha".
     { apply mono_list_update. by exists [s]. }
     iModIntro. iApply (f0_lb_get with "Ha").
   Qed.
 
   Lemma f0_alloc : ⊢ |==> ∃ v : file_era, f0_auth v [].
   Proof using .
-    iMod (own_alloc (●ML ([] : list (leibnizO fst)))) as (gf) "Hf";
+    iMod (own_alloc (●ML ([] : list (leibnizO fstate)))) as (gf) "Hf";
       [apply mono_list_auth_valid |].
     iModIntro. iExists (MkFEra gf). rewrite /f0_auth /=. iFrame "Hf".
   Qed.
 
   (* ---- THE TYPED WITNESS: what the deed's evidence for the era's boot
          state looks like once it is inside the claim ---- *)
-  Definition f0_typed (s : fst) : iProp Σ :=
+  Definition f0_typed (s : fstate) : iProp Σ :=
     match s with
     | None => emp
     | Some bs =>
@@ -699,9 +698,9 @@ Section file_out.
      step files it, keeping the deed's typed witness for the ledger; under
      the taint there is nothing to file. *)
   Lemma fecl_step_write_first (k : nat) (v : era_pins) (vf : file_era)
-      (a : nat) (b : bv 8) (s0 : fst) (ho : list mobs)
+      (a : nat) (b : bv 8) (s0 : fstate) (ho : list mobs)
       (H : LogEntryDefs.cons_hist) :
-    fst_ok s0 ->
+    fstate_ok s0 ->
     (a < length pro_alts)%nat ->
     pro_alts !!! a !! 0%nat = Some b ->
     era_pin (fgn_echo g) k v -∗ file_era_pin k vf -∗
@@ -831,7 +830,7 @@ Section file_out.
      own [fo_f0], so the byte it computes from the stream is the byte the
      claim owes. *)
   Lemma fecl_step_write (k : nat) (v : era_pins) (vf : file_era) (P : nat)
-      (b : bv 8) (ps0 cs0 : list nat) (s0 : fst) (I0 : list (bv 8))
+      (b : bv 8) (ps0 cs0 : list nat) (s0 : fstate) (I0 : list (bv 8))
       (ho : list mobs) (H : LogEntryDefs.cons_hist) :
     (nlines I0 <= length cs0)%nat ->
     pro_pin_f ps0 cs0 I0 ->
@@ -919,7 +918,7 @@ Section file_out.
      with [FileDisc.ralt_ok] where [a < 4] was, and the block read at the
      era's own boot state. *)
   Lemma fecl_step_write_blk (k : nat) (v : era_pins) (vf : file_era)
-      (P a : nat) (b : bv 8) (ps0 cs0 : list nat) (s0 : fst)
+      (P a : nat) (b : bv 8) (ps0 cs0 : list nat) (s0 : fstate)
       (I0 : list (bv 8)) (ho : list mobs) (H : LogEntryDefs.cons_hist) :
     I0 <> [] ->
     rest_of I0 = [] ->
@@ -927,7 +926,7 @@ Section file_out.
     pro_pin_f ps0 cs0 I0 ->
     P = length (proc_before_f ps0 cs0 (Some s0) I0) ->
     ralt_ok (uline_of (bodies_of I0 !!! (nlines I0 - 1)%nat)) (ralt_dec a) ->
-    cont (fst_upto cs0 s0 (bodies_of I0) (nlines I0 - 1)%nat)
+    cont (fstate_upto cs0 s0 (bodies_of I0) (nlines I0 - 1)%nat)
          (uline_of (bodies_of I0 !!! (nlines I0 - 1)%nat)) (ralt_dec a)
       !! 0%nat = Some b ->
     era_pin (fgn_echo g) k v -∗ file_era_pin k vf -∗
@@ -1006,10 +1005,10 @@ Section file_out.
       rewrite Hq Nat.sub_diag. reflexivity. }
     (* the block below the last line does not read the new entry, so the
        state the block starts in is the writer's own *)
-    assert (Hfst : fst_upto (fo_cs so ++ [a]) s0 (bodies_of I0)
+    assert (Hfst : fstate_upto (fo_cs so ++ [a]) s0 (bodies_of I0)
                      (nlines I0 - 1)%nat
-                   = fst_upto cs0 s0 (bodies_of I0) (nlines I0 - 1)%nat).
-    { apply fst_upto_ext; [| intros j Hj; reflexivity].
+                   = fstate_upto cs0 s0 (bodies_of I0) (nlines I0 - 1)%nat).
+    { apply fstate_upto_ext; [| intros j Hj; reflexivity].
       intros j Hj. rewrite Hcs0 !list_lookup_total_alt lookup_app_l; [done | lia]. }
     assert (Hpend : pending_f (fo_ps so) (fo_cs so ++ [a]) (fo_f0 so)
                       (fo_E so) !! 0%nat = Some b).
@@ -1017,7 +1016,7 @@ Section file_out.
       rewrite decide_False; [| exact Hne0]. rewrite decide_True; [| exact Hr0].
       rewrite /alt_cont_f Hidx0 Hf0eq f0_st_some Hfst.
       rewrite lookup_app_l; [exact Hhead |].
-      destruct (cont (fst_upto cs0 s0 (bodies_of I0) (nlines I0 - 1)%nat)
+      destruct (cont (fstate_upto cs0 s0 (bodies_of I0) (nlines I0 - 1)%nat)
                   (uline_of (bodies_of I0 !!! (nlines I0 - 1)%nat))
                   (ralt_dec a)) as [| z zs] eqn:Hz;
         [ exfalso; revert Hz; by apply cont_nonnil; left | cbn; lia ]. }
@@ -1088,7 +1087,7 @@ Section file_out.
      alternative where echo asked for the literal index 3, so the two new
      line shapes' fork alternatives ([RFFork], [RCFork]) open a round too. *)
   Lemma fecl_step_write_pro (k : nat) (v : era_pins) (vf : file_era)
-      (P a : nat) (b : bv 8) (ps0 cs0 : list nat) (s0 : fst)
+      (P a : nat) (b : bv 8) (ps0 cs0 : list nat) (s0 : fstate)
       (I0 : list (bv 8)) (ho : list mobs) (CH : LogEntryDefs.cons_hist) :
     rest_of I0 = [] ->
     (I0 = [] \/ ralt_panic (ralt_at cs0 (nlines I0 - 1)%nat) = true) ->
@@ -1413,10 +1412,18 @@ Section file_out.
               `prefix_of` echoed (LogEntryDefs.ch_log CH)⌝
            ∗ ⌜E_index (seg_of (echoed (LogEntryDefs.ch_log CH)))⌝
            ∗ ⌜E_disc_f (seg_of (echoed (LogEntryDefs.ch_log CH)))⌝
+           (* ...AND THE CONSUMED ENTRIES ARE ALL OF THIS BOOT (the PROGRAM
+              STREAM, stretch 9): [fein_pure]'s third conjunct, read at the
+              window.  It is what lets a reader compare two entries' CYCLE
+              histories ([EchoOutPure.open_seg_prefix_boots]) and so read the
+              consumed input back off its last byte's history
+              ([FileLineWit.consumed_ins_last]). *)
+           ∗ ⌜forall x : list mobs * bv 8,
+                x ∈ LogEntryDefs.ch_dl CH ++ ws -> obs_boots x.1 = k⌝
            ∗ inp_lb v (snd <$> (LogEntryDefs.ch_dl CH ++ ws))
            ∗ ⌜disc_input_f (snd <$> (LogEntryDefs.ch_dl CH ++ ws))⌝
            ∗ (⌜ws = []⌝
-              ∨ ∃ (cs0 ps0 : list nat) (vf : file_era) (s0 : fst),
+              ∨ ∃ (cs0 ps0 : list nat) (vf : file_era) (s0 : fstate),
                   cs_lb v cs0 ∗ ps_lb v ps0
                   ∗ file_era_pin k vf ∗ f0_lb vf s0
                   ∗ ⌜(nlines (snd <$> (LogEntryDefs.ch_dl CH ++ ws))
@@ -1436,9 +1443,15 @@ Section file_out.
     pose proof Hall as Hall0.
     destruct Hall as (Hpure & Hcsl & Hpsl & Hin & Hera & HEtie).
     pose proof Hin as Hin2.
-    destruct Hin2 as (_ & _ & _ & _ & Hidx & Hbyte & Hbnd0).
+    destruct Hin2 as (_ & _ & Hbt & _ & Hidx & Hbyte & Hbnd0).
     destruct (fein_read_pure k (LogEntryDefs.ch_log CH) (LogEntryDefs.ch_dl CH)
                 ws (fo_cs so) Hread Hin) as (Hpref & Hp' & Hbnd').
+    assert (Hboots : forall x : list mobs * bv 8,
+              x ∈ LogEntryDefs.ch_dl CH ++ ws -> obs_boots x.1 = k).
+    { intros x Hx.
+      destruct (echoed_elem_inv (LogEntryDefs.ch_log CH) x
+                  (elem_of_prefix _ _ _ Hx Hpref)) as (e & He & _ & <-).
+      exact (Hbt e He). }
     assert (HEpre : (snd <$> (LogEntryDefs.ch_dl CH ++ ws))
                     `prefix_of` (snd <$> fo_E so)).
     { rewrite (fecl_pure_E k ho so CH Hall0) /ch_E.
@@ -1502,7 +1515,7 @@ Section file_out.
         lia. }
     iAssert (f0_auth vf (opt_list (fo_f0 so))
              ∗ (⌜fo_f0 so = None⌝
-                ∨ ∃ s1 : fst, ⌜fo_f0 so = Some s1⌝ ∗ f0_lb vf s1))%I
+                ∨ ∃ s1 : fstate, ⌜fo_f0 so = Some s1⌝ ∗ f0_lb vf s1))%I
       with "[Hf0]" as "[Hf0 #Hf0w]".
     { destruct (fo_f0 so) as [s1 |] eqn:Hf0; cbn [opt_list].
       - iDestruct (f0_lb_get with "Hf0") as "[Hf0 #Hlb]".
@@ -1519,7 +1532,7 @@ Section file_out.
             (n + length ws)%nat with "Hdl Hdlr") as "[Hdl Hdlr]".
     (* the reader sees the era's boot state only once it has been filed, and
        a NONEMPTY window means the era has echoed a byte, so it has *)
-    iAssert (⌜ws = []⌝ ∨ ⌜exists s0 : fst, fo_f0 so = Some s0⌝)%I as %Hf0c.
+    iAssert (⌜ws = []⌝ ∨ ⌜exists s0 : fstate, fo_f0 so = Some s0⌝)%I as %Hf0c.
     { destruct (decide (ws = [])) as [-> | Hne]; [by iLeft |].
       iRight. destruct (fo_f0 so) as [s0 |] eqn:Hf0; [iPureIntro; by exists s0 |].
       iExFalso. iPureIntro.
@@ -1538,6 +1551,7 @@ Section file_out.
     iRight. iFrame "Hdlr".
     iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
     iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
+    iSplitR; [iPureIntro; exact Hboots |].
     iSplitR.
     { iApply (inp_lb_of_lb v (fo_E so) _ HEpre). iExact "HElb". }
     iSplitR; [by iPureIntro |].
@@ -1654,14 +1668,14 @@ Section file_out.
       rewrite /seg_of list_lookup_fmap in Hx.
       destruct (echoed (LogEntryDefs.ch_log CH) !! j) as [y |] eqn:Hy;
         [| discriminate].
-      cbn in Hx. injection Hx as Hx. rewrite -Hx. cbn [Datatypes.fst].
+      cbn in Hx. injection Hx as Hx. rewrite -Hx. cbn [fst].
       assert (Hyin : y ∈ echoed (LogEntryDefs.ch_log CH))
         by (by eapply elem_of_list_lookup_2).
       destruct (echoed_elem_inv (LogEntryDefs.ch_log CH) y Hyin)
         as (e & He & _ & Hye).
       apply open_seg_prefix_boots.
-      - rewrite -Hye. cbn [Datatypes.fst]. by destruct (Hord e He) as [Hpre _].
-      - rewrite -Hye. cbn [Datatypes.fst]. exact (Hstamp e He).
+      - rewrite -Hye. cbn [fst]. by destruct (Hord e He) as [Hpre _].
+      - rewrite -Hye. cbn [fst]. exact (Hstamp e He).
       - exact Hsh. }
     assert (Hpl : forall j x, fo_E so !! j = Some x ->
                     ehist x `prefix_of` open_seg h)
@@ -1729,7 +1743,7 @@ Section file_out.
       assert (Hjj : jj = length (fo_E so)).
       { apply lookup_lt_Some in Hy. cbn [length] in Hy. lia. }
       subst jj. rewrite Nat.sub_diag in Hy. cbn in Hy.
-      injection Hy as <-. cbn [Datatypes.fst snd].
+      injection Hy as <-. cbn [fst snd].
       split; [exact Hends' | lia]. }
     assert (Hpl2 : forall j x, (fo_E so ++ [(open_seg h, c)]) !! j = Some x ->
                      ehist x `prefix_of` open_seg h).
@@ -1740,7 +1754,7 @@ Section file_out.
       assert (Hjj : jj = length (fo_E so)).
       { apply lookup_lt_Some in Hy. cbn [length] in Hy. lia. }
       subst jj. rewrite Nat.sub_diag in Hy. cbn in Hy.
-      injection Hy as <-. cbn [Datatypes.fst]. reflexivity. }
+      injection Hy as <-. cbn [fst]. reflexivity. }
     assert (Hdisc2 : E_disc_f (fo_E so ++ [(open_seg h, c)]))
       by exact (E_disc_f_of_hist _ (open_seg h) Hidx2 Hpl2 Hdseg).
     pose proof (cs_len_ok_f_echo so (open_seg h, c) Hcsb' Hweq Hcsl) as Hcsl2.
@@ -1779,9 +1793,9 @@ Section file_out.
       + apply (alts_pre_mono (snd <$> fo_E so)); [| exact Hcsb'].
         rewrite fmap_app. by eexists.
       + rewrite Forall_app. split; [exact Hdsc |].
-        rewrite Forall_singleton. cbn [Datatypes.fst]. exact Hdseg.
+        rewrite Forall_singleton. cbn [fst]. exact Hdseg.
       + rewrite Forall_app. split; [exact Hprefixes |].
-        rewrite Forall_singleton. cbn [Datatypes.fst]. reflexivity.
+        rewrite Forall_singleton. cbn [fst]. reflexivity.
       + rewrite length_app. cbn [length]. lia.
       + by right.
       + split.
@@ -1848,8 +1862,8 @@ Section file_out.
      so its accumulator -- and hence the wire -- is empty. *)
   Definition fdrain_ret (k : nat) (seg : list mobs) : iProp Σ :=
     (file_taint (fgn_cl g)
-     ∨ ∃ (s0 : fst) (vf : file_era),
-         ⌜good_out_f s0 seg⌝ ∗ ⌜fst_ok s0⌝ ∗ f0_typed s0
+     ∨ ∃ (s0 : fstate) (vf : file_era),
+         ⌜good_out_f s0 seg⌝ ∗ ⌜fstate_ok s0⌝ ∗ f0_typed s0
          ∗ file_era_pin k vf ∗ f0_lb vf s0)%I.
 
   Lemma fecl_drain (k : nat) (h ho : list mobs) (CH : LogEntryDefs.cons_hist)
@@ -2003,10 +2017,10 @@ Section file_out.
          drain of the same era hands back the same state ([f0_lb_agree]).
          The condition -- has this cycle put anything on the console's
          wire? -- is PURE and reads the history alone. ---- *)
-  Definition f0_pinned (h : list mobs) (s0s : list fst) : iProp Σ :=
+  Definition f0_pinned (h : list mobs) (s0s : list fstate) : iProp Σ :=
     (if decide (obs_wire Uart0 (open_seg h) = [])
      then emp
-     else ∃ (vf : file_era) (s0 : fst),
+     else ∃ (vf : file_era) (s0 : fstate),
             ⌜exists u1, s0s = u1 ++ [s0]⌝ ∗ file_era_pin (obs_boots h) vf
             ∗ f0_lb vf s0)%I.
 
@@ -2016,7 +2030,7 @@ Section file_out.
   Proof using . rewrite /f0_pinned. case_decide; apply _. Qed.
 
   (* before the era's first drain there is nothing to keep *)
-  Lemma f0_pinned_undrained (h : list mobs) (s0s : list fst) :
+  Lemma f0_pinned_undrained (h : list mobs) (s0s : list fstate) :
     obs_wire Uart0 (open_seg h) = [] -> ⊢ f0_pinned h s0s.
   Proof using .
     intro Hw. rewrite /f0_pinned decide_True; [| exact Hw]. by iIntros "".
@@ -2024,7 +2038,7 @@ Section file_out.
 
   (* an event that puts nothing on the console's wire moves neither the
      condition nor the era *)
-  Lemma f0_pinned_io (h : list mobs) (e : mobs) (s0s : list fst) :
+  Lemma f0_pinned_io (h : list mobs) (e : mobs) (s0s : list fstate) :
     is_io e = true -> obs_wire Uart0 [e] = [] ->
     f0_pinned h s0s -∗ f0_pinned (h ++ [e]) s0s.
   Proof using .
@@ -2037,8 +2051,8 @@ Section file_out.
 
   (* ...and the drain's two halves: reading the state the ledger fixed, and
      fixing it *)
-  Lemma f0_pinned_drained (h : list mobs) (s0s : list fst) (vf : file_era)
-      (s0 : fst) :
+  Lemma f0_pinned_drained (h : list mobs) (s0s : list fstate) (vf : file_era)
+      (s0 : fstate) :
     obs_wire Uart0 (open_seg h) <> [] ->
     file_era_pin (obs_boots h) vf -∗ f0_lb vf s0 -∗ f0_pinned h s0s -∗
       ⌜exists u1, s0s = u1 ++ [s0]⌝.
@@ -2051,8 +2065,8 @@ Section file_out.
     by iPureIntro.
   Qed.
 
-  Lemma f0_pinned_drain (h : list mobs) (b : bv 8) (u1 : list fst)
-      (vf : file_era) (s0 : fst) :
+  Lemma f0_pinned_drain (h : list mobs) (b : bv 8) (u1 : list fstate)
+      (vf : file_era) (s0 : fstate) :
     file_era_pin (obs_boots h) vf -∗ f0_lb vf s0 -∗
       f0_pinned (h ++ [ObsUartOut Uart0 b]) (u1 ++ [s0]).
   Proof using .
@@ -2080,7 +2094,7 @@ Section file_out.
          assumes the NEW history's discipline and reads the old one's
          witnesses off it. ---- *)
   Definition file_phi_res (h : list mobs) : iProp Σ :=
-    (∃ s0s : list fst,
+    (∃ s0s : list fstate,
        ⌜disc_f h -> file_phi_body h s0s⌝ ∗ f0_pinned h s0s)%I.
 
   Global Instance file_phi_res_timeless h : Timeless (file_phi_res h).
@@ -2202,7 +2216,7 @@ Section file_out.
 
 
   (* the deed's typed witness, read against the ledger's own line list *)
-  Lemma f0_typed_adm (Ls : list wordline) (s0 : fst) :
+  Lemma f0_typed_adm (Ls : list wordline) (s0 : fstate) :
     fl_auth (fgn_cl g) Ls -∗ f0_typed s0 -∗
       fl_auth (fgn_cl g) Ls ∗ ⌜fadm_boot Ls s0⌝.
   Proof using .
@@ -2234,7 +2248,7 @@ Section file_out.
     trace_shape h true ->
     (file_taint (fgn_cl g)
      ∨ (match i with
-        | Uart0 => ∃ (s0 : fst) (vf : file_era),
+        | Uart0 => ∃ (s0 : fstate) (vf : file_era),
                      ⌜good_out_f s0 (open_seg h ++ [ObsUartOut Uart0 b])⌝
                      ∗ f0_typed s0 ∗ file_era_pin (obs_boots h) vf
                      ∗ f0_lb vf s0

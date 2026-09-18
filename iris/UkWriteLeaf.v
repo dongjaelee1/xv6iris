@@ -173,19 +173,22 @@ Section UkWriteLeaf.
     end.
 
   Lemma sbundle_at_write_intro_at (X : uvis -d> iPropO Σ) (f : xfam) (W : uvis)
-      (v0 v1 v2 : mword 64) (sts : list fdstate) (Mv : gmap Z (bv 8)) :
+      (v0 v1 v2 : mword 64) (sts : list fdstate) (Mv : gmap Z (bv 8))
+      (pmv : gmap (mword 27) uperm) (szv : Z) (lzv : bool) :
     tf_w (uvis_tf W) (tf_arg_idx 0) = v0 ->
     tf_w (uvis_tf W) (tf_arg_idx 1) = v1 ->
     tf_w (uvis_tf W) (tf_arg_idx 2) = v2 ->
     uvis_fd W = sts ->
     uvis_M W = Mv ->
-    filewrite_in (fd_st_of_key v0 sts) (sys_rw_count v2) Mv v1 (wf_Q f) (wf_Qe f) -∗
+    uvis_perm W = pmv -> uvis_sz W = szv -> uvis_lazy W = lzv ->
+    filewrite_in pmv szv lzv (fd_st_of_key v0 sts) (sys_rw_count v2) Mv v1
+      (wf_Q f) (wf_Qe f) -∗
     sbundle_at X 16 f W.
   Proof using .
-    intros H0 H1 H2 Hfd HM. iIntros "H".
+    intros H0 H1 H2 Hfd HM Hpm Hsz Hlz. iIntros "H".
     (* the REWRITE GOES FIRST, against the lemma's own variables
        ([UConsOpen.sbundle_at_open_intro_at]'s note) *)
-    rewrite -H0 -H1 -H2 -Hfd -HM.
+    rewrite -H0 -H1 -H2 -Hfd -HM -Hpm -Hsz -Hlz.
     rewrite /sbundle_at /= /xv6_sbundle /xk_a.
     xv6_skip. xv6_skip. xv6_skip. xv6_skip. xv6_take. iExact "H".
   Qed.
@@ -274,10 +277,10 @@ Section UkWriteLeaf.
     iApply (sbundle_at_write_intro_at uslot (xfam_wr Q (ukn_pay N))
               (uvis_of_run m pc M pm sz fdv cw gn cs pidv false)
               (m !!! Regidx a0_idx) (m !!! Regidx a1_idx)
-              (m !!! Regidx a2_idx) fdv M
+              (m !!! Regidx a2_idx) fdv M _ _ _
               (tf_of_arg0 m pc) (tf_of_arg1 m pc) (tf_of_arg2 m pc)
               (uvis_of_run_fd m pc M pm sz fdv cw gn cs pidv false)
-              eq_refl).
+              eq_refl eq_refl eq_refl eq_refl).
     rewrite (uwr_fd_st_dev (m !!! Regidx a0_idx) fdv l i rb mj H0 Hi Htake Hli).
     cbn [xfam_wr wf_Q].
     rewrite /filewrite_in. iExact "Hch".

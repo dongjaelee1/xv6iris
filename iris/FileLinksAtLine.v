@@ -63,7 +63,7 @@ Section file_links_at_line.
   (* =================================================================== *)
   (*  1.  ONE BYTE OF A BLOCK                                             *)
   (* =================================================================== *)
-  Lemma fblk_step_at (s0 : fst) (k : nat) (v : era_pins) (I : list (bv 8))
+  Lemma fblk_step_at (s0 : fstate) (k : nat) (v : era_pins) (I : list (bv 8))
       (a i : nat) (b : bv 8) (Φ : iProp Σ) :
     fab I a !! i = Some b ->
     FPIN k v -∗ file_links g -∗ fwc_blk_at g s0 k v I a i -∗
@@ -129,7 +129,7 @@ Section file_links_at_line.
   (* =================================================================== *)
   (* the head arm's dollar: [file_write_link_first] at alternative 0, and
      the state it names is the caller's own *)
-  Lemma fhead_dollar_at (s0 : fst) (k : nat) (v : era_pins)
+  Lemma fhead_dollar_at (s0 : fstate) (k : nat) (v : era_pins)
       (I : list (bv 8)) (b : bv 8) (Φ : iProp Σ) :
     b = u_prompt !!! 0%nat ->
     FPIN k v -∗ file_links g -∗ fhead_at g s0 k v I -∗
@@ -156,7 +156,7 @@ Section file_links_at_line.
   Qed.
 
   (* ---- the prompt's dollar at the LOOSE boundary ---- *)
-  Lemma fprompt_dollar_at (s0 : fst) (k : nat) (v : era_pins)
+  Lemma fprompt_dollar_at (s0 : fstate) (k : nat) (v : era_pins)
       (I : list (bv 8)) (b : bv 8) (Φ : iProp Σ) :
     b = u_prompt !!! 0%nat ->
     FPIN k v -∗ file_links g -∗ fwc_owed_at g s0 k v I -∗
@@ -210,7 +210,7 @@ Section file_links_at_line.
   Qed.
 
   (* ---- the space after it ---- *)
-  Lemma fprompt_space_at (s0 : fst) (k : nat) (v : era_pins)
+  Lemma fprompt_space_at (s0 : fstate) (k : nat) (v : era_pins)
       (I : list (bv 8)) (b : bv 8) (Φ : iProp Σ) :
     b = u_prompt !!! 1%nat ->
     FPIN k v -∗ file_links g -∗ fwc_sp_at g s0 k v I -∗
@@ -239,7 +239,7 @@ Section file_links_at_line.
     rewrite /f0w. iSplitR; [by iPureIntro |]. iExists vf. by iFrame "Hvf Hf0'".
   Qed.
 
-  Lemma fprompt_dollar_ban_at (s0 : fst) (k : nat) (v : era_pins)
+  Lemma fprompt_dollar_ban_at (s0 : fstate) (k : nat) (v : era_pins)
       (I : list (bv 8)) (b : bv 8) (Φ : iProp Σ) :
     b = u_prompt !!! 0%nat ->
     FPIN k v -∗ file_links g -∗ fwc_ban_at g s0 k v I 0%nat -∗
@@ -259,7 +259,7 @@ Section file_links_at_line.
   Qed.
 
   (* ---- the prompt at the TIGHT shapes ---- *)
-  Lemma fprompt_dollar_post_at (s0 : fst) (k : nat) (v : era_pins)
+  Lemma fprompt_dollar_post_at (s0 : fstate) (k : nat) (v : era_pins)
       (I : list (bv 8)) (a : nat) (b : bv 8) (Φ : iProp Σ) :
     fapr I a -> b = u_prompt !!! 0%nat ->
     FPIN k v -∗ file_links g -∗
@@ -288,7 +288,7 @@ Section file_links_at_line.
     exact (wr_blk_sp_f ps cs s0 I P a Hw Ha).
   Qed.
 
-  Lemma fprompt_space_t_at (s0 : fst) (k : nat) (v : era_pins)
+  Lemma fprompt_space_t_at (s0 : fstate) (k : nat) (v : era_pins)
       (I : list (bv 8)) (b : bv 8) (Φ : iProp Σ) :
     b = u_prompt !!! 1%nat ->
     FPIN k v -∗ file_links g -∗ fwc_sp_t_at g s0 k v I -∗
@@ -319,7 +319,7 @@ Section file_links_at_line.
     rewrite /f0w. iSplitR; [by iPureIntro |]. iExists vf. by iFrame "Hvf Hf0'".
   Qed.
 
-  Lemma fprompt_dollar_line_at (s0 : fst) (k : nat) (v : era_pins)
+  Lemma fprompt_dollar_line_at (s0 : fstate) (k : nat) (v : era_pins)
       (I : list (bv 8)) (b : bv 8) (Φ : iProp Σ) :
     b = u_prompt !!! 0%nat ->
     FPIN k v -∗ file_links g -∗ fwc_line_at g s0 k v I -∗
@@ -378,7 +378,7 @@ Section file_links_at_line.
   (*  3.  THE READS                                                       *)
   (* =================================================================== *)
   (* ---- the read of a completed line ---- *)
-  Lemma fwc_read_at (s0 : fst) (k : nat) (v : era_pins)
+  Lemma fwc_read_at (s0 : fstate) (k : nat) (v : era_pins)
       (I l : list (bv 8)) :
     wl_nl ∉ l ->
     inp_lb v (I ++ l ++ [wl_nl]) -∗ fwc_open_at g s0 k v I -∗
@@ -392,7 +392,7 @@ Section file_links_at_line.
     exact (wr_open_read_f ps cs s0 I P l Hw Hl).
   Qed.
 
-  Lemma fwc_read_t_at (s0 : fst) (k : nat) (v : era_pins)
+  Lemma fwc_read_t_at (s0 : fstate) (k : nat) (v : era_pins)
       (I : list (bv 8)) (a : nat) (l : list (bv 8)) :
     wl_nl ∉ l ->
     inp_lb v (I ++ l ++ [wl_nl]) -∗ fwc_open_t_at g s0 k v I -∗
@@ -407,7 +407,7 @@ Section file_links_at_line.
   Qed.
 
   (* ---- the panic's five bytes leave the next round's banner ---- *)
-  Lemma fwc_panic_done_at (s0 : fst) (k : nat) (v : era_pins)
+  Lemma fwc_panic_done_at (s0 : fstate) (k : nat) (v : era_pins)
       (I : list (bv 8)) :
     fwc_blk_at g s0 k v I (fpan_of (fline I))
       (length (fab I (fpan_of (fline I)))) -∗ fwc_ban_at g s0 k v I 0%nat.
@@ -427,7 +427,7 @@ Section file_links_at_line.
   Qed.
 
   (* ---- a read past a boundary whose prompt is unwritten is the taint ---- *)
-  Lemma fowed_read_taint_at (s0 : fst) (k : nat) (v : era_pins) (n : nat)
+  Lemma fowed_read_taint_at (s0 : fstate) (k : nat) (v : era_pins) (n : nat)
       (I : list (bv 8)) (ws : list (list mobs * bv 8)) :
     length I = n -> (0 < length ws)%nat ->
     fwc_owed_at g s0 k v I -∗ fread_ret g k v n ws -∗ FT.
@@ -436,7 +436,7 @@ Section file_links_at_line.
     rewrite /fread_ret.
     iDestruct "Hr" as "[[#HT _] | [Hdlr Hfacts]]"; [iExact "HT" |].
     iDestruct "Hfacts" as (pops dl)
-      "(%Hrok & %Hdl & %Hpref & %Hidx & %Hdsc & #Hinp & %Hdi & Hrest)".
+      "(%Hrok & %Hdl & %Hpref & %Hidx & %Hdsc & %Hboots & #Hinp & %Hdi & Hrest)".
     iDestruct "Hrest" as "[%Hws0 | Hbb]".
     { exfalso. rewrite Hws0 in Hws. cbn in Hws. lia. }
     iDestruct "Hbb" as (cs0 ps0 vf sr)

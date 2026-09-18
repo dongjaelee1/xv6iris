@@ -41,6 +41,7 @@ Require Import EchoOut.
 Require Import EchoLinks.
 Require Import CtxIdDefs.
 Require Import LinkRec.
+Require Import UserConsole.       (* [ucons_swallow] / [ucons_stored_lb]: the swallowed byte's tag *)
 Local Open Scope list_scope.
 
 (* ===================================================================== *)
@@ -141,7 +142,18 @@ Section readrec.
        consumes: the call moved the era's input on by the [dc] bytes [J],
        the byte it DELIVERED is the first of them, the input so far is
        DISCIPLINED, and the reader's residue is at the far end. *)
-    rk_arms : forall (v : era_pins) (I : list (bv 8))
+    (* ...AND IT IS HANDED THE CONSUMED BYTES' TAGS (the PROGRAM STREAM,
+       stretch 9).  The residue is the ONLY thing of an era's that rides in
+       the shell's mid-line pieces, and an input byte's tag
+       ([RiscvPtsto.riscv_rx_tag]) is the only place an era's RX-side
+       ledger ever speaks to a program -- the file era's tag carries the
+       lower bound of the typed line list ([FileOut.ftag]), which is how a
+       line reaches the child that writes it to `f`.  The window names the
+       DELIVERED bytes' tags ([hs]); a SWALLOWED byte extends the input
+       too, and its tag is inside [UserConsole.ucons_swallow], so the arm
+       takes both rows as the console member hands them over.  An era with
+       nothing to read off a tag ignores all three. *)
+    rk_arms : forall (cn : cons_names) (v : era_pins) (I : list (bv 8))
                 (ws sl sl' : list (list mobs * bv 8))
                 (hs : list (list mobs)) (dd dc : nat) (g : nat -> bv 8),
       (dd <= dc)%nat -> length ws = dc ->
@@ -150,6 +162,9 @@ Section readrec.
       (forall j : nat, (j < dc)%nat -> ws !! j = sl' !! (length I + j)%nat) ->
       ⊢ lk_epin L (S gen_id) v -∗ inp_lb v I -∗ lk_rres L v I -∗
         lk_rr L (S gen_id) v (length I) ws -∗
+        ([∗ list] hh ∈ hs, riscv_rx_tag hh) -∗
+        ucons_swallow cn False sl dd dc -∗
+        ucons_stored_lb cn sl' -∗
         (dl_cnt v (1/2) (length I + dc)%nat
          ∗ ∃ J : list (bv 8),
              ⌜length J = dc⌝ ∗ ⌜rk_disc (I ++ J)⌝
@@ -203,7 +218,7 @@ Section echo_read_inst.
      bounds of one echoed list ([EchoOut.inp_lb_cmp]) and the lease's is
      the shorter; the residue comes off the receipt where a byte was
      delivered and off the lease where the count did not move. *)
-  Local Lemma eri_arms (v : era_pins) (I : list (bv 8))
+  Local Lemma eri_arms (cn : cons_names) (v : era_pins) (I : list (bv 8))
       (ws sl sl' : list (list mobs * bv 8))
       (hs : list (list mobs)) (dd dc : nat) (g : nat -> bv 8) :
     (dd <= dc)%nat -> length ws = dc ->
@@ -212,6 +227,9 @@ Section echo_read_inst.
     (forall j : nat, (j < dc)%nat -> ws !! j = sl' !! (length I + j)%nat) ->
     ⊢ era_pin γ (S gen_id) v -∗ inp_lb v I -∗ echo_rres v I -∗
       read_ret T (S gen_id) v (length I) ws -∗
+      ([∗ list] hh ∈ hs, riscv_rx_tag hh) -∗
+      ucons_swallow cn False sl dd dc -∗
+      ucons_stored_lb cn sl' -∗
       (dl_cnt v (1/2) (length I + dc)%nat
        ∗ ∃ J : list (bv 8),
            ⌜length J = dc⌝ ∗ ⌜disc_input (I ++ J)⌝
@@ -220,7 +238,7 @@ Section echo_read_inst.
       ∨ T.
   Proof using HPT.
     intros Hddc Hlws Hwinf Hpre2 Hwsj.
-    iIntros "#Hpin #HE0 #Hres0 Hret".
+    iIntros "#Hpin #HE0 #Hres0 Hret _ _ _".
     rewrite /read_ret.
     iDestruct "Hret" as "[[#HT _] | [Hdlr Hfacts]]"; [ by iRight | ].
     iDestruct "Hfacts" as (pops dl)

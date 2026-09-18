@@ -87,6 +87,7 @@ From Kernel Require KernelInstrs.
 From Kernel Require KernelSyms.
 Require Import Riscv.rv64d_types Riscv.rv64d Riscv.riscv_extras.
 Require Import ProcAvail.
+Require Import UserPerm.   (* [uperm] -- RULING WR-TB *)
 Require Import Xv6G.   (* the ghost-state bundle; see its header *)
 Require Import TsoCtx.
 Require Import ByteBuf.  (* A6.58: the CONTEXT tower\'s 8<->4 halving ([ctx_word_pointsto_split4]/[_join4]) *)
@@ -335,12 +336,13 @@ Section ProofSysWrite.
       (v v1 v2 : mword 64)
       (m : regfile) (av : nat) (eb : bool) (b : bool) (lks : gset string)
       (Q : nat -> iProp Σ) (Qe : nat -> pipe_st -> iProp Σ)
-    : wp_sys_write_sconf_body γf γs j γlp fn pidv U sts v v1 v2 m av eb b lks
-        Q Qe.
+      (pmv : gmap (mword 27) uperm) (szv : Z) (lzv : bool)
+    : wp_sys_write_sconf_body pmv szv lzv γf γs j γlp fn pidv U sts v v1 v2 m av
+        eb b lks Q Qe.
   Proof using .
     cbv beta delta [wp_sys_write_sconf_body].
     intros pcE pj ret_tgt Hav Hj Hgs Hlens Hfj Hfprocs
-           Harg0 Harg1 Harg2 Hwp Hdq Heb.
+           Harg0 Harg1 Harg2 Hwp Hdq Heb Htbw.
     (* every budget, or [lia] cannot see past [filewrite_stack] -- it is an
        expression, not a literal, on purpose (SpecSysWrite.v). *)
     
@@ -978,15 +980,15 @@ Section ProofSysWrite.
       iDestruct (cpu_own_transport CID17 CID24 0%nat eb pj b 
                    ltac:(rewrite Hb; wp_next_chain) with "Hcpu") as "Hcpu".
       iApply (Filewrite.wp_filewrite_sconf γf γs j γlp kk qq stf fn pidv U
-                S4 (av - 6)%nat eb (sys_rw_count v2) b lks Q Qe
-                ltac:(lia) Hkk Hj Hgs Hlens
+                S4 (av - 6)%nat eb (sys_rw_count v2) b lks Q Qe _ _ _
+                Htbw ltac:(lia) Hkk Hj Hgs Hlens
                 Hfj Hfprocs Hconw HS4a0' HS4a2 Hnrange Heb
                 with "Hcg Hcpu Htext Hdata Hpc Hpenv Href Hcore Hkenv Hprocs Hfenv Hrow [Hswin]").
       all: try lkbelow.
       { (* THE CALLER'S INPUT, at the descriptor argfd resolved: the key
            this contract's arms are stated on IS the row the loan named. *)
         rewrite HS4a1.
-        iApply (sys_write_in_of (us_V U) v sts fd fv stf (sys_rw_count v2)
+        iApply (sys_write_in_of _ _ _ (us_V U) v sts fd fv stf (sys_rw_count v2)
                   (us_M U) v1 Q Qe Hsome Hstq with "Hswin"). }
       iIntros (CID25 Hs25 mf rv P')
         "%Hcsf %Hupt %Hrva Hcg Hcpu Hpc Href Hcore Hfout Harms".

@@ -115,20 +115,20 @@ Section UShLineAtHold.
   Qed.
 
   Lemma ush_mid_of_at_L_hold_ex (γ : echo_gn)
-      (Wb Hold : FileState.fst -> list (bv 8) -> iProp Σ)
+      (Wb Hold : FileState.fstate -> list (bv 8) -> iProp Σ)
       (N : uk_names Σ) (γp : gname) (n : nat) :
     ukn_pay N
       = ucons_pay fsc_cons γp (lk_T L)
           (ush_rd_x_at (lk_rres L) γ
              (fun I : list (bv 8) =>
-                ∃ s0 : FileState.fst, Wb s0 I ∗ Hold s0 I)%I) ->
+                ∃ s0 : FileState.fstate, Wb s0 I ∗ Hold s0 I)%I) ->
     ⊢ UkSh.ush_at N γp n -∗
       ∃ I : list (bv 8), ⌜length I = n⌝
         ∗ UkSh.ush_lease N γp (lk_T L) (ush_mid_at (lk_rres L) γ γp) I.
   Proof using .
     exact (ush_mid_of_at_L γ
              (fun I : list (bv 8) =>
-                ∃ s0 : FileState.fst, Wb s0 I ∗ Hold s0 I)%I N γp n).
+                ∃ s0 : FileState.fstate, Wb s0 I ∗ Hold s0 I)%I N γp n).
   Qed.
 
   (* =================================================================== *)
@@ -160,18 +160,18 @@ Section UShLineAtHold.
   Qed.
 
   Lemma ush_at_of_mid_taint_L_hold_ex (γ : echo_gn)
-      (Wb Hold : FileState.fst -> list (bv 8) -> iProp Σ)
+      (Wb Hold : FileState.fstate -> list (bv 8) -> iProp Σ)
       (N : uk_names Σ) (γp : gname) (I : list (bv 8)) :
     ukn_pay N
       = ucons_pay fsc_cons γp (lk_T L)
           (ush_rd_x_at (lk_rres L) γ
              (fun J : list (bv 8) =>
-                ∃ s0 : FileState.fst, Wb s0 J ∗ Hold s0 J)%I) ->
+                ∃ s0 : FileState.fstate, Wb s0 J ∗ Hold s0 J)%I) ->
     ⊢ lk_T L -∗ ush_mid_at (lk_rres L) γ γp I -∗ UkSh.ush_at N γp (length I).
   Proof using .
     exact (ush_at_of_mid_taint_L γ
              (fun J : list (bv 8) =>
-                ∃ s0 : FileState.fst, Wb s0 J ∗ Hold s0 J)%I N γp I).
+                ∃ s0 : FileState.fstate, Wb s0 J ∗ Hold s0 J)%I N γp I).
   Qed.
 
   (* =================================================================== *)
@@ -222,22 +222,22 @@ Section UShLineAtHold.
   Qed.
 
   Lemma ush_at_of_mid_wb_L_hold_ex (γ : echo_gn)
-      (Wb Hold : FileState.fst -> list (bv 8) -> iProp Σ)
+      (Wb Hold : FileState.fstate -> list (bv 8) -> iProp Σ)
       (N : uk_names Σ) (γp : gname) (I : list (bv 8)) :
     ukn_pay N
       = ucons_pay fsc_cons γp (lk_T L)
           (ush_rd_x_at (lk_rres L) γ
              (fun J : list (bv 8) =>
-                ∃ s0 : FileState.fst, Wb s0 J ∗ Hold s0 J)%I) ->
-    (forall s0 : FileState.fst, ush_wb_inp γ (lk_T L) (Wb s0)) ->
+                ∃ s0 : FileState.fstate, Wb s0 J ∗ Hold s0 J)%I) ->
+    (forall s0 : FileState.fstate, ush_wb_inp γ (lk_T L) (Wb s0)) ->
     ⊢ ush_mid_at (lk_rres L) γ γp I -∗
-      (∃ s0 : FileState.fst, Wb s0 I ∗ Hold s0 I) -∗
+      (∃ s0 : FileState.fstate, Wb s0 I ∗ Hold s0 I) -∗
       UkSh.ush_at N γp (length I).
   Proof using .
     intros Hpay Hwbi.
     exact (ush_at_of_mid_wb_L γ
              (fun J : list (bv 8) =>
-                ∃ s0 : FileState.fst, Wb s0 J ∗ Hold s0 J)%I N γp I Hpay
+                ∃ s0 : FileState.fstate, Wb s0 J ∗ Hold s0 J)%I N γp I Hpay
              (ush_wb_inp_ex γ (lk_T L) Wb Hold Hwbi)).
   Qed.
 
@@ -337,39 +337,39 @@ Section UShLineAtHold.
 
   Lemma ush_posb_of_lend_L_hold_ex (γ : echo_gn) (N : uk_names Σ)
       (γp : gname)
-      (Wc : FileState.fst -> list (bv 8) -> nat -> iProp Σ)
-      (Wb : FileState.fst -> list (bv 8) -> iProp Σ)
-      (Hold : FileState.fst -> list (bv 8) -> iProp Σ)
+      (Wc : FileState.fstate -> list (bv 8) -> nat -> iProp Σ)
+      (Wb : FileState.fstate -> list (bv 8) -> iProp Σ)
+      (Hold : FileState.fstate -> list (bv 8) -> iProp Σ)
       (l : list fdstate) (n : nat) :
     ukn_pay N
       = ucons_pay fsc_cons γp (lk_T L)
           (ush_rd_x_at (lk_rres L) γ
              (fun J : list (bv 8) =>
-                ∃ s0 : FileState.fst, Wb s0 J ∗ Hold s0 J)%I) ->
-    (forall s0 : FileState.fst, ush_wc_inp γ (lk_T L) (Wc s0)) ->
-    (forall s0 : FileState.fst, ush_wb_inp γ (lk_T L) (Wb s0)) ->
+                ∃ s0 : FileState.fstate, Wb s0 J ∗ Hold s0 J)%I) ->
+    (forall s0 : FileState.fstate, ush_wc_inp γ (lk_T L) (Wc s0)) ->
+    (forall s0 : FileState.fstate, ush_wb_inp γ (lk_T L) (Wb s0)) ->
     ⊢ upos γp n -∗
       ucons_pay fsc_cons γp (lk_T L) (ush_rd_pin_at (lk_rres L) γ) (-1) -∗
       ((∃ I : list (bv 8), ⌜length I = n⌝
           ∗ UkSh.ush_wcp
               (fun (J : list (bv 8)) (p : nat) =>
-                 ∃ s0 : FileState.fst, Wc s0 J p ∗ Hold s0 J)%I
+                 ∃ s0 : FileState.fstate, Wc s0 J p ∗ Hold s0 J)%I
               (fun J : list (bv 8) =>
-                 ∃ s0 : FileState.fst, Wb s0 J ∗ Hold s0 J)%I l I 0%nat)
+                 ∃ s0 : FileState.fstate, Wb s0 J ∗ Hold s0 J)%I l I 0%nat)
        ∨ lk_T L) -∗
       UkSh.ush_posb N γp (lk_T L)
         (fun (J : list (bv 8)) (p : nat) =>
-           ∃ s0 : FileState.fst, Wc s0 J p ∗ Hold s0 J)%I
+           ∃ s0 : FileState.fstate, Wc s0 J p ∗ Hold s0 J)%I
         (fun J : list (bv 8) =>
-           ∃ s0 : FileState.fst, Wb s0 J ∗ Hold s0 J)%I
+           ∃ s0 : FileState.fstate, Wb s0 J ∗ Hold s0 J)%I
         (ush_mid_at (lk_rres L) γ γp) l 0%nat.
   Proof using .
     intros Hpay Hwci Hwbi.
     exact (ush_posb_of_lend_L γ N γp
              (fun (J : list (bv 8)) (p : nat) =>
-                ∃ s0 : FileState.fst, Wc s0 J p ∗ Hold s0 J)%I
+                ∃ s0 : FileState.fstate, Wc s0 J p ∗ Hold s0 J)%I
              (fun J : list (bv 8) =>
-                ∃ s0 : FileState.fst, Wb s0 J ∗ Hold s0 J)%I l n Hpay
+                ∃ s0 : FileState.fstate, Wb s0 J ∗ Hold s0 J)%I l n Hpay
              (ush_wc_inp_ex γ (lk_T L) Wc Hold Hwci)
              (ush_wb_inp_ex γ (lk_T L) Wb Hold Hwbi)).
   Qed.

@@ -231,7 +231,7 @@ none; the round has one.
 | `Hchild_cat` | `UCatKernel.cat_child_of_entry` | cat's lend, the kernel stream's |
 | `Hopen_hand` | — | the kernel stream's (OFF-LINK-6) |
 | `Hktaint` | the record's interface equation | free, once someone writes the projection |
-| `sh_prompt_alt_of_deed`, `sh_tag_law_file`, `sh_child_law_file`, `sh_round_holds_file` | the round's own mathematics | `sh_hold`'s re-establishment across a child against `cat_tie`/`fst_after` |
+| `sh_prompt_alt_of_deed`, `sh_tag_law_file`, `sh_child_law_file`, `sh_round_holds_file` | the round's own mathematics | `sh_hold`'s re-establishment across a child against `cat_tie`/`fstate_after` |
 
 **`Hktaint` is gone the way `Hcons` and `Htag` always were**: the round
 takes the kill projection as a record EQUATION
@@ -255,7 +255,7 @@ walks `file_links_w` / `file_links_blk`), and the lend-to-cursor step is
 alternative's bytes line up too:
 
 ```coq
-  ralt_dec 0 = REcho 0,   fst_free (REcho 0) = true,
+  ralt_dec 0 = REcho 0,   fstate_free (REcho 0) = true,
   ralt_ok (LEcho ws) (REcho 0) = (0 < 4)%nat,
   cont s l (REcho k) = line_alts_of (uline_ws l) !!! k
 ```
@@ -320,7 +320,7 @@ cursor IS `fwc_blk g k v I 0`, the step IS `fblk_step`, the lend and
 reductions:
 
 ```coq
-  ralt_dec 0 = REcho 0,  fst_free (REcho 0) = true,
+  ralt_dec 0 = REcho 0,  fstate_free (REcho 0) = true,
   ralt_ok (LEcho ws) (REcho 0) = (0 < 4)%nat,
   cont s l (REcho k) = line_alts_of (uline_ws l) !!! k
 ```
@@ -474,7 +474,7 @@ where CAT-ENTRY's deed fraction meets K1's entry.
 
 ### 3. RULING H', applied
 
-The round's section now takes `s0 : fst` beside `gen_id`, and
+The round's section now takes `s0 : fstate` beside `gen_id`, and
 `sh_hold_at s0 I` carries the deed, the tie (`UCatOut.cat_tie cs0 s0 I s`)
 and the era's pin with NO `f0_lb`.  That is what makes it inhabited at
 `I = []`: `cat_tie [] s0 [] s` is `dst_content s = s0`, so /init
@@ -913,3 +913,462 @@ RULING CAT-DEED is recorded verbatim in stretch 5's §3 and unchanged:
 `cat_pay_at`/`cat_child_of_entry`, then cat's child law at `ushs_lp_cat`
 by cat's walk from 0x9c0.  (5) is assembly once (4) lands.  Both are
 multi-hour items behind (3)'s remaining shape.
+
+
+---
+
+## PROGRAM STREAM, stretch 8 (2026-09-18) — HOLD-POS
+
+Branch `app-file/sh-redir`, merged from `main` at `eb13d4c3a`.  Whole tree
+green (`--proofs -k`, `EXIT=0`, zero `Error`); four audits primitive-only
+and unchanged (System 13, Echo 14, Tree 13, File 14).
+Metric **4** in `UShRound.v` (three-file 1 + 4 + 1 = **6**; S3 proved).
+`tools/lemma_diff.py --ref main`: ten items, all the retired twin, the
+replaced `Hexecfail` and item 3's `Admitted`.  `comment_quote_check`: 0.
+
+### 1. What landed, file:lemma
+
+* **A, the model** — `FileDisc.fsm`'s `RFSilent` arm is `s` (identity);
+  `fd_fsm_shape` takes the `None` arm there.  Nothing else moved:
+  `fst_ok_fsm`, `FileDiscDec.fst_upto_vs_nil`, `FileLinksLine`'s `fnoc_of`
+  lemmas re-check unchanged.  Nothing else in the model looked wrong.
+* **B, the ties and the family** (`iris/UShRound.v`, S0 above the section,
+  S1 inside): `pre_tie` / `done_tie` / `pend_tie_at` / `pend_tie` (the
+  ruling's three, PEND with its alternative exposed as `pend_tie_at … a`
+  and packed as `∃ a`); `sh_deed_at tie sb I` (the one `iProp` shape,
+  `∨ T`), `sh_pre_at` / `sh_done_at` / `sh_pend_at`; `Wcf I p` by position
+  exactly as ruled (`ewc_lpr`'s shape, `p ≥ 3` the lend), `Wbf := Wbl ∗
+  DONE`, `Wcf_0/1/2/S3` as `eq_refl` unfolding lemmas, `Wcf_timeless`,
+  `Wbf_timeless`, `sh_done_head` (the head is DONE at `cs = []`).  Pure
+  steps: (i) `pre_tie_of_done` (needs `rest_of I = []` and `wl_nl ∉ l`),
+  (ii) `done_tie_of_pend`, (iii) `pend_tie_of_pre` at `fnoc_of (fline I)`,
+  (iv) `done_tie_of_pre_id`, plus `done_tie_of_pre_prefix` (a FILED list
+  extending the deed's, the filed alternative's effect the identity) and
+  its banner reading `done_tie_of_pre_ban` (`wr_ban_f`'s panic clause,
+  `fsm_panic`); `fsm_echo` / `fsm_cat` / `fsm_fnoc` / `cont_prompt_nopanic`;
+  (v) `cs_lb_prefix_len` / `cs_lb_agree_len` off `EchoOut.cs_lb_cmp`.
+  Five vacuity `Example`s: the three ties at the empty input and the
+  pending tie at each silent shape (`RCSilent`, `REcho 2`, `RFSilent` at a
+  PRESENT `f` — the model fix is what makes the last one true).
+* **C, the loop laws**: `Hwbl_f` (`Wcf I 3 -∗ Wcf I 0`, the PEND arm at
+  the silent alternative, `0 < nlines I` read off the lend's stage),
+  `Hwbwc_f`, `sh_kill_law_file` (through `Wcf_taint`), `Hcltaint` /
+  `Hktaint` unchanged; `Hwc_f` is INIT-FILE's **conjunct 5** (the read law
+  at the family, `Wcl2_rest` for `rest_of I = []`).  `Wcf_inp` / `Wbf_inp`
+  are the seam's read-backs (H below).
+* **D, the prompt law**: `sh_prompt_alt_of_deed` RESTATED at `wr_blk_f ∧
+  pend_tie_at` and PROVED (it is `FileLinks.file_write_link_blk` with the
+  block's first byte read off `cont … = u_prompt`); `sh_prompt_law_file :
+  file_links g -∗ UShKernel.sh_prompt_law (PS := uprogSG_free) Wcf`.  The
+  DONE arm is `UShPanicHold.sh_prompt_law_hold Wcl DONE` on the record's
+  `UShPanic.sh_prompt_law_holds_line_at FI`; the PEND arm is
+  `ksh_w_prompt_pend`: `pfam` (position 0 the cursor beside the deed,
+  positions 1–2 the record's shapes beside DONE) with `pfam_step` — the
+  '$' by `sh_prompt_alt_of_deed` landing at `wr_sp_t_f ps (cs ++ [a]) s0 I
+  (S P)` (new pure `wr_blk_dollar_at_f` / `wr_blk_pending_at_f`, the
+  stage's dollar lemmas with the STATE read instead of `fab`, because the
+  deed's alternative need not be state-free: `RCRan` at an empty `f`
+  prints the bare prompt) and the deed at DONE by `done_tie_of_pend`; the
+  ' ' by `lk_lpr_step`.  The two arms are joined by `ksh_w_or`; a tainted
+  deed or console goes through the record's own law (`ksh_w_prompt_taint`).
+* **E, the panic law**: `Hpanic` = `UShPanic.ush_panic_law_hold_at FI PRE`
+  plus `sh_done_of_pre_ban` (PRE → DONE at `Wbl I`: the filed list's last
+  alternative is a panic, or the era's head).
+* **F, the echo child**: `Hchild_echo` at `Hold := PRE` through the landed
+  `UShEchoPay.sh_exec_sup_echo_wq_holds_at_D` (the join was already a
+  parameter, `fwc0`; no generic-tier change there).  `fwc0` and the
+  exec-failed exit both go through **`Wcf0_of_pre_line_id`**: `Wcl I 0 ∗
+  PRE I -∗ Wcf I 0` whenever every alternative of the line leaves `f`
+  alone — the line credential hides its alternative, so the fold reads
+  all three arms (prologue: panic or head → DONE; a block with a byte
+  before its prompt → DONE by identity; a block whose prompt IS its first
+  byte → back to the lend, PEND at the silent alternative).
+  `sh_child_law_file` is re-proved through `UkShEcho.ushf_child_law_holds_at_D`.
+* **G**: `UInitFileCons`'s twin (`sh_hold_at`, `file_Wcf_at`, `file_Wbf_at`,
+  `sh_hold_at_of_boot`) is RETIRED; `file_Wbf_at_of_boot` produces
+  `UShRound.Wbf g r (dst_content s) []` via `UShRound.sh_done_head`.
+  `UInitFileCons` imports `UShRound` (no cycle; nothing in the tree
+  imported the twin).
+* **H**: `Hsh_pm1` / `Hsh_pm3` / `Hsh_pmwb` need NO new lemma: `Wbf` unfolds
+  to `fun J => Wbl J ∗ DONE J`, so `UShLineAtHold`'s `_hold` lemmas apply
+  at `Wb := Wbl, Hold := UShRound.sh_done_at g r s0`.  `Hsh_bd` is
+  `UShLineAtHold.ush_posb_of_lend_L FI (fgn_echo g) N gp Wcf Wbf l i Hpeq
+  (UShRound.Wcf_inp …) (UShRound.Wbf_inp …)` — the `_L` lemma already takes
+  `Wc`/`Wb` abstract with the two read-backs as premises.
+
+### 2. What was REFUTED, at the statement
+
+* **`UkShEcho.ush_execfail_law_wq_at dg nn Wcf` (the unguarded carrier)
+  is unprovable at the position-keyed family.**  It quantifies over EVERY
+  input; at an `echo … > f` input the exec-failed alternative is `RFExec`,
+  `fsm s (LEchoF ws) RFExec = Some []`, while the lend's deed is at the
+  round's PRE-state (`cat_st cs s0 I`, in general not `Some []`) — so
+  `Wcf I 0`'s DONE arm wants a content the deed does not have, and its
+  PEND arm wants `cont … = u_prompt` where the output is `alt_execfail`.
+  The ruling's (vi) ("a printing child at the DONE arm, knowing the
+  alternative it filed") is right for the child that HOLDS the deed it
+  moved; this law was about the echo-console child and was only ever spent
+  at an `LEcho` input.  Repair (additive, `UkShEcho.v`):
+  `ush_execfail_law_wq_at_D D dg nn Wc` (the carrier under the child law's
+  own guard `D`), `ushf_child_law_holds_at_D`, and the landed
+  `ushf_child_law_holds_at` re-proved through them VERBATIM
+  (`ush_execfail_law_wq_at_D_of`); echo's instance is untouched.
+* **`sh_prompt_alt_of_deed` as stated (the deed at `cat_tie`, the
+  PRE-state) does not fit the PEND arm**, whose deed has already MOVED to
+  `fsm (cat_st …) (fline I) (ralt_dec a)`; it was restated at
+  `pend_tie_at` (the only consumer is the prompt law's PEND arm).  Not a
+  refutation of the ruling — the ruling's (iv) says exactly this — but the
+  S3 statement predated it.
+* Nothing else in RULING HOLD-POS was found wrong.  `0 < nlines I` in PEND
+  is redundant at every use (it is read off the lend's `wr_blk_f`) but
+  harmless; kept as ruled.
+
+### 3. Item 2 (REDIR-CHILD)'s entry point
+
+`Hchild_redir`'s exit is `UkShFork.ushf_wq Wcf I` and the ruling's (vi)
+says it is always `Wcf I 0`: state the child's exit at
+`UShRound.Wcf_0` — either `Wcl I 0 ∗ DONE I` (a printing child: build DONE
+with `done_tie_snoc cs a s0 I c` from the lend's PRE `cs` and the
+alternative `a` it filed at the record's POST form) or `Wcl I 3 ∗ PEND I`
+(the silent `RFRan sel` child: `pend_tie_at cs s0 I (Some (subseq …)) a`
+with `cont … RFRan = u_prompt` by `reflexivity`).  The first thing to do
+is `UkShRedirSeam.wp_kshm_child_file_redir`'s supply at `Wcf I 3 = Wcl I 3
+∗ PRE I` (`UShRound.Wcf_S3`), taking `PRE I` apart for the deed the open
+consumes and re-tying it at exit.  Item 4 (`UInitFileCC.v`, program-tier
+worktree) substitutes `Hold := UShRound.sh_done_at g r s0` in its three
+`_hold` applications, `Hsh_bd` as in H above, and conjunct 5 :=
+`UShRound.Hwc_f g s0 γp`.
+
+
+---
+
+## PROGRAM STREAM, stretch 9 (2026-09-18) — REDIR-CHILD measured before it is walked: FOUR things the brief did not price
+
+The lane that was to do item 2 died (session limit) with NOTHING committed;
+`app-file/sh-redir` is at `main` (`d725fd085`).  This block is what reading
+the walk end to end found.  Item 2 is four sub-items, in this order:
+
+### 2a. LINE-WIT — the typed-line witness has NO ROUTE to the child (design §4.3 names one; neither end is built)
+
+K1's `ef_pay` is `Wq ∗ efq i γo ws []`, and `efq`'s fired arm is
+`FileWrite.file_wq`, which holds `fl_lb c ls ∗ ⌜ws ∈ ls⌝`; `Hopen_hand`
+takes the same pair (`ws ∈ ls`, `fl_lb (fgn_cl g) ls`).  NOTHING the child
+is lent carries it: the lend is `Wcl I 3 ∗ PRE I`, `fcur` holds `inp_lb`
+and `f0w` only, and `fread_ret` exports no `fl_lb`.
+
+* `fl_auth` lives in the LEDGER (`FileOut.file_led`, fired by the rx/tx
+  wands), NOT in `fecl` — so no console LINK can export `fl_lb`; the only
+  carrier is the TAG (`FileOut.ftag h ∋ fl_lb (efl_of h)`), as design §4.3
+  says.  But `UkSh.ush_tag_law` is only the ^D refutation, and nothing
+  reads the lower bound off a tag.
+* THE ROUTE THAT NEEDS NO GENERIC SHELL CHANGE: the tags are in scope in
+  `UShLine.ush_read_recv_era_at` (`#Htags`, over `hs`, beside
+  `cons_window sl (length I) dd g hs`) exactly where `ReadRec.rk_arms`
+  builds the instance-chosen residue `lk_rres L v (I ++ J)`; that residue
+  rides in `Pm = ush_mid_at (lk_rres FI) …`, and the generic read law
+  `ush_wc_read` (the file's is `UShRound.Hwc_f`) is HANDED `Pm (I ++ l ++
+  [nl])`.  So: (i) `rk_arms` takes the tags (echo's instance ignores
+  them); (ii) `FileLinksAt.fwc_rres_at` gains
+  `⌜echof_lines_in I = []⌝ ∨ ∃ ls, fl_lb c ls ∗ ⌜echof_lines_in I ⊆ ls⌝`;
+  (iii) `Hwc_f` copies it into `PRE`'s left arm.
+* THE PURE LEMMA (i) NEEDS: for the delivered byte's history `h`,
+  `echof_lines_in (snd <$> take (S j) E) ⊆ echof_lines_of h`.  It follows
+  from `EchoOutPure.E_index` (entry `j`'s history has `S j` inputs and ends
+  in its byte) plus `cons_chain` (the histories are prefix-ordered), so
+  `ins (seg h_j) = snd <$> take (S j) E`, and `echof_lines_of h ⊇
+  echof_cyc (last cycle)`.  Not written.
+* `cons_made (fn_cons r) jc` (the other `Hopen_hand` premise) is mintable
+  from the claim (`AppFileCons.file_cons_shoot`, needs `cons_present_at`);
+  its route to the round is not measured yet.
+
+### 2b. OPEN-PAY — the failed open's "created" arm forgets `s = None`, and the model needs it
+
+`FileOpen.file_open_pay c r s := fown r s ∨ (∃ i, fown r (Some (i, []))) ∨
+taint`.  The model's alternatives at a failed open are `RFOpenU` (f
+unchanged) and `RFOpenM`, whose f-effect is GUARDED (`None ↦ Some []`,
+`Some _ ↦ unchanged`: xv6 truncates only after `filealloc` succeeded).  At
+`s = Some (j, bs)`, `bs ≠ []`, the middle arm fits NEITHER — the child
+could not re-tie DONE.  The arm has ONE producer
+(`FileOpen.file_permit_pay`, from `file_cre_recv`'s second arm) and it
+DROPS `⌜s = None⌝` it has in hand (`[[_ Hown] | …]`).  Fix: the middle arm
+is `⌜s = None⌝ ∗ ∃ i, fown r (Some (i, []))` in `file_esc_pay` /
+`file_open_pay` / `UShRound.redir_Kf`.
+
+### 2c. CALL2 — the walk is on the OLD call, and its open-failed exit needs the taint
+
+* `UkShRedirBody.wp_kshm_child_file_redir` (and the seam and the arm under
+  it) take `UkShRedir.ush_open_call` — v1, no `Kf`, no path premises.
+  `Hopen_hand` proves `UkShRedirAns.ush_open_call2`.  Nothing connects
+  them.  The parked reshape (the deed handed AT the call, `Dd a -∗`,
+  `ush_open_call2-deed-at-call.patch`) is right and is where to start.
+* The path premises of call2 (`Img`, `pl`, `arg_path_of`, `np_elems`,
+  `um_start_of`, `last = fname_f`, the bytes `DfracDiscarded`) come from
+  the REDIR node's file string — `ush_cmd_of_ushs_redir` has already made
+  the tree persistent when the arm runs.
+* THE OPEN-FAILED EXIT PRINTS THROUGH `UkSh.sh_deps` (`udepw_law 16`),
+  which sh's tier only has UNDER THE TAINT (`□ (T -∗ sh_deps)`).  The echo
+  child shed it (M4b(2): `wp_kshd_execfail_paid` on `ush_execfail_law_at`);
+  the redirect arm's 0x10e site still calls the generic
+  `ush_diag_leaf_holds`.  It needs the paid twin: same `wp_kshd_die_chain`,
+  literals `0x110 0x114 0x118 0x11a 0x11e 0x120`, format at `0x12b8`
+  (15, `%s` at 5), the argument the REDIR node's file.  The LAW is already
+  general (`ush_execfail_law_at dg n Cr Cd`); the record side is
+  `lk_lcred_blk_open` at ANY alternative + `ksh_w1_of_link_blk_at`.
+* The lend splits at the call: generic shape `Pex` (pays the parser's
+  exits, whole) and a split law `Pex -∗ ∃ a, Dd a ∗ Pr a`; success hands
+  `K ty ∗ Pr a` on, failure runs the diagnostic at
+  `ush_execfail_law_at dg n (Kf a ∗ Pr a) Cd`.
+
+### 2d. THE ROUND'S CHILD — what `Hchild_redir` is once 2a–2c land
+
+* `PRE`'s TAINT ARM HAS NO DEED TO HAND: under `T` the child does not walk;
+  it hands the run to the generic slot (`UShEcho.sh_echo_slot`'s third
+  conjunct at `R := ushf_wq Wcf I`, the kill law from the lend's own pin).
+  So `Hchild_redir` takes `file_links`, `udep` and the slot like
+  `sh_child_law_file` does.  The same exit serves `K ty`'s and `Kf`'s taint
+  arms.
+* open failed: `RFOpenU` at `fown r s`, `RFOpenM` at `s = None` (2b);
+  exec failed: `RFExec`, deed `Some (i, [])` from the receipt; echo ran:
+  K1's exit `ef_exit` → `RFRan sel`, the PEND arm (`cont = u_prompt` by
+  `reflexivity`).  The printing exits fold with ONE new lemma, the
+  non-identity twin of `Wcf0_of_pre_line_id`: `lk_blk FI _ v I a (len-2)`
+  beside a deed at `fsm (cat_st cs …) (fline I) (ralt_dec a)` is
+  `Wcl I 0 ∗ DONE I` (`cs_lb_agree_len` + `done_tie_snoc`).
+* `UShRound.sh_redir_child_law` is a stale twin of
+  `UkShRedirBody.sh_redir_child_law Wcf` (60 vs 68, no `fbody_ok`); state
+  the lemma at the latter.
+* K1's other premises: `i ∉ pinned` is `redir_K_inum` (a fupd — do it in
+  the walk right after the open, as stretch 7 §3 said); `Hstr` (the
+  offset row) is unmeasured.
+
+### LANDED so far in stretch 9 (branch `app-file/sh-redir`, each step `.vok`-checked, NOT yet a whole-tree `.vo` build)
+
+* **2b** `4a50f106a`: `file_open_pay` / `file_esc_pay` / `redir_Kf`'s created arm is
+  `⌜s = None⌝ ∗ ∃ i, fown r (Some (i, []))`; `ush_open_call2` takes the deed AT
+  the call (`Dd a -∗`, `Kf : A -> iProp`), `Hopen_hand` re-proved from
+  persistent premises alone.  `run-on-gcp --proofs Foo.vo` now sends a file
+  target to the main sub-tree only (it used to fail in `model-xv6iris`).
+* **2c** `f7a2c88a1` and the two before it:
+  `UkShRedir.wp_kshr_redir_arm_g` (the arm generic in the call --
+  `ush_open_call_g`, the node's file string and an abstract hand `H` in, a
+  payload on BOTH answer arms -- and STOPPING at the diagnostic cut 0x10e; the
+  two continuations are an ADDITIVE pair `∧`, so the caller's lend is
+  available to both); `UkShRedirSeam.wp_kshm_child_redir_g` /
+  `_alloc_redir_g` (the lend splits at the call, `Cr -∗ H ∗ Cr'`); the three
+  landed lemmas re-proved VERBATIM as instances.  New
+  `iris/UkShRedirPaid.v`: `wp_kshd_openfail_paid` (on
+  `ush_execfail_law_at alt_openfail 14`), `ushr_fname_img` (the node's
+  one-byte string as the open's path image), `ush_open_call_g_of_call2`.  New
+  `iris/UkShRedirChild.v`: `wp_kshm_child_file_redir`, the whole walk
+  0x9c0 → exits, family-free, NO `sh_deps`; the unfillable v1 statement is
+  gone from `UkShRedirBody.v`.
+  (Importing `UkShRedirAns`/`UkShRedirPaid` INTO `UkShRedirBody.v` made an
+  untouched `Proof using .` lemma there fail with "section variables Σ Wc Wb
+  Pm used but not declared" -- not understood; the new file sidesteps it.)
+* ITERATION: `make -f CoqMakefile -jN -k Foo.vos` / `Foo.vok` in the lane's
+  remote `iris/` rebuilds exactly the stale cone in `.vos` mode and checks
+  only the named files' proofs (`/shared/xv6iris-3-lanes/.logs/vb.sh`,
+  ~2.5 min per round trip).  `WP Loop` has no `ElimModal` for a fupd:
+  `iApply fupd_wp` first.
+
+### 2a's DESIGN, settled (not built)
+
+* PURE CORE: for the consumed entries `E = dl ++ ws`, `E_index (seg_of E)` +
+  `ConsLog.hist_chain E` (already in `read_ok`) + same boot + the LAST entry's
+  `trace_shape h true` (its tag) give `ins (open_seg h) = snd <$> E`
+  (`EchoOutPure.E_bytes_of_hist` at `Sg := open_seg h`,
+  `open_seg_prefix_boots` for the prefix premise); `ObsTrace.cycles_of_io`
+  puts `open_seg h` LAST in `cycles_of h`, so
+  `echof_lines_in (snd <$> E) ⊆ echof_lines_of h`.
+* `fread_ret` must export same-boot (`∀ x ∈ dl ++ ws, obs_boots x.1 = k`; it
+  is `fein_pure`'s third conjunct).
+* `ReadRec.rk_arms` takes `[∗ list] x ∈ ws, riscv_rx_tag x.1` -- EVERY
+  consumed entry, because a SWALLOWED byte (`dd = 0, dc = 1`) extends the
+  input too and its tag is inside `UserConsole.ucons_swallow`, not in the
+  window's `hs`.  `UShLine.ush_read_recv_era_at` builds it.
+* `fwc_rres` / `fwc_rres_at` gain
+  `⌜echof_lines_in I = []⌝ ∨ ∃ ls, fl_lb c ls ∗ ⌜echof_lines_in I ⊆ ls⌝`;
+  `PRE I` gains the same (as `∨ T`), copied in by `Hwc_f` from the `Pm` it is
+  handed.
+
+### 2a LANDED (`.vok`-checked; commits `FileLineWit` … `UShRound -- PRE holds the line's witness`)
+
+* `iris/FileLineWit.v` (pure): `hist_chain_prefix`, `consumed_ins_last`
+  (`ins (open_seg h) = snd <$> E` for the LAST consumed entry `(h, b)`),
+  `echof_lines_of_consumed`.
+* `FileLinks.fread_ret` / `FileOut.fecl_step_read` export
+  `∀ x ∈ dl ++ ws, obs_boots x.1 = k`.
+* `ReadRec.rk_arms` takes `cn`, `[∗ list] hh ∈ hs, riscv_rx_tag hh`,
+  `ucons_swallow cn False sl dd dc`, `ucons_stored_lb cn sl'` (echo's instance
+  ignores them; `UShLine.ush_read_recv_era_at` passes `Htags Hsw Hlb2`).
+* `FileLinksLine.flw g I`, `fwc_rresw` / `FileLinksAt.fwc_rresw_at` (= the old
+  residue `∗ flw`; the old names and their consumers are untouched) are the
+  records' `lk_rres`; `FileReadInst.fri_last_tag` finds the last consumed
+  entry's tag in the window or the swallow row; `fri_arms` builds `flw` with
+  `FileLineWit`.  **`FileReadInst.file_read_inst g Htag` now takes the tag
+  equation** (`riscv_rx_tag = FileOut.ftag g`).
+  ITEM 4 MUST FOLLOW: `UInitFileCC.v` (program-tier worktree, uncommitted)
+  wraps `rk_arms` at the indexed record -- its `fri_arms_u`/`fri_arms_at`
+  need the three new premises, `fwc_rresw_at` and `fwc_rresw_at_pack` /
+  `fwc_rresw_unpack`, and the era's first residue takes `flw`'s LEFT arm
+  (`echof_lines_in [] = []`).
+* `UShRound`: `line_wit I := flw g I ∨ T`; `sh_pre_at sb I := sh_deed_at
+  pre_tie sb I ∗ line_wit I`; `mid_flw` reads it off `Pm`; `Hwc_f` copies it
+  in; `sh_pre_taint`, `sh_pre_at_timeless`.
+
+### 2d IS BLOCKED ON K1: `UEchoFile.efile_image_entry`'s `Hstr` IS UNPROVABLE AS STATED
+
+```coq
+(forall (I : gmap Z fs_node) (off : nat) (bs bs0 : list (bv 8)) (nl : nat),
+   wri_pre (abs_view I) i off bs bs0 nl ->
+   (off `mod` BSIZE + EchoDisc.line_max < BSIZE)%nat)
+```
+
+is a PURE fact quantified over EVERY abstract view: a view whose inode `i`
+is a long file and an `off` with `off mod 1024 ≥ 924` satisfies `wri_pre` and
+refutes the conclusion.  The comment says "this is the deed's to supply", and
+the deed cannot supply a pure ∀ -- it knows `off` only AT THE FIRE (the
+offset half agrees it to the content's length, and the content is a line's
+worth, `FileDeltas.f_bytes_typed_short`).  It is durable-notes' "premise too
+strong to prove".  It is spent in ONE place: `UEchoFile.ef_relay4` hands it
+to `FsAbsWriteFire.awrite_part_at_mapped_single` to make the PARTIAL arm
+vacuous (`wi_blocks off n = 1` + a mapped source).  THE FIX IS THE KERNEL
+STREAM's: `awrite_part_at_mapped_single` must take the single-block fact from
+a CLOSURE that is handed the fire's own rows (the view's half and
+`off_link γo off`, as `ef_full_adv` already is), where the deed and
+`uoff γo` agree `off` and bound it; `Hstr`/`Hsb`/`Hsbw` then leave
+`ef_relay4`, `ef_w_of_deed` (both), `ef_pay_from` and the entry.  Until then
+K1's entry is inhabited only vacuously and `Hchild_redir` must not apply it.
+
+What 2d still owes BESIDE that, in the round (none of it started):
+the exits' fold (`lk_blk FI _ v I a (len-2)` beside the deed at
+`fsm … a` ⇒ `Wcl I 0 ∗ DONE I`), the open-failed law at the file families
+(`RFOpenU`/`RFOpenM` by `redir_Kf`'s arm), the PEND exit from K1's
+`ef_exit`, `cons_made`'s route (mintable from the claim:
+`AppFileCons.file_cons_shoot`), the taint's generic run
+(`UkRun.urun_gen` at `sh_echo_slot`'s third conjunct), and the statement at
+`UkShRedirBody.sh_redir_child_law Wcf` (UShRound's local twin is stale).
+
+### A THIRD STATEMENT DEFECT, MEASURED: the fork slot's `last_ws I = ws` is FALSE at every redirect line, so `sh_redir_child_law` is VACUOUS as stated
+
+Computed on the VM (`vm_compute`, `ws0 := wl_words "echo a"`):
+`length (wl_words (line_body (LEchoF ws0))) = 4` while
+`uline_ws (uline_of (line_body (LEchoF ws0))) = ws0`, length 2 — the body's
+words include `>` and `f`, the typed line's do not.  Therefore:
+
+* `FileReadInst.file_disc_line`'s hypothesis
+  `Hws : ∀ J, fbody_ok J → uline_ws (uline_of J) = wl_words J` is FALSE at
+  `LEchoF` (its header says it holds there; it holds at `LEcho` and `LCat`
+  only — `uline_ws LCat = wl_words cmd_cat_f`).
+* `UkSh.ush_posw l ws` says `last_ws I = ws`, and the loop produces it at
+  `ws := uline_ws lu` (`ush_gets_done_line_at`'s premise
+  `uline_ws lu = wl_words J`) — unprovable at a redirect line, so the file
+  era's loop can only reach the fork TAINTED there.
+* `UkShRedirBody.sh_redir_child_law` takes BOTH
+  `ushs_line_is ws file fb 0 len` (which needs `line_ok ws`, no `>`) AND
+  `ws = last_ws I` (four words, one of them `>`): contradictory premises.
+  `UkShRedirLine.ushs_line_is_nosym` is the lemma that says so.
+
+THE FIX (a ruling is needed; it moves a GENERIC sh statement): the slot's
+index is the TYPED line's words — `FileDisc.uline_ws (FileDisc.uline_of
+(ush_lastbody I)) = ws` — not the body's.  At an `LEcho` line the two agree
+(`FileDisc.fbody_ok_echo`), so echo's consumers bridge with one lemma;
+`ush_gets_done_line_at`'s premise becomes `lu = uline_of J` (which
+`FileDisc.fbody_ok_line` gives at all three constructors, and `Hws` dies);
+`UkShFork.ushf_child_law_at`'s `⌜ws = last_ws I⌝` moves with it, and the
+redirect child then knows `fline I = LEchoF ws` outright (which 2d's PEND /
+DONE exits need, and which today it could not learn).  Until then neither
+`Hchild_redir` nor item 5's dispatch says anything at a redirect line.
+
+### SLOT-WS, OPTION B (file tier only; it moves a MODEL definition, so it is the owner's call)
+
+Instead of moving the generic slot, make the slot's equation TRUE at a
+redirect line: `FileDisc.uline_ws (LEchoF ws) := ws ++ [[ushs_gt]; fname_f]`
+— the body's actual words.  Then `Hws` is a LEMMA at all three constructors
+(`LEcho`: `wl_words (wl_body ws) = ws`, landed; `LCat`: closed; `LEchoF`:
+one `wl_words`-of-append lemma), `ush_posw` and `ushf_child_law_at` do not
+move, and only the file tier follows: `UkShRedirBody.ushs_lp ws4 g k len :=
+∃ ws file, ws4 = ws ++ [[ushs_gt]; file] ∧ ushs_line_is ws file g k len`,
+`wp_kshm_body_redir`'s `ush_bstate` at the four-word list, and
+`sh_redir_child_law`'s `⌜ws4 = last_ws I⌝`.  `uline_ws` is otherwise read
+only by `FileDisc.cont`'s `REcho` arm, which `ralt_ok` admits at `LEcho`
+lines alone, so no admissible alternative's bytes move.  Cheaper than
+option A (no generic sh statement, no echo-tier rebuild); its cost is that
+design §1's definition changes, which the MODEL lane's rule reserves to the
+designer.
+
+### HSTR LANDED, and the stretch's CLOSE
+
+* `iris/FsAbsWritePart.v`: `awrite_part_at_mapped_straddle` /
+  `awrite_part_adv_mapped_straddle` — at a mapped source the partial arm may
+  ASSUME `wi_blocks off n ≠ 1` (nothing unnamed landed, so a single-block
+  write counted nothing, against `wri_pre`'s `0 < length bs`); the landed
+  pure-premise lemma is its instance (`awrite_part_at_mapped_single'`).
+* `iris/FileWritePart.v`: `file_awrite_part_adv` — the file application's
+  partial node from `file_cur`: fired ⇒ `uoff_agree_k` pins `off` to the
+  content's length, `FileDeltas.f_bytes_typed_short` bounds it, a chunk of at
+  most a line cannot straddle — refuted; tainted or disconnected ⇒ paid as
+  the full node pays.
+* `UEchoFile.v`: `ef_chain` builds both arms from the one cursor (the pair
+  is `∧`); `Hstr`/`Hsb`/`Hsbw`/`Hsbb` are gone from every statement
+  (`ef_chain` and the data `ef_w_of_deed` take `nb ≤ EchoDisc.line_max`);
+  `ef_relay4` and `ef_single_block` deleted.  (`SpecFilewrite.v`'s header
+  still names `ef_relay4` in a COMMENT — left, a comment edit there rebuilds
+  the kernel cone.)
+
+Whole tree green twice (`--proofs -k`, `EXIT=0`, zero `Error`), the four
+audits primitive-only and unchanged (System 13, Echo 14, Tree 13, File 14),
+`comment_quote_check`: 0.  Declarations that vanished against `main`:
+`UEchoFile.ef_relay4`, `UEchoFile.ef_single_block`,
+`UkShRedirBody.wp_kshm_child_file_redir` (restated in `UkShRedirChild.v`) —
+nothing else.  Metric unchanged at **4** in `UShRound.v` (three-file
+1 + 4 + 1 = **6**): the stretch removed two upstream vacuities and built
+everything under `Hchild_redir`, and stopped at SLOT-WS.
+
+VM HYGIENE: five hung compiles from dead lanes (four `UShRound.v`, one
+`UkFileOpen.v`, 5–7 h at 100% CPU) were running IN THIS LANE'S remote tree
+and would have written stale `.vo`s; killed by PID.  Check
+`ps -eo pid,etime,args | grep "make -f CoqMakefile"` with each PID's
+`/proc/<pid>/cwd` before trusting a remote tree a dead lane used.
+
+### ITEM 3 (CAT-CHILD), MEASURED AT ITS FIRST STEP: the read-open's `-1` arm DROPS the deed's fractions
+
+RULING CAT-DEED wants `catq_cat` to return the whole deed on every arm.
+Reading `UCatKernel.cat_pay_present` end to end, the fractions are in hand
+at two of cat's three exits and lost at the third:
+
+* round ran: `fdq r q1` is in `cat_hold_at … p'` (destructed as
+  `(Hufdh & _ & _)` — dropped, not lost) and `fdq r q2` came back beside
+  the fd arm (`Hd2`, dropped).  Both can go into the payload wand.
+* TAINT arms (`Hqt`, the descriptor sub-arm `cat_taint_open`): nothing to
+  return — so the payload's deed conjunct must be
+  `(fdq r q1 s ∗ fdq r q2 s) ∨ file_taint c`, which `UShRound.sh_deed_at`'s
+  own `∨ T` absorbs.  The ruling's text (`∗ fown r (Some (i, bs))`, no
+  taint arm) is not payable.
+* OPEN FAILED at a present `f` (`RCNoOpen`): `cat_open_hand`'s `-1` arm is
+  `⌜ret = -1⌝ ∗ ustd l` and NOTHING ELSE, and that is inherited verbatim
+  from `UkCatDeed.kcat_o_of_deed` ← `wp_kcat_open_read_deed` ←
+  `UkFileOpen.wp_uk_ecall_open_read_deed`, whose comment says "the ledger
+  is back untouched, and so are both fractions" while the statement's arm
+  has no fractions, because `FileOpen.file_open_recv_file`'s failure arm
+  is PURE (`[%Hr %Hfdv]`).  The read-open's failed walk must REFUND the
+  linear piece (`pobs_P_lin … (fdq r q1 …)`) and the receipt's parked
+  `fdq r q2`; until `file_open_recv_file` says so, cat's `RCNoOpen` exit
+  cannot return the deed and `Hchild_cat`'s conversion
+  (`catq_cat … -∗ ushf_wq Wcf I`) cannot re-tie DONE there.
+
+So item 3 starts in the KERNEL stream too: (i) `file_open_recv_file`'s `-1`
+arm returns `fdq r q1 s ∗ fdq r q2 s` (or the taint); (ii) the three
+statements above it follow; (iii) `catq_cat` gains
+`∗ ((fdq r q1 s ∗ fdq r q2 s) ∨ file_taint c)` and `cat_pay_present`'s three
+payload wands take it; (iv) `Hchild_cat`.
+
+(i) IS NOT A KERNEL CHANGE: `SpecSysOpen.open_receipt_plain`'s failure arm
+already carries `open_post_fail_plain …` ("the whole bundle is back") and
+`FileOpen.file_open_recv_file` DROPS it (`"[(%Hr & %Hfd & _) | Hok]"`).  The
+three sub-arms are the unfired AU, the dead walk (`namei_walk_dead_era` holds
+the `pobs_P_lin` cursor — `fdq r q1` — at the hop it died at, beside the
+unfired `pf_at … (file_open_recv c r q2 s)`, whose refund is `fdq r q2 s`)
+and the reached inode (`P` at the end, `Fo`'s receipt).  The absent-deed twin
+already does this refund (`UkFileOpen.file_open_miss_recv`, lane F-OPEN-2's
+seam 2, a fupd) and is the mould.

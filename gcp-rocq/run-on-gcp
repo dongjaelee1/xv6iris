@@ -438,7 +438,16 @@ command -v rocq >/dev/null || { echo "rocq not on PATH: re-run provision-gcp.sh"
 subs=(); while [ "$1" != "--" ]; do subs+=("$1"); shift; done; shift
 for d in "${subs[@]}" "$main"; do
   [ -d "$d" ] || continue
-  ( cd "$d" && { [ -f CoqMakefile ] || coq_makefile -f _CoqProject -o CoqMakefile >/dev/null; }     && make -f CoqMakefile -j"$jobs" "$@" ) || exit $?
+  # a FILE target (Foo.vo) names a file of the MAIN sub-tree: the dependency
+  # sub-trees are built whole, with the flags only
+  args=()
+  for a in "$@"; do
+    case "$a" in
+      *.vo|*.vos|*.vok) [ "$d" = "$main" ] && args+=("$a") ;;
+      *) args+=("$a") ;;
+    esac
+  done
+  ( cd "$d" && { [ -f CoqMakefile ] || coq_makefile -f _CoqProject -o CoqMakefile >/dev/null; }     && make -f CoqMakefile -j"$jobs" "${args[@]}" ) || exit $?
 done
 REMOTE
 )

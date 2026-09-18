@@ -83,7 +83,7 @@ Section file_links_at_inp.
      [destruct p as [| [| [| p']]]] over [FileLinksAt.fwc_lpr_at]'s four
      positions, an [iAssert] that reads the bound off whichever arm holds,
      and a per-arm rebuild of the family that was taken apart. *)
-  Lemma file_wc_inp_at (s0 : fst) :
+  Lemma file_wc_inp_at (s0 : fstate) :
     UShLine.ush_wc_inp (fgn_echo g) (file_taint (fgn_cl g))
       (FileLinkInst.file_Wcl_at g s0).
   Proof using .
@@ -159,7 +159,7 @@ Section file_links_at_inp.
   (* Nothing is re-destructed here: [FileLinksAtBan.fwc_ban_inp_at] is
      already exactly this read-back at the indexed banner family, so the
      lemma only has to peel the era pin off and put it back. *)
-  Lemma file_wb_inp_at (s0 : fst) :
+  Lemma file_wb_inp_at (s0 : fstate) :
     UShLine.ush_wb_inp (fgn_echo g) (file_taint (fgn_cl g))
       (FileLinkInst.file_Wbl_at g s0).
   Proof using .

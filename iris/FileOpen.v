@@ -1170,16 +1170,25 @@ Section FileOpen.
 
   (* what the deed is worth on an arm that did not settle at `f`: F-OPEN-2's
      [Kf], with the taint *)
+  (* THE CREATED ARM SAYS `f` WAS ABSENT (the PROGRAM STREAM, stretch 9).
+     Its one producer is the create leg's own receipt
+     ([file_cre_recv]'s second arm), which holds [s = None]; dropping it
+     left a payload the model cannot file -- [FileDisc.fsm]'s [RFOpenM] is
+     guarded at an absent `f` (xv6 truncates only after [filealloc] has
+     succeeded), so "present, non-empty, and now empty" after a FAILED
+     open is no alternative of the line. *)
   Definition file_open_pay (c : file_fixed) (r : file_names) (s : dst)
       : iProp Σ :=
-    (fown r s ∨ (∃ i : Z, fown r (Some (i, []))) ∨ file_taint c)%I.
+    (fown r s ∨ (⌜s = None⌝ ∗ ∃ i : Z, fown r (Some (i, [])))
+     ∨ file_taint c)%I.
 
   (* ...and the same BEFORE the escrow comes home: this is what every
      payer below produces, and [file_esc_pay_home] is the one fupd that
      turns it into the deed. *)
   Definition file_esc_pay (c : file_fixed) (r : file_names) (s : dst)
       (g : gname) : iProp Σ :=
-    (fesc_res r s g ∨ (∃ i : Z, fown r (Some (i, []))) ∨ file_taint c)%I.
+    (fesc_res r s g ∨ (⌜s = None⌝ ∗ ∃ i : Z, fown r (Some (i, [])))
+     ∨ file_taint c)%I.
 
   Lemma file_esc_pay_home (γfs : fs_names) (c : file_fixed) (r : file_names)
       (n : nat) (s : dst) (g : gname) (E : coPset) :
@@ -1214,9 +1223,11 @@ Section FileOpen.
     - rewrite /cre_acre_fired.
       iDestruct "Hfresh" as (av ents nl) "[_ Hrec]".
       rewrite /file_cre_fam /file_cre_recv. cbn [pf_recv].
-      iDestruct "Hrec" as "[[_ Hres] | [[_ Hown] | #HT]]".
+      iDestruct "Hrec" as "[[_ Hres] | [[%Hnone Hown] | #HT]]".
       + rewrite /file_esc_pay. by iLeft.
-      + rewrite /file_esc_pay. iRight. iLeft. iExists i. iExact "Hown".
+      + rewrite /file_esc_pay. iRight. iLeft.
+        iSplitR; [ iPureIntro; exact (proj1 Hnone) | ].
+        iExists i. iExact "Hown".
       + rewrite /file_esc_pay. iRight. iRight. iExact "HT".
     - rewrite /pf_at. iDestruct "Harm" as "[_ Hres]".
       rewrite /file_arm_fam. cbn [pf_refund].

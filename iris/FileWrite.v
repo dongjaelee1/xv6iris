@@ -118,9 +118,11 @@ Require Import FileFsPure.         (* [file_fs_pure] *)
 Require Import FsFPin.             (* [f_absent] *)
 Require Import EchoDisc.           (* [line_ok] *)
 Require Import EchoOut.            (* [echoOutG] *)
-Require Import FileState.          (* [fst], [echo_chunks], [subseq], [sel_ok] *)
+Require Import FileState.          (* [fstate], [echo_chunks], [subseq], [sel_ok] *)
 Require Import AppEcho.
 Require Import AppFile.
+Require Import UserOff.            (* [uoff] -- THE PROGRAM'S HALF *)
+Require Import FsAbsWriteFire.     (* [awrite_full_adv] -- the advanced node *)
 Require Import FsAbs.              (* [γtop] (FsAbs's own rule: LAST but one) *)
 Local Open Scope Z_scope.
 
@@ -554,6 +556,154 @@ Section FileWrite.
        OFF-LINK), so [off_ret_keep] is the arm it can prove. *)
     iSplitL "Hg"; [iApply (off_ret_of_link with "Hg") |].
     rewrite Hbs. iExact "Hq'".
+  Qed.
+
+  (* =================================================================== *)
+  (*  6.  THE CLIENT-ADVANCED NODE (RULING EFQ)                           *)
+  (*                                                                     *)
+  (*  THE CURSOR IS A PIPE, not a conjunction.  The landed cursor was      *)
+  (*  [file_wq ∗ uoff] at the content's length, and that conjoins the      *)
+  (*  program's half to the content on BOTH of [file_wq]'s arms -- so a    *)
+  (*  tainted object, whose bytes nobody owes anything about, would still  *)
+  (*  have to have the shadow at their length.  Nothing supplies that.     *)
+  (*  The owner's shape is the pipe: FIRED, and then the half IS at the    *)
+  (*  content's length; or TAINTED, and then the half is wherever the      *)
+  (*  hijacker left it.                                                    *)
+  (* =================================================================== *)
+  Definition file_cur (c : file_fixed) (r : file_names) (i : Z)
+      (ws : wordline) (sel : list nat) (γo : gname) : iProp Σ :=
+    ((file_wq c r i ws sel (length (subseq (echo_chunks ws) sel))
+      ∗ uoff γo (length (subseq (echo_chunks ws) sel)))
+     ∨ (file_taint c ∗ ∃ p : nat, uoff γo p))%I.
+
+  (* the two introductions, so a consumer never unfolds the pipe *)
+  Lemma file_cur_fired (c : file_fixed) (r : file_names) (i : Z)
+      (ws : wordline) (sel : list nat) (γo : gname) :
+    file_wq c r i ws sel (length (subseq (echo_chunks ws) sel)) -∗
+    uoff γo (length (subseq (echo_chunks ws) sel)) -∗
+    file_cur c r i ws sel γo.
+  Proof using . iIntros "Hq Hu". iLeft. iFrame "Hq Hu". Qed.
+
+  Lemma file_cur_taint (c : file_fixed) (r : file_names) (i : Z)
+      (ws : wordline) (sel : list nat) (γo : gname) (p : nat) :
+    file_taint c -∗ uoff γo p -∗ file_cur c r i ws sel γo.
+  Proof using . iIntros "#Ht Hu". iRight. iFrame "Ht". by iExists p. Qed.
+
+  (* ...and the half is there on EITHER arm, which is what the node needs
+     to read the position it is being fired at. *)
+  Lemma file_cur_half (c : file_fixed) (r : file_names) (i : Z)
+      (ws : wordline) (sel : list nat) (γo : gname) :
+    file_cur c r i ws sel γo -∗ ∃ p : nat, uoff γo p.
+  Proof using .
+    iIntros "[[_ Hu] | [_ Hu]]"; [ by iExists _ | iExact "Hu" ].
+  Qed.
+
+  (* THE NODE.  [FsAbsWriteFire.awrite_full_adv] at the file's cursor, and
+     the three relays are gone:
+
+       RELAY 1 (the row the fire is at is [f]'s) is DERIVED HERE, inside
+         the node, off the claim the deed names ([file_claim_read]) -- it
+         was a relayed premise only because [file_awrite_phases] takes it,
+         and the node is the party that can read it;
+       RELAY 2 (the anchored offset) is gone with the anchor: the node
+         reads [off] off the half in its own closure ([uoff_agree_k]),
+         INSIDE its own [forall off];
+       RELAY 3 is the node's own third arrow, cashed by [ubytes_at_inj].
+
+     ...AND PHASE 2 HANDS THE BOX'S ARM BACK ADVANCED ([uoff_advance]
+     moves both halves at once, since the node holds both), which is the
+     whole of what a held descriptor's write costs the kernel. *)
+  Lemma file_awrite_node_adv (γfs : fs_names) (c : file_fixed)
+      (r : file_names) (i : Z) (ws : wordline) (sel : list nat) (jx : nat)
+      (γo : gname) (M : gmap Z (bv 8)) (ua : mword 64) (nn : Z) (k : nat) :
+    file_app = MkAppcfg file_names (file_pred c) r ->
+    (jx < length (echo_chunks ws))%nat ->
+    Forall (fun q => (q < jx)%nat) sel ->
+    i <> INIT_INO -> i <> SH_INO -> i <> ECHO_INO -> i <> CAT_INO ->
+    ubytes_at M (add_vec_int ua (FW_MAX * Z.of_nat k))
+      (echo_chunks ws !!! jx) ->
+    Z.of_nat (length (echo_chunks ws !!! jx)) = wchunk_at nn k ->
+    □ (app_taint -∗ file_taint c) -∗
+    app_inv γfs -∗ file_cur c r i ws sel γo -∗
+    awrite_full_adv (fs_gamma_L γfs) appE i γo M ua nn k
+      (file_cur c r i ws (sel ++ [jx]) γo).
+  Proof using .
+    intros Heq Hjx Hlt Hi1 Hi2 Hi3 Hi4 Hbsk Hlenk.
+    iIntros "#Hbr #Hinv Hcur". rewrite /awrite_full_adv.
+    iIntros (I off bs bs0 nl) "%Hpre %Hby %Hlen Hka Hg".
+    (* RELAY 3, CASHED *)
+    assert (Hbs : bs = echo_chunks ws !!! jx).
+    { apply (ubytes_at_inj M (add_vec_int ua (FW_MAX * Z.of_nat k))
+               bs (echo_chunks ws !!! jx) Hby Hbsk). lia. }
+    (* THE BOX'S ARM: the kernel's half, or the disconnect. *)
+    iDestruct "Hg" as "[Hk | #HTa]"; last first.
+    { (* DISCONNECTED: the object is somebody else's, the step is free, and
+         the cursor comes back on its taint arm with its half unmoved. *)
+      iDestruct ("Hbr" with "HTa") as "#HTf".
+      iDestruct (file_cur_half with "Hcur") as (p) "Hu".
+      iModIntro. iFrame "Hka". iSplitR.
+      { iApply (file_app_step_taint c r i I _ Heq). iExact "HTf". }
+      iIntros (I') "%Hav Hka'". iModIntro. iFrame "Hka'".
+      iSplitR; [ by iApply off_link_taint | ].
+      iApply (file_cur_taint with "HTf Hu"). }
+    (* THE LINK.  Read the position off the half FIRST: it is the one fact
+       the anchor used to relay. *)
+    iDestruct "Hcur" as "[[Hq Hu] | [#HTf Hu]]"; last first.
+    { (* the cursor is already tainted: the step is free, but the shadow
+         still moves -- the kernel's fire advanced [f->off] and the box's
+         arm has to come back at that value. *)
+      iDestruct "Hu" as (p) "Hu".
+      iDestruct (uoff_agree_k with "Hu Hk") as %Hz.
+      assert (Hop : off = p) by lia. subst p.
+      iMod (uoff_advance γo off (length bs) with "Hu Hk") as "[Hk Hu]".
+      iModIntro. iFrame "Hka". iSplitR.
+      { iApply (file_app_step_taint c r i I _ Heq). iExact "HTf". }
+      iIntros (I') "%Hav Hka'". iModIntro. iFrame "Hka'".
+      iSplitL "Hk"; [ by iApply off_link_of | ].
+      iApply (file_cur_taint with "HTf Hu"). }
+    (* THE FIRED ARM.  The half pins [off] to the content's length ... *)
+    iDestruct (uoff_agree_k with "Hu Hk") as %Hz.
+    assert (Hoff : off = length (subseq (echo_chunks ws) sel)) by lia.
+    iEval (rewrite -Hoff) in "Hu".
+    (* ...and RELAY 1 comes off the claim, read through the deed. *)
+    rewrite {1}/file_wq.
+    iDestruct "Hq" as "[Hq | #HTf]"; last first.
+    { (* the cursor's own taint arm *)
+      iMod (uoff_advance γo off (length bs) with "Hu Hk") as "[Hk Hu]".
+      iModIntro. iFrame "Hka". iSplitR.
+      { iApply (file_app_step_taint c r i I _ Heq). iExact "HTf". }
+      iIntros (I') "%Hav Hka'". iModIntro. iFrame "Hka'".
+      iSplitL "Hk"; [ by iApply off_link_of | ].
+      iApply (file_cur_taint with "HTf Hu"). }
+    iDestruct "Hq" as (ls) "([Hd Htk] & %Hoff0 & %Hline & %Hsel & #Hlb & %Hin)".
+    iMod (file_claim_read γfs c r (Some (i, subseq (echo_chunks ws) sel)) I Heq
+            with "Hinv Hd Hka") as "(Hka & Hd & [[%Hok _] | #HTf])"; last first.
+    { (* the claim is tainted: same answer, off the claim's own taint *)
+      iMod (uoff_advance γo off (length bs) with "Hu Hk") as "[Hk Hu]".
+      iModIntro. iFrame "Hka". iSplitR.
+      { iApply (file_app_step_taint c r i I _ Heq). iExact "HTf". }
+      iIntros (I') "%Hav Hka'". iModIntro. iFrame "Hka'".
+      iSplitL "Hk"; [ by iApply off_link_of | ].
+      iApply (file_cur_taint with "HTf Hu"). }
+    destruct Hok as [Hnode _].
+    (* the cursor goes back together for the phase lemma *)
+    iAssert (file_wq c r i ws sel off) with "[Hd Htk]" as "Hq".
+    { rewrite /file_wq. iLeft. iExists ls. iFrame "Hd Htk Hlb".
+      iPureIntro. split_and!; [ exact Hoff | exact Hline | exact Hsel
+                              | exact Hin ]. }
+    iMod (file_awrite_phases γfs c r i ws sel jx off off I bs bs0 nl
+            Heq Hpre Hnode eq_refl Hbs Hjx Hlt Hi1 Hi2 Hi3 Hi4
+            with "Hinv Hq Hka") as "(Hka & Hstep & Hph2)".
+    iMod (uoff_advance γo off (length bs) with "Hu Hk") as "[Hk Hu]".
+    iModIntro. iFrame "Hka Hstep". iIntros (I') "%Hav Hka'".
+    iMod ("Hph2" $! I' with "[//] Hka'") as "[Hka' Hq']".
+    iModIntro. iFrame "Hka'".
+    iSplitL "Hk"; [ by iApply off_link_of | ].
+    (* THE SNOC: the new content's length IS the old one plus the chunk *)
+    assert (Hsnoc : length (subseq (echo_chunks ws) (sel ++ [jx]))
+                    = (off + length bs)%nat).
+    { rewrite subseq_snoc length_app Hbs. lia. }
+    rewrite /file_cur Hsnoc. iLeft. iFrame "Hq' Hu".
   Qed.
 
 End FileWrite.

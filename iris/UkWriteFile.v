@@ -156,10 +156,10 @@ Section UkWriteFile.
     iApply (sbundle_at_write_intro_at uslot (write_file_fam Q (ukn_pay N))
               (uvis_of_run m pc M pm sz fdv cw gn cs pidv false)
               (m !!! Regidx a0_idx) (m !!! Regidx a1_idx)
-              (m !!! Regidx a2_idx) fdv M
+              (m !!! Regidx a2_idx) fdv M _ _ _
               (tf_of_arg0 m pc) (tf_of_arg1 m pc) (tf_of_arg2 m pc)
               (uvis_of_run_fd m pc M pm sz fdv cw gn cs pidv false)
-              eq_refl).
+              eq_refl eq_refl eq_refl eq_refl).
     rewrite Hkey. cbn [write_file_fam xfam_wr wf_Q].
     rewrite /filewrite_in Hcnt. iExact "Hch".
   Qed.
@@ -432,10 +432,10 @@ Section UkWriteFile.
     iApply (sbundle_at_write_intro_at uslot (write_file_fam Q (ukn_pay N))
               (uvis_of_run m pc M pm sz fdv cw gn cs pidv false)
               (m !!! Regidx a0_idx) (m !!! Regidx a1_idx)
-              (m !!! Regidx a2_idx) fdv M
+              (m !!! Regidx a2_idx) fdv M _ _ _
               (tf_of_arg0 m pc) (tf_of_arg1 m pc) (tf_of_arg2 m pc)
               (uvis_of_run_fd m pc M pm sz fdv cw gn cs pidv false)
-              eq_refl).
+              eq_refl eq_refl eq_refl eq_refl).
     rewrite (uwr_fd_st_std (m !!! Regidx a0_idx) fdv l 1%nat
                (FdOpen rb true (FdInode i γo OffParked))
                H0 ltac:(unfold NSTD; lia) Htake Hl1).
@@ -460,9 +460,11 @@ Section UkWriteFile.
     (∀ (M : gmap Z (bv 8)) (pm : gmap (mword 27) uperm) (sz : Z),
        uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz -∗
        uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz ∗
-       ∀ P : uptd,
-         awrite_chain_adv (fs_gamma_L fsc_fs) appE i γo M
-           (m !!! Regidx a1_idx) P n Q 0%nat (wchunks n)) -∗
+       (* the chain, under the write guard at the key's own three values
+          (RULING WR-TB) -- and NOTHING beside it: one cursor, once. *)
+       (∀ P : uptd, ⌜wr_tb pm sz false P⌝ -∗
+          awrite_chain_adv (fs_gamma_L fsc_fs) appE i γo M
+            (m !!! Regidx a1_idx) P n Q 0%nat (wchunks n))) -∗
     udepwf_std N m pc 16 (write_file_fam Q (ukn_pay N)) l.
   Proof using .
     intros Hl1 H0 Hcnt. iIntros "Hch".
@@ -473,10 +475,10 @@ Section UkWriteFile.
     iApply (sbundle_at_write_intro_at uslot (write_file_fam Q (ukn_pay N))
               (uvis_of_run m pc M pm sz fdv cw gn cs pidv false)
               (m !!! Regidx a0_idx) (m !!! Regidx a1_idx)
-              (m !!! Regidx a2_idx) fdv M
+              (m !!! Regidx a2_idx) fdv M _ _ _
               (tf_of_arg0 m pc) (tf_of_arg1 m pc) (tf_of_arg2 m pc)
               (uvis_of_run_fd m pc M pm sz fdv cw gn cs pidv false)
-              eq_refl).
+              eq_refl eq_refl eq_refl eq_refl).
     rewrite (uwr_fd_st_std (m !!! Regidx a0_idx) fdv l 1%nat
                (FdOpen rb true (FdInode i γo OffHeld))
                H0 ltac:(unfold NSTD; lia) Htake Hl1).

@@ -475,7 +475,7 @@ Section SysUnlinkArms.
     arg_path_of M pv pl ->
     pf_at (uent_commit_at Γ appE (npar_cur M pv P)) Fent -∗
     pf_at (uent_commit_at Γ appE (P (length (npar_elems pl)))) Fent.
-  Proof.
+  Proof using .
     intros Hpl. iIntros "Hent".
     iApply (pf_at_mono with "[] Hent"). iIntros "Hent".
     iApply (uent_commit_at_mono Γ appE (npar_cur M pv P)
@@ -494,7 +494,7 @@ Section SysUnlinkArms.
     arg_path_of M pv pl ->
     unlink_au_at Γ γfs cw M pv P Pmiss Fent Ftgt Fex Fmiss -∗
     unlink_au_pre Γ γfs cw pl P Pmiss Fent Ftgt Fex Fmiss.
-  Proof.
+  Proof using .
     intros Hpl. iIntros "(Hw & Hent & Htgt & Hex & Hmiss)".
     rewrite /unlink_au_pre. iFrame "Htgt Hex Hmiss".
     iSplitL "Hw".
@@ -518,7 +518,7 @@ Section SysUnlinkArms.
     pf_at (dlookup_commit_at Γ appE) Fex -∗
     pf_at (dmiss_commit_at Γ appE) Fmiss -∗
     unlink_au_at Γ γfs cw M pv P Pmiss Fent Ftgt Fex Fmiss.
-  Proof.
+  Proof using .
     iIntros "Hw Hent Htgt Hex Hmiss". rewrite /unlink_au_at.
     iFrame "Hent Htgt Hex Hmiss".
     iIntros (pl) "_". iApply (np_start_of_mknod γfs cw P Pmiss pl with "Hw").
@@ -623,7 +623,7 @@ Section SysUnlinkArms.
       (Fmiss : pfam Σ (aview -> Z -> fname -> iProp Σ))
       (M : gmap Z (bv 8)) (pv : mword 64) (r : mword 64) :
     unlink_arms Γ γfs cw P Pmiss Fent Ftgt Fex Fmiss M pv r ⊢ ⌜sys_unlink_ret r⌝.
-  Proof.
+  Proof using .
     rewrite /unlink_arms /sys_unlink_ret.
     iIntros "[[%Hr _] | [%Hr _]]"; iPureIntro; [right | left]; exact Hr.
   Qed.

@@ -108,7 +108,7 @@ Section UkTreeWrite.
     udepwf_st N m pc 16
       (write_file_fam (fun _ : nat => tree_wq c r g root i t) (ukn_pay N))
       (FdOpen rb true (FdInode i γo OffParked)).
-  Proof.
+  Proof using .
     intros Heq Hcnt. iIntros "#Hinv Hq".
     iApply (udepwf_st_write_file N m pc rb i γo
               (fun _ : nat => tree_wq c r g root i t) n Hcnt with "[Hq]").
@@ -167,7 +167,7 @@ Section UkTreeWrite.
        urun N h' (<[Regidx a0_idx := rv]> m) (add_vec_int pc 4) avail -∗
        mWP (Loop : expr riscv_lang)) -∗
     mWP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros Heq Hn Hfdv Hfdlt Hcnt Hal4 Hti.
     iIntros "#Hi Hrun Hufdh Hbuf Hown #Hinv Hcont".
     iAssert (tree_wq c r g root i t) with "[Hown]" as "Hq".

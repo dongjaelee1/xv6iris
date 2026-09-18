@@ -368,7 +368,7 @@ Section AppInv.
        ▷ app_pred app_run (abs_view (<[i := n']> I))) -∗
     ghost_map_auth (fs_top γfs) (1/2) I -∗ i ↪[fs_top γfs] n ={E}=∗
       ghost_map_auth (fs_top γfs) (1/2) (<[i := n']> I) ∗ i ↪[fs_top γfs] n'.
-  Proof.
+  Proof using .
     iIntros (HE) "#Hinv Hstep Hk Hf".
     iApply (app_top_update E γfs I i n n' HE with "Hinv [Hstep] Hk Hf").
     iIntros (Hi) "Hp". iApply ("Hstep" with "Hp").
@@ -411,7 +411,7 @@ Section AppInv.
      the reading is the same map. *)
   Lemma app_step_id (i : Z) (I : gmap Z fs_node) :
     ⊢ app_step i I (abs_view I).
-  Proof.
+  Proof using .
     rewrite /app_step. iIntros (n' Heq) "Hp". rewrite Heq. iModIntro.
     iExact "Hp".
   Qed.
@@ -474,7 +474,7 @@ Section AppInv.
      the view does not have.  The supply needs neither. *)
   Lemma app_step_acc (i : Z) (I : gmap Z fs_node) (av' : aview) :
     app_sup -∗ app_step i I av'.
-  Proof.
+  Proof using .
     iIntros "#Hs". rewrite /app_step. iIntros (n' Heq) "_". iModIntro. iNext.
     rewrite /app_sup /app_sup_raw. iApply "Hs".
   Qed.

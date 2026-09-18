@@ -189,7 +189,7 @@ Section UInitDiagGen.
     UkInit.kinit_w1 N (mword_of_int 1 : mword 64) b
       (UserFd.ustd (ukn_fd N) l ∗ pdg_at v I a i)
       (UserFd.ustd (ukn_fd N) l ∗ pdg_at v I a (S i)).
-  Proof.
+  Proof using .
     intros Hli Hb.
     iIntros "#Hpin #Hlk" (h m avail) "%Ha0 %Ha2 #Hcode Hbuf [Hl Hbnd] Hrun Hcont".
     (* the two halves *)
@@ -287,7 +287,7 @@ Section UInitDiagGen.
      the (exists, sep) STRUCTURE, not on the leaves.  Naming the two
      structural instances first leaves the leaf search cheap (0.6 s). *)
   Global Instance kinit_pro_timeless_at n : Timeless (kinit_pro_at n).
-  Proof.
+  Proof using .
     rewrite /kinit_pro_at.
     apply bi.exist_timeless => v.
     apply bi.exist_timeless => I.
@@ -300,7 +300,7 @@ Section UInitDiagGen.
      prologue base and then the loose reading ... *)
   Lemma kinit_own_of_pro_at (n : nat) :
     kinit_pro_at n -∗ UInitBanner.kinit_own_at L n.
-  Proof.
+  Proof using .
     rewrite /kinit_pro_at /UInitBanner.kinit_own_at.
     iIntros "H". iDestruct "H" as (v I) "(%Hl & #Hpin & Hc)".
     iExists v, I. iSplitR; [ by iPureIntro | ]. iFrame "Hpin".
@@ -316,7 +316,7 @@ Section UInitDiagGen.
     □ (∀ (n : nat) (N : uk_names Σ),
          UInitBanner.kinit_ban_at L n -∗
          UkInitMain.kinit_banner0 N stc_cons (kinit_pro_at n)).
-  Proof.
+  Proof using .
     iIntros "#Hlk !>" (n N) "Hban".
     rewrite /UkInitMain.kinit_banner0 /UkInit.kinit_banner_pay.
     iIntros "Hl".
@@ -361,7 +361,7 @@ Section UInitDiagGen.
          kinit_pro_at n -∗
          UkInit.kinit_banner_pay N stc_cons 21%nat (init_lit LIT_EXEC)
            (UInitBanner.kinit_ban_at L n)).
-  Proof.
+  Proof using .
     iIntros "#Hlk !>" (n N) "Hpro".
     rewrite /UkInit.kinit_banner_pay. iIntros "Hl".
     rewrite /kinit_pro_at. iDestruct "Hpro" as (v I) "(%Hlen & #Hpin & Hc)".
@@ -391,7 +391,7 @@ Section UInitDiagGen.
     □ (∀ (n : nat) (N : uk_names Σ),
          kinit_pro_at n -∗
          UkInit.kinit_banner_pay N stc_cons 18%nat (init_lit LIT_FORK) emp).
-  Proof.
+  Proof using .
     iIntros "#Hlk !>" (n N) "Hpro".
     rewrite /UkInit.kinit_banner_pay. iIntros "Hl".
     rewrite /kinit_pro_at. iDestruct "Hpro" as (v I) "(%Hlen & #Hpin & Hc)".

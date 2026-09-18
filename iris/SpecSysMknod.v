@@ -330,7 +330,7 @@ Section SysMknod.
              (npar_cur M pv P) Farm) Fok -∗
     pf_at (acre_commit_at_nm Γ appE (ADev ma mi) (npar_nm M pv)
              (P (length (npar_elems pl))) Farm) Fok.
-  Proof.
+  Proof using .
     intros Hpl. iIntros "Hok".
     rewrite /acre_commit_at_nm. iApply (pf_at_mono with "[] Hok").
     iIntros "Hok". rewrite /acre_commit_at_gen_nm.
@@ -352,7 +352,7 @@ Section SysMknod.
     pf_at (acre_commit_at_nm Γ appE (ADev ma mi) Nm
              (npar_cur M pv (fun _ _ => True%I)) Farm) Fok -∗
     pf_at (acre_commit_at_nm Γ appE (ADev ma mi) Nm (fun _ => True%I) Farm) Fok.
-  Proof.
+  Proof using .
     iIntros "Hok". rewrite /acre_commit_at_nm.
     iApply (pf_at_mono with "[] Hok"). iIntros "Hok".
     rewrite /acre_commit_at_gen_nm.
@@ -371,7 +371,7 @@ Section SysMknod.
     pf_at (acre_commit_at Γ appE (ADev ma mi) (fun _ => True%I) Farm) Fok -∗
     pf_at (acre_commit_at_nm Γ appE (ADev ma mi) Nm
              (npar_cur M pv (fun _ _ => True%I)) Farm) Fok.
-  Proof.
+  Proof using .
     iIntros "Hok". rewrite /acre_commit_at /acre_commit_at_nm.
     iApply (pf_at_mono with "[] Hok"). iIntros "Hok".
     rewrite /acre_commit_at_gen /acre_commit_at_gen_nm.

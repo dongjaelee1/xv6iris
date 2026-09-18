@@ -409,7 +409,7 @@ Section TreeImgInit.
   (* the mint, at the image's own view *)
   Lemma tree_init_img (c : tree_fixed) :
     ⊢ |==> ∃ r : tree_names, tree_pred c r timg_av.
-  Proof.
+  Proof using .
     iApply (tree_init c timg_av timg_tree_wf timg_adir timg_rooted).
   Qed.
 
@@ -429,7 +429,7 @@ Section TreeImgInit.
           app_pred app_tree c r
             (abs_view (fss_inodes (img_state
                (fs_blocks (v_disk (g.(gdev).(dvirtio)))) sb nib))).
-  Proof.
+  Proof using .
     intros Himg Hdk -> -> c.
     assert (Hnib : nib = fsimg_nib).
     { destruct Himg as (_ & _ & _ & _ & _ & Hn & _).

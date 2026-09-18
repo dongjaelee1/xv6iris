@@ -3369,7 +3369,7 @@ Section SyscallArms.
     sysc_sys_in U sts gn cs pid f -∗
     unlink_au_at (fs_gamma_L fsc_fs) fsc_fs (pv_cwi (us_V U)) (us_M U) v0
       (uf_P f) (uf_Pmiss f) (uf_Fent f) (uf_Ftgt f) (uf_Fex f) (uf_Fmiss f).
-  Proof.
+  Proof using .
     intros Hn Hv0. iIntros "H".
     iDestruct (sysc_sys_in_at U sts gn cs pid f 18 Hn ltac:(vm_compute; discriminate) with "H") as "H".
     iDestruct (sbundle_at_unlink_elim uslot f _ with "H") as "H".
@@ -3396,7 +3396,7 @@ Section SyscallArms.
     mkdir_au_at (fs_gamma_L fsc_fs) fsc_fs (pv_cwi (us_V U)) (us_M U) v0
       (df_P f) (df_Pmiss f) (df_Farm f) (df_Fdots f) (df_Fun f)
       (df_Fok f) (df_Fex f).
-  Proof.
+  Proof using .
     intros Hn Hv0. iIntros "H".
     iDestruct (sysc_sys_in_at U sts gn cs pid f 20 Hn ltac:(vm_compute; discriminate) with "H") as "H".
     iDestruct (sbundle_at_mkdir_elim uslot f _ with "H") as "H".
@@ -3640,7 +3640,7 @@ Section SyscallArms.
       (uf_P f) (uf_Pmiss f) (uf_Fent f) (uf_Ftgt f) (uf_Fex f) (uf_Fmiss f)
       (us_M U) v0 r -∗
     sysc_sys_out U sts gn cs pid f r M' sts' cw' cs'.
-  Proof.
+  Proof using .
     intros Hn Hv0. iIntros "H".
     iApply (sysc_sys_out_at U sts gn cs pid f r M' sts' cw' cs' 18 Hn
               ltac:(vm_compute; discriminate)
@@ -3673,7 +3673,7 @@ Section SyscallArms.
       (df_P f) (df_Pmiss f) (df_Farm f) (df_Fdots f) (df_Fun f)
       (df_Fok f) (df_Fex f) (us_M U) v0 r -∗
     sysc_sys_out U sts gn cs pid f r M' sts' cw' cs'.
-  Proof.
+  Proof using .
     intros Hn Hv0. iIntros "H".
     iApply (sysc_sys_out_at U sts gn cs pid f r M' sts' cw' cs' 20 Hn
               ltac:(vm_compute; discriminate)

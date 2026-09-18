@@ -270,7 +270,7 @@ Section UEchoOutGen.
     kecho_w N (mword_of_int ua) nb
       (UserFd.ustd (ukn_fd N) l ∗ ck_cur C (S gen_id) v st p)
       (UserFd.ustd (ukn_fd N) l ∗ ck_cur C (S gen_id) v st (p + nb)%nat).
-  Proof.
+  Proof using .
     intros Hst Hl1 Hline.
     iIntros "#Hpin #Hlk #Hstr" (h m avail)
       "%Ha0 %Ha1 %Ha2 #Hcode [Hstd Hc] Hrun Hcont".
@@ -419,7 +419,7 @@ Section UEchoOutGen.
     kecho_w N (mword_of_int ua) 1%nat
       (UserFd.ustd (ukn_fd N) l ∗ ck_cur C (S gen_id) v st p)
       (UserFd.ustd (ukn_fd N) l ∗ ck_cur C (S gen_id) v st (S p)).
-  Proof.
+  Proof using .
     intros Hst Hl1 Hline Hrange.
     pose proof echo_wtxt_holds as Htxt.
     change (2 ^ 38) with 274877906944 in Hrange.
@@ -539,7 +539,7 @@ Section UEchoOutGen.
       kecho_pay N args k i
         (UserFd.ustd (ukn_fd N) l ∗ ck_cur C (S gen_id) v st (out_cur ws i))
         (ukn_pay N (-1)).
-  Proof.
+  Proof using .
     intros Halt Hst (Hlen & Hargs) Hl1 k.
     induction k as [| k IH]; intros i Hi1 Hik;
       iIntros "#Hq #Hpin #Hlk #Hro #Hargv"; cbn [kecho_pay];
@@ -637,7 +637,7 @@ Section UEchoOutGen.
     kecho_pay_all N args
       (UserFd.ustd (ukn_fd N) l ∗ ck_cur C (S gen_id) v st 0%nat)
       (ukn_pay N (-1)).
-  Proof.
+  Proof using .
     intros Halt Hws2 Hst Hargv Hl1.
     pose proof Hargv as (Hlen & _).
     iIntros "#Hq #Hpin #Hlk #Hro #Hargv".

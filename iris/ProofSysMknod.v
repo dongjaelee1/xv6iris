@@ -2238,7 +2238,7 @@ Section MknodStable.
     arun avc root ps ds ->
     mkr_chain Γ avc ds ps -∗ acre_commit_at_nm Γ E c Nm Pd Farm Φ -∗
       acre_commit_at_nm Γ E c Nm Pd Farm (mkr_recv root ps ds Φ).
-  Proof.
+  Proof using .
     intros Hr. iIntros "#Hc Hcm".
     rewrite /acre_commit_at_nm /acre_commit_at_gen_nm.
     iIntros (I d i nm ents nl) "%Hpre %Hnm %HNm Harm HPd Ha".
@@ -2283,7 +2283,7 @@ Section MknodStable.
       (Φ : aview -> Z -> fname -> Z -> iProp Σ) :
     acre_commit_at_nm Γ E c Nm Pd Farm (mkr_recv root ps ds Φ) -∗
     acre_commit_at_nm Γ E c Nm Pd Farm Φ.
-  Proof.
+  Proof using .
     iIntros "Hcm". rewrite /acre_commit_at_nm /acre_commit_at_gen_nm.
     iIntros (I d i nm ents nl) "%Hpre %Hnm %HNm Harm HPd Ha".
     iMod ("Hcm" $! I d i nm ents nl with "[//] [//] [//] Harm HPd Ha")
@@ -2305,7 +2305,7 @@ Section MknodStable.
     arun avc root ps ds ->
     mkr_chain Γ avc ds ps -∗ pf_at (acre_commit_at_nm Γ E c Nm Pd Farm) F -∗
       pf_at (acre_commit_at_nm Γ E c Nm Pd Farm) (mkr_fam root ps ds F).
-  Proof.
+  Proof using .
     intros Hr. iIntros "#Hc Hcm".
     iApply (pf_at_mono_pair (acre_commit_at_nm Γ E c Nm Pd Farm)
               (acre_commit_at_nm Γ E c Nm Pd Farm)
@@ -2349,7 +2349,7 @@ Section MknodStable.
       (F : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ)) :
     pf_at (acre_commit_at_nm Γ E c Nm Pd Farm) (mkr_fam root ps ds F) -∗
     pf_at (acre_commit_at_nm Γ E c Nm Pd Farm) F.
-  Proof.
+  Proof using .
     iIntros "Hcm".
     iApply (pf_at_mono_pair (acre_commit_at_nm Γ E c Nm Pd Farm)
               (acre_commit_at_nm Γ E c Nm Pd Farm)

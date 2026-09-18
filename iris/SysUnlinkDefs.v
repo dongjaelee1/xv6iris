@@ -297,7 +297,7 @@ Section UnlinkDefs.
       (Φ : aview -> Z -> fname -> Z -> iProp Σ) :
     □ (∀ d : Z, Pd' d -∗ Pd d) -∗ □ (∀ d : Z, Pd d -∗ Pd' d) -∗
     uent_commit_at Γ E Pd Φ -∗ uent_commit_at Γ E Pd' Φ.
-  Proof.
+  Proof using .
     rewrite /uent_commit_at. iIntros "#Hin #Hout H".
     iIntros (I d t nm ents nl a) "%Hpre HPd Ha".
     iDestruct ("Hin" $! d with "HPd") as "HPd".
@@ -312,7 +312,7 @@ Section UnlinkDefs.
   Lemma uent_commit_at_cur Γ (E : coPset) (Pd : Z -> iProp Σ)
       (Φ : aview -> Z -> fname -> Z -> iProp Σ) :
     uent_commit_at Γ E (fun _ => True%I) Φ -∗ uent_commit_at Γ E Pd Φ.
-  Proof.
+  Proof using .
     rewrite /uent_commit_at. iIntros "H".
     iIntros (I d t nm ents nl a) "%Hpre HPd Ha".
     iMod ("H" $! I d t nm ents nl a with "[//] [//] Ha")
@@ -366,7 +366,7 @@ Section UnlinkDefs.
      SUPPLY ([AppInv.app_step_acc]) at the live Γ *)
   Lemma uent_commit_at_unit (γfs : fs_names) E (Pd : Z -> iProp Σ) :
     app_sup -∗ uent_commit_at (fs_gamma_L γfs) E Pd (fun _ _ _ _ => True%I).
-  Proof.
+  Proof using .
     iIntros "#Hsup". rewrite /uent_commit_at.
     iIntros (I d t nm ents nl a) "%Hpre HPd Ha".
     iDestruct (app_step_acc d I _ with "Hsup") as "Hstep".

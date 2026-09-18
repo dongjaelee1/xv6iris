@@ -2393,14 +2393,14 @@ Section IputFreePath.
 
 
   Lemma ip_trunc32_zero : trunc32 (zero_reg : mword 64) = (mword_of_int 0 : mword 32).
-  Proof. apply bv_eq. vm_compute. reflexivity. Qed.
+  Proof using . apply bv_eq. vm_compute. reflexivity. Qed.
 
   Lemma ip_pred_sub (z : Z) : (1 <= z)%Z -> (z < 2 ^ 31)%Z ->
     subrange_vec_dec
        (add_vec (sign_extend' 64 (mword_of_int z : mword 32))
                 (sign_extend' 64 (sign_extend' 12 (mword_of_int 63 : mword 6)))) 31 0
     = (mword_of_int (z - 1) : mword 32).
-  Proof.
+  Proof using .
     intros Hz1 Hb.
     rewrite <- trunc32_subrange. rewrite trunc32_add. rewrite trunc32_sext.
     assert (HK : trunc32 (sign_extend' 64 (sign_extend' 12 (mword_of_int 63 : mword 6)))
@@ -2429,7 +2429,7 @@ Section IputFreePath.
        (add_vec (sign_extend' 64 (mword_of_int z : mword 32))
                 (sign_extend' 64 (sign_extend' 12 (mword_of_int 63 : mword 6)))) 31 0))
     = (mword_of_int (z - 1) : mword 32).
-  Proof. intros H1 H2. rewrite trunc32_sext. exact (ip_pred_sub z H1 H2). Qed.
+  Proof using . intros H1 H2. rewrite trunc32_sext. exact (ip_pred_sub z H1 H2). Qed.
 
   (* ProofIput.v's [ip_rest_sum], module-local there; inlined here. *)
 

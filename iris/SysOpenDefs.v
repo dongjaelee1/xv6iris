@@ -1024,7 +1024,7 @@ Section OpenDefs.
     pf_at (acre_commit_at Γ appE (AFile []) (npar_cur M pv P) Farm) Fok -∗
     pf_at (acre_commit_at Γ appE (AFile [])
              (P (length (npar_elems pl))) Farm) Fok.
-  Proof.
+  Proof using .
     intros Hpl. iIntros "Hok".
     rewrite /acre_commit_at. iApply (pf_at_mono with "[] Hok").
     iIntros "Hok".

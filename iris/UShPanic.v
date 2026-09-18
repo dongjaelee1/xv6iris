@@ -300,7 +300,7 @@ Section UShPanicGen.
     UkShDiag.ksh_w1 N (mword_of_int 2 : mword 64) b
       (UserFd.ustd (ukn_fd N) l ∗ lk_blk L (S gen_id) v I a i)
       (UserFd.ustd (ukn_fd N) l ∗ lk_blk L (S gen_id) v I a (S i)).
-  Proof.
+  Proof using .
     intros Hl2 Hb.
     iIntros "#Hpin #Hlk" (ua h m avail) "%Ha0 %Ha1 %Ha2 #Hcode [Hbuf [Hl Hc]] Hrun Hcont".
     subst ua.
@@ -393,7 +393,7 @@ Section UShPanicGen.
     UkShDiag.ksh_w1 N (mword_of_int 2 : mword 64) b
       (UserFd.ustd (ukn_fd N) l ∗ lk_panic L (S gen_id) v I i)
       (UserFd.ustd (ukn_fd N) l ∗ lk_panic L (S gen_id) v I (S i)).
-  Proof.
+  Proof using .
     intros Hl2 Hb. rewrite /lk_panic.
     refine (ksh_w1_of_link_blk_at N v I l rb (lk_pan L I) i b Hl2 _).
     rewrite (lk_ab_pan L I). exact Hb.
@@ -593,7 +593,7 @@ Section UShPanicGen.
       (mword_of_int sh_prompt_pv) 2%nat
       (UserFd.ustd (ukn_fd N) l ∗ lk_post L (S gen_id) v I a)
       (UserFd.ustd (ukn_fd N) l ∗ lk_open_t L (S gen_id) v I).
-  Proof.
+  Proof using .
     intros Ha Hl2. rewrite <- (lk_lpr_2 L (S gen_id) v I).
     iIntros "#Hpin #Hlk #Hro" (h m avail)
       "%Ha0 %Ha1 %Ha2 #Hcode [Hstd Hc] Hrun Hcont".
@@ -621,7 +621,7 @@ Section UShPanicGen.
       (mword_of_int sh_prompt_pv) 2%nat
       (UserFd.ustd (ukn_fd N) l ∗ lk_lcred L (S gen_id) I 0%nat)
       (UserFd.ustd (ukn_fd N) l ∗ lk_lcred L (S gen_id) I 2%nat).
-  Proof.
+  Proof using .
     intros Hl2. iIntros "#Hlk #Hro" (h m avail)
       "%Ha0 %Ha1 %Ha2 #Hcode [Hstd Hc] Hrun Hcont".
     rewrite /lk_lcred. iDestruct "Hc" as (v) "[#Hpin Hc]".
@@ -638,7 +638,7 @@ Section UShPanicGen.
   Lemma sh_prompt_law_holds_line_at :
     lk_links L -∗
     UShKernel.sh_prompt_law (lk_lcred L (S gen_id)).
-  Proof.
+  Proof using .
     iIntros "#Hlk". rewrite /UShKernel.sh_prompt_law.
     iIntros "!>" (N) "#Hro". rewrite /UkSh.ush_prompt_law.
     iModIntro. iSplitL "".
@@ -665,7 +665,7 @@ Section UShPanicGen.
     UkShDiag.ush_panic_law (lk_lcred L (S gen_id))
       (fun I : list (bv 8) => ∃ v : era_pins,
          lk_pin L (S gen_id) v ∗ lk_ban L (S gen_id) v I 0%nat)%I.
-  Proof.
+  Proof using .
     iIntros "#Hlk". rewrite /UkShDiag.ush_panic_law.
     iIntros "!>" (N I l) "%Hfd2 Hc". destruct Hfd2 as [rb Hl2].
     iDestruct (lk_lcred_blk_panic L (S gen_id) I with "Hc")
@@ -744,7 +744,7 @@ Section UShPanicGen.
       (fun I p => lk_lcred L (S gen_id) I p ∗ Hold I)%I
       (fun I => (∃ v : era_pins, lk_pin L (S gen_id) v
                    ∗ lk_ban L (S gen_id) v I 0%nat) ∗ Hold I)%I.
-  Proof.
+  Proof using .
     iIntros "#Hlk". rewrite /UkShDiag.ush_panic_law.
     iIntros "!>" (N I l) "%Hfd2 [Hc Hh]". destruct Hfd2 as [rb Hl2].
     iDestruct (lk_lcred_blk_panic L (S gen_id) I with "Hc") as (v) "[#Hpin Hc]".
@@ -780,7 +780,7 @@ Section UShPanicGen.
       (length (lk_exfb L I) - 2)%nat
       (lk_lcred L (S gen_id) I 3%nat)
       (lk_lcred L (S gen_id) I 0%nat).
-  Proof.
+  Proof using .
     iIntros "#Hlk". rewrite /UkShDiag.ush_execfail_law_at.
     iIntros "!>" (N l) "%Hfd2 Hc". destruct Hfd2 as [rb Hl2].
     iDestruct (lk_lcred_blk_open L (S gen_id) I (lk_exf L I) with "Hc")
@@ -806,7 +806,7 @@ Section UShPanicGen.
       (length (lk_exfb L I) - 2)%nat
       (lk_lcred L (S gen_id) I 3%nat ∗ Hold I)
       (lk_lcred L (S gen_id) I 0%nat ∗ Hold I).
-  Proof.
+  Proof using .
     iIntros "#Hlk". rewrite /UkShDiag.ush_execfail_law_at.
     iIntros "!>" (N l) "%Hfd2 [Hc Hh]". destruct Hfd2 as [rb Hl2].
     iDestruct (lk_lcred_blk_open L (S gen_id) I (lk_exf L I) with "Hc")

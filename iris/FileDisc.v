@@ -618,7 +618,9 @@ Inductive ralt :=
   | RFExec                   (* "exec echo failed\n$ ";  f := []          *)
   | RFOpenU                  (* "open f failed\n$ ";     f unchanged      *)
   | RFOpenM                  (* "open f failed\n$ ";     f := [] (created)*)
-  | RFSilent                 (* "$ ";                    f := []          *)
+  | RFSilent                 (* "$ ";                    f unchanged (limit 3;
+                                RULING HOLD-POS: the line's silent alternative
+                                leaves `f` alone, like [REcho 2] / [RCSilent]) *)
   | RFFork                   (* "fork\n";                f unchanged      *)
   | RCRan                    (* f's content, or cat's diagnostic; then "$ "*)
   | RCNoOpen                 (* "cat: cannot open f\n$ " at a PRESENT f   *)
@@ -733,14 +735,18 @@ Proof using. destruct l, a; rewrite /ralt_ok; apply _. Defined.
 (* THE F-EFFECT.  [RFOpenM] is guarded at an ABSENT f (design section 1):
    xv6's [sys_open] truncates only after [filealloc] has succeeded, so at a
    present f the failed open leaves the file alone and this alternative is
-   [RFOpenU]. *)
+   [RFOpenU].  [RFSilent]'s effect is IDENTITY (RULING HOLD-POS, 2026-09-18):
+   it is sh's [argv[0] == 0] exit, unreachable under the discipline, and
+   every line shape then has one silent alternative that leaves `f` alone
+   ([REcho 2] / [RFSilent] / [RCSilent]) -- which is what the round's
+   credential files at the fork's relayed failure row. *)
 Definition fsm (s : fst) (l : uline) (a : ralt) : fst :=
   match l with
   | LEchoF ws =>
       match a with
       | RFRan sel => Some (subseq (echo_chunks ws) sel)
       | RFExec => Some []
-      | RFSilent => Some []
+      | RFSilent => s
       | RFOpenM => match s with None => Some [] | Some _ => s end
       | _ => s
       end
@@ -2434,7 +2440,7 @@ Proof using.
   - right. exists []. split; [apply sel_ok_nil | reflexivity].
   - by left.
   - right. exists []. split; [apply sel_ok_nil | reflexivity].
-  - right. exists []. split; [apply sel_ok_nil | reflexivity].
+  - (* RFSilent: identity (RULING HOLD-POS) *) by left.
   - by left.
 Qed.
 

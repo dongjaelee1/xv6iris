@@ -21,6 +21,7 @@ stream's.)
 | after `file_stage_inst` (`c62244638`) | **11** | (the gate for `Hexecfail`/`Hchild_echo`; the two discharges wait on RULING H) |
 | after the cat body and the era step (`b43f94b41`, `39491cac0`) | **11** | (both are plumbing UNDER the round: `Hcat_body` and `Hchild_redir`'s supply) |
 | after RULING H' and the three discharges (`75b13f284`) | **8** | `sh_tag_law_file` `Hexecfail` `Hpanic` |
+| after the merge and the indexed record (`9a187bafb`) | **8** | (H' completed: `FI := file_link_inst_at g s0`) |
 
 
 Append one block per stretch, newest last, each with the metric after it.
@@ -471,12 +472,24 @@ instantiates at its own deed's content and owes no lower bound.
 `cat_pay` and `sh_prompt_alt_of_deed` are at the same index; the redirect
 child law's string address is renamed `sa`.
 
-`file_link_inst_at s0` at `fwc_*_at s0` is NOT in the tree and is
-LINK-GEN's (FileLinksLine is 2,081 lines and the record has ~60 fields).
-Until it lands the round uses the packed record, which is sound: `f0w` is
-persistent and `FileLinksLine.f0w_agree` identifies any two of them, so
-the index the hold names and the index the credential carries can always
-be identified — one agreement step rather than none.
+`file_link_inst_at s0` at `fwc_*_at s0` was NOT in the tree when this
+stretch began; lane INIT-FILE landed it (`iris/FileLinksAt*.v`,
+`FileLinkInst.file_link_inst_at`, `file_Wcl_at` / `file_Wbl_at`) while the
+branch was out, so the end-of-stretch merge completed H': the round now
+reads `FI := file_link_inst_at g s0` and there is no `f0w_agree` step left
+in it.  **The index costs nothing at this level** — every one of the five
+conversions is a lemma about the RECORD, not about the era, so they became
+five direct applications of `LinkRec`'s generic lemmas
+(`lk_lcred_blk_line`, `lk_lcred_of_ban`, `lk_lcred_taint`,
+`lk_lcred_read`, `lk_pin_agr` + `lk_ban_read_taint`), and `Hexecfail` /
+`Hpanic` discharge at the indexed record unchanged because their producers
+are generic in `L`.
+
+(INIT-FILE's own reading puts the `∃ s0` inside the family —
+`Wcf I p := ∃ s0, Wcl_at s0 I p ∗ hold s0 I`; this file takes the
+coordinator's H' as stated to the stream, with `s0` a SECTION variable,
+which is the stronger of the two and is what makes `sh_hold_at s0 []`
+inhabited at a state /init gets to choose.)
 
 ### 4. Three hypotheses discharged, and why the other five stay
 

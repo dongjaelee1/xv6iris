@@ -150,7 +150,10 @@ Section UkPipeMoves.
        built ---- *)
     usysno m2 = USYS_dup ->
     bv_signed (trunc32 (m2 !!! Regidx a0_idx)) = Z.of_nat fdp ->
-    ukn_held N = ∅ ->
+    (* [ukn_held N = ∅] IS GONE (lane PIPE-NEG1, porting the campaign over
+       upstream's OFF-LINK-2 L6): [UkRunSys.wp_uk_ecall_dup] pins only
+       [st <> FdClosed] now, the parked discipline and the record field
+       [UkRun.ukn_held] having left the tree. *)
     is_aligned_vaddr (Virtaddr (add_vec_int pc2 4)) 2 = true ->
     uinstr_is (ukn_t N) pc false (ECALL tt) -∗
     uinstr_is (ukn_t N) pc2 false (ECALL tt) -∗
@@ -181,7 +184,7 @@ Section UkPipeMoves.
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
   Proof using .
-    intros Hn1 Ha01 Hal1 Hn2 Ha02 Hhd Hal2.
+    intros Hn1 Ha01 Hal1 Hn2 Ha02 Hal2.
     iIntros "#Hi1 #Hi2 Hrun Hdep Hstd Hh Hload Hcont".
     (* the handle is not a standard stream, which is what brings it back as
        a handle after the dup *)
@@ -203,7 +206,7 @@ Section UkPipeMoves.
     iApply (wp_uk_ecall_dup N h2 m2 pc2
               [ucons mj; FdClosed; ucons mj] fdp
               (FdOpen rb true (FdPipe γp)) avail
-              Hn2 Ha02 ltac:(discriminate) Hhd Hal2
+              Hn2 Ha02 ltac:(discriminate) Hal2
               with "Hi2 Hrun Hdep Hstd [Hh]").
     { iApply (ufd_own_hi (ukn_fd N) [ucons mj; FdClosed; ucons mj] fdp
                 (FdOpen rb true (FdPipe γp)) with "Hh"). }

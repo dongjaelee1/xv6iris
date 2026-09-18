@@ -224,6 +224,38 @@ fragment's holder can make, and the taint is not held under the
 discipline.  State it as `pipe_reg_not_free` in the scratch and keep it as
 a comment.
 
+**AS LANDED (lane PIPE-REG, 2026-09-18).**  `PipeReg.pipe_reg γp := □ (∀ w,
+pipe_cpay (pn_queue γp) w emp)` and `pipe_row_reg` as designed;
+`fileclose_cpays_of_regs` pays kexit's whole `[∗ list]` row from the
+registrations (closes `pipe-queue.md`'s second open item).  THREE
+CORRECTIONS: (1) **the registry cannot be named in `UkRun.v`** — `pipe_row_reg`
+names `pipeG` and `UkRun` binds no ghost bundle by design (a new binder =
+a `Context` line in ~70 files; putting `pipeG` on `ufdG` = two instance
+paths in ~95 files, which wedges) — so the row enters through **`uexecSG`**,
+the U tier's one instance record: three new fields `srow_reg : fdstate ->
+iProp`, `srow_reg_persistent`, `srow_reg_nopipe`, answered by `pipe_row_reg`
+in `uexecSG_xv6`; `urun_nopipe fdv := ([∗ list] st ∈ fdv, srow_reg st) ∨ □
+riscv_kill_cred`.  (2) **The taint arm stays** in the definition (the class
+has no `riscvGS` parameter and the generic supply holds the credential with
+no pipe names); a registered program never touches it.  (3) **The run
+cannot be handed back OWED**: `UkRun.urun_close_upd` takes the rows as an
+INPUT and produces the run the continuation receives — a debt paid by that
+continuation is circular — and `γp` is bound inside the post's existential.
+The FALLBACK landed: at the class-generic leaf (`UkRunSys.wp_uk_ecall_pipe`)
+the `□ riscv_kill_cred` premise is simply gone and the registrar takes the
+POST; at the instance (`UkReadPipe.wp_uk_pipe_read_end`) the premise is
+fragment-shaped, `∀ γp, pipe_qfrag (pn_queue γp) pst0 ={⊤}=∗ pipe_reg γp ∗
+Rp γp`, and `Rp γp` replaces the fragment in the post (registering CONSUMES
+the fragment: one fragment buys one `□` payment, `pipe_cpay_of_frag`).
+`pipe_reg` is NOT timeless (a fupd wand under `□`); nothing strips a `▷`
+off `urun_nopipe`.  Vacuity mechanised: `pipe_reg_not_free` refutes a
+conjured close link against `pipe_queue_agree`.  Beyond the brief:
+`xv6_sbundle_close_of_reg` (CLOSE(21) from the registry, at the point
+family's payload `True` only).  PIPE-PROTO's `pipe_proto_alloc` must
+therefore produce the registration BESIDE the handle — `pipe_qfrag … pst0
+={⊤}=∗ ∃ pn, pipe_inv pn γp L ∗ wtok γw ∗ pipe_reg γp` — which is literally
+the registrar premise at `Rp γp := ∃ pn, pipe_inv pn γp L ∗ wtok γw`.
+
 ## 3. The protocol: one invariant per pipe, three processes
 
 `iris/PipeProto.v`.  The runcmd child (sh) allocates it right after

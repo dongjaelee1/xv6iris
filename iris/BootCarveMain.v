@@ -639,7 +639,12 @@ Section BootCarveMain.
     iExists (mword_of_int 0 : mword 32), (mword_of_int 0 : mword 32),
             (mword_of_int 0 : mword 32), bs, (replicate INPUT_BUF_SIZE None),
             0%nat, 0%nat, [], [], None, [], false.
-    iFrame "Hr Hw He Hb Hsa Hcu Hhi Hlm".
+    (* BUILD [cons_res] in its own conjunct order rather than framing it: a
+       named [iFrame] here still walks the whole goal per name (2.6s
+       measured), and every row is either in hand or pure. *)
+    iSplitL "Hr"; [iExact "Hr" |].
+    iSplitL "Hw"; [iExact "Hw" |].
+    iSplitL "He"; [iExact "He" |].
     iSplitR; [iPureIntro; exact Hlen |].
     iSplitR; [iPureIntro; apply length_replicate |].
     (* the coupling at an EMPTY ring: every distance is zero, so the row's
@@ -665,7 +670,12 @@ Section BootCarveMain.
     iSplitR.
     { iPureIntro. intros j h b Hj.
       rewrite lookup_nil in Hj. discriminate Hj. }
+    iSplitL "Hb"; [iExact "Hb" |].
     iSplitR; [iApply cons_tags_none |].
+    iSplitL "Hsa"; [iExact "Hsa" |].
+    iSplitL "Hcu"; [iExact "Hcu" |].
+    iSplitL "Hhi"; [iExact "Hhi" |].
+    iSplitL "Hlm"; [iExact "Hlm" |].
     (* THE LOG IS EMPTY AND SO IS THE RING, so all three of the input log's
        clauses say nothing: nothing to be logged, no gaps between the
        entries there are none of, and nothing echoed since a top that does

@@ -1185,6 +1185,38 @@ Section UkShEcho.
     iIntros "!>" (I). rewrite <- (Hdg I), <- (Hnn I). iApply ("Hx" $! I).
   Qed.
 
+  (* ...AND THE DIAGNOSTIC'S LAW UNDER THE SAME GUARD (lane HOLD-POS).
+     [ush_execfail_law_wq_at] quantifies over EVERY input, and at a
+     position-keyed family that is not a statement an era can meet: the
+     file era's exit at position 0 ties the deed to the alternative the
+     child FILED, and at an [echo ... > f] input the exec-failed
+     alternative ([RFExec]) truncates `f` while the lend's deed is still at
+     the round's PRE-state -- so [Wc I 0] is unreachable there, and the law
+     was never spent there either ([ushf_child_law_holds_at] reads it only
+     at an input the era admits).  The guard is the child law's own [D]. *)
+  Definition ush_execfail_law_wq_at_D (D : list (bv 8) -> Prop)
+      (dg : list (bv 8) -> list (bv 8))
+      (nn : list (bv 8) -> nat) (Wc : list (bv 8) -> nat -> iProp Σ)
+      : iProp Σ :=
+    (□ (∀ I : list (bv 8),
+          ⌜D I⌝ -∗
+          UkShDiag.ush_execfail_law_at (dg I) (nn I)
+            (Wc I 3%nat) (Wc I 0%nat)))%I.
+
+  Global Instance ush_execfail_law_wq_at_D_persistent D dg nn Wc :
+    Persistent (ush_execfail_law_wq_at_D D dg nn Wc).
+  Proof using . rewrite /ush_execfail_law_wq_at_D. apply _. Qed.
+
+  (* the unguarded carrier answers the guarded one *)
+  Lemma ush_execfail_law_wq_at_D_of (D : list (bv 8) -> Prop)
+      (dg : list (bv 8) -> list (bv 8))
+      (nn : list (bv 8) -> nat) (Wc : list (bv 8) -> nat -> iProp Σ) :
+    ush_execfail_law_wq_at dg nn Wc -∗ ush_execfail_law_wq_at_D D dg nn Wc.
+  Proof using .
+    iIntros "#Hx". rewrite /ush_execfail_law_wq_at /ush_execfail_law_wq_at_D.
+    iIntros "!>" (I) "_". iApply ("Hx" $! I).
+  Qed.
+
   (* ...AT THE ERA'S OWN GUARD AND ITS OWN DIAGNOSTIC (the PROGRAM
      STREAM).  Both parameters are answered by ONE fact about the input --
      [D I] -- and the two facts that prove it are in the law's own box: the
@@ -1193,17 +1225,17 @@ Section UkShEcho.
      ([UkSh.ush_posw]'s third conjunct).  At the file era that is
      [FileDisc.fbody_ok_echo], i.e. "the era filed an [LEcho] line here",
      from which both the stage and [FileLinksLine.fexfb]'s value follow. *)
-  Lemma ushf_child_law_holds_at (D : list (bv 8) -> Prop)
+  Lemma ushf_child_law_holds_at_D (D : list (bv 8) -> Prop)
       (dg : list (bv 8) -> list (bv 8)) (nn : list (bv 8) -> nat)
       (Wc : list (bv 8) -> nat -> iProp Σ) :
     (forall (I : list (bv 8)) (ws : list (list (bv 8))),
        line_ok ws -> ws = last_ws I ->
-       FileDisc.fbody_ok (UkSh.ush_lastbody I) -> D I) ->
+       FileDisc.fline_ok (UkSh.ush_lastbody I) -> D I) ->
     (forall I : list (bv 8),
        D I -> dg I = alt_execfail /\ nn I = 17%nat) ->
-    ush_execfail_law_wq_at dg nn Wc -∗
+    ush_execfail_law_wq_at_D D dg nn Wc -∗
     sh_exec_sup_echo_wq_at D Wc -∗ UkShFork.ushf_child_law Wc.
-  Proof.
+  Proof using Hpsok_free.
     intros HD Hdg. iIntros "#Hxl #Hsup".
     rewrite /UkShFork.ushf_child_law /UkShFork.ushf_child_law_at.
     iIntros "!>" (N' h m dw dv s0 len ws g sz ld n I)
@@ -1227,9 +1259,36 @@ Section UkShEcho.
     - (* THE DIAGNOSTIC, AT THE ERA'S CARRIER READ AT THIS INPUT *)
       rewrite /UkShDiag.ush_execfail_law.
       rewrite <- Hdg1. rewrite <- Hdg2.
-      iApply ("Hxl" $! I).
+      iApply ("Hxl" $! I). iPureIntro. exact HDI.
     - (* a failed exec's child exits on the block written up to its prompt *)
       iIntros "!> Hc". rewrite /UkShFork.ushf_wq. iRight. iExact "Hc".
+  Qed.
+
+  (* ...and the landed statement, through the guarded one.  ITS GUARD IS
+     [FileDisc.fline_ok] AND NOT [fbody_ok] (lane ULINE-LPIPE): "the input's
+     last body is in [FileDisc.parse_line]'s range" is the FILE era's
+     reading of [UkSh.ush_posw]'s third conjunct, and the conjunct is what
+     [ushf_child_law_holds_at_D] takes -- an era whose lines the file parser
+     refuses (the pipeline application's, whose body carries a bar) can
+     supply the weaker one and never the stronger.  Weakening a PREMISE
+     makes this lemma stronger, so no caller loses anything: the echo era's
+     ([ushf_child_law_holds] below) ignores the argument and the file era's
+     ([UShRound.file_D_of_line]) spends it through
+     [FileDisc.fline_ok_echo]. *)
+  Lemma ushf_child_law_holds_at (D : list (bv 8) -> Prop)
+      (dg : list (bv 8) -> list (bv 8)) (nn : list (bv 8) -> nat)
+      (Wc : list (bv 8) -> nat -> iProp Σ) :
+    (forall (I : list (bv 8)) (ws : list (list (bv 8))),
+       line_ok ws -> ws = last_ws I ->
+       FileDisc.fline_ok (UkSh.ush_lastbody I) -> D I) ->
+    (forall I : list (bv 8),
+       D I -> dg I = alt_execfail /\ nn I = 17%nat) ->
+    ush_execfail_law_wq_at dg nn Wc -∗
+    sh_exec_sup_echo_wq_at D Wc -∗ UkShFork.ushf_child_law Wc.
+  Proof using Hpsok_free.
+    intros HD Hdg. iIntros "#Hxl #Hsup".
+    iApply (ushf_child_law_holds_at_D D dg nn Wc HD Hdg with "[] Hsup").
+    iApply (ush_execfail_law_wq_at_D_of D dg nn Wc with "Hxl").
   Qed.
 
   (* the landed name: the echo era's guard is [line_ok] and its diagnostic

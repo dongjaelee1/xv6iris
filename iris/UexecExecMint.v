@@ -45,6 +45,7 @@ Require Import UexecCond.       (* [cond_entry_slot] -- the plain generic slot *
 Require Import UexecExecInst.   (* the class INSTANCE: [uexecSG_xv6] / [uprogSG_gen] *)
 Require Import FsAbsInvFire.    (* [fsabs_open_in] / [fsabs_mknod_pre]: the two
                                    branches the supply pays update-free *)
+Require Import UserPerm.   (* [uperm], [perm_of] -- RULING WR-TB *)
 Require Import SpecFilewrite.    (* [filewrite_in]: row 16's keyed input, for
                                     [filewrite_in_of_sup] (lane EXEC-SEAM, (D)) *)
 Require Import SpecConsolewrite. (* [cons_out_chain_of_licence]: its console arm *)
@@ -290,9 +291,10 @@ Section UexecExecMint.
      licence ([UexecExecInst.xv6_ssupply]), so every caller already has it.
      [FsAbsInvFire.fsabs_filewrite_in] took the same argument. *)
   Lemma filewrite_in_of_sup (st : fdstate) (n : Z) (M : gmap Z (bv 8))
+      (pmv : gmap (mword 27) uperm) (sz : Z) (lz : bool)
       (ua : mword 64) :
     app_sup -∗ app_taint -∗
-    filewrite_in st n M ua (fun _ => True%I) (fun _ _ => True%I).
+    filewrite_in pmv sz lz st n M ua (fun _ => True%I) (fun _ _ => True%I).
   Proof using .
     iIntros "#Hsup #Hkc".
     iDestruct (cons_licence_of_taint with "Hkc") as "#Hlic".

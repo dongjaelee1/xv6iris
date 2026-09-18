@@ -68,6 +68,7 @@ Require Import UserHeap.
 Require Import ProcGeom.           (* [NOFILE] / [tf_arg_idx] *)
 Require Import UexecRet UexecSG.
 Require Import UkRun.
+Require Import UserPerm.   (* [uperm] -- RULING WR-TB *)
 Require Import SpecFilewrite.      (* [filewrite_in] *)
 Require Import UkWriteLeaf.        (* [xfam_wr] / [sbundle_at_write_intro_at] *)
 Require Import UkSh.               (* [ksh_w] / [wp_ksh_write_chain] *)
@@ -137,10 +138,10 @@ Section UkWriteClosed.
     iApply (sbundle_at_write_intro_at uslot (xfam_wr Q (ukn_pay N))
               (uvis_of_run m pc M pm sz fdv cw gn cs pidv false)
               (m !!! Regidx a0_idx) (m !!! Regidx a1_idx)
-              (m !!! Regidx a2_idx) fdv M
+              (m !!! Regidx a2_idx) fdv M _ _ _
               (tf_of_arg0 m pc) (tf_of_arg1 m pc) (tf_of_arg2 m pc)
               (uvis_of_run_fd m pc M pm sz fdv cw gn cs pidv false)
-              eq_refl).
+              eq_refl eq_refl eq_refl eq_refl).
     rewrite (uwr_fd_st_closed (m !!! Regidx a0_idx) fdv l i H0 Hi Htake Hli).
     rewrite /filewrite_in. done.
   Qed.

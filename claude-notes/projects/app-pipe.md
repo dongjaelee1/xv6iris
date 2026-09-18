@@ -190,7 +190,7 @@ arm is the theorem's one named premise (`pipe_both_law`).
 - [ ] **PIPE-2W** (design §4.3): the merge lease; `pipe_both_law` discharged;
   the premise removed.
 
-- [ ] **ULINE-LPIPE** (design §5.8 STOP A; the ONE edit of upstream's files):
+- [x] **ULINE-LPIPE** (design §5.8 STOP A; the ONE edit of upstream's files):
   `FileDisc.uline` gains `LPipe (ws)` additively; `parse_line` untouched;
   `uline_ws (LPipe ws) := ws ++ [bar; cat]`; the 5 definitions + 26 proof
   sites in `FileDisc`/`FileDiscDec`/`FileOutPure`/`FileLinksLine` gain their
@@ -3506,3 +3506,306 @@ For **KILL-TAINT**: the two consumers are `UEchoPipe`'s
 `ep_image_entry`, `ep_test_hi` and the four lemmas between) and
 `UCatPipe.pcat_round_at`'s `Hktaint` at its abstract `T`; retiring the row
 deletes one premise line from each and nothing else moves.
+
+### ULINE-LPIPE (2026-09-18) — `LPipe` joins `FileDisc.uline` and the tree stays green, but the constructor is NOT the whole bill: three FILE round-trip lemmas need a GUARD, `ralt_ok := False` is refuted at the statement, and `UkSh.ush_posw`'s third conjunct was the FILE PARSER hard-coded into the era-generic loop
+
+Branch `app-pipe/uline-lpipe`, commits `64090bc54`, `f52642519`,
+`38ddf0def`, `bf092985d`, and the merge of `main` (`48efdcd1a`: upstream's
+leaf-instance naming pass, `FileState.fst` -> `fstate`, `StringBytes` split
+out of `RiscvPtsto`).  **Every `.v` auto-merged** — the one conflict was
+this worklist.  Checked by hand after it: all 30 four-arm
+`destruct l as [ws | ws | | ws]` sites survive (`FileDisc` 8, `FileDiscDec`
+4, `FileOutPure` 3, `FileLinksLine` 15; zero three-arm ones left), the
+RENAMED `fstate_ok_fsm` / `fstate_upto_vs_nil` carry their `LPipe` case,
+and every u-tier edit is in place.  Whole-tree
+`ec2-lane.sh uline build` **RC=0** on the MERGED tree (and RC=0 before the
+merge); no `Admitted`; `Proof using` on every new result.  All five audits
+re-run on the merged tree: **`audit-file-only` FOURTEEN**,
+**`audit-echo-only` FOURTEEN**, **`audit-pipe-only` FOURTEEN**,
+`audit-only` 13, `audit-tree-only` 13 — the file/echo/pipe three printing
+the same list, textually: 1 `functional_extensionality_dep` + the 2
+`xv6iris_extras` reservation `Parameter`s + 11 PrimString/PrimInt63, and
+NO `Spec*`/`Link*` module `Parameter`.
+
+**WHAT LANDED.**
+
+`iris/FileDisc.v` — `Inductive uline := LEcho | LEchoF | LCat | LPipe (ws)`,
+with `fd_bar`/`fd_w_bar`/`fd_w_cat`/`suf_barcat` (`PipeDisc`'s `wl_bar` and
+`suf_pipecat` spelled again, because `PipeDisc` may not read `FileDisc`):
+
+- `uline_ws (LPipe ws) := ws ++ [fd_w_bar; fd_w_cat]` — the WHOLE body's
+  words, as the design ruled, **and it is a theorem, not a hope**:
+  `uline_ws_pipe : line_ok ws -> wl_words (line_body (LPipe ws)) =
+  uline_ws (LPipe ws)`, off the new general
+  `fd_wl_words_body_app : wl_wf ws -> ws <> [] -> wl_words L = [] :: rest ->
+  wl_words (wl_body ws ++ L) = ws ++ rest`.  `wl_words_body` is NOT usable
+  here (the bar is not `wl_alnum`, so `ws ++ [bar; cat]` is not `wl_wf` and
+  the round trip does not exist); this lemma is the replacement and it is
+  the one thing `Hdsc_line` at a pipe line will be proved from.
+- `line_body (LPipe ws) := wl_body ws ++ suf_barcat` and
+  `uline_ok (LPipe ws) := line_ok ws /\ |line_bytes| < line_max`, both
+  spelled to be CONVERTIBLE with `PipeDisc`'s — every agreement lemma in
+  the new bridge below is `by destruct l`.
+- `parse_line` UNTOUCHED, and that is now checkable: `parse_line_not_pipe`,
+  `uline_of_nopipe`, `lines_of_nopipe` (`l ∈ lines_of I -> uline_nopipe l`).
+  So `lines_of`'s range is the three constructors it was, `alts_ok`, the
+  determinacy theorem and `AppFile`'s conclusion mean what they meant at
+  every input `disc_input_f` admits.  I read `parse_line` and `lines_of`
+  line by line: `parse_line` answers `LCat`, `LEchoF`, `LEcho` or `None`,
+  `lines_of = uline_of <$> bodies_of`, and `uline_of = default inhabitant`
+  with `inhabitant = LEcho []` — three constructors and nothing else.
+
+`iris/PipeUline.v` (NEW, in `_CoqProject`) — the bridge, and a NEW FILE
+rather than a section of `PipeDisc.v` as the brief said: the two modules
+share the constructor name `LEcho` and the definition names `line_body`
+and `line_bytes`, so neither can `Import` the other; everything here is
+written qualified.  `uline_of_pline` (+ `Inj`), `line_body_of_pline`,
+`line_bytes_of_pline`, `uline_ok_of_pline` and its converse (all by
+conversion), `uline_ws_of_pline` (`pline_ok l -> FileDisc.uline_ws
+(uline_of_pline l) = wl_words (PipeDisc.line_body l)` — the one that is
+NOT), `uline_ws_of_pline_pipe` (the left command's words are the prefix),
+`ush_line_pipe` (the era discipline SH-PIPE-ROUND-2 instantiates `Dl` at)
+and `ush_line_pipe_not_file` (the two eras' line sets meet exactly at
+`LEcho`).  Plus the VACUITY CHECK, computed end to end at
+`echo hello | cat`: `demo_pline_ok`, `demo_uline_ok`, `demo_uline_ws`
+(FOUR words: `[echo; hello; |; cat]`), `demo_uline_ws_is_the_parse`,
+`demo_line_bytes`, and `demo_not_file` (`FileDisc.parse_line` of that body
+is `None`).
+
+**THE FILE AUDIT IS UNMOVED.**  `make audit-file-only` prints the same
+FOURTEEN, textually: nothing the FILE theorem quantifies over moved.
+
+**WHAT WAS REFUTED — 1. the brief's `ralt_ok (LPipe _) _ := False`, at the
+statement.**  Four landed `forall (l : uline)` lemmas say that EVERY line
+shape admits a panic alternative, an exec-failed one, a silent one and a
+default one, and each of them would have needed a new premise:
+
+  FileOutPure.ralt_def_ok  l : ralt_ok l (ralt_dec (ralt_def l))
+  FileLinksLine.fpan_of_ok l : ralt_ok l (ralt_dec (fpan_of l))   (+ fpan_of_panic: it PANICS)
+  FileLinksLine.fexf_of_ok l : ralt_ok l (ralt_dec (fexf_of l))
+  FileLinksLine.fnoc_of_ok l : ralt_ok l (ralt_dec (fnoc_of l))
+
+So the dead arm cannot be empty.  What it IS: **`LCat`'s five, verbatim**
+(`RCRan | RCNoOpen | RCExec | RCSilent | RCFork`).  That choice is what
+makes `fsm` need NO arm at all (its `| _ => s` catch-all is already right),
+`cont` need no arm (it matches on the ALTERNATIVE, not the line, and only
+its `REcho` arm reads `uline_ws l` — dead here), and every one of the ten
+per-line choice definitions be `LCat`'s line copied.  That is the whole
+reason each of the 29 proof sites is one line.
+
+**2. the design's count.**  Measured, landed: **10 `match l with`
+definitions** gained an arm, not 5 — `FileDisc` 4 (`uline_ws`, `line_body`,
+`uline_ok`, `ralt_ok`; `fsm` and `echof_ws` needed NONE, they have
+catch-alls), `FileDiscDec` 1 (`ralt_fix_cands`; `ralt_cands`' second match
+has `| _ => []`), `FileOutPure` 1 (`ralt_def`), `FileLinksLine` 4
+(`fpan_of`, `fexf_of`, **`fexfb`** — the design's list missed it —
+`fnoc_of`).  And **29 proof sites**, not 26: `FileDisc` 7, `FileDiscDec` 4
+(one of them, `ralt_cands_canon`, takes FIVE new bullets because it
+case-splits on line AND alternative), `FileOutPure` 3, `FileLinksLine` 15
+(the three the design missed are `fab_len_ge2` / `fab_dollar` /
+`fab_space`, which destruct `fline I`, not `l`).  Every one closed by
+`contradiction`/the copied `LCat` line, as the brief predicted.  None
+needed more.
+
+**3. THE SHARP ONE — "additive" is not free: the three ROUND-TRIP lemmas
+are FALSE at a constructor outside `parse_line`'s range, and they are FILE
+statements.**  `parse_line_body l : uline_ok l -> parse_line (line_body l)
+= Some l` says *the model's lines ARE the parser's range*.  At
+`LPipe ws`, `parse_line (wl_body ws ++ " | cat") = None` (the bar is not a
+`wl_body_byte`, so `body_ok` fails), while `uline_ok (LPipe ws)` is TRUE —
+it has to be, because `UkSh.ush_line_at` reads exactly that predicate and
+the pipe era has to satisfy it.  So the three gained the guard
+`uline_nopipe l` (`forall ws, l <> LPipe ws`), a FileDisc definition:
+
+    parse_line_body l : uline_nopipe l -> uline_ok l -> parse_line (line_body l) = Some l
+    uline_of_body  l : uline_nopipe l -> uline_ok l -> uline_of (line_body l) = l
+    fbody_ok_of    l : uline_nopipe l -> uline_ok l -> fbody_ok (line_body l)
+
+**Three FILE statements moved** — this is STOP RULE A firing, reported and
+not stopped on, because the guard is supplied for free at every caller
+(`uline_of_nopipe` for anything that came out of the parser, a
+constructor for a literal) and because stopping here delivers a red tree
+and no measurement.  The owner should know the price is a guard on three
+lemmas and NOT zero; `make audit-file-only` is unmoved, so no FILE
+THEOREM changed.
+
+**4. THE ONE THE DESIGN DID NOT SEE AT ALL: `UkSh.ush_posw`'s third
+conjunct was `FileDisc.fbody_ok`, i.e. the FILE PARSER, hard-coded inside
+the ERA-GENERIC sh loop — and no constructor can fix that.**  The loop's
+gets exit (`UkSh.ush_gets_done_line_at`, applied by `wp_ksh_loop` at the
+line `Hdsc_line` produced) asserts
+
+    FileDisc.fbody_ok (ush_lastbody I)      (* = is_Some (parse_line …) *)
+
+and proves it by `FileDisc.fbody_ok_of lu`.  That premise then travels as a
+`⌜…⌝ -∗` of `UkShFork.ushf_child_law_at` — the law EVERY forked child's
+walk is stated at — through `UkShRedirBody`, `UkShEcho.
+ushf_child_law_holds_at` and `UShRound.file_D_of_line`.  **A pipe era can
+never supply it**: its input's last body is `wl_body ws ++ " | cat"`, and
+`FileDisc.parse_line` refuses it by construction (and must keep refusing
+it, or `disc_input_f` widens and the FILE theorem's meaning moves — the
+design's own §5.8 sharp half).  With `LPipe` added and nothing else, the
+tree is RED at exactly one line (`UkSh.v:2582`, measured), and every route
+to green moves a landed statement.
+
+The fix landed here is the SMALLEST of them and it is a GENERALISATION,
+not a patch.  Read for what it is actually for, the conjunct never needed
+the parser: what a child law spends it on is `FileDisc.fbody_ok_echo`
+("which constructor did the era file?"), and that only needs *the body IS
+some admissible line's body*.  So:
+
+    FileDisc.fline_ok (b) := exists l, uline_ok l /\ b = line_body l
+    FileDisc.fline_ok_of      l : uline_ok l -> fline_ok (line_body l)      (* NO guard *)
+    FileDisc.fline_ok_of_body b : fbody_ok b -> fline_ok b
+    FileDisc.fline_ok_echo    b : fline_ok b -> line_ok (wl_words b) -> uline_of b = LEcho (wl_words b)
+
+`fline_ok_echo` is `fbody_ok_echo` verbatim with one more `exfalso`: the
+redirect body is killed by its `>`, the cat line by its head word, and the
+PIPE body by its BAR — the same argument as the redirect's, one byte over
+(`fd_bar_not_body`, `suf_barcat_bar`, the mirrors of `wl_gt_not_body` /
+`suf_gtf_gt`).  `UkSh.ush_posw` now carries `fline_ok`; **its TYPE does not
+move** (it is a definition body).  FOUR premises weaken — and weakening a
+premise makes each lemma STRONGER, so no consumer lost anything:
+
+    UkShFork.ushf_child_law_at           ⌜FileDisc.fline_ok (ush_lastbody I)⌝ -∗
+    UkShEcho.ushf_child_law_holds_at     (… -> FileDisc.fline_ok … -> D I) ->
+    UkShRedirBody (the same premise of the redirect child law)
+    UShRound.file_D_of_line              FileDisc.fline_ok (ush_lastbody I) -> file_D I
+
+The echo era's supplier (`UkShEcho.ushf_child_law_holds`) ignores the
+argument; the file era's is `file_D_of_line`, one `fline_ok_echo` instead
+of one `fbody_ok_echo`.  **This is what unblocks the pipe era through the
+shell's loop, and without it SH-PIPE-ROUND-2 cannot state the round at
+all.**
+
+**5. FOUR MORE u-tier sites, all outside the brief's four files.**
+
+- `UkSh.ush_uline_body_val`'s CONCLUSION gains one disjunct,
+  `bv_unsigned (line_bytes lu !!! j) = 124%Z`: the bar is now a byte of an
+  admissible line.  A pure widening; its one consumer
+  (`ush_uline_no_nul`) reads it through `lia` and does not move.  Its
+  twelve-line case split is replaced by the new
+  `FileDisc.line_bytes_bytes l : uline_ok l -> Forall (fun b => fbody_byte b
+  \/ b = fd_bar \/ b = wl_nl) (line_bytes l)`, so the enumeration lives in
+  the model file where the constructors are.
+- `UkSh.ush_uline_head_nonblank` gains the pipe arm (the head byte is the
+  echo line's `e`, one suffix over) — proof only.
+- `UkShRedirBody.ush_line_file` was **`Definition ush_line_file l := True`**
+  — honest while `uline` had exactly the three constructors its case
+  splits on, VACUOUS the moment a fourth exists (durable-notes, Vacuity:
+  a `True` placeholder that reads like a claim).  It becomes
+  `FileDisc.uline_nopipe`, supplied by `FileReadInst.file_disc_line` from
+  `uline_of_nopipe` at a cost of one `exact` (it was `exact Logic.I`), and
+  the file era's three-way case closes its fourth arm by contradiction.
+  No statement of `FileReadInst.file_gets_holds` moved — it names
+  `ush_line_file`, not its body.
+- `UShLexRedir.fd_demo_parse` supplies `parse_line_body`'s new guard
+  (`exact (uline_nopipe_echof fd_ws)`) — proof only, and the reason it is
+  worth naming is that its failure mode was *`Could not find an instance
+  for Decision (uline_nopipe (LEchoF fd_ws))`*: the demo discharged
+  `parse_line_body`'s premises with one `bool_decide_unpack`, which
+  silently retargeted onto the NEW first premise.  A guard added in front
+  of a decidable one moves every `apply`'s goal order.
+
+**WHAT THE DESIGN GOT WRONG (summary).**  §5.8 STOP A's "purely additive,
+5 definitions + 26 proof sites in four landed FILE files, and the owner is
+told" is right in spirit and wrong in three measurable ways: the count is
+10 + 29; `ralt_ok (LPipe _) := False` is refuted by four `forall l`
+lemmas so the dead arm must be `LCat`'s five; and three FILE round-trip
+statements plus six u-tier ones DO move (one conclusion widened, one
+`True` definition narrowed, four premises weakened), the load-bearing one being
+`ush_posw`'s FILE-parser conjunct, which is not about the line TYPE at all
+and would have blocked SH-PIPE-ROUND-2 with a red tree whichever line type
+the campaign had chosen.  Also: the brief's "bridge in `PipeDisc.v`" is
+not possible — `PipeDisc` and `FileDisc` share three names and cannot
+import each other; `iris/PipeUline.v` is the bridge.
+
+**THE ONE THING THE NEXT LANE NEEDS FIRST.**  For **SH-PIPE-ROUND-2**:
+instantiate `UkSh`'s era hooks at `Dl := PipeUline.ush_line_pipe` and
+discharge `Hdsc_line` with `PipeUline.uline_ws_of_pline` +
+`uline_ok_of_pline` + `line_bytes_of_pline` — those three ARE the three
+projections `ush_line_at` reads, and they are landed and proved.  The
+loop's `ush_posw` conjunct is now `FileDisc.fline_ok`, which the pipe era
+supplies by `FileDisc.fline_ok_of (FileDisc.LPipe ws)`.  What is still
+OPEN and belongs to that lane, not this one: `UkShFork.ushf_child_law_at`
+takes the pipe era's `fline_ok` fine, but nothing yet turns it into a
+PIPE-era `D I` the way `UShRound.file_D_of_line` does for the file era —
+the pipe twin of `file_D_of_line` is the first thing to write, and
+`PipeUline.ush_line_pipe_not_file` is the shape of its case split.
+For **PIPE-LINK-INST**: unaffected; nothing in this lane touches the
+record.
+
+### ULINE-LPIPE-2 (2026-09-18) — the combined gate's ONE red site was TWO, both the same shape: upstream's new batch re-stated three `forall (l : uline)` / `fbody_ok`-guarded results at the OLD arity, and that is the recurring seam this constructor leaves
+
+Branch `app-pipe/uline-lpipe-2` off `main` (`96a73b3f2`), commits
+`3f599c8de`, `e62a763b3` (plus this notes commit).  Whole-tree
+`ec2-lane.sh uline build -k` **RC=0**.  `make audit-file-only` **FOURTEEN**
+and `make audit-echo-only` **FOURTEEN**, both textually the same list as
+before (1 `functional_extensionality_dep` + the 2 `xv6iris_extras`
+reservation `Parameter`s + 11 PrimString/PrimInt63; no `Spec*`/`Link*`
+module `Parameter`).  No `Admitted` added; `Proof using` on the one new
+lemma.
+
+**WHAT LANDED — the reported site.**  `UkShEcho.ushf_child_law_holds_at`.
+Upstream's batch re-split the echo child law into a guarded
+`ushf_child_law_holds_at_D` plus a wrapper "the landed statement,
+VERBATIM".  The merge put ULINE-LPIPE's generalisation into the guarded
+one (`FileDisc.fline_ok (UkSh.ush_lastbody I) -> D I`) and left the NEW
+wrapper at `FileDisc.fbody_ok`, so the wrapper's own `HD` could not be
+handed to the lemma it applies — `UkShEcho.v:1280`, *cannot unify
+`FileDisc.fline_ok (ush_lastbody I)` and `FileDisc.fbody_ok
+(ush_lastbody I)`*.  The wrapper's premise is now `fline_ok`, for the
+reason ULINE-LPIPE gave: "the input's last body is in
+`FileDisc.parse_line`'s range" is the FILE era's reading of
+`UkSh.ush_posw`'s third conjunct, and an era whose lines the file parser
+refuses (the pipeline application's, whose body carries a bar) can supply
+only the weaker one.  **No caller needed touching**: weakening a premise
+strengthens the lemma, `ushf_child_law_holds` discharges it with
+`intros I ws Hok Heq _` (it ignores the argument), and
+`UShRound.file_D_of_line` was already at `fline_ok` and spends it through
+`FileDisc.fline_ok_echo`.  `UkShRedirBody`'s premise, `UkShFork.
+ushf_child_law_at`'s and `UkSh.ush_posw`'s all survived the merge at
+`fline_ok`; a tree-wide grep now finds **no live `FileDisc.fbody_ok`
+outside `FileDisc.v`/`FileReadInst.v`**, where it is the D3 input
+discipline and belongs.
+
+**WHAT THE GATE DID NOT REPORT — a SECOND site, found by the build.**
+`UShRound.fsm_panic` and `UShRound.fsm_fnoc` (new in the same batch) are
+`forall (l : uline)` and were written with a three-branch `destruct`:
+*`UShRound.v:187`, Expects a disjunctive pattern with 4 branches*.  Both
+arms are `reflexivity` — `FileDisc.fsm` moves the file at `LEchoF` and
+nowhere else, so its `| _ => s` catch-all already covers `LPipe`.  Added
+`UShRound.fsm_pipe` beside the landed `fsm_echo`/`fsm_cat` for the reason
+those two exist.  This was invisible to the gate because `-k` was not on
+in the run that reported it: `UShRound` comes after `UkShEcho` in the
+cone, so the first error masked the second.  **Anyone re-running a
+combined gate against this constructor should use `-k`** — the two sites
+are independent and there is no reason to expect only one.
+
+**WHAT THIS SAYS FOR THE CAMPAIGN (the useful part).**  Both breakages are
+the SAME shape and neither is a conflict `git` can see: upstream lanes go
+on writing `forall (l : FileDisc.uline)` lemmas with three-branch
+`destruct`s and `fbody_ok` guards, and every one of them is a textually
+clean merge that fails to compile.  The two cheap detectors, worth running
+after ANY merge of upstream into a branch carrying `LPipe`:
+
+    grep -rn '\[ws | ws |\]' iris/*.v          # a three-branch uline destruct
+    grep -rn 'FileDisc.fbody_ok' iris/*.v       # the FILE parser as an era guard
+
+Both are empty on this branch.  Neither is a substitute for the build, but
+both are seconds instead of an hour, and both name the site exactly.
+
+**NOTHING ELSE MOVED.**  No statement outside `UkShEcho.
+ushf_child_law_holds_at`'s premise changed; `fsm_panic`/`fsm_fnoc` keep
+their statements (only the `destruct`'s arity moved) and `fsm_pipe` is
+new.  ULINE-LPIPE's own findings block above stands unamended — every
+measurement in it (10 definitions, 29 proof sites, the three guarded
+round-trip lemmas, the `ralt_ok := False` refutation, the `ush_posw`
+finding) is unaffected by this batch.
+
+**THE ONE THING THE NEXT LANE NEEDS FIRST.**  Unchanged from ULINE-LPIPE:
+**SH-PIPE-ROUND-2** instantiates `Dl := PipeUline.ush_line_pipe` and
+discharges `Hdsc_line` from `uline_ws_of_pline` / `uline_ok_of_pline` /
+`line_bytes_of_pline`, and supplies `ush_posw`'s conjunct with
+`FileDisc.fline_ok_of (FileDisc.LPipe ws)`.  The pipe twin of
+`UShRound.file_D_of_line` is still the first thing that lane writes.

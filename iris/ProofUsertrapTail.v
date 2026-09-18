@@ -143,9 +143,28 @@ Section ProofUsertrapTail.
     ut_own_nm N U sts cs pid ∗ ChildTok.taken_at (pv_gen (us_V U)).
   Proof using .
     rewrite /ut_own /ut_own_nm (proc_priv_unmark (un_f N) (un_pj N) pid U).
+    (* BUILD the bundle rather than framing it: conjunct [E] is
+       [proc_priv_unmarked], whose core ends in a 4096-element big-op, so a
+       bare [iFrame] searches that goal once per conjunct (2.6s + 1.7s).
+       Every row is in hand, so the goal's own order closes it. *)
     iSplit.
-    - iIntros "(A & B & C & D & [E Ht] & F & G & H)". iFrame.
-    - iIntros "[(A & B & C & D & E & F & G & H) Ht]". iFrame.
+    - iIntros "(A & B & C & D & [E Ht] & F & G & H)".
+      iSplitR "Ht"; [| iExact "Ht"].
+      iSplitL "A"; [iExact "A" |].
+      iSplitL "B"; [iExact "B" |].
+      iSplitL "C"; [iExact "C" |].
+      iSplitL "D"; [iExact "D" |].
+      iSplitL "E"; [iExact "E" |].
+      iSplitL "F"; [iExact "F" |].
+      iSplitL "G"; [iExact "G" | iExact "H"].
+    - iIntros "[(A & B & C & D & E & F & G & H) Ht]".
+      iSplitL "A"; [iExact "A" |].
+      iSplitL "B"; [iExact "B" |].
+      iSplitL "C"; [iExact "C" |].
+      iSplitL "D"; [iExact "D" |].
+      iSplitL "E Ht"; [iSplitL "E"; [iExact "E" | iExact "Ht"] |].
+      iSplitL "F"; [iExact "F" |].
+      iSplitL "G"; [iExact "G" | iExact "H"].
   Qed.
 
   Definition ut_hold_nm (N : ut_names) (U : ustate) (b : bool)
@@ -201,7 +220,12 @@ Section ProofUsertrapTail.
     iDestruct (gen_halves_at_reg with "Hgh") as "[Hr Hgb]".
     iFrame "Hq Hr". iIntros "Hq Hr".
     iDestruct ("Hnb" with "Hq") as "Hn". iDestruct ("Hgb" with "Hr") as "Hgh".
-    rewrite /proc_priv_unmarked. iFrame.
+    rewrite /proc_priv_unmarked.
+    iSplitL "Hn"; [iExact "Hn" |].
+    iSplitL "Hc"; [iExact "Hc" |].
+    iSplitL "Hf"; [iExact "Hf" |].
+    iSplitL "Hgq"; [iExact "Hgq" |].
+    iSplitL "Hxs"; [iExact "Hxs" | iExact "Hgh"].
   Qed.
 
   Lemma ut_hold_unmark (N : ut_names) (U : ustate) (b : bool)
@@ -211,9 +235,20 @@ Section ProofUsertrapTail.
     ut_hold_nm N U b lks sts cs pid ∗ ChildTok.taken_at (pv_gen (us_V U)).
   Proof using .
     rewrite /ut_hold /ut_hold_nm /ut_env (ut_own_unmark N U sts cs pid).
+    (* built, not framed, for [ut_own_unmark]'s reason one tier up *)
     iSplit.
-    - iIntros "(A & B & C & [#D [E Ht]])". iFrame "A B C D E Ht".
-    - iIntros "[(A & B & C & [#D E]) Ht]". iFrame "A B C D E Ht".
+    - iIntros "(A & B & C & [#D [E Ht]])".
+      iSplitR "Ht"; [| iExact "Ht"].
+      iSplitL "A"; [iExact "A" |].
+      iSplitL "B"; [iExact "B" |].
+      iSplitL "C"; [iExact "C" |].
+      iSplitR; [iExact "D" | iExact "E"].
+    - iIntros "[(A & B & C & [#D E]) Ht]".
+      iSplitL "A"; [iExact "A" |].
+      iSplitL "B"; [iExact "B" |].
+      iSplitL "C"; [iExact "C" |].
+      iSplitR; [iExact "D" |].
+      iSplitL "E"; [iExact "E" | iExact "Ht"].
   Qed.
 
   (* ==================================================================== *)

@@ -267,7 +267,7 @@ Section UkShRedirBody.
           ⌜ ws = last_ws I ⌝ -∗
           (* the era's own line at that input (the PROGRAM STREAM): the
              slot the loop left says the input's last body PARSES *)
-          ⌜ FileDisc.fbody_ok (UkSh.ush_lastbody I) ⌝ -∗
+          ⌜ FileDisc.fline_ok (UkSh.ush_lastbody I) ⌝ -∗
           ⌜ 0 < s0 ⌝ -∗ ⌜ s0 + Z.of_nat len + 1 < Z64 ⌝ -∗
           ⌜ s0 + Z.of_nat len < 2 ^ 38 ⌝ -∗
           ⌜ 8344 <= sz ⌝ -∗ ⌜ UserPtTree.pgroundup sz = sz ⌝ -∗
@@ -362,127 +362,10 @@ Section UkShRedirBody.
   Definition ushs_fd1f (ty : fdtype) (l : list fdstate) : Prop :=
     l !! 1%nat = Some (FdOpen false true ty).
 
-  Lemma wp_kshm_child_file_redir
-      (N' : uk_names Σ) (Hc : ukn_const N')
-      (h : CpuId) (m : regfile) (dw dv : dfrac)
-      (s0 : Z) (len : nat) (ws : list (list (bv 8))) (file : list (bv 8))
-      (fb : nat -> bv 8) (sz : Z) (ld : list fdstate) (st1 : fdstate)
-      (n : nat) (I : list (bv 8)) (K : fdtype -> iProp Σ) :
-    ukn_pay N' = (fun _ : Z => UkShFork.ushf_wq Wc I) ->
-    m !!! Regidx s1_idx = (mword_of_int s0 : mword 64) ->
-    UkShRedirLine.ushs_line_is ws file fb 0%nat len ->
-    0 < s0 -> s0 + Z.of_nat len + 1 < Z64 -> s0 + Z.of_nat len < 2 ^ 38 ->
-    8344 <= sz ->
-    UserPtTree.pgroundup sz = sz ->
-    usz_ok (sz + 65536) ->
-    ld !! 1%nat = Some st1 ->
-    st1 <> FdClosed ->
-    (forall (rb wb : bool) (gn : PipeNames.pipe_names),
-       st1 <> FdOpen rb wb (FdPipe gn)) ->
-    UkSh.ush_fd2p ld ->
-    UkSh.sh_deps -∗
-    UCodeShK.shk_code (ukn_t N') -∗
-    UkSh.ush_jtab (ukn_t N') -∗
-    UCodeShP.shp_code (ukn_t N') -∗
-    UCodeShP.shp_rodata (ukn_t N') -∗
-    ustr (ukn_d N') (DfracOwn 1) s0 len fb -∗
-    ustr (ukn_d N') dw ushp_whitespace 5 ushp_ws_f -∗
-    ustr (ukn_d N') dv ushp_symbols 7 ushp_sym_f -∗
-    UserFd.ustd (ukn_fd N') ld -∗
-    UserCwd.ucwd (ukn_cwd N') FsImg.ROOTINO -∗
-    UserChildren.uch_any (ukn_ch N') -∗
-    UkShMalloc.ushm_fresh N' sz -∗
-    (* the open, as the application's CALL premise *)
-    UkShRedir.ush_open_call N' FsImg.ROOTINO
-      (s0 + Z.of_nat (S (S (length (wl_body ws) + 1)))) 1537
-      (<[1%nat := FdClosed]> ld) K -∗
-    (* ...and the child's exec supply AT THE FILE the open returned, WITH
-       THE RECEIPT IN THE LEND (the PROGRAM STREAM).  It used to be
-       [K ty -∗ sh_exec_sup_echo_at … (Wc I 3)] and that shape cannot be
-       filled: the supply is a [□] box and [K ty] is LINEAR (it carries the
-       deed at `f` and the offset half), so nothing can hand the receipt
-       over to build it.  The receipt belongs where the entry's [Pay] is
-       made instead -- inside the box's own [Cr], which the walk hands in
-       per call -- and that is exactly where K1's [ef_pay] wants it: the
-       deed went INTO the open out of the lend and comes back in the
-       receipt, so [Cr] is what is left of the lend beside it. *)
-    (∀ ty : fdtype,
-       UkShEcho.sh_exec_sup_echo_at (ushs_fd1f ty) ws
-         (fun _ : Z => UkShFork.ushf_wq Wc I) (Wc I 3%nat ∗ K ty)) -∗
-    (* ...the diagnostic's law at the two ends of the credential, AT THE
-       LEND THE EXEC CARRIES (so, with the receipt beside it): a law at a
-       bigger [Cr] is the law at the smaller one with the extra dropped,
-       which is the direction the round weakens in. *)
-    (∀ ty : fdtype,
-       UkShDiag.ush_execfail_law (Wc I 3%nat ∗ K ty) (Wc I 0%nat)) -∗
-    Wc I 3%nat -∗
-    urun N' h m (mword_of_int 0x9c0)
-      (68 + (8 + (UkShDiag.ush_Dg + n))) -∗
-    WP (Loop : expr riscv_lang).
-  Proof using Hpsok_free.
-    intros Hpeq Hs1 Hline Hs0 Hs64 Hs38 Hszlo Hszal Hszok
-           Hst1 Hne Hnp Hfd2.
-    iIntros "#Hdp #Hcode #Hjt #Hpcode #Hpro Hstr Hws Hsy Hstd Hcwd Hch HM
-             Hopen Hsup #Hxl Hcr Hrun".
-    (* the parser's premises, off the line (lane SH-LEX-REDIR) *)
-    destruct (UShLexRedir.ush_line_toks_holds_redir ws file fb 0%nat len
-                Hline) as (Hred & Htoks & Hpos & Htlen).
-    pose proof (proj1 Hline) as Hok.
-    (* the lend pays every exit *)
-    iAssert (□ (Wc I 3%nat -∗ ukn_pay N' (-1)))%I as "#Hpxw".
-    { iIntros "!> Hc". rewrite Hpeq /UkShFork.ushf_wq. iLeft. iExact "Hc". }
-    (* the ledger's length, for the two inserts *)
-    pose proof (lookup_lt_Some ld 1%nat st1 Hst1) as Hlen1.
-    iApply (UkShRedirSeam.wp_kshm_child_alloc_redir N' (Hpay := Hc)
-              Hpsok_free h m dw dv s0 FsImg.ROOTINO len fb (wl_toks ws)
-              (length (wl_body ws) + 1)%nat
-              (length (wl_body ws) + 3 + length file)%nat
-              sz ld st1 n K (Wc I 3%nat)
-              Hs1 Hred Htoks Hpos Htlen Hs0 Hs64 Hs38 Hst1 Hne Hnp
-              Hszlo Hszal Hszok
-              with "Hdp Hcode Hjt Hpcode Hpro Hstr Hws Hsy Hstd Hcwd HM
-                    Hopen Hpxw Hcr Hrun").
-    iIntros (hf mf q ty) "%Ha0f #Hsub Hstd Hcwd HK HM2 Hcr Hrun".
-    (* the two rows the exec arm reads off the ledger the open left *)
-    assert (Hfd1' : ushs_fd1f ty
-              (<[1%nat := FdOpen false true ty]>
-                 (<[1%nat := FdClosed]> ld))).
-    { rewrite /ushs_fd1f. apply list_lookup_insert.
-      rewrite length_insert. exact Hlen1. }
-    assert (Hfd2' : UkSh.ush_fd2p
-              (<[1%nat := FdOpen false true ty]>
-                 (<[1%nat := FdClosed]> ld))).
-    { destruct Hfd2 as [ rb Hrb ]. exists rb.
-      rewrite list_lookup_insert_ne; [ | lia ].
-      rewrite list_lookup_insert_ne; [ exact Hrb | lia ]. }
-    (* the break, out of the free list the parse left *)
-    iDestruct "HM2" as (R') "[_ HM2]".
-    rewrite /UkShMalloc.ushm_one.
-    iDestruct "HM2" as (cq) "(_ & _ & _ & _ & _ & Hsz)".
-    (* the argv bytes at the REDIRECT cut *)
-    pose proof (echo_argv_bytes_of_redir ws file fb 0%nat len
-                  (length (wl_body ws) + 3 + length file)%nat Hline eq_refl)
-      as Hbytes.
-    replace (UkShDiag.ush_Dg + (70 + n))%nat
-      with (6 + (2 + (UkShDiag.ush_Dg + (62 + n))))%nat by lia.
-    iApply (UkShEcho.wp_kshr_exec_echo_at_holds (ushs_fd1f ty) ws
-              (fun _ : Z => UkShFork.ushf_wq Wc I)
-              (Wc I 3%nat ∗ K ty)%I (Wc I 0%nat) N' Hc hf mf q (sz + 65536) s0
-              (UkShRedirPc.ushs_nulcut (wl_toks ws) len
-                 (fun j : nat => fb (0 + j)%nat)
-                 (length (wl_body ws) + 3 + length file)%nat)
-              (<[1%nat := FdOpen false true ty]> (<[1%nat := FdClosed]> ld))
-              (62 + n)%nat
-              Hok Hpeq Ha0f Hbytes Hfd1' Hfd2'
-              with "Hcode [Hsup] [Hxl] [] Hjt Hsub Hsz Hstd Hcwd Hch [Hcr HK]
-                    Hrun").
-    - iApply ("Hsup" $! ty).
-    - iApply ("Hxl" $! ty).
-    - (* a failed exec's child exits on the block written up to its prompt *)
-      iIntros "!> Hc". rewrite Hpeq /UkShFork.ushf_wq. iRight. iExact "Hc".
-    - (* THE LEND THE EXEC CARRIES: what is left of it, and the receipt *)
-      iFrame "Hcr HK".
-  Qed.
+  (* [wp_kshm_child_file_redir] -- the walk from 0x9c0 to the child's
+     exits -- is [UkShRedirChild.v]'s: it is stated on the generic seam, at
+     the application's own call ([UkShRedirAns.ush_open_call2]) and the
+     paid open-failed diagnostic, neither of which this file sees. *)
 
   (* =================================================================== *)
   (*  §3c  THE CAT ARM'S BODY (the program stream; [Hcat_body] discharged) *)
@@ -682,7 +565,14 @@ Section UkShRedirBody.
   (*  ([FileOut.ftag], [FileDisc.disc_f]) is what says the buffer holds    *)
   (*  one of them, and this is where that turns into a walk.              *)
   (* =================================================================== *)
-  Definition ush_line_file (l : uline) : Prop := True.
+  (* THE ERA'S LINES ARE THE PARSER'S RANGE (lane ULINE-LPIPE).  This was
+     [True], which was honest while [uline] had exactly the three
+     constructors this case splits on.  Now that [FileDisc.uline] also
+     carries the PIPELINE application's [LPipe] -- a line the FILE era's
+     [parse_line] never files and has no walk for -- the predicate has to
+     say so, and [FileReadInst.file_disc_line] supplies it from
+     [FileDisc.uline_of_nopipe] at no cost. *)
+  Definition ush_line_file (l : uline) : Prop := FileDisc.uline_nopipe l.
 
   (* ---- THE CAT ARM, PROVED (lane PROGRAM STREAM) --------------------- *)
   (*  This used to be [Hypothesis Hcat_body]: the whole body walk for      *)
@@ -742,7 +632,7 @@ Section UkShRedirBody.
     iIntros "!>" (lu h m f k len l n)
       "%Hd %Hlat %Hregs %Hs1 %Ha5 %Hnn %Hnul %Hkl2 %Hpm1 %Hpmwb %Hfd0
        #Hgen #Hcode #Hjt Hhead Hstd Hdat Hsz Hbuf Hrun".
-    destruct lu as [ ws | ws | ].
+    destruct lu as [ ws | ws | | ws]; [| | | by destruct (Hd ws eq_refl) ].
     - (* [echo a b] -- the landed walk *)
       iApply ("Hecho" $! (LEcho ws) h m f k len l n with
                 "[%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] Hgen Hcode Hjt

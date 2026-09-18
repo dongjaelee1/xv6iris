@@ -1357,7 +1357,8 @@ Section VtDevRam.
     iDestruct (sie_cap_gpr_kmap_claims with "Hcg") as "[#Hkm Hcg]".
     iDestruct (disk_geom_static with "Hgeom") as %(_ & _ & Hstu).
     iDestruct (disk_geom_canonical with "Hgeom") as %(_ & _ & Hcanu).
-    iDestruct "Hgeom" as "(_ & _ & _ & %Hal0 & #Hcfg0 & _ & _ & _)".
+    iDestruct (disk_geom_aligned with "Hgeom") as %Hal0.
+    iDestruct (disk_geom_cfg with "Hgeom") as "#Hcfg0".
     destruct Hal0 as (_ & _ & Halu).
     assert (Halign : is_aligned_paddr (Physaddr (pa_add pu 2%nat)) 2 = true).
     { apply (vt_aligned_off pu 2%nat 2 Halu);
@@ -1610,7 +1611,8 @@ Section VtDevRam.
     iDestruct (sie_cap_gpr_kmap_claims with "Hcg") as "[#Hkm Hcg]".
     iDestruct (disk_geom_static with "Hgeom") as %(_ & _ & Hstu).
     iDestruct (disk_geom_canonical with "Hgeom") as %(_ & _ & Hcanu).
-    iDestruct "Hgeom" as "(_ & _ & _ & %Hal0 & #Hcfg0 & _ & _ & _)".
+    iDestruct (disk_geom_aligned with "Hgeom") as %Hal0.
+    iDestruct (disk_geom_cfg with "Hgeom") as "#Hcfg0".
     destruct Hal0 as (_ & _ & Halu).
     assert (Halign : is_aligned_paddr (Physaddr (pa_add pu (vt_uoff u))) 4 = true).
     { apply (vt_aligned_off pu (vt_uoff u) 4 Halu);
@@ -1775,7 +1777,8 @@ Section VtDevRam.
   Proof using .
     intros HMs1.
     iIntros "Hcg #Htext Hpc #Hdinv #Hgeom Hpub Hidx Hnr Hflr Hfl #Hf0 #Hf1 #HfF Hcont".
-    iDestruct "Hgeom" as "#Hgeomc". iPoseProof "Hgeomc" as "(_ & _ & #Hup & _)".
+    iDestruct (disk_geom_used_ptr with "Hgeom") as "#Hup".
+    iDestruct "Hgeom" as "#Hgeomc".
     (* ---- +0x30: c.ld a5,16(s1) -- a5 := disk.used ---- *)
     assert (Hup : add_vec (rget M (mword_of_int 9 : mword 5))
                     (sign_extend' 64 (mword_of_int 16 : mword 12)) = (d_used_ptr : mword 64)).
@@ -2251,7 +2254,7 @@ Section VtBody.
     intros HMs1 Hnrc.
     iIntros "Hcg #Htext Hpc #Hdinv #Hgeom Hpub #Hlbc Hrd Hauth Hidx #HR0 #Hq0 Hcont".
     iDestruct (vt_done_lb_le γd (S nr) c Hnrc with "Hlbc") as "#Hlbs".
-    iPoseProof "Hgeom" as "(_ & _ & #Hup & _)".
+    iDestruct (disk_geom_used_ptr with "Hgeom") as "#Hup".
     (* ---- +0x3e: fence rw,rw -- THE ACQUIRE (relaxed-rr.md §4.3).  The
        index read minted a READ receipt at [V0]; this fence is where it
        becomes the VIEW receipt, and only then can the handler's context
@@ -2881,7 +2884,7 @@ Section VtBody.
   Proof using .
     intros HMs1.
     iIntros "Hcg #Htext Hpc #Hdinv #Hgeom Hpub Hidx Hnr Hflr Hfl #Hf0 #Hf1 #HfF Hcont".
-    iPoseProof "Hgeom" as "(_ & _ & #Hup & _)".
+    iDestruct (disk_geom_used_ptr with "Hgeom") as "#Hup".
     (* ---- +0x72: lhu a5,32(s1) ---- *)
     assert (Huidx : add_vec (rget M s1_idx) (sign_extend' 64 (mword_of_int 32 : mword 12))
                     = (d_used_idx : mword 64)).

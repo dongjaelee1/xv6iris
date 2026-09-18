@@ -476,10 +476,13 @@ Section SpecSysOpen.
   Proof using .
     rewrite /sys_open_post /fd_frags_any.
     iIntros "[[(%Hr & Hp & Hb) | (%fd & %l & %k & %t & %Hpu & Hp & Hb)] Hfd]".
-    - iFrame "Hfd". iSplitR "Hb"; [| by iExists sts].
+    (* placed by name rather than framed, for the reason above *)
+    - iSplitR "Hb Hfd"; [| iSplitL "Hb"; [by iExists sts | iExact "Hfd"]].
       iLeft. by iFrame "Hp".
-    - iFrame "Hfd". iSplitR "Hb";
-        [| by iExists (<[fd := FdOpen (so_rd_of om) (so_wr_of om) t]> sts)].
+    - iSplitR "Hb Hfd";
+        [| iSplitL "Hb";
+           [by iExists (<[fd := FdOpen (so_rd_of om) (so_wr_of om) t]> sts)
+           | iExact "Hfd"]].
       iRight. iExists fd, l, k. iFrame "Hp". iPureIntro.
       destruct Hpu as (Hr1 & Hfl1 & _). exact (conj Hr1 Hfl1).
   Qed.
@@ -1025,7 +1028,12 @@ Section SysOpenArms.
   Proof using .
     destruct (om_modes_landed vom) as [Hrd Hwr].
     rewrite /open_arms_plain /open_post_ok_plain /sys_open_post.
-    iIntros "[[(%Hr & Hp & Hb & _) | H] $]".
+    (* the [$] in that pattern was a FRAME into the post's whole goal (the
+       success arm carries [proc_priv], whose core ends in a 4096-element
+       big-op), 1.7s a site.  Place the slot by name first, then destruct. *)
+    iIntros "[Harms Hfd]".
+    iSplitR "Hfd"; [| iExact "Hfd"].
+    iDestruct "Harms" as "[(%Hr & Hp & Hb & _) | H]".
     - iLeft. by iFrame "Hp Hb".
     - iRight.
       iDestruct "H" as (pl av i) "(_ & _ & [H | [H | H]])".
@@ -1054,7 +1062,12 @@ Section SysOpenArms.
   Proof using .
     destruct (om_modes_landed vom) as [Hrd Hwr].
     rewrite /open_arms_create /open_post_ok_create /sys_open_post.
-    iIntros "[[(%Hr & Hp & Hb & _) | H] $]".
+    (* the [$] in that pattern was a FRAME into the post's whole goal (the
+       success arm carries [proc_priv], whose core ends in a 4096-element
+       big-op), 1.7s a site.  Place the slot by name first, then destruct. *)
+    iIntros "[Harms Hfd]".
+    iSplitR "Hfd"; [| iExact "Hfd"].
+    iDestruct "Harms" as "[(%Hr & Hp & Hb & _) | H]".
     - iLeft. by iFrame "Hp Hb".
     - iRight.
       iDestruct "H" as (pl d i nm) "(_ & _ & _ & [H | H])".

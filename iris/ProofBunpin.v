@@ -476,7 +476,7 @@ Section ProofBunpin.
               (fun ξ => bcache_res2 bn V ξ) D5
               n eb p (K - 4)%nat
               ({["bcache"]} ∪ lks)
-              ltac:(rewrite HD5a0; apply bv_eq; vm_compute; reflexivity)
+              (release_lka_of_eq _ _ HD5a0)
               ltac:(lia)
               with "Hcg Htext Hpc [Hlock] Htok [Hscan'] [Hllbtl'] Hcnt Hpay").
     { iExact "Hlock". }

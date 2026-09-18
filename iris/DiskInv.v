@@ -220,6 +220,43 @@ Section DiskInv.
     Persistent (disk_geom γ pd pav pu).
   Proof using . apply _. Qed.
 
+  (* THE THREE ROWS A CONSUMER READS, as projections.  [disk_geom] is
+     [Typeclasses Opaque] (the seal at the end of this file says why), so a
+     consumer asks for the row it wants by name instead of destructuring the
+     bundle -- which is also what optimization.md asks for on its own:
+     extracting a persistent fact out of a bundle must not take the bundle
+     apart. *)
+  Lemma disk_geom_aligned (γ : disk_names) (pd pav pu : SailStdpp.Values.mword 64) :
+    disk_geom γ pd pav pu -∗
+    ⌜virtio_pages_aligned (virtio_init_cfg pd pav pu)⌝.
+  Proof using .
+    rewrite /disk_geom. iIntros "(_ & _ & _ & %H & _)". by iPureIntro.
+  Qed.
+
+  Lemma disk_geom_cfg (γ : disk_names) (pd pav pu : SailStdpp.Values.mword 64) :
+    disk_geom γ pd pav pu -∗ disk_cfg γ (virtio_init_cfg pd pav pu).
+  Proof using .
+    rewrite /disk_geom. iIntros "(_ & _ & _ & _ & H & _)". iExact "H".
+  Qed.
+
+  Lemma disk_geom_desc_ptr (γ : disk_names) (pd pav pu : SailStdpp.Values.mword 64) :
+    disk_geom γ pd pav pu -∗ d_desc_ptr ↦₈□ pd.
+  Proof using .
+    rewrite /disk_geom. iIntros "(H & _)". iExact "H".
+  Qed.
+
+  Lemma disk_geom_used_ptr (γ : disk_names) (pd pav pu : SailStdpp.Values.mword 64) :
+    disk_geom γ pd pav pu -∗ d_used_ptr ↦₈□ pu.
+  Proof using .
+    rewrite /disk_geom. iIntros "(_ & _ & H & _)". iExact "H".
+  Qed.
+
+  Lemma disk_geom_avail_ptr (γ : disk_names) (pd pav pu : SailStdpp.Values.mword 64) :
+    disk_geom γ pd pav pu -∗ d_avail_ptr ↦₈□ pav.
+  Proof using .
+    rewrite /disk_geom. iIntros "(_ & H & _)". iExact "H".
+  Qed.
+
   (* the kdata facts, in the form the tier bridges below consume *)
   Lemma disk_geom_static (γ : disk_names) (pd pav pu : SailStdpp.Values.mword 64) :
     disk_geom γ pd pav pu -∗
@@ -801,6 +838,17 @@ Section DiskGeomMorph.
     iModIntro. iFrame "Hd H1 H2 H3 Hcfg". iPureIntro. auto.
   Qed.
 End DiskGeomMorph.
+
+(* SEAL [disk_geom], AT TOP LEVEL so it survives the section.  Its body is a
+   [bi_sep] chain, so with the name transparent every structural [CtxMorph]
+   and [Persistent] candidate matches THROUGH it by delta and the search
+   re-derives the whole bundle instead of taking the instance right above:
+   [EnvMorph]'s three park instances spent 4.5s of their 4.5s inside two
+   [apply _] calls on this one leaf (2.6s and 1.8s; every other leaf in the
+   same walks is under a millisecond).  Sealed, the named instances answer
+   directly.  Nothing reads through the name -- [FsReady.disk_geom_agree] and
+   this file's own projections [rewrite /disk_geom] first. *)
+Global Typeclasses Opaque disk_geom.
 
 (* ====================================================================== *)
 (* A6.121 (tso-flip DiskInv.v:880): THE PAYLOAD OVER AN EXPLICIT CONTEXT.   *)

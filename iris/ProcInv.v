@@ -1996,9 +1996,26 @@ Section ProcInv.
   Proof using .
     rewrite (proc_priv_split_cwd γf pa pid U) /proc_priv_unmarked
       /gen_halves_priv.
+    (* BUILD the bundle, do not frame it: [proc_priv_nocwd]'s core ends in a
+       4096-element big-op, and a bare [iFrame] here searches the whole goal
+       for every one of the seven conjuncts (2.1s a direction).  Every row is
+       definition-valued and already in hand, so the goal's own conjunct
+       order closes it with [iExact]. *)
     iSplit.
-    - iIntros "(Hn & Hc & Hf & Hgq & Hxs & Hgh & Ht)". iFrame.
-    - iIntros "[(Hn & Hc & Hf & Hgq & Hxs & Hgh) Ht]". iFrame.
+    - iIntros "(Hn & Hc & Hf & Hgq & Hxs & Hgh & Ht)".
+      iSplitR "Ht"; [| iExact "Ht"].
+      iSplitL "Hn"; [iExact "Hn" |].
+      iSplitL "Hc"; [iExact "Hc" |].
+      iSplitL "Hf"; [iExact "Hf" |].
+      iSplitL "Hgq"; [iExact "Hgq" |].
+      iSplitL "Hxs"; [iExact "Hxs" | iExact "Hgh"].
+    - iIntros "[(Hn & Hc & Hf & Hgq & Hxs & Hgh) Ht]".
+      iSplitL "Hn"; [iExact "Hn" |].
+      iSplitL "Hc"; [iExact "Hc" |].
+      iSplitL "Hf"; [iExact "Hf" |].
+      iSplitL "Hgq"; [iExact "Hgq" |].
+      iSplitL "Hxs"; [iExact "Hxs" |].
+      iSplitL "Hgh"; [iExact "Hgh" | iExact "Ht"].
   Qed.
 
   (* what a killed check on the marker-less block lends killed(): the quarter
@@ -2012,8 +2029,10 @@ Section ProcInv.
   Proof using .
     iIntros "(Hn & Hrest)".
     iDestruct (proc_priv_nocwd_pid with "Hn") as "[Hpid Hback]".
-    iFrame "Hpid". iIntros "Hpid". iDestruct ("Hback" with "Hpid") as "Hn".
-    iFrame.
+    iSplitL "Hpid"; [iExact "Hpid" |].
+    iIntros "Hpid". iDestruct ("Hback" with "Hpid") as "Hn".
+    rewrite /proc_priv_unmarked.
+    iSplitL "Hn"; [iExact "Hn" | iExact "Hrest"].
   Qed.
 
   Lemma proc_priv_unmarked_reg (γf : gname) (pa : mword 64) (pid : mword 32)
@@ -2025,7 +2044,14 @@ Section ProcInv.
   Proof using .
     iIntros "(Hn & Hc & Hf & Hgq & Hxs & Hgh)".
     iDestruct (gen_halves_at_reg with "Hgh") as "[Hr Hback]".
-    iFrame "Hr". iIntros "Hr". iDestruct ("Hback" with "Hr") as "Hgh". iFrame.
+    iSplitL "Hr"; [iExact "Hr" |].
+    iIntros "Hr". iDestruct ("Hback" with "Hr") as "Hgh".
+    rewrite /proc_priv_unmarked.
+    iSplitL "Hn"; [iExact "Hn" |].
+    iSplitL "Hc"; [iExact "Hc" |].
+    iSplitL "Hf"; [iExact "Hf" |].
+    iSplitL "Hgq"; [iExact "Hgq" |].
+    iSplitL "Hxs"; [iExact "Hxs" | iExact "Hgh"].
   Qed.
 
   Lemma proc_priv_pid (γf : gname) (pa : mword 64) (pid : mword 32) (U : ustate) :
@@ -3636,30 +3662,47 @@ Section ProcPrivMorph.
   Context `{ !fileG Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, !irefslotG Σ, !wchG Σ}.
   Context `{GEN : GenId}.
 
+  (* NAME THE TWO LEAVES.  Reached through [ctx_morph_solve]'s [apply _]
+     fallback, [CtxMorph (λ ξ, proc_fields …)] costs 1.4s a site -- the name
+     is transparent, so the structural candidates match through it by delta
+     and the search re-derives all fifteen fields instead of taking the
+     instance in [ProcDefs].  An Ltac profile put 99.5% of this file's three
+     [ctx_morph_solve] sentences in that one leaf (and 0.15s more in
+     [proc_pt_cells]); named, the walk is free. *)
+  Local Ltac pi_ctx_morph :=
+    repeat (lazymatch goal with
+            | |- CtxMorph (λ _, proc_fields _ _ _) =>
+                apply ProcDefs.proc_fields_morph
+            | |- CtxMorph (λ _, proc_pt_cells _ _) =>
+                apply proc_pt_cells_morph
+            | |- _ => ctx_morph_step
+            end);
+    first [apply _ | apply first_tok_morph].
+
   Global Instance ofile_slot_morph γf γd pa fd v :
     CtxMorph (λ ξ : CtxId, ofile_slot (XI := ξ) γf γd pa fd v).
-  Proof using . rewrite /ofile_slot. ctx_morph_solve; first [apply _ | apply first_tok_morph]. Qed.
+  Proof using . rewrite /ofile_slot. pi_ctx_morph. Qed.
   Global Instance proc_ofiles_morph γf γd pa fs :
     CtxMorph (λ ξ : CtxId, proc_ofiles (XI := ξ) γf γd pa fs).
-  Proof using . rewrite /proc_ofiles. ctx_morph_solve; first [apply _ | apply first_tok_morph]. Qed.
+  Proof using . rewrite /proc_ofiles. pi_ctx_morph. Qed.
   Global Instance proc_priv_core_morph pa pid U :
     CtxMorph (λ ξ : CtxId, proc_priv_core (XI := ξ) pa pid U).
-  Proof using . rewrite /proc_priv_core. ctx_morph_solve; first [apply _ | apply first_tok_morph]. Qed.
+  Proof using . rewrite /proc_priv_core. pi_ctx_morph. Qed.
   Global Instance proc_priv_morph γf pa pid U :
     CtxMorph (λ ξ : CtxId, proc_priv (XI := ξ) γf pa pid U).
-  Proof using . rewrite /proc_priv. ctx_morph_solve; first [apply _ | apply first_tok_morph]. Qed.
+  Proof using . rewrite /proc_priv. pi_ctx_morph. Qed.
   (* the deficit block and the working-directory reference, for the party
      that carries the block SPLIT: [ParkCap.park_child]'s boot mode, whose
      third row is these two beside [FirstTok.first_boot]. *)
   Global Instance proc_priv_nocwd_morph γf pa pid U :
     CtxMorph (λ ξ : CtxId, proc_priv_nocwd (XI := ξ) γf pa pid U).
-  Proof using . rewrite /proc_priv_nocwd. ctx_morph_solve; first [apply _ | apply first_tok_morph]. Qed.
+  Proof using . rewrite /proc_priv_nocwd. pi_ctx_morph. Qed.
   Global Instance cwd_ref_at_morph v z :
     CtxMorph (λ ξ : CtxId, cwd_ref_at (XI := ξ) v z).
   Proof using . rewrite /cwd_ref_at. apply _. Qed.
   Global Instance proc_priv_nopt_morph γf pa pid V :
     CtxMorph (λ ξ : CtxId, proc_priv_nopt (XI := ξ) γf pa pid V).
-  Proof using . rewrite /proc_priv_nopt. ctx_morph_solve; first [apply _ | apply first_tok_morph]. Qed.
+  Proof using . rewrite /proc_priv_nopt. pi_ctx_morph. Qed.
 End ProcPrivMorph.
 
 (* ====================================================================== *)

@@ -1450,6 +1450,7 @@ ProofSysOpenEntryC.v
 ProofSysOpenFull.v
 LinkSysOpen.v
 FsAbsWriteFire.v
+FsAbsWritePart.v
 SpecConsolewrite.v
 ProofConsolewrite.v
 LinkConsolewrite.v
@@ -1492,6 +1493,7 @@ EchoDisc.v
 FileDisc.v
 FileDiscDec.v
 PipeDisc.v
+PipeUline.v
 PipeDiscDec.v
 LogEntryDefs.v
 ConsLog.v
@@ -1506,6 +1508,7 @@ EchoLinksBan.v
 LinkRec.v
 StageRec.v
 ReadRec.v
+FileLineWit.v
 EchoFsPure.v
 FileFsPure.v
 AppEcho.v
@@ -1513,6 +1516,7 @@ AppFile.v
 FileOpen.v
 FileDeltas.v
 FileWrite.v
+FileWritePart.v
 FileOut.v
 PipeOut.v
 PipeLinks.v
@@ -1634,6 +1638,8 @@ TreeImg.v
 UTreeAdequacy.v
 UkFileOpen.v
 UkShRedirAns.v
+UkShRedirPaid.v
+UkShRedirChild.v
 UkCatDeed.v
 UCatOut.v
 UShCat.v

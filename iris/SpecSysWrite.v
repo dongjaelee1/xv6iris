@@ -101,6 +101,7 @@ Require Import FileInvDefs.
 Require Import SpecArgfd.
 Require Import SpecSysRead.
 Require Import ConsoleInv.
+Require Import UserPerm.   (* [uperm], [perm_of] -- RULING WR-TB *)
 Require Import SpecFilewrite.
 Require Import WpUart.       (* [uart_names]: the console arm's seed       *)
 From Kernel Require KernelSyms.
@@ -175,10 +176,11 @@ Section SpecSysWrite.
   (* IT NAMES NO KERNEL GHOST RECORD (the ARM): the devsw pin left the
      input for the Coq premise list, so this input is a proposition an
      arbitrary user process can state at its own key. *)
-  Definition sys_write_in (V : pprivate) (v : mword 64)
+  Definition sys_write_in (pmv : gmap (mword 27) uperm) (sz : Z) (lz : bool)
+      (V : pprivate) (v : mword 64)
       (sts : list fdstate) (n : Z) (M : gmap Z (bv 8)) (ua : mword 64)
       (Q : nat -> iProp Σ) (Qe : nat -> pipe_st -> iProp Σ) : iProp Σ :=
-    filewrite_in (sys_fd_st v (pv_ofile V) sts) n M ua Q Qe.
+    filewrite_in pmv sz lz (sys_fd_st v (pv_ofile V) sts) n M ua Q Qe.
 
   (* the LANDED return clause, verbatim, plus the arm's extra.  Stating the
      blanket unconditionally is what makes "the unified contract implies the
@@ -216,13 +218,14 @@ Section SpecSysWrite.
     iSplitR; [| done]. iPureIntro. left. split; [exact Hr | exact Hnone].
   Qed.
 
-  Lemma sys_write_in_of (V : pprivate) (v : mword 64)
+  Lemma sys_write_in_of (pmv : gmap (mword 27) uperm) (sz : Z) (lz : bool)
+      (V : pprivate) (v : mword 64)
       (sts : list fdstate) (fd : nat) (fv : mword 64) (st : fdstate)
       (n : Z) (M : gmap Z (bv 8)) (ua : mword 64)
       (Q : nat -> iProp Σ) (Qe : nat -> pipe_st -> iProp Σ) :
     arg_fd v (pv_ofile V) = Some (fd, fv) ->
     sts !! fd = Some st ->
-    sys_write_in V v sts n M ua Q Qe -∗ filewrite_in st n M ua Q Qe.
+    sys_write_in pmv sz lz V v sts n M ua Q Qe -∗ filewrite_in pmv sz lz st n M ua Q Qe.
   Proof using .
     intros Hsome Hst. rewrite /sys_write_in /sys_fd_st Hsome Hst /=.
     by iIntros "$".
@@ -244,6 +247,7 @@ Section SpecSysWrite.
 End SpecSysWrite.
 
 Definition wp_sys_write_sconf_body
+    (pmv : gmap (mword 27) uperm) (sz : Z) (lz : bool)
     `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, !fileG Σ, !irefslotG Σ, !pavG Σ, !wchG Σ} `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx}
  (γf : gname)                    (* kalloc, the file table  *)
     (γs : list gname) (j : nat) (γlp : gname)    (* the running process     *)
@@ -290,6 +294,15 @@ Definition wp_sys_write_sconf_body
   (* PARKING PREMISE (hart-generic scheduler protocol): every filewrite arm
      sleeps, so this syscall parks. *)
   eb = true ->
+  (* THE WRITE GUARD'S THREE KEY VALUES DESCRIBE THIS CALLER'S TABLE (RULING
+     WR-TB).  The guard [SpecFilewrite.wr_tb] is stated on a [uptd]; the arms
+     this contract carries are stated on the three USER-VISIBLE values
+     [pmv]/[sz]/[lz], and this premise is the only thing that ties them to
+     the block the syscall is running on.  A dispatcher holding
+     [proc_priv] discharges it at the block's own values out of
+     [ProcInv.proc_priv_pt_wf], [ProcInv.proc_priv_lazy] and reflexivity --
+     there is nothing here a caller cannot pay. *)
+  wr_tb pmv sz lz (pv_upt (us_V U)) ->
   sie_cap_gpr KT1 m av b pj -∗
   (* a syscall runs at push_off level 0 *)
   cpu_own 0%nat eb pj b lks -∗
@@ -324,7 +337,7 @@ Definition wp_sys_write_sconf_body
      APPLICATION'S PER-CHUNK STEP RIDES IN IT: the FD_INODE arm's retag pays
      the application's claim out of the chain's own node, so this contract
      asks for no blanket license of its own. *)
-  sys_write_in (us_V U) v sts (sys_rw_count v2) (us_M U) v1 Q Qe -∗
+  sys_write_in pmv sz lz (us_V U) v sts (sys_rw_count v2) (us_M U) v1 Q Qe -∗
   (* THE CROSSING IS THE LITERAL [true]: filewrite parks. *)
   wp_next true pj (fun (CID : CpuId) =>
   (* write() does not write user memory -- filewrite only READS the user
@@ -366,7 +379,8 @@ Module Type SYSWRITE.
       (pidv : mword 32) (U : ustate) (sts : list fdstate)
       (v v1 v2 : mword 64)
       (m : regfile) (av : nat) (eb : bool) (b : bool) (lks : gset string)
-      (Q : nat -> iProp Σ) (Qe : nat -> pipe_st -> iProp Σ),
-      wp_sys_write_sconf_body γf γs j γlp fn pidv U sts v v1 v2 m av eb b lks
+      (Q : nat -> iProp Σ) (Qe : nat -> pipe_st -> iProp Σ)
+      (pmv : gmap (mword 27) uperm) (sz : Z) (lz : bool),
+      wp_sys_write_sconf_body pmv sz lz γf γs j γlp fn pidv U sts v v1 v2 m av eb b lks
         Q Qe.
 End SYSWRITE.

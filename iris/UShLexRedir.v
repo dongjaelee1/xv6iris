@@ -433,7 +433,7 @@ Definition fd_demo_f : nat -> bv 8 := fun j : nat => (fd_b0 ++ [wl_nl]) !!! j.
 
 Lemma fd_demo_parse : parse_line fd_b0 = Some (LEchoF fd_ws).
 Proof using.
-  apply (parse_line_body (LEchoF fd_ws)).
+  apply (parse_line_body (LEchoF fd_ws)); [ exact (uline_nopipe_echof fd_ws) |].
   apply (bool_decide_unpack _); vm_compute; exact I.
 Qed.
 

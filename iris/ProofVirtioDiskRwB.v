@@ -424,8 +424,7 @@ Section ProofVirtioDiskRwB.
     { iLöb as "IH". rewrite /vdrw_p2_loop.
       iIntros (CIDlp Hslp M) "%Hinv Hcg Hown Htc Hclm Hpc Htok HR Hscr Hexit".
       destruct Hinv as (Hregs' & Hs1 & Hs4 & Hs5 & Hhi).
-      iDestruct "Hgeom" as "#Hgeom'".
-      iDestruct "Hgeom'" as "(Hdp & _)".
+      iDestruct (disk_geom_desc_ptr with "Hgeom") as "#Hdp".
       destruct Hregs' as (Hsp & Hs0 & Hs3 & Hs6 & Hs7).
       (* open the lock's resource *)
       iDestruct (vdrw_body_open γd pd pav pu with "HR") as (np nr cm fr) "Hbody".

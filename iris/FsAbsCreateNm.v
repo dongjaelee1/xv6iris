@@ -191,4 +191,122 @@ Section CreateNm.
     arg_path_of M pv pl -> npar_nm M pv nm -> nlast_elem pl = Some nm.
   Proof using . intros Hpl Hnm. exact (Hnm pl Hpl). Qed.
 
+  (* =================================================================== *)
+  (*  THE UNARM AT A NODE PREDICATE                                       *)
+  (*                                                                     *)
+  (*  [FsAbsCreateFire.aunarm_commit_at] quantifies the unarmed row's     *)
+  (*  NODE and says nothing about it -- deliberately, since the failure   *)
+  (*  arms reach it with an empty file, a device, or a directory holding  *)
+  (*  no, one or two dots.  A caller's claim is therefore asked to let    *)
+  (*  ANY row at count 1 disappear.  The echo application can: the rows   *)
+  (*  it tracks are the pinned binaries, the root and the console, all    *)
+  (*  present at the arm's own view, and the arm's row is fresh there.    *)
+  (*  The FILE application cannot: the deed's row may have been created   *)
+  (*  AFTER the arm, so [av0 !! i = None] does not separate it, and       *)
+  (*  [FileDeltas.f_ok_unarm_fresh] wants the deed's CURRENT value at     *)
+  (*  [av0] -- a temporal fact no pure receipt about one view carries.    *)
+  (*                                                                     *)
+  (*  What DOES separate them is the two rows' NODES: the arm put a       *)
+  (*  device there and the deed's row is a plain file.  So the unarm      *)
+  (*  takes a node predicate, exactly as the create takes a name one, and *)
+  (*  the arm-derived unarm instantiates it at the node                   *)
+  (*  [cre_child_unfired] already names.                                  *)
+  (* =================================================================== *)
+  Definition aunarm_commit_at_nd Γ (E : coPset) (i : Z)
+      (Nd : absnode -> Prop) (Φ : aview -> Z -> iProp Σ) : iProp Σ :=
+    (∀ (I : gmap Z fs_node) (c : absnode),
+       ⌜abs_view I !! i = Some (MkAnode c 1%nat)⌝ -∗
+       ⌜Nd c⌝ -∗
+       ghost_map_auth (γtop Γ) (1/2) I ={E}=∗
+       ghost_map_auth (γtop Γ) (1/2) I ∗
+         app_step i I (delta_unarm i (abs_view I)) ∗
+         (∀ I' : gmap Z fs_node,
+            ⌜abs_view I' = delta_unarm i (abs_view I)⌝ -∗
+            ghost_map_auth (γtop Γ) (1/2) I' ={E}=∗
+            ghost_map_auth (γtop Γ) (1/2) I' ∗ Φ (abs_view I) i))%I.
+
+  Definition aunarm_of_arm_nd Γ (E : coPset) (Nd : absnode -> Prop)
+      (Farm : pfam Σ (aview -> Z -> iProp Σ))
+      (Φ : aview -> Z -> iProp Σ) : iProp Σ :=
+    (∀ i : Z, cre_arm_fired Farm i -∗ aunarm_commit_at_nd Γ E i Nd Φ)%I.
+
+  (* ---- the same three bridges as the name predicate's ---- *)
+  Lemma aunarm_commit_at_nd_of Γ (E : coPset) (i : Z)
+      (Nd : absnode -> Prop) (Φ : aview -> Z -> iProp Σ) :
+    aunarm_commit_at Γ E i Φ -∗ aunarm_commit_at_nd Γ E i Nd Φ.
+  Proof using .
+    rewrite /aunarm_commit_at /aunarm_commit_at_nd. iIntros "H".
+    iIntros (I c) "%Hrow _ Ha". iApply ("H" with "[//] Ha").
+  Qed.
+
+  Lemma aunarm_commit_at_of_nd Γ (E : coPset) (i : Z)
+      (Nd : absnode -> Prop) (Φ : aview -> Z -> iProp Σ) :
+    (forall c : absnode, Nd c) ->
+    aunarm_commit_at_nd Γ E i Nd Φ -∗ aunarm_commit_at Γ E i Φ.
+  Proof using .
+    intros HNd. rewrite /aunarm_commit_at /aunarm_commit_at_nd. iIntros "H".
+    iIntros (I c) "%Hrow Ha". iApply ("H" with "[//] [%] Ha"). exact (HNd c).
+  Qed.
+
+  Lemma aunarm_commit_at_nd_mono Γ (E : coPset) (i : Z)
+      (Nd Nd' : absnode -> Prop) (Φ : aview -> Z -> iProp Σ) :
+    (forall c : absnode, Nd' c -> Nd c) ->
+    aunarm_commit_at_nd Γ E i Nd Φ -∗ aunarm_commit_at_nd Γ E i Nd' Φ.
+  Proof using .
+    intros Hle. rewrite /aunarm_commit_at_nd. iIntros "H".
+    iIntros (I c) "%Hrow %HNd' Ha". iApply ("H" with "[//] [%] Ha").
+    exact (Hle c HNd').
+  Qed.
+
+  Lemma aunarm_of_arm_nd_of Γ (E : coPset) (Nd : absnode -> Prop)
+      (Farm : pfam Σ (aview -> Z -> iProp Σ))
+      (Φ : aview -> Z -> iProp Σ) :
+    aunarm_of_arm Γ E Farm Φ -∗ aunarm_of_arm_nd Γ E Nd Farm Φ.
+  Proof using .
+    rewrite /aunarm_of_arm /aunarm_of_arm_nd. iIntros "H" (i) "Harm".
+    iApply (aunarm_commit_at_nd_of Γ E i Nd Φ). iApply ("H" with "Harm").
+  Qed.
+
+  Lemma aunarm_of_arm_of_nd Γ (E : coPset) (Nd : absnode -> Prop)
+      (Farm : pfam Σ (aview -> Z -> iProp Σ))
+      (Φ : aview -> Z -> iProp Σ) :
+    (forall c : absnode, Nd c) ->
+    aunarm_of_arm_nd Γ E Nd Farm Φ -∗ aunarm_of_arm Γ E Farm Φ.
+  Proof using .
+    intros HNd. rewrite /aunarm_of_arm /aunarm_of_arm_nd.
+    iIntros "H" (i) "Harm".
+    iApply (aunarm_commit_at_of_nd Γ E i Nd Φ HNd). iApply ("H" with "Harm").
+  Qed.
+
+  Lemma aunarm_of_arm_nd_mono Γ (E : coPset) (Nd Nd' : absnode -> Prop)
+      (Farm : pfam Σ (aview -> Z -> iProp Σ))
+      (Φ : aview -> Z -> iProp Σ) :
+    (forall c : absnode, Nd' c -> Nd c) ->
+    aunarm_of_arm_nd Γ E Nd Farm Φ -∗ aunarm_of_arm_nd Γ E Nd' Farm Φ.
+  Proof using .
+    intros Hle. rewrite /aunarm_of_arm_nd. iIntros "H" (i) "Harm".
+    iApply (aunarm_commit_at_nd_mono Γ E i Nd Nd' Φ Hle).
+    iApply ("H" with "Harm").
+  Qed.
+
+  (* ---- THE CHILD'S TWO LEGS, with the unarm PINNED at the node the arm
+          placed.  [FsAbsCreateFire.cre_child_unfired] names that node
+          already; this is the same pair reading it. ---- *)
+  Definition cre_child_unfired_nd Γ (c : absnode)
+      (Farm Fun : pfam Σ (aview -> Z -> iProp Σ)) : iProp Σ :=
+    (pf_at (aarm_commit_at Γ appE c) Farm
+     ∗ pf_at (aunarm_of_arm_nd Γ appE (fun c' : absnode => c' = c) Farm) Fun)%I.
+
+  Lemma cre_child_unfired_nd_of Γ (c : absnode)
+      (Farm Fun : pfam Σ (aview -> Z -> iProp Σ)) :
+    cre_child_unfired Γ c Farm Fun -∗ cre_child_unfired_nd Γ c Farm Fun.
+  Proof using .
+    rewrite /cre_child_unfired /cre_child_unfired_nd.
+    iIntros "[$ Hun]".
+    iApply (pf_at_mono (aunarm_of_arm Γ appE Farm)
+              (aunarm_of_arm_nd Γ appE (fun c' : absnode => c' = c) Farm)
+              Fun with "[] Hun").
+    iApply (aunarm_of_arm_nd_of Γ appE (fun c' : absnode => c' = c) Farm).
+  Qed.
+
 End CreateNm.

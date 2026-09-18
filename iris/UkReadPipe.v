@@ -460,7 +460,11 @@ Section UkReadPipe.
               the caller's own successor of it, at the [γp] the two handles
               are ends of. *)
            Rp γp)
-        ∨ (⌜ uint r <> 0 ⌝ ∗ ustd (ukn_fd N) l)) -∗
+        (* ...OR THE CALL FAILED, AT -1 (lane PIPE-NEG1): the leaf's own
+           failure arm, which the row now pins, relayed unchanged.  sh's
+           PIPE arm is what needs the sign -- [bltz a0] -- and this is the
+           end of the chain that carries it. *)
+        ∨ (⌜ r = (mword_of_int (-1) : mword 64) ⌝ ∗ ustd (ukn_fd N) l)) -∗
        urun N h' (<[Regidx a0_idx := r]> m) (add_vec_int pc 4) avail -∗
        ubytes (ukn_d N) (uint (m !!! Regidx a0_idx)) 8 g -∗
        WP (Loop : expr riscv_lang)) -∗

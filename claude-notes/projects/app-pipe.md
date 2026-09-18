@@ -113,7 +113,7 @@ arm is the theorem's one named premise (`pipe_both_law`).
 
 ## Wave 2 — on the protocol
 
-- [ ] **PIPE-NEG1** (kernel/U-tier spec, SH-PIPE's R-1; after PIPE-REG lands
+- [x] **PIPE-NEG1** (kernel/U-tier spec, SH-PIPE's R-1; after PIPE-REG lands
   so the two edits to `wp_uk_ecall_pipe`'s post do not collide).
   `UsysMemOk.usys_fd_ok`'s pipe row pins the failing return to
   `r = mword_of_int (-1)` (as the open and dup rows do); `ProofSysPipe`'s
@@ -1668,3 +1668,218 @@ theorem, the seam, and the FOURTH arm of the line disjunct inside
 `UkSh.ush_rest_line` — which SH-LEX-REDIR §4 shows is ONE coupled change
 with that walk, so it belongs to SH-PIPE-ROUND and not here.  Nothing in
 the parser blocks it any more.
+
+### PIPE-NEG1 (2026-09-18) — the pipe row names its −1, the kernel discharge already existed and was being DROPPED, the PIPE arm is CLOSED at today's kernel — and `main` was RED at `UkShPipe.v`
+
+Branch `app-pipe/pipe-neg1`.  Commits: `49d74380d` (the row and its cone at
+the lane's original base), `52155fefc` (the leaf's second copy of the arm),
+`3b72531ef` (notes), **`28f2d93fe` (merge `main`)**, `15e907ae4`
+(deliverable 4), `1a763f267` (the `ukn_held` port).  No new file, no
+`Admitted`, no `Axiom`; net diff against `main` is SIX files.
+
+**THE LANE'S BASE MOVED UNDER IT, and the report has to start there.**  The
+brief says "at main = the merged Wave-1 lanes incl. PIPE-REG and SH-PIPE".
+At hand-off `main` was `299a9f774` and `iris/UkShPipe.v` DID NOT EXIST in
+it — SH-PIPE's merge had been a no-op — so deliverable 4 was unreachable.
+During the lane `main` advanced by ~200 commits: the upstream FILE
+application program tier (`24a77ac43`) and `c41f80960` "Merge lane SH-PIPE
+(**for real** — the 2026-09-18 'merge' was a no-op behind a failed `&&`
+chain)".  The lane's first three commits are therefore against the old base
+(whole tree green there, RC=0) and `28f2d93fe` merges `main` and
+re-applies them.  **Whoever writes a brief that says "at main" should pin a
+SHA**, and whoever merges a lane should check the merge landed: a no-op
+merge and a real one look identical in `git log --oneline`.
+
+**`main` IS RED, at `iris/UkShPipe.v`, for two independent reasons — both
+predate this lane and both had to be fixed to get a green tree.**
+
+1. **`ukn_held` does not exist any more.** SH-PIPE branched before
+   upstream's OFF-LINK-2 L6, which deleted the parked discipline and the
+   record field `UkRun.ukn_held`; `UkShPipe.v` still said
+   `ukn_held N = ∅` in six statements, so the file does not ELABORATE:
+   `Error: The reference ukn_held was not found in the current environment`
+   on `make UkShPipe.vos`.  It is in `iris/_CoqProject`, so no whole-tree
+   build could have been green after `c41f80960`.  `1a763f267` ports it —
+   pure deletion: the premise goes from `wp_kshpi_dup`, `ushpi_dup_stub`,
+   `wp_kshr_pipe_arm` (and with it the `⌜ukn_held N' = ∅⌝` conjunct it
+   relayed to each child continuation, and the two `assert (Hhd' : …)` that
+   built them), `wp_kshr_runcmd_pipe` and `wp_kshr_runcmd_ptop`.  The set
+   was dead data at its end — this file's only use of it was to feed
+   `UkRunSys.wp_uk_ecall_dup`, which no longer takes it.  `6766961ec` does
+   the same to the campaign's OTHER site, `UkPipeMoves.
+   wp_uk_close1_dup_pipe_std` (UPSTREAM-FIX's line 153); after the two, no
+   file in the tree mentions `ukn_held`, `urun_parked_row`,
+   `fdv_all_parked`, `fdv_held_in`, `urun_rows_parked`,
+   `usys_fd_ok_parked`, `usys_fd_ok_held` or `riscv_kill_cred` outside a
+   comment.
+2. **The taint was still being passed into the registrar slot.** SH-PIPE
+   also predates PIPE-REG, and its `ush_pipe_call_weak_of_leaf` applied the
+   leaf as `with "[] Hrun [] Hkc Hstd [Hbuf]"` with `Hkc : app_taint` where
+   `wp_uk_ecall_pipe`'s REGISTRAR premise now sits.  Fixed in `15e907ae4`
+   as part of deliverable 4 (below).  `5e8e4dc0d`'s `riscv_kill_cred →
+   app_taint` rename made the file LOOK ported; it only renamed.
+
+**WHAT LANDED — the row.**  `iris/UsysMemOk.v`, the pipe row's failure arm,
+verbatim (was `else sts' = sts`):
+
+    else (r = (mword_of_int (-1) : mword 64) /\ sts' = sts))
+
+so the row reads `if decide (uint r = 0) then (∃ a b γp, …) else (r =
+mword_of_int (-1) /\ sts' = sts)` — the open and dup rows' spelling.  NEW
+`usys_fd_ok_pipe_neg1`: the else-branch read at the guard a leaf
+case-splits on (`usys_fd_ok USYS_pipe tf r sts sts' -> uint r <> 0 -> r =
+mword_of_int (-1) /\ sts' = sts`), so no consumer unfolds the row.
+`usys_fd_ok_length`'s pipe branch re-proved (`subst` → `destruct … as
+[_ ->]`); every other lemma in the file is untouched, statements
+byte-identical.
+
+**...the kernel side.**  `iris/ProofSyscall.v` arm 4's failure branch
+threads the fact instead of dropping it — `rewrite decide_False;
+[ exact (conj Hr eq_refl) | …]`, one token.  **`ProofSysPipe.v` and
+`SpecSysPipe.v` needed NO change**, which is the brief's deliverable 2
+answered by "it was already done": `SpecSysPipe.sys_pipe_post` has ONE
+failure arm and it already read `⌜r = (mword_of_int (-1) : mword 64)⌝`, and
+`ProofSysPipe` walks all FIVE failure paths onto it (pipealloc at 1650,
+each fdalloc scan at 1848 / 2041, and both copyouts at 2801 / 3191, the
+last two sharing the C's one cleanup tail).  The −1 was proved against the
+model all along; `ProofSyscall`'s arm 4 was USING it (to refute the success
+guard: `rewrite Hr in Hz; vm_compute in Hz; discriminate`) and then
+throwing it away.
+
+**...the U tier.**  `UkRunSys.wp_uk_ecall_pipe`'s post failure arm is now
+`(⌜ r = (mword_of_int (-1) : mword 64) ⌝ ∗ ustd (ukn_fd N) l)`, the sibling
+open/dup leaves' spelling (`uint r <> 0` is a consequence and is NOT
+restated — a redundant conjunct is a second thing every consumer has to
+match); its `Hjoin` summary's last conjunct became `uint r <> 0 -> r =
+mword_of_int (-1) /\ fdv' = fdv`; `ufd_auth_move`'s pipe branch re-proved.
+`UkReadPipe.wp_uk_pipe_read_end` relays the same arm.
+
+**...the exhibit.**  `iris/UkRunBr.v`, NEW `uv_btaken_bltz_neg1` /
+`uv_btaken_bltz_one`: `uv_btaken BLT (mword_of_int (-1)) zero_reg = true`
+and `uv_btaken BLT (mword_of_int 1) zero_reg = false`.  Two `vm_compute`
+lines, and they are why the row had to name the VALUE: `r = 1` is equally
+nonzero and does not take sh's `bltz a0`, so the old row admitted a state
+in which the pipeline ran on two garbage descriptors, and the gap was not
+bridgeable by a premise (`∀ r, uint r <> 0 -> r = -1` is refuted by the
+second line — durable-notes.md, "Vacuity").
+
+**...and deliverable 4: THE GAP IS CLOSED.**  `iris/UkShPipe.v` §7 was
+"THE GAP, MEASURED".  `ush_pipe_ans_weak` and `ush_pipe_call_weak` are
+DELETED (not kept as corollaries: a strictly weaker restatement of a landed
+predicate has no caller and would only invite one) and
+`ush_pipe_call_weak_of_leaf` becomes **`ush_pipe_call_of_leaf`**, proving
+the FULL `ush_pipe_call` by the same three-instruction walk — the only
+change in the body is that the failure branch's `%Hrne` binds
+`r = mword_of_int (-1)`, which the existing `by iPureIntro` already closes,
+because SH-PIPE had already WRITTEN `ush_pipe_ans`'s failure arm at
+`⌜ r = (mword_of_int (-1) : mword 64) ⌝`.  NEW
+**`wp_kshr_runcmd_pipe_closed`** and **`wp_kshr_runcmd_ptop_closed`**: the
+consumer tests with the call SPENT.
+
+**WHAT THE DESIGN GOT WRONG**
+
+1. **`wp_kshr_runcmd_pipe`'s `ush_pipe_call` premise should NOT be deleted**
+   (the brief: "closing `wp_kshr_runcmd_pipe` at today's kernel with NO
+   premise").  It is the same premise `UkShRedir.ush_open_call` is at the
+   REDIR arm, and a caller holding a REAL registrar (PIPE-PROTO's
+   `pipe_proto_alloc`, `R γp := pipe_inv … ∗ wtok`) has to hand its own
+   call in — deleting it would fix `R := emp` and lock the round out.  So
+   the two landed statements do not move and the closed forms are new
+   corollaries beside them.  **And they are not premise-free**: the call is
+   traded for the three things the leaf actually needs — `app_taint` (this
+   is the `R := emp` instance; a registered program supplies a registrar
+   instead), `udepw_law 21` (what the two `ush_cldep`s are built from; not
+   derived here, because the mint that derives it from the taint is an
+   application-level file and importing it into a walk wedges) and a FULL
+   LEDGER `fd_lowest_closed ld = None`, which is what makes both of
+   pipe(2)'s allocations land above the standard streams.  sh at the prompt
+   is exactly there.
+2. **The leaf's failure arm occurs TWICE in `UkRunSys.v`** and only one
+   copy is in the statement: `wp_uk_ecall_pipe` builds its post's two arms
+   as an intermediate `iAssert (|==> ufd_auth … ∗ (… ∨ (⌜uint r <> 0⌝ ∗
+   ustd …)))` before framing them.  A `check` passes with the inner copy
+   stale and the real build fails 40 lines later (`The term
+   "proj1 (Hfail Hr0)" has type "r = mword_of_int (-1)" while it is
+   expected to have type "uint r ≠ 0"`).  Grep a leaf's whole proof for the
+   arm's text, not just its statement.
+3. **The brief's failure-arm inventory is short by two.**  It says
+   "`pipealloc` fails, `fdalloc` fails twice, each `return -1`"; sys_pipe's
+   three `return -1` statements cover FIVE paths, the two extra being the
+   copyout pair.  (The object code merges them into two `li a5,-1`, at
+   0x800055b2 and 0x8000563c.)
+4. **The row's cone is smaller than the brief feared, and shrank further
+   mid-lane.**  At the lane's base FIVE places destructed the pipe row's
+   else-branch (`usys_fd_ok_length` / `_parked` / `_held`,
+   `UkRunSys.ufd_auth_move`, and `wp_uk_ecall_pipe`'s `Hjoin`); upstream's
+   L6 then deleted `_parked` and `_held` outright, leaving three.  Every
+   other `usys_fd_ok` site either carries `n <> USYS_pipe` or consumes a
+   different row.  Strengthening the row is safe by construction: it is
+   SUPPLIED in exactly two places — `ProofSyscall`'s arm 4, and
+   `usys_fd_ok_refl_at`, which excludes pipe.
+
+**BUILD STATUS AT HAND-OFF, exactly.**  TWO builds matter and they are not
+the same thing.
+- **The row change IS whole-tree green**: at the lane's original base
+  (`372b70c46`, PIPE-REG merged) `ec2-lane.sh neg1 build` returned **RC=0**
+  over the whole `iris` tree with the first three commits in place — the
+  row, `usys_fd_ok_pipe_neg1`, `ProofSyscall` arm 4, both of
+  `wp_uk_ecall_pipe`'s copies of the failure arm, `UkReadPipe`'s relay and
+  the two `uv_btaken` lines.  That is the deliverable 1–3 bar, met.
+- **EVERY FILE THIS LANE TOUCHES IS BUILT, post-merge, with `.vo`s**:
+  `UsysMemOk`, `ProofSyscall`, `UkRunBr`, `UkRunSys`, `UkReadPipe`,
+  **`UkShPipe.vo`** and **`UkPipeMoves.vo`** all compiled for real against
+  `d860835b2`+this branch, `errs=0` throughout.  So deliverables 1–4 and
+  both `ukn_held` ports are machine-checked, not merely `check`ed.
+- **The post-merge whole-tree build had TWO files and the audit still
+  running at hand-off** (`FileLinksAt.v`, an upstream app-file file, and
+  `EchoAssumptions.v`), with zero errors anywhere.  Bringing the clone up
+  to `d860835b2` is a near-full rebuild, and this round ran under `make -k`
+  precisely so that a failure anywhere would be attributable.  **The
+  coordinator must still see the final RC=0 and the echo-audit count at the
+  merge gate** — this lane does not report the audit count, because the
+  audit had not returned.
+- **ONE REAL PROOF BREAK WAS FOUND BY THE BUILD AND FIXED** (`c7fcab036`):
+  `wp_kshr_pipe_arm`'s two child continuations introduced
+  `UkShRun.wp_kshr_fork1`'s child arm with a `%Hheq` for
+  `⌜ukn_held N' = ukn_held N⌝`, which L6 deleted with the field, and
+  `iIntros` failed with `iIntro: cannot turn (…) into a universal
+  quantifier`.  **A `-vos` check cannot see this** — the statement
+  elaborates, only the proof runs out of premises — which is the second
+  time this lane was bitten by trusting `check` (see finding 2).
+
+**THE MIRROR'S STACK LIMIT IS 8 MB, AND IT SEGFAULTS THE BUILD — `ec2-lane.sh`
+should raise it.**  Bringing the clone up to the merged sources, the build died
+twice, reproducibly and at the same place: `Segmentation fault (core dumped)`
+→ `make[1]: *** [CoqMakefile:818: WpGprCsrwC.vo] Error 139`, in an UPSTREAM
+model file this lane never touched.  It is not memory (20 GB of 246 in use)
+and not parallelism (it happened at `-j18` and again at `-j10`): `ulimit -s`
+on the mirror is **8192 KB**, and the helper's `ENV` sets only
+`OCAMLRUNPARAM="l=…"`, which does not move the OS stack (durable-notes.md's
+own advice under the fuel-constant note is "re-run with `ulimit -s
+unlimited`"; the hard limit on the box IS unlimited).  Running
+`ec2-lane.sh neg1 run 'ulimit -s unlimited; make -f CoqMakefile -j10'` builds
+`WpGprCsrwC.vo` on the first try.  **`ec2-lane.sh`'s `ENV` should gain
+`ulimit -s unlimited`** — every lane that has to rebuild the model/WP tier
+will hit this, and the failure names a file that has nothing to do with the
+lane, so it reads like someone else's breakage.  (Also useful: the worker
+binary is `rocqworker`, not `rocqc`, so `pgrep -c rocqc` reports 0 during a
+perfectly healthy build and makes it look wedged.)
+
+**MAIN KEPT MOVING AFTER THIS LANE'S MERGE, and it does not matter.**  By
+the end of the lane `main` had also gained PIPE-PROTO (`d3940f9b3`),
+SH-PARSE-PIPE part 3 (`5006b8aeb`) and a brief **UPSTREAM-FIX** ("make main
+build after the upstream merge; campaign files only", `6204044e4`) — so the
+red tree above is known, and this lane's `1a763f267` OVERLAPS that lane's
+job at `iris/UkShPipe.v`; take whichever is better and drop the other.
+This branch's base is `d860835b2`, and `main` has touched NONE of the six
+files this lane edits since then (`git diff d860835b2..main --` on them is
+empty), so the merge is clean apart from this notes file.
+
+**THE ONE THING THE NEXT LANE NEEDS FIRST.**  For SH-PIPE-ROUND and
+PIPE-PROTO: nothing is owed about pipe(2) any more — take
+`wp_kshr_runcmd_pipe` (not the `_closed` corollary, which fixes
+`R := emp`) and instantiate `ush_pipe_call` from `wp_uk_ecall_pipe` with
+the protocol's registrar, exactly as `ush_pipe_call_of_leaf` does with the
+trivial one.  For the COORDINATOR: `main` cannot have been built since
+`c41f80960`; re-run the gate, and note that `iris/UkShPipe.v` in this
+branch is the ported file.

@@ -320,13 +320,14 @@ Section UkShPipe.
       (l : list fdstate) (fd0 : nat) (st : fdstate) (avail : nat) :
     bv_signed (trunc32 (m !!! Regidx a0_idx)) = Z.of_nat fd0 ->
     st <> FdClosed ->
-    (* [UkRunSys.wp_uk_ecall_dup]'s own premise (lane OFF-HAND-4, S1): the
-       slot fdalloc chose is not one the record can be said to HOLD.  It is
-       a premise here rather than [UkRun.ukn_parked_eq]'s class fact,
-       because sh's record carries no such instance and the arm's children
-       run at records fork chose ([UkShRun.wp_kshr_fork1] relays
-       [ukn_held N' = ukn_held N]). *)
-    ukn_held N = ∅ ->
+    (* THE HELD-SET PREMISE IS GONE (lane PIPE-NEG1, porting SH-PIPE over
+       upstream's OFF-LINK-2 L6).  [UkRunSys.wp_uk_ecall_dup] used to take
+       "the slot fdalloc chose is not one the record can be said to HOLD"
+       ([ukn_held N = ∅]); L6 deleted the parked discipline, the record
+       field [UkRun.ukn_held] and that premise -- so this stub, and every
+       lemma below that relayed the set to a forked child, carries one
+       premise fewer.  The set was DEAD DATA at its end: this file used it
+       only to feed the dup leaf. *)
     shk_code (ukn_t N) -∗
     UserFd.ustd (ukn_fd N) l -∗
     UserFd.ufd_own (ukn_fd N) l fd0 st -∗
@@ -348,7 +349,7 @@ Section UkShPipe.
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
   Proof using Hpsok_free.
-    intros Harg Hne Hhd. iIntros "#Hcode Hstd Hown Hrun Hcont".
+    intros Harg Hne. iIntros "#Hcode Hstd Hown Hrun Hcont".
     rewrite shp_dup.
     (* ---- 0xcfe  c.li a7,10 ---- *)
     iApply (wp_uk_cli N h m (mword_of_int 0xcfe)
@@ -379,7 +380,7 @@ Section UkShPipe.
                                (mword_of_int 10 : mword 64));
                     vm_compute; reflexivity)
               ltac:(rewrite Ha0_1; exact Harg)
-              Hne Hhd
+              Hne
               ltac:(vm_compute; reflexivity)
               with "[] Hrun [] Hstd Hown").
     { iApply (uis_shk_d00 with "Hcode"). }
@@ -584,7 +585,7 @@ Section UkShPipe.
     bv_signed (trunc32
       ((<[Regidx ra_idx := (mword_of_int ret : mword 64)]> m)
          !!! Regidx a0_idx)) = Z.of_nat fd0 ->
-    st <> FdClosed -> ukn_held N = ∅ ->
+    st <> FdClosed ->
     forall (h0 : CpuId) (av : nat),
       shk_code (ukn_t N) -∗
       (UserFd.ustd (ukn_fd N) l ∗ UserFd.ufd_own (ukn_fd N) l fd0 st) -∗
@@ -609,8 +610,8 @@ Section UkShPipe.
          WP (Loop : expr riscv_lang)) -∗
       WP (Loop : expr riscv_lang).
   Proof using Hpsok_free.
-    intros Harg Hne Hhd h0 av. iIntros "#Hc [Hs Ho] Hrun Hcont".
-    iApply (wp_kshpi_dup N h0 _ l fd0 st av Harg Hne Hhd
+    intros Harg Hne h0 av. iIntros "#Hc [Hs Ho] Hrun Hcont".
+    iApply (wp_kshpi_dup N h0 _ l fd0 st av Harg Hne
               with "Hc Hs Ho Hrun Hcont").
   Qed.
 
@@ -734,7 +735,6 @@ Section UkShPipe.
       (R RcL RcR Rk : pipe_names -> iProp Σ) (Qc : Z -> iProp Σ) :
     (forall x y : Z, Qc x = Qc y) ->
     (⊢ ukn_pay N (-1)) ->
-    ukn_held N = ∅ ->
     m !!! Regidx a0_idx = (mword_of_int t : mword 64) ->
     (* the two standard streams the two children shut before their dup:
        sh's own, open and not a pipe *)
@@ -762,7 +762,6 @@ Section UkShPipe.
     (∀ (N' : uk_names Σ) (h' : CpuId) (m' : regfile) (γ' : gname)
        (γp : pipe_names) (q : Z),
        ⌜ ukn_pay N' = Qc ⌝ -∗
-       ⌜ ukn_held N' = ∅ ⌝ -∗
        ⌜ m' !!! Regidx a0_idx = (mword_of_int q : mword 64) ⌝ -∗
        my_pay γ' Qc -∗
        shk_code (ukn_t N') -∗
@@ -783,7 +782,6 @@ Section UkShPipe.
     (∀ (N' : uk_names Σ) (h' : CpuId) (m' : regfile) (γ' : gname)
        (γp : pipe_names) (q : Z),
        ⌜ ukn_pay N' = Qc ⌝ -∗
-       ⌜ ukn_held N' = ∅ ⌝ -∗
        ⌜ m' !!! Regidx a0_idx = (mword_of_int q : mword 64) ⌝ -∗
        my_pay γ' Qc -∗
        shk_code (ukn_t N') -∗
@@ -818,7 +816,7 @@ Section UkShPipe.
        WP (Loop : expr riscv_lang)) -∗
     WP (Loop : expr riscv_lang).
   Proof using Hpsok_free.
-    intros HQc Hpx Hhd Ha0 Hl0 Hl1 Hne0 Hne1 Hnp0 Hnp1.
+    intros HQc Hpx Ha0 Hl0 Hl1 Hne0 Hne1 Hnp0 Hnp1.
     iIntros "#Hdp #Hcode #Hjt #Htree Hsz Hstd Hcwd Hch #Hkw Hsplit Hpipe Hrun
              HcL HcR Hpar".
     iDestruct (ush_jtab_ro with "Hjt") as "#Hro".
@@ -1301,10 +1299,9 @@ Section UkShPipe.
                   with "Hfa1 Hfa2 Hwa1 Hwa2 Hch Hjt3 Hsz Hstd Hcwd HRk Hrun").
       + (* ================== THE RIGHT CHILD: fd 0 = the READ end ========= *)
         iIntros (N' hD mD γ')
-          "%Hpeq %Hheq %HcsD %Ha0_D Hmy HRcR #Hck (#Hjt3 & #Ht3 & Hb0 & Hb1)
+          "%Hpeq %HcsD %Ha0_D Hmy HRcR #Hck (#Hjt3 & #Ht3 & Hb0 & Hb1)
            Hsz Hstd Hcwd Hch HD Hrun".
         pose proof (ukn_const_of_eq N' Qc Hpeq HQc) as Hcst'.
-        assert (Hhd' : ukn_held N' = ∅) by (rewrite Hheq; exact Hhd).
         pose proof (UkShRun.ush_st_cs f2 mD sp0 t Hst_f2 HcsD) as Hst_mD.
         iDestruct (ushpi_hs_out (ukn_fd N') a b _ _ Hab with "HD")
           as "[Hha Hhb]".
@@ -1405,7 +1402,7 @@ Section UkShPipe.
                            (FdOpen true false (FdPipe γp)))))%I
                   (ushpi_dup_stub N' y1 0x190 (<[0%nat := FdClosed]> ld) a
                      (FdOpen true false (FdPipe γp)) Hy1a
-                     ltac:(discriminate) Hhd')
+                     ltac:(discriminate))
                   ltac:(rewrite shp_dup; apply bv_eq; vm_compute; reflexivity)
                   ltac:(apply bv_eq; vm_compute; reflexivity)
                   ltac:(rewrite shp_dup; vm_compute; reflexivity)
@@ -1560,18 +1557,17 @@ Section UkShPipe.
         { iApply (uis_shk_1a2 with "Hck"). }
         iIntros (hO) "Hrun".
         iApply ("HcR" $! N' hO _ γ' γp qr3
-                  with "[%] [%] [%] Hmy Hck Hjt3 Hqrc3 Hsz Hstd Hcwd Hch
+                  with "[%] [%] Hmy Hck Hjt3 Hqrc3 Hsz Hstd Hcwd Hch
                         HdR HdW HRcR Hrun");
-          [ exact Hpeq | exact Hhd' | ].
+          [ exact Hpeq | ].
         rewrite (upd_ne y4 (Regidx ra_idx) (Regidx a0_idx) _
                    ltac:(vm_compute; discriminate)).
         exact (upd_eq mL (Regidx a0_idx) (mword_of_int qr3 : mword 64)).
     - (* =================== THE LEFT CHILD: fd 1 = the WRITE end ========= *)
       iIntros (N' h7 m7 γ')
-        "%Hpeq %Hheq %Hcs7 %Ha0_7 Hmy HRcL #Hck (#Hjt2 & #Ht2 & Hb0 & Hb1)
+        "%Hpeq %Hcs7 %Ha0_7 Hmy HRcL #Hck (#Hjt2 & #Ht2 & Hb0 & Hb1)
          Hsz Hstd Hcwd Hch HD Hrun".
       pose proof (ukn_const_of_eq N' Qc Hpeq HQc) as Hcst'.
-      assert (Hhd' : ukn_held N' = ∅) by (rewrite Hheq; exact Hhd).
       pose proof (UkShRun.ush_st_cs f1 m7 sp0 t Hst_f1 Hcs7) as Hst_m7.
       iDestruct (ushpi_hs_out (ukn_fd N') a b _ _ Hab with "HD")
         as "[Hha Hhb]".
@@ -1691,7 +1687,7 @@ Section UkShPipe.
                          (FdOpen false true (FdPipe γp)))))%I
                 (ushpi_dup_stub N' q2 0x15c (<[1%nat := FdClosed]> ld) b
                    (FdOpen false true (FdPipe γp)) Hq2b
-                   ltac:(discriminate) Hhd')
+                   ltac:(discriminate))
                 ltac:(rewrite shp_dup; apply bv_eq; vm_compute; reflexivity)
                 ltac:(apply bv_eq; vm_compute; reflexivity)
                 ltac:(rewrite shp_dup; vm_compute; reflexivity)
@@ -1846,9 +1842,9 @@ Section UkShPipe.
       { iApply (uis_shk_16e with "Hck"). }
       iIntros (hI) "Hrun".
       iApply ("HcL" $! N' hI _ γ' γp ql2
-                with "[%] [%] [%] Hmy Hck Hjt2 Hqlc2 Hsz Hstd Hcwd Hch
+                with "[%] [%] Hmy Hck Hjt2 Hqlc2 Hsz Hstd Hcwd Hch
                       HdR HdW HRcL Hrun");
-        [ exact Hpeq | exact Hhd' | ].
+        [ exact Hpeq | ].
       rewrite (upd_ne q5 (Regidx ra_idx) (Regidx a0_idx) _
                  ltac:(vm_compute; discriminate)).
       exact (upd_eq mG (Regidx a0_idx) (mword_of_int ql2 : mword 64)).
@@ -1869,11 +1865,14 @@ Section UkShPipe.
   (* through [UkShRun.wp_kshr_exit0] at 0xea -- which is where the LIST      *)
   (* arm's parent and the BACK arm's parent end too.                        *)
   (*                                                                        *)
-  (* WHAT IT DOES NOT DISCHARGE, and this is the lane's one refutation:      *)
-  (* [ush_pipe_call] stays a premise.  It is NOT instantiable from the       *)
-  (* landed [UkRunSys.wp_uk_ecall_pipe] -- see the note on                   *)
-  (* [ush_pipe_ans]'s failure arm.  Everything else the arm asks for is      *)
-  (* paid here, which is what makes the gap exactly one row wide.            *)
+  (* [ush_pipe_call] STAYS A PREMISE HERE, as [UkShRedir.ush_open_call]      *)
+  (* does at the REDIR arm and for the same reason -- a caller that holds a  *)
+  (* real registrar wants to hand its own call in.  It is no longer a GAP:   *)
+  (* §7's [ush_pipe_call_of_leaf] instantiates it from the landed            *)
+  (* [UkRunSys.wp_uk_ecall_pipe], and [wp_kshr_runcmd_pipe_closed] there is  *)
+  (* this lemma with the premise spent.  (Before lane PIPE-NEG1 that was     *)
+  (* the lane's one refutation: the row did not pin a failing pipe(2) to     *)
+  (* -1, so only the weakened call was payable.)                            *)
   (* ===================================================================== *)
   Lemma wp_kshr_runcmd_pipe (cl cr : ushcmd) :
     ush_simple cl -> ush_simple cr ->
@@ -1881,7 +1880,6 @@ Section UkShPipe.
            (t szv cwdv : Z) (ld : list fdstate) (st0 st1 : fdstate)
            (Sc : gset gname) (n : nat),
       (⊢ ukn_pay N (-1)) ->
-      ukn_held N = ∅ ->
       m !!! Regidx a0_idx = (mword_of_int t : mword 64) ->
       ld !! 0%nat = Some st0 -> ld !! 1%nat = Some st1 ->
       st0 <> FdClosed -> st1 <> FdClosed ->
@@ -1905,7 +1903,7 @@ Section UkShPipe.
       WP (Loop : expr riscv_lang).
   Proof using Hpsok_free.
     intros Hscl Hscr N Hcst h m t szv cwdv ld st0 st1 Sc n
-           Hpx Hhd Ha0 Hl0 Hl1 Hne0 Hne1 Hnp0 Hnp1.
+           Hpx Ha0 Hl0 Hl1 Hne0 Hne1 Hnp0 Hnp1.
     iIntros "#Hdp #Hcode #Hexs #Hkw #Hjt #Htree Hsz Hstd Hcwd Hch Hpipe Hrun".
     pose proof (Nat.le_max_l (ush_ht cl) (ush_ht cr)) as HM1.
     pose proof (Nat.le_max_r (ush_ht cl) (ush_ht cr)) as HM2.
@@ -1917,12 +1915,12 @@ Section UkShPipe.
               (6 * Nat.max (ush_ht cl) (ush_ht cr) + n)%nat
               (fun _ => emp)%I (fun _ => emp)%I (fun _ => emp)%I
               (fun _ => emp)%I (ukn_pay N)
-              (ukn_const_eq (N := N)) Hpx Hhd Ha0 Hl0 Hl1 Hne0 Hne1 Hnp0 Hnp1
+              (ukn_const_eq (N := N)) Hpx Ha0 Hl0 Hl1 Hne0 Hne1 Hnp0 Hnp1
               with "Hdp Hcode Hjt Htree Hsz Hstd Hcwd Hch Hkw [] Hpipe Hrun").
     { iIntros (γp) "_". iSplitR; [ done | iSplitR; done ]. }
     - (* ---- THE LEFT CHILD: the landed walk, at the ledger its prologue
            left ---- *)
-      iIntros (N' h' m' γ' γp q) "%Hpeq %Hhd' %Ha0' Hmy #Hck #Hjt2 #Hqc Hsz
+      iIntros (N' h' m' γ' γp q) "%Hpeq %Ha0' Hmy #Hck #Hjt2 #Hqc Hsz
                                   Hstd Hcwd Hch _ _ _ Hrun".
       pose proof (ukn_const_of_eq N' (ukn_pay N) Hpeq
                     (ukn_const_eq (N := N))) as Hcst'.
@@ -1945,7 +1943,7 @@ Section UkShPipe.
       { iApply (UserCwd.ucwd_any_of with "Hcwd"). }
       { iApply (UserChildren.uch_any_of with "Hch"). }
     - (* ---- THE RIGHT CHILD ---- *)
-      iIntros (N' h' m' γ' γp q) "%Hpeq %Hhd' %Ha0' Hmy #Hck #Hjt2 #Hqc Hsz
+      iIntros (N' h' m' γ' γp q) "%Hpeq %Ha0' Hmy #Hck #Hjt2 #Hqc Hsz
                                   Hstd Hcwd Hch _ _ _ Hrun".
       pose proof (ukn_const_of_eq N' (ukn_pay N) Hpeq
                     (ukn_const_eq (N := N))) as Hcst'.
@@ -1993,7 +1991,6 @@ Section UkShPipe.
            (t szv cwdv : Z) (ld : list fdstate) (st0 st1 : fdstate)
            (Sc : gset gname) (n : nat),
       (⊢ ukn_pay N (-1)) ->
-      ukn_held N = ∅ ->
       m !!! Regidx a0_idx = (mword_of_int t : mword 64) ->
       ld !! 0%nat = Some st0 -> ld !! 1%nat = Some st1 ->
       st0 <> FdClosed -> st1 <> FdClosed ->
@@ -2017,7 +2014,7 @@ Section UkShPipe.
       WP (Loop : expr riscv_lang).
   Proof using Hpsok_free.
     intros Hp N Hcst h m t szv cwdv ld st0 st1 Sc n
-           Hpx Hhd Ha0 Hl0 Hl1 Hne0 Hne1 Hnp0 Hnp1.
+           Hpx Ha0 Hl0 Hl1 Hne0 Hne1 Hnp0 Hnp1.
     iIntros "#Hdp #Hcode #Hexs #Hkw #Hjt #Htree Hsz Hstd Hcwd Hch Hpipe Hrun".
     destruct c as [ args | c1 fl md fd | lc rc | lc rc | c1 ].
     - iApply (UkShDiag.wp_kshr_runcmd_final Hpsok_free (UExec args) Hp N h m t
@@ -2027,7 +2024,7 @@ Section UkShPipe.
         | iApply (UserChildren.uch_any_of with "Hch") ].
     - exfalso. cbn in Hp. exact Hp.
     - iApply (wp_kshr_runcmd_pipe lc rc (proj1 Hp) (proj2 Hp) N h m t szv cwdv
-                ld st0 st1 Sc n Hpx Hhd Ha0 Hl0 Hl1 Hne0 Hne1 Hnp0 Hnp1
+                ld st0 st1 Sc n Hpx Ha0 Hl0 Hl1 Hne0 Hne1 Hnp0 Hnp1
                 with "Hdp Hcode Hexs Hkw Hjt Htree Hsz Hstd Hcwd Hch Hpipe
                       Hrun").
     - iApply (UkShDiag.wp_kshr_runcmd_final Hpsok_free (UList lc rc) Hp N h m t
@@ -2044,63 +2041,28 @@ Section UkShPipe.
 
 
   (* ===================================================================== *)
-  (* §7 HOW FAR THE LANDED LEAF GETS -- THE GAP, MEASURED.                  *)
-  (*                                                                        *)
-  (* [ush_pipe_call] is the shape sh's code needs and it is NOT             *)
-  (* instantiable from [UkRunSys.wp_uk_ecall_pipe] today.  The reason is    *)
-  (* ONE CONJUNCT and this section proves that it is one: the predicate     *)
-  (* below is [ush_pipe_call] with its failure arm weakened from            *)
-  (* [r = -1] to the leaf's own [uint r <> 0], and                          *)
-  (* [ush_pipe_call_weak_of_leaf] discharges it OUTRIGHT -- the two         *)
-  (* handles, the eight bytes read back as the two descriptor numbers, the  *)
-  (* ledger, the persistent close registrations and (at [R := emp]) the     *)
-  (* registration are all payable today, off the taint and nothing else.    *)
-  (*                                                                        *)
-  (* WHAT IS MISSING is the SIGN of a failing return, because sh's next     *)
-  (* instruction is [bltz a0]: [UsysMemOk.usys_fd_ok]'s pipe row pins the   *)
-  (* return only on the success side (`if decide (uint r = 0) then … else   *)
-  (* sts' = sts'), while the OPEN and DUP rows beside it both say           *)
-  (* [r = -1] on failure.  It cannot be bridged by a premise: a premise     *)
-  (* [forall r, uint r <> 0 -> r = -1] is FALSE, and one stated over the    *)
-  (* row is false too (take [r = 1], [sts' = sts]), so anything built on    *)
-  (* either would be vacuous (claude-notes/durable-notes.md, Vacuity).      *)
-  (* The fix is in the ROW and its kernel-side discharge; see the lane      *)
-  (* report, item R-1.                                                      *)
+  (* §7 THE LANDED LEAF INSTANTIATES [ush_pipe_call] -- THE GAP IS CLOSED   *)
+  (* (lane PIPE-NEG1).                                                     *)
+  (*                                                                       *)
+  (* WHAT STOOD HERE was `THE GAP, MEASURED': a weakened predicate         *)
+  (* [ush_pipe_call_weak], whose failure arm read the leaf's own            *)
+  (* [uint r <> 0] instead of [r = -1], and [ush_pipe_call_weak_of_leaf]    *)
+  (* discharging THAT -- because [UsysMemOk.usys_fd_ok]'s pipe row pinned   *)
+  (* the return only on the success side, while the OPEN and DUP rows       *)
+  (* beside it both said [r = -1] on failure.  sh's next instruction is     *)
+  (* [bltz a0], so `nonzero' did not decide the branch, and the gap was     *)
+  (* not bridgeable by a premise either ([forall r, uint r <> 0 -> r = -1]  *)
+  (* is false -- [UkRunBr.uv_btaken_bltz_one] is the counterexample at the  *)
+  (* branch itself).                                                       *)
+  (*                                                                       *)
+  (* THE ROW NOW PINS IT, so the weakened pair is DELETED (not kept as      *)
+  (* corollaries: a strictly weaker restatement of a landed predicate has   *)
+  (* no caller and would only invite one) and this lemma proves the FULL    *)
+  (* [ush_pipe_call] -- so [wp_kshr_runcmd_pipe] below closes runcmd's PIPE *)
+  (* arm at today's kernel with NO premise left.  The proof is the same     *)
+  (* three-instruction walk; only the last [iDestruct]'s failure arm        *)
+  (* changed, and it changed by carrying MORE.                              *)
   (* ===================================================================== *)
-  Definition ush_pipe_ans_weak (N : uk_names Σ) (dst : Z) (l : list fdstate)
-      (R : pipe_names -> iProp Σ) (r : mword 64) : iProp Σ :=
-    ((∃ (a b : nat) (γp : pipe_names),
-        ⌜ uint r = 0 /\ a <> b /\ (NSTD <= a)%nat /\ (NSTD <= b)%nat
-          /\ (a < NOFILE)%nat /\ (b < NOFILE)%nat ⌝ ∗
-        ubytes (ukn_d N) dst 4
-          (nth_byte (trunc32 (mword_of_int (Z.of_nat a) : mword 64))) ∗
-        ubytes (ukn_d N) (dst + 4) 4
-          (nth_byte (trunc32 (mword_of_int (Z.of_nat b) : mword 64))) ∗
-        UserFd.ustd (ukn_fd N) l ∗
-        UserFd.ufd (ukn_fd N) a (FdOpen true false (FdPipe γp)) ∗
-        UserFd.ufd (ukn_fd N) b (FdOpen false true (FdPipe γp)) ∗
-        ush_cldep (FdOpen true false (FdPipe γp)) ∗
-        ush_cldep (FdOpen false true (FdPipe γp)) ∗
-        R γp)
-     ∨ (⌜ uint r <> 0 ⌝ ∗
-        (∃ f : nat -> bv 8, ubytes (ukn_d N) dst 8 f) ∗
-        UserFd.ustd (ukn_fd N) l))%I.
-
-  Definition ush_pipe_call_weak (N : uk_names Σ) (l : list fdstate)
-      (R : pipe_names -> iProp Σ) : iProp Σ :=
-    (∀ (h : CpuId) (m : regfile) (av : nat) (dst : Z) (f : nat -> bv 8),
-       ⌜ uint (m !!! Regidx a0_idx) = dst ⌝ -∗
-       shk_code (ukn_t N) -∗
-       UserFd.ustd (ukn_fd N) l -∗
-       ubytes (ukn_d N) dst 8 f -∗
-       urun N h m (mword_of_int ShSyms.pipe) av -∗
-       (∀ (h' : CpuId) (m' : regfile) (r : mword 64),
-          ⌜ ucallee_saved m m' ⌝ -∗
-          ⌜ m' !!! Regidx a0_idx = r ⌝ -∗
-          ush_pipe_ans_weak N dst l R r -∗
-          urun N h' m' (ret_pc (m !!! Regidx ra_idx)) av -∗
-          WP (Loop : expr riscv_lang)) -∗
-       WP (Loop : expr riscv_lang))%I.
 
   (* THE TAINT AND THE CLOSE LAW ARE TWO PREMISES, not one.  The taint is
      what [UkRunSys.wp_uk_ecall_pipe] itself asks for; [udepw_law 21] is
@@ -2109,14 +2071,14 @@ Section UkShPipe.
      APPLICATION-LEVEL mint and importing it into a proofmode-heavy walk
      is the wedge claude-notes/durable-notes.md records, so the
      conversion is left to the caller, which lives up there anyway. *)
-  Lemma ush_pipe_call_weak_of_leaf (N : uk_names Σ) `{!ukn_const N}
+  Lemma ush_pipe_call_of_leaf (N : uk_names Σ) `{!ukn_const N}
       (l : list fdstate) :
     (* the ledger this walk carries: three console rows, nothing shut, so
        both of the leaf's allocations land ABOVE the standard streams and
        the ledger does not move *)
     fd_lowest_closed l = None ->
     app_taint -∗ udepw_law 21 -∗
-    ush_pipe_call_weak N l (fun _ => emp)%I.
+    ush_pipe_call N l (fun _ => emp)%I.
   Proof using Hpsok_free.
     intros Hnone. iIntros "#Hkc #Hcl".
     iIntros (h m av dst f) "%Hdst #Hcode Hstd Hbuf Hrun Hcont".
@@ -2144,16 +2106,28 @@ Section UkShPipe.
                   = mword_of_int 0xc9c)
       by (apply bv_eq; vm_compute; reflexivity).
     (* ---- 0xc98  ecall -- the PIPE leaf ---- *)
+    (* [Rp := emp]: this caller keeps NOTHING of row 4's post, which is
+       what [R := fun _ => emp] means one level up.  The REGISTRAR
+       (lane PIPE-REG: the slot where the taint premise used to be) is
+       therefore the trivial one -- it drops the post and answers the run's
+       own pipe row from the credential ([UkRun.urun_nopipe_taint]).  A
+       caller that wants the pipe's fragment supplies a real registrar and
+       takes [R γp] with it; PIPE-PROTO's [pipe_proto_alloc] is that one. *)
     iApply (wp_uk_ecall_pipe N h1 m1 (mword_of_int 0xc98) l f av
+              (* the seven arguments unannotated: this file does not
+                 [Require Import UexecSlot], so [uvis] is not a name here *)
+              (fun _ _ _ _ _ _ _ => emp%I)
               ltac:(unfold usysno;
                     rewrite (upd_eq m (Regidx a7_idx)
                                (mword_of_int 4 : mword 64));
                     vm_compute; reflexivity)
               ltac:(vm_compute; reflexivity)
-              with "[] Hrun [] Hkc Hstd [Hbuf]").
+              with "[] Hrun [] [] Hstd [Hbuf]").
     { iApply (uis_shk_c98 with "Hcode"). }
     { iApply udepw_of_psok; [ apply Hpsok_free; free_lit | ];
       (discriminate || assumption || (vm_compute; discriminate)). }
+    { iIntros (fdep W r M' fdv' cw' cs') "_ _ _". iModIntro.
+      iSplitL; [ iApply (UkRun.urun_nopipe_taint fdv' with "Hkc") | done ]. }
     { rewrite Ha0_1 Hdst. iExact "Hbuf". }
     rewrite E12.
     iIntros (h2 r g W fdep M' fdv' cw' cs') "Hans _ Hrun Hbuf".
@@ -2186,7 +2160,10 @@ Section UkShPipe.
                               vm_compute; reflexivity))).
       reflexivity. }
     { exact (upd_eq m1 (Regidx a0_idx) r). }
-    rewrite /ush_pipe_ans_weak.
+    rewrite /ush_pipe_ans.
+    (* THE FAILURE ARM IS THE WHOLE POINT OF THE LANE: [Hrne] is now
+       [r = mword_of_int (-1)] and not [uint r <> 0], so [by iPureIntro]
+       closes [ush_pipe_ans]'s own arm rather than a weakened one. *)
     iDestruct "Hans" as "[ Hok | [%Hrne Hstd] ]"; last first.
     { iRight. iSplitR; [ by iPureIntro | ]. iSplitL "Hbuf"; [ | iExact "Hstd" ].
       iExists g. iExact "Hbuf". }
@@ -2221,6 +2198,104 @@ Section UkShPipe.
     iFrame "Hstd Hha Hhb".
     iSplitR; [ iApply (ush_cldep_of_law with "Hcl") | ].
     iSplitR; [ iApply (ush_cldep_of_law with "Hcl") | done ].
+  Qed.
+
+  (* ===================================================================== *)
+  (* ...AND THE CONSUMER TEST WITH THE CALL SPENT: runcmd's PIPE arm at     *)
+  (* TODAY'S KERNEL, with nothing owed about pipe(2) (lane PIPE-NEG1).      *)
+  (*                                                                       *)
+  (* [wp_kshr_runcmd_pipe]'s own statement DOES NOT MOVE -- a caller with a *)
+  (* real registrar hands its own [ush_pipe_call] in, which is the whole    *)
+  (* point of the premise -- and these are it with the premise discharged   *)
+  (* from the leaf.  WHAT THE TRADE COSTS, stated rather than hidden: the   *)
+  (* call is replaced by the three things the leaf actually needs -- the     *)
+  (* TAINT (this test is the free instance, [R := emp]; a registered        *)
+  (* program supplies a registrar instead), [udepw_law 21] (what the two    *)
+  (* close registrations are built from; not derived here, because the mint *)
+  (* that derives it from the taint is an application-level file and        *)
+  (* importing it into a walk wedges -- durable-notes.md), and a FULL       *)
+  (* LEDGER ([fd_lowest_closed ld = None]), which is what makes both of     *)
+  (* pipe(2)'s allocations land above the standard streams so the ledger    *)
+  (* does not move.  sh at the prompt is exactly there: three console rows, *)
+  (* nothing shut.                                                         *)
+  (* ===================================================================== *)
+  Lemma wp_kshr_runcmd_pipe_closed (cl cr : ushcmd) :
+    ush_simple cl -> ush_simple cr ->
+    forall (N : uk_names Σ) `{!ukn_const N} (h : CpuId) (m : regfile)
+           (t szv cwdv : Z) (ld : list fdstate) (st0 st1 : fdstate)
+           (Sc : gset gname) (n : nat),
+      (⊢ ukn_pay N (-1)) ->
+      m !!! Regidx a0_idx = (mword_of_int t : mword 64) ->
+      ld !! 0%nat = Some st0 -> ld !! 1%nat = Some st1 ->
+      st0 <> FdClosed -> st1 <> FdClosed ->
+      (forall (rb wb : bool) (gp : pipe_names),
+         st0 <> FdOpen rb wb (FdPipe gp)) ->
+      (forall (rb wb : bool) (gp : pipe_names),
+         st1 <> FdOpen rb wb (FdPipe gp)) ->
+      fd_lowest_closed ld = None ->
+      UkSh.sh_deps -∗
+      shk_code (ukn_t N) -∗
+      uxsup_at (ukn_pay N) -∗
+      □ (app_taint -∗ ukn_pay N (-1)) -∗
+      app_taint -∗
+      udepw_law 21 -∗
+      ush_jtab (ukn_t N) -∗
+      ush_cmd (ukn_d N) t (UPipe cl cr) -∗
+      usz (ukn_s N) szv -∗
+      UserFd.ustd (ukn_fd N) ld -∗
+      UserCwd.ucwd (ukn_cwd N) cwdv -∗
+      UserChildren.uch (ukn_ch N) Sc -∗
+      urun N h m (mword_of_int ShSyms.runcmd)
+        (6 * ush_ht (UPipe cl cr) + (2 + (UkShDiag.ush_Dg + n))) -∗
+      WP (Loop : expr riscv_lang).
+  Proof using Hpsok_free.
+    intros Hscl Hscr N Hcst h m t szv cwdv ld st0 st1 Sc n
+           Hpx Ha0 Hl0 Hl1 Hne0 Hne1 Hnp0 Hnp1 Hnone.
+    iIntros "#Hdp #Hcode #Hexs #Hkw #Hkc #Hcw #Hjt #Htree Hsz Hstd Hcwd Hch Hrun".
+    iApply (wp_kshr_runcmd_pipe cl cr Hscl Hscr N h m t szv cwdv ld st0 st1 Sc n
+              Hpx Ha0 Hl0 Hl1 Hne0 Hne1 Hnp0 Hnp1
+              with "Hdp Hcode Hexs Hkw Hjt Htree Hsz Hstd Hcwd Hch [] Hrun").
+    iApply (ush_pipe_call_of_leaf N ld Hnone with "Hkc Hcw").
+  Qed.
+
+  (* ...and the same at [ush_ptop], which is the shape the round will hold. *)
+  Lemma wp_kshr_runcmd_ptop_closed (c : ushcmd) :
+    ush_ptop c ->
+    forall (N : uk_names Σ) `{!ukn_const N} (h : CpuId) (m : regfile)
+           (t szv cwdv : Z) (ld : list fdstate) (st0 st1 : fdstate)
+           (Sc : gset gname) (n : nat),
+      (⊢ ukn_pay N (-1)) ->
+      m !!! Regidx a0_idx = (mword_of_int t : mword 64) ->
+      ld !! 0%nat = Some st0 -> ld !! 1%nat = Some st1 ->
+      st0 <> FdClosed -> st1 <> FdClosed ->
+      (forall (rb wb : bool) (gp : pipe_names),
+         st0 <> FdOpen rb wb (FdPipe gp)) ->
+      (forall (rb wb : bool) (gp : pipe_names),
+         st1 <> FdOpen rb wb (FdPipe gp)) ->
+      fd_lowest_closed ld = None ->
+      UkSh.sh_deps -∗
+      shk_code (ukn_t N) -∗
+      uxsup_at (ukn_pay N) -∗
+      □ (app_taint -∗ ukn_pay N (-1)) -∗
+      app_taint -∗
+      udepw_law 21 -∗
+      ush_jtab (ukn_t N) -∗
+      ush_cmd (ukn_d N) t c -∗
+      usz (ukn_s N) szv -∗
+      UserFd.ustd (ukn_fd N) ld -∗
+      UserCwd.ucwd (ukn_cwd N) cwdv -∗
+      UserChildren.uch (ukn_ch N) Sc -∗
+      urun N h m (mword_of_int ShSyms.runcmd)
+        (6 * ush_ht c + (2 + (UkShDiag.ush_Dg + n))) -∗
+      WP (Loop : expr riscv_lang).
+  Proof using Hpsok_free.
+    intros Hp N Hcst h m t szv cwdv ld st0 st1 Sc n
+           Hpx Ha0 Hl0 Hl1 Hne0 Hne1 Hnp0 Hnp1 Hnone.
+    iIntros "#Hdp #Hcode #Hexs #Hkw #Hkc #Hcw #Hjt #Htree Hsz Hstd Hcwd Hch Hrun".
+    iApply (wp_kshr_runcmd_ptop c Hp N h m t szv cwdv ld st0 st1 Sc n
+              Hpx Ha0 Hl0 Hl1 Hne0 Hne1 Hnp0 Hnp1
+              with "Hdp Hcode Hexs Hkw Hjt Htree Hsz Hstd Hcwd Hch [] Hrun").
+    iApply (ush_pipe_call_of_leaf N ld Hnone with "Hkc Hcw").
   Qed.
 
 End UkShPipe.

@@ -842,8 +842,8 @@ Section VdrwfP6.
     iDestruct (sie_cap_gpr_kmap_claims with "Hcg") as "[#Hkm Hcg]".
     iDestruct (disk_geom_static with "Hgeom") as %(Hspd & _ & _).
     iDestruct (disk_geom_canonical with "Hgeom") as %(Hcpd & _ & _).
-    iPoseProof "Hgeom" as "Hgeom2".
-    iDestruct "Hgeom2" as "(#Hdp & _ & _ & %Hal0 & _ & _ & _ & _)".
+    iDestruct (disk_geom_desc_ptr with "Hgeom") as "#Hdp".
+    iDestruct (disk_geom_aligned with "Hgeom") as %Hal0.
     destruct Hal0 as (Hald & _ & _).
     assert (Hsbuf : forall k, (k < 1024)%nat ->
               kmap_static (svpn_of (pa_add (b_data b) k)) KP_rw)

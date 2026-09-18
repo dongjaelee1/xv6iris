@@ -1996,9 +1996,26 @@ Section ProcInv.
   Proof using .
     rewrite (proc_priv_split_cwd γf pa pid U) /proc_priv_unmarked
       /gen_halves_priv.
+    (* BUILD the bundle, do not frame it: [proc_priv_nocwd]'s core ends in a
+       4096-element big-op, and a bare [iFrame] here searches the whole goal
+       for every one of the seven conjuncts (2.1s a direction).  Every row is
+       definition-valued and already in hand, so the goal's own conjunct
+       order closes it with [iExact]. *)
     iSplit.
-    - iIntros "(Hn & Hc & Hf & Hgq & Hxs & Hgh & Ht)". iFrame.
-    - iIntros "[(Hn & Hc & Hf & Hgq & Hxs & Hgh) Ht]". iFrame.
+    - iIntros "(Hn & Hc & Hf & Hgq & Hxs & Hgh & Ht)".
+      iSplitR "Ht"; [| iExact "Ht"].
+      iSplitL "Hn"; [iExact "Hn" |].
+      iSplitL "Hc"; [iExact "Hc" |].
+      iSplitL "Hf"; [iExact "Hf" |].
+      iSplitL "Hgq"; [iExact "Hgq" |].
+      iSplitL "Hxs"; [iExact "Hxs" | iExact "Hgh"].
+    - iIntros "[(Hn & Hc & Hf & Hgq & Hxs & Hgh) Ht]".
+      iSplitL "Hn"; [iExact "Hn" |].
+      iSplitL "Hc"; [iExact "Hc" |].
+      iSplitL "Hf"; [iExact "Hf" |].
+      iSplitL "Hgq"; [iExact "Hgq" |].
+      iSplitL "Hxs"; [iExact "Hxs" |].
+      iSplitL "Hgh"; [iExact "Hgh" | iExact "Ht"].
   Qed.
 
   (* what a killed check on the marker-less block lends killed(): the quarter
@@ -2012,8 +2029,10 @@ Section ProcInv.
   Proof using .
     iIntros "(Hn & Hrest)".
     iDestruct (proc_priv_nocwd_pid with "Hn") as "[Hpid Hback]".
-    iFrame "Hpid". iIntros "Hpid". iDestruct ("Hback" with "Hpid") as "Hn".
-    iFrame.
+    iSplitL "Hpid"; [iExact "Hpid" |].
+    iIntros "Hpid". iDestruct ("Hback" with "Hpid") as "Hn".
+    rewrite /proc_priv_unmarked.
+    iSplitL "Hn"; [iExact "Hn" | iExact "Hrest"].
   Qed.
 
   Lemma proc_priv_unmarked_reg (γf : gname) (pa : mword 64) (pid : mword 32)
@@ -2025,7 +2044,14 @@ Section ProcInv.
   Proof using .
     iIntros "(Hn & Hc & Hf & Hgq & Hxs & Hgh)".
     iDestruct (gen_halves_at_reg with "Hgh") as "[Hr Hback]".
-    iFrame "Hr". iIntros "Hr". iDestruct ("Hback" with "Hr") as "Hgh". iFrame.
+    iSplitL "Hr"; [iExact "Hr" |].
+    iIntros "Hr". iDestruct ("Hback" with "Hr") as "Hgh".
+    rewrite /proc_priv_unmarked.
+    iSplitL "Hn"; [iExact "Hn" |].
+    iSplitL "Hc"; [iExact "Hc" |].
+    iSplitL "Hf"; [iExact "Hf" |].
+    iSplitL "Hgq"; [iExact "Hgq" |].
+    iSplitL "Hxs"; [iExact "Hxs" | iExact "Hgh"].
   Qed.
 
   Lemma proc_priv_pid (γf : gname) (pa : mword 64) (pid : mword 32) (U : ustate) :

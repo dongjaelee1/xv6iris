@@ -36,9 +36,16 @@
 (*  [once the line and the pipe have diverged, a further write is still   *)
 (*  payable and leaves you diverged] -- as a premise of the entry, IN     *)
 (*  THE ENTRY'S OWN [Pay] so that the gap is visible at the statement.    *)
-(*  It is not derivable from [pipe_inv]: the two ways to discharge it are *)
-(*  in the lane's Findings block (a DERAIL arm on (P1), or a read-end     *)
-(*  liveness observation in the body).  Everything else here is proved.   *)
+(*  It is not derivable from [pipe_inv], and not refutable either (a      *)
+(*  holder cannot fire its own link: [pipe_wlink] wants the KERNEL's      *)
+(*  [pipe_qauth]).  [ep_pay_of_alloc] below is the anti-vacuity exhibit:  *)
+(*  every OTHER conjunct of the lend is minted at [pipe(2)] itself.  The  *)
+(*  routes out are priced in the lane's Findings block: a DERAIL arm on   *)
+(*  (P1) is the one that works; a read-end liveness observation is        *)
+(*  REFUTED (cat closes the read end before sh reaps, so any box-shaped   *)
+(*  [the read end is open] is eventually false); and the KILL half of the *)
+(*  problem folds into the taint, which the kernel's trap tail already    *)
+(*  pairs with [ChildTok.kill_shot].  Everything else here is proved.     *)
 (*                                                                       *)
 (*  WHAT THE EXIT PAYLOAD SAYS, in consequence: [ep_ok pn L (length L)] --*)
 (*  either the cursor at the line's end (which IS [the line is in],       *)
@@ -207,6 +214,29 @@ Section UEchoPipe.
     rewrite /ep_pay /ep_car /ep_ok /ep_cur.
     iIntros "(#Hinv & #Hd & Hfr & Hw & Hlb)".
     iFrame "Hinv Hd Hfr". iLeft. rewrite take_0. iFrame "Hw Hlb".
+  Qed.
+
+  (* ...AND THE ANTI-VACUITY EXHIBIT: EVERYTHING in echo's lend EXCEPT the
+     missing arm is minted at [pipe(2)] itself ([PipeProto.pipe_proto_alloc],
+     which is [UkReadPipe.wp_uk_pipe_read_end]'s registrar premise), with
+     the rest of the quintuple -- the registration, the reader's permit and
+     the right side token -- left over for the registry, cat and sh.  So
+     echo's entry is ONE premise away from being instantiable, and that one
+     premise is [ep_derail]. *)
+  Lemma ep_pay_of_alloc (γp : pipe_names) (L : list (bv 8)) :
+    pipe_qfrag (pn_queue γp) pst0 -∗ Wq ={⊤}=∗
+    ∃ pn : pnames,
+      pipe_reg γp ∗ rtok pn ∗ side_R pn
+      ∗ (ep_derail pn γp L -∗ ep_pay pn γp L).
+  Proof using .
+    iIntros "Hfrag HWq".
+    iMod (pipe_proto_alloc γp L with "Hfrag")
+      as (pn) "(#Hinv & Hw & Hr & HL & HR & #Hreg)".
+    rewrite /wtok.
+    iMod (pws_lb_of_inv pn γp L 0%nat with "Hinv Hw") as "[Hw #Hlb]".
+    iModIntro. iExists pn. iFrame "Hreg Hr HR".
+    iIntros "Hd". rewrite /ep_pay /ep_frame.
+    iFrame "Hinv Hd HL HWq Hw". rewrite take_0. iExact "Hlb".
   Qed.
 
   (* ...AND WHAT SH CAN READ OFF THE EXIT.  The good arm is

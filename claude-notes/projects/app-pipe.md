@@ -1981,7 +1981,7 @@ of `iris/_CoqProject`; **no landed statement moved** — `UkEcho`,
 `UkWritePipe`, `PipeProto`, `PipeReg`, `UEchoOut`, `UShEcho` were not
 touched at all, and NOTHING in the tree `Require`s the new file, so no
 audit cone reaches this lane.  Whole-tree `ec2-lane.sh echo build` RC=0; no
-`Admitted`, no `Axiom`; a MINIMAL `Proof using` on all nineteen results
+`Admitted`, no `Axiom`; a MINIMAL `Proof using` on all twenty results
 (Rocq's own `Set Suggest Proof Using`: `Proof using .` on the four
 write/chain results, `Proof using ghost_varG0 ghost_varG1 ufdG0` — the
 console entry's set verbatim — on the three entry-level ones).
@@ -1989,7 +1989,11 @@ console entry's set verbatim — on the three entry-level ones).
 standing fourteen (`PrimInt63.*`, `PrimString.*`, `resv_matches`,
 `resv_is_valid`, `functional_extensionality_dep`), i.e. **≤ echo's own
 console entry's list**; `Print Assumptions ep_urun_nopipe`: *Closed under
-the global context*.
+the global context*.  **`make audit-echo-only` RE-RUN on the mirror against
+the quiescent tree after the lane's build: exactly the FOURTEEN of
+`durable-notes.md`'s baseline, textually UNMOVED** — and it could not have
+moved, since nothing in the tree `Require`s the new file and the only
+pre-existing content this lane changed is one line of `_CoqProject`.
 
 **WHAT LANDED** (`iris/UEchoPipe.v`)
 
@@ -2052,6 +2056,13 @@ the global context*.
 
   `cw`, `cs`, `pidv` are FREE (echo reads no identity row), as at the
   console.
+- **The anti-vacuity exhibit**: `ep_pay_of_alloc` — EVERY conjunct of
+  echo's lend except `ep_derail` is minted at `pipe(2)` itself, out of
+  `PipeProto.pipe_proto_alloc` (with the registration, the reader's permit
+  and `side_R` left over for the registry, cat and sh).  So the entry is
+  exactly ONE premise away from being instantiable, and that premise is
+  `ep_derail`; it is also not REFUTABLE from `pipe_inv` (a holder cannot
+  fire its own link — `pipe_wlink` wants the KERNEL's `pipe_qauth`).
 - **The exit row, off the REGISTRY**: `ep_urun_nopipe` — echo's table
   `[c; W; c]` registers itself from the protocol's handle
   (`PipeProto.pipe_reg_of_inv` + `UexecExecInst.srow_reg_of_pipe_reg` +
@@ -2087,9 +2098,10 @@ the global context*.
    The wall is therefore in the PAYMENT's statement, not in the WP walk.
    **Two reachable causes of `k < n`** (the copy-in fault is not one — this
    lane refutes it): the writer's KILL SHOT, and the READ END SHUT
-   (`ps_ro s = false`), which is design §4.2's `PExecR` world and is a real
-   machine behaviour — `pipewrite` tests `readopen` at the TOP of each byte
-   iteration, so a stop at ANY `0 ≤ k < n` is reachable.
+   (`ps_ro s = false`), which is design §4.2's `PExecR` world.  The SPEC
+   admits ANY `0 ≤ k < n` there — `pipe_wpost`'s observation arm carries
+   `⌜(k < n)%nat⌝` and nothing more — and that is right: `pipewrite` tests
+   `readopen` before each byte, so a line can be cut anywhere.
    **What this lane did about it:** named the missing capability, at the
    smallest shape that closes the walk, and put it IN THE ENTRY'S OWN `Pay`
    so the gap is visible at the statement:

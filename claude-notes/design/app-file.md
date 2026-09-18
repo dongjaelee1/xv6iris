@@ -552,7 +552,8 @@ unowned critical item (WRITE-RELAY-3's `TB` guard).  RULES, replacing
 
 - THE METRIC is `grep -c "Hypothesis\|Admitted" iris/UEchoFile.v
   iris/UShRound.v iris/UInitFile.v` (15 + 12 today).  A lane that does not
-  lower it did not finish.
+  lower it did not finish.  Readings: 31 at review 2 (9/19/3); 23 at
+  checkpoint 34 (9/11/3, PROGRAM-STREAM's first stretch, 4689ae3e1).
 - TWO SERIAL STREAMS, at most two lanes on `iris/` at once: the KERNEL
   stream (OFF-LINK-6 + L5 + the `TB` guard, exit criterion: `Hopen_hand`,
   cat's lend and `UEchoFile.ef_chain` compile as `Definition`s; then

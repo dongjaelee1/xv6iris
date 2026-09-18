@@ -3207,3 +3207,163 @@ sh still owes the round's two program-tier premises, `Hw` (its own
 `UEchoOut.kecho_w_of_link_data`-shaped supply, at `pcch_step` — which is
 landed) and `Hdg`; and it owes the OWNER's ruling on finding 2's
 `Hktaint`.
+
+### PIPE-PROTO-2 (2026-09-18) — (P4) lands and the derail is CLOSED: a chain past a short write needs no cursor, no bytes and no bound
+
+Branch `app-pipe/pipe-proto-2`, commits `80a771438` (the protocol) and
+`45d2e39aa` (the two consumers).  Whole-tree `ec2-lane.sh proto2 build`
+**RC=0** (twice: after the protocol and after the consumers).  No
+`Admitted`, no `Axiom`; `Proof using .` on every result inside the section
+(the three top-level ones keep the tree's plain `Proof.` for those forms).
+**`Print Assumptions` on all TEN new results plus the four PIPE-PROTO's bar
+named: "Closed under the global context", fourteen for fourteen.**  The
+audits cannot move: `grep -l` over `iris/*.v` says the ONLY files that
+mention `PipeProto`, `UEchoPipe` or `UCatPipe` are those three themselves,
+so no audit cone reaches any of them, and nothing else in the tree was
+edited.
+
+**WHAT LANDED** (`iris/PipeProto.v`)
+
+- **(P4) and its one-shot.**  New camera `pipe_roR := csumR (exclR unitO)
+  (agreeR unitO)` (no payload — what it records is a fact about `ps_ro`,
+  which is MONOTONE), new gname `pn_ro`, `ro_pending` / `ro_shot` with
+  `ro_pending_shot`, `ro_shoot` and the three instances.  `pipe_body` gains
+
+        ∗ (ro_pending pn ∨ (ro_shot pn ∗ ⌜ps_ro s = false⌝))
+
+  and the law is `pipe_body_P4 : pipe_body pn γp L -∗ ro_shot pn -∗
+  pipe_qauth (pn_queue γp) s -∗ ⌜ps_ro s = false⌝`, stated against the
+  KERNEL's authority like (P1)–(P3).  Preservation is one line per step:
+  `pst_write` and `pst_read` do not touch `ps_ro`, `pst_close true` does
+  not, and `pst_close false` makes it `false` — the shot only ever gets
+  truer.
+- **The writer's observation node SETS it.**  `pipe_wQe pn L c j s` is now
+  `pipe_wQ pn L c j ∗ (⌜ps_ro s = false⌝ -∗ ro_shot pn)`: the olink
+  case-splits on `decide (ps_ro s = false)` and, where the read end is
+  shut, shoots (P4) inside the invariant.  `pipe_wQe_ro_shot` is the
+  reading at exactly the arm of `pipe_wpost` that fires the node (which
+  carries `⌜ps_ro s = false⌝` and nothing else).
+- **THE DERAILED BUILDER**, verbatim:
+
+        Lemma pipe_wchain_of_ro_shot (pn : pnames) (γp : pipe_names)
+            (L : list (bv 8)) (M : gmap Z (bv 8)) (ua : mword 64)
+            (R : iProp Σ) (j cnt : nat) :
+          pipe_inv pn γp L -∗ ro_shot pn -∗ R -∗
+          pipe_wchain (pn_queue γp) M ua (fun _ : nat => R)
+            (fun (_ : nat) (_ : pipe_st) => R) j cnt.
+
+        Lemma pipe_wpay_of_inv_after_short (pn : pnames) (γp : pipe_names)
+            (L : list (bv 8)) (M : gmap Z (bv 8)) (ua : mword 64)
+            (R : iProp Σ) (n : nat) :
+          pipe_inv pn γp L -∗ ro_shot pn -∗ R -∗
+          pipe_wpay (pn_queue γp) M ua (fun _ : nat => R)
+            (fun (_ : nat) (_ : pipe_st) => R) n.
+
+  NO cursor, NO lower bound, NO count bound, NO premise on `M`: every link
+  is VACUOUS (`⌜ps_ro s = true⌝` from PQ-FLAG-2 against (P4)), the exact
+  mirror of (P3)'s refutation by `⌜ps_wo s = true⌝` five lines up in the
+  good-path builder.
+- **`pipe_wpost_line_reason`** — every arm hands the cursor back AND says
+  why the call stopped: `⌜k = n ∨ ¬ uva_rmapped …⌝`, the kill `Rk`, or
+  `ro_shot pn`.  (`pipe_wpost_cursor_line` stays, statement unchanged, as
+  the same without the reason.)
+- **`pipe_payL` gains ECHO-PIPE's missing third arm**: `pws_lb pn L ∨ wtok
+  pn ∨ (∃ c, wcur pn c ∗ ro_shot pn)`.  `pipe_body_short` /
+  `pipe_round_short` read the frozen contents off a mid-line cursor
+  (`w = take c L`, and they need no shot — the cursor alone pins it), and
+  `pipe_round_reading` now answers THREE arms:
+  `(pws_lb pn L ∗ ⌜w = L⌝) ∨ (wtok pn ∗ ⌜w = []⌝) ∨ (∃ c, wcur pn c ∗
+  ro_shot pn ∗ ⌜w = take c L⌝)`.  **`pipe_round_ran` is untouched.**
+- **`pipe_rpost_line`** — CAT-PIPE's `pcat_rpost` folded back here (its own
+  finding 3 said it was general, and it is: it names nothing but
+  `PipeProto`/`PipeQueue` and `app_taint`).  `UCatPipe.pcat_rpost` keeps a
+  BYTE-IDENTICAL statement and a one-line proof; ~40 lines of duplicate
+  proof deleted.  `pipe_rpost_img_line` stays as the lossier reading
+  `pipe_proto_test` uses.
+- **`pipe_proto_derail_test`** — one derailed round, end to end at the
+  resource level: from `pipe_inv`, a first write's `pipe_wpost` and the
+  mapped-source premise (which removes the copy-in reason), the three
+  REACHABLE stops, the last two of which pay the SECOND write:
+
+        pipe_wQ pn L c n                                   (* the run went in *)
+        ∨ (Rk ∗ ∃ k, pipe_wQ pn L c k)                     (* killed *)
+        ∨ pipe_wpay … (fun _ => R) (fun _ _ => R) n2       (* derailed, or tainted *)
+
+**THE TWO CONSUMERS** (both still compile; the edits are minimal and no
+statement in either file moved)
+
+- `UEchoPipe.ep_post_ok`: TWO lines — the observation arm destructs the
+  node's pair, and the unfolding order swaps (`/pipe_wQe` before
+  `/pipe_wQ`, since the inner `pipe_wQ` only appears once the outer is
+  unfolded; `rewrite /f` in the proofmode reaches the Iris CONTEXT too,
+  which is why the original order silently left `HQ` folded).
+- `UCatPipe.pcat_rpost`: statement byte-identical, proof
+  `iApply PipeProto.pipe_rpost_line`.
+
+**WHAT WAS REFUTED / WHAT THE BRIEF AND THE DESIGN GOT WRONG**
+
+1. **The derailed builder cannot be stated "at ANY `Q` and `Qe`"** (the
+   brief's phrasing).  A chain node is `Q j ∧ olink (Qe j) ∧ wlinks`, an
+   ADDITIVE conjunction: the links go vacuous but the node's own VALUE and
+   its observation still have to be PROVED, so the builder must be handed
+   something to put there.  What is true — and is what the brief means — is
+   that ONE resource suffices for the whole chain at every node (the
+   additive `∧` hands the same `R` to the value and to the observation, and
+   the link branch is never taken), so the builder is stated at an
+   arbitrary `R : iProp Σ` with `Q := fun _ => R`, `Qe := fun _ _ => R`.
+   That is exactly `ep_derail`'s shape, so ECHO-PIPE-2 loses nothing.
+   "Any cursor, any bytes" is literally true: `c`, the `M`-premise and the
+   `c + n ≤ length L` bound are all GONE.
+2. **PQ-FLAG-2's warning is right and is the whole reason the shape works**:
+   the derailed builder must not carry `wcur`.  Not because it would be
+   unsound but because it would be UNPROVABLE — `pipe_wQ` pins `ps_ws s` to
+   `take (c+j) L` through `wcur_agree`, which is precisely the knowledge a
+   derailed writer has lost, and re-establishing it is what ECHO-PIPE
+   showed cannot be done.
+3. **(P4) does NOT need a wand in the body** (unlike the design's (P3)
+   draft), and the reason is worth recording: the fact it records is about
+   the STATE, not about a payload, so the owned two-arm form
+   `ro_pending ∨ (ro_shot ∗ ⌜ps_ro s = false⌝)` is both timeless and
+   directly the law.  The WAND is needed one level out, in `pipe_wQe`, for
+   the same reason `pipe_rQe`'s is: `pipe_olink` is a `∀ s`, ONE node that
+   must be producible at EVERY state, so "sets the shot when it fires at
+   `ps_ro s = false`" is that wand, not a second node.
+4. **`pipe_round_reading`'s new arm does not need the shot to compute `w`.**
+   `pipe_body_short` derives `w = take c L` from the mid-line CURSOR alone
+   (the cursor pins `length (ps_ws s)`, (P1) pins the rest, (P3) reads the
+   snapshot off it).  The shot's job in `pipe_payL` is to tell sh that the
+   left child STOPPED rather than never started — i.e. to separate `PExecR`
+   from `PExecL` — not to compute the contents.  So `pipe_body_execL` is
+   `pipe_body_short` at `c = 0` and the second arm is kept only because
+   sh's `PExecL` reading is literally that.
+5. **`pipe_rstop_noobs` is not pure** (CAT-PIPE said so; confirmed while
+   folding `pcat_rpost` back) — its kill arm carries `Rk` — so the fold
+   could not be a pure-side rewrite and had to move the whole logical
+   destruct.
+
+**THE ONE THING THE NEXT LANE NEEDS FIRST**
+
+For **ECHO-PIPE-2**: `ep_derail` is now DERIVABLE and should be deleted
+from `ep_pay` — its body is `pipe_wpay_of_inv_after_short pn γp L M ua
+(ep_halt pn L) n`, under a `□` that `pipe_inv` and `ro_shot` (both
+persistent) let you introduce.  What has to change is where the shot comes
+from: it is not in the entry's `Pay`, it is produced BY echo's own short
+write, so `ep_stuck` must carry it — `ep_stuck pn L := ∃ c, ⌜c ≤ length L⌝
+∗ ep_cur pn L c ∗ ro_shot pn` — and `ep_post_ok`'s observation arm gets it
+from `pipe_wQe_ro_shot` (or, in one step, from `pipe_wpost_line_reason`,
+which is the lemma written for this).  Then `ep_exit`'s halt arm is exactly
+`pipe_payL`'s third arm plus the taint, and sh reads it with the extended
+`pipe_round_reading`.
+
+For **SH-PIPE-ROUND**: `pipe_round_reading` has three arms now; the third
+is `PExecR` and its conclusion is `w = take c L` — a PREFIX of the line,
+which is all the model claims there (design limit 1: "the model says
+nothing about the pipe's final contents" in that alternative, and this is
+strictly more than nothing).
+
+**STILL OWED, and it is not this lane's**: the KILL cause of a short write.
+`pipe_wpost`'s kill arm hands only `Rk = kill_shot gn`, and a writer cannot
+pay from that; ECHO-PIPE's route (c) — make that arm carry the taint too,
+which the kernel already travels with it at the trap tail — is the whole
+fix, and it is the same debt CAT-PIPE's `Hktaint` names on the read side.
+One ruling closes both.

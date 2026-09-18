@@ -1224,3 +1224,4 @@ would have to place a caller-chosen `Φ`, and the invariant only knows how
 to place `emp`). SH-PIPE should take the close deposits as parameters, as
 its brief already says, and the ruling belongs with whoever states sh's
 round.
+

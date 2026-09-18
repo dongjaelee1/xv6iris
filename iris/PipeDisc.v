@@ -1769,3 +1769,511 @@ Proof using.
     + by apply (pro_ok_p_ok ps cs (nlines (ins p)) Hc4).
     + rewrite /disc_pt_p (sessp_sess ps cs (ins p) Hep Hc4). exact Hpt.
 Qed.
+
+(* ====================================================================== *)
+(*  7.  DETERMINACY: TWO WITNESSES PUT THE SAME BYTES ON THE WIRE          *)
+(*                                                                        *)
+(*  [EchoOutPure.sess_prefix_det]'s twin, and [FileDisc.sessf_prefix_det]'s *)
+(*  at one line type over.  It concludes an equality of BYTES and never    *)
+(*  of indices, and it cannot conclude more: at [echo fork | cat] the      *)
+(*  good run [PRan] prints "fork\n$ ", which is also exactly what          *)
+(*  [PFork] prints, and at [echo exec cat failed | cat] it prints what     *)
+(*  [PExecR] prints.  What replaces the index is the one observation this  *)
+(*  section runs on: every alternative's own output is a '$'-FREE RUN      *)
+(*  FOLLOWED BY THE PROMPT, except the echo line's alternative 3, which    *)
+(*  is sh's MAIN-loop panic line and the prologue init then opens.  No     *)
+(*  table of alternatives appears below.                                   *)
+(* ====================================================================== *)
+
+(* ---- the three literal readings of sh's main-loop panic line --------- *)
+
+Lemma pd_alt_panic_len : length alt_panic = 5%nat.
+Proof using. by vm_compute. Qed.
+
+Lemma pd_alt_panic_nd : Forall nodollar alt_panic.
+Proof using. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
+
+Lemma pd_alt_panic_nl4 : alt_panic !! 4%nat = Some wl_nl.
+Proof using. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
+
+Lemma pd_alt_panic_split : alt_panic = sb "fork"%string ++ [wl_nl].
+Proof using. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
+
+Lemma pd_fork_nonl : wl_nl ∉ sb "fork"%string.
+Proof using. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
+
+(* ---- the prompt's '$' sits exactly where the '$'-free run ends ------- *)
+
+Lemma pd_dollar_at (u Y : list (bv 8)) :
+  (u ++ u_prompt ++ Y) !! (length u) = Some (Z_to_bv 8 36%Z).
+Proof using.
+  rewrite lookup_app_r; [| lia]. rewrite Nat.sub_diag.
+  rewrite lookup_app_l; [exact u_prompt_head | exact u_prompt_pos].
+Qed.
+
+(* THE SPLIT.  Two '$'-free runs, each closed by the prompt, below one
+   wire: the runs are EQUAL, whatever alternatives produced them. *)
+Lemma pd_dollar_split (u u' Y Y' : list (bv 8)) :
+  Forall nodollar u -> Forall nodollar u' ->
+  (u' ++ u_prompt ++ Y') `prefix_of` (u ++ u_prompt ++ Y) ->
+  u' = u /\ Y' `prefix_of` Y.
+Proof using.
+  intros Hu Hu' Hp.
+  assert (Hcmp : (u' ++ u_prompt ++ Y') `prefix_of` (u ++ u_prompt ++ Y)
+                 \/ (u ++ u_prompt ++ Y) `prefix_of` (u' ++ u_prompt ++ Y'))
+    by (by left).
+  assert (Hlen : length u' = length u).
+  { destruct (Nat.lt_trichotomy (length u') (length u))
+      as [Hlt | [Heq | Hgt]]; [| exact Heq |]; exfalso.
+    - destruct (lookup_lt_is_Some_2 u (length u') Hlt) as [b Hb].
+      assert (H2 : (u ++ u_prompt ++ Y) !! (length u') = Some b)
+        by (rewrite lookup_app_l; [exact Hb | exact Hlt]).
+      pose proof (pd_cmp_at _ _ _ _ _ Hcmp (pd_dollar_at u' Y') H2) as Heq.
+      pose proof (Forall_lookup_1 _ _ _ _ Hu Hb) as Hnd.
+      rewrite /nodollar -Heq in Hnd. apply Hnd. by vm_compute.
+    - destruct (lookup_lt_is_Some_2 u' (length u) Hgt) as [b Hb].
+      assert (H1 : (u' ++ u_prompt ++ Y') !! (length u) = Some b)
+        by (rewrite lookup_app_l; [exact Hb | exact Hgt]).
+      pose proof (pd_cmp_at _ _ _ _ _ Hcmp H1 (pd_dollar_at u Y)) as Heq.
+      pose proof (Forall_lookup_1 _ _ _ _ Hu' Hb) as Hnd.
+      rewrite /nodollar Heq in Hnd. apply Hnd. by vm_compute. }
+  assert (Hu'u : u' = u).
+  { assert (Hpu' : u' `prefix_of` (u ++ u_prompt ++ Y)).
+    { etrans; [| exact Hp]. apply prefix_app_r. reflexivity. }
+    assert (Hpu : u `prefix_of` (u ++ u_prompt ++ Y))
+      by (apply prefix_app_r; reflexivity).
+    destruct (prefix_weak_total _ _ _ Hpu' Hpu) as [H | H].
+    - apply (pd_prefix_eq _ _ H). lia.
+    - symmetry. apply (pd_prefix_eq _ _ H). lia. }
+  split; [exact Hu'u |]. subst u'.
+  apply wl_prefix_app_cancel in Hp. by apply wl_prefix_app_cancel in Hp.
+Qed.
+
+(* ...AND THE ONE COLLISION THE PROMPT DOES NOT SETTLE: an alternative
+   whose own output IS sh's main-loop panic line, which the user can type
+   ([echo fork] echoes "fork\n").  Below one wire with a panicking round
+   it is forced to be exactly that line. *)
+Lemma pd_out_eq_panic (u Y Z : list (bv 8)) :
+  Forall nodollar u ->
+  (wl_nl ∉ u \/ exists v, wl_nl ∉ v /\ u = v ++ [wl_nl]) ->
+  ((u ++ u_prompt ++ Y) `prefix_of` (alt_panic ++ Z)
+   \/ (alt_panic ++ Z) `prefix_of` (u ++ u_prompt ++ Y)) ->
+  u = alt_panic.
+Proof using.
+  intros Hnd Hnl Hcmp.
+  assert (H5 : (5 <= length u)%nat).
+  { destruct (decide (length u < 5)%nat) as [Hlt | Hge]; [| lia]. exfalso.
+    destruct (lookup_lt_is_Some_2 alt_panic (length u)
+                ltac:(rewrite pd_alt_panic_len; lia)) as [b Hb].
+    assert (H2 : (alt_panic ++ Z) !! (length u) = Some b)
+      by (rewrite lookup_app_l; [exact Hb | rewrite pd_alt_panic_len; lia]).
+    pose proof (pd_cmp_at _ _ _ _ _ Hcmp (pd_dollar_at u Y) H2) as Heq.
+    pose proof (Forall_lookup_1 _ _ _ _ pd_alt_panic_nd Hb) as Hb'.
+    rewrite /nodollar -Heq in Hb'. apply Hb'. by vm_compute. }
+  assert (Hnlin : wl_nl ∈ u).
+  { destruct (lookup_lt_is_Some_2 u 4%nat ltac:(lia)) as [b Hb].
+    assert (H1 : (u ++ u_prompt ++ Y) !! 4%nat = Some b)
+      by (rewrite lookup_app_l; [exact Hb | lia]).
+    assert (H2 : (alt_panic ++ Z) !! 4%nat = Some wl_nl)
+      by (rewrite lookup_app_l;
+          [exact pd_alt_panic_nl4 | rewrite pd_alt_panic_len; lia]).
+    pose proof (pd_cmp_at _ _ _ _ _ Hcmp H1 H2) as Hb2.
+    rewrite Hb2 in Hb. exact (elem_of_list_lookup_2 _ _ _ Hb). }
+  destruct Hnl as [Hno | (v & Hv & Hu)]; [by destruct (Hno Hnlin) |].
+  rewrite Hu pd_alt_panic_split. f_equal.
+  rewrite Hu pd_alt_panic_split in Hcmp.
+  rewrite -(app_assoc v [wl_nl] (u_prompt ++ Y))
+          -(app_assoc (sb "fork"%string) [wl_nl] Z) in Hcmp.
+  assert (Hc2 : (v ++ wl_nl :: (u_prompt ++ Y))
+                  `prefix_of` (sb "fork"%string ++ wl_nl :: Z)
+                \/ (sb "fork"%string ++ wl_nl :: Z)
+                  `prefix_of` (v ++ wl_nl :: (u_prompt ++ Y)))
+    by exact Hcmp.
+  destruct Hc2 as [Hc2 | Hc2].
+  - exact (proj1 (wl_raw_line_prefix_det v (sb "fork"%string) _ _
+                    Hv pd_fork_nonl Hc2)).
+  - symmetry.
+    exact (proj1 (wl_raw_line_prefix_det (sb "fork"%string) v _ _
+                    pd_fork_nonl Hv Hc2)).
+Qed.
+
+(* a settled prologue whose first byte is '$' IS the bare prompt *)
+Lemma pd_prompt_of_dollar (P : list nat) (X Y : list (bv 8)) :
+  Forall (fun a => (a < length pro_alts)%nat) P -> pro_done P ->
+  (u_prompt ++ Y) `prefix_of` (pro_of P ++ X) ->
+  pro_of P = u_prompt.
+Proof using.
+  intros HF Hd Hp.
+  assert (Hne : P <> []) by (intros ->; by apply Exists_nil in Hd).
+  pose proof (pro_of_pos P HF Hne) as Hpos.
+  apply (pro_of_dollar_prompt P HF Hne). intros b Hb.
+  assert (H1 : (u_prompt ++ Y) !! 0%nat = Some (Z_to_bv 8 36%Z))
+    by (rewrite lookup_app_l; [exact u_prompt_head | exact u_prompt_pos]).
+  assert (H2 : (pro_of P ++ X) !! 0%nat = Some (Z_to_bv 8 36%Z))
+    by (eapply pd_prefix_lookup; [exact Hp | exact H1]).
+  rewrite (lookup_app_l (pro_of P) X 0%nat Hpos) Hb in H2.
+  injection H2 as H2. rewrite H2. by vm_compute.
+Qed.
+
+Lemma pd_prompt_of_dollar_r (P : list nat) (X Y : list (bv 8)) :
+  Forall (fun a => (a < length pro_alts)%nat) P -> pro_done P ->
+  (pro_of P ++ X) `prefix_of` (u_prompt ++ Y) ->
+  pro_of P = u_prompt.
+Proof using.
+  intros HF Hd Hp.
+  assert (Hne : P <> []) by (intros ->; by apply Exists_nil in Hd).
+  pose proof (pro_of_pos P HF Hne) as Hpos.
+  apply (pro_of_dollar_prompt P HF Hne). intros b Hb.
+  assert (H1 : (pro_of P ++ X) !! 0%nat = Some b)
+    by (rewrite lookup_app_l; [exact Hb | exact Hpos]).
+  assert (H2 : (u_prompt ++ Y) !! 0%nat = Some b)
+    by (eapply pd_prefix_lookup; [exact Hp | exact H1]).
+  rewrite (lookup_app_l u_prompt Y 0%nat u_prompt_pos) u_prompt_head in H2.
+  injection H2 as H2. rewrite -H2. by vm_compute.
+Qed.
+
+(* ---- ONE ROUND'S CONTINUATION, PROLOGUE INCLUDED --------------------- *)
+
+Definition pcont_all (ps : list nat) (l : pline) (a : palt) : list (bv 8) :=
+  pcont l a ++ (if palt_panic a then pro_of (pro_from 1%nat ps) else []).
+
+Lemma pcont_all_panic ps l a :
+  palt_panic a = true ->
+  pcont_all ps l a = alt_panic ++ pro_of (pro_from 1%nat ps).
+Proof using.
+  intro H. rewrite /pcont_all (pcont_panic l a H) H. reflexivity.
+Qed.
+
+Lemma pcont_all_out ps l a :
+  palt_panic a = false -> pcont_all ps l a = pcont l a.
+Proof using. intro H. rewrite /pcont_all H. by rewrite app_nil_r. Qed.
+
+Lemma alt_cont_p_0 ps cs bs :
+  alt_cont_p ps cs bs 0%nat
+  = pcont_all ps (pline_of (bs !!! 0%nat)) (palt_at cs 0%nat).
+Proof using. reflexivity. Qed.
+
+(* THE BLOCK STEP.  Two continuations below one wire are the SAME BYTES,
+   and the unprimed round is settled.  Four cases, by which side
+   re-entered the prologue; three of them are one lemma each and the
+   fourth is [EchoDisc]'s prologue prefix-freeness. *)
+Lemma pcont_pair_det (ps ps' : list nat) (l : pline)
+    (a a' : palt) (X X' : list (bv 8)) :
+  Forall (fun x => (x < length pro_alts)%nat) ps ->
+  Forall (fun x => (x < length pro_alts)%nat) ps' ->
+  pline_ok l -> palt_ok l a -> palt_ok l a' ->
+  (palt_panic a' = true -> (1 < pro_rounds ps')%nat) ->
+  (palt_panic a = true -> X <> [] -> (1 < pro_rounds ps)%nat) ->
+  (pcont_all ps' l a' ++ X') `prefix_of` (pcont_all ps l a ++ X) ->
+  (palt_panic a = true -> (1 < pro_rounds ps)%nat)
+  /\ pcont_all ps' l a' = pcont_all ps l a
+  /\ X' `prefix_of` X.
+Proof using.
+  intros Hps Hps' Hl Ha Ha' Hset' Hset Hp.
+  destruct (palt_panic a) eqn:Hpa; destruct (palt_panic a') eqn:Hpa'.
+  - (* BOTH RE-ENTERED THE PROLOGUE: two prologues below one wire *)
+    rewrite (pcont_all_panic ps l a Hpa) (pcont_all_panic ps' l a' Hpa')
+      in Hp |- *.
+    rewrite -(app_assoc alt_panic (pro_of (pro_from 1%nat ps')) X')
+            -(app_assoc alt_panic (pro_of (pro_from 1%nat ps)) X) in Hp.
+    apply wl_prefix_app_cancel in Hp.
+    assert (Hd' : pro_done (pro_from 1%nat ps'))
+      by (apply pro_from_done, Hset', eq_refl).
+    pose proof (pro_from_Forall _ 1%nat ps Hps) as HFA.
+    pose proof (pro_from_Forall _ 1%nat ps' Hps') as HFB.
+    assert (Hcmp : pro_of (pro_from 1%nat ps')
+                   `prefix_of` pro_of (pro_from 1%nat ps)).
+    { destruct (decide (X = [])) as [HX0 | HXne].
+      - rewrite HX0 app_nil_r in Hp.
+        etrans; [apply prefix_app_r; reflexivity | exact Hp].
+      - assert (HdA : pro_done (pro_from 1%nat ps))
+          by (apply pro_from_done, Hset; [exact eq_refl | exact HXne]).
+        destruct (prefix_weak_total (pro_of (pro_from 1%nat ps'))
+                    (pro_of (pro_from 1%nat ps))
+                    (pro_of (pro_from 1%nat ps) ++ X)
+                    ltac:(etrans; [apply prefix_app_r; reflexivity | exact Hp])
+                    ltac:(apply prefix_app_r; reflexivity)) as [H | H];
+          [exact H |].
+        destruct (pro_of_prefix_free (pro_from 1%nat ps') (pro_from 1%nat ps)
+                    HFB HFA HdA H) as [_ Heqp]. by rewrite Heqp. }
+    destruct (pro_of_prefix_free (pro_from 1%nat ps) (pro_from 1%nat ps')
+                HFA HFB Hd' Hcmp) as [HdA Heqp].
+    rewrite Heqp in Hp. apply wl_prefix_app_cancel in Hp.
+    split; [intros _; by apply pro_from_done |].
+    split; [by rewrite Heqp | exact Hp].
+  - (* THE UNPRIMED SIDE RE-ENTERED; the primed side printed a prompt *)
+    destruct (palt_panic_LEcho l a Ha Hpa) as [ws ->].
+    rewrite (pcont_all_panic ps _ a Hpa) (pcont_all_out ps' _ a' Hpa')
+      in Hp |- *.
+    destruct (pcont_shape_nl ws a' Hl Ha' Hpa') as (u & Hu & Hnd & Hnl).
+    rewrite Hu in Hp |- *.
+    rewrite -(app_assoc u u_prompt X')
+            -(app_assoc alt_panic (pro_of (pro_from 1%nat ps)) X) in Hp.
+    assert (Hueq : u = alt_panic).
+    { apply (pd_out_eq_panic u X' (pro_of (pro_from 1%nat ps) ++ X) Hnd Hnl).
+      by left. }
+    rewrite Hueq in Hp |- *. apply wl_prefix_app_cancel in Hp.
+    assert (HdA : pro_done (pro_from 1%nat ps)).
+    { destruct (decide (X = [])) as [HX0 | HXne];
+        [| apply pro_from_done, Hset; [exact eq_refl | exact HXne]].
+      rewrite HX0 app_nil_r in Hp.
+      destruct (decide (pro_done (pro_from 1%nat ps))) as [Hy | Hopen];
+        [exact Hy | exfalso].
+      assert (H1 : (u_prompt ++ X') !! 0%nat = Some (Z_to_bv 8 36%Z))
+        by (rewrite lookup_app_l; [exact u_prompt_head | exact u_prompt_pos]).
+      assert (H2 : pro_of (pro_from 1%nat ps) !! 0%nat
+                   = Some (Z_to_bv 8 36%Z))
+        by (eapply pd_prefix_lookup; [exact Hp | exact H1]).
+      pose proof (pro_of_open_head (pro_from 1%nat ps) _ Hopen H2) as Hv.
+      rewrite (_ : bv_unsigned (Z_to_bv 8 36%Z) = 36%Z) in Hv;
+        [lia | by vm_compute]. }
+    assert (Heqp : pro_of (pro_from 1%nat ps) = u_prompt)
+      by (apply (pd_prompt_of_dollar (pro_from 1%nat ps) X X');
+          [exact (pro_from_Forall _ 1%nat ps Hps) | exact HdA | exact Hp]).
+    rewrite Heqp in Hp. apply wl_prefix_app_cancel in Hp.
+    split; [intros _; by apply pro_from_done |].
+    split; [by rewrite Heqp | exact Hp].
+  - (* THE PRIMED SIDE RE-ENTERED; the unprimed printed a prompt *)
+    destruct (palt_panic_LEcho l a' Ha' Hpa') as [ws ->].
+    rewrite (pcont_all_out ps _ a Hpa) (pcont_all_panic ps' _ a' Hpa')
+      in Hp |- *.
+    destruct (pcont_shape_nl ws a Hl Ha Hpa) as (u & Hu & Hnd & Hnl).
+    rewrite Hu in Hp |- *.
+    rewrite -(app_assoc alt_panic (pro_of (pro_from 1%nat ps')) X')
+            -(app_assoc u u_prompt X) in Hp.
+    assert (Hueq : u = alt_panic).
+    { apply (pd_out_eq_panic u X (pro_of (pro_from 1%nat ps') ++ X') Hnd Hnl).
+      by right. }
+    rewrite Hueq in Hp |- *. apply wl_prefix_app_cancel in Hp.
+    assert (Hd' : pro_done (pro_from 1%nat ps'))
+      by (apply pro_from_done, Hset', eq_refl).
+    assert (Heqp : pro_of (pro_from 1%nat ps') = u_prompt)
+      by (apply (pd_prompt_of_dollar_r (pro_from 1%nat ps') X' X);
+          [exact (pro_from_Forall _ 1%nat ps' Hps') | exact Hd' | exact Hp]).
+    rewrite Heqp in Hp. apply wl_prefix_app_cancel in Hp.
+    split; [intros Hq; discriminate |].
+    split; [by rewrite Heqp | exact Hp].
+  - (* NEITHER: the '$'-split settles it, whatever they were *)
+    rewrite (pcont_all_out ps l a Hpa) (pcont_all_out ps' l a' Hpa')
+      in Hp |- *.
+    destruct (pcont_shape l a Hl Ha Hpa) as (u & Hu & Hnd).
+    destruct (pcont_shape l a' Hl Ha' Hpa') as (u' & Hu' & Hnd').
+    rewrite Hu Hu' in Hp |- *.
+    rewrite -(app_assoc u' u_prompt X') -(app_assoc u u_prompt X) in Hp.
+    destruct (pd_dollar_split u u' X X' Hnd Hnd' Hp) as [-> HX].
+    split; [intros Hq; discriminate |].
+    split; [reflexivity | exact HX].
+Qed.
+
+Lemma pd_nonl_lta (bs : list (list (bv 8))) (i : nat) :
+  Forall (fun l => wl_nl ∉ l) bs -> (i < length bs)%nat -> wl_nl ∉ bs !!! i.
+Proof using.
+  intros HF Hi. destruct (lookup_lt_is_Some_2 bs i Hi) as [l Hl].
+  rewrite (list_lookup_total_correct bs i l Hl).
+  exact (Forall_lookup_1 _ _ _ _ HF Hl).
+Qed.
+
+Lemma alt_cont_p_bs0 ps cs bs bs' :
+  bs !!! 0%nat = bs' !!! 0%nat ->
+  alt_cont_p ps cs bs 0%nat = alt_cont_p ps cs bs' 0%nat.
+Proof using. intro H. rewrite /alt_cont_p H. reflexivity. Qed.
+
+(* THE SEQUENCE STEP.  Two block sequences below one wire have the same
+   BODIES and the same BYTES, and nothing is concluded about the two
+   resolutions, which may genuinely differ. *)
+Lemma alt_seq_p_prefix_det (q' : nat) :
+  forall (ps ps' cs cs' : list nat)
+         (bs bs' : list (list (bv 8))) (q : nat) (t' t : list (bv 8)),
+    Forall (fun a => (a < length pro_alts)%nat) ps ->
+    Forall (fun a => (a < length pro_alts)%nat) ps' ->
+    (pro_idx_p cs' q' < pro_rounds ps')%nat ->
+    (0 < pro_rounds ps)%nat ->
+    (forall i, (i < q)%nat -> (pro_idx_p cs i < pro_rounds ps)%nat) ->
+    (t <> [] -> (pro_idx_p cs q < pro_rounds ps)%nat) ->
+    (q' <= length bs')%nat -> (q <= length bs)%nat ->
+    (forall i, (i < q)%nat -> pline_ok (pline_of (bs !!! i))) ->
+    (forall i, (i < q)%nat -> palt_ok (pline_of (bs !!! i)) (palt_at cs i)) ->
+    (forall i, (i < q')%nat -> palt_ok (pline_of (bs' !!! i)) (palt_at cs' i)) ->
+    Forall (fun l => wl_nl ∉ l) bs -> Forall (fun l => wl_nl ∉ l) bs' ->
+    wl_nl ∉ t' -> wl_nl ∉ t ->
+    (alt_seq_p ps' cs' bs' q' ++ t')
+      `prefix_of` (alt_seq_p ps cs bs q ++ t) ->
+    (q' <= q)%nat /\ take q' bs' = take q' bs
+    /\ (pro_idx_p cs q' < pro_rounds ps)%nat
+    /\ alt_seq_p ps' cs' bs' q' = alt_seq_p ps cs bs q'
+    /\ (q' = q -> t' `prefix_of` t)
+    /\ (q' < q -> t' `prefix_of` bs !!! q').
+Proof using.
+  induction q' as [| n IH];
+    intros ps ps' cs cs' bs bs' q t' t Hps Hps' Hlt' Hpos Hbelow Htlast
+      Hlb' Hlb Hline Hokc Hokc' Hnb Hnb' Hnt' Hnt Hpre.
+  { rewrite alt_seq_p_0 app_nil_l in Hpre.
+    split; [lia |]. split; [by rewrite !take_0 |].
+    split; [cbn [pro_idx_p]; lia |]. split; [reflexivity |].
+    split.
+    - intros Hq. rewrite -Hq alt_seq_p_0 app_nil_l in Hpre. exact Hpre.
+    - intros Hq. destruct q as [| p]; [lia |].
+      rewrite alt_seq_p_cons_assoc in Hpre.
+      exact (wl_prefix_nonl_of_line t' (bs !!! 0%nat) _ Hnt' Hpre). }
+  (* the primed side has a block, so the unprimed side has one *)
+  destruct q as [| p].
+  { exfalso. rewrite alt_seq_p_0 app_nil_l alt_seq_p_cons_assoc in Hpre.
+    exact (wl_raw_line_not_prefix_nonl (bs' !!! 0%nat) _ t Hnt Hpre). }
+  rewrite !alt_seq_p_cons_assoc in Hpre.
+  assert (Hn0' : wl_nl ∉ bs' !!! 0%nat)
+    by (apply pd_nonl_lta; [exact Hnb' | lia]).
+  assert (Hn0 : wl_nl ∉ bs !!! 0%nat)
+    by (apply pd_nonl_lta; [exact Hnb | lia]).
+  destruct (wl_raw_line_prefix_det _ _ _ _ Hn0' Hn0 Hpre) as [Hhd Hrest].
+  rewrite (alt_cont_p_bs0 ps' cs' bs' bs ltac:(by rewrite Hhd)) in Hrest.
+  (* the head block: one line, two alternatives, one wire *)
+  assert (Hl0 : pline_ok (pline_of (bs !!! 0%nat))) by (apply Hline; lia).
+  assert (Ha0 : palt_ok (pline_of (bs !!! 0%nat)) (palt_at cs 0%nat))
+    by (apply Hokc; lia).
+  assert (Ha0' : palt_ok (pline_of (bs !!! 0%nat)) (palt_at cs' 0%nat)).
+  { rewrite -Hhd. apply Hokc'. lia. }
+  assert (Hset' : palt_panic (palt_at cs' 0%nat) = true ->
+                  (1 < pro_rounds ps')%nat).
+  { intros H3. eapply Nat.le_lt_trans; [| exact Hlt'].
+    rewrite -(pro_idx_p_Sp cs' 0%nat H3). apply pro_idx_p_mono. lia. }
+  assert (Hsetu : palt_panic (palt_at cs 0%nat) = true ->
+            (alt_seq_p (pro_from (pro_idx_p cs 1%nat) ps) (drop 1 cs)
+               (drop 1 bs) p ++ t) <> [] ->
+            (1 < pro_rounds ps)%nat).
+  { intros H3 Hne. destruct p as [| p0].
+    - assert (Htne : t <> []).
+      { intro Hq. apply Hne. by rewrite alt_seq_p_0 app_nil_l Hq. }
+      pose proof (Htlast Htne) as Hb1.
+      rewrite (pro_idx_p_Sp cs 0%nat H3) in Hb1. cbn [pro_idx_p] in Hb1. lia.
+    - pose proof (Hbelow 1%nat ltac:(lia)) as Hb1.
+      rewrite (pro_idx_p_Sp cs 0%nat H3) in Hb1. cbn [pro_idx_p] in Hb1. lia. }
+  rewrite !alt_cont_p_0 in Hrest.
+  destruct (pcont_pair_det ps ps' (pline_of (bs !!! 0%nat))
+              (palt_at cs 0%nat) (palt_at cs' 0%nat) _ _
+              Hps Hps' Hl0 Ha0 Ha0' Hset' Hsetu Hrest)
+    as (Hround1 & Hcont & Hrest2).
+  assert (Hlt1 : (pro_idx_p cs 1%nat < pro_rounds ps)%nat).
+  { destruct (palt_panic (palt_at cs 0%nat)) eqn:H3.
+    - rewrite (pro_idx_p_Sp cs 0%nat H3). cbn [pro_idx_p].
+      by apply Hround1.
+    - rewrite (pro_idx_p_Sn cs 0%nat H3). cbn [pro_idx_p]. lia. }
+  destruct (IH (pro_from (pro_idx_p cs 1%nat) ps)
+              (pro_from (pro_idx_p cs' 1%nat) ps')
+              (drop 1 cs) (drop 1 cs')
+              (drop 1 bs) (drop 1 bs') p t' t
+              (pro_from_Forall _ _ ps Hps) (pro_from_Forall _ _ ps' Hps'))
+    as (Hle & Htk & Hrd & Heq & Hteq & Htlt).
+  { rewrite pro_rounds_from.
+    pose proof (pro_idx_p_add cs' 1%nat n) as Hadd.
+    replace (1 + n)%nat with (S n) in Hadd by lia. lia. }
+  { rewrite pro_rounds_from. lia. }
+  { intros i Hi. rewrite pro_rounds_from.
+    pose proof (pro_idx_p_add cs 1%nat i) as Hadd.
+    replace (1 + i)%nat with (S i) in Hadd by lia.
+    pose proof (Hbelow (S i) ltac:(lia)). lia. }
+  { intros Htne. rewrite pro_rounds_from.
+    pose proof (pro_idx_p_add cs 1%nat p) as Hadd.
+    replace (1 + p)%nat with (S p) in Hadd by lia.
+    pose proof (Htlast Htne). lia. }
+  { rewrite length_drop. lia. }
+  { rewrite length_drop. lia. }
+  { intros i Hi. rewrite pd_lookup_total_drop. apply Hline. lia. }
+  { intros i Hi. rewrite /palt_at !pd_lookup_total_drop. apply Hokc. lia. }
+  { intros i Hi. rewrite /palt_at !pd_lookup_total_drop. apply Hokc'. lia. }
+  { by apply pd_Forall_drop. }
+  { by apply pd_Forall_drop. }
+  { exact Hnt'. }
+  { exact Hnt. }
+  { exact Hrest2. }
+  assert (Hlbn : (S n <= length bs)%nat) by lia.
+  split; [lia |].
+  split; [by rewrite (pd_take_S n bs' Hlb') (pd_take_S n bs Hlbn) Hhd Htk |].
+  split.
+  { pose proof (pro_idx_p_add cs 1%nat n) as Hadd.
+    replace (1 + n)%nat with (S n) in Hadd by lia.
+    rewrite pro_rounds_from in Hrd. lia. }
+  split.
+  { rewrite (alt_seq_p_cons ps' cs' bs' n) (alt_seq_p_cons ps cs bs n).
+    rewrite Heq /alt_blk_p Hhd.
+    rewrite (alt_cont_p_bs0 ps' cs' bs' bs ltac:(by rewrite Hhd)).
+    by rewrite !alt_cont_p_0 Hcont. }
+  split.
+  - intros Hqe. apply Hteq. lia.
+  - intros Hqlt.
+    pose proof (Htlt ltac:(lia)) as H.
+    rewrite pd_lookup_total_drop in H.
+    replace (1 + n)%nat with (S n) in H by lia. exact H.
+Qed.
+
+(* ...AND THE SESSION TRANSCRIPTS THEMSELVES.  This is what the stage
+   spends: two resolutions below one wire are the same bytes, and the
+   discipline's input is a prefix of the claim's. *)
+Lemma sessp_prefix_det (ps ps' cs cs' : list nat) (I' I : list (bv 8)) :
+  Forall (fun a => (a < length pro_alts)%nat) ps ->
+  pro_ok_p ps' cs' (nlines I') ->
+  alts_ok_p I cs -> alts_ok_p I' cs' ->
+  pro_pin_p ps cs I -> disc_input_p I -> disc_input_p I' ->
+  sessp ps' cs' I' `prefix_of` sessp ps cs I ->
+  I' `prefix_of` I /\ pro_ok_p ps cs (nlines I')
+  /\ sessp ps' cs' I' = sessp ps cs I'.
+Proof using.
+  intros Hps [Hps' Hlt'] Hcs Hcs' Hpin Hd Hd' Hpre.
+  assert (Hdone' : pro_done ps') by (apply pro_done_rounds; lia).
+  (* the PROLOGUES: below one wire, and the primed one is settled *)
+  assert (Hpre0 : pro_of ps' `prefix_of` pro_of ps).
+  { destruct (decide (I = [])) as [HI0 | HI].
+    - rewrite HI0 sessp_nil in Hpre. etrans; [| exact Hpre].
+      rewrite /sessp. by apply prefix_app_r.
+    - assert (HdA : pro_done ps).
+      { apply pro_done_rounds.
+        pose proof (Hpin 0%nat (nstarted_pos I HI)) as H0.
+        cbn [pro_idx_p] in H0. lia. }
+      assert (H1 : pro_of ps' `prefix_of` sessp ps cs I).
+      { etrans; [| exact Hpre]. rewrite /sessp. by apply prefix_app_r. }
+      assert (H2 : pro_of ps `prefix_of` sessp ps cs I)
+        by (rewrite /sessp; by apply prefix_app_r).
+      destruct (prefix_weak_total _ _ _ H1 H2) as [H | H]; [exact H |].
+      destruct (pro_of_prefix_free ps' ps Hps' Hps HdA H) as [_ Heq].
+      by rewrite Heq. }
+  destruct (pro_of_prefix_free ps ps' Hps Hps' Hdone' Hpre0) as [Hdps Heq0].
+  assert (Hpos : (0 < pro_rounds ps)%nat) by (by apply pro_done_rounds).
+  rewrite /sessp Heq0 in Hpre. apply wl_prefix_app_cancel in Hpre.
+  assert (Hbelow : forall i, (i < nlines I)%nat ->
+            (pro_idx_p cs i < pro_rounds ps)%nat).
+  { intros i Hi. apply Hpin. pose proof (nlines_le_nstarted I). lia. }
+  assert (Htlast : rest_of I <> [] ->
+            (pro_idx_p cs (nlines I) < pro_rounds ps)%nat).
+  { intros Hne. apply Hpin. rewrite /nstarted.
+    case_decide as Hz; [by destruct (Hne Hz) | lia]. }
+  assert (Hlb' : (nlines I' <= length (bodies_of I'))%nat)
+    by (rewrite /nlines; lia).
+  assert (Hlb : (nlines I <= length (bodies_of I))%nat)
+    by (rewrite /nlines; lia).
+  assert (Hline : forall i, (i < nlines I)%nat ->
+            pline_ok (pline_of (bodies_of I !!! i)))
+    by (intros i Hi; exact (proj1 (disc_input_p_at I i Hd Hi))).
+  assert (Hokc : forall i, (i < nlines I)%nat ->
+            palt_ok (pline_of (bodies_of I !!! i)) (palt_at cs i))
+    by (intros i Hi; exact (alts_ok_p_at I cs i Hcs Hi)).
+  assert (Hokc' : forall i, (i < nlines I')%nat ->
+            palt_ok (pline_of (bodies_of I' !!! i)) (palt_at cs' i))
+    by (intros i Hi; exact (alts_ok_p_at I' cs' i Hcs' Hi)).
+  destruct (alt_seq_p_prefix_det (nlines I') ps ps' cs cs'
+              (bodies_of I) (bodies_of I') (nlines I) (rest_of I') (rest_of I)
+              Hps Hps' Hlt' Hpos Hbelow Htlast Hlb' Hlb
+              Hline Hokc Hokc'
+              (wl_cut_bodies_nonl I) (wl_cut_bodies_nonl I')
+              (wl_cut_rest_nonl I') (wl_cut_rest_nonl I) Hpre)
+    as (Hqle & Htk & Hround & Hseq & Hteq & Htlt).
+  assert (HI' : I' `prefix_of` I).
+  { apply wl_cut_prefix_of.
+    - assert (Hb' : bodies_of I' = take (nlines I') (bodies_of I))
+        by (rewrite -Htk take_ge; [reflexivity | rewrite /nlines; lia]).
+      rewrite Hb'. apply prefix_take.
+    - exact Hteq.
+    - exact Htlt. }
+  split; [exact HI' |]. split; [split; [exact Hps | exact Hround] |].
+  rewrite /sessp Heq0. do 2 f_equal. rewrite Hseq.
+  apply alt_seq_p_bs_ext. intros j Hj. symmetry.
+  exact (pd_lta_take_eq (bodies_of I) (bodies_of I') (nlines I') j Htk Hj).
+Qed.

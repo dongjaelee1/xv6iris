@@ -392,15 +392,15 @@ Section ProofSysOpenPub.
     iDestruct (fd_st_agree (pv_fdg (us_V U)) fd FdClosed stq with "Hauth Hfr")
       as "%Hstqcl".
     iMod (proc_priv_settle gf (proc_addr jx) pidv U fd kf 1 stpub FdClosed stq
-                 Hfdlt Hlen Hkf (fdstate_ok_open _ _ _ C stpub Hokpub (or_intror Htyor))
+                 Hfdlt Hlen Hkf (fdstate_ok_open _ _ _ _ C stpub Hokpub (or_intror Htyor))
                  with "Hcore Howe Href Hauth Hfr") as "[Hpriv Hfr]".
     iDestruct ("Hfrback" $! stpub with "Hfr [Huinv]") as "Hfrags".
-    { iApply (foff_row_of_ok _ _ _ _ _ Hokpub with "Huinv"). }
+    { iApply (foff_row_of_ok _ _ _ _ _ _ Hokpub with "Huinv"). }
     iModIntro.
     (* [stpub] IS the typed state the contract names: the two mode cells
        hold the caller's own omode bits ([ProofSysOpenBits]) and the type
        is [Htyt]'s, so [fdstate_ok_inj] pins it. *)
-    assert (Hstok : fdstate_ok inum g (fp_pipe pn) C
+    assert (Hstok : fdstate_ok inum g OffParked (fp_pipe pn) C
                       (FdOpen (om_readable vom) (om_writable vom) t)).
     { assert (Hrd : fc_readable C
                     = ((if om_readable vom
@@ -412,7 +412,7 @@ Section ProofSysOpenPub.
         by (rewrite Hwrb Hom; apply soau_wr_byte).
       destruct Htyt as [[Hct ->] | [Hct ->]]; cbn; by repeat split. }
     assert (Hpub : stpub = FdOpen (om_readable vom) (om_writable vom) t)
-      by exact (fdstate_ok_inj inum g (fp_pipe pn) C stpub _ Hokpub Hstok).
+      by exact (fdstate_ok_inj inum g OffParked (fp_pipe pn) C stpub _ Hokpub Hstok).
     iSpecialize ("Hcont" $! CIDy with "[%]"); [wp_next_chain |].
     iDestruct (iref_slots_combine nsj 1 with "Hisl Hiru") as "Hisl".
     replace (nsj + 1)%nat with (S nsj) by lia.

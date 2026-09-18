@@ -422,13 +422,13 @@ Section SpecFileclose.
 
   (* ...and the arms that are not a pipe at all: both payment and post are
      [emp] there, but only the file's type says so. *)
-  Lemma fileclose_cpost_nonpipe (inum : mword 32) (γo : gname) (γp : pipe_names)
+  Lemma fileclose_cpost_nonpipe (inum : mword 32) (γo : gname) (om : offmode) (γp : pipe_names)
       (C : fcontent) (st : fdstate) (q : Qp) (Φc : iProp Σ) :
-    fdstate_ok inum γo γp C st -> fc_type C <> FD_PIPE ->
+    fdstate_ok inum γo om γp C st -> fc_type C <> FD_PIPE ->
     fileclose_cpay st Φc -∗ fileclose_cpost q st Φc.
   Proof using .
     intros Hok Hne. rewrite /fileclose_cpay /fileclose_cpost.
-    destruct st as [| rb wb [i g om | g | mj]]; try (by iIntros "_").
+    destruct st as [| rb wb [i g om' | g | mj]]; try (by iIntros "_").
     exfalso. apply Hne. by destruct Hok as (_ & _ & Ht & _).
   Qed.
 

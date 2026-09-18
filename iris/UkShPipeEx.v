@@ -117,6 +117,52 @@ Proof using.
 Qed.
 
 
+(* ===================================================================== *)
+(* §1½ AND THE MISS THE LEFT COMMAND'S LAST parseredirs NEEDS             *)
+(*                                                                        *)
+(* [parseexec]'s loop calls [parseredirs] after EVERY argument, so on the  *)
+(* pipe line the last of those calls sits on the '|' -- and it must not    *)
+(* turn: peek's table there is the two redirection bytes, and a '|' is     *)
+(* neither of them.  The landed zero-turn walk                             *)
+(* [UkShRedirPr.wp_kshp_parseredirs_ns] cannot serve it: its premise is    *)
+(* that the byte at the cursor is NOT A SYMBOL, which the '|' falsifies,   *)
+(* and it spends that premise through                                     *)
+(* [UkShRedirPr.ushs_peek_res_nsym] in ONE line.  So the re-statement      *)
+(* wants the weakest fact instead, and here it is: the peek misses         *)
+(* because the BYTE IS NOT IN THE TABLE.  [ushp_peek_res_miss] is the      *)
+(* mirror of [UkShRedirLex.ushp_peek_res_hit] and is strictly more         *)
+(* general than [ushs_peek_res_nsym].                                     *)
+(* ===================================================================== *)
+
+Lemma ushp_peek_res_miss (len : nat) (f : nat -> bv 8) (k tlen : nat)
+    (tf : nat -> bv 8) :
+  (forall j : nat, (j < tlen)%nat -> tf j <> f k) ->
+  ushp_peek_res len f k tlen tf = 0.
+Proof using.
+  intro Hne. rewrite /ushp_peek_res.
+  destruct (bool_decide (k < len)%nat) eqn:Hk; [ | reflexivity ].
+  rewrite (ushp_find_none tlen 0%nat tf (f k)); [ reflexivity | ].
+  intros j Hj. exact (Hne j ltac:(lia)).
+Qed.
+
+(* ...at the '|', for the redirect table "<>" (0x12f0) *)
+Lemma ushp_peek_redir_miss_bar (len : nat) (f : nat -> bv 8) (k : nat) :
+  f k = ushq_bar -> ushp_peek_res len f k 2 (ushp_lit ushp_T_redir) = 0.
+Proof using.
+  intro Hf. apply ushp_peek_res_miss. intros j Hj. rewrite Hf.
+  destruct j as [| [| j ]]; [ | | lia ].
+  - rewrite ushp_T_redir_lt. vm_compute. discriminate.
+  - rewrite ushp_T_redir_gt. vm_compute. discriminate.
+Qed.
+
+Lemma ushq_peek_redir_miss_pipe (len : nat) (f : nat -> bv 8) (p e : nat) :
+  ushq_pipe len f p e ->
+  ushp_peek_res len f p 2 (ushp_lit ushp_T_redir) = 0.
+Proof using.
+  intro Hq.
+  exact (ushp_peek_redir_miss_bar len f p (ushq_pipe_bar len f p e Hq)).
+Qed.
+
 Section UkShPipeEx.
   Context `{!riscvGS Σ}.
   Context `{!ufdG Σ}.

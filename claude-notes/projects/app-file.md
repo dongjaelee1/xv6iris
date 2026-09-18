@@ -76,7 +76,12 @@ The blocker for the whole program tier WAS the deed's hold: RULING HOLD-POS
    `ushf_child_law_at`'s `⌜ws = last_ws I⌝` moves with it; echo's consumers
    bridge by `FileDisc.fbody_ok_echo`.  PROGRAM-STREAM.md stretch 9 has the
    measurement.
-3. **CAT-CHILD** — item (4), RULING CAT-DEED: `catq_cat` returns the whole
+3. **CAT-CHILD** — measured at its first step (stretch 9): it starts in the
+   kernel stream — the read-open's `-1` arm
+   (`FileOpen.file_open_recv_file` → `UkFileOpen` → `UkCatDeed` →
+   `cat_open_hand`) returns NO deed fractions, so cat's `RCNoOpen` exit
+   cannot return the deed; and the payload's deed conjunct needs a taint
+   arm the ruling's text omits.  Then: item (4), RULING CAT-DEED: `catq_cat` returns the whole
    deed, `Hchild_cat` becomes a lemma; item (5): `sh_round_holds_file`.
 4. **INIT-FILE assembly** — `UInitFileCC.v` (in the program-tier worktree,
    uncommitted; its `fri_arms_u`/`fri_arms_at` must follow 2a: `rk_arms`'s

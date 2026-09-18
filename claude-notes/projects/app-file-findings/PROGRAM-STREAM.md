@@ -1330,3 +1330,35 @@ VM HYGIENE: five hung compiles from dead lanes (four `UShRound.v`, one
 and would have written stale `.vo`s; killed by PID.  Check
 `ps -eo pid,etime,args | grep "make -f CoqMakefile"` with each PID's
 `/proc/<pid>/cwd` before trusting a remote tree a dead lane used.
+
+### ITEM 3 (CAT-CHILD), MEASURED AT ITS FIRST STEP: the read-open's `-1` arm DROPS the deed's fractions
+
+RULING CAT-DEED wants `catq_cat` to return the whole deed on every arm.
+Reading `UCatKernel.cat_pay_present` end to end, the fractions are in hand
+at two of cat's three exits and lost at the third:
+
+* round ran: `fdq r q1` is in `cat_hold_at … p'` (destructed as
+  `(Hufdh & _ & _)` — dropped, not lost) and `fdq r q2` came back beside
+  the fd arm (`Hd2`, dropped).  Both can go into the payload wand.
+* TAINT arms (`Hqt`, the descriptor sub-arm `cat_taint_open`): nothing to
+  return — so the payload's deed conjunct must be
+  `(fdq r q1 s ∗ fdq r q2 s) ∨ file_taint c`, which `UShRound.sh_deed_at`'s
+  own `∨ T` absorbs.  The ruling's text (`∗ fown r (Some (i, bs))`, no
+  taint arm) is not payable.
+* OPEN FAILED at a present `f` (`RCNoOpen`): `cat_open_hand`'s `-1` arm is
+  `⌜ret = -1⌝ ∗ ustd l` and NOTHING ELSE, and that is inherited verbatim
+  from `UkCatDeed.kcat_o_of_deed` ← `wp_kcat_open_read_deed` ←
+  `UkFileOpen.wp_uk_ecall_open_read_deed`, whose comment says "the ledger
+  is back untouched, and so are both fractions" while the statement's arm
+  has no fractions, because `FileOpen.file_open_recv_file`'s failure arm
+  is PURE (`[%Hr %Hfdv]`).  The read-open's failed walk must REFUND the
+  linear piece (`pobs_P_lin … (fdq r q1 …)`) and the receipt's parked
+  `fdq r q2`; until `file_open_recv_file` says so, cat's `RCNoOpen` exit
+  cannot return the deed and `Hchild_cat`'s conversion
+  (`catq_cat … -∗ ushf_wq Wcf I`) cannot re-tie DONE there.
+
+So item 3 starts in the KERNEL stream too: (i) `file_open_recv_file`'s `-1`
+arm returns `fdq r q1 s ∗ fdq r q2 s` (or the taint); (ii) the three
+statements above it follow; (iii) `catq_cat` gains
+`∗ ((fdq r q1 s ∗ fdq r q2 s) ∨ file_taint c)` and `cat_pay_present`'s three
+payload wands take it; (iv) `Hchild_cat`.

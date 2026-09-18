@@ -16,19 +16,19 @@
      are 2^n.  [sel_cands] enumerates those and [alts_cands] the codes.
      The enumerator lists only CANONICAL codes [ralt_enc a]; a witness is
      canonicalised to those by [cs_canon], which is sound because every
-     consumer of [cs] -- [pro_idx_f], [fst_upto], [alt_cont_f], [sessf],
+     consumer of [cs] -- [pro_idx_f], [fstate_upto], [alt_cont_f], [sessf],
      [pro_ok_f], [disc_pt_f], [alts_ok] -- reads it ONLY through
      [ralt_at = ralt_dec o (!!!)], and [ralt_dec (ralt_enc (ralt_dec c)) =
      ralt_dec c].
    - THE BOOT STATE RANGES OVER ALL BYTE LISTS.  [disc_f] is
-     [exists s : fst, fst_ok s /\ disc_seg_f' s seg], and [s] is not bounded
+     [exists s : fstate, fstate_ok s /\ disc_seg_f' s seg], and [s] is not bounded
      by anything syntactic.  [disc_seg_f'_canon] is the design's
      canonicalisation lemma: the witness may always be taken from
      [scands seg = None :: Some [] :: (Some <$> substrings (obs_wire Uart0
      seg))].  WHY.  [cont] reads the file state at ONE alternative,
      [RCRan], where it prints the content VERBATIM; and the state before a
      round is either the boot state itself or a value the boot state does
-     not enter ([fst_upto_vs_nil]: the chain at [s] and the chain at
+     not enter ([fstate_upto_vs_nil]: the chain at [s] and the chain at
      [Some []] agree from the first round that moves the file, and until
      then the first is [s] and the second is [Some []]).  So either some
      checked prefix's transcript prints the boot content -- and then it is
@@ -50,10 +50,6 @@ Require Import FileDisc.
 From stdpp Require Import ssreflect.
 Local Open Scope nat_scope.
 Local Open Scope list_scope.
-
-(* NOTE ON [fst].  [FileState.fst] shadows the pair projection, so nothing
-   below writes [x.1]: the two components are [Datatypes.fst] and
-   [Datatypes.snd] by name. *)
 
 (* ====================================================================== *)
 (*  0.  SMALL LIST FACTS                                                   *)
@@ -102,8 +98,8 @@ Proof using.
   - right. intro Hc. apply H, fcont_ok_iff, Hc.
 Defined.
 
-Global Instance fst_ok_dec s : Decision (fst_ok s).
-Proof using. destruct s as [bs |]; rewrite /fst_ok; apply _. Defined.
+Global Instance fstate_ok_dec s : Decision (fstate_ok s).
+Proof using. destruct s as [bs |]; rewrite /fstate_ok; apply _. Defined.
 
 (* ====================================================================== *)
 (*  2.  THE CHUNK SUBSETS OF ONE LINE                                      *)
@@ -258,7 +254,7 @@ Fixpoint alts_cands (ls : list uline) : list (list nat) :=
   match ls with
   | [] => [[]]
   | l :: ls' =>
-      (fun p => Datatypes.fst p :: Datatypes.snd p)
+      (fun p => fst p :: snd p)
         <$> List.list_prod (ralt_cands l) (alts_cands ls')
   end.
 
@@ -270,7 +266,7 @@ Proof using.
     + intros ->. constructor.
     + intro H. by apply Forall2_nil_inv_l in H.
   - rewrite elem_of_list_fmap. split.
-    + intros ([c cs'] & -> & Hp). cbn [Datatypes.fst Datatypes.snd].
+    + intros ([c cs'] & -> & Hp). cbn [fst snd].
       apply elem_of_list_In, in_prod_iff in Hp as [Hc Hcs].
       apply elem_of_list_In in Hc. apply elem_of_list_In, IH in Hcs.
       by constructor.
@@ -316,17 +312,17 @@ Proof using.
   by rewrite !pro_idx_f_S IH cs_canon_at.
 Qed.
 
-Lemma fst_upto_canon cs s bs i :
-  fst_upto (cs_canon cs) s bs i = fst_upto cs s bs i.
+Lemma fstate_upto_canon cs s bs i :
+  fstate_upto (cs_canon cs) s bs i = fstate_upto cs s bs i.
 Proof using.
   induction i as [| i IH]; [reflexivity |].
-  cbn [fst_upto]. by rewrite IH cs_canon_at.
+  cbn [fstate_upto]. by rewrite IH cs_canon_at.
 Qed.
 
 Lemma alt_cont_f_canon ps cs s bs i :
   alt_cont_f ps (cs_canon cs) s bs i = alt_cont_f ps cs s bs i.
 Proof using.
-  by rewrite /alt_cont_f fst_upto_canon cs_canon_at pro_idx_f_canon.
+  by rewrite /alt_cont_f fstate_upto_canon cs_canon_at pro_idx_f_canon.
 Qed.
 
 Lemma alt_seq_f_canon ps cs s bs q :
@@ -395,7 +391,7 @@ Qed.
 Definition infixed {A} (m l : list A) : Prop := exists u v, l = u ++ m ++ v.
 
 Definition substrings {A} (l : list A) : list (list A) :=
-  (fun p => take (Datatypes.snd p) (drop (Datatypes.fst p) l))
+  (fun p => take (snd p) (drop (fst p) l))
     <$> List.list_prod (List.seq 0 (S (length l))) (List.seq 0 (S (length l))).
 
 Lemma infixed_here {A} (m C D : list A) : infixed m (C ++ m ++ D).
@@ -417,7 +413,7 @@ Lemma elem_of_substrings {A} (m l : list A) : infixed m l -> m ∈ substrings l.
 Proof using.
   intros (u & v & ->). rewrite /substrings. apply elem_of_list_fmap.
   exists (length u, length m). split.
-  - cbn [Datatypes.fst Datatypes.snd].
+  - cbn [fst snd].
     by rewrite drop_app_length take_app_length.
   - apply elem_of_list_In, in_prod; apply in_seq; rewrite !length_app; lia.
 Qed.
@@ -426,7 +422,7 @@ Qed.
 (*  7.  THE BOOT-STATE CANONICALISATION                                    *)
 (* ====================================================================== *)
 
-Definition scands (seg : list mobs) : list fst :=
+Definition scands (seg : list mobs) : list fstate :=
   None :: Some [] :: (Some <$> substrings (obs_wire Uart0 seg)).
 
 (* THE STATE CHAIN AT [s] AGAINST THE ONE AT [Some []].  Until a round
@@ -435,12 +431,12 @@ Definition scands (seg : list mobs) : list fst :=
    the state, and it keeps a present one and creates at an absent one --
    which is exactly why the disjunction is stated at [Some []] and not at
    an arbitrary second state. *)
-Lemma fst_upto_vs_nil cs s bs i :
-  (fst_upto cs s bs i = s /\ fst_upto cs (Some []) bs i = Some [])
-  \/ fst_upto cs s bs i = fst_upto cs (Some []) bs i.
+Lemma fstate_upto_vs_nil cs s bs i :
+  (fstate_upto cs s bs i = s /\ fstate_upto cs (Some []) bs i = Some [])
+  \/ fstate_upto cs s bs i = fstate_upto cs (Some []) bs i.
 Proof using.
   induction i as [| i IH]; [by left |].
-  cbn [fst_upto]. destruct IH as [[Hu Hv] | He]; [| by rewrite He; right].
+  cbn [fstate_upto]. destruct IH as [[Hu Hv] | He]; [| by rewrite He; right].
   rewrite Hu Hv.
   destruct (uline_of (bs !!! i)) as [ws | ws | | ws]; [by left | | by left | by left].
   destruct (ralt_at cs i) as [k | sel | | | | | | | | | |];
@@ -449,7 +445,7 @@ Proof using.
 Qed.
 
 Lemma alt_cont_f_state ps cs s s' bs i :
-  fst_upto cs s bs i = fst_upto cs s' bs i ->
+  fstate_upto cs s bs i = fstate_upto cs s' bs i ->
   alt_cont_f ps cs s bs i = alt_cont_f ps cs s' bs i.
 Proof using. intro H. by rewrite /alt_cont_f H. Qed.
 
@@ -460,7 +456,7 @@ Lemma cont_rcran_some l b0 : cont (Some b0) l RCRan = b0 ++ u_prompt.
 Proof using. reflexivity. Qed.
 
 Lemma alt_cont_f_cat ps cs s bs i b0 :
-  ralt_at cs i = RCRan -> fst_upto cs s bs i = Some b0 ->
+  ralt_at cs i = RCRan -> fstate_upto cs s bs i = Some b0 ->
   exists D, alt_cont_f ps cs s bs i = b0 ++ D.
 Proof using.
   intros Ha Hs. rewrite /alt_cont_f Hs Ha cont_rcran_some.
@@ -468,7 +464,7 @@ Proof using.
 Qed.
 
 Lemma alt_blk_f_infix ps cs s bs i b0 :
-  ralt_at cs i = RCRan -> fst_upto cs s bs i = Some b0 ->
+  ralt_at cs i = RCRan -> fstate_upto cs s bs i = Some b0 ->
   infixed b0 (alt_blk_f ps cs s bs i).
 Proof using.
   intros Ha Hs.
@@ -517,8 +513,8 @@ Qed.
 (* the design's lemma: the boot-state witness may be taken from a finite
    list read off the segment's own wire *)
 Lemma disc_seg_f'_canon (seg : list mobs) :
-  (exists s, fst_ok s /\ disc_seg_f' s seg)
-  <-> (exists s, s ∈ scands seg /\ fst_ok s /\ disc_seg_f' s seg).
+  (exists s, fstate_ok s /\ disc_seg_f' s seg)
+  <-> (exists s, s ∈ scands seg /\ fstate_ok s /\ disc_seg_f' s seg).
 Proof using.
   split; [| intros (s & _ & H); by exists s].
   intros (s & Hok & Hd).
@@ -536,12 +532,12 @@ Proof using.
     apply Exists_exists in HB as (p & Hp & Hi).
     apply Exists_exists in Hi as (i & Hiin & Hne).
     apply elem_of_list_In, in_seq in Hiin.
-    destruct (fst_upto_vs_nil cs (Some b0) (bodies_of (ins p)) i)
+    destruct (fstate_upto_vs_nil cs (Some b0) (bodies_of (ins p)) i)
       as [[Hu Hv] | He];
       [| by destruct (Hne (alt_cont_f_state ps cs _ _ _ i He))].
     assert (Ha : ralt_at cs i = RCRan).
-    { apply (cont_state_ne (fst_upto cs (Some b0) (bodies_of (ins p)) i)
-                           (fst_upto cs (Some []) (bodies_of (ins p)) i)
+    { apply (cont_state_ne (fstate_upto cs (Some b0) (bodies_of (ins p)) i)
+                           (fstate_upto cs (Some []) (bodies_of (ins p)) i)
                            (uline_of (bodies_of (ins p) !!! i))).
       intro Hc. apply Hne. by rewrite /alt_cont_f Hc. }
     assert (Hinf : infixed b0 (obs_wire Uart0 seg)).
@@ -583,12 +579,12 @@ Qed.
    states off the wire, the resolutions off the lines, the prologues off
    [pro_canon].  NOTHING HERE IS MEANT TO RUN: the ledger cases on it. *)
 Global Instance disc_seg_f'_ex_dec seg :
-  Decision (exists s : fst, fst_ok s /\ disc_seg_f' s seg).
+  Decision (exists s : fstate, fstate_ok s /\ disc_seg_f' s seg).
 Proof using.
   destruct (decide (disc_seg_f seg)) as [Hd | Hd];
     [| right; intros (s & _ & Hs & _); by apply Hd].
   destruct (decide (Exists (fun s =>
-      fst_ok s /\
+      fstate_ok s /\
       Exists (fun cs =>
         Exists (fun ps => disc_pt_all_f ps cs s seg)
           (pro_cands (S (pro_idx_f cs (nlines_max (in_pres seg))))

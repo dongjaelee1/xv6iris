@@ -64,6 +64,7 @@ WpNext.v
 PtreeType.v
 Ktier.v
 UartNames.v
+StringBytes.v
 RiscvPtsto.v
 CtxIdDefs.v
 TsoCtx.v
@@ -1667,3 +1668,4 @@ UShRedirPay.v
 UShRound.v
 UInitFile.v
 UEchoPipe.v
+UCatPipe.v

@@ -156,7 +156,7 @@ Section UShRound.
      variable beside [gen_id]; /init instantiates it at the deed's own
      content ([AppFile.dst_content s_deed]), which is what makes
      [UCatOut.cat_tie [] s0 [] s] hold by [eq_refl] at the head. *)
-  Context (s0 : fst).
+  Context (s0 : fstate).
 
   (* the record equations the top theorem hands over
      ([UInitBoot.echo_Hinit_boot]'s [Hcons] / [Htag] one application on) *)
@@ -203,7 +203,7 @@ Section UShRound.
   (* THE DEED, AT SH'S ROUND -- design SS4.2, "the deed meets the stage in
      sh's proof, PURELY".  The pure tie is [UCatOut.cat_tie]'s: the deed's
      content IS the model's state before the round whose input is [I]
-     ([fst_upto cs0 s0 (bodies_of I) (nlines I - 1)]), with [cs0] and [s0]
+     ([fstate_upto cs0 s0 (bodies_of I) (nlines I - 1)]), with [cs0] and [s0]
      pinned by the era's own lower bounds so that the tie is about THIS
      era and not some other. *)
   (*  AT RULING H' THE INDEX IS THE SECTION'S and the era's filed boot
@@ -219,7 +219,7 @@ Section UShRound.
       now reads the record there ([file_link_inst] is its [∃ s0] packing,
       and [file_Wcl_unpack] / [file_Wcl_at_pack] are the two directions).
       No [f0w_agree] step is left in the round. *)
-  Definition sh_hold_at (sb : fst) (I : list (bv 8)) : iProp Σ :=
+  Definition sh_hold_at (sb : fstate) (I : list (bv 8)) : iProp Σ :=
     ((∃ (cs0 : list nat) (s : dst) (v : era_pins),
         fown r s
         ∗ ⌜UCatOut.cat_tie cs0 sb I s⌝

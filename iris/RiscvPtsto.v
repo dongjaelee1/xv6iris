@@ -24,6 +24,7 @@ Require Export DiskImg.  (* [diskImgG]/[disk_img_auth]: the disk image map *)
    already does, and this file re-exports it. *)
 Require Import VirtioModel.
 Require Import PtreeType.   (* [ptree]: the carrier of the shared kernel table's ghost *)
+Require Export StringBytes.  (* [cstring_bytes], which [↦ₛ] resides *)
 (* [ktier]/[KtierLe]/[CurKtier]: the kernel-translation tier of a datum and
    the ambient-tier class the family's notations elaborate through.  EXPORT
    -- every consumer of a [↦ₘ] needs the [CurKtier] default instance in
@@ -2164,17 +2165,6 @@ End word4_pointsto.
    ([TsoCtx.ctx_string_all]) -- see [WpLock.lock_name].                      *)
 (* ---------------------------------------------------------------------- *)
 
-(* the characters of [s] as bytes (no terminator) *)
-Fixpoint string_bytes (s : string) : list (bv 8) :=
-  match s with
-  | String.EmptyString => []
-  | String.String c s' => Z_to_bv 8 (Z.of_N (Ascii.N_of_ascii c)) :: string_bytes s'
-  end.
-
-(* the C representation of [s]: its characters followed by the NUL byte *)
-Definition cstring_bytes (s : string) : list (bv 8) :=
-  string_bytes s ++ [Z_to_bv 8 0].
-
 Definition string_pointsto `{!riscvGS Σ} `{KTR : !CurKtier} (a : Arch.pa) (dq : dfrac)
     (s : string) : iProp Σ :=
   ([∗ list] j ↦ b ∈ cstring_bytes s, mem_pointsto (pa_add a j) dq b)%I.
@@ -2208,15 +2198,6 @@ Section string_pointsto.
   Global Instance string_pointsto_persistent' (ktr : ktier) a s :
     Persistent (string_pointsto (KTR := ktr) a DfracDiscarded s).
   Proof using . exact (string_pointsto_persistent ktr a s). Qed.
-
-
-  (* the terminating NUL is the last byte owned *)
-  Lemma cstring_bytes_length s :
-    length (cstring_bytes s) = S (String.length s).
-  Proof using .
-    rewrite /cstring_bytes length_app /=.
-    induction s as [|c s IH]; simpl; [reflexivity | rewrite IH; reflexivity].
-  Qed.
 
 End string_pointsto.
 

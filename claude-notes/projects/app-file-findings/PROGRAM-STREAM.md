@@ -231,7 +231,7 @@ none; the round has one.
 | `Hchild_cat` | `UCatKernel.cat_child_of_entry` | cat's lend, the kernel stream's |
 | `Hopen_hand` | — | the kernel stream's (OFF-LINK-6) |
 | `Hktaint` | the record's interface equation | free, once someone writes the projection |
-| `sh_prompt_alt_of_deed`, `sh_tag_law_file`, `sh_child_law_file`, `sh_round_holds_file` | the round's own mathematics | `sh_hold`'s re-establishment across a child against `cat_tie`/`fst_after` |
+| `sh_prompt_alt_of_deed`, `sh_tag_law_file`, `sh_child_law_file`, `sh_round_holds_file` | the round's own mathematics | `sh_hold`'s re-establishment across a child against `cat_tie`/`fstate_after` |
 
 **`Hktaint` is gone the way `Hcons` and `Htag` always were**: the round
 takes the kill projection as a record EQUATION
@@ -255,7 +255,7 @@ walks `file_links_w` / `file_links_blk`), and the lend-to-cursor step is
 alternative's bytes line up too:
 
 ```coq
-  ralt_dec 0 = REcho 0,   fst_free (REcho 0) = true,
+  ralt_dec 0 = REcho 0,   fstate_free (REcho 0) = true,
   ralt_ok (LEcho ws) (REcho 0) = (0 < 4)%nat,
   cont s l (REcho k) = line_alts_of (uline_ws l) !!! k
 ```
@@ -320,7 +320,7 @@ cursor IS `fwc_blk g k v I 0`, the step IS `fblk_step`, the lend and
 reductions:
 
 ```coq
-  ralt_dec 0 = REcho 0,  fst_free (REcho 0) = true,
+  ralt_dec 0 = REcho 0,  fstate_free (REcho 0) = true,
   ralt_ok (LEcho ws) (REcho 0) = (0 < 4)%nat,
   cont s l (REcho k) = line_alts_of (uline_ws l) !!! k
 ```
@@ -474,7 +474,7 @@ where CAT-ENTRY's deed fraction meets K1's entry.
 
 ### 3. RULING H', applied
 
-The round's section now takes `s0 : fst` beside `gen_id`, and
+The round's section now takes `s0 : fstate` beside `gen_id`, and
 `sh_hold_at s0 I` carries the deed, the tie (`UCatOut.cat_tie cs0 s0 I s`)
 and the era's pin with NO `f0_lb`.  That is what makes it inhabited at
 `I = []`: `cat_tie [] s0 [] s` is `dst_content s = s0`, so /init

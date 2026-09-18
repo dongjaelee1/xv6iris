@@ -92,7 +92,7 @@ record literal at the caller.
   `FileLinksLine.f0pre g`, at `s0 := AppFile.dst_content s`: the typed
   witness transports because `f_typed c (Some (i,bs))` and
   `FileOut.f0_typed g (Some bs)` are the same proposition, and the purity
-  side condition `FileDisc.fst_ok` comes off
+  side condition `FileDisc.fstate_ok` comes off
   `FileDisc.fcont_ok_subseq` inside `f_bytes_typed`.
 - `file_turn_pre_of_boot` — and therefore `lk_turn (file_link_inst g)
   (S gen_id)` = `FileLinksLine.fturn_pre g (S gen_id)` is
@@ -152,7 +152,7 @@ record literal at the caller.
 
 ```coq
 Definition f0pre : iProp Σ :=
-  (∃ s : fst, ⌜fst_ok s⌝ ∗ (f0_typed g s ∨ FT))%I.
+  (∃ s : fstate, ⌜fstate_ok s⌝ ∗ (f0_typed g s ∨ FT))%I.
 ```
 
 `f0pre` is EXISTENTIAL in the state it offers, and it is what
@@ -173,8 +173,8 @@ deed before it prints — has nothing to read.
 **THE REPAIR, named.**  Index the head by the state:
 
 ```coq
-Definition f0pre_at (s0 : fst) : iProp Σ := (⌜fst_ok s0⌝ ∗ (f0_typed g s0 ∨ FT))%I.
-Definition f0pre : iProp Σ := (∃ s0 : fst, f0pre_at s0)%I.
+Definition f0pre_at (s0 : fstate) : iProp Σ := (⌜fstate_ok s0⌝ ∗ (f0_typed g s0 ∨ FT))%I.
+Definition f0pre : iProp Σ := (∃ s0 : fstate, f0pre_at s0)%I.
 ```
 
 and carry the index through `fhead`, `fwc_ban`'s head arm and
@@ -198,7 +198,7 @@ the NAME is missing.
 
 ```coq
   Definition sh_hold (I : list (bv 8)) : iProp Σ :=
-    ((∃ (cs0 : list nat) (s0 : fst) (s : dst) (v : era_pins) (vf : file_era),
+    ((∃ (cs0 : list nat) (s0 : fstate) (s : dst) (v : era_pins) (vf : file_era),
         fown r s ∗ ⌜UCatOut.cat_tie cs0 s0 I s⌝ ∗ f_typed (fgn_cl g) s
         ∗ era_pin (fgn_echo g) (S gen_id) v ∗ cs_lb v cs0
         ∗ file_era_pin g (S gen_id) vf ∗ f0_lb vf s0)
@@ -212,7 +212,7 @@ the file era `cc_wb Cr` is forced to be `UShRound.Wbf` (it is what
 `Wbl [] ∗ sh_hold []` at its FIRST INSTRUCTION.  Every conjunct is in hand
 there (`fturn` gives the pin, `cs_lb v []` and the era pin; `file_boot`
 gives the deed and `f_typed`; `cat_tie [] s0 [] s` is `dst_content s = s0`
-because `cat_st cs0 s0 [] = fst_upto cs0 s0 [] 0 = s0`) — every conjunct
+because `cat_st cs0 s0 [] = fstate_upto cs0 s0 [] 0 = s0`) — every conjunct
 but `f0_lb vf s0`, which **cannot exist**: it is a lower bound of
 `f0_auth vf (opt_list (fo_f0 so))`, the stage's `fo_f0` is `None` until a
 byte is written (`FileOut.fecl`'s `feout_pure` clause is an IFF), and the
@@ -432,7 +432,7 @@ reads at the index: `fblk_step_at`, `fhead_dollar_at`, `fprompt_dollar_at`,
 `fprompt_space_t_at`, `fprompt_dollar_line_at`, `fwc_read_at`,
 `fwc_read_t_at`, `fwc_panic_done_at`, `fowed_read_taint_at`.
 
-**`iris/FileLinkInst.v`** (additive append) — **`file_link_inst_at (s0 : fst)
+**`iris/FileLinkInst.v`** (additive append) — **`file_link_inst_at (s0 : fstate)
 : LinkRec Σ`**, every field at the `_at s0` families and every law at the
 ported one, plus `file_Wcl_at` / `file_Wbl_at` (the two families the round
 instantiates), `file_Wcl_at_pack` / `file_Wbl_at_pack` and the converses
@@ -595,11 +595,11 @@ law they use is `lk_rres_pers`.
 `iris/FileLinksAtInp.v`:
 
 ```coq
-  Lemma file_wc_inp_at (s0 : fst) :
+  Lemma file_wc_inp_at (s0 : fstate) :
     UShLine.ush_wc_inp (fgn_echo g) (file_taint (fgn_cl g))
       (FileLinkInst.file_Wcl_at g s0).
 
-  Lemma file_wb_inp_at (s0 : fst) :
+  Lemma file_wb_inp_at (s0 : fstate) :
     UShLine.ush_wb_inp (fgn_echo g) (file_taint (fgn_cl g))
       (FileLinkInst.file_Wbl_at g s0).
 ```
@@ -813,7 +813,7 @@ echo keeps it (`ewc_ban_done_pro`).  So the base is the file twin of
 the credential carries it and the hold only says the deed's content is the
 model's state at that index), `sh_hold_at_taint`, `sh_hold_at_of_boot`
 (at the era's head the tie is `reflexivity`: `cat_st cs0 s0 []` is
-`fst_upto cs0 s0 [] 0`, which is `s0`), the two families `file_Wcf_at` /
+`fstate_upto cs0 s0 [] 0`, which is `s0`), the two families `file_Wcf_at` /
 `file_Wbf_at`, and
 
 ```coq

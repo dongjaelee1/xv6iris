@@ -162,7 +162,19 @@ Section ParkWorld.
           uart_inv Uart1 γu1 ∗ plic_inv fsc_uart γu1 ∗ uart_inited γu1 ∗
           uart_dlab_off γu1))%I.
 
+  (* NAMED CONNECTIVES, not a search: every leaf here is an invariant with
+     its own instance, and [apply _] on the whole bundle pays the tree's
+     undiscriminated instance list once per leaf. *)
+  Local Ltac ps_leaf :=
+    lazymatch goal with
+    | |- Persistent (bi_exist _) => apply bi.exist_persistent; intro; ps_leaf
+    | |- Persistent (bi_sep _ _) => apply bi.sep_persistent; [ps_leaf | ps_leaf]
+    | |- Persistent (bi_and _ _) => apply bi.and_persistent; [ps_leaf | ps_leaf]
+    | |- Persistent (bi_pure _) => apply bi.pure_persistent
+    | |- _ => apply _
+    end.
+
   Global Instance park_world_persistent γs : Persistent (park_world γs).
-  Proof using . rewrite /park_world. apply _. Qed.
+  Proof using . rewrite /park_world. ps_leaf. Qed.
 
 End ParkWorld.

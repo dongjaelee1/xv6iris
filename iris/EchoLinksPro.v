@@ -277,8 +277,27 @@ Section echo_links_pro.
     ((∃ ps cs P : _, ⌜wr_pban ps cs I P⌝ ∗ turn v P ∗ ps_lb v ps
         ∗ cs_lb v cs ∗ inp_lb v I) ∨ T)%I.
 
+  (* THE DISPATCH, NOT [apply _]: the tree's 455 [Timeless] instances sit
+     under mostly transparent definitions, so the hint net cannot
+     discriminate and one search tries nearly all of them.  Descend
+     through the CONNECTIVES and name the leaf, syntactically -- the same
+     dispatch as [EchoLinksLine]'s. *)
+  Local Ltac tl_leaf :=
+    lazymatch goal with
+    | |- Timeless (bi_exist _) => apply bi.exist_timeless; intro; tl_leaf
+    | |- Timeless (bi_sep _ _) => apply bi.sep_timeless; [tl_leaf | tl_leaf]
+    | |- Timeless (bi_or _ _) => apply bi.or_timeless; [tl_leaf | tl_leaf]
+    | |- Timeless (bi_pure _) => apply bi.pure_timeless
+    | |- Timeless T => assumption
+    | |- Timeless (turn _ _) => apply turn_timeless
+    | |- Timeless (ps_lb _ _) => apply ps_lb_timeless
+    | |- Timeless (cs_lb _ _) => apply cs_lb_timeless
+    | |- Timeless (inp_lb _ _) => apply inp_lb_timeless
+    | |- _ => apply _
+    end.
+
   Global Instance ewc_pro_timeless v I : Timeless (ewc_pro v I).
-  Proof. rewrite /ewc_pro. apply _. Qed.
+  Proof. rewrite /ewc_pro. tl_leaf. Qed.
 
   Lemma ewc_pro_taint v I : T -∗ ewc_pro v I.
   Proof using . iIntros "HT". rewrite /ewc_pro. by iRight. Qed.
@@ -327,9 +346,12 @@ Section echo_links_pro.
     end.
 
   Global Instance ewc_pdg_timeless v I a i : Timeless (ewc_pdg v I a i).
-  Proof. rewrite /ewc_pdg. apply _. Qed.
+  Proof. rewrite /ewc_pdg. tl_leaf. Qed.
   Global Instance ewc_pdiag_timeless v I a i : Timeless (ewc_pdiag v I a i).
-  Proof. rewrite /ewc_pdiag. destruct i; apply _. Qed.
+  Proof.
+    rewrite /ewc_pdiag. destruct i;
+      [apply ewc_pro_timeless | apply ewc_pdg_timeless].
+  Qed.
 
   Lemma ewc_pdiag_taint v I a i : T -∗ ewc_pdiag v I a i.
   Proof using .

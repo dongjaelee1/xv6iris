@@ -126,20 +126,42 @@ Section PipeQueue.
   Definition pipe_olink (γ : gname) (Φ : pipe_st -> iProp Σ) : iProp Σ :=
     (∀ s : pipe_st, pipe_qauth γ s ={⊤}=∗ pipe_qauth γ s ∗ Φ s)%I.
 
-  (* THE WRITE LINK CARRIES ONE PURE PREMISE: the write end is OPEN at the
-     state the byte lands in ([ps_wo s = true]).  It is free of the machine
-     -- a [pipewrite] runs on behalf of a process holding a WRITABLE file on
-     this pipe, so [writeopen <> 0] there, and the kernel already has that
-     as a resource ([PipeInvDefs.pipe_endstate_holder] against the caller's
-     own [pipe_ref γp true q], with [pipe_qres]'s coupled arm reading
-     [ps_wo s = pflag_bool wo]) -- and it is what lets a holder's protocol
-     FREEZE a pipe's contents at end-of-file: no write link can fire after
-     the write end shut, so a snapshot taken at [ps_wo s = false] is final
-     (design/app-pipe.md 3.1).  A premise WEAKENS what a holder has to
-     supply, so no holder loses anything ([pipe_wlink_of_uncond] below). *)
+  (* THE WRITE LINK CARRIES TWO PURE PREMISES, AND BOTH FLAGS ARE OPEN at
+     the state the byte lands in: [ps_wo s = true] (lane PQ-FLAG, design
+     3.1) and [ps_ro s = true] (lane PQ-FLAG-2, design 3.1b).  Both are
+     free of the machine, and neither restricts the code -- they differ in
+     WHERE the fire site gets them:
+
+     - [ps_wo s = true] comes from the CALLER'S CREDENTIAL.  [pipewrite]
+       never loads [pi->writeopen]; instead it runs on behalf of a process
+       holding a WRITABLE file on this pipe, so [SpecPipewrite] pins the
+       end it is entered with to the write end and
+       [PipeInvDefs.pipe_endstate_holder] reads [writeopen <> 0] off the
+       payload against that share.
+     - [ps_ro s = true] is the CODE'S OWN: [pipewrite] tests
+       [pi->readopen == 0] under the SAME lock hold immediately before each
+       byte's store (kernel/pipe.c -- the test, then either the full-ring
+       sleep that loops back to the test, or the store), so the fire site
+       simply reads the branch it is on.
+
+     Both cross to the ghost through [pipe_qres]'s coupled arm, which reads
+     [ps_wo s = pflag_bool wo] and [ps_ro s = pflag_bool ro].
+
+     WHAT THEY BUY, in one line each.  The write-open premise FREEZES a
+     pipe's contents at end-of-file: no write link fires after the write
+     end shut, so a snapshot taken at [ps_wo s = false] is final (3.1's
+     (P3)).  The read-open premise DERAILS a writer whose reader is gone:
+     a holder that has once observed [ps_ro s = false] owns a persistent
+     one-shot, and [ps_ro] is monotone (only [pst_close false] moves it,
+     one way), so every later write link is VACUOUS -- which is how a
+     program composes past a write that stopped short without lending
+     anything across [fork]/[exec] (3.1b's (P4), lane ECHO-PIPE's wall).
+
+     A premise WEAKENS what a holder has to supply, so no holder loses
+     anything ([pipe_wlink_of_uncond] below). *)
   Definition pipe_wlink (γ : gname) (b : bv 8) (Φ : iProp Σ) : iProp Σ :=
     (∀ s : pipe_st,
-       ⌜ps_wo s = true⌝ -∗ pipe_qauth γ s
+       ⌜ps_wo s = true⌝ -∗ ⌜ps_ro s = true⌝ -∗ pipe_qauth γ s
        ={⊤}=∗ pipe_qauth γ (pst_write b s) ∗ Φ)%I.
 
   (* a read's link is told WHICH byte it dequeues; the kernel proves the
@@ -184,7 +206,7 @@ Section PipeQueue.
     (pipe_qfrag γ (pst_write b s0) ={⊤}=∗ Φ) -∗
     pipe_wlink γ b Φ.
   Proof using .
-    iIntros "Hf Hk" (s) "_ Ha".
+    iIntros "Hf Hk" (s) "_ _ Ha".
     iDestruct (pipe_queue_agree with "Ha Hf") as %<-.
     iMod (pipe_queue_update _ _ _ (pst_write b s0) with "Ha Hf") as "[Ha Hf]".
     iMod ("Hk" with "Hf") as "HΦ". iModIntro. iFrame "Ha HΦ".
@@ -222,22 +244,34 @@ Section PipeQueue.
   Lemma pipe_wlink_mono γ b (Φ Φ' : iProp Σ) :
     (Φ -∗ Φ') -∗ pipe_wlink γ b Φ -∗ pipe_wlink γ b Φ'.
   Proof using .
-    iIntros "Hw Hl" (s) "%Hwo Ha".
-    iMod ("Hl" with "[%] Ha") as "[$ HΦ]"; [exact Hwo |].
+    iIntros "Hw Hl" (s) "%Hwo %Hro Ha".
+    iMod ("Hl" with "[%] [%] Ha") as "[$ HΦ]"; [exact Hwo | exact Hro |].
     iModIntro. by iApply "Hw".
   Qed.
 
-  (* SANITY, and the only direction that is true (lane PQ-FLAG): the premise
-     WEAKENS the link.  An UNCONDITIONAL stepper -- the link as it was before
-     3.1 -- is still a [pipe_wlink], so every holder-side constructor and
-     every chain node keeps working and nothing a holder could build before
-     is lost.  The CONVERSE is false and deliberately not stated: a link that
-     may assume the end is open cannot step a shut one, which is exactly the
-     freeze the protocol buys. *)
+  (* SANITY, and the only direction that is true (lanes PQ-FLAG, PQ-FLAG-2):
+     the premises WEAKEN the link.  An UNCONDITIONAL stepper -- the link as
+     it was before 3.1 -- is still a [pipe_wlink], so every holder-side
+     constructor and every chain node keeps working and nothing a holder
+     could build before is lost.  The CONVERSE is false and deliberately not
+     stated: a link that may assume both ends open cannot step a state with
+     either shut, which is exactly the freeze (3.1) and the derail (3.1b)
+     the protocol buys. *)
   Lemma pipe_wlink_of_uncond γ b (Φ : iProp Σ) :
     (∀ s : pipe_st, pipe_qauth γ s ={⊤}=∗ pipe_qauth γ (pst_write b s) ∗ Φ) -∗
     pipe_wlink γ b Φ.
-  Proof using . iIntros "Hl" (s) "_ Ha". iApply ("Hl" $! s with "Ha"). Qed.
+  Proof using . iIntros "Hl" (s) "_ _ Ha". iApply ("Hl" $! s with "Ha"). Qed.
+
+  (* ...and the one-premise link of 3.1 is still one too: the read-open
+     premise alone weakens it further.  Stated so that a PQ-FLAG-era holder
+     (a builder that knows only [ps_wo]) needs no rework. *)
+  Lemma pipe_wlink_of_wo_only γ b (Φ : iProp Σ) :
+    (∀ s : pipe_st, ⌜ps_wo s = true⌝ -∗ pipe_qauth γ s
+       ={⊤}=∗ pipe_qauth γ (pst_write b s) ∗ Φ) -∗
+    pipe_wlink γ b Φ.
+  Proof using .
+    iIntros "Hl" (s) "%Hwo _ Ha". iApply ("Hl" $! s with "[%] Ha"). exact Hwo.
+  Qed.
 
   Lemma pipe_rlink_mono γ (Φ Φ' : bv 8 -> iProp Σ) :
     (∀ b : bv 8, Φ b -∗ Φ' b) -∗ pipe_rlink γ Φ -∗ pipe_rlink γ Φ'.

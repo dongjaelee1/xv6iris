@@ -10,7 +10,7 @@
 
    - [pending_f ps cs f0 I] and [D_f ps cs f0 E] are [EchoOutPure.pending_at]
      and [D] with the era's boot state carried.  The state is an
-     [option fst]: [None] means "the era has not filed its boot state yet",
+     [option fstate]: [None] means "the era has not filed its boot state yet",
      which is the state the stage is born in and which -- by the claim's own
      [feout_pure] -- only ever occurs at the EMPTY stage, where the boot
      state is not read.  [f0_st] reads it as a state.
@@ -60,10 +60,8 @@ Require Import FileDisc.
 From stdpp Require Import ssreflect.
 Local Open Scope nat_scope.
 
-(* [FileState.fst] shadows the pair projection, so NOTHING below writes
-   [x.1]: the histories of E's entries are read with [Datatypes.fst].
-   [snd] is untouched. *)
-Local Notation ehist := (@Datatypes.fst (list mobs) (bv 8)).
+(* the history of an entry of E *)
+Local Notation ehist := (@fst (list mobs) (bv 8)).
 
 (* ====================================================================== *)
 (*  1.  THE BYTES OF A DISCIPLINED FILE-APPLICATION INPUT                  *)
@@ -195,7 +193,7 @@ Proof using.
   rewrite /alts_ok Hl'. apply Forall2_take. exact Ha.
 Qed.
 
-Lemma disc_seg_f'_other (s : fst) (seg : list mobs) (e : mobs) :
+Lemma disc_seg_f'_other (s : fstate) (seg : list mobs) (e : mobs) :
   not_cons_in e -> disc_seg_f' s (seg ++ [e]) <-> disc_seg_f' s seg.
 Proof using.
   intro He.
@@ -206,7 +204,7 @@ Proof using.
   rewrite /disc_seg_f' /disc_seg_f Hi Hn. done.
 Qed.
 
-Lemma disc_seg_f'_out (s : fst) (seg : list mobs) (i : uart_id) (b : bv 8) :
+Lemma disc_seg_f'_out (s : fstate) (seg : list mobs) (i : uart_id) (b : bv 8) :
   disc_seg_f' s (seg ++ [ObsUartOut i b]) <-> disc_seg_f' s seg.
 Proof using. apply disc_seg_f'_other. by destruct i. Qed.
 
@@ -217,8 +215,8 @@ Proof using.
   intros Hio He Hsh.
   destruct (cycles_of_io h [e] Hsh) as (cs & Hc & Hc'); [by constructor |].
   rewrite /disc_f Hc Hc' !Forall_app !Forall_singleton.
-  assert (Hiff : (exists s : fst, fst_ok s /\ disc_seg_f' s (open_seg h ++ [e]))
-                 <-> (exists s : fst, fst_ok s /\ disc_seg_f' s (open_seg h))).
+  assert (Hiff : (exists s : fstate, fstate_ok s /\ disc_seg_f' s (open_seg h ++ [e]))
+                 <-> (exists s : fstate, fstate_ok s /\ disc_seg_f' s (open_seg h))).
   { split; intros (s & Hs & Hd); exists s; split; [exact Hs | | exact Hs |];
       by apply (disc_seg_f'_other s (open_seg h) e He). }
   rewrite Hiff. done.
@@ -245,7 +243,7 @@ Qed.
    byte drops at most one line, so the witness resolution is TRUNCATED --
    [FileDisc.sessf_take] then says the shorter transcript is the same
    bytes, and [alts_ok_take] that the truncation is still a resolution. *)
-Lemma disc_seg_f'_in (s : fst) (seg : list mobs) (b : bv 8) :
+Lemma disc_seg_f'_in (s : fstate) (seg : list mobs) (b : bv 8) :
   disc_seg_f' s (seg ++ [ObsUartIn Uart0 b]) -> disc_seg_f' s seg.
 Proof using.
   intros [Hd (ps & cs & Hl & Hall)].
@@ -315,7 +313,7 @@ Qed.
    [disc_seg'_open_seg]'s twins *)
 Lemma disc_seg_f'_open_seg (h : list mobs) :
   trace_shape h true -> disc_f h ->
-  exists s : fst, fst_ok s /\ disc_seg_f' s (open_seg h).
+  exists s : fstate, fstate_ok s /\ disc_seg_f' s (open_seg h).
 Proof using.
   intros Hsh Hd.
   destruct (trace_shape_cycles h Hsh) as (cs & Hcs).
@@ -340,25 +338,25 @@ Qed.
    first process byte files it.  Read as a state it is [FileDisc]'s absent
    file -- which is only ever read at the empty stage, where the claim's
    [feout_pure] pins the stage's input and written bytes to be empty. *)
-Definition f0_st (f0 : option fst) : fst := default None f0.
+Definition f0_st (f0 : option fstate) : fstate := default None f0.
 
-Lemma f0_st_some (s : fst) : f0_st (Some s) = s.
+Lemma f0_st_some (s : fstate) : f0_st (Some s) = s.
 Proof using. reflexivity. Qed.
 
-Definition pending_at_f (ps cs : list nat) (f0 : option fst)
+Definition pending_at_f (ps cs : list nat) (f0 : option fstate)
     (I : list (bv 8)) : list (bv 8) :=
   if decide (I = []) then pro_of ps
   else if decide (rest_of I = [])
        then alt_cont_f ps cs (f0_st f0) (bodies_of I) (nlines I - 1) else [].
 
-Definition pending_f (ps cs : list nat) (f0 : option fst)
+Definition pending_f (ps cs : list nat) (f0 : option fstate)
     (E : list (list mobs * bv 8)) : list (bv 8) :=
   pending_at_f ps cs f0 (snd <$> E).
 
 (* THE TRANSCRIPT DUE AFTER E's LAST ECHO.  [EchoOutPure.D_from]'s twin --
    structural on [E] from the LEFT with the input read so far as the
    accumulator, for the same reason ([cbn] reduces it on every [x :: E']). *)
-Fixpoint D_from_f (ps cs : list nat) (f0 : option fst) (pre : list (bv 8))
+Fixpoint D_from_f (ps cs : list nat) (f0 : option fstate) (pre : list (bv 8))
     (E : list (list mobs * bv 8)) : list (bv 8) :=
   match E with
   | [] => []
@@ -366,7 +364,7 @@ Fixpoint D_from_f (ps cs : list nat) (f0 : option fst) (pre : list (bv 8))
                ++ D_from_f ps cs f0 (pre ++ [x.2]) E'
   end.
 
-Definition D_f (ps cs : list nat) (f0 : option fst)
+Definition D_f (ps cs : list nat) (f0 : option fstate)
     (E : list (list mobs * bv 8)) : list (bv 8) := D_from_f ps cs f0 [] E.
 
 Lemma D_f_nil ps cs f0 : D_f ps cs f0 [] = [].
@@ -423,7 +421,7 @@ Proof using. intro Hp. by apply pending_at_f_ps_mono. Qed.
 
 (* THE ROUND-OPENING BLOCK'S SHAPE, [EchoOutPure.pending_at_round_pre]'s
    twin: the panic line (a CONSTANT) and then that round's prologue. *)
-Lemma pending_at_f_round_pre (ps cs : list nat) (f0 : option fst)
+Lemma pending_at_f_round_pre (ps cs : list nat) (f0 : option fstate)
     (I : list (bv 8)) :
   rest_of I = [] ->
   (I = [] \/ ralt_panic (ralt_at cs (nlines I - 1)) = true) ->
@@ -457,7 +455,7 @@ Proof using.
   pose proof (Hpin (nlines I - 1)%nat Hlt). lia.
 Qed.
 
-Lemma pending_at_f_round_det (ps ps' cs : list nat) (f0 : option fst)
+Lemma pending_at_f_round_det (ps ps' cs : list nat) (f0 : option fstate)
     (I : list (bv 8)) :
   rest_of I = [] ->
   (I = [] \/ ralt_panic (ralt_at cs (nlines I - 1)) = true) ->
@@ -567,7 +565,7 @@ Qed.
 (*  4.  F1 -- THE STAGE IS BELOW THE SESSION                               *)
 (* ====================================================================== *)
 
-Lemma D_f_pending_sessf (ps cs : list nat) (f0 : option fst)
+Lemma D_f_pending_sessf (ps cs : list nat) (f0 : option fstate)
     (E : list (list mobs * bv 8)) :
   E_disc_f E ->
   D_f ps cs f0 E ++ pending_f ps cs f0 E = sessf ps cs (f0_st f0) (snd <$> E).
@@ -613,7 +611,7 @@ Proof using.
       reflexivity.
 Qed.
 
-Lemma D_f_stage_prefix (ps cs : list nat) (f0 : option fst)
+Lemma D_f_stage_prefix (ps cs : list nat) (f0 : option fstate)
     (E : list (list mobs * bv 8)) (w : list (bv 8)) :
   E_disc_f E -> w `prefix_of` pending_f ps cs f0 E ->
   (D_f ps cs f0 E ++ w) `prefix_of` sessf ps cs (f0_st f0) (snd <$> E).
@@ -628,7 +626,7 @@ Qed.
 
 (* the session grows STRICTLY with the input -- [EchoDisc.sess_length_lt]'s
    twin, which [FileDisc] does not state *)
-Lemma sessf_length_step (ps cs : list nat) (s : fst) (I : list (bv 8))
+Lemma sessf_length_step (ps cs : list nat) (s : fstate) (I : list (bv 8))
     (b : bv 8) :
   (length (sessf ps cs s I) < length (sessf ps cs s (I ++ [b])))%nat.
 Proof using.
@@ -637,7 +635,7 @@ Proof using.
   - rewrite (sessf_snoc_other ps cs s I b Hb) length_app. cbn [length]. lia.
 Qed.
 
-Lemma sessf_length_lt (ps cs : list nat) (s : fst) (I I' : list (bv 8)) :
+Lemma sessf_length_lt (ps cs : list nat) (s : fstate) (I I' : list (bv 8)) :
   I `prefix_of` I' -> I <> I' ->
   (length (sessf ps cs s I) < length (sessf ps cs s I'))%nat.
 Proof using.
@@ -650,7 +648,7 @@ Proof using.
 Qed.
 
 (* F2, [EchoOutPure.D2_next_input]'s twin at the file session. *)
-Lemma D2_next_input_f (ps cs : list nat) (f0 : option fst)
+Lemma D2_next_input_f (ps cs : list nat) (f0 : option fstate)
     (E : list (list mobs * bv 8)) (w W : list (bv 8)) (h : list mobs)
     (c : bv 8) (m : nat) :
   E_disc_f E -> E_index E ->
@@ -835,7 +833,7 @@ Qed.
 (*  the claim file is long enough without it.                              *)
 (* ====================================================================== *)
 
-Fixpoint proc_before_from_f (ps cs : list nat) (f0 : option fst)
+Fixpoint proc_before_from_f (ps cs : list nat) (f0 : option fstate)
     (pre I : list (bv 8)) : list (bv 8) :=
   match I with
   | [] => []
@@ -843,10 +841,10 @@ Fixpoint proc_before_from_f (ps cs : list nat) (f0 : option fst)
                ++ proc_before_from_f ps cs f0 (pre ++ [b]) I'
   end.
 
-Definition proc_before_f (ps cs : list nat) (f0 : option fst)
+Definition proc_before_f (ps cs : list nat) (f0 : option fstate)
     (I : list (bv 8)) : list (bv 8) := proc_before_from_f ps cs f0 [] I.
 
-Definition proc_stream_f (ps cs : list nat) (f0 : option fst)
+Definition proc_stream_f (ps cs : list nat) (f0 : option fstate)
     (I : list (bv 8)) : list (bv 8) :=
   proc_before_f ps cs f0 I ++ pending_at_f ps cs f0 I.
 
@@ -900,7 +898,7 @@ Proof using.
   rewrite /proc_stream_f. by eexists.
 Qed.
 
-Definition pcount_f (ps cs : list nat) (f0 : option fst)
+Definition pcount_f (ps cs : list nat) (f0 : option fstate)
     (E : list (list mobs * bv 8)) (w : list (bv 8)) : nat :=
   (length (proc_before_f ps cs f0 (snd <$> E)) + length w)%nat.
 
@@ -1063,7 +1061,7 @@ Proof using.
   assert (Hlk : forall j, (j < nlines I)%nat -> cs0 !!! j = cs !!! j).
   { intros j Hj. symmetry. apply (fop_lta_prefix cs0 cs j Hp). lia. }
   rewrite /alt_cont_f /ralt_at (Hlk (nlines I - 1)%nat ltac:(lia)).
-  rewrite (fst_upto_ext cs0 cs (f0_st f0) (bodies_of I) (bodies_of I)
+  rewrite (fstate_upto_ext cs0 cs (f0_st f0) (bodies_of I) (bodies_of I)
              (nlines I - 1)%nat ltac:(intros j Hj; apply Hlk; lia)
              ltac:(intros j Hj; reflexivity)).
   by rewrite (pro_idx_f_ext cs0 cs (nlines I) Hlk (nlines I - 1)%nat
@@ -1195,7 +1193,7 @@ Qed.
    writer names lower bounds of the era's choices, its INPUT and its cursor,
    and knows only that its byte is the [P]-th of the stream through [I0].
    That alone pins the stage. *)
-Lemma write_stage_byte_f (ps0 ps cs0 cs : list nat) (f0 : option fst)
+Lemma write_stage_byte_f (ps0 ps cs0 cs : list nat) (f0 : option fstate)
       (E : list (list mobs * bv 8)) (w I0 : list (bv 8)) (P : nat) (b : bv 8) :
   ps0 `prefix_of` ps ->
   pro_pin_f ps0 cs0 I0 ->
@@ -1231,7 +1229,7 @@ Qed.
 (*  6e.  THE BANNER OF AN ARBITRARY PROLOGUE ROUND                         *)
 (* ====================================================================== *)
 
-Lemma proc_stream_f_round_banner (ps cs : list nat) (f0 : option fst)
+Lemma proc_stream_f_round_banner (ps cs : list nat) (f0 : option fstate)
       (I : list (bv 8)) (j i : nat) (pre : list (bv 8)) (b : bv 8) :
   pending_at_f ps cs f0 I
   = pre ++ pro_of (pro_from (pro_idx_f cs (nlines I)) ps) ->
@@ -1250,7 +1248,7 @@ Proof using.
   by apply pro_of_fail_banner.
 Qed.
 
-Lemma proc_stream_f_round_banner_open (ps cs : list nat) (f0 : option fst)
+Lemma proc_stream_f_round_banner_open (ps cs : list nat) (f0 : option fstate)
       (I : list (bv 8)) (j i : nat) (b : bv 8) :
   rest_of I = [] ->
   (I = [] \/ ralt_panic (ralt_at cs (nlines I - 1)) = true) ->
@@ -1297,7 +1295,7 @@ Qed.
    [EchoOut.cs_len_ok]'s two readings -- "every completed line below the
    last has an entry" and "either the last one does too, or nothing of its
    block is written". *)
-Lemma good_out_f_of_stage (ps cs : list nat) (f0 : option fst)
+Lemma good_out_f_of_stage (ps cs : list nat) (f0 : option fstate)
       (E : list (list mobs * bv 8)) (w : list (bv 8)) (seg : list mobs) :
   Forall (fun a => (a < length pro_alts)%nat) ps ->
   alts_pre (ins seg) cs ->
@@ -1345,13 +1343,13 @@ Qed.
 (*  prompt WHATEVER the file holds), so this is that lemma's own            *)
 (*  conclusion lifted to the session.                                      *)
 (* ====================================================================== *)
-Lemma sessf_prefix_det2 (ps ps' cs cs' : list nat) (s s' : fst)
+Lemma sessf_prefix_det2 (ps ps' cs cs' : list nat) (s s' : fstate)
     (I' I : list (bv 8)) :
   Forall (fun a => (a < length pro_alts)%nat) ps ->
   pro_ok_f ps' cs' (nlines I') ->
   alts_ok I cs -> alts_ok I' cs' ->
   pro_pin_f ps cs I -> disc_input_f I -> disc_input_f I' ->
-  fst_ok s -> fst_ok s' ->
+  fstate_ok s -> fstate_ok s' ->
   sessf ps' cs' s' I' `prefix_of` sessf ps cs s I ->
   I' `prefix_of` I /\ pro_ok_f ps cs (nlines I')
   /\ sessf ps' cs' s' I' = sessf ps cs s I'.
@@ -1419,7 +1417,7 @@ Qed.
 (* THE DISCIPLINE'S LOWER BOUND AT THE OPEN CYCLE'S LAST INPUT, at the
    cycle's own boot state: D1/D2 read off [disc_seg_f'] at the wire the last
    byte was typed on.  [EchoOutPure.disc_seg'_pt_last]'s twin. *)
-Lemma disc_seg_f'_pt_last (s : fst) (seg : list mobs) (c : bv 8) :
+Lemma disc_seg_f'_pt_last (s : fstate) (seg : list mobs) (c : bv 8) :
   disc_seg_f' s seg -> obs_ends_in Uart0 seg c ->
   exists ps' cs' : list nat,
     pro_ok_f ps' cs' (nlines (removelast (ins seg)))
@@ -1451,7 +1449,7 @@ Proof using.
 Qed.
 
 (* [sessf] is never empty once round 0 has settled *)
-Lemma sessf_nonnil (ps cs : list nat) (s : fst) (I : list (bv 8)) :
+Lemma sessf_nonnil (ps cs : list nat) (s : fstate) (I : list (bv 8)) :
   Forall (fun a => (a < length pro_alts)%nat) ps -> pro_done ps ->
   sessf ps cs s I <> [].
 Proof using.
@@ -1476,7 +1474,7 @@ Record fostage := MkFO {
   fo_cs : list nat;
   fo_E  : list (list mobs * bv 8);
   fo_w  : list (bv 8);
-  fo_f0 : option fst;
+  fo_f0 : option fstate;
 }.
 Definition fostage0 : fostage := MkFO [] [] [] [] None.
 
@@ -1506,7 +1504,7 @@ Qed.
    prompt or its own newline, [RCRan]'s content is closed by the prompt, and
    an [REcho k] is nonempty for [k < 4] -- which covers both an alternative
    a line ADMITS and the out-of-range reading. *)
-Lemma cont_nonnil (s : fst) (l : uline) (a : ralt) :
+Lemma cont_nonnil (s : fstate) (l : uline) (a : ralt) :
   ralt_ok l a \/ a = REcho 0%nat -> cont s l a <> [].
 Proof using.
   intro Ha.
@@ -1538,7 +1536,7 @@ Proof using.
   - exact Hpa.
 Qed.
 
-Lemma pending_at_f_nonnil (ps cs : list nat) (f0 : option fst)
+Lemma pending_at_f_nonnil (ps cs : list nat) (f0 : option fstate)
     (I : list (bv 8)) :
   alts_pre I cs -> I <> [] -> rest_of I = [] ->
   pending_at_f ps cs f0 I <> [].
@@ -1552,13 +1550,13 @@ Proof using.
   - right. apply ralt_at_ge. lia.
 Qed.
 
-Lemma pending_f_nonnil (ps cs : list nat) (f0 : option fst)
+Lemma pending_f_nonnil (ps cs : list nat) (f0 : option fstate)
     (E : list (list mobs * bv 8)) :
   alts_pre (snd <$> E) cs -> (snd <$> E) <> [] ->
   rest_of (snd <$> E) = [] -> pending_f ps cs f0 E <> [].
 Proof using. rewrite /pending_f. apply pending_at_f_nonnil. Qed.
 
-Lemma pending_f_nil_inv (ps cs : list nat) (f0 : option fst)
+Lemma pending_f_nil_inv (ps cs : list nat) (f0 : option fstate)
     (E : list (list mobs * bv 8)) :
   alts_pre (snd <$> E) cs -> rest_of (snd <$> E) = [] ->
   pending_f ps cs f0 E = [] -> (snd <$> E) = [].
@@ -1589,7 +1587,7 @@ Proof using.
 Qed.
 
 Lemma cs_len_ok_f_intro (ps cs : list nat) (E : list (list mobs * bv 8))
-    (w : list (bv 8)) (f0 : option fst) :
+    (w : list (bv 8)) (f0 : option fstate) :
   ((w = [] /\ rest_of (snd <$> E) = []) ->
      length cs = (nlines (snd <$> E) - 1)%nat) ->
   (~ (w = [] /\ rest_of (snd <$> E) = []) ->
@@ -1863,7 +1861,7 @@ Definition feout_pure (k : nat) (ho : list mobs) (so : fostage)
      before init's banner.  The second is what the determinacy argument
      spends -- a file holds a content, never junk. *)
   /\ (fo_f0 so = None <-> (fo_E so = [] /\ fo_w so = []))
-  /\ fst_ok (f0_st (fo_f0 so)).
+  /\ fstate_ok (f0_st (fo_f0 so)).
 
 Lemma feout_pure_0 k ho : feout_pure k ho fostage0 [].
 Proof using.
@@ -1886,7 +1884,7 @@ Qed.
 
 (* the era's stream opens with the block the EMPTY input owes, so a stage
    whose input is nonempty has already owed the whole prologue *)
-Lemma proc_before_f_head (ps cs : list nat) (f0 : option fst)
+Lemma proc_before_f_head (ps cs : list nat) (f0 : option fstate)
     (I : list (bv 8)) :
   I <> [] ->
   pending_at_f ps cs f0 [] `prefix_of` proc_before_f ps cs f0 I.
@@ -1954,7 +1952,7 @@ Qed.
    block boundary.  This packages the padding: the padded list agrees with
    the stage's wherever the stage reads it, and the stage's transcript is
    below the padded session. *)
-Lemma stage_sessf_pad (ps cs : list nat) (f0 : option fst)
+Lemma stage_sessf_pad (ps cs : list nat) (f0 : option fstate)
     (E : list (list mobs * bv 8)) (w : list (bv 8)) :
   alts_pre (snd <$> E) cs ->
   (nlines (removelast (snd <$> E)) <= length cs)%nat ->
@@ -2006,7 +2004,7 @@ Qed.
    padded.  The padding moves no prologue round ([alts_pad_pro_idx]) and
    changes no block the shorter input had ([alts_pad_take] through
    [FileDisc.sessf_take]), so the same [ps] still answers. *)
-Lemma good_out_f_step (s : fst) (seg : list mobs) (e : mobs) :
+Lemma good_out_f_step (s : fstate) (seg : list mobs) (e : mobs) :
   obs_wire Uart0 [e] = [] -> good_out_f s seg -> good_out_f s (seg ++ [e]).
 Proof using.
   intros He (ps & cs & [Hpsb Hlt] & Hao & Hwire).
@@ -2142,14 +2140,14 @@ Qed.
 (*  [FileDisc.file_phi] follows VERBATIM.                                  *)
 (* ====================================================================== *)
 
-Definition file_phi_body (h : list mobs) (s0s : list fst) : Prop :=
+Definition file_phi_body (h : list mobs) (s0s : list fstate) : Prop :=
   length s0s = length (cycles_of h)
   /\ (forall s, s0s !! 0%nat = Some s -> s = None)
   /\ (forall k s, s0s !! S k = Some s ->
         fadm_boot (echof_lines_before h (S k)) s)
   /\ Forall2 good_out_f s0s (cycles_of h).
 
-Lemma file_phi_of_body (h : list mobs) (s0s : list fst) :
+Lemma file_phi_of_body (h : list mobs) (s0s : list fstate) :
   (disc_f h -> file_phi_body h s0s) -> file_phi h.
 Proof using.
   intros H Hd. destruct (H Hd) as (H1 & H2 & H3 & H4).
@@ -2167,7 +2165,7 @@ Proof using.
 Qed.
 
 (* an event that puts nothing on the console's wire *)
-Lemma file_phi_body_step_io (h : list mobs) (e : mobs) (s0s : list fst) :
+Lemma file_phi_body_step_io (h : list mobs) (e : mobs) (s0s : list fstate) :
   trace_shape h true -> is_io e = true -> obs_wire Uart0 [e] = [] ->
   file_phi_body h s0s -> file_phi_body (h ++ [e]) s0s.
 Proof using.
@@ -2192,13 +2190,13 @@ Proof using.
     exact (good_out_f_step y (open_seg h) e Hw Hy).
 Qed.
 
-Lemma file_phi_body_off (h : list mobs) (s0s : list fst) :
+Lemma file_phi_body_off (h : list mobs) (s0s : list fstate) :
   file_phi_body h s0s -> file_phi_body (h ++ [ObsPowerOff]) s0s.
 Proof using.
   rewrite /file_phi_body /echof_lines_before cycles_of_off. done.
 Qed.
 
-Lemma file_phi_body_on (h : list mobs) (s0s : list fst) :
+Lemma file_phi_body_on (h : list mobs) (s0s : list fstate) :
   file_phi_body h s0s -> file_phi_body (h ++ [ObsPowerOn]) (s0s ++ [None]).
 Proof using.
   intros (Hlen & H0 & Hadm & HF). rewrite /file_phi_body cycles_of_on.
@@ -2229,8 +2227,8 @@ Qed.
    is the guarded first clause (the entry is [None], admissible anywhere),
    and at a later cycle it is the third clause, whose line set a console
    output does not move *)
-Lemma file_phi_body_last_adm (h : list mobs) (e : mobs) (u1 : list fst)
-    (x : fst) :
+Lemma file_phi_body_last_adm (h : list mobs) (e : mobs) (u1 : list fstate)
+    (x : fstate) :
   trace_shape h true -> is_io e = true ->
   file_phi_body h (u1 ++ [x]) ->
   fadm_boot (echof_lines_before (h ++ [e]) (length u1)) x.
@@ -2252,8 +2250,8 @@ Qed.
 (* THE DRAIN'S STEP: the console's own output, at the era's boot state --
    which the ledger may REPLACE here, because this may be the era's first
    drain and the entry it replaces was provisional. *)
-Lemma file_phi_body_out (h : list mobs) (b : bv 8) (u1 : list fst)
-    (x s0 : fst) :
+Lemma file_phi_body_out (h : list mobs) (b : bv 8) (u1 : list fstate)
+    (x s0 : fstate) :
   trace_shape h true ->
   good_out_f s0 (open_seg h ++ [ObsUartOut Uart0 b]) ->
   fadm_boot (echof_lines_before (h ++ [ObsUartOut Uart0 b]) (length u1)) s0 ->
@@ -2309,8 +2307,8 @@ Qed.
    IS the list of lines typed in strictly earlier cycles.  At a LATER drain
    the state is the one the ledger already fixed, and its admissibility is
    in the body already. *)
-Lemma file_phi_body_drain (h : list mobs) (b : bv 8) (s0s : list fst)
-    (s0 : fst) :
+Lemma file_phi_body_drain (h : list mobs) (b : bv 8) (s0s : list fstate)
+    (s0 : fstate) :
   trace_shape h true -> disc_f h ->
   good_out_f s0 (open_seg h ++ [ObsUartOut Uart0 b]) ->
   fadm_boot (echof_lines_of h) s0 ->

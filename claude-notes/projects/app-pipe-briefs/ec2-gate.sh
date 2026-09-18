@@ -50,7 +50,7 @@ tmp="$(mktemp -d)"; git -C $LOCAL bundle create "$tmp/main.bundle" main >/dev/nu
 # 2. the build, DETACHED (a Spec change rebuilds a large cone; longer than an ssh session should hold)
 cat > /tmp/gate-build.sh <<'EOS'
 set -o pipefail
-cd /shared/xv6iris && eval $(opam env --switch=/shared/xv6rocq --set-switch) && export OCAMLRUNPARAM=l=4000000000
+cd /shared/xv6iris && eval $(opam env --switch=/shared/xv6rocq --set-switch) && export OCAMLRUNPARAM=l=4000000000 && ulimit -s unlimited
 rm -f /tmp/gate-build-full.log
 echo "BUILD at $(git rev-parse --short HEAD)"
 rc=0

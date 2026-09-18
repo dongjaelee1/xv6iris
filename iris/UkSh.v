@@ -6973,7 +6973,14 @@ Section UkSh.
      the parser (60) and the runner (8); the [cd] arm's own 26 (fprintf's
      frame) fits inside the same total.  It is a NUMBER here and a sum in
      the files that spend it, because this file walks none of them. *)
-  Definition ush_Dbody : nat := 80%nat.
+  (* EIGHT MORE THAN ECHO'S (lane SH-CHILD-2).  The body's room has to
+     cover the deepest child it forks, and the REDIRECT line's parse is
+     eight words deeper than the symbol-free one
+     ([UkShRedirPc.wp_kshp_parsecmd_gt] asks [68 + nn] where
+     [UkShParseCmd.wp_kshp_parser] asks [60 + nn]).  The echo tier carries
+     the eight unspent -- a child law is [∀ n], so more room is the same
+     law at a bigger [n] and no walk had to move. *)
+  Definition ush_Dbody : nat := 88%nat.
 
   (* [R] IS WHAT A TURN CARRIES AND DOES NOT CREATE, and it is abstract
      here on purpose.  Stages 1-2 carried the five constants, the

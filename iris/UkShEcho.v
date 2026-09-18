@@ -472,6 +472,45 @@ Section UkShEcho.
     Persistent (sh_exec_sup_echo ws Q Cr).
   Proof using . rewrite /sh_exec_sup_echo. apply _. Qed.
 
+  (* ===================================================================== *)
+  (* THE SAME SUPPLY AT AN ABSTRACT fd-1 ROW (lane SH-CHILD-2).             *)
+  (*                                                                       *)
+  (* The only thing the arm below does with fd 1 is pass the row to the     *)
+  (* supply, and the redirect child's fd 1 is a FILE                        *)
+  (* ([FdOpen false true (FdInode i γo om)]), not the console.  So the row  *)
+  (* is a parameter; echo's is the instance at [UkSh.ush_fd1p].             *)
+  (*                                                                       *)
+  (* A COPY AND NOT AN ALIAS, deliberately: [UShEchoPay.                    *)
+  (* sh_exec_sup_echo_wq_holds] (lane LINK-GEN-3's file) UNFOLDS            *)
+  (* [sh_exec_sup_echo] and introduces its box, so the landed definition    *)
+  (* has to keep a body of its own.  The two are convertible at             *)
+  (* [Fd1 := UkSh.ush_fd1p] and [sh_exec_sup_echo_at_fd1p] is that step.    *)
+  (* ===================================================================== *)
+  Definition sh_exec_sup_echo_at (Fd1 : list fdstate -> Prop)
+      (ws : list (list (bv 8))) (Q : Z -> iProp Σ)
+      (Cr : iProp Σ) : iProp Σ :=
+    (□ (∀ (N' : uk_names Σ) (m : regfile) (pc : mword 64)
+          (s0 t : Z) (g : nat -> bv 8) (ld : list fdstate),
+          ⌜ ukn_pay N' = Q ⌝ -∗
+          ⌜ m !!! Regidx a0_idx = (mword_of_int s0 : mword 64) ⌝ -∗
+          ⌜ m !!! Regidx a1_idx = (mword_of_int (t + 8) : mword 64) ⌝ -∗
+          ⌜ echo_argv_bytes ws g ⌝ -∗
+          ⌜ Fd1 ld ⌝ -∗
+          UserFd.ustd (ukn_fd N') ld -∗
+          ush_cmd (ukn_d N') t (echo_cmd ws s0 g) -∗
+          Cr -∗
+          udepw_at_refR N' m pc FsImg.ROOTINO
+            (UserFd.ustd (ukn_fd N') ld ∗ Cr)))%I.
+
+  Global Instance sh_exec_sup_echo_at_persistent Fd1 ws Q Cr :
+    Persistent (sh_exec_sup_echo_at Fd1 ws Q Cr).
+  Proof using . rewrite /sh_exec_sup_echo_at. apply _. Qed.
+
+  Lemma sh_exec_sup_echo_at_fd1p (ws : list (list (bv 8)))
+      (Q : Z -> iProp Σ) (Cr : iProp Σ) :
+    sh_exec_sup_echo ws Q Cr -∗ sh_exec_sup_echo_at UkSh.ush_fd1p ws Q Cr.
+  Proof using . iIntros "$". Qed.
+
   (* THE CWD-INDEXED EXEC STUB.  [UkShRun.wp_kshr_exec] takes the ∀-cwd
      deposit [UkRun.udepw]; a pinned supply cannot pay that (its bundle
      answers at ONE cwd), so the specialised arm needs sh's exec stub at
@@ -554,6 +593,35 @@ Section UkShEcho.
           (6 + (2 + (UkShDiag.ush_Dg + n))) -∗
         WP (Loop : expr riscv_lang).
 
+  (* ...AND THE SAME ARM AT AN ABSTRACT fd-1 ROW (lane SH-CHILD-2), which
+     is what the REDIRECT child runs: its fd 1 is the file the open
+     returned, and the only place the row is read is the supply. *)
+  Definition wp_kshr_exec_echo_at (Fd1 : list fdstate -> Prop)
+      (ws : list (list (bv 8))) (Q : Z -> iProp Σ)
+      (Cr Cd : iProp Σ) : Prop :=
+    forall (N : uk_names Σ) (Hc : ukn_const N) (h : CpuId) (m : regfile)
+           (t szv s0 : Z) (g : nat -> bv 8) (ld : list fdstate) (n : nat),
+      line_ok ws ->
+      ukn_pay N = Q ->
+      m !!! Regidx a0_idx = (mword_of_int t : mword 64) ->
+      echo_argv_bytes ws g ->
+      Fd1 ld ->
+      UkSh.ush_fd2p ld ->
+      ⊢ shk_code (ukn_t N) -∗
+        sh_exec_sup_echo_at Fd1 ws Q Cr -∗
+        UkShDiag.ush_execfail_law Cr Cd -∗
+        □ (Cd -∗ Q (-1)) -∗
+        ush_jtab (ukn_t N) -∗
+        ush_cmd (ukn_d N) t (echo_cmd ws s0 g) -∗
+        usz (ukn_s N) szv -∗
+        UserFd.ustd (ukn_fd N) ld -∗
+        UserCwd.ucwd (ukn_cwd N) FsImg.ROOTINO -∗
+        UserChildren.uch_any (ukn_ch N) -∗
+        Cr -∗
+        urun N h m (mword_of_int ShSyms.runcmd)
+          (6 + (2 + (UkShDiag.ush_Dg + n))) -∗
+        WP (Loop : expr riscv_lang).
+
   Lemma wp_kshr_exec_at_cwd_holds (R : iProp Σ) : wp_kshr_exec_at_cwd R.
   Proof using .
     intros N Hc h m c avail.
@@ -608,9 +676,10 @@ Section UkShEcho.
   Qed.
 
   (* ---- the specialised EXEC arm, PROVED ------------------------------- *)
-  Lemma wp_kshr_exec_echo_holds (ws : list (list (bv 8)))
+  Lemma wp_kshr_exec_echo_at_holds (Fd1 : list fdstate -> Prop)
+      (ws : list (list (bv 8)))
       (Q : Z -> iProp Σ) (Cr Cd : iProp Σ) :
-    wp_kshr_exec_echo ws Q Cr Cd.
+    wp_kshr_exec_echo_at Fd1 ws Q Cr Cd.
   Proof using .
     intros N Hcc h m t szv s0 g ld n Hok Hpeq Ha0 Hbytes Hfd1 Hfd2.
     (* THE BUNDLE-INTRO HANG (durable-notes, "iIntros #H on a bundle of
@@ -621,7 +690,7 @@ Section UkShEcho.
        diagnostic goes through the links); [sh_exec_sup_echo] is still
        introduced linearly and its box stripped by an explicit unfold. *)
     iIntros "#Hcode Hexs #Hxl #Hcd #Hjt #Htree Hsz Hstd Hcwd Hch Hcr Hrun".
-    rewrite /sh_exec_sup_echo. iDestruct "Hexs" as "#Hexs".
+    rewrite /sh_exec_sup_echo_at. iDestruct "Hexs" as "#Hexs".
     iDestruct (ush_jtab_ro with "Hjt") as "#Hro".
     iDestruct (echo_cmd_addr with "Htree") as %[Htr Ht8].
     iDestruct (echo_cmd_argv0 ws _ _ _ _ Hok with "Htree") as "[#Hw0 #Hstr]".
@@ -794,6 +863,19 @@ Section UkShEcho.
     { rewrite /ush_str. cbn [ua_ptr ua_len ua_bytes].
       iSplitR; [ iPureIntro; exact Hxr | iExact "Hxs" ]. }
     { iIntros "_ Hc". rewrite <- Hpeq. iApply ("Hcd" with "Hc"). }
+  Qed.
+
+  (* ...and the landed arm is that one at the console row. *)
+  Lemma wp_kshr_exec_echo_holds (ws : list (list (bv 8)))
+      (Q : Z -> iProp Σ) (Cr Cd : iProp Σ) :
+    wp_kshr_exec_echo ws Q Cr Cd.
+  Proof using .
+    intros N Hcc h m t szv s0 g ld n Hok Hpeq Ha0 Hbytes Hfd1 Hfd2.
+    iIntros "#Hcode Hexs #Hxl #Hcd #Hjt #Htree Hsz Hstd Hcwd Hch Hcr Hrun".
+    iApply (wp_kshr_exec_echo_at_holds UkSh.ush_fd1p ws Q Cr Cd N Hcc h m
+              t szv s0 g ld n Hok Hpeq Ha0 Hbytes Hfd1 Hfd2
+              with "Hcode [Hexs] Hxl Hcd Hjt Htree Hsz Hstd Hcwd Hch Hcr Hrun").
+    iApply (sh_exec_sup_echo_at_fd1p with "Hexs").
   Qed.
 
   (* =================================================================== *)
@@ -1060,11 +1142,23 @@ Section UkShEcho.
     iIntros "!>" (I). rewrite <- (Hdg I), <- (Hnn I). iApply ("Hx" $! I).
   Qed.
 
-  Lemma ushf_child_law_holds (Wc : list (bv 8) -> nat -> iProp Σ) :
-    ush_execfail_law_wq Wc -∗
+  (* THE DIAGNOSTIC'S CARRIER COMES OFF THE LINE SHAPE (lane SH-CHILD-2,
+     LINK-GEN-4's residue).  The law used to name the CONSTANT exec-failed
+     bytes, and a second application's carrier is a function of its input
+     ([lk_exfb FI I]) which is NOT that constant at an [LCat] line.  What
+     is true is narrower and is exactly what [UkShFork.ushf_child_law_at]'s
+     own [Lp] gives: at the lines THIS law is about -- [UkSh.ush_line_is],
+     hence [EchoDisc.line_ok (last_ws I)] -- the carrier IS the constant.
+     So the premise is guarded by the line, and the guard is discharged
+     inside the walk from the line fact the law already carries. *)
+  Lemma ushf_child_law_holds_at (dg : list (bv 8) -> list (bv 8))
+      (nn : list (bv 8) -> nat) (Wc : list (bv 8) -> nat -> iProp Σ) :
+    (forall I : list (bv 8),
+       line_ok (last_ws I) -> dg I = alt_execfail /\ nn I = 17%nat) ->
+    ush_execfail_law_wq_at dg nn Wc -∗
     sh_exec_sup_echo_wq Wc -∗ UkShFork.ushf_child_law Wc.
   Proof.
-    iIntros "#Hxl #Hsup".
+    intros Hdg. iIntros "#Hxl #Hsup".
     rewrite /UkShFork.ushf_child_law /UkShFork.ushf_child_law_at.
     iIntros "!>" (N' h m dw dv s0 len ws g sz ld n I)
       "%Hpeq %Hs1 %Hline %Hlws %Hs0 %Hs64 %Hs38 %Hszlo %Hszal %Hszok %Hrows
@@ -1082,9 +1176,26 @@ Section UkShEcho.
     - (* a child that died at the null store exits on the block it was
          lent *)
       iIntros "!> Hc". rewrite /UkShFork.ushf_wq. iLeft. iExact "Hc".
-    - iApply ("Hxl" $! I).
+    - (* THE CARRIER, AT THIS LINE: the law is at [dg I] / [nn I] and the
+         line the child runs is admissible, so both are the constants the
+         walk prints. *)
+      destruct (Hdg I ltac:(subst; exact (proj1 Hline))) as [ Hd1 Hd2 ].
+      rewrite /UkShDiag.ush_execfail_law.
+      rewrite <- Hd1. rewrite <- Hd2.
+      iApply ("Hxl" $! I).
     - (* a failed exec's child exits on the block written up to its prompt *)
       iIntros "!> Hc". rewrite /UkShFork.ushf_wq. iRight. iExact "Hc".
+  Qed.
+
+  (* ...and echo's instance, at the constants. *)
+  Lemma ushf_child_law_holds (Wc : list (bv 8) -> nat -> iProp Σ) :
+    ush_execfail_law_wq Wc -∗
+    sh_exec_sup_echo_wq Wc -∗ UkShFork.ushf_child_law Wc.
+  Proof using .
+    iIntros "#Hxl #Hsup".
+    iApply (ushf_child_law_holds_at (fun _ => alt_execfail) (fun _ => 17%nat)
+              Wc ltac:(intros I _; split; reflexivity) with "[Hxl] Hsup").
+    rewrite /ush_execfail_law_wq. iExact "Hxl".
   Qed.
 
   (* =================================================================== *)

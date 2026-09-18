@@ -443,28 +443,29 @@ Section UkWriteFile.
     rewrite /filewrite_in Hcnt. iExact "Hch".
   Qed.
 
-  (* ...AND THE HELD LEDGER SLOT (lane OFF-LINK-4, L5): echo's fd 1 on [f]
-     is HELD, so what it hands in is the LINK -- its own half of the offset
-     shadow at the position it believes the file is at, and the ANCHORED
-     chain the kernel relays [off = off0] into
-     ([SpecFilewrite.filewrite_in_held]).  Everything else is the parked
-     twin above, verbatim. *)
+  (* ...AND THE HELD LEDGER SLOT (lanes OFF-LINK-4/5, L5): echo's fd 1 on
+     [f] is HELD, so what it hands in is the LINK -- the CLIENT-ADVANCED
+     chain ([SpecFilewrite.filewrite_in_held]), whose nodes keep the
+     program's own half of the offset shadow in their closure and hand the
+     box's arm back advanced.  The half is therefore NOT a separate premise
+     of this leaf: it is inside the chain the caller builds, which is where
+     echo keeps it between calls.  Everything else is the parked twin
+     above, verbatim. *)
   Lemma udepwf_std_write_file_held (N : uk_names Σ) (m : regfile) (pc : mword 64)
       (l : list fdstate) (rb : bool) (i : Z) (γo : gname)
-      (Q : nat -> iProp Σ) (n : Z) (off0 : nat) :
+      (Q : nat -> iProp Σ) (n : Z) :
     l !! 1%nat = Some (FdOpen rb true (FdInode i γo OffHeld)) ->
     bv_signed (trunc32 (m !!! Regidx a0_idx)) = 1%Z ->
     sys_rw_count (m !!! Regidx a2_idx) = n ->
-    uoff γo off0 -∗
     (∀ (M : gmap Z (bv 8)) (pm : gmap (mword 27) uperm) (sz : Z),
        uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz -∗
        uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz ∗
        ∀ P : uptd,
-         awrite_chain_anch (fs_gamma_L fsc_fs) appE i γo M
-           (m !!! Regidx a1_idx) P n Q 0%nat (wchunks n) off0) -∗
+         awrite_chain_adv (fs_gamma_L fsc_fs) appE i γo M
+           (m !!! Regidx a1_idx) P n Q 0%nat (wchunks n)) -∗
     udepwf_std N m pc 16 (write_file_fam Q (ukn_pay N)) l.
   Proof using .
-    intros Hl1 H0 Hcnt. iIntros "Hu Hch".
+    intros Hl1 H0 Hcnt. iIntros "Hch".
     rewrite /udepwf_std. iSplitR; [ iPureIntro; reflexivity | ].
     iIntros (M pm sz fdv cw gn cs pidv) "%Htake #Hmpay Hheap Hufd".
     iDestruct ("Hch" $! M pm sz with "Hheap") as "[Hheap Hch]".
@@ -481,7 +482,7 @@ Section UkWriteFile.
                H0 ltac:(unfold NSTD; lia) Htake Hl1).
     cbn [write_file_fam xfam_wr wf_Q].
     rewrite /filewrite_in Hcnt /filewrite_in_held.
-    iLeft. iExists off0. iFrame "Hu". iExact "Hch".
+    iLeft. iExact "Hch".
   Qed.
 
   (* THE LEDGER-SLOT WRITE LEAF, [wp_uk_ecall_write_file]'s twin: the one

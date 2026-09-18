@@ -759,33 +759,46 @@ Section WriteFire.
   Qed.
 
   (* =================================================================== *)
-  (*  2b.  THE ANCHORED CHAIN (lane OFF-LINK-4, design/app-file.md SS3)    *)
+  (*  2b.  THE CLIENT-ADVANCED CHAIN (lane OFF-LINK-5, design/app-file.md  *)
+  (*       SS3)                                                            *)
   (* =================================================================== *)
-  (* THE ONE ARROW A HELD ROW'S CHAIN ADDS, and the whole of what
-     design/app-file.md SS3's RELAY 2 needs.  A node's own [off] is bound by
-     its [∀], so a client that means to APPEND -- echo, at [off = |bs0|] --
-     cannot say so inside the node: the fact is the KERNEL'S, learned at the
-     fire by [UserOff.uoff_agree_k] against the box's half, and RELAYED in
-     here.  That is the premise slot review SSA1 said did not exist; it exists
-     the moment the arm is stated at this node instead of the plain one.
+  (* WHAT A HELD ROW'S CHAIN CHANGES, AND IT IS ONE CONJUNCT OF PHASE 2.
+     A held descriptor's user half is NOT in the kernel's hands and NOT in
+     the row's invariant ([FdSlots.foff_row] at [OffHeld] is [emp]): it is
+     in the CLIENT'S OWN CLOSURE -- the place echo and cat keep it between
+     calls ([UCatKernel.cat_hold_at]'s [UserOff.uoff]).  So the client is
+     the only party that can move the shadow, and this node says it does:
+     the box's arm goes in at [off] and comes back ADVANCED BY THE CHUNK.
+
+     THAT REPLACES THE ANCHOR (lane OFF-LINK-4's [awrite_full_anch], which
+     this supersedes).  The anchored node took the equation [off = off0] as
+     a RELAYED premise because a client that means to append cannot name
+     the node's own [off]; but a client that HOLDS the half does not need
+     the equation relayed -- it reads it off the half at the instant
+     ([UserOff.uoff_agree_k] against the lent arm), INSIDE the node's own
+     [forall off].  And because phase 2 then hands the arm back advanced,
+     THE FIRE NEEDS NO [UserOff.off_supply] AT ALL: the step the parked
+     path spends on the row's invariant has nothing left to do.  That is
+     the whole of mode hand at this coupling, and it is why a held
+     descriptor costs the kernel neither a carried [uoff] nor a second
+     supplier.
 
      ...OR THE TAINT, for the object whose box is already disconnected
-     ([OffGv.off_link]'s right arm): there is no half to agree against there,
-     so the kernel feeds the box's own [app_taint] and the client's node goes
-     to its claim's taint arm.  That is the owner's principle inside the node
-     rather than beside it, and it is why a held row needs no second chain.
+     ([OffGv.off_link]'s right arm): there is no half to agree against
+     there, so what comes back advanced is the taint itself, which
+     [OffGv.off_link_taint] hands over at any value.
 
-     EVERYTHING ELSE IS [awrite_full_at] VERBATIM -- delete the one arrow and
-     the two definitions are the same term, which is what
-     [awrite_full_anch_of_full] says. *)
-  Definition awrite_full_anch Γ (E : coPset) (i : Z) (γo : gname)
-      (M : gmap Z (bv 8)) (ua : mword 64) (n : Z) (k : nat) (off0 : nat)
+     EVERYTHING ELSE IS [awrite_full_at] VERBATIM -- replace
+     [OffGv.off_ret γo off (length bs)] by [OffGv.off_link] at the advanced
+     value and the two definitions are the same term, which is what
+     [awrite_full_at_of_adv] says. *)
+  Definition awrite_full_adv Γ (E : coPset) (i : Z) (γo : gname)
+      (M : gmap Z (bv 8)) (ua : mword 64) (n : Z) (k : nat)
       (REST : iProp Σ) : iProp Σ :=
     (∀ (I : gmap Z fs_node) (off : nat) (bs bs0 : list (bv 8)) (nl : nat),
        ⌜wri_pre (abs_view I) i off bs bs0 nl⌝ -∗
        ⌜ubytes_at M (add_vec_int ua (FW_MAX * Z.of_nat k)) bs⌝ -∗
        ⌜Z.of_nat (length bs) = wchunk_at n k⌝ -∗
-       (⌜off = off0⌝ ∨ app_taint) -∗
        ghost_map_auth (γtop Γ) (1/2) I -∗ off_link γo (Z.of_nat off) ={E}=∗
        ghost_map_auth (γtop Γ) (1/2) I ∗
          app_step i I (delta_write i off bs (abs_view I)) ∗
@@ -793,13 +806,15 @@ Section WriteFire.
             ⌜abs_view I' = delta_write i off bs (abs_view I)⌝ -∗
             ghost_map_auth (γtop Γ) (1/2) I' ={E}=∗
             ghost_map_auth (γtop Γ) (1/2) I' ∗
-            off_ret γo off (length bs) ∗
+            off_link γo (Z.of_nat (off + length bs)) ∗
             REST))%I.
 
-  (* ...and the partial arm's twin, at the same arrow *)
-  Definition awrite_part_anch Γ (E : coPset) (i : Z) (γo : gname)
+  (* ...and the partial arm's twin.  THE ADVANCE IS BY THE COUNT [r], not
+     by the run that landed: [wrf_apart_fire]'s own asymmetry, and the
+     client moves its half by exactly what the kernel moved [f->off] by. *)
+  Definition awrite_part_adv Γ (E : coPset) (i : Z) (γo : gname)
       (M : gmap Z (bv 8)) (ua : mword 64) (P : uptd) (n : Z) (k : nat)
-      (off0 : nat) (REST : iProp Σ) : iProp Σ :=
+      (REST : iProp Σ) : iProp Σ :=
     (∀ (I : gmap Z fs_node) (off r : nat) (bs bs0 : list (bv 8)) (nl : nat),
        ⌜wri_pre (abs_view I) i off bs bs0 nl⌝ -∗
        ⌜(r <= length bs)%nat⌝ -∗
@@ -808,7 +823,6 @@ Section WriteFire.
        ⌜(r < length bs)%nat -> wr_fail_why P ua (Z.to_nat n)⌝ -∗
        ⌜wi_blocks off (Z.to_nat (wchunk_at n k)) = 1%nat -> r = 0%nat⌝ -∗
        ⌜ubytes_at M (add_vec_int ua (FW_MAX * Z.of_nat k)) (take r bs)⌝ -∗
-       (⌜off = off0⌝ ∨ app_taint) -∗
        ghost_map_auth (γtop Γ) (1/2) I -∗ off_link γo (Z.of_nat off) ={E}=∗
        ghost_map_auth (γtop Γ) (1/2) I ∗
          app_step i I (delta_write i off bs (abs_view I)) ∗
@@ -816,96 +830,103 @@ Section WriteFire.
             ⌜abs_view I' = delta_write i off bs (abs_view I)⌝ -∗
             ghost_map_auth (γtop Γ) (1/2) I' ={E}=∗
             ghost_map_auth (γtop Γ) (1/2) I' ∗
-            off_ret γo off r ∗
+            off_link γo (Z.of_nat (off + r)) ∗
             REST))%I.
 
-  (* THE ANCHOR ADVANCES BY THE CHUNK, which is the value the fixpoint
-     already names: node [k] is fired at [off0], node [S k] at
-     [off0 + wchunk_at n k], and the kernel's own [f->off] walks the same
-     ladder.  The PARTIAL arm ends the loop, so its [REST] is anchored at
-     the same place and nothing reads it. *)
-  Fixpoint awrite_chain_anch Γ (E : coPset) (i : Z) (γo : gname)
+  (* THE CHAIN AT THOSE NODES.  It carries NO anchor: the position each
+     node fires at is the client's own business, read off the half it holds,
+     so the fixpoint is [awrite_chain_at]'s letter for letter. *)
+  Fixpoint awrite_chain_adv Γ (E : coPset) (i : Z) (γo : gname)
       (M : gmap Z (bv 8)) (ua : mword 64) (P : uptd) (n : Z)
-      (Q : nat -> iProp Σ) (k cnt : nat) (off0 : nat) : iProp Σ :=
+      (Q : nat -> iProp Σ) (k cnt : nat) : iProp Σ :=
     match cnt with
     | O => Q k
     | S cnt' =>
         (Q k
-         ∧ (awrite_full_anch Γ E i γo M ua n k off0
-              (awrite_chain_anch Γ E i γo M ua P n Q (S k) cnt'
-                 (off0 + Z.to_nat (wchunk_at n k))%nat)
-            ∧ awrite_part_anch Γ E i γo M ua P n k off0
-                (awrite_chain_anch Γ E i γo M ua P n Q (S k) cnt'
-                   (off0 + Z.to_nat (wchunk_at n k))%nat)))%I
+         ∧ (awrite_full_adv Γ E i γo M ua n k
+              (awrite_chain_adv Γ E i γo M ua P n Q (S k) cnt')
+            ∧ awrite_part_adv Γ E i γo M ua P n k
+                (awrite_chain_adv Γ E i γo M ua P n Q (S k) cnt')))%I
     end.
 
-  Lemma awrite_chain_anch_0 Γ E i γo M ua P n Q k off0 :
-    awrite_chain_anch Γ E i γo M ua P n Q k 0 off0 ⊣⊢ Q k.
+  Lemma awrite_chain_adv_0 Γ E i γo M ua P n Q k :
+    awrite_chain_adv Γ E i γo M ua P n Q k 0 ⊣⊢ Q k.
   Proof using . reflexivity. Qed.
 
-  Lemma awrite_chain_anch_S Γ E i γo M ua P n Q k cnt off0 :
-    awrite_chain_anch Γ E i γo M ua P n Q k (S cnt) off0 ⊣⊢
+  Lemma awrite_chain_adv_S Γ E i γo M ua P n Q k cnt :
+    awrite_chain_adv Γ E i γo M ua P n Q k (S cnt) ⊣⊢
       Q k
-      ∧ (awrite_full_anch Γ E i γo M ua n k off0
-           (awrite_chain_anch Γ E i γo M ua P n Q (S k) cnt
-              (off0 + Z.to_nat (wchunk_at n k))%nat)
-         ∧ awrite_part_anch Γ E i γo M ua P n k off0
-             (awrite_chain_anch Γ E i γo M ua P n Q (S k) cnt
-                (off0 + Z.to_nat (wchunk_at n k))%nat)).
+      ∧ (awrite_full_adv Γ E i γo M ua n k
+           (awrite_chain_adv Γ E i γo M ua P n Q (S k) cnt)
+         ∧ awrite_part_adv Γ E i γo M ua P n k
+             (awrite_chain_adv Γ E i γo M ua P n Q (S k) cnt)).
   Proof using . reflexivity. Qed.
 
-  (* the caller's elimination, at any stop position: the node IS the cursor,
-     exactly as the plain chain's *)
-  Lemma awrite_chain_anch_cursor Γ E i γo M ua P n Q k cnt off0 :
-    awrite_chain_anch Γ E i γo M ua P n Q k cnt off0 -∗ Q k.
+  Lemma awrite_chain_adv_cursor Γ E i γo M ua P n Q k cnt :
+    awrite_chain_adv Γ E i γo M ua P n Q k cnt -∗ Q k.
   Proof using .
     destruct cnt as [| cnt'].
-    - rewrite awrite_chain_anch_0. iIntros "$".
-    - rewrite awrite_chain_anch_S. iIntros "[$ _]".
+    - rewrite awrite_chain_adv_0. iIntros "$".
+    - rewrite awrite_chain_adv_S. iIntros "[$ _]".
   Qed.
 
-  (* THE ANCHORED NODE IS WEAKER, which is what makes the generic tier's
-     payment good for a held row too: a client that can prove the PLAIN node
-     -- the trivial cursor out of the supply, [awrite_chain_unit] -- proves
-     this one by dropping the arrow. *)
-  Lemma awrite_full_anch_of_full Γ E i γo M ua n k off0 REST :
-    awrite_full_at Γ E i γo M ua n k REST -∗
-    awrite_full_anch Γ E i γo M ua n k off0 REST.
+  (* THE ADVANCED NODE IS STRONGER, and that is the direction that matters:
+     the kernel's OWN exits report the LANDED post ([write_post_ok_at],
+     [write_post_fail_at]) at the plain chain, so a held call's residue
+     converts down and no consumer above the fire changes.  There is no
+     converse and there must not be: a client with no half cannot move the
+     shadow, which is what [UserOff.vacuity_lend_not_taint] refutes. *)
+  Lemma awrite_full_at_of_adv Γ E i γo M ua n k REST :
+    awrite_full_adv Γ E i γo M ua n k REST -∗
+    awrite_full_at Γ E i γo M ua n k REST.
   Proof using .
-    rewrite /awrite_full_at /awrite_full_anch.
-    iIntros "H" (I off bs bs0 nl) "%Hpre %Hby %Hlen _".
-    iApply ("H" $! I off bs bs0 nl with "[//] [//] [//]").
+    rewrite /awrite_full_at /awrite_full_adv.
+    iIntros "H" (I off bs bs0 nl) "%Hpre %Hby %Hlen Hka Hg".
+    iMod ("H" $! I off bs bs0 nl with "[//] [//] [//] Hka Hg")
+      as "(Hka & Hstep & Hph2)".
+    iModIntro. iFrame "Hka Hstep". iIntros (I') "%Hav Hka'".
+    iMod ("Hph2" $! I' with "[//] Hka'") as "(Hka' & Hg & Hrest)".
+    iModIntro. iFrame "Hka' Hrest". rewrite /off_ret.
+    iExists (Z.of_nat (off + length bs)). iFrame "Hg". by iRight.
   Qed.
 
-  Lemma awrite_part_anch_of_part Γ E i γo M ua P n k off0 REST :
-    awrite_part_at Γ E i γo M ua P n k REST -∗
-    awrite_part_anch Γ E i γo M ua P n k off0 REST.
+  Lemma awrite_part_at_of_adv Γ E i γo M ua P n k REST :
+    awrite_part_adv Γ E i γo M ua P n k REST -∗
+    awrite_part_at Γ E i γo M ua P n k REST.
   Proof using .
-    rewrite /awrite_part_at /awrite_part_anch.
-    iIntros "H" (I off r bs bs0 nl) "%Hpre %Hr %Hgap %Hshort %Hwhy %Hsb1 %Hby _".
-    iApply ("H" $! I off r bs bs0 nl with "[//] [//] [//] [//] [//] [//] [//]").
+    rewrite /awrite_part_at /awrite_part_adv.
+    iIntros "H" (I off r bs bs0 nl) "%Hpre %Hr %Hgap %Hsh %Hwhy %Hsb1 %Hby Hka Hg".
+    iMod ("H" $! I off r bs bs0 nl
+            with "[//] [//] [//] [//] [//] [//] [//] Hka Hg")
+      as "(Hka & Hstep & Hph2)".
+    iModIntro. iFrame "Hka Hstep". iIntros (I') "%Hav Hka'".
+    iMod ("Hph2" $! I' with "[//] Hka'") as "(Hka' & Hg & Hrest)".
+    iModIntro. iFrame "Hka' Hrest". rewrite /off_ret.
+    iExists (Z.of_nat (off + r)). iFrame "Hg". by iRight.
   Qed.
 
-  Lemma awrite_chain_anch_of_at Γ E i γo M ua P n Q k cnt off0 :
-    awrite_chain_at Γ E i γo M ua P n Q k cnt -∗
-    awrite_chain_anch Γ E i γo M ua P n Q k cnt off0.
+  Lemma awrite_chain_at_of_adv Γ E i γo M ua P n Q k cnt :
+    awrite_chain_adv Γ E i γo M ua P n Q k cnt -∗
+    awrite_chain_at Γ E i γo M ua P n Q k cnt.
   Proof using .
-    revert k off0. induction cnt as [| cnt IH]; intros k off0.
-    { rewrite awrite_chain_at_0 awrite_chain_anch_0. iIntros "$". }
-    rewrite awrite_chain_at_S awrite_chain_anch_S. iIntros "H".
+    revert k. induction cnt as [| cnt IH]; intros k.
+    { rewrite awrite_chain_at_0 awrite_chain_adv_0. iIntros "$". }
+    rewrite awrite_chain_at_S awrite_chain_adv_S. iIntros "H".
     iSplit; [ iDestruct "H" as "[$ _]" |].
     iSplit.
     - iDestruct "H" as "[_ [H _]]".
-      rewrite /awrite_full_anch /awrite_full_at.
-      iIntros (I off bs bs0 nl) "%Hpre %Hby %Hlen _ Hka Hg".
+      iDestruct (awrite_full_at_of_adv with "H") as "H".
+      rewrite /awrite_full_at.
+      iIntros (I off bs bs0 nl) "%Hpre %Hby %Hlen Hka Hg".
       iMod ("H" $! I off bs bs0 nl with "[//] [//] [//] Hka Hg")
         as "(Hka & Hstep & Hph2)".
       iModIntro. iFrame "Hka Hstep". iIntros (I') "%Hav Hka'".
       iMod ("Hph2" $! I' with "[//] Hka'") as "(Hka' & Hret & Hrest)".
       iModIntro. iFrame "Hka' Hret". iApply (IH with "Hrest").
     - iDestruct "H" as "[_ [_ H]]".
-      rewrite /awrite_part_anch /awrite_part_at.
-      iIntros (I off r bs bs0 nl) "%Hpre %Hr %Hgap %Hsh %Hwhy %Hsb1 %Hby _ Hka Hg".
+      iDestruct (awrite_part_at_of_adv with "H") as "H".
+      rewrite /awrite_part_at.
+      iIntros (I off r bs bs0 nl) "%Hpre %Hr %Hgap %Hsh %Hwhy %Hsb1 %Hby Hka Hg".
       iMod ("H" $! I off r bs bs0 nl
               with "[//] [//] [//] [//] [//] [//] [//] Hka Hg")
         as "(Hka & Hstep & Hph2)".
@@ -1045,19 +1066,17 @@ Section WriteFire.
     iModIntro. iFrame "Hf Hg HR Hrest".
   Qed.
 
-  (* THE FIRE AT AN ANCHORED NODE (lane OFF-LINK-5).  [wrf_awrite_fire_gen]
-     with ONE argument added and applied at the same instant: the kernel
-     knows the offset it is firing at -- [off] is this lemma's own parameter
-     -- so the arrow [FsAbsWriteFire.awrite_full_anch] carries is discharged
-     HERE and nowhere else, from [UserOff.uoff_agree_k] against the box's
-     half when the object is coupled and from the box's own [app_taint] when
-     it is not.  It cannot be a wrapper over the plain fire: the node's own
-     [off] is bound by its [∀], so nothing can convert an anchored node into
-     a plain one -- which is exactly why the arm is stated at this node and
-     the equation is RELAYED rather than derived. *)
-  Lemma wrf_awrite_fire_anch (γfs : fs_names) (E : coPset) (i : Z) (γo : gname)
-      (M : gmap Z (bv 8)) (ua : mword 64) (cnt : Z) (k : nat) (REST ROff : iProp Σ)
-      (off0 : nat)
+  (* THE FIRE AT A CLIENT-ADVANCED NODE (lane OFF-LINK-5), and it is
+     [wrf_awrite_fire_gen] with the SUPPLIER STEP DELETED.  The node hands
+     the box's arm back already at [off + |bs|], so there is nothing for a
+     [UserOff.off_supply] to do and this lemma has no user-side premise at
+     all: no [OffGv.off_user_inv], no carried [UserOff.uoff], nothing the
+     kernel must hold across the call.  It cannot be a wrapper over the
+     plain fire -- the plain fire CONSUMES a supplier it has no way to
+     conjure -- so the [_gen] body is spelled again here with its last two
+     lines gone. *)
+  Lemma wrf_awrite_fire_adv (γfs : fs_names) (E : coPset) (i : Z) (γo : gname)
+      (M : gmap Z (bv 8)) (ua : mword 64) (cnt : Z) (k : nat) (REST : iProp Σ)
       (off : nat) (bs bs0 : list (bv 8)) (nl : nat) (n n' : fs_node) :
     ↑ftopN ∪ ↑appN ⊆ E ->
     inode_local i n' ->
@@ -1070,17 +1089,16 @@ Section WriteFire.
     abs_row n' = MkAnode (AFile (blk_splice off bs bs0)) nl ->
     ubytes_at M (add_vec_int ua (FW_MAX * Z.of_nat k)) bs ->
     Z.of_nat (length bs) = wchunk_at cnt k ->
-    ftop_inv γfs -∗ app_inv γfs -∗ off_supply γo E off (length bs) ROff -∗
-    (⌜off = off0⌝ ∨ app_taint) -∗
-    awrite_full_anch (fs_gamma_L γfs) appE i γo M ua cnt k off0 REST -∗
+    ftop_inv γfs -∗ app_inv γfs -∗
+    awrite_full_adv (fs_gamma_L γfs) appE i γo M ua cnt k REST -∗
     top_frag (fs_gamma_L γfs) i n -∗
     off_link γo (Z.of_nat off) ={E}=∗
       top_frag (fs_gamma_L γfs) i n'
       ∗ off_link γo (Z.of_nat (off + length bs))
-      ∗ ROff ∗ REST.
+      ∗ REST.
   Proof using .
     intros HE Hloc Hpos Hoff Hcap Hnz Habs Hnz' Habs' Hby Hlen.
-    iIntros "#Hi #Hai Hsup Hanch Hcm Hf Hg".
+    iIntros "#Hi #Hai Hcm Hf Hg".
     (* the re-spelling is needed because the unifier cannot solve
        [γtop ?Γ =?= fs_top γfs]. *)
     rewrite /top_frag /fs_gamma_L /=.
@@ -1106,7 +1124,7 @@ Section WriteFire.
       - by rewrite (delta_write_file (abs_view I) i off bs bs0 nl
                       (arow_at_live _ _ _ Hrow Hz)). }
     iMod (fupd_mask_subseteq appE) as "Hcl2"; [rewrite /appE; solve_ndisj |].
-    iMod ("Hcm" $! I off bs bs0 nl with "[//] [//] [//] Hanch Hta Hg")
+    iMod ("Hcm" $! I off bs bs0 nl with "[//] [//] [//] Hta Hg")
       as "(Hta & Hstep & Hph2)".
     (* THE MOVE, at the whole authority: the application's half comes out
        of [appN] beside its claim, which the caller's step re-establishes
@@ -1123,10 +1141,7 @@ Section WriteFire.
       - rewrite lookup_insert in Hj. injection Hj as <-. exact Hloc.
       - rewrite lookup_insert_ne in Hj; [| exact (not_eq_sym Hne)].
         exact (Hcl jj mm Hj Hun). }
-    (* THE ADVANCE: the user side answers at its own supplier, and both
-       halves move together inside it. *)
-    iMod ("Hsup" with "Hg") as "[Hg HR]".
-    iModIntro. iFrame "Hf Hg HR Hrest".
+    iModIntro. iFrame "Hf Hg Hrest".
   Qed.
 
 
@@ -1281,12 +1296,12 @@ Section WriteFire.
     iModIntro. iFrame "Hf Hg HR Hrest".
   Qed.
 
-  (* ...AND THE PARTIAL ARM'S ANCHORED TWIN (lane OFF-LINK-5), at the same
-     one argument: the arrow is about the offset the fire runs at, and this
-     lemma has it as a parameter. *)
-  Lemma wrf_apart_fire_anch (γfs : fs_names) (E : coPset) (i : Z) (γo : gname)
+  (* ...AND THE PARTIAL ARM'S TWIN, at the same deletion: the node moved
+     the shadow by the COUNT writei returned, so the supplier step is gone
+     here too. *)
+  Lemma wrf_apart_fire_adv (γfs : fs_names) (E : coPset) (i : Z) (γo : gname)
       (M : gmap Z (bv 8)) (ua : mword 64) (P : uptd) (cnt : Z) (k : nat)
-      (REST ROff : iProp Σ) (off0 : nat) (off r : nat) (bs bs0 : list (bv 8)) (nl : nat)
+      (REST : iProp Σ) (off r : nat) (bs bs0 : list (bv 8)) (nl : nat)
       (n n' : fs_node) :
     ↑ftopN ∪ ↑appN ⊆ E ->
     inode_local i n' ->
@@ -1303,17 +1318,16 @@ Section WriteFire.
     Z.of_nat r < wchunk_at cnt k ->
     ((r < length bs)%nat -> wr_fail_why P ua (Z.to_nat cnt)) ->
     (wi_blocks off (Z.to_nat (wchunk_at cnt k)) = 1%nat -> r = 0%nat) ->
-    ftop_inv γfs -∗ app_inv γfs -∗ off_supply γo E off r ROff -∗
-    (⌜off = off0⌝ ∨ app_taint) -∗
-    awrite_part_anch (fs_gamma_L γfs) appE i γo M ua P cnt k off0 REST -∗
+    ftop_inv γfs -∗ app_inv γfs -∗
+    awrite_part_adv (fs_gamma_L γfs) appE i γo M ua P cnt k REST -∗
     top_frag (fs_gamma_L γfs) i n -∗
     off_link γo (Z.of_nat off) ={E}=∗
       top_frag (fs_gamma_L γfs) i n'
       ∗ off_link γo (Z.of_nat (off + r))
-      ∗ ROff ∗ REST.
+      ∗ REST.
   Proof using .
     intros HE Hloc Hpos Hoff Hcap Hr Hgap Hnz Habs Hnz' Habs' Hby Hshort Hwhy Hsb1.
-    iIntros "#Hi #Hai Hsup Hanch Hcm Hf Hg".
+    iIntros "#Hi #Hai Hcm Hf Hg".
     rewrite /top_frag /fs_gamma_L /=.
     iMod (inv_acc E ftopN with "Hi") as "[Hbody Hclose]"; [solve_ndisj |].
     iDestruct "Hbody" as ">Hb".
@@ -1334,7 +1348,7 @@ Section WriteFire.
                       (arow_at_live _ _ _ Hrow Hz)). }
     iMod (fupd_mask_subseteq appE) as "Hcl2"; [rewrite /appE; solve_ndisj |].
     iMod ("Hcm" $! I off r bs bs0 nl
-            with "[//] [//] [//] [//] [//] [//] [//] Hanch Hta Hg")
+            with "[//] [//] [//] [//] [//] [//] [//] Hta Hg")
       as "(Hta & Hstep & Hph2)".
     iMod (app_top_update appE γfs I i n n' ltac:(rewrite /appE; done)
             with "Hai [Hstep] Hta Hf") as "[Hta Hf]".
@@ -1348,10 +1362,7 @@ Section WriteFire.
       - rewrite lookup_insert in Hj. injection Hj as <-. exact Hloc.
       - rewrite lookup_insert_ne in Hj; [| exact (not_eq_sym Hne)].
         exact (Hcl jj mm Hj Hun). }
-    (* THE ADVANCE, at the COUNT writei returned: the user side answers at
-       its own supplier. *)
-    iMod ("Hsup" with "Hg") as "[Hg HR]".
-    iModIntro. iFrame "Hf Hg HR Hrest".
+    iModIntro. iFrame "Hf Hg Hrest".
   Qed.
 
   (* SUPPLIER 1 -- THE PARKED PATH, verbatim the statement this lemma had

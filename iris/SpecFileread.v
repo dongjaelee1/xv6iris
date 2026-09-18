@@ -935,19 +935,21 @@ Section SpecFileread.
     (P -∗
      match st with
      (* KEYED ON THE ROW'S OFFSET MODE (lane OFF-LINK-4; design/app-file.md
-        SS3, SS3.5).  A PARKED row pays what it always paid.  A HELD one pays
-        [link ∨ taint]: the LINK is the caller's own half of the offset
-        shadow lent to the kernel, which is all a READ needs -- unlike the
-        write chain the commit REPORTS the offset to the receipt
-        ([F.(pf_recv) av off a d]), so no anchor has to be relayed into it
-        -- and the TAINT is what the generic tier pays (Fact A) and what a
-        disconnected object leaves. *)
+        SS3, SS3.5; lane OFF-LINK-5's shape).  A PARKED row pays what it
+        always paid.  A HELD one pays [link ∨ taint]: the LINK is the
+        CLIENT-ADVANCED commit ([FsAbsReadFire.aread_commit_adv]), which
+        keeps the program's own half of the offset shadow in its OWN
+        CLOSURE and hands the box's arm back advanced by the count -- so
+        the kernel carries no [UserOff.uoff] across the call and its fire
+        answers no supplier ([FsAbsReadFire.arf_read_fire_adv]) -- and the
+        TAINT is what the generic tier pays (Fact A) and what a
+        disconnected object leaves.  Cat's cursor comes back inside its own
+        receipt [F.(pf_recv)], which is where [UCatKernel.cat_hold_at] puts
+        it. *)
      | FdOpen true _ (FdInode i γo OffParked) =>
          P ∗ pf_at (aread_commit_at (fs_gamma_L fsc_fs) appE i γo) F
      | FdOpen true _ (FdInode i γo OffHeld) =>
-         P ∗ ((∃ off0 : nat,
-                 uoff γo off0
-                 ∗ pf_at (aread_commit_at (fs_gamma_L fsc_fs) appE i γo) F)
+         P ∗ (pf_at (aread_commit_adv (fs_gamma_L fsc_fs) appE i γo) F
               ∨ (pf_at (aread_commit_at (fs_gamma_L fsc_fs) appE i γo) F
                  ∗ app_taint))
      | FdOpen true _ (FdDevice mj) =>
@@ -1709,12 +1711,16 @@ Section SpecFileread.
     - destruct om as [|].
       + iIntros "H HP". iDestruct ("H" with "HP") as "[HP Hc]".
         iModIntro. iFrame "HP". by iApply (read_arms_neg with "Hc").
-      + (* the HELD row's two arms (lane OFF-LINK-4): the sign guard fires
-           before anything is read, so the piece comes back whole on both
-           and the caller's half is untouched. *)
+      + (* the HELD row's two arms (lanes OFF-LINK-4/5): the sign guard
+           fires before anything is read, so the piece comes back whole on
+           both -- the client-advanced one converting down at
+           [FsAbsReadFire.pf_at_aread_commit_at_of_adv], since nothing above
+           the fire reads which arm was taken. *)
         iIntros "H HP".
-        iDestruct ("H" with "HP") as "[HP [(%off0 & _ & Hc) | [Hc _]]]";
-          iModIntro; iFrame "HP"; by iApply (read_arms_neg with "Hc").
+        iDestruct ("H" with "HP") as "[HP [Hc | [Hc _]]]"; iModIntro;
+          iFrame "HP";
+          [ iDestruct (pf_at_aread_commit_at_of_adv with "Hc") as "Hc" | ];
+          by iApply (read_arms_neg with "Hc").
     - (* a negative request never reaches the pipe: the payment comes back
          at the empty count *)
       iIntros "H HP". iDestruct ("H" with "HP") as "[HP Hpay]". iModIntro.

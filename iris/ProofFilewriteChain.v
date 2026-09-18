@@ -90,132 +90,138 @@ Section FilewriteChain.
   (* ===================================================================== *)
   (*  THE HELD WALK'S CARRIER (lane OFF-LINK-5; design/app-file.md SS3)     *)
   (* ===================================================================== *)
-  (* [fw_au_raw] WITH TWO CONJUNCTS, both indexed by the count the loop
-     already carries: the caller's own half of the offset shadow at the
-     position the file has reached ([off0 + t] -- [off0] is where the write
-     began and [t] is what has landed), and the chain ANCHORED there.  That
-     is the whole difference between the two walks: every pure row below is
-     [fw_au_raw]'s verbatim, and the five moves are its five.
+  (* [fw_au_raw] AT THE CLIENT-ADVANCED CHAIN, AND NOTHING ELSE CHANGES.
+     A held descriptor's user half is in the CLIENT's closure, not the
+     kernel's, so this carrier holds no [UserOff.uoff] and the loop carries
+     no second resource: every pure row below is [fw_au_raw]'s verbatim and
+     the five moves are its five, with [FsAbsWriteFire.awrite_chain_adv] in
+     place of [awrite_chain_at].
 
-     WHY THE ANCHOR IS [off0 + t] AND NOT A SECOND EXISTENTIAL: the kernel's
-     own [f->off] walks exactly this ladder, so the fire's [off] and the
-     node's [off0] are the same number at every iteration, and the equation
-     the node asks for is the one the kernel can prove ([UserOff.uoff_agree_k]
-     against the box's half). *)
-  Definition fw_au_anch Γ (i : Z) (γo : gname) (P : uptd) (n : Z)
+     (LANE OFF-LINK-4'S ANCHORED CARRIER IS GONE, and so is the anchor it
+     existed to carry.  The equation [off = off0] that the anchored node
+     took as a relayed premise is read by the client off the half it holds,
+     INSIDE the node's own [forall off] -- see [FsAbsWriteFire]'s section
+     2b.  The consequence here is the one that matters to the loop: the
+     kernel neither carries a half across the iterations nor answers a
+     supplier at the fire, so the loop's own shape is untouched.) *)
+  Definition fw_au_adv Γ (i : Z) (γo : gname) (P : uptd) (n : Z)
       (M : gmap Z (bv 8)) (ua : mword 64) (Q : nat -> iProp Σ)
-      (off0 : nat) (t : Z) (p x : nat) : iProp Σ :=
+      (t : Z) (p x : nat) : iProp Σ :=
     (∃ bss : list (list (bv 8)),
        ⌜length bss = p⌝ ∗
        ⌜Z.of_nat (length (concat bss)) = t⌝ ∗
        ⌜(p + x <= wchunks n)%nat⌝ ∗
        ⌜(x <= 1)%nat⌝ ∗
        ⌜ubytes_at M ua (concat bss)⌝ ∗
-       uoff γo (off0 + Z.to_nat t)%nat ∗
-       awrite_chain_anch Γ appE i γo M ua P n Q (p + x) (wchunks n - p - x)
-         (off0 + Z.to_nat t)%nat)%I.
+       awrite_chain_adv Γ appE i γo M ua P n Q (p + x) (wchunks n - p - x)%nat)%I.
 
-  Lemma fw_au_anch_init Γ (i : Z) γo (P : uptd) (n : Z) M ua Q (off0 : nat) :
-    uoff γo off0 -∗
-    (∀ P' : uptd, awrite_chain_anch Γ appE i γo M ua P' n Q 0%nat (wchunks n) off0) -∗
-    fw_au_anch Γ i γo P n M ua Q off0 0 0%nat 0%nat.
+  Lemma fw_au_adv_init Γ (i : Z) γo (P : uptd) (n : Z) M ua Q :
+    awrite_chain_adv Γ appE i γo M ua P n Q 0%nat (wchunks n) -∗
+    fw_au_adv Γ i γo P n M ua Q 0 0%nat 0%nat.
   Proof using .
-    iIntros "Hu Hcm". rewrite /fw_au_anch. iExists [].
+    iIntros "Hcm". rewrite /fw_au_adv. iExists [].
     iSplitR; [done |]. iSplitR; [done |]. iSplitR; [iPureIntro; lia |].
     iSplitR; [iPureIntro; lia |].
     iSplitR; [iPureIntro; apply ubytes_at_nil |].
-    rewrite Z2Nat.inj_0 Nat.add_0_r.
-    iSplitL "Hu"; [iExact "Hu" |].
-    rewrite !Nat.sub_0_r (Nat.add_0_r 0). iApply ("Hcm" $! P).
+    rewrite !Nat.sub_0_r (Nat.add_0_r 0). iExact "Hcm".
   Qed.
 
-  (* THE FULL ARM'S PEEL, [fw_au_raw_take]'s twin: the node comes out STILL
-     ANCHORED (at [off0 + t], which is where the kernel is about to fire)
-     and the caller's half comes out beside it, because the fire spends it
-     through [UserOff.off_supply_held] and hands it back advanced. *)
-  Lemma fw_au_anch_take Γ (i : Z) γo (P : uptd) (n : Z) M ua Q
-      (off0 : nat) (t : Z) (p : nat) :
+  (* THE FULL ARM'S PEEL, [fw_au_raw_take]'s twin. *)
+  Lemma fw_au_adv_take Γ (i : Z) γo (P : uptd) (n : Z) M ua Q (t : Z) (p : nat) :
     (0 <= t)%Z -> (t < n)%Z -> t = FW_MAX * Z.of_nat p ->
-    fw_au_anch Γ i γo P n M ua Q off0 t p 0%nat -∗
-      uoff γo (off0 + Z.to_nat t)%nat ∗
-      awrite_full_anch Γ appE i γo M ua n p (off0 + Z.to_nat t)%nat
-        (awrite_chain_anch Γ appE i γo M ua P n Q (S p) (wchunks n - S p)
-           ((off0 + Z.to_nat t) + Z.to_nat (wchunk_at n p))%nat) ∗
+    fw_au_adv Γ i γo P n M ua Q t p 0%nat -∗
+      awrite_full_adv Γ appE i γo M ua n p
+        (awrite_chain_adv Γ appE i γo M ua P n Q (S p) (wchunks n - S p)) ∗
       (∀ bs : list (bv 8),
          ⌜ubytes_at M (add_vec_int ua t) bs⌝ -∗
-         ⌜Z.of_nat (length bs) = wchunk_at n p⌝ -∗
-         uoff γo (off0 + Z.to_nat (t + Z.of_nat (length bs)))%nat -∗
-         awrite_chain_anch Γ appE i γo M ua P n Q (S p) (wchunks n - S p)
-           ((off0 + Z.to_nat t) + Z.to_nat (wchunk_at n p))%nat -∗
-         fw_au_anch Γ i γo P n M ua Q off0 (t + Z.of_nat (length bs)) (S p) 0%nat).
+         awrite_chain_adv Γ appE i γo M ua P n Q (S p) (wchunks n - S p) -∗
+         fw_au_adv Γ i γo P n M ua Q (t + Z.of_nat (length bs)) (S p) 0%nat).
   Proof using .
     intros Ht Htn Htie. iIntros "Hst".
     assert (Hsp : (S p <= wchunks n)%nat)
       by exact (wri_count_step n t p Ht Htn Htie).
-    rewrite /fw_au_anch.
-    iDestruct "Hst" as (bss) "(%Hlen & %Htot & %Hp & %Hx & %Hby & Hu & Hcm)".
+    rewrite /fw_au_adv.
+    iDestruct "Hst" as (bss) "(%Hlen & %Htot & %Hp & %Hx & %Hby & Hcm)".
     assert (Hcnt : (wchunks n - p - 0 = S (wchunks n - S p))%nat) by lia.
-    rewrite Hcnt (Nat.add_0_r p) awrite_chain_anch_S.
+    rewrite Hcnt (Nat.add_0_r p) awrite_chain_adv_S.
     iDestruct "Hcm" as "[_ [Hhead _]]".
-    iFrame "Hu Hhead". iIntros (bs) "%Hbyc %Hlenc Hu' Htail".
+    iFrame "Hhead". iIntros (bs) "%Hbyc Htail".
+    iExists (bss ++ [bs])%list.
     assert (Hlen' : length ((bss ++ [bs])%list) = S p)
       by (rewrite length_app Hlen /=; lia).
-    iExists (bss ++ [bs])%list.
     iSplitR; [by iPureIntro |].
-    assert (Htot' : Z.of_nat (length (concat (bss ++ [bs])%list))
-                    = (t + Z.of_nat (length bs))%Z).
-    { rewrite concat_app length_app /= app_nil_r. lia. }
-    iSplitR; [by iPureIntro |].
+    iSplitR.
+    { iPureIntro. rewrite concat_app length_app /= app_nil_r. lia. }
     iSplitR; [iPureIntro; lia |].
     iSplitR; [iPureIntro; lia |].
     iSplitR.
     { iPureIntro. rewrite concat_app /= app_nil_r.
-      apply (ubytes_at_app M ua (concat bss) bs); [exact Hby |].
+      apply (ubytes_at_app M ua (concat bss) bs Hby).
       rewrite Htot. exact Hbyc. }
-    (* the two anchors are the same number: the chain's is
-       [(off0 + t) + wchunk_at n p] and the carrier's is [off0 + (t + |bs|)],
-       and the node was fired at a chunk of exactly that length *)
-    assert (Hanch : ((off0 + Z.to_nat t) + Z.to_nat (wchunk_at n p))%nat
-                    = (off0 + Z.to_nat (t + Z.of_nat (length bs)))%nat).
-    { rewrite -Hlenc. lia. }
-    rewrite Hanch.
-    iSplitL "Hu'"; [iExact "Hu'" |].
-    rewrite (Nat.add_0_r (S p)) (Nat.sub_0_r (wchunks n - S p)).
-    iExact "Htail".
+    rewrite (Nat.add_0_r (S p)) (Nat.sub_0_r (wchunks n - S p)). iExact "Htail".
   Qed.
 
-  (* THE OK EXIT, [fw_au_raw_ok]'s twin: every chunk fired, so the chain has
-     no node left and the anchored one IS the plain one -- both are [Q p] at
-     [cnt = 0].  The caller's half comes out at the position the file
-     reached, which is the whole point of the held walk. *)
-  Lemma fw_au_anch_ok Γ (i : Z) γo (P : uptd) (n : Z) M ua Q
-      (off0 : nat) (p : nat) :
-    (wchunks n <= p)%nat ->
-    fw_au_anch Γ i γo P n M ua Q off0 n p 0%nat -∗
-    write_post_ok_at Γ i γo P n M ua Q ∗ uoff γo (off0 + Z.to_nat n)%nat.
+  (* ...and the short chunk's, [fw_au_raw_spend_part]'s twin. *)
+  Lemma fw_au_adv_spend_part Γ (i : Z) γo (P : uptd) (n : Z) M ua Q (t : Z) (p : nat) :
+    (0 <= t)%Z -> (t < n)%Z -> t = FW_MAX * Z.of_nat p ->
+    fw_au_adv Γ i γo P n M ua Q t p 0%nat -∗
+      awrite_part_adv Γ appE i γo M ua P n p
+        (awrite_chain_adv Γ appE i γo M ua P n Q (S p) (wchunks n - S p)) ∗
+      (awrite_chain_adv Γ appE i γo M ua P n Q (S p) (wchunks n - S p) -∗
+       fw_au_adv Γ i γo P n M ua Q t p 1%nat).
   Proof using .
-    intros Hp0. iIntros "Hst". rewrite /fw_au_anch /write_post_ok_at.
-    iDestruct "Hst" as (bss) "(%Hlen & %Htot & %Hp & %Hx & %Hby & Hu & Hcm)".
-    assert (Hz : (wchunks n - p - 0 = 0)%nat) by lia.
-    rewrite Hz awrite_chain_anch_0.
-    iFrame "Hu". iExists bss. iSplitR; [by iPureIntro |].
-    iSplitR; [iPureIntro; lia |]. iSplitR; [by iPureIntro |].
-    assert (Hz' : (wchunks n - length bss = 0)%nat) by lia.
-    rewrite Hz' awrite_chain_at_0 Hlen (Nat.add_0_r p). iExact "Hcm".
+    intros Ht Htn Htie. iIntros "Hst".
+    assert (Hsp : (S p <= wchunks n)%nat)
+      by exact (wri_count_step n t p Ht Htn Htie).
+    rewrite /fw_au_adv.
+    iDestruct "Hst" as (bss) "(%Hlen & %Htot & %Hp & %Hx & %Hby & Hcm)".
+    assert (Hcnt : (wchunks n - p - 0 = S (wchunks n - S p))%nat) by lia.
+    rewrite Hcnt (Nat.add_0_r p) awrite_chain_adv_S.
+    iDestruct "Hcm" as "[_ [_ Hpart]]".
+    iFrame "Hpart". iIntros "Htail".
+    iExists bss.
+    iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
+    iSplitR; [iPureIntro; lia |]. iSplitR; [iPureIntro; lia |].
+    iSplitR; [by iPureIntro |].
+    assert (Hcnt' : (wchunks n - p - 1 = wchunks n - S p)%nat) by lia.
+    rewrite Hcnt' Nat.add_1_r. iExact "Htail".
   Qed.
 
-  (* [fw_au_anch_spend_part] AND [fw_au_anch_fail] ARE NOT HERE, and the
-     reason is a fact about the PARTIAL arm rather than about the anchor: the
-     partial arm advances [f->off] by the COUNT writei returned, which the
-     carrier does not track ([t] counts what the SPLICE landed), so the half
-     it hands back is at [off0 + t + r] for an [r] the carrier has no name
-     for.  The fail exit therefore needs a post of its own
-     ([SpecFilewrite.write_post_fail_anch], the landed
-     [write_post_fail_at] with the anchored chain and an existential [r]),
-     and that is the shape lane WRITE-RELAY-3's [TB] guard lands on anyway.
-     ECHO DOES NOT REACH IT: its chunks are whole words and [wchunks n] is 1
-     for every one of its calls, so its loop exits at [fw_au_anch_ok] above
-     after a single full fire. *)
+  (* THE TWO EXITS, AND THEY REPORT THE LANDED POST.  Nothing above the fire
+     learns that this call was a held one: the residue converts down at
+     [FsAbsWriteFire.awrite_chain_at_of_adv], so [SpecFilewrite]'s
+     [write_arms_at] is what a held write answers with, unchanged.  What the
+     CLIENT gets back that a parked caller does not -- its own half, at the
+     position the file reached -- rides in its own cursor [Q], which is
+     where its nodes put it. *)
+  Lemma fw_au_adv_ok Γ (i : Z) γo (P : uptd) (n : Z) M ua Q (p : nat) :
+    fw_au_adv Γ i γo P n M ua Q n p 0%nat -∗
+    write_post_ok_at Γ i γo P n M ua Q.
+  Proof using .
+    iIntros "Hst". rewrite /fw_au_adv /write_post_ok_at.
+    iDestruct "Hst" as (bss) "(%Hlen & %Htot & %Hp & %Hx & %Hby & Hcm)".
+    iExists bss. iSplitR; [by iPureIntro |].
+    iSplitR; [iPureIntro; lia |]. iSplitR; [by iPureIntro |].
+    rewrite Hlen (Nat.add_0_r p) (Nat.sub_0_r (wchunks n - p)).
+    iApply (awrite_chain_at_of_adv with "Hcm").
+  Qed.
+
+  Lemma fw_au_adv_fail Γ (i : Z) γo (P : uptd) (n : Z) M ua Q (t : Z) (p x : nat) :
+    (t < n)%Z \/ (n < 0)%Z /\ p = 0%nat ->
+    fw_au_adv Γ i γo P n M ua Q t p x -∗
+    write_post_fail_at Γ i γo P n M ua Q.
+  Proof using .
+    intros Hex. iIntros "Hst". rewrite /fw_au_adv /write_post_fail_at.
+    iDestruct "Hst" as (bss) "(%Hlen & %Htot & %Hp & %Hx & %Hby & Hcm)".
+    iExists bss, x. iSplitR.
+    { iPureIntro. destruct Hex as [Htn | [Hneg Hp0]].
+      - left. lia.
+      - right. split; [exact Hneg |].
+        apply nil_length_inv. rewrite Hlen. exact Hp0. }
+    iSplitR; [iPureIntro; lia |]. iSplitR; [iPureIntro; lia |].
+    iSplitR; [by iPureIntro |].
+    rewrite Hlen. iApply (awrite_chain_at_of_adv with "Hcm").
+  Qed.
 
   Lemma fw_au_raw_init Γ (i : Z) γo (P : uptd) (n : Z) M ua Q :
     awrite_chain Γ appE i γo M ua n Q 0%nat (wchunks n) -∗
@@ -339,3 +345,4 @@ Section FilewriteChain.
 End FilewriteChain.
 
 Global Typeclasses Opaque fw_au_raw.
+Global Typeclasses Opaque fw_au_adv.

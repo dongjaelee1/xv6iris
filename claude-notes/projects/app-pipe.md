@@ -101,7 +101,7 @@ arm is the theorem's one named premise (`pipe_both_law`).
   pins `fdst_nopipe` on the installed row, REPORT (lane PIPE-STD takes
   it).  Bar: the existing `wp_kshr_runcmd` theorems unchanged; the new
   arm compiles at the abstract premises before PIPE-REG lands.
-- [ ] **PIPE-STD** (U tier, design §5.4).  `UkReadPipe.wp_uk_ecall_read_pipe_std`
+- [x] **PIPE-STD** (U tier, design §5.4).  `UkReadPipe.wp_uk_ecall_read_pipe_std`
   and `UkWritePipe.wp_uk_ecall_write_pipe_std` at `UserFd.ustd` (slot 0 /
   slot 1), through `UkRunSys.wp_uk_ecall_read_at`/`_write_at` at `K fdv :=
   take NSTD fdv = l` with `UserFd.ustd_agree` (mould: `UkWriteFile.
@@ -148,3 +148,108 @@ arm is the theorem's one named premise (`pipe_both_law`).
   the premise removed.
 
 ## Findings (append as lanes report)
+
+### PIPE-STD (2026-09-17)
+
+**Verdict in one line: the whole lane landed with no statement outside the
+two pipe files moved, and the ONE design fact it found is that no leaf that
+moves a descriptor pins a pipe row -- so the pipe-typed dup/close twins
+SS5.4 provisioned for do not exist and lane SH-PIPE takes the generic leaves
+as they stand.**  Whole `iris` tree green on the lane's remote clone
+(`ec2-lane.sh std build`, RC=0, plus a confirming re-run with nothing left
+to compile); `Proof using` everywhere; no `Admitted`; commits `53b170ec6`,
+`e074e4691`.
+
+**WHAT LANDED**
+
+- `iris/UkWritePipe.v` section 4 -- `udepwf_std_write_pipe` (the deposit at
+  `UkRun.udepwf_std`, the arm computed from the caller's ledger through
+  `UkReadRows.std_fd_st_of_key`) and **`wp_uk_ecall_write_pipe_std`**:
+  `usysno m = 16`, `bv_signed (trunc32 (m !!! a0)) = Z.of_nat fd`,
+  `(fd < NSTD)%nat`, `l !! fd = Some (FdOpen rb true (FdPipe γp))`,
+  `sys_rw_count (m !!! a2) = Z.of_nat nb`, the pc+4 alignment; in:
+  `uinstr_is`, `urun`, `UserFd.ustd (ukn_fd N) l`, `ubytesq … nb f` and the
+  SAME `pipe_wpay (pn_queue γp) M (m !!! a1) Q Qe nb` wand-over-the-heap;
+  out: the same source-image row, the same
+  `pipe_wpost Pt (pn_queue γp) Mv (m !!! a1) Q Qe Rk nb r`, the ledger
+  unmoved, `ubytesq`, `urun` at `<[a0 := r]> m`.
+- `iris/UkReadPipe.v` section 6 -- `udepwf_std_read_pipe` and
+  **`wp_uk_ecall_read_pipe_std`**: the same shape at
+  `l !! fd = Some (FdOpen true wb (FdPipe γp))`, `(fd < NSTD)%nat`, with
+  `pipe_rpay (pn_queue γp) Rp Rpe cap` in and the five pure rows +
+  `pipe_rpost_img` + `uread_pipe_ans` out, verbatim the handle leaf's.
+  Both proved through `UkRunSys.wp_uk_ecall_write_at` / `_read_at` at
+  `K fdv := take NSTD fdv = l` with `UserFd.ustd_agree`, as SS5.4 said; the
+  walks' `K` expressed the ledger with nothing to report.
+- NEW `iris/UkPipeMoves.v` -- the descriptor moves, with the consumer test
+  `wp_uk_close1_dup_pipe_std` (ledger `[c; c; c]` + a handle on a pipe write
+  end above the standard streams; `close(1)` then `dup`; ledger `[c; W; c]`,
+  handle home, answer 1 -- dup's failure arm refuted by computation), plus
+  `ufd_of_own_hi` (out of `UserFd.ufd_own` above `NSTD`) and the two
+  ledger-arithmetic facts.  The reload of a0 between the two ecalls is a
+  CALL PREMISE: it is sh's own instructions (SH-PIPE), and the test is about
+  the moves.
+- Prose only (item 4): `UkReadPipe.wp_uk_pipe_read_end`'s taint comment and
+  `UkWritePipe.v`'s header now point at design SS2 and say what moves when
+  PIPE-REG lands (nothing in either file: the pipe payments and the exit row
+  are different rows).
+
+**WHAT WAS REFUTED / WHAT THE DESIGN GOT WRONG** (four, every one read at
+the STATEMENT; none of them fatal, and none needed a design ruling)
+
+1. **There is no offset mode to leave free.**  The brief asked for the
+   deposit twin "with the offset mode free where the file leaf had it".  The
+   file twin quantifies `offmode` because `FdInode` CARRIES one; a pipe row
+   is `FdOpen rb wb (FdPipe γp)` and has no offset field, so the freedom at
+   the same place is the OTHER MODE FLAG -- `rb` on the write leaf, `wb` on
+   the read leaf (which end's descriptor this is says nothing about whether
+   it may also be read/written, and neither payment looks).  Both leaves
+   quantify it.
+2. **The mould's slot pin is gratuitous, and copying it would have cost the
+   lane a second statement.**  `UkWriteFile.wp_uk_ecall_write_std` /
+   `udepwf_std_write_file` pin `a0 = 1` and `l !! 1`, because echo is their
+   only caller.  Nothing in the proof needs it -- the ledger reading
+   (`UkReadRows.std_fd_st_of_key`) is uniform in the slot -- and the
+   pipeline needs slot 1 (echo's write end) and slot 0 (cat's read end), so
+   both new leaves take `fd` with `fd < NSTD` and the ledger's row at it.
+   One statement each, not two.  (Upstream's two could be generalised the
+   same way for free; not done here, it is outside this lane.)
+3. **`UkWriteFile.uwr_fd_st_std` is a DUPLICATE** of the landed
+   `UkReadRows.std_fd_st_of_key` -- the same statement up to the index's
+   name -- so the brief's "use the mould's `uwr_fd_st_std`" would have
+   created a third copy.  Neither new file copies it; both take the
+   `UkReadRows` one, which they already imported.  (Retiring
+   `uwr_fd_st_std` is a one-line sweep in `UkWriteFile.v`, left for whoever
+   next edits that file.)
+4. **SS5.4's "if a leaf pins `fdst_nopipe` on the installed row, that pin
+   comes off here" describes a pin that does not exist.**  Checked at the
+   statements and confirmed by the consumer test: `wp_uk_ecall_dup` takes
+   `st <> FdClosed` + `ukn_held N = ∅` and nothing about the type (its table
+   row is `UkRun.urun_rows_dup`, premise `fdv !! k = Some st` only -- a COPY
+   of a row the table already had is paid by whatever paid that row);
+   `_dup_untracked` goes through `urun_rows_copy`, which has no premise;
+   `_dup_closed` moves no row; `wp_uk_ecall_close` / `_close_std` take the
+   payment as `UkRun.udepw_cl N m pc st`, INDEXED BY THE STATE, whose left
+   arm is the pure "not a pipe" and whose right arm is a deposit at 21 --
+   which is exactly where PIPE-REG's registry link goes in.  The
+   `fdst_nopipe` those two proofs use is `fdst_nopipe_closed`, about the
+   `FdClosed` they INSTALL.  So: no twin added, no pin lifted, nothing to
+   decide.
+
+**THE ONE THING THE NEXT LANE NEEDS FIRST** (SH-PIPE): **do not route the
+PIPE arm's `close(p[0])` / `close(p[1])` through `UkSh.wp_ksh_close`.**  That
+wrapper and `UkSh.wp_ksh_cstub` (and `UkShRedir.wp_kshx_close_std`) carry the
+PURE premise `forall rb wb gp, st <> FdOpen rb wb (FdPipe gp)` and spend it
+on `UkRun.udepw_cl_nonpipe`; the pin is LOAD-BEARING (it is the whole of how
+those leaves mint their close deposit), so by this lane's STOP rule it was
+not lifted.  A pipe row's close must go through the GENERIC
+`UkRunSys.wp_uk_ecall_close` with `udepw_cl_of_udepw` and the registry's
+deposit at 21 -- which is what SH-PIPE's brief already says, and which means
+sh's three instructions around that ecall have to be re-walked (or
+`wp_ksh_cstub` generalised to take `udepw_cl N m1 pc1 st`, a statement
+change outside both briefs).  `close(1)` / `close(0)` shut CONSOLE rows and
+the wrappers serve them unchanged.
+
+For ECHO-PIPE / CAT-PIPE: the two `_std` leaves are ready and their
+statements are above; the slot is a parameter, so echo takes `fd := 1` and
+cat `fd := 0`, and the OTHER mode flag is free at both.

@@ -113,7 +113,7 @@ arm is the theorem's one named premise (`pipe_both_law`).
 
 ## Wave 2 — on the protocol
 
-- [ ] **PIPE-NEG1** (kernel/U-tier spec, SH-PIPE's R-1; after PIPE-REG lands
+- [x] **PIPE-NEG1** (kernel/U-tier spec, SH-PIPE's R-1; after PIPE-REG lands
   so the two edits to `wp_uk_ecall_pipe`'s post do not collide).
   `UsysMemOk.usys_fd_ok`'s pipe row pins the failing return to
   `r = mword_of_int (-1)` (as the open and dup rows do); `ProofSysPipe`'s
@@ -1223,3 +1223,113 @@ would have to place a caller-chosen `Φ`, and the invariant only knows how
 to place `emp`). SH-PIPE should take the close deposits as parameters, as
 its brief already says, and the ruling belongs with whoever states sh's
 round.
+
+### PIPE-NEG1 (2026-09-18) — the pipe row names its −1; the discharge was already there and was being DROPPED, and deliverable 4 is BLOCKED (SH-PIPE is not in main)
+
+Branch `app-pipe/pipe-neg1`, base `372b70c46` (the PIPE-REG merge + notes;
+`main` has since gained SH-PARSE-PIPE part 2 — nothing this lane touched).
+Five landed files edited, ZERO new files, no `Admitted`, no `Axiom`.
+
+**WHAT LANDED**
+
+- `iris/UsysMemOk.v` — the pipe row's failure arm, VERBATIM (was
+  `else sts' = sts`):
+
+      else (r = (mword_of_int (-1) : mword 64) /\ sts' = sts))
+
+  i.e. the row now reads
+  `if decide (uint r = 0) then (∃ a b γp, …) else (r = mword_of_int (-1) /\ sts' = sts)`,
+  the open and dup rows' spelling. NEW `usys_fd_ok_pipe_neg1` — the row
+  read at the guard a leaf case-splits on (`usys_fd_ok USYS_pipe tf r sts
+  sts' -> uint r <> 0 -> r = mword_of_int (-1) /\ sts' = sts`), so no
+  consumer unfolds the row. `usys_fd_ok_length` / `_parked` / `_held`
+  re-proved (one `subst` each became `destruct … as [_ ->]`); every other
+  lemma in the file is untouched, statements byte-identical.
+- `iris/ProofSyscall.v` — arm 4's failure branch threads the fact instead
+  of dropping it (`rewrite decide_False; [ exact (conj Hr eq_refl) | …]`).
+- `iris/UkRunSys.v` — `wp_uk_ecall_pipe`'s post failure arm is now
+  `(⌜ r = (mword_of_int (-1) : mword 64) ⌝ ∗ ustd (ukn_fd N) l)` (the
+  sibling open/dup leaves' spelling — `uint r <> 0` is a consequence and is
+  not restated); its `Hjoin` summary's last conjunct became
+  `uint r <> 0 -> r = mword_of_int (-1) /\ fdv' = fdv`, discharged by the
+  new reading; `ufd_auth_move`'s pipe branch re-proved.
+- `iris/UkReadPipe.v` — `wp_uk_pipe_read_end` relays the same arm.
+- `iris/UkRunBr.v` — NEW `uv_btaken_bltz_neg1` /
+  `uv_btaken_bltz_one`: `uv_btaken BLT (mword_of_int (-1)) zero_reg = true`
+  and `uv_btaken BLT (mword_of_int 1) zero_reg = false`. The exhibit at the
+  statement for why the row had to name the VALUE: `r = 1` is equally
+  nonzero and does not take sh's `bltz a0`, so the old row admitted a state
+  in which the pipeline ran on two garbage descriptors, and the gap was not
+  bridgeable by a premise (`∀ r, uint r <> 0 -> r = -1` is refuted by the
+  second line — durable-notes.md, "Vacuity").
+
+**WHAT THE DESIGN GOT WRONG**
+
+1. **`ProofSysPipe.v` and `SpecSysPipe.v` needed NO change at all** (the
+   brief's deliverable 2, "the discharge — each failure arm returns −1").
+   `SpecSysPipe.sys_pipe_post` has ONE failure arm and it already reads
+   `⌜r = (mword_of_int (-1) : mword 64)⌝`, and `ProofSysPipe` walks FIVE
+   failure paths onto it — pipealloc (1650), each fdalloc scan (1848,
+   2041), and BOTH copyouts (2801, 3191, which share the C's one cleanup
+   tail, hence four `iLeft. iSplitR; [done|]` sites at 1692/1914/2196/2798
+   and one relay). So the −1 was PROVED against the model all along; the
+   only thing missing was the ROW, and `ProofSyscall`'s arm 4 was USING the
+   fact (to refute the success guard: `rewrite Hr in Hz; vm_compute in Hz;
+   discriminate`) and then throwing it away. The whole lane is one conjunct
+   in the row and a `reflexivity` turned into a `conj`. **The brief's
+   failure-arm inventory is short by two**: it lists pipealloc and the two
+   fdallocs and forgets the `copyout` pair (`sys_pipe`'s three `return -1`
+   statements cover five paths; the object code merges them into two
+   `li a5,-1`, at 0x800055b2 and 0x8000563c).
+2. **The leaf's failure arm occurs TWICE in `UkRunSys.v`** and only one
+   copy is in the statement. `wp_uk_ecall_pipe` builds its post's two arms
+   as an intermediate `iAssert (|==> ufd_auth … ∗ (… ∨ (⌜uint r <> 0⌝ ∗
+   ustd …)))` before framing them, so a `check` of the file passes with the
+   inner copy stale and the real build fails 40 lines later with
+   `The term "proj1 (Hfail Hr0)" has type "r = mword_of_int (-1)" while it
+   is expected to have type "uint r ≠ 0"`. Anyone editing a leaf's post
+   should grep the whole proof for the arm's text, not just the statement.
+3. **The row's cone is smaller than the brief feared.** Only FIVE places in
+   the tree destruct the pipe row's else-branch (three lemmas in
+   `UsysMemOk.v`, `UkRunSys.ufd_auth_move`, and `wp_uk_ecall_pipe`'s
+   `Hjoin`); every other `usys_fd_ok` site either carries `n <> USYS_pipe`
+   or is a consumer of a different row. And strengthening a row is safe by
+   construction here: the row is SUPPLIED in exactly two places
+   (`ProofSyscall`'s arm 4, and `usys_fd_ok_refl_at`, which excludes pipe).
+4. **`uint r <> 0` was not kept beside the new conjunct**, deliberately:
+   the open and dup leaves' failure arms say only `r = mword_of_int (-1)`,
+   and a redundant conjunct in a post is a second thing every consumer has
+   to pattern-match. Anything that wants nonzeroness computes it.
+
+**BLOCKED — deliverable 4 cannot be done from `main`.**
+`iris/UkShPipe.v` DOES NOT EXIST in `main`: lane SH-PIPE is landed on
+`app-pipe/sh-pipe` and has not been merged (its four commits are still
+outside `main`; `main` has SH-PARSE-PIPE's `UkShPipe*` parser files and not
+the arm file). So `ush_pipe_call_weak_of_leaf` could not be upgraded here.
+Worse, **SH-PIPE branched BEFORE PIPE-REG** (merge-base `6a7fa4fb1`), so
+its `ush_pipe_call_weak_of_leaf` calls `wp_uk_ecall_pipe` with the
+`□ riscv_kill_cred` premise PIPE-REG deleted: that file does not compile
+against today's `main` for a reason that has nothing to do with this lane.
+It needs a port at the merge, and the port is two edits:
+
+- the leaf's registrar, in place of the old `Hkc` argument, at
+  `Rp := fun _ _ _ _ _ _ _ => emp`:
+  `iIntros (fdep W r M' fdv' cw' cs') "_ _ _"; iModIntro; iSplitL;
+   [ iApply (UkRun.urun_nopipe_taint _ with "Hkc") | done ]`
+  (the leaf's registrar goal is `urun_nopipe fdv' ∗ Rp …`, and a tainted
+  program answers the first from the credential it already holds);
+- then `ush_pipe_ans_weak` / `ush_pipe_call_weak` /
+  `ush_pipe_call_weak_of_leaf` DELETE, and the same proof body closes the
+  FULL `ush_pipe_call N l (fun _ => emp)%I` with two token changes: the
+  final `rewrite /ush_pipe_ans_weak` becomes `rewrite /ush_pipe_ans`, and
+  the failure branch's `iDestruct "Hans" as "[ Hok | [%Hrne Hstd] ]"` now
+  binds `Hrne : r = mword_of_int (-1)` — which is exactly what
+  `iRight. iSplitR; [ by iPureIntro | ]` already discharges. Nothing else
+  in the arm moves, because SH-PIPE's `ush_pipe_ans` failure arm was
+  already WRITTEN at `⌜ r = (mword_of_int (-1) : mword 64) ⌝`.
+  `wp_kshr_runcmd_pipe` then closes with NO premise.
+
+**THE ONE THING THE NEXT LANE NEEDS FIRST.** The coordinator has to merge
+SH-PIPE (with the PIPE-REG port above) before anything can consume this;
+after that, the −1 is in the row, in the leaf, and in `UkReadPipe`'s
+relay, and no `Uk*` file has to reason about it again.

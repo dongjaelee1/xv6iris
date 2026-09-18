@@ -476,12 +476,16 @@ Proof.
 Qed.
 
 (* the body's own bytes, at each constructor: the two echo shapes carry
-   [EchoDisc.line_ok]'s word list and the cat line is a literal *)
+   [EchoDisc.line_ok]'s word list, the cat line is a literal, and the pipe
+   line adds the BAR (lane ULINE-LPIPE).  The bar is the one value this
+   conclusion gained; the only consumer is [ush_uline_no_nul] just below,
+   which reads the disjunction through [lia] and does not move. *)
 Lemma ush_uline_body_val (lu : FileDisc.uline) (j : nat) :
   FileDisc.uline_ok lu -> (j < length (FileDisc.line_bytes lu))%nat ->
   bv_unsigned (FileDisc.line_bytes lu !!! j) = 10%Z
   \/ bv_unsigned (FileDisc.line_bytes lu !!! j) = 32%Z
   \/ bv_unsigned (FileDisc.line_bytes lu !!! j) = 62%Z
+  \/ bv_unsigned (FileDisc.line_bytes lu !!! j) = 124%Z
   \/ (48 <= bv_unsigned (FileDisc.line_bytes lu !!! j) <= 57)%Z
   \/ (65 <= bv_unsigned (FileDisc.line_bytes lu !!! j) <= 90)%Z
   \/ (97 <= bv_unsigned (FileDisc.line_bytes lu !!! j) <= 122)%Z.
@@ -492,37 +496,21 @@ Proof.
     rewrite list_lookup_total_alt Hb. cbn [default from_option].
     exact (elem_of_list_lookup_2 _ j b Hb). }
   set (b := FileDisc.line_bytes lu !!! j) in *.
-  assert (Hb : FileDisc.fbody_byte b \/ b = wl_nl).
-  { destruct lu as [ws | ws | ]; cbn [FileDisc.uline_ok] in Hok;
-      rewrite FileDisc.line_bytes_body in Hin;
-      apply elem_of_app in Hin as [Hin | Hin];
-      try (right; by apply elem_of_list_singleton in Hin).
-    - left. apply FileDisc.fbody_byte_of_body.
-      cbn [FileDisc.line_body] in Hin.
-      pose proof (wl_body_bytes ws (line_ok_wf ws Hok)) as Hfb.
-      apply elem_of_list_lookup in Hin as [q Hq].
-      exact (proj1 (Forall_lookup _ _) Hfb q b Hq).
-    - left. cbn [FileDisc.line_body] in Hin.
-      apply elem_of_app in Hin as [Hin | Hin].
-      + apply FileDisc.fbody_byte_of_body.
-        pose proof (wl_body_bytes ws (line_ok_wf ws (proj1 Hok))) as Hfb.
-        apply elem_of_list_lookup in Hin as [q Hq].
-        exact (proj1 (Forall_lookup _ _) Hfb q b Hq).
-      + apply elem_of_list_lookup in Hin as [q Hq].
-        exact (proj1 (Forall_lookup _ _) FileDisc.suf_gtf_bytes q b Hq).
-    - left. cbn [FileDisc.line_body] in Hin.
-      apply elem_of_list_lookup in Hin as [q Hq].
-      exact (proj1 (Forall_lookup _ _)
-               (ltac:(apply (bool_decide_unpack _); vm_compute; exact I)
-                 : Forall FileDisc.fbody_byte FileDisc.cmd_cat_f) q b Hq). }
-  destruct Hb as [Hfb | ->].
+  (* the four-constructor enumeration is [FileDisc.line_bytes_bytes]'s now:
+     the twelve lines it replaces were this same case split done here *)
+  assert (Hb : FileDisc.fbody_byte b \/ b = FileDisc.fd_bar \/ b = wl_nl).
+  { apply elem_of_list_lookup in Hin as [q Hq].
+    exact (proj1 (Forall_lookup _ _)
+             (FileDisc.line_bytes_bytes lu Hok) q b Hq). }
+  destruct Hb as [Hfb | [-> | ->]].
   - destruct Hfb as [[Ha | ->] | ->].
     + destruct Ha as [H | [H | H]];
-        [ right; right; right; by left
-        | right; right; right; right; by left
-        | right; right; right; right; by right ].
+        [ right; right; right; right; by left
+        | right; right; right; right; right; by left
+        | right; right; right; right; right; by right ].
     + right. left. exact wl_sp_val.
     + right. right. left. by vm_compute.
+  - right. right. right. left. by vm_compute.
   - left. exact wl_nl_val.
 Qed.
 
@@ -564,7 +552,7 @@ Proof.
   intro Hok.
   assert (Hval : bv_unsigned (FileDisc.line_bytes lu !!! 0%nat) = 101%Z
                  \/ bv_unsigned (FileDisc.line_bytes lu !!! 0%nat) = 99%Z).
-  { destruct lu as [ws | ws | ]; cbn [FileDisc.uline_ok] in Hok.
+  { destruct lu as [ws | ws | | ws]; cbn [FileDisc.uline_ok] in Hok.
     - left. rewrite FileDisc.line_bytes_echo.
       exact (line_ok_head_byte0 ws Hok).
     - left.
@@ -579,7 +567,17 @@ Proof.
     - right. rewrite FileDisc.line_bytes_body. cbn [FileDisc.line_body].
       rewrite (wl_lta_app_l FileDisc.cmd_cat_f [wl_nl] 0%nat
                  ltac:(rewrite FileDisc.cmd_cat_f_len; lia)).
-      by vm_compute. }
+      by vm_compute.
+    - (* the pipe line: its head is the echo line's, one suffix over *)
+      left.
+      pose proof (ush_wl_body_pos ws (proj1 Hok)) as Hwb.
+      rewrite FileDisc.line_bytes_body. cbn [FileDisc.line_body].
+      rewrite (wl_lta_app_l (wl_body ws ++ FileDisc.suf_barcat) [wl_nl] 0%nat
+                 ltac:(rewrite length_app; lia)).
+      rewrite (wl_lta_app_l (wl_body ws) FileDisc.suf_barcat 0%nat Hwb).
+      pose proof (line_ok_head_byte0 ws (proj1 Hok)) as Hh.
+      rewrite /wl_line (wl_lta_app_l (wl_body ws) [wl_nl] 0%nat Hwb) in Hh.
+      exact Hh. }
   lia.
 Qed.
 

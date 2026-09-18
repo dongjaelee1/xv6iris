@@ -677,7 +677,14 @@ Section UkShRedirBody.
   (*  ([FileOut.ftag], [FileDisc.disc_f]) is what says the buffer holds    *)
   (*  one of them, and this is where that turns into a walk.              *)
   (* =================================================================== *)
-  Definition ush_line_file (l : uline) : Prop := True.
+  (* THE ERA'S LINES ARE THE PARSER'S RANGE (lane ULINE-LPIPE).  This was
+     [True], which was honest while [uline] had exactly the three
+     constructors this case splits on.  Now that [FileDisc.uline] also
+     carries the PIPELINE application's [LPipe] -- a line the FILE era's
+     [parse_line] never files and has no walk for -- the predicate has to
+     say so, and [FileReadInst.file_disc_line] supplies it from
+     [FileDisc.uline_of_nopipe] at no cost. *)
+  Definition ush_line_file (l : uline) : Prop := FileDisc.uline_nopipe l.
 
   (* ---- THE CAT ARM, PROVED (lane PROGRAM STREAM) --------------------- *)
   (*  This used to be [Hypothesis Hcat_body]: the whole body walk for      *)
@@ -737,7 +744,7 @@ Section UkShRedirBody.
     iIntros "!>" (lu h m f k len l n)
       "%Hd %Hlat %Hregs %Hs1 %Ha5 %Hnn %Hnul %Hkl2 %Hpm1 %Hpmwb %Hfd0
        #Hgen #Hcode #Hjt Hhead Hstd Hdat Hsz Hbuf Hrun".
-    destruct lu as [ ws | ws | ].
+    destruct lu as [ ws | ws | | ws]; [| | | by destruct (Hd ws eq_refl) ].
     - (* [echo a b] -- the landed walk *)
       iApply ("Hecho" $! (LEcho ws) h m f k len l n with
                 "[%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] Hgen Hcode Hjt

@@ -198,7 +198,7 @@ Proof using.
   assert (Hlb : line_bytes (uline_of J) = J ++ [wl_nl])
     by (rewrite line_bytes_body -Hbody; reflexivity).
   exists (uline_of J).
-  split; [ exact Logic.I | ].
+  split; [ exact (uline_of_nopipe J) | ].
   split; [ exact (Hws J Hok) | ].
   split; [ rewrite Hlb length_app; cbn [length]; lia | ].
   rewrite /UkSh.ush_line_at Hlb. split_and!.

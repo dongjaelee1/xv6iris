@@ -515,6 +515,42 @@ Proof using.
   - rewrite /line_body cmd_cat_f_len /line_max. lia.
 Qed.
 
+(* ---- EVERY BYTE OF AN ADMISSIBLE LINE, AT EVERY CONSTRUCTOR ---------- *)
+(* [fbody_ok_bytes] is this fact one level down and only for a body in the
+   PARSER's range.  This one holds at [LPipe] too, and the price is the
+   bar, which is NOT an [fbody_byte] -- so a consumer that enumerates the
+   byte values of a line ([UkSh.ush_uline_body_val]) has to name it. *)
+Lemma suf_barcat_bytes :
+  Forall (fun b => fbody_byte b \/ b = fd_bar) suf_barcat.
+Proof using. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
+
+Lemma line_bytes_bytes l :
+  uline_ok l ->
+  Forall (fun b => fbody_byte b \/ b = fd_bar \/ b = wl_nl) (line_bytes l).
+Proof using.
+  intro Hok.
+  rewrite line_bytes_body. apply Forall_app. split;
+    [| apply Forall_singleton; by right; right].
+  destruct l as [ws | ws | | ws]; rewrite /line_body.
+  - apply Forall_impl with (P := wl_body_byte);
+      [exact (wl_body_bytes ws (line_ok_wf _ Hok)) |].
+    intros b Hb. left. exact (fbody_byte_of_body b Hb).
+  - apply Forall_app. split.
+    + apply Forall_impl with (P := wl_body_byte);
+        [exact (wl_body_bytes ws (line_ok_wf _ (proj1 Hok))) |].
+      intros b Hb. left. exact (fbody_byte_of_body b Hb).
+    + apply Forall_impl with (P := fbody_byte); [exact suf_gtf_bytes |].
+      intros b Hb. by left.
+  - apply (bool_decide_unpack _). vm_compute. exact I.
+  - apply Forall_app. split.
+    + apply Forall_impl with (P := wl_body_byte);
+        [exact (wl_body_bytes ws (line_ok_wf _ (proj1 Hok))) |].
+      intros b Hb. left. exact (fbody_byte_of_body b Hb).
+    + apply Forall_impl with (P := fun b => fbody_byte b \/ b = fd_bar);
+        [exact suf_barcat_bytes |].
+      intros b [Hb | Hb]; [by left | by right; left].
+Qed.
+
 (* D3: every COMPLETE body parses to an admissible line, and the partial
    line is body bytes short enough that its newline still fits. *)
 Definition disc_input_f (I : list (bv 8)) : Prop :=

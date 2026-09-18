@@ -929,3 +929,106 @@ fourteen).  No `Admitted`, no `Axiom`, none added anywhere in the diff.
 `grep -c "Hypothesis\|Admitted" iris/UInitFile.v` is still 1 — the round
 is the program stream's and `file_Hinit_boot` waits on it.
 
+---
+
+# ROUND 5 (2026-09-18) — THE `pdiag` FIELD SET AND `UInitDiag`'S TWIN LAND; `file_Hinit_boot` IS **STOPPED ON TWO NAMED THINGS**, AND ONE OF THEM MAY NOT BE A FRAME
+
+## R5.1 The `pdiag` field set on `LinkRec` — LANDED at all three instances
+
+Eleven fields, in the order R4.5 scoped them: `lk_pban`, `lk_pdiag`, their
+timelessness (both `Global Existing Instance`) and taint, `lk_pdiag_0`,
+`lk_pban_of_ban_done`, `lk_pro_of_pban`, `lk_pdiag_step`,
+`lk_pdiag_done_1`.  **The BASE is a field of its own and not `lk_pro`** —
+the record now says so in its own comment, because that is the real
+difference between the eras (R4.3).
+
+Values:
+
+- `echo_link_inst` — `EchoLinksPro`'s, definitional, with the two wrappers
+  R4.5 predicted: `ei_pro_of_pban` (the six lines `UInitBoot`'s `Hpw` did
+  inline) and `ei_pdiag_done_1` (`ewc_pdiag_done_1` with the index taken as
+  a premise, which is the shape the file era's twin can state).
+- `file_link_inst_at s0` — `FileLinksAtPro`'s, directly.
+- `file_link_inst` (UNINDEXED) — by lifting through the existential
+  closure, `fwc_pban_ex` / `fwc_pdiag_ex` and their nine laws in
+  `FileLinkInst.v`.  **Every law preserves `s0`, so each is
+  unpack-apply-repack**, exactly as R4.5 said; adding the field therefore
+  does NOT force the program stream onto `file_link_inst_at`.
+
+## R5.2 `UInitDiag`'s generic twin — LANDED, and `UInitBoot.v` did not move
+
+`iris/UInitDiag.v` is now `UInitBanner.v`'s shape: `Section UInitDiagPure`
+(the era-free byte lemmas), `Section UInitDiagGen` over `Context (L :
+LinkRec Σ)` with `pdg_at`, `kinit_w1_of_link_pdiag_at`, `kinit_pro_at`,
+`kinit_pro_timeless_at`, `kinit_own_of_pro_at`,
+`kinit_banner_law_pro_holds_at`, `kinit_execfail_law_holds_at`,
+`kinit_forkfail_law_holds_at`, and `Section UInitDiagEcho` re-exporting
+every landed name with NO proof text.
+
+`UInitBoot.v` compiles UNCHANGED — which was the real risk, since it does
+`rewrite /UInitDiag.kinit_pro` and then destructs the existential and
+unfolds `EchoLinksPro.ewc_pro`.  The `:= kinit_pro_at EI n` re-export is
+convertible to what it expects, so no fallback was needed.
+
+**So `cons_cred_holds`'s TENTH conjunct and the `kinit_ban ↔ cc_wbn` round
+trip are at the record**, and therefore available at
+`file_link_inst_at s0`.
+
+## R5.3 `file_Hinit_boot` — **STOPPED**, on exactly two things
+
+Not for want of the claim or the credential algebra: after rounds 2–5 the
+file era has all nine conjuncts of `init_cons_laws_at`
+(`iris/AppFileCons.v`), the credential families at a shared index
+(`FileLinksAt*`, `file_link_inst_at`), the seam's four lemmas with a linear
+frame (`UShLineAtHold`), conjunct 9's two input readings
+(`FileLinksAtInp`), the prologue diagnostics (`FileLinksAtPro`, `pdiag` at
+the record), and /init's first credential out of `file_boot` alone
+(`UInitFileCons.file_Wbf_at_of_boot`).  What is missing is two seams in
+`UInitSh.v` / `UShPanic.v`:
+
+**(A) `UShKernel.sh_prompt_law` has no `Hold` form, AND IT MAY NOT BE A
+FRAME.**  `UShPanic.sh_prompt_law_holds_line_at` (`iris/UShPanic.v:638`)
+concludes `UShKernel.sh_prompt_law (lk_lcred L (S gen_id))`, and
+`UInitSh.init_exec_sup_of_sh_slot` takes it at `cc_wc Cr`, which at the
+file era is the credential WITH THE DEED.  `UShPanic` has the `Hold`
+pattern everywhere else (`ush_panic_law_hold_at` `:741`,
+`ush_execfail_law_hold_at` `:802`, built on `ksh_w1_hold` `:718`), and this
+one law was left without it.  **But it is not obviously a frame**:
+`UShRound.sh_prompt_alt_of_deed` (`:240`) says sh's prompt byte is the
+round's BLOCK-FIRST byte whenever the child printed nothing, and then the
+alternative it files is DECIDED by the deed's value — so the twin may have
+to READ the hold rather than carry it.  Whoever takes it should measure
+that first, the way round 3 measured the `ush_wc_inp` / `ush_wb_inp` pair
+(there the answer was a frame; here it may not be).
+
+**(B) `UInitSh.init_exec_sup_of_sh_slot` hard-codes the ECHO discipline.**
+At `iris/UInitSh.v:1143-1145` it passes `EchoDisc.disc_input` together with
+`UkSh.ush_disc_snoc_ncr`, `EchoDisc.disc_input_rest_short`,
+`UkSh.ush_line_echo` and `UkSh.ush_disc_line_echo` to the read leaf.  The
+file era's leaf is `FileReadInst.file_read_leaf_holds`, at
+`rk_disc FI file_read_inst = FileDisc.disc_input_f`.  `UShKernel`'s own
+consumers are ALREADY `Dsc`-parameterised (`UShKernel.v:487`, `:789`,
+`:1059`); it is `init_exec_sup_of_sh_slot` and `cons_cred_holds`'s FIRST
+conjunct that are not.  This one is a parameterisation, not a design
+question — four readings travel beside the discipline.
+
+Until both land, `cons_cred_holds` cannot be assembled at the file record,
+so `UInitSh.sh_pay_of_parts` cannot be applied and
+`UInitKernel.init_boot_con` has nothing to take.
+`grep -c "Hypothesis\|Admitted" iris/UInitFile.v` therefore stays **1**.
+
+**The import question the ruling asked about, answered.**  `UInitFile.v`
+CAN import `UShRound` without touching any audit: `iris/FileAssumptions.v`
+requires only `UFileBootAdequacy`, which imports none of the program tier,
+and `make audit-file-only` is measured unchanged with the program tier in
+the build.  So when (A) and (B) land, `file_Hinit_boot` takes
+`UShRound.sh_round_holds_file` at its own statement and
+`Print Assumptions` shows it beside the fourteen primitives — no
+`Definition`-at-the-conclusion fallback is needed.
+
+## R5.4 Build
+
+Whole tree green on the lane's remote tree; the four audits unchanged
+(system thirteen, echo fourteen, tree thirteen, file fourteen).  No
+`Admitted`, no `Axiom`, none added anywhere in the diff.
+

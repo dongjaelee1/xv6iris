@@ -152,8 +152,14 @@ arm is the theorem's one named premise (`pipe_both_law`).
 ### PIPE-REG (2026-09-18)
 
 **LANDED** (branch `app-pipe/pipe-reg`, commits `119ef0f69`, `bc8ba82dc`,
-`69c28f329`): whole `iris` tree green on the EC2 mirror; the three audits
-unmoved; no `Admitted`; every new result carries `Proof using`.
+`69c28f329`, `f708512a0`): whole `iris` tree green on the EC2 mirror; no
+`Admitted`; every new result carries `Proof using`. The echo and tree
+audits were re-run and end exactly as `durable-notes.md`'s baseline does;
+the system audit was still running when the lane handed off, under heavy
+mirror contention (six lanes plus the coordinator's gate). Nothing in this
+change can enter an adequacy cone — every new result is a theorem and
+`urun_nopipe`'s definition became WEAKER — but the coordinator should see
+`audit-only` green on the merge gate.
 
 - NEW `iris/PipeReg.v` — `pipe_reg γp := □ (∀ w, pipe_cpay (pn_queue γp) w
   emp)`, `pipe_row_reg`, both persistence instances, `pipe_reg_of_taint` /
@@ -183,6 +189,13 @@ unmoved; no `Admitted`; every new result carries `Proof using`.
 - `UkRunSys.wp_uk_ecall_pipe` — the `□ riscv_kill_cred` premise is GONE.
 - `UkReadPipe.wp_uk_pipe_read_end` — the same, at the instance; the
   header comment rewritten.
+- BEYOND THE BRIEF, because SH-PIPE cannot round without it:
+  `PipeReg.pipe_cpay_of_reg_true` / `fileclose_cpay_of_reg_true` and
+  `UexecExecInst.xv6_sbundle_close_of_reg` — CLOSE(21)'s row off the
+  registry at the POINT family's payload (`True`), since the close link's
+  fupd places `emp` and so places anything `emp` entails. No arm of
+  `UkRun.udepw_cl` moves: its right arm is `udepw … 21`, which takes an
+  explicit bundle, so this is what a pipe-holding program supplies there.
 - BAR MET: every one of the ~25 `urun_nopipe` sites the brief lists
   (UkFork, UInitSh, UShEchoPay, UexecCond, UShEcho, UShKernel,
   UEchoKernel, UCatKernel, UShCat, UEchoFile, UInitBoot, UInitTreeExec,

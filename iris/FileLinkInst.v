@@ -39,6 +39,7 @@ Require Import FileLinksLine.
 Require Import EchoLinks.
 Require Import EchoLinksLine.
 Require Import LinkRec.
+Require Import StageRec.   (* the cursor / stage record *)
 Require Import RiscvPtsto.
 Require Import WpUart.
 Require Import CtxIdDefs.
@@ -235,5 +236,120 @@ Section sh_round_facing.
     iDestruct (lk_pin_agr FI (S gen_id) v v' with "Hpin Hpin'") as %<-.
     iApply (lk_ban_read_taint FI (S gen_id) v I l Hl with "Hb Hres").
   Qed.
+
+  (* =================================================================== *)
+  (*  THE STAGE, AT THE FILE ERA (the program stream, (c))                *)
+  (*                                                                     *)
+  (*  echo's instance ([StageRec.echo_stage_inst]) opens the era's lend    *)
+  (*  into a bundle and names the cursor itself; the file era's is         *)
+  (*  SHORTER, because [FileLinksLine] already has both halves:            *)
+  (*  [fwc_blk g k v I 0] IS the cursor and [fblk_step] IS its step.       *)
+  (*                                                                     *)
+  (*  WHAT IT IS ABOUT: the lines whose block is the LINE's own            *)
+  (*  alternative, i.e. the [LEcho] ones.  At an [LEchoF] line the child   *)
+  (*  writes to the FILE and the console block is the prompt; at an        *)
+  (*  [LCat] line it is cat's.  [ck_lineok] is where that is said, and it  *)
+  (*  is the record field the program stream added for exactly this.       *)
+  (* =================================================================== *)
+  Record file_stg := MkFileStg { fs_I : list (bv 8) }.
+
+  Definition file_lineok (I : list (bv 8)) : Prop :=
+    fline I = LEcho (last_ws I).
+
+  (* the model's alternative 0 at an echo line IS echo's own output *)
+  Lemma file_ralt0 : ralt_dec 0%nat = REcho 0%nat.
+  Proof using . reflexivity. Qed.
+
+  Lemma file_ralt0_ok (I : list (bv 8)) :
+    file_lineok I -> ralt_ok (fline I) (ralt_dec 0%nat).
+  Proof using .
+    intro Hl. rewrite Hl file_ralt0. cbn [ralt_ok]. lia.
+  Qed.
+
+  Lemma file_ralt0_free : fst_free (ralt_dec 0%nat) = true.
+  Proof using . reflexivity. Qed.
+
+  Lemma file_fab0 (I : list (bv 8)) :
+    file_lineok I -> fab I 0%nat = line_alts_of (last_ws I) !!! 0%nat.
+  Proof using .
+    intro Hl.
+    rewrite (fab_is I 0%nat (file_ralt0_ok I Hl) file_ralt0_free) Hl.
+    reflexivity.
+  Qed.
+
+  Lemma file_fab0_len (I : list (bv 8)) :
+    file_lineok I ->
+    (length (fab I 0%nat) - 2)%nat
+    = length (wl_line (drop 1 (last_ws I))).
+  Proof using .
+    intro Hl. rewrite (file_fab0 I Hl) (line_alts_of_0_length (last_ws I)).
+    lia.
+  Qed.
+
+  Local Lemma fi_cur_tl (k : nat) (v : era_pins) (st : file_stg) (p : nat) :
+    Timeless (fwc_blk g k v (fs_I st) 0%nat p).
+  Proof using . apply fwc_blk_timeless. Qed.
+
+  Local Lemma fi_step (k : nat) (v : era_pins) (st : file_stg)
+      (ws : list (list (bv 8))) (i : nat) (b : bv 8) (Φ : iProp Σ) :
+    (fline (fs_I st) = LEcho ws /\ last_ws (fs_I st) = ws) ->
+    line_alts_of ws !!! 0%nat !! i = Some b ->
+    ⊢ lk_pin FI k v -∗ lk_links FI -∗ fwc_blk g k v (fs_I st) 0%nat i -∗
+      (fwc_blk g k v (fs_I st) 0%nat (S i) -∗ Φ) -∗ out_link Uart0 k b Φ.
+  Proof using .
+    intros [ Hln Hlast ] Hb. iIntros "#Hpin #Hlk Hc HΦ".
+    iApply (fblk_step g k v (fs_I st) 0%nat i b Φ with "Hpin Hlk Hc HΦ").
+    rewrite (file_fab0 (fs_I st) ltac:(rewrite /file_lineok Hlast; exact Hln)).
+    rewrite Hlast. exact Hb.
+  Qed.
+
+  Definition file_cur_inst : CurRec FI :=
+    MkCurRec FI file_stg
+      (fun st ws => fline (fs_I st) = LEcho ws /\ last_ws (fs_I st) = ws)
+      (fun ws => line_alts_of ws !!! 0%nat)
+      file_lineok
+      (fun k v st p => fwc_blk g k v (fs_I st) 0%nat p)
+      fi_cur_tl fi_step.
+
+  (* THE LEND, OPENED.  [fwc_lend] and [fwc_blk _ _ _ 0 0] are the same
+     proposition ([blkcs_f cs 0 0 = cs] and [P + 0 = P]), and what the
+     block's END pays is [lk_post FI], which is that family at
+     [length (fab I 0) - 2]. *)
+  Local Lemma fi_lend_stage (k : nat) (v : era_pins) (I : list (bv 8)) :
+    file_lineok I ->
+    ⊢ fwc_lend g k v I -∗
+      (∃ st : file_stg,
+         ⌜fline (fs_I st) = LEcho (last_ws I) /\ last_ws (fs_I st) = last_ws I⌝
+         ∗ ⌜line_alts_of (last_ws I) !!! 0%nat
+            = line_alts_of (last_ws I) !!! 0%nat⌝
+         ∗ fwc_blk g k v (fs_I st) 0%nat 0%nat
+         ∗ □ (fwc_blk g k v (fs_I st) 0%nat
+                (length (wl_line (drop 1 (last_ws I)))) -∗
+              lk_post FI k v I 0%nat))
+      ∨ lk_T FI.
+  Proof using .
+    intro Hlok. rewrite /fwc_lend. iIntros "[Hl | #HT]"; last by iRight.
+    iDestruct "Hl" as (ps cs s0 P) "(%Hw & Htn & #Hps & #Hcs & #HE & #Hf)".
+    iLeft. iExists (MkFileStg I). cbn [fs_I].
+    iSplitR; [ iPureIntro; split; [ exact Hlok | reflexivity ] | ].
+    iSplitR; [ by iPureIntro | ].
+    iSplitL "Htn".
+    - rewrite /fwc_blk. iLeft. iExists ps, cs, s0, P.
+      cbn [blkcs_f]. rewrite Nat.add_0_r.
+      iFrame "Htn Hps Hcs HE Hf". by iPureIntro.
+    - iIntros "!> Hc". rewrite /lk_post. cbn [lk_blk lk_ab file_link_inst].
+      rewrite (file_fab0_len I Hlok). iExact "Hc".
+  Qed.
+
+  Local Lemma fi_apr0 (I : list (bv 8)) :
+    file_lineok I -> lk_apr FI I 0%nat.
+  Proof using .
+    intro Hl. cbn [lk_apr file_link_inst]. rewrite /fapr.
+    split_and!;
+      [ exact (file_ralt0_ok I Hl) | exact file_ralt0_free | reflexivity ].
+  Qed.
+
+  Definition file_stage_inst : StageRec FI :=
+    MkStageRec FI file_cur_inst fi_lend_stage fi_apr0.
 
 End sh_round_facing.

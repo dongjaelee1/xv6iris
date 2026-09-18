@@ -1567,6 +1567,7 @@ UShLexRedir.v
 UkShPipeLex.v
 UkShPipeTok.v
 UkShPipeParse.v
+UkShPipeCmd.v
 UkShPipeSeam.v
 UkShPipeEx.v
 UkShPipeRight.v

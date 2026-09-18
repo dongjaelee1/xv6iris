@@ -77,6 +77,7 @@ Require Import UkShPipeLex.
 Require Import UkShPipeTok.
 Require Import UkShPipeParse.
 Require Import UkShPipeEx.
+Require Import UkShPipeCmd.
 Require Import UkShPipeRight.
 
 Section UkShPipeCm.
@@ -264,6 +265,28 @@ Section UkShPipeCm.
     rewrite Erpc.
     iApply ("Hcont" $! q with "[] Hnode Hcur Hstr Hws Hsy [] [] HM1 Hpay Hrun").
     - iPureIntro. exact Hqsz.
+    - iPureIntro. exact Hcs.
+    - iPureIntro. exact Ha0'.
+  Qed.
+
+  (* PREMISE (ii) IS DISCHARGED: [pipecmd]'s twenty-seven instructions are
+     walked ([UkShPipeCmd.wp_kshp_pipecmd]) now that its catalog row exists,
+     so the turn below needs only premise (i).  The budget arithmetic is the
+     only thing to say: the walk asks for [6 + (10 + nn')] and the turn's
+     call site has [16 + (24 + (8 + nn))], so [nn' := 32 + nn] and the two
+     are the same [48 + nn]. *)
+  Lemma ushq_pipecmd_call_holds {Pex : iProp Σ} (nn : nat) :
+    ushp_malloc_ty UM2 UM3 ->
+    ⊢ ushq_pipecmd_call Pex (16 + (24 + (8 + nn))).
+  Proof using .
+    intro Hm23.
+    iIntros (h m pl pr rpc Sub) "%Ha0 %Ha1 %Erpc #Hcode HM #Hpx Hpay Hsub Hrun Hcont".
+    rewrite <- Erpc.
+    iApply (UkShPipeCmd.wp_kshp_pipecmd N UM2 UM3 Hm23 h m pl pr Sub
+              (32 + nn) Ha0 Ha1
+              with "Hcode HM Hpx Hpay Hsub Hrun").
+    iIntros (h' m' t) "%Hcs %Ha0' %Htb Hnode Hsub HM' Hpay Hrun".
+    iApply ("Hcont" $! h' m' t with "[] [] Hnode Hsub HM' Hpay Hrun").
     - iPureIntro. exact Hcs.
     - iPureIntro. exact Ha0'.
   Qed.

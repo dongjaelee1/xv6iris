@@ -1515,6 +1515,8 @@ FileWrite.v
 FileOut.v
 PipeOut.v
 PipeLinks.v
+AppPipeClaim.v
+AppPipeCons.v
 AppPipe.v
 FileLinks.v
 FileLinksLine.v
@@ -1650,6 +1652,7 @@ FileLinksAtInp.v
 FileLinksAtPro.v
 AppFileCons.v
 UInitConsFile.v
+UInitConsPipe.v
 UFileBootAdequacy.v
 # FileAssumptions.v
 

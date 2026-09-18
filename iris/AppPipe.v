@@ -6,13 +6,17 @@
    record [app_pipe], and [App.xv6_app_laws] with every field but
    [al_programs] discharged.
 
-   THE CLAIM IS THE ECHO APPLICATION'S, VERBATIM.  [app_pred], [app_boot],
-   [app_names], [app_fixed] and [app_cl] are [AppEcho]'s own names, imported
-   and not restated: a pipeline round modifies no file, so the file-system
-   half of the invariant does not move, and no field of the record forces a
-   pipe-specific ghost.  What is new is the CONSOLE half: [app_R] is
-   [PipeOut.pipe_led], [app_ifc] is the pipeline tag / taint / claim, and
-   [app_phi] is [PipeDisc.pipe_phi].
+   THE CLAIM IS ECHO'S SHAPE WITH /cat PINNED (design section 5.6, RULED
+   after this lane's part-1 finding): [app_pred] is
+   [AppPipeClaim.pipe_pred], which is [AppEcho.echo_pred] with
+   [FileFsPure.file_fs_pure] where [echo_fs_pure] was -- a pipeline round
+   modifies no file, but sh EXECS /cat, and echo's claim pins /init, /sh and
+   /echo only.  [app_fixed], [app_cl] and [app_names] are still [AppEcho]'s
+   own names, and [app_boot] is [echo_boot] under the name [pipe_boot] (the
+   console key or flag reads no file-system pin).  What is new besides the
+   claim is the CONSOLE half: [app_R] is [PipeOut.pipe_led], [app_ifc] is
+   the pipeline tag / taint / claim / licence, and [app_phi] is
+   [PipeDisc.pipe_phi].
 
    ONE THING IS A SECTION HYPOTHESIS AND IS NOT DISCHARGED HERE:
    [al_programs], lane SH-PIPE-ROUND's (the first process's exec bundle).
@@ -66,7 +70,11 @@ Require Import PipeDisc.
 Require Import PipeDiscDec.
 Require Import PipeOutPure.
 Require Import EchoOut.
+Require Import EchoFsPure.
+Require Import FileFsPure.
+Require Import FsCatPin.
 Require Import AppEcho.
+Require Import AppPipeClaim.
 Require Import PipeOut.
 Require Import PipeLinks.
 Local Open Scope Z_scope.
@@ -115,10 +123,25 @@ Section PipeApp.
   Global Instance pipe_cons_timeless c k h H : Timeless (pipe_cons c k h H).
   Proof using . rewrite /pipe_cons. apply _. Qed.
 
+  (* ...AND THE INTERFACE'S LICENCE LAW ([RiscvPtsto.ai_lic], upstream's
+     lane SUP-ONE): [pipe_al_sup]'s conclusion read one step earlier, at
+     the CREDENTIAL rather than at the supply.  The pipeline application's
+     kill price is the echo application's taint, and a tainted claim
+     answers any boundary event out of its taint arm. *)
+  Lemma pipe_cons_lic (c : echo_fixed) :
+    pipe_kill c ⊢
+      □ (∀ (k : nat) (h : list mobs) (H : LogEntryDefs.cons_hist)
+           (ev : ConsLog.cons_ev),
+           pipe_cons c k h H ==∗ pipe_cons c k h (ConsLog.cons_step H ev)).
+  Proof using . 
+    rewrite /pipe_cons /pipe_kill. iIntros "#Ht !>" (k h H ev) "Ho".
+    iApply (pecl_sup c k h H ev with "Ht Ho").
+  Qed.
+
   Definition pipe_ifc (c : echo_fixed) : app_iface Σ :=
     MkAppIface (pipe_tag c) (pipe_tag_persistent c) (pipe_tag_timeless c)
                (pipe_kill c) (pipe_kill_persistent c) (pipe_kill_timeless c)
-               (pipe_cons c) (pipe_cons_timeless c).
+               (pipe_cons c) (pipe_cons_timeless c) (pipe_cons_lic c).
 
   Definition pipe_turn (c : echo_fixed) : nat -> iProp Σ := pturn c.
 
@@ -126,7 +149,7 @@ Section PipeApp.
   (*  2.  THE RECORD                                                        *)
   (* ====================================================================== *)
   Definition app_pipe : xv6_app Σ :=
-    MkApp echo_fixed pipe_cl_all echo_names echo_pred echo_boot
+    MkApp echo_fixed pipe_cl_all echo_names pipe_pred pipe_boot
           pipe_R pipe_ifc pipe_turn pipe_phi.
 
   (* ---- the birth step ---- *)
@@ -147,7 +170,7 @@ Section PipeApp.
     cbn [app_pipe app_fixed app_names app_pred app_ifc pipe_ifc ai_kill]
       in c, r |- *.
     iIntros "#Hs". iModIntro. rewrite /pipe_kill.
-    iApply (echo_taint_of_sup c r with "Hs").
+    iApply (pipe_taint_of_sup c r with "Hs").
   Qed.
 
   Lemma pipe_al_sup (c : app_fixed app_pipe) (r : app_names app_pipe) :
@@ -161,7 +184,7 @@ Section PipeApp.
     cbn [app_pipe app_fixed app_names app_ifc pipe_ifc ai_cons pipe_cons]
       in c, r |- *.
     iIntros "#Hs".
-    iDestruct (echo_taint_of_sup c r with "Hs") as "#Ht".
+    iDestruct (pipe_taint_of_sup c r with "Hs") as "#Ht".
     iIntros "!>" (k h H ev) "Ho".
     iApply (pecl_sup c k h H ev with "Ht Ho").
   Qed.
@@ -275,7 +298,7 @@ Section PipeApp.
     ⊢ app_xfer_boot_raw (app_pred app_pipe c) (app_boot app_pipe c k).
   Proof using .
     cbn [app_pipe app_fixed app_names app_pred app_boot] in c |- *.
-    rewrite /app_xfer_boot_raw. iApply echo_xfer_boot.
+    rewrite /app_xfer_boot_raw. iApply pipe_xfer_boot.
   Qed.
 
   (* ---- the echo shift ---- *)
@@ -306,7 +329,7 @@ Section PipeApp.
   Proof using .
     intros Himg Hdk Hsb Hcov c.
     cbn [app_pipe app_fixed app_names app_pred] in c |- *.
-    exact (echo_init_img c _ XV6_DISK_BYTES sb nib cov Himg Hdk Hsb Hcov).
+    exact (pipe_init_img c _ XV6_DISK_BYTES sb nib cov Himg Hdk Hsb Hcov).
   Qed.
 
   (* ---- the conclusion's one ingredient ---- *)

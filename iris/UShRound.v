@@ -104,6 +104,7 @@ Require Import UkShRedirSeam.
 Require Import UkShEcho.
 Require Import UkShFork.
 Require Import UkFileOpen.
+Require Import SysOpenDefs.              (* [om_readable] / [om_writable] *)
 Require Import LinkRec.                  (* the era's link record *)
 Require Import FileLinksLine.            (* [fline] / [fexfb] -- the era's line *)
 Require Import StageRec.                 (* [ck_lineok] / [sk_apr0] *)
@@ -434,49 +435,176 @@ Section UShRound.
           sh_open_console_leaf_holds]'s mould with the file leaf in the
           middle: [c.li a7,15] at 0xcc6, [ecall] at 0xcc8, [c.jr ra] at
           0xccc. ---- *)
-  (* ---- HYPOTHESIS, AT A STATEMENT THAT IS NOW TRUE (the PROGRAM
-          STREAM).  What was wrong with it was its own premises:
-          [ush_open_call2] was handed [a0 = file], an ADDRESS, and NOTHING
-          about the bytes there or about the cwd, while the kernel resolves
-          a PATH -- so as stated NOBODY could prove it, and assuming it
-          assumed something false.  It now takes the name as the image the
+  (* ---- NOT A HYPOTHESIS ANY MORE (the PROGRAM STREAM): sh's open STUB,
+          walked into the kernel's create corollary at [OffHeld].
+
+          THE STATEMENT HAD TO BE FIXED FIRST: [ush_open_call2] was handed
+          [a0 = file], an ADDRESS, and NOTHING about the bytes there or
+          about the cwd, while the kernel resolves a PATH -- so as stated
+          nobody could prove it.  It now takes the name as the image the
           ecall reads, the three path facts, and the ledger's own answer
           (fd 1 is the lowest closed slot, true of the redirect child's
           table because it closed fd 1 before calling).  Every one is a
           fact the CALLER has: sh's cwd is the root for the whole era and
           the line's bytes are in its own buffer at the lexed offset.
 
-          THE WALK IS WRITTEN AND DOES NOT TYPE, FOR ONE REASON, AND IT IS
-          NOT SH'S: usys.S's stub is three instructions ([c.li a7,15] at
-          0xcc6, [ecall] at 0xcc8, [c.jr ra] at 0xccc, [UShConsK.
-          sh_open_console_leaf_holds]'s mould) and the leaf in the middle
-          is [UkFileOpen.wp_uk_ecall_open_create_deed_d] -- which is stated
-          at the AMBIENT deposit instance.  There are two:
-          [UexecExecInst.uprogSG_gen] (the [Global Instance], [Dsup :=
-          xv6_ssupply], [psok := fun _ => True]) and
-          [UexecExecInst.uprogSG_free] (a plain [Definition], [Dsup :=
-          True], [psok := xv6_free]).  [UkFileOpen]'s section declares no
-          [uprogSG], so every [urun] in that file is at [uprogSG_gen]; sh's
-          redirect child runs at [uprogSG_free] (its walks, its supply and
-          [UEchoFile]'s entry all name it), and the two records share
-          neither field.  So the corollary cannot be applied by the walk
-          that needs it at all.
+          AND THE DEPOSIT INSTANCE HAD TO BE NAMED: [UkFileOpen]'s create
+          corollary was at the AMBIENT [uprogSG_gen] while sh's redirect
+          child runs at [uprogSG_free], whose record shares neither field
+          -- so it now takes the instance per lemma, and this walk names
+          [uprogSG_free].
 
-          WHAT THE KERNEL STREAM MUST DO, and it is one line of their file:
-          take [uprogSG] as a section parameter in [UkFileOpen] (or state
-          the corollary at [(PS := ...)]), exactly as
-          [UkRunSys.wp_uk_ecall_open_recv_img] already does -- [UShConsK]
-          applies THAT one at [(PS := uprogSG_free)] and sh's console open
-          goes through.  With that, the walk below is the console leaf's
-          with this leaf in the middle. ---- *)
-  Hypothesis Hopen_hand :
-    forall (N : uk_names Σ) (file : Z) (l : list fdstate)
-           (ls : list wordline) (ws : wordline) (jc : Z) (s : dst),
-      ws ∈ ls -> EchoDisc.line_ok ws ->
-      app_inv fsc_fs -∗ cons_made (fn_cons r) jc -∗ fl_lb (fgn_cl g) ls -∗
-      fown r s -∗
-      UkShRedirAns.ush_open_call2 (PS := uprogSG_free) (SG := uexecSG_xv6)
-        N FsImg.ROOTINO file 1537 l redir_K (redir_Kf s).
+          The walk itself is usys.S's three-instruction stub, [UShConsK.
+          sh_open_console_leaf_holds]'s mould with the file leaf in the
+          middle: [c.li a7,15] at 0xcc6, [ecall] at 0xcc8, [c.jr ra] at
+          0xccc. ---- *)
+  Local Lemma sh_open_stub_pc : User.ShSyms.open = 0xcc6.
+  Proof using .
+    destruct UCodeShK.shk_syms_pins as (_&_&_&_&_&H&_&_&_&_). exact H.
+  Qed.
+
+  Local Lemma ucallee_saved_a0a7 (m : regfile) (rv : mword 64) :
+    ucallee_saved m
+      (<[Regidx (mword_of_int 10 : mword 5) := rv]>
+         (<[Regidx (mword_of_int 17 : mword 5)
+            := (mword_of_int 15 : mword 64)]> m)).
+  Proof using .
+    intros rr Hrr.
+    destruct (decide (rr = (mword_of_int 10 : mword 5))) as [-> | Hne0].
+    { exfalso. vm_compute in Hrr. discriminate Hrr. }
+    destruct (decide (rr = (mword_of_int 17 : mword 5))) as [-> | Hne7].
+    { exfalso. vm_compute in Hrr. discriminate Hrr. }
+    rewrite (upd_ne _ (Regidx (mword_of_int 10 : mword 5)) (Regidx rr) rv
+               ltac:(intro He; apply Hne0; injection He as He'; by rewrite He')).
+    rewrite (upd_ne m (Regidx (mword_of_int 17 : mword 5)) (Regidx rr)
+               (mword_of_int 15 : mword 64)
+               ltac:(intro He; apply Hne7; injection He as He'; by rewrite He')).
+    reflexivity.
+  Qed.
+
+  Lemma Hopen_hand (N : uk_names Σ) (file : Z) (l : list fdstate)
+      (ls : list wordline) (ws : wordline) (jc : Z) (s : dst) :
+    ws ∈ ls -> EchoDisc.line_ok ws ->
+    app_inv fsc_fs -∗ cons_made (fn_cons r) jc -∗ fl_lb (fgn_cl g) ls -∗
+    fown r s -∗
+    (* ...AND THE CWD'S CAMERA IS PINNED TOO (the PROGRAM STREAM's rule,
+       one class further out than the deposit): [UserCwd.ucwd] takes a
+       [ghost_varG Σ Z], [UkShRedirAns]'s section has its own and the
+       KERNEL's files read the one the whole-system record carries
+       ([Xv6Cameras.offbox_offG] off [Xv6G.xv6_offbox]).  Both are in scope
+       here, resolution picks the section variable, and the two print
+       identically -- so the open leaf's [ucwd] and this call's are not the
+       same proposition unless this says which. *)
+    UkShRedirAns.ush_open_call2 (PS := uprogSG_free) (SG := uexecSG_xv6)
+      (ghost_varG0 := offbox_offG)
+      N FsImg.ROOTINO file 1537 l redir_K (redir_Kf s).
+  Proof using Heq.
+    intros Hin Hokw. iIntros "#Hinv #Hmade #Hlb Hown".
+    rewrite /UkShRedirAns.ush_open_call2.
+    iIntros (h m av Img pl) "%Ha0 %Ha1 %Hpath %Hnp %Hstart %Hlast %Hfdl
+             #Himg #Hcode Hcwd Hstd Hrun Hcont".
+    rewrite sh_open_stub_pc.
+    (* ---- 0xcc6  c.li a7,15 ---- *)
+    iApply (wp_uk_cli (PS := uprogSG_free) (SG := uexecSG_xv6)
+              (ghost_varG0 := offbox_offG) N h m (mword_of_int 0xcc6)
+              (mword_of_int 15 : mword 6) (mword_of_int 17 : mword 5) av
+              ltac:(unfold unot_sp; vm_compute; discriminate)
+              ltac:(vm_compute; discriminate) with "[] Hrun").
+    { iApply (UCodeShK.uis_shk_cc6 with "Hcode"). }
+    assert (E0 : add_vec_int (mword_of_int 0xcc6 : mword 64) 2
+                 = mword_of_int 0xcc8)
+      by (apply bv_eq; vm_compute; reflexivity).
+    assert (Em : <[Regidx (mword_of_int 17 : mword 5)
+                   := regval_into_reg
+                        (sign_extend' 64 (mword_of_int 15 : mword 6)
+                         : mword 64)]> m
+                 = <[Regidx (mword_of_int 17 : mword 5)
+                     := (mword_of_int 15 : mword 64)]> m)
+      by (f_equal; apply bv_eq; vm_compute; reflexivity).
+    rewrite E0 Em.
+    iIntros (h1) "Hrun".
+    set (m1 := <[Regidx (mword_of_int 17 : mword 5)
+                 := (mword_of_int 15 : mword 64)]> m).
+    assert (Ha0' : m1 !!! Regidx (mword_of_int 10 : mword 5)
+                   = (mword_of_int file : mword 64)).
+    { unfold m1.
+      rewrite (upd_ne m (Regidx (mword_of_int 17 : mword 5))
+                 (Regidx (mword_of_int 10 : mword 5))
+                 (mword_of_int 15 : mword 64)
+                 ltac:(vm_compute; discriminate)).
+      exact Ha0. }
+    assert (Ha1' : m1 !!! Regidx (mword_of_int 11 : mword 5)
+                   = (mword_of_int 1537 : mword 64)).
+    { unfold m1.
+      rewrite (upd_ne m (Regidx (mword_of_int 17 : mword 5))
+                 (Regidx (mword_of_int 11 : mword 5))
+                 (mword_of_int 15 : mword 64)
+                 ltac:(vm_compute; discriminate)).
+      exact Ha1. }
+    (* ---- 0xcc8  ecall -- the DEED's create corollary at [OffHeld] ---- *)
+    iApply (UkFileOpen.wp_uk_ecall_open_create_deed_d (PSx := uprogSG_free)
+              N OffHeld h1 m1 (mword_of_int 0xcc8) l av (fgn_cl g) r jc s
+              ls ws FsImg.ROOTINO Img (mword_of_int file : mword 64) pl
+              Heq
+              ltac:(unfold m1, usysno;
+                    rewrite (upd_eq m (Regidx (mword_of_int 17 : mword 5))
+                               (mword_of_int 15 : mword 64));
+                    vm_compute; reflexivity)
+              ltac:(vm_compute; reflexivity)
+              Hpath Ha0'
+              ltac:(rewrite Ha1'; vm_compute; reflexivity)
+              ltac:(rewrite Ha1'; vm_compute; reflexivity)
+              Hnp Hstart Hlast Hin Hokw
+              with "[] Himg Hrun Hcwd Hstd Hinv Hmade Hlb Hown [Hcont]").
+    { iApply (UCodeShK.uis_shk_cc8 with "Hcode"). }
+    iIntros (h2 rv) "Hans Hcwd Hrun".
+    (* ---- 0xccc  c.jr ra ---- *)
+    assert (E1 : add_vec_int (mword_of_int 0xcc8 : mword 64) 4
+                 = mword_of_int 0xccc)
+      by (apply bv_eq; vm_compute; reflexivity).
+    rewrite E1.
+    set (m2 := <[Regidx (mword_of_int 10 : mword 5) := rv]> m1).
+    assert (Hra : m2 !!! Regidx (mword_of_int 1 : mword 5)
+                  = m !!! Regidx (mword_of_int 1 : mword 5)).
+    { unfold m2, m1.
+      exact (eq_trans
+               (upd_ne m1 (Regidx (mword_of_int 10 : mword 5))
+                  (Regidx (mword_of_int 1 : mword 5)) rv
+                  ltac:(vm_compute; discriminate))
+               (upd_ne m (Regidx (mword_of_int 17 : mword 5))
+                  (Regidx (mword_of_int 1 : mword 5))
+                  (mword_of_int 15 : mword 64)
+                  ltac:(vm_compute; discriminate))). }
+    iApply (wp_uk_cjr (PS := uprogSG_free) (SG := uexecSG_xv6)
+              (ghost_varG0 := offbox_offG) N h2 m2 (mword_of_int 0xccc)
+              (mword_of_int 1 : mword 5)
+              (ret_pc (m !!! Regidx (mword_of_int 1 : mword 5))) av
+              ltac:(vm_compute; discriminate)
+              ltac:(rewrite Hra; reflexivity)
+              with "[] Hrun").
+    { iApply (UCodeShK.uis_shk_ccc with "Hcode"). }
+    iIntros (h3) "Hrun".
+    iApply ("Hcont" $! h3 m2 rv with "[%] [%] Hcwd [Hans] Hrun").
+    - exact (ucallee_saved_a0a7 m rv).
+    - unfold m2.
+      exact (upd_eq m1 (Regidx (mword_of_int 10 : mword 5)) rv).
+    - (* THE ANSWER, AT THE TWO ARMS THE REDIRECT CHILD READS *)
+      rewrite /UkShRedirAns.ush_open_ans2.
+      iDestruct "Hans" as "[[%Hm1 [Hstd Hpay]] | Hfd]".
+      + iRight. iSplitR; [ by iPureIntro | ]. iFrame "Hstd".
+        rewrite /redir_Kf /FileOpen.file_open_pay. iExact "Hpay".
+      + iDestruct "Hfd" as (fd ty) "([%Hrv %Hlt] & Hal & HK)".
+        iDestruct (UserFd.ualloc_std (ukn_fd N) l fd 1%nat _ Hfdl with "Hal")
+          as "[%Hfd1 Hstd]".
+        iLeft. iExists ty. iSplitR.
+        { iPureIntro. rewrite Hrv Hfd1. reflexivity. }
+        iSplitL "Hstd".
+        { iEval (rewrite Ha1') in "Hstd".
+          iEval (vm_compute om_readable) in "Hstd".
+          iEval (vm_compute om_writable) in "Hstd".
+          iExact "Hstd". }
+        rewrite /redir_K. iExact "HK".
+  Qed.
 
   (* ---- NOT A HYPOTHESIS ANY MORE (the program stream): the redirect
           line's lexability is a THEOREM,

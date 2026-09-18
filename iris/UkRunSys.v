@@ -484,7 +484,8 @@ Section UkRunSys.
       by iModIntro. }
     destruct (decide (n = USYS_pipe)) as [_ | _].
     { destruct (decide (uint r = 0)) as [_ | _];
-        [| destruct Hrow as [_ ->]; iModIntro; iFrame "Hufd"; by iExists l ].
+        [| unfold UsysMemOk.usys_pipe_fail in Hrow;
+           destruct Hrow as [_ ->]; iModIntro; iFrame "Hufd"; by iExists l ].
       destruct Hrow as (a & b & γp & Hne & Hca & Hcb & ->).
       (* THE TWO ALLOCATIONS RUN IN THE ROW'S OWN ORDER: read end first,
          write end against the table the first left.  That is the order

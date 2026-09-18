@@ -173,7 +173,7 @@ Qed.
    ruling of 2026-09-18 ([PipeDisc.palt_ok_pipe_panic]) is exactly what
    makes [lk_pan] a constant here where the file's is per-line. *)
 Lemma palt_of_3 : palt_of 3%nat = PEcho 3%nat.
-Proof using. by apply palt_of_lt4. Qed.
+Proof using. apply palt_of_lt4. lia. Qed.
 
 Lemma ppan_panic : palt_panic (palt_of 3%nat) = true.
 Proof using. rewrite palt_of_3. by vm_compute. Qed.
@@ -207,7 +207,7 @@ Lemma pexf_of_dec (l : pline) :
   palt_of (pexf_of l) = match l with LEcho _ => PEcho 1%nat | LPipe _ => PExecL end.
 Proof using.
   destruct l as [ws | ws]; cbn [pexf_of].
-  - by apply palt_of_lt4.
+  - apply palt_of_lt4. lia.
   - exact (palt_of_code PExecL).
 Qed.
 
@@ -256,7 +256,7 @@ Lemma pnoc_of_dec (l : pline) :
   = match l with LEcho _ => PEcho 2%nat | LPipe _ => PSilent end.
 Proof using.
   destruct l as [ws | ws]; cbn [pnoc_of].
-  - by apply palt_of_lt4.
+  - apply palt_of_lt4. lia.
   - exact (palt_of_code PSilent).
 Qed.
 
@@ -463,7 +463,8 @@ Lemma wr_blk_line_p (ps cs : list nat) (I : list (bv 8)) (P : nat) :
   wr_blk_p ps cs I P -> pline_of (bodies_of I !!! length cs) = pline_at I.
 Proof using.
   intros Hw. pose proof (wr_blk_lines_p ps cs I P Hw) as Hn.
-  rewrite /pline_at. do 2 f_equal. lia.
+  rewrite /pline_at Hn.
+  replace (S (length cs) - 1)%nat with (length cs) by lia. reflexivity.
 Qed.
 
 Lemma wr_blk_cont_p (ps cs : list nat) (I : list (bv 8)) (P a : nat) :
@@ -472,8 +473,9 @@ Lemma wr_blk_cont_p (ps cs : list nat) (I : list (bv 8)) (P a : nat) :
 Proof using.
   intros Hw Ha.
   rewrite (wr_blk_pending_p ps cs I P a Hw) /alt_cont_p /palt_at
-          (EchoLinksLine.snoc_lookup_total cs a) Ha app_nil_r.
-  by rewrite (wr_blk_line_p ps cs I P Hw).
+          (EchoLinksLine.snoc_lookup_total cs a) Ha
+          (wr_blk_line_p ps cs I P Hw).
+  exact (app_nil_r _).
 Qed.
 
 Lemma wr_blk_cont3_p (ps cs : list nat) (I : list (bv 8)) (P a : nat) :
@@ -485,8 +487,9 @@ Proof using.
   intros Hw Ha.
   rewrite (wr_blk_pending_p ps cs I P a Hw) /alt_cont_p /palt_at
           (EchoLinksLine.snoc_lookup_total cs a) Ha
-          (pro_idx_p_app_le cs [a] (length cs) ltac:(lia)).
-  by rewrite (wr_blk_line_p ps cs I P Hw).
+          (pro_idx_p_app_le cs [a] (length cs) ltac:(lia))
+          (wr_blk_line_p ps cs I P Hw).
+  reflexivity.
 Qed.
 
 (* THE STREAM BYTE THE WRITE LINK ASKS FOR *)
@@ -1292,7 +1295,7 @@ Section pipe_links_line.
 
   Lemma pwc_ban_owed k v I : pwc_ban k v I 0%nat -∗ pwc_owed k v I.
   Proof using .
-    iIntros "Hc". iApply pwc_pro_owed. by iApply pwc_ban_pro.
+    iIntros "Hc". iApply pwc_pro_owed. iApply (pwc_ban_pro with "Hc").
   Qed.
 
   Lemma pwc_ban_done k v I :
@@ -1415,11 +1418,8 @@ Section pipe_links_line.
       { lia. }
       { exact Hpin. }
       { exact HP. }
-      { replace (pline_of (bodies_of I !!! (nlines I - 1)%nat))
-          with (pline_at I) by reflexivity. exact Hok. }
-      { replace (pline_of (bodies_of I !!! (nlines I - 1)%nat))
-          with (pline_at I) by reflexivity.
-        rewrite -(pab_is I a Hok). exact Hb. }
+      { exact Hok. }
+      { rewrite (pab_is I a Hok) in Hb. exact Hb. }
       iIntros "Hres". iApply "HΦ".
       iDestruct "Hres" as "[(Htn' & Hps' & Hcs' & HE') | #HT]"; last by iRight.
       iLeft. iExists ps, cs, P. cbn [blkcs_p]. rewrite Nat.add_1_r.
@@ -1503,10 +1503,8 @@ Section pipe_links_line.
       { lia. }
       { exact Hpin. }
       { exact HP. }
-      { replace (pline_of (bodies_of I !!! (nlines I - 1)%nat))
-          with (pline_at I) by reflexivity. exact (pnoc_of_ok (pline_at I)). }
-      { replace (pline_of (bodies_of I !!! (nlines I - 1)%nat))
-          with (pline_at I) by reflexivity. exact Hhd2. }
+      { exact (pnoc_of_ok (pline_at I)). }
+      { exact Hhd2. }
       iIntros "Hres". iApply "HΦ". rewrite /pwc_sp.
       iDestruct "Hres" as "[(Htn' & Hps' & Hcs' & HE') | #HT]"; last by iRight.
       iLeft. iExists ps, (cs ++ [pnoc_of (pline_at I)]), (S P).

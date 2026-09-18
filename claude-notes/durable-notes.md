@@ -929,6 +929,9 @@ Five ways to be silently miscounted, all of them green builds:
   but it instantiates nothing, and the report counts only instantiations — so
   the function reads *assumed*. `LinkPrputc.v` was that shape; the fix is the
   ordinary one, a functor in `Proof<F>.v` and a one-line link.
+- **`iris/_CoqProject` is a file list, not a log.** No lane names, deliverable
+  numbers or explanations as `#` comments beside the entries (owner's rule);
+  the `.v` file's own header is where a file explains itself.
 - **The scan is keyed off `iris/_CoqProject`**, so adding a file to `iris/` means
   adding it there. A file deliberately out of the build is descoped by commenting
   its row to a bare `# Foo.v`, which is the syntax `--check` recognizes; a

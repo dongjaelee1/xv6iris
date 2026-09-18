@@ -265,6 +265,9 @@ Section UkShRedirBody.
           ⌜ m !!! Regidx s1_idx = (mword_of_int s0 : mword 64) ⌝ -∗
           ⌜ UkShRedirLine.ushs_line_is ws file fb 0%nat len ⌝ -∗
           ⌜ ws = last_ws I ⌝ -∗
+          (* the era's own line at that input (the PROGRAM STREAM): the
+             slot the loop left says the input's last body PARSES *)
+          ⌜ FileDisc.fbody_ok (UkSh.ush_lastbody I) ⌝ -∗
           ⌜ 0 < s0 ⌝ -∗ ⌜ s0 + Z.of_nat len + 1 < Z64 ⌝ -∗
           ⌜ s0 + Z.of_nat len < 2 ^ 38 ⌝ -∗
           ⌜ 8344 <= sz ⌝ -∗ ⌜ UserPtTree.pgroundup sz = sz ⌝ -∗
@@ -300,14 +303,14 @@ Section UkShRedirBody.
   Proof using .
     iIntros "#Hl". rewrite /UkShFork.ushf_child_law_at.
     iIntros "!>" (N' h m dw dv s0 len ws g sz ld n I)
-      "%Hpeq %Hs1 %Hline %Hlws %Hs0 %Hs64 %Hs38 %Hszlo %Hszal %Hszok
+      "%Hpeq %Hs1 %Hline %Hlws %Hfbk %Hs0 %Hs64 %Hs38 %Hszlo %Hszal %Hszok
        %Hrows #Hcode #Hpcode #Hpro #Hjt Hstr Hws Hsy Hstd Hcwd Hch HM Hcr Hrun".
     destruct Hline as [ file Hline ].
     iApply ("Hl" $! N' h m dw dv s0 len ws file g sz ld n I
-              with "[%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%]
+              with "[%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%]
                     Hcode Hpcode Hpro Hjt Hstr Hws Hsy Hstd Hcwd Hch HM
                     Hcr Hrun");
-      [ exact Hpeq | exact Hs1 | exact Hline | exact Hlws
+      [ exact Hpeq | exact Hs1 | exact Hline | exact Hlws | exact Hfbk
       | exact Hs0 | exact Hs64 | exact Hs38 | exact Hszlo | exact Hszal
       | exact Hszok | exact Hrows ].
   Qed.
@@ -319,13 +322,13 @@ Section UkShRedirBody.
   Proof using .
     iIntros "#Hl". rewrite /sh_redir_child_law.
     iIntros "!>" (N' h m dw dv s0 len ws file g sz ld n I)
-      "%Hpeq %Hs1 %Hline %Hlws %Hs0 %Hs64 %Hs38 %Hszlo %Hszal %Hszok
+      "%Hpeq %Hs1 %Hline %Hlws %Hfbk %Hs0 %Hs64 %Hs38 %Hszlo %Hszal %Hszok
        %Hrows #Hcode #Hpcode #Hpro #Hjt Hstr Hws Hsy Hstd Hcwd Hch HM Hcr Hrun".
     iApply ("Hl" $! N' h m dw dv s0 len ws g sz ld n I
-              with "[%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%]
+              with "[%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%]
                     Hcode Hpcode Hpro Hjt Hstr Hws Hsy Hstd Hcwd Hch HM
                     Hcr Hrun");
-      [ exact Hpeq | exact Hs1 | by exists file | exact Hlws
+      [ exact Hpeq | exact Hs1 | by exists file | exact Hlws | exact Hfbk
       | exact Hs0 | exact Hs64 | exact Hs38 | exact Hszlo | exact Hszal
       | exact Hszok | exact Hrows ].
   Qed.

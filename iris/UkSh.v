@@ -2068,17 +2068,32 @@ Section UkSh.
      that equation, and the gets exit is the only producer of it
      ([ush_gets_done_line]).  The taint arm is the same as [ush_posb]'s and
      says nothing about either. *)
+  (* THE INPUT'S LAST BODY, which is the one the slot's equation is about
+     ([last_ws I] is its words). *)
+  Definition ush_lastbody (I : list (bv 8)) : list (bv 8) :=
+    bodies_of I !!! (nlines I - 1)%nat.
+
+  (* ...AND THE THIRD CONJUNCT (the PROGRAM STREAM): that body PARSES.
+     [last_ws I = ws] says the slot's words are the input's last line's,
+     and that is NOT enough to say which LINE the era filed -- a body with
+     a trailing blank has the same words as the body without it, and only
+     one of the two parses.  An era with more than one line shape has to
+     know which constructor its own input carries ([FileDisc.fline]), and
+     [FileDisc.fbody_ok_echo] turns this conjunct plus [EchoDisc.line_ok]
+     of the words into exactly that.  The echo era never reads it. *)
   Definition ush_posw (l : list fdstate) (ws : list (list (bv 8)))
       : iProp Σ :=
     ((∃ I : list (bv 8),
-        ⌜rest_of I = [] /\ last_ws I = ws⌝ ∗ Pm I ∗ ush_wcp l I 3%nat)
+        ⌜rest_of I = [] /\ last_ws I = ws
+         /\ FileDisc.fbody_ok (ush_lastbody I)⌝
+        ∗ Pm I ∗ ush_wcp l I 3%nat)
      ∨ (T ∗ ush_pos))%I.
 
   Lemma ush_posb_of_posw (l : list fdstate) (ws : list (list (bv 8))) :
     ush_posw l ws -∗ ush_posb l 3%nat.
   Proof using .
     rewrite /ush_posw /ush_posb. iIntros "[H | H]"; [ | iRight; iExact "H" ].
-    iLeft. iDestruct "H" as (I) "([%Hr %Hw] & H & Hc)". iExists I.
+    iLeft. iDestruct "H" as (I) "([%Hr [%Hw %Hfb]] & H & Hc)". iExists I.
     iSplitR; [ by iPureIntro | ]. iFrame "H Hc".
   Qed.
 
@@ -2533,6 +2548,40 @@ Section UkSh.
     { rewrite app_assoc last_ws_snoc_nl Hrest Hws. reflexivity. }
     assert (Hrnl : rest_of (I0 ++ J ++ [wl_nl]) = []).
     { rewrite app_assoc. exact (rest_of_snoc_nl (I0 ++ J)). }
+    (* ...AND THE BODY IT CLOSED PARSES (the PROGRAM STREAM): the buffer
+       holds [J] and it holds [line_bytes lu], so [J] IS [lu]'s body, and
+       a constructor's own body parses back to it
+       ([FileDisc.parse_line_body]).  This is the conjunct
+       [ush_posw] carries for an era with more than one line shape. *)
+    assert (Hlb : ush_lastbody (I0 ++ J ++ [wl_nl]) = J).
+    { rewrite /ush_lastbody app_assoc lastbody_snoc_nl. exact Hrest. }
+    assert (Hlbl : length (FileDisc.line_body lu) = length J).
+    { pose proof Hlen as HL.
+      rewrite FileDisc.line_bytes_body length_app in HL.
+      cbn [length] in HL. lia. }
+    assert (Hbody : FileDisc.line_body lu = J).
+    { apply list_eq. intro i.
+      destruct (decide (i < length J)%nat) as [Hi | Hi].
+      - rewrite (list_lookup_lookup_total_lt (FileDisc.line_body lu) i
+                   ltac:(lia)).
+        rewrite (list_lookup_lookup_total_lt J i Hi).
+        f_equal.
+        destruct Hli as (_ & _ & Hbytes).
+        pose proof (Hbytes i ltac:(lia)) as Hfi.
+        rewrite Nat.add_0_l in Hfi.
+        pose proof (Hby i Hi) as Hji.
+        assert (Hbl : FileDisc.line_bytes lu !!! i
+                      = FileDisc.line_body lu !!! i).
+        { rewrite FileDisc.line_bytes_body.
+          rewrite (lookup_total_app_l (FileDisc.line_body lu) [wl_nl] i
+                     ltac:(lia)).
+          reflexivity. }
+        rewrite <- Hbl. rewrite <- Hfi. exact Hji.
+      - rewrite (lookup_ge_None_2 (FileDisc.line_body lu) i ltac:(lia)).
+        rewrite (lookup_ge_None_2 J i ltac:(lia)). reflexivity. }
+    assert (Hfbk : FileDisc.fbody_ok (ush_lastbody (I0 ++ J ++ [wl_nl]))).
+    { rewrite Hlb. rewrite <- Hbody.
+      exact (FileDisc.fbody_ok_of lu (proj1 Hli)). }
     rewrite /ush_gets_done_at.
     iIntros "Hwc H".
     iDestruct "Hwc" as "[[%Hrow Hc] | [%Hcl Hb]]".
@@ -2541,7 +2590,9 @@ Section UkSh.
         [ iPureIntro; split; [ exact HD | split; [ by rewrite Hlen | exact Hli ] ] | ].
       iDestruct (ush_wc_read I0 J Hnl with "H Hc") as "[H Hc]".
       rewrite /ush_posw. iLeft. iExists (I0 ++ J ++ [wl_nl]).
-      iSplitR; [ iPureIntro; split; [ exact Hrnl | exact Hlast ] | ].
+      iSplitR;
+        [ iPureIntro; split;
+          [ exact Hrnl | split; [ exact Hlast | exact Hfbk ] ] | ].
       iFrame "H". rewrite /ush_wcp. iLeft. iFrame "Hc". by iPureIntro.
     - iDestruct (ush_wb_read I0 J Hnl with "H Hb") as "[H #HT]".
       iRight. iRight. iFrame "HT".

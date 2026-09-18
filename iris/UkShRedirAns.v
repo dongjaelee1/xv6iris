@@ -50,6 +50,11 @@ Require Import UCodeShK.
 Require Import CtxIdDefs.
 Require User.ShSyms.
 Require Import FdSlots UserFd.
+Require Import ArgPath.            (* [arg_path_of]: the name the ecall reads *)
+Require Import PathElems.          (* [path_elems] *)
+Require Import FsAbsEra.           (* [np_elems] / [um_start_of] *)
+Require Import FsImg.              (* [ROOTINO] *)
+Require Import FsImgCheck.         (* [fname_f] *)
 Require Import ChildTok.
 Require Import UserCwd.
 Local Open Scope Z_scope.
@@ -97,11 +102,33 @@ Section UkShRedirAns.
      address out; the cwd crosses unchanged (open does not move it) and is
      what an application's bundle is stated at
      ([UkRunSys.wp_uk_ecall_open_recv_img]). *)
+  (* ...AND WHAT THE CALLER HANDS IT ABOUT THE NAME (the PROGRAM STREAM).
+     The four premises below were MISSING and the definition was unusable
+     without them: the call is given [a0 = file], an ADDRESS, and the
+     kernel's open resolves a PATH -- so a supplier that knows only the
+     address cannot say the call lands on `f`, and [ush_open_ans2]'s fd arm
+     (which names the DEED at `f`) could not be produced by anyone.  What
+     [UkFileOpen.wp_uk_ecall_open_create_deed_d] asks for is exactly this:
+     the bytes at [file] as the image the ecall reads
+     ([ArgPath.arg_path_of]), that path having no non-path elements, being
+     resolved from the caller's own cwd, and ending in [FsImgCheck.fname_f].
+     THE LEDGER'S ANSWER IS THE FIFTH: the fd arm says the descriptor is
+     fd ONE, which is the caller's business ([UserFd.ualloc_std]) -- the
+     redirect child closed fd 1 before it called, so 1 is the lowest closed
+     slot of its own table. *)
   Definition ush_open_call2 (N : uk_names Σ) (cwdv file mode : Z)
       (l : list fdstate) (K : fdtype -> iProp Σ) (Kf : iProp Σ) : iProp Σ :=
-    (∀ (h : CpuId) (m : regfile) (av : nat),
+    (∀ (h : CpuId) (m : regfile) (av : nat)
+       (Img : gmap Z (bv 8)) (pl : list (bv 8)),
        ⌜ m !!! Regidx a0_idx = (mword_of_int file : mword 64) ⌝ -∗
        ⌜ m !!! Regidx a1_idx = (mword_of_int mode : mword 64) ⌝ -∗
+       ⌜ forall M : gmap Z (bv 8), uimg_sub Img M ->
+           arg_path_of M (mword_of_int file : mword 64) pl ⌝ -∗
+       ⌜ np_elems pl = [] ⌝ -∗
+       ⌜ um_start_of cwdv pl = FsImg.ROOTINO ⌝ -∗
+       ⌜ list_basics.last (path_elems pl) = Some FsImgCheck.fname_f ⌝ -∗
+       ⌜ fd_lowest_closed l = Some 1%nat ⌝ -∗
+       ([∗ map] a ↦ b ∈ Img, ubyteq (ukn_d N) DfracDiscarded a b) -∗
        shk_code (ukn_t N) -∗
        UserCwd.ucwd (ukn_cwd N) cwdv -∗
        UserFd.ustd (ukn_fd N) l -∗

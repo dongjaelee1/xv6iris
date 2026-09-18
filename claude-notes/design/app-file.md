@@ -560,7 +560,28 @@ unowned critical item (WRITE-RELAY-3's `TB` guard).  RULES, replacing
   discharged, 6d645865c); `cat_open_hand` discharged and `redir_K`
   restated with its taint arm at 023d1fff8 (no metric change); 16 at
   e455487d8 (7/8/1: PROGRAM STREAM's `Hcat_body`, era step, H' applied,
-  `sh_tag_law_file`/`Hexecfail`/`Hpanic`).
+  `sh_tag_law_file`/`Hexecfail`/`Hpanic`); 14 at 0edba843f (7/6/1:
+  `Hchild_echo` and `sh_child_law_file`).
+- RULING LINE-OK (2026-09-18, PROGRAM-STREAM stretch 4): the fork's slot
+  (`UkSh.ush_posw`) told the child only `last_ws I = ws`, and a body with a
+  trailing blank has the same words as one without, so the era's line
+  constructor was undecidable at the child.  One conjunct in the slot,
+  `FileDisc.fbody_ok (ush_lastbody I)` ("the input's last body parses"),
+  free at the producer; `sh_exec_sup_echo_wq`'s `line_ok` guard is a
+  parameter, the file's the stage's `ck_lineok`.  The diagnostic carrier
+  came with the same guard, so `pdiag` is not on the program stream's
+  critical path.
+- RULING CAT-DEED (2026-09-18, PROGRAM-STREAM stretch 5): cat's exit
+  payload returns the WHOLE deed on every arm — `catq_cat := (catq_filed
+  RCRan ∨ catq_filed RCNoOpen) ∗ fown r (Some (i, bs))` — because the lend
+  gives cat both fractions, cat's reads never move the deed's state, and
+  `cat_hold_at`'s fraction survives a tainted read.  sh's next hold takes
+  it whole with the tie by `cat_tie`'s step.  Also: `ush_open_call2` said
+  nothing about the bytes at the address it handed the open, nor the cwd —
+  it now carries the name as the image the ecall reads, the root cwd and
+  the lowest closed fd (fixed at 6104b5930); and `UkFileOpen` must take
+  `uprogSG` as a section parameter (its corollaries were at the ambient
+  `uprogSG_gen`, unusable by sh's child at `uprogSG_free`).
 - RULING READ-HELD (2026-09-18, KERNEL-STREAM §3a): the read's hand mode
   is the WRITE side's landed shape mirrored — `file_read_piece_adv` as
   `awrite_full_adv`'s twin (the half in the closure, agree/advance/return
@@ -604,7 +625,15 @@ unowned critical item (WRITE-RELAY-3's `TB` guard).  RULES, replacing
   `fwc_ban_done_pro_at`); `file_Wbf_at_of_boot` = /init's first credential
   out of `file_boot` alone.  `sh_hold_at` exists twice (UShRound's and
   UInitFileCons's, syntactically the same); the round's wins at the
-  assembly.
+  assembly.  Round 5 (989ca2114): the `pdiag` field set (eleven fields,
+  `lk_pban` the base) at all three instances, the unindexed one by lifting
+  through the existential closure; `UInitDiag` generalised over the
+  record with `UInitBoot.v` unmoved.  Two seams left before
+  `file_Hinit_boot`: the prompt law's Hold form (measure: the record's
+  prompt step decides the block-first alternative from `s0/cs0/I0`, so it
+  should be a frame), and `init_exec_sup_of_sh_slot`'s hard-coded echo
+  discipline (a parameterisation).  `UInitFile.v` may import `UShRound`:
+  the file audit does not see the program tier.
 - RULING H' (2026-09-18, INIT-FILE findings 3.1/3.2): the round's hold is
   tied to the era's boot state BY A SHARED INDEX, not by `f0_lb` (which
   only exists after the era's first console byte, so `Wbf []` was

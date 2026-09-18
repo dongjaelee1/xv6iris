@@ -153,6 +153,22 @@ Section UkShPipeParse.
      uword γd (t + 8) (mword_of_int pl) ∗
      uword γd (t + 16) (mword_of_int pr))%I.
 
+  (* the node's own address facts, handed back with the node -- the twin of
+     [UkShRedirPc.ushp_redir_node_addr], and what [nulterminate]'s walk
+     needs before it may address the children *)
+  Lemma ushp_pipe_node_addr (t pl pr : Z) :
+    ushp_pipe_node t pl pr -∗
+    ⌜ 0 < t /\ t mod 8 = 0 /\ t + 40 < Z64 ⌝ ∗ ushp_pipe_node t pl pr.
+  Proof using .
+    iIntros "Hn". rewrite {1}/ushp_pipe_node.
+    iDestruct "Hn" as "(%H1 & %H2 & %H3 & Hr)".
+    iSplitR; [ iPureIntro; exact (conj H1 (conj H2 H3)) | ].
+    rewrite /ushp_pipe_node.
+    iSplitR; [ iPureIntro; exact H1 | ].
+    iSplitR; [ iPureIntro; exact H2 | ].
+    iSplitR; [ iPureIntro; exact H3 | ]. iExact "Hr".
+  Qed.
+
   Lemma ushp_pipe_close (s0 t pl pr : Z) (l r : ushp_cmd) :
     ushp_pipe_node t pl pr -∗
     ushp_tree s0 pl l -∗ ushp_tree s0 pr r -∗

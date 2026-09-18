@@ -946,12 +946,8 @@ Section SpecFileread.
         disconnected object leaves.  Cat's cursor comes back inside its own
         receipt [F.(pf_recv)], which is where [UCatKernel.cat_hold_at] puts
         it. *)
-     | FdOpen true _ (FdInode i γo OffParked) =>
-         P ∗ pf_at (aread_commit_at (fs_gamma_L fsc_fs) appE i γo) F
-     | FdOpen true _ (FdInode i γo OffHeld) =>
-         P ∗ (pf_at (aread_commit_adv (fs_gamma_L fsc_fs) appE i γo) F
-              ∨ (pf_at (aread_commit_at (fs_gamma_L fsc_fs) appE i γo) F
-                 ∗ app_taint))
+     | FdOpen true _ (FdInode i γo om) =>
+         P ∗ aread_in_om om (fs_gamma_L fsc_fs) appE i γo F
      | FdOpen true _ (FdDevice mj) =>
          if decide (mj = CONSOLE)
          then cons_acc fsc_cons app_sup (fun cur dc => P ∗ Rd cur dc)
@@ -1410,33 +1406,33 @@ Section SpecFileread.
      One-liners, so that no walk ever has to unfold the two matches and
      every arm names the fact it is standing on. *)
 
-  Lemma fileread_in_inode wb i γo n F Rd Rin Rp Rpe P :
-    fileread_in (FdOpen true wb (FdInode i γo OffParked)) n F Rd Rin Rp Rpe P -∗ P -∗
-    P ∗ pf_at (aread_commit_at (fs_gamma_L fsc_fs) appE i γo) F.
+  Lemma fileread_in_inode om wb i γo n F Rd Rin Rp Rpe P :
+    fileread_in (FdOpen true wb (FdInode i γo om)) n F Rd Rin Rp Rpe P -∗ P -∗
+    P ∗ aread_in_om om (fs_gamma_L fsc_fs) appE i γo F.
   Proof using . rewrite /fileread_in. iIntros "H HP". iApply ("H" with "HP"). Qed.
 
   (* [P] FIRST, before the arm's own payout: a caller [iApply]s these with
      the payload in hand and BUILDS the payout in the goal that is left,
      which is the shape the landed walks are written in. *)
-  Lemma fileread_extra_inode (gn : gname) (pt : uptd) wb i γo n F Rd Rin Rp Rpe P r M' addr :
+  Lemma fileread_extra_inode (gn : gname) (pt : uptd) om wb i γo n F Rd Rin Rp Rpe P r M' addr :
     P -∗ read_arms (fs_gamma_L fsc_fs) i γo pt n F r M' addr -∗
-    fileread_extra gn pt (FdOpen true wb (FdInode i γo OffParked)) n F Rd Rin Rp Rpe P r M' addr.
+    fileread_extra gn pt (FdOpen true wb (FdInode i γo om)) n F Rd Rin Rp Rpe P r M' addr.
   Proof using . iIntros "HP H". rewrite /fileread_extra. iFrame "HP". iExact "H". Qed.
 
   (* ...and the two at a state the walk holds only through an EQUATION: a
      descriptor's shape is derived from its content, not matched on. *)
-  Lemma fileread_in_inode_of (st : fdstate) (wb : bool) (i : Z) (γo : gname)
+  Lemma fileread_in_inode_of (st : fdstate) (om : offmode) (wb : bool) (i : Z) (γo : gname)
       n F Rd Rin Rp Rpe P :
-    st = FdOpen true wb (FdInode i γo OffParked) ->
+    st = FdOpen true wb (FdInode i γo om) ->
     fileread_in st n F Rd Rin Rp Rpe P -∗ P -∗
-    P ∗ pf_at (aread_commit_at (fs_gamma_L fsc_fs) appE i γo) F.
+    P ∗ aread_in_om om (fs_gamma_L fsc_fs) appE i γo F.
   Proof using .
     intros ->. rewrite /fileread_in. iIntros "H HP". iApply ("H" with "HP").
   Qed.
 
-  Lemma fileread_extra_inode_of (gn : gname) (pt : uptd) (st : fdstate) (wb : bool) (i : Z) (γo : gname)
+  Lemma fileread_extra_inode_of (gn : gname) (pt : uptd) (st : fdstate) (om : offmode) (wb : bool) (i : Z) (γo : gname)
       n F Rd Rin Rp Rpe P r M' addr :
-    st = FdOpen true wb (FdInode i γo OffParked) ->
+    st = FdOpen true wb (FdInode i γo om) ->
     P -∗ read_arms (fs_gamma_L fsc_fs) i γo pt n F r M' addr -∗
     fileread_extra gn pt st n F Rd Rin Rp Rpe P r M' addr.
   Proof using .

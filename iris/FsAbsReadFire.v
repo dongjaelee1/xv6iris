@@ -737,6 +737,64 @@ Section ReadFire.
     iApply (off_supply_held E γo off d with "Hu").
   Qed.
 
+  (* =================================================================== *)
+  (*  THE READ'S INPUT AND ITS FIRE, KEYED ON THE ROW'S MODE               *)
+  (*  (lane OFF-LINK-5)                                                    *)
+  (* =================================================================== *)
+  (* WHAT A DESCRIPTOR'S READ HANDS IN, AT ITS ROW'S OFFSET MODE.  A PARKED
+     row pays what it always paid.  A HELD one pays [link ∨ taint]: the LINK
+     is the client-advanced commit, whose closure holds the program's own
+     half and whose phase 2 hands the box's arm back ADVANCED; the TAINT is
+     the landed commit beside [app_taint], which is what the generic tier
+     pays (the survey's Fact A) and what a disconnected object leaves. *)
+  Definition aread_in_om (om : offmode) Γ (E : coPset) (i : Z) (γo : gname)
+      (F : pfam Σ (aview -> nat -> anode -> nat -> iProp Σ)) : iProp Σ :=
+    match om with
+    | OffParked => pf_at (aread_commit_at Γ E i γo) F
+    | OffHeld => (pf_at (aread_commit_adv Γ E i γo) F
+                  ∨ (pf_at (aread_commit_at Γ E i γo) F ∗ app_taint))%I
+    end.
+
+  (* ...AND THE ONE FIRE THE WALK CALLS, which is where the mode is read and
+     the only place it is.  The supplier comes off the row itself
+     ([FdSlots.foff_row], which IS [OffGv.off_user_inv] at a parked inode row
+     and [emp] at a held one), off the taint on the disconnected arm, or --
+     on the LINK arm -- not at all, because the client's own node moved the
+     shadow.  Its post is [arf_read_fire]'s letter for letter, so
+     [ProofFileread]'s two call sites do not change shape. *)
+  Lemma arf_read_fire_om (om : offmode) (γfs : fs_names) (E : coPset) (dq : dfrac)
+      (F : pfam Σ (aview -> nat -> anode -> nat -> iProp Σ)) (i : Z) (γo : gname)
+      (off d : nat) (rw ww : bool) (n : fs_node) :
+    ↑ftopN ∪ ↑appN ⊆ E ->
+    (off <= MAXFILE * BSIZE)%nat ->
+    anode_size_ok (abs_row n) ->
+    fn_type n <> 0 ->
+    ftop_inv γfs -∗ foff_row (FdOpen rw ww (FdInode i γo om)) -∗
+    aread_in_om om (fs_gamma_L γfs) appE i γo F -∗
+    top_frag_q (fs_gamma_L γfs) dq i n -∗
+    off_link γo (Z.of_nat off) ={E}=∗
+      top_frag_q (fs_gamma_L γfs) dq i n
+      ∗ off_link γo (Z.of_nat (off + d))
+      ∗ ∃ av : aview,
+          ⌜arow_at av i (abs_row n)⌝ ∗ F.(pf_recv) av off (abs_row n) d.
+  Proof using .
+    intros HE Hoff Hsz Hnz.
+    assert (Hfoff : ↑foffN ⊆ E).
+    { etrans; [| exact HE]. rewrite /foffN /appN. solve_ndisj. }
+    destruct om; rewrite /aread_in_om.
+    - iIntros "#Hi #Hrow Hcm Hf Hg".
+      iApply (arf_read_fire γfs E dq F i γo off d n HE Hoff Hsz Hnz
+                with "Hi [Hrow] Hcm Hf Hg").
+      iApply (foff_row_inode_of _ rw ww i γo eq_refl with "Hrow").
+    - iIntros "#Hi _ [Hcm | [Hcm #Ht]] Hf Hg".
+      + iApply (arf_read_fire_adv γfs E dq F i γo off d n HE Hoff Hsz Hnz
+                  with "Hi Hcm Hf Hg").
+      + iMod (arf_read_fire_gen γfs E dq True F i γo off d n HE Hoff Hsz Hnz
+                with "Hi [] Hcm Hf Hg") as "(Hf & Hg & _ & Hav)".
+        { iApply (off_supply_taint E γo off d with "Ht"). }
+        iModIntro. iFrame "Hf Hg Hav".
+  Qed.
+
   (* the [DfracOwn 1] reading, which is the spelling fileread holds
      ([top_frag] whole, from its [ilock] to its [iunlock]) *)
   Lemma arf_read_fire_1 (γfs : fs_names) (E : coPset)

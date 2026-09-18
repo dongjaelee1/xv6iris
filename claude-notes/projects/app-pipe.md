@@ -3509,7 +3509,15 @@ deletes one premise line from each and nothing else moves.
 
 ### ULINE-LPIPE (2026-09-18) — `LPipe` joins `FileDisc.uline` and the tree stays green, but the constructor is NOT the whole bill: three FILE round-trip lemmas need a GUARD, `ralt_ok := False` is refuted at the statement, and `UkSh.ush_posw`'s third conjunct was the FILE PARSER hard-coded into the era-generic loop
 
-Branch `app-pipe/uline-lpipe`, commits `64090bc54`, `f52642519`, `38ddf0def` (plus this notes commit).  Whole-tree
+Branch `app-pipe/uline-lpipe`, commits `64090bc54`, `f52642519`,
+`38ddf0def`, `bf092985d`, and the merge of `main` (`48efdcd1a`: upstream's
+leaf-instance naming pass, `FileState.fst` -> `fstate`, `StringBytes` split
+out of `RiscvPtsto`).  **Every `.v` auto-merged** — the one conflict was
+this worklist.  Checked by hand after it: all 30 four-arm
+`destruct l as [ws | ws | | ws]` sites survive (`FileDisc` 8, `FileDiscDec`
+4, `FileOutPure` 3, `FileLinksLine` 15; zero three-arm ones left), the
+RENAMED `fstate_ok_fsm` / `fstate_upto_vs_nil` carry their `LPipe` case,
+and every u-tier edit is in place.  Whole-tree
 `ec2-lane.sh uline build` **RC=0**; no `Admitted`; `Proof using` on every
 new result.  `make audit-file-only` **FOURTEEN**, textually the expected list (1 funext + the 2 reservation `Parameter`s + 11 PrimString/PrimInt63); `make audit-echo-only`
 **FOURTEEN**, unmoved.

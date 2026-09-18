@@ -123,10 +123,36 @@ Definition fname_f : list (bv 8) := sb "f"%string.
 Definition suf_gtf : list (bv 8) := sb " > f"%string.
 Definition cmd_cat_f : list (bv 8) := sb "cat f"%string.
 
+(* ---- THE PIPELINE APPLICATION'S LINE (lane ULINE-LPIPE) --------------- *)
+(* sh's lexer sees the bar as a symbol token; the pipeline is CANONICAL --
+   one blank each side, and the right-hand command is the single word
+   [cat] with no argument -- which is the shape the sh walk (app-pipe
+   design section 5.1) is stated at.  These are [PipeDisc]'s [wl_bar] and
+   [suf_pipecat] spelled again here, because [PipeDisc] reads this file
+   and not the other way round; [PipeDisc.uline_of_pline] proves the two
+   readings equal.
+
+   WHY THE CONSTRUCTOR IS HERE AND NOT IN A SIBLING TYPE.
+   [UkSh.ush_line_at] -- the sh loop's line fact, which every era shares --
+   reads exactly three projections of [uline] ([uline_ok], [line_bytes]
+   and, through [ush_rest_line_at], [uline_ws]), so an era whose lines are
+   not [uline]s cannot use the loop at all.  [parse_line] is UNTOUCHED, so
+   it never answers [LPipe] ([parse_line_not_pipe]), [lines_of]'s range is
+   exactly the three it was, and every FILE statement quantified over
+   [disc_input_f] means what it meant.  The price is the guard
+   [uline_nopipe] on the three round-trip lemmas below, which say that the
+   model's lines ARE the parser's range and are therefore false at a
+   constructor outside it. *)
+Definition fd_bar : bv 8 := Z_to_bv 8 124%Z.
+Definition fd_w_bar : list (bv 8) := sb "|"%string.
+Definition fd_w_cat : list (bv 8) := sb "cat"%string.
+Definition suf_barcat : list (bv 8) := sb " | cat"%string.
+
 Inductive uline :=
   | LEcho (ws : list (list (bv 8)))
   | LEchoF (ws : list (list (bv 8)))
-  | LCat.
+  | LCat
+  | LPipe (ws : list (list (bv 8))).
 
 Global Instance uline_eq_dec : EqDecision uline.
 Proof using. solve_decision. Defined.
@@ -145,6 +171,11 @@ Definition uline_ws (l : uline) : list (list (bv 8)) :=
   | LEcho ws => ws
   | LEchoF ws => ws
   | LCat => wl_words cmd_cat_f
+  (* the WHOLE body's words, which is what [UkSh]'s [Hdsc_line] demands
+     ([uline_ws lu = wl_words (rest_of I)]); [PipeDisc.pline_ws] is the
+     LEFT command's alone and cannot be reused here.  The two words are
+     the bar and [cat]; [uline_ws_pipe] below is the equation. *)
+  | LPipe ws => ws ++ [fd_w_bar; fd_w_cat]
   end.
 
 (* THE BODY the console cut keeps, and the LINE the user typed: the body
@@ -155,6 +186,7 @@ Definition line_body (l : uline) : list (bv 8) :=
   | LEcho ws => wl_body ws
   | LEchoF ws => wl_body ws ++ suf_gtf
   | LCat => cmd_cat_f
+  | LPipe ws => wl_body ws ++ suf_barcat
   end.
 
 Definition line_bytes (l : uline) : list (bv 8) := line_body l ++ [wl_nl].
@@ -170,10 +202,54 @@ Definition uline_ok (l : uline) : Prop :=
   | LEcho ws => line_ok ws
   | LEchoF ws => line_ok ws /\ (length (line_bytes (LEchoF ws)) < line_max)%nat
   | LCat => True
+  | LPipe ws => line_ok ws /\ (length (line_bytes (LPipe ws)) < line_max)%nat
   end.
 
 Global Instance uline_ok_dec l : Decision (uline_ok l).
 Proof using. destruct l; rewrite /uline_ok; apply _. Defined.
+
+(* ---- THE PIPE LINE'S WORDS ARE ITS BODY'S PARSE ---------------------- *)
+(* [uline_ws (LPipe ws)] is spelled as the left command's words plus the
+   two the suffix adds, and this is the equation that makes that spelling
+   the one [UkSh]'s [Hdsc_line] needs.  [wl_words_body] cannot be used:
+   the bar is not [wl_alnum], so [ws ++ [fd_w_bar; fd_w_cat]] is not
+   [wl_wf] and the round trip is not available.  What IS true is that a
+   well-formed body absorbs any tail that starts a fresh word. *)
+Lemma fd_wl_words_body_app (ws : list (list (bv 8))) (L : list (bv 8))
+    (rest : list (list (bv 8))) :
+  wl_wf ws -> ws <> [] -> wl_words L = [] :: rest ->
+  wl_words (wl_body ws ++ L) = ws ++ rest.
+Proof using.
+  revert L rest.
+  induction ws as [| w r IH]; intros L rest Hwf Hne HL; [by destruct (Hne eq_refl) |].
+  destruct (wl_wf_cons w r Hwf) as [[Hw0 Ha] Hr].
+  destruct r as [| w1 r1].
+  - cbn [wl_body wl_tail]. rewrite app_nil_r.
+    rewrite (wl_words_prepend w L [] rest Ha HL) app_nil_r. reflexivity.
+  - assert (Hne1 : (w1 :: r1) <> []) by discriminate.
+    rewrite wl_body_cons wl_tail_cons.
+    rewrite <- (app_assoc w (wl_sp :: wl_body (w1 :: r1)) L).
+    cbn [app].
+    rewrite (wl_words_prepend w (wl_sp :: (wl_body (w1 :: r1) ++ L))
+               [] ((w1 :: r1) ++ rest) Ha
+               ltac:(rewrite wl_words_cons_sp (IH L rest Hr Hne1 HL);
+                     reflexivity)).
+    rewrite app_nil_r. reflexivity.
+Qed.
+
+Lemma wl_words_barcat : wl_words suf_barcat = [] :: [fd_w_bar; fd_w_cat].
+Proof using. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
+
+Lemma uline_ws_pipe (ws : list (list (bv 8))) :
+  line_ok ws -> wl_words (line_body (LPipe ws)) = uline_ws (LPipe ws).
+Proof using.
+  intro Hok.
+  assert (Hne : ws <> []).
+  { pose proof (line_ok_pos ws Hok) as Hp.
+    destruct ws as [| w r]; [cbn [length] in Hp; lia | discriminate]. }
+  exact (fd_wl_words_body_app ws suf_barcat [fd_w_bar; fd_w_cat]
+           (line_ok_wf _ Hok) Hne wl_words_barcat).
+Qed.
 
 (* ---- the redirect suffix, and the bytes a line body may carry -------- *)
 
@@ -205,6 +281,19 @@ Proof using.
 Qed.
 
 Lemma suf_gtf_gt : wl_gt ∈ suf_gtf.
+Proof using. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
+
+(* ...and the bar's mirrors, which is how a pipe body is refuted where a
+   redirect body is refuted by the '>' *)
+Lemma fd_bar_not_body : ~ wl_body_byte fd_bar.
+Proof using.
+  rewrite /wl_body_byte /wl_alnum /fd_bar. intros [H | H].
+  - assert (Hv : bv_unsigned (Z_to_bv 8 124%Z) = 124%Z) by (by vm_compute). lia.
+  - apply (f_equal bv_unsigned) in H. rewrite wl_sp_val in H.
+    assert (Hv : bv_unsigned (Z_to_bv 8 124%Z) = 124%Z) by (by vm_compute). lia.
+Qed.
+
+Lemma suf_barcat_bar : fd_bar ∈ suf_barcat.
 Proof using. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
 
 (* ---- THE PARSER ------------------------------------------------------ *)
@@ -249,6 +338,44 @@ Definition uline_of (b : list (bv 8)) : uline := default inhabitant (parse_line 
 
 (* the word lists of a body list, in order *)
 Definition lines_of (I : list (bv 8)) : list uline := uline_of <$> bodies_of I.
+
+(* ---- [LPipe] IS OUT OF THE PARSER'S RANGE ---------------------------- *)
+(* The whole point of adding the constructor additively: [parse_line] is
+   untouched, so no input the FILE application quantifies over ever files
+   an [LPipe] line, [lines_of]'s range is the three constructors it was,
+   and [alts_ok], the determinacy theorem and [AppFile]'s conclusion mean
+   what they meant.  This is the fact that makes every [LPipe] arm added
+   below a DEAD arm, and it is the guard the three round-trip lemmas
+   carry. *)
+Definition uline_nopipe (l : uline) : Prop := forall ws, l <> LPipe ws.
+
+Lemma uline_nopipe_echo ws : uline_nopipe (LEcho ws).
+Proof using. intros ws' H. discriminate H. Qed.
+Lemma uline_nopipe_echof ws : uline_nopipe (LEchoF ws).
+Proof using. intros ws' H. discriminate H. Qed.
+Lemma uline_nopipe_cat : uline_nopipe LCat.
+Proof using. intros ws' H. discriminate H. Qed.
+
+Lemma parse_line_not_pipe b ws : parse_line b <> Some (LPipe ws).
+Proof using.
+  rewrite /parse_line. case_decide as Hc; [discriminate |].
+  destruct (strip_gtf b) as [c |]; case_decide; discriminate.
+Qed.
+
+Lemma uline_of_nopipe b : uline_nopipe (uline_of b).
+Proof using.
+  intros ws Heq.
+  destruct (parse_line b) as [l |] eqn:Hp; rewrite /uline_of Hp in Heq;
+    cbn in Heq; [| discriminate Heq].
+  rewrite Heq in Hp. exact (parse_line_not_pipe b ws Hp).
+Qed.
+
+Lemma lines_of_nopipe I l : l ∈ lines_of I -> uline_nopipe l.
+Proof using.
+  rewrite /lines_of. intro Hl.
+  apply elem_of_list_fmap in Hl as (b & -> & _).
+  exact (uline_of_nopipe b).
+Qed.
 
 Lemma parse_line_ok b l : parse_line b = Some l -> uline_ok l.
 Proof using.
@@ -308,9 +435,17 @@ Proof using.
            (proj1 (Forall_forall _ _) Hsuf wl_gt suf_gtf_gt)).
 Qed.
 
-Lemma parse_line_body l : uline_ok l -> parse_line (line_body l) = Some l.
+(* ---- THE ROUND TRIP, at the parser's own range ------------------------ *)
+(* THE GUARD [uline_nopipe] IS THE WHOLE PRICE OF THE CONSTRUCTOR.  These
+   three say "the model's lines ARE [parse_line]'s range", so they are
+   false at a constructor deliberately left out of it: [parse_line (wl_body
+   ws ++ suf_barcat)] is [None] (the bar is not [wl_body_byte], so
+   [body_ok] fails).  Every caller has the guard for free -- its line came
+   out of [uline_of] ([uline_of_nopipe]) or is a literal. *)
+Lemma parse_line_body l :
+  uline_nopipe l -> uline_ok l -> parse_line (line_body l) = Some l.
 Proof using.
-  destruct l as [ws | ws |].
+  intro Hnp. destruct l as [ws | ws | | ws]; [| | | by destruct (Hnp ws eq_refl)].
   - (* LEcho *)
     intro Hok. rewrite /line_body /parse_line.
     rewrite decide_False; last first.
@@ -341,8 +476,8 @@ Proof using.
     by destruct (Hne eq_refl).
 Qed.
 
-Lemma uline_of_body l : uline_ok l -> uline_of (line_body l) = l.
-Proof using. intro H. by rewrite /uline_of (parse_line_body l H). Qed.
+Lemma uline_of_body l : uline_nopipe l -> uline_ok l -> uline_of (line_body l) = l.
+Proof using. intros Hnp H. by rewrite /uline_of (parse_line_body l Hnp H). Qed.
 
 (* ---- D3 FOR THE FILE APPLICATION ------------------------------------- *)
 
@@ -357,15 +492,38 @@ Proof using.
   split; [exact (parse_line_ok b l Hl) | exact (line_body_parse b l Hl)].
 Qed.
 
-Lemma fbody_ok_of l : uline_ok l -> fbody_ok (line_body l).
-Proof using. intro H. exists l. exact (parse_line_body l H). Qed.
+Lemma fbody_ok_of l : uline_nopipe l -> uline_ok l -> fbody_ok (line_body l).
+Proof using. intros Hnp H. exists l. exact (parse_line_body l Hnp H). Qed.
+
+(* ---- ...AND THE READING THAT SURVIVES THE FOURTH CONSTRUCTOR ---------- *)
+(* [fbody_ok b] is "[b] is in [parse_line]'s range".  Its ONE consumer
+   above the pure model is [UkSh.ush_posw]'s third conjunct -- the slot the
+   sh loop leaves, which says the input's last body is the body of the LINE
+   the era filed, so that a child law can tell WHICH constructor it was
+   ([fbody_ok_echo]).  Read that way the conjunct never needed the parser:
+   what it needs is that the body IS some admissible line's body, and that
+   is [fline_ok], which every era can supply -- including one whose lines
+   are outside [parse_line]'s range.  [fline_ok_echo] is [fbody_ok_echo] at
+   it, so nothing downstream loses anything. *)
+Definition fline_ok (b : list (bv 8)) : Prop :=
+  exists l : uline, uline_ok l /\ b = line_body l.
+
+Lemma fline_ok_of l : uline_ok l -> fline_ok (line_body l).
+Proof using. intro H. by exists l. Qed.
+
+Lemma fline_ok_of_body b : fbody_ok b -> fline_ok b.
+Proof using.
+  intro Hb. destruct (fbody_ok_line b Hb) as [Hok Heq]. by exists (uline_of b).
+Qed.
 
 (* an admissible body is made of body bytes and fits [getcmd]'s buffer --
    the two facts the snoc law needs when a newline closes a line *)
 Lemma fbody_ok_bytes b : fbody_ok b -> Forall fbody_byte b.
 Proof using.
-  intro Hb. destruct (fbody_ok_line b Hb) as [Hok Heq]. rewrite Heq.
-  destruct (uline_of b) as [ws | ws |]; rewrite /line_body.
+  intro Hb. destruct (fbody_ok_line b Hb) as [Hok Heq].
+  pose proof (uline_of_nopipe b) as Hnp. rewrite Heq.
+  destruct (uline_of b) as [ws | ws | | ws]; rewrite /line_body;
+    [| | | by destruct (Hnp ws eq_refl)].
   - apply Forall_impl with (P := wl_body_byte);
       [exact (wl_body_bytes ws (line_ok_wf _ Hok)) | exact fbody_byte_of_body].
   - apply Forall_app. split; [| exact suf_gtf_bytes].
@@ -377,14 +535,51 @@ Qed.
 
 Lemma fbody_ok_short b : fbody_ok b -> (S (length b) < line_max)%nat.
 Proof using.
-  intro Hb. destruct (fbody_ok_line b Hb) as [Hok Heq]. rewrite Heq.
-  destruct (uline_of b) as [ws | ws |].
+  intro Hb. destruct (fbody_ok_line b Hb) as [Hok Heq].
+  pose proof (uline_of_nopipe b) as Hnp. rewrite Heq.
+  destruct (uline_of b) as [ws | ws | | ws]; [| | | by destruct (Hnp ws eq_refl)].
   - pose proof (line_ok_len ws Hok) as Hl.
     rewrite wl_line_length in Hl. rewrite /line_body. lia.
   - destruct Hok as [_ Hl].
     rewrite /line_bytes /line_body length_app in Hl. cbn [length] in Hl.
     rewrite /line_body. lia.
   - rewrite /line_body cmd_cat_f_len /line_max. lia.
+Qed.
+
+(* ---- EVERY BYTE OF AN ADMISSIBLE LINE, AT EVERY CONSTRUCTOR ---------- *)
+(* [fbody_ok_bytes] is this fact one level down and only for a body in the
+   PARSER's range.  This one holds at [LPipe] too, and the price is the
+   bar, which is NOT an [fbody_byte] -- so a consumer that enumerates the
+   byte values of a line ([UkSh.ush_uline_body_val]) has to name it. *)
+Lemma suf_barcat_bytes :
+  Forall (fun b => fbody_byte b \/ b = fd_bar) suf_barcat.
+Proof using. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
+
+Lemma line_bytes_bytes l :
+  uline_ok l ->
+  Forall (fun b => fbody_byte b \/ b = fd_bar \/ b = wl_nl) (line_bytes l).
+Proof using.
+  intro Hok.
+  rewrite line_bytes_body. apply Forall_app. split;
+    [| apply Forall_singleton; by right; right].
+  destruct l as [ws | ws | | ws]; rewrite /line_body.
+  - apply Forall_impl with (P := wl_body_byte);
+      [exact (wl_body_bytes ws (line_ok_wf _ Hok)) |].
+    intros b Hb. left. exact (fbody_byte_of_body b Hb).
+  - apply Forall_app. split.
+    + apply Forall_impl with (P := wl_body_byte);
+        [exact (wl_body_bytes ws (line_ok_wf _ (proj1 Hok))) |].
+      intros b Hb. left. exact (fbody_byte_of_body b Hb).
+    + apply Forall_impl with (P := fbody_byte); [exact suf_gtf_bytes |].
+      intros b Hb. by left.
+  - apply (bool_decide_unpack _). vm_compute. exact I.
+  - apply Forall_app. split.
+    + apply Forall_impl with (P := wl_body_byte);
+        [exact (wl_body_bytes ws (line_ok_wf _ (proj1 Hok))) |].
+      intros b Hb. left. exact (fbody_byte_of_body b Hb).
+    + apply Forall_impl with (P := fun b => fbody_byte b \/ b = fd_bar);
+        [exact suf_barcat_bytes |].
+      intros b [Hb | Hb]; [by left | by right; left].
 Qed.
 
 (* D3: every COMPLETE body parses to an admissible line, and the partial
@@ -724,6 +919,18 @@ Definition ralt_ok (l : uline) (a : ralt) : Prop :=
       | RCRan | RCNoOpen | RCExec | RCSilent | RCFork => True
       | _ => False
       end
+  (* THE DEAD ARM.  [lines_of] never yields [LPipe] ([uline_of_nopipe]),
+     so which alternatives this line admits is unobservable to every FILE
+     statement; it is [LCat]'s five because that makes [fsm], [cont] and
+     every per-line choice ([FileOutPure.ralt_def],
+     [FileLinksLine.fpan_of]/[fexf_of]/[fnoc_of]) agree with [LCat]'s arm
+     verbatim, and so costs each landed proof one copied line.  The PIPE
+     application reads its own [PipeDisc.palt_ok]/[pcont], never these. *)
+  | LPipe _ =>
+      match a with
+      | RCRan | RCNoOpen | RCExec | RCSilent | RCFork => True
+      | _ => False
+      end
   end.
 
 Global Instance ralt_ok_dec l a : Decision (ralt_ok l a).
@@ -770,7 +977,7 @@ Definition cont (s : fstate) (l : uline) (a : ralt) : list (bv 8) :=
 
 Lemma fstate_ok_fsm s l a : fstate_ok s -> uline_ok l -> ralt_ok l a -> fstate_ok (fsm s l a).
 Proof using.
-  intros Hs Hl Ha. destruct l as [ws | ws |]; [exact Hs | | exact Hs].
+  intros Hs Hl Ha. destruct l as [ws | ws | | ws]; [exact Hs | | exact Hs | exact Hs].
   destruct a; try exact Hs; try (by left; constructor).
   - destruct Hl as [Hok _]. exact (fcont_ok_subseq ws sel Hok Ha).
   - destruct s as [bs |]; [exact Hs | by left; constructor].
@@ -834,7 +1041,7 @@ Proof using.
   destruct a; rewrite /cont.
   - (* REcho: the echo application's four, minus the panic one *)
     rewrite /ralt_panic in Hp. apply bool_decide_eq_false in Hp.
-    rewrite /ralt_ok in Ha. destruct l as [ws | ws |]; [| done | done].
+    rewrite /ralt_ok in Ha. destruct l as [ws | ws | | ws]; [| done | done | done].
     destruct a as [| [| [| [| a]]]]; [| | | done | exfalso; lia].
     + exists (wl_line (drop 1 ws)). rewrite line_alts_of_0.
       split; [reflexivity |].
@@ -1432,7 +1639,7 @@ Proof using.
   destruct (bodies_of I !! i) as [b |] eqn:Hb; [| discriminate].
   cbn in Hi. injection Hi as <-.
   destruct (fbody_ok_line b (disc_input_f_body I i b Hd Hb)) as [Hok _].
-  destruct (uline_of b) as [ws' | ws' |]; try discriminate.
+  destruct (uline_of b) as [ws' | ws' | | ws']; try discriminate.
   injection Hws as <-. exact (proj1 Hok).
 Qed.
 
@@ -2067,7 +2274,8 @@ Lemma fbody_ok_echo (b : list (bv 8)) :
 Proof using.
   intros Hfb Hok.
   pose proof (fbody_ok_line b Hfb) as [Hlok Hbody].
-  destruct (uline_of b) as [ws | ws |] eqn:Hu.
+  destruct (uline_of b) as [ws | ws | | ws] eqn:Hu;
+    [| | | by destruct (uline_of_nopipe b ws Hu)].
   - (* LEcho: the body IS [wl_body ws], so the words are [ws] *)
     rewrite /uline_ok in Hlok. rewrite /line_body in Hbody.
     rewrite Hbody (wl_words_body ws (line_ok_wf _ Hlok)). reflexivity.
@@ -2082,6 +2290,33 @@ Proof using.
   - (* LCat: the words are "cat f" *)
     exfalso. rewrite /line_body in Hbody. rewrite Hbody in Hok.
     exact (cat_not_echo (line_ok_head _ Hok)).
+Qed.
+
+(* ...AND THE SAME READING AT [fline_ok] (lane ULINE-LPIPE).  Note which
+   constructor each [exfalso] kills: the redirect body by its '>', the cat
+   line by its head word, and the PIPE body by its bar -- the same
+   argument as the redirect's, one byte over. *)
+Lemma fline_ok_echo (b : list (bv 8)) :
+  fline_ok b -> line_ok (wl_words b) -> uline_of b = LEcho (wl_words b).
+Proof using.
+  intros [l [Hlok ->]] Hok.
+  destruct l as [ws | ws | | ws].
+  - rewrite /line_body in Hok |- *.
+    rewrite (wl_words_body ws (line_ok_wf _ Hlok)).
+    exact (uline_of_body (LEcho ws) (uline_nopipe_echo ws) Hlok).
+  - exfalso.
+    pose proof (wl_words_alnum_body _ (wl_wf_alnum _ (line_ok_wf _ Hok)))
+      as Hbb.
+    rewrite /line_body in Hbb. apply Forall_app in Hbb as [_ Hsuf].
+    exact (wl_gt_not_body
+             (proj1 (Forall_forall _ _) Hsuf wl_gt suf_gtf_gt)).
+  - exfalso. rewrite /line_body in Hok. exact (cat_not_echo (line_ok_head _ Hok)).
+  - exfalso.
+    pose proof (wl_words_alnum_body _ (wl_wf_alnum _ (line_ok_wf _ Hok)))
+      as Hbb.
+    rewrite /line_body in Hbb. apply Forall_app in Hbb as [_ Hsuf].
+    exact (fd_bar_not_body
+             (proj1 (Forall_forall _ _) Hsuf fd_bar suf_barcat_bar)).
 Qed.
 
 Lemma ralt_ok_echo_lt4 ws c : ralt_ok (LEcho ws) (ralt_dec c) -> (c < 4)%nat.

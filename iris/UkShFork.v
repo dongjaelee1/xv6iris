@@ -346,7 +346,7 @@ Section UkShFork.
              open its lend ([FileDisc.fbody_ok_echo] turns this plus
              [EchoDisc.line_ok ws] into it).  The slot the loop left
              carries it ([UkSh.ush_posw]); the echo era ignores it. *)
-          ⌜ FileDisc.fbody_ok (UkSh.ush_lastbody I) ⌝ -∗
+          ⌜ FileDisc.fline_ok (UkSh.ush_lastbody I) ⌝ -∗
           ⌜ 0 < s0 ⌝ -∗ ⌜ s0 + Z.of_nat len + 1 < Z64 ⌝ -∗
           ⌜ s0 + Z.of_nat len < 2 ^ 38 ⌝ -∗
           ⌜ 8344 <= sz ⌝ -∗ ⌜ UserPtTree.pgroundup sz = sz ⌝ -∗
@@ -837,7 +837,7 @@ Section UkShFork.
        ([UkSh.ush_posw]) -- which is what the child's law is applied at. *)
     iAssert ((∃ I : list (bv 8),
                 ⌜rest_of I = [] /\ last_ws I = ws
-                 /\ FileDisc.fbody_ok (UkSh.ush_lastbody I)⌝ ∗ Pm I
+                 /\ FileDisc.fline_ok (UkSh.ush_lastbody I)⌝ ∗ Pm I
                 ∗ ⌜UkSh.ush_fd0c l /\ UkSh.ush_fd1p l /\ UkSh.ush_fd2p l⌝
                 ∗ Wc I 3%nat)
              ∨ (T ∗ UkSh.ush_pos N γp))%I

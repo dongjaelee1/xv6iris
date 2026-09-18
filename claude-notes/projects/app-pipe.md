@@ -2206,3 +2206,160 @@ have in hand at /init's first instruction is
 `PipeLinks.pipe_write_link_pro` at `I0 = []`, `cs0 = []`, `P = 0`, exactly
 as at the echo application, and there is no `file_write_link_first` to
 imitate.  And it needs finding 9's ruling before it can resolve /cat.
+
+### PIPE-CLAIM (2026-09-18, = PIPE-STAGE part 2) — the claim pins /cat at a cost of ZERO transcribed proofs, /init's whole console dance lands at it, and part 1's "the LinkRec instance is a lane" is now HISTORICAL
+
+Branch `app-pipe/pipe-stage`, THREE further commits (`7429b00ab` the merge,
+`4fdf35154`, `6d86a19b6`).  Whole `iris` tree `ec2-lane.sh stage build`
+**RC=0**; every one of the lane's seven `.vo`s present.  No `Admitted`;
+every proof carries `Proof using`.  Nothing in the tree outside the lane's
+own files imports them, so the audits' cones are untouched.
+
+**THE MERGE COST ALMOST NOTHING, and that is worth recording.**  190
+upstream commits later — `riscv_kill_cred` → `app_taint`, the parked
+discipline deleted, `StageRec`/`ReadRec`/`FileLinksLine`/`FileLinkInst`
+landed, `EchoOut`/`EchoOutPure`/`FileOut`/`FileOutPure`/`FileLinks`
+**byte-identical** — `PipeOutPure.v`, `PipeOut.v` and `PipeLinks.v` compiled
+**UNCHANGED**.  The only adaptation any part-1 file needed was ONE field:
+`RiscvPtsto.app_iface` gained `ai_lic` (upstream's lane SUP-ONE), so
+`AppPipe.pipe_ifc` gains `pipe_cons_lic` — three lines, `pecl_sup` read one
+step earlier.  The lane's four files are built on `EchoOut`'s ghost algebra
+and `EchoDisc`'s prologue and on nothing that moved.
+
+**WHAT LANDED.**
+
+`iris/AppPipeClaim.v` (new, ~260) — design §5.6's ruling:
+
+```coq
+pipe_pred γ r av := echo_taint γ ∨ (⌜FileFsPure.file_fs_pure av⌝ ∗ cons_state r av)
+```
+
+echo's SHAPE with upstream's landed stronger pure conjunct
+(`echo_fs_pure av /\ era0_cat_pins av`), imported read-only.
+`pipe_pred_split`, `pipe_pred_cons`, `pipe_pred_echo`, `pipe_pred_absent`,
+`pipe_sup_echo`, `pipe_taint_of_sup`, `pipe_xfer`, `pipe_boot`,
+`pipe_xfer_boot`, `pipe_init_key`, `pipe_init`, `pipe_init_img`.
+
+`iris/AppPipe.v` — `app_pred := pipe_pred`, `app_boot := pipe_boot`,
+`pipe_cons_lic`, and three `reflexivity` ANTI-VACUITY checks
+(`pipe_app_pred_eq`, `pipe_app_names_eq`, `pipe_app_boot_eq`) that the claim
+equation the program tier takes as a parameter IS the one `al_programs`
+hands over at this record.  `app_fixed`, `app_cl` and `app_names` are still
+`AppEcho`'s own names.
+
+`iris/AppPipeCons.v` (new, ~400) — the nine conjuncts of
+`UInitCons.init_cons_laws_at` at `pipe_pred`: `pipe_fs_pure_acc`,
+`pipe_echo_fs_pure_acc`, **`pipe_cat_pins_acc`** (the reading the lane
+exists for), `pipe_cons_law`, `pipe_cons_abs_law`, `pipe_cons_never_law`,
+`pipe_cons_seal_step`, `pipe_cons_shoot`, `pipe_sup_of_taint`,
+`pipe_step_of_echo`, `pipe_cons_arm`, `pipe_cons_unarm_absent` /
+`_present`, `pipe_cons_mknod` / `_present`, `pipe_cons_create_other`,
+`pipe_unarm_root`, `pipe_fs_pure_unarm_dev`, `pipe_cons_unarm_efp_absent` /
+`_present`.
+
+`iris/UInitConsPipe.v` (new, ~330) — /init's WHOLE console dance at the pipe
+claim: the four bundles (`init_cons_laws_pipe`, `init_cons_laws_efp_pipe`,
+`init_cons_laws_made_pipe`, `init_cons_laws_made_efp_pipe`), the seal
+(`init_cons_never_abs_law_pipe`, `init_cons_seal_law_pipe`,
+`init_cons_seal_out_pipe`, `init_cons_cred_made_pipe`), both LEAF pairs
+(`init_cons_leaves_pipe`, `init_cons_hit_pipe`) and sh's two console arms
+(`sh_cons_absent_pipe`, `sh_cons_console_pipe`).
+
+**NOTHING STOPPED.**  The brief said to stop at the first law needing
+something the design had not priced; there was none.
+
+**`Print Assumptions`.**  Part 1's four headline results are still *Closed
+under the global context* (`good_out_p_of_stage`, `pecl_drain`,
+`pipe_led_phi`, `pipe_happ_echo`).  The WHOLE claim layer and all four
+bundles — `pipe_pred_split`, `pipe_xfer`, `pipe_xfer_boot`,
+`pipe_taint_of_sup`, `pipe_init_img`, `pipe_cat_pins_acc`,
+`pipe_step_of_echo`, `pipe_cons_mknod`, `init_cons_laws_pipe`,
+`init_cons_laws_efp_pipe`, `init_cons_laws_made_pipe`, `pipe_Hphi_R`,
+`pipe_Happ_init` — are the eleven PrimString/PrimInt63 primitives and
+NOTHING else.  `pipe_laws` is those eleven plus the two Sail reservation
+`Parameter`s, i.e. **moving the claim from `echo_pred` to `pipe_pred` cost
+ZERO assumptions**.  The three LEAF results (`init_cons_leaves_pipe`,
+`init_cons_hit_pipe`, `sh_cons_console_pipe`) add
+`FunctionalExtensionality.functional_extensionality_dep` — and that is
+INHERITED, not this lane's: `Print Assumptions` on the FILE twin
+`UInitConsFile.init_cons_leaves_file_of_leg` prints the IDENTICAL list, so
+funext enters with `UkInit`/`UexecExecInst`'s leaf cone and any pipe
+adequacy will carry it exactly as a file adequacy would.  Reported rather
+than hidden.
+
+**WHAT THE DESIGN GOT WRONG, OR PRICED WRONG.**
+
+1. **THE RECORD'S LAWS ARE NOT "RE-DERIVED"; THEY ARE ECHO'S, APPLIED.**
+   §5.6 prices PIPE-CLAIM as "the record's laws re-derived at `pipe_pred`
+   (mould: `AppEcho`'s proofs)".  They are not re-derived and no proof text
+   of `AppEcho`'s `EchoPred` section is transcribed.  The two claims differ
+   in a factor that is PERSISTENT and names NO instance:
+
+   ```coq
+   pipe_pred γ r av ⊣⊢ echo_pred γ r av ∗ (echo_taint γ ∨ ⌜era0_cat_pins av⌝)
+   ```
+
+   so the transport's copy — which is at the SAME view — gets the factor for
+   free, and `pipe_xfer` / `pipe_xfer_boot` / `pipe_taint_of_sup` /
+   `pipe_init_*` are `AppEcho`'s lemmas with it framed.  The ONE genuinely
+   new step is reading `era0_cat_pins` off the image, and that is one line
+   (`FileFsPure.file_fs_era0`, which upstream landed for the FILE
+   application and which `AppFileRec` already spends).  **The estimate to
+   correct for any future application of this shape: a claim that adds a
+   PERSISTENT, instance-free conjunct to another application's costs the
+   split lemma and nothing else.**
+
+2. **THE MOVING-VIEW LEGS ARE ONE LEMMA, NOT FOUR.**  `AppFile` needs a
+   four-premise `file_step_free` and a per-leg case analysis because its
+   claim carries a DEED whose row the step may be touching.  The pipe claim
+   carries none, so `pipe_step_of_echo` — the echo-side move as a WAND (so a
+   leg that spends the console KEY is the same lemma as one that spends
+   nothing) plus the `file_fs_pure` preservation as a Prop — covers arm,
+   unarm, the console's own create and a create elsewhere.
+
+3. **CONJUNCT (g) NEEDS ONE SIDE CONDITION, NOT TWO.**
+   `UInitCons.init_cons_laws_at`'s (g) carries
+   `⌜d <> ROOTINO \/ nmn <> fname_f⌝` beside the console one; lane INIT-FILE
+   added it because a device called `f` in the root refutes the FILE claim's
+   deed conjunct at every deed value.  The pipe claim has no deed:
+   `pipe_cons_create_other` discharges (g) at the first side condition alone
+   and the bundle drops the premise on the floor.  Consequently the pipe
+   bundles take NO `file_cons_create_leg`-style parameter — the record
+   equation is their only one.
+
+4. **THE UNARM AT THE ECHO READING NEEDS THE *ROW*, NOT THE ARM'S VIEW, AND
+   THE BRIEF DID NOT NAME IT.**  `init_cons_laws_at`'s (e) hands over
+   `⌜Pure av0⌝`, and the landed leaves fix (b) at `EchoFsPure.echo_fs_pure`
+   — THREE pins — while `FileDeltas.file_fs_pure_unarm_fresh` wants all FOUR
+   at the arm's view.  So the /cat pin cannot ride across that way.  What
+   carries it is upstream `UInitConsFile`'s route: the unarmed row is the
+   DEVICE the arm put there and every pinned row is a FILE, so the four pins
+   ride across AT THE ROW and the arm's view is needed only to separate the
+   ROOT.  The two pure steps are Σ-free and are re-proved here
+   (`pipe_unarm_root`, `pipe_fs_pure_unarm_dev`) rather than imported, which
+   would put the FILE application's whole u-tier cone in front of this leaf.
+
+5. **PART 1's FINDING 8 IS HISTORICAL.**  PIPE-STAGE reported that
+   `pipe_link_inst : LinkRec` was a lane of its own and that upstream had
+   not paid it either — `grep file_link_inst` was empty and
+   `FileLinksLine.v` did not exist.  Both landed in the meantime
+   (`iris/FileLinksLine.v`, 2,081 lines; `iris/FileLinkInst.v`, 760), so the
+   pipe instance is now a well-defined PORT of two existing files at
+   `pending_at_p` / `pro_pin_p` / `proc_stream_p` / `pro_idx_p`, ~2,800
+   lines, and not an open question.  Its LINE-MODEL fields are still free
+   for the reasons part 1 gave (`lk_ab` needs no guard, `lk_pan`/`lk_exf`/
+   `lk_noc` are literally `3`/`1`/`2`).
+
+**THE ONE THING THE NEXT LANE NEEDS FIRST.**  SH-PIPE-ROUND supplies
+`AppPipe.pipe_laws`' only `Context` hypothesis, `Hprog` = `al_programs`
+verbatim at `app_pipe`, and everything /init's console dance needs is now in
+hand at ONE parameter: the claim equation
+`file_app = MkAppcfg echo_names (pipe_pred γ) r`, which is what
+`al_programs` itself hands over (checked by `AppPipe.pipe_app_pred_eq` /
+`_names_eq` / `_boot_eq`, three `reflexivity`s).  At /init's first
+instruction it holds `app_turn app_pipe c (S gen_id)` =
+`EchoOut.eturn c (S gen_id)` — echo's five components, nothing added — and
+`app_boot app_pipe c (S gen_id) r` = `AppEcho.echo_boot`, the console key or
+the console flag.  For the exec of /cat it holds
+`AppPipeCons.pipe_cat_pins_acc`: `era0_cat_pins av` at every view the claim
+holds of, or the taint.

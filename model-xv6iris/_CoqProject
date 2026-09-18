@@ -9,6 +9,9 @@
 # two notations sharing a prefix at different levels leave one unparseable
 -arg -w
 -arg +notation-incompatible-prefix
+# a nat literal of 5000+ is meant to be an of_num_uint term, not unary
+-arg -w
+-arg -abstract-large-number
 rv64d_types.v
 riscv_extras.v
 # xv6iris_extras.v is HAND-WRITTEN (everything else here is generated) and is

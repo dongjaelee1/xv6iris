@@ -4151,12 +4151,20 @@ owed — it is cat's cursor, and it is a design step, not a rename.
 
 ### PIPE-2W (2026-09-19) — the ROUND'S LEND lands: the block ledger, the two-cursor family, its two byte steps, its entry and its FOUR exits; the one thing that cannot land without moving `app_pipe`'s fixed part is the ledger's NAME, and the reason both a ledger AND a family are needed is a refutation (`pend_both_not_inj`)
 
-Branch `app-pipe/pipe-2w`.  TWO new files — `iris/PipeBothPure.v` (the
-pure layer) and `iris/PipeBoth.v` (the ledger, the family, the steps, the
-four exits, the chain and the round's lend) — plus two rows of
-`iris/_CoqProject`.  **No landed statement moved**; nothing outside the
-lane's own two files was edited and `grep -rln 'PipeBoth' iris/*.v` finds
-no importer, so every audit's cone is untouched.
+Branch `app-pipe/pipe-2w`.  TWO new files — `iris/PipeBothPure.v` (1,051:
+the pure layer, 68 results) and `iris/PipeBoth.v` (819: the ledger, the
+family, the steps, the four exits, the chain and the round's lend, 43
+results) — plus two rows of `iris/_CoqProject`.  **No landed statement
+moved**; nothing outside the lane's own two files was edited and
+`grep -rln 'PipeBoth' iris/*.v` finds no importer, so every audit's cone
+is untouched.  Whole-tree `ec2-lane.sh 2w build` **RC=0**; no `Admitted`;
+`Proof using` on every result; and `Print Assumptions` on THIRTEEN
+headline results — `good_out_p_of_stage_blk2`, `wr_blk2_step_L`/`_R`,
+`pend_both_not_inj`, `pcont_not_prefix_pend_both`, `pblk2_step_L`/`_R`,
+`pblk2_exit`, `pblk2_cstep_L`/`_R`, `pblk2_chain`,
+`pipe_round_lend_holds`, `pwc_blk2_of_lend` — is **Closed under the
+global context** (not even the standing PrimString/PrimInt63
+primitives).
 
 **0.  WHAT THE COORDINATOR'S AMENDMENT CHANGED, and what survived it.**
 The lane was briefed to build the `PBoth` arm's merge lease and discharge

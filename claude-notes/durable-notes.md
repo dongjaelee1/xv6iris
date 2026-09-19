@@ -1641,3 +1641,17 @@ that `Qed`'s conversion path in any way that mattered.  Rule: build at the
 default runtime; give `l=4e9` only to the one file that needs it
 (`UserMemCert.v`) in a targeted pass; a `Segmentation fault` at a `Qed`
 under a global `l=…` is the knob until proved otherwise.
+
+## `iIntros "#H"` on a bundle of laws can run away in a big cone -- name the leaf (2026-09-19)
+
+Twice in the pipeline campaign (`PipeLinks.pipe_links γ`, then
+`UkShDiag.ush_execfail_law_at`), `iIntros "#H"` on a proposition that HAS a
+`Global Instance Persistent` did not return (13-20 minutes, still growing)
+in a file with a large cone -- the instance search wanders the tree's
+hundreds of transparent-definition instances before it finds the named
+one.  Two one-line fixes, both measured: `#[local] Instance … | 0 :=
+<the named instance>` at the top of the file, and write the `□` where you
+mean it (a `∀ γp, <persistent>` introduced with `#` makes the search do
+the box's work).  `Set Default Timeout N.` localises the site in one build
+(`Error: Timeout!` at the line) where `Admitted`-bisection costs a build
+per lemma.  Kill a wedged `rocqworker` by PID, never by pattern.

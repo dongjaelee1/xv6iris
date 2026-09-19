@@ -147,8 +147,10 @@ Lemma pblk2_code_len (I : list (bv 8)) (R : list (bv 8)) (sel : list bool)
   pblk2_code I R sel a ->
   length (pab I a) = S (S (c1 + c2))%nat.
 Proof using.
-  intros Hwf Hlen Hc. rewrite (pblk2_code_pab I R sel a Hc) length_app.
-  rewrite (pend2_length R sel Hwf) Hlen /u_prompt. by vm_compute.
+  intros Hwf Hlen Hc.
+  assert (Hup : length u_prompt = 2%nat) by (by vm_compute).
+  rewrite (pblk2_code_pab I R sel a Hc) length_app.
+  rewrite (pend2_length R sel Hwf) Hlen Hup. lia.
 Qed.
 
 (* ---- THE FOUR CODES, each proved from the two cursors alone ---- *)

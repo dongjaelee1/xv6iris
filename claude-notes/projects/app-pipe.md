@@ -187,11 +187,16 @@ arm is the theorem's one named premise (`pipe_both_law`).
 - [ ] **PIPE-ADEQUACY**: `iris/UPipeBootAdequacy.v`, `iris/PipeAssumptions.v`,
   `make audit-pipe{,-only}`; the design page's §0 rewritten as landed;
   `pipe_both_law` reported as the one premise.
-- [~] **PIPE-2W** (design §4.3): the merge lease; `pipe_both_law` discharged;
-  the premise removed.  LANDED: the pure layer, the ledger, the family, its
-  two steps, its entry/exit and the chain (`PipeBothPure.v`, `PipeBoth.v`);
-  OWED: the claim's three both-arm steps, which need the ledger's GNAME —
-  see the Findings block.
+- [~] **PIPE-2W** (design §4.3; AMENDED 2026-09-19 after SH-PIPE-ROUND-2's
+  `pipe_turn_one_writer`: the two-cursor lease is THE ROUND'S LEND on every
+  arm, not the `PBoth` arm's, and `pipe_both_law` does not exist).  LANDED:
+  the pure merge layer at the right child's own source, the block ledger,
+  the family `pwc_blk2`, its two byte steps, its invariant form, its entry
+  from `pwc_lend`, its FOUR exits (`PRan`/`PExecL`/`PExecR`/`PBoth`) into
+  `pwc_sp_t`, the chain, and `pipe_round_lend` (`PipeBothPure.v`,
+  `PipeBoth.v`).  OWED: the claim's three unfiled-block steps
+  (`pblk2_ecl_L`/`_R`/`_file`), which need the ledger's GNAME — an owner
+  ruling on `app_fixed app_pipe := pipe_gn`; see the Findings block.
 
 - [x] **ULINE-LPIPE** (design §5.8 STOP A; the ONE edit of upstream's files):
   `FileDisc.uline` gains `LPipe (ws)` additively; `parse_line` untouched;

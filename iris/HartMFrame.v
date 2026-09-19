@@ -453,6 +453,34 @@ Section gpr.
     rewrite hregwrite_resume_red. iApply swp_ret. iExact "Hpt".
   Qed.
 
+  (* THE SAME TAIL AT THE RAW NODE, so a caller whose write sits under an
+     index-dependent bind can reach it too.  [swp_write_reg_cell] above is
+     stated at [Defs.write_reg r w], and the model's GPR write is not that
+     node: [wX] binds it to [if neq_int N 0 then xreg_write_callback … else
+     returnM ()], so [swp_wX_bits] reduces to [Next (RegWrite …) K] with a
+     continuation.  Stating the twelve proofmode steps ONCE here is what
+     keeps that thirty-one-way script from paying them per branch -- the
+     same economy [swp_read_reg_cell] already buys the read side. *)
+  Lemma swp_regwrite_node {X : Type} (r : register) (ak : option unit)
+      (v w : type_of_register r) (K : unit -> M X) (Φ : X -> iProp Σ) :
+    gen_cert -∗ r ↦ᵣ v -∗ (r ↦ᵣ w -∗ swp (K tt) Φ) -∗
+    swp (Interface.Next (Interface.RegWrite r ak w) K) Φ.
+  Proof using .
+    iIntros "#Hcert Hpt HK".
+    iApply (swp_hart_regwrite r w with "Hcert").
+    { cbn [hregwrite_val_at].
+      destruct (decide _) as [Heq|Hne]; [|congruence].
+      assert (Heq = eq_refl) as -> by apply proof_irrel. reflexivity. }
+    iIntros (σ) "Hsi". rewrite /mstate_interp.
+    iDestruct "Hsi" as "(Hreg & Hmem & Hdev)".
+    iMod (reg_update _ r _ w with "Hreg Hpt") as "[Hreg Hpt]".
+    iApply fupd_mask_intro; [apply empty_subseteq|].
+    iIntros "Hcl". iApply bi.later_intro. iMod "Hcl" as "_". iModIntro.
+    iSplitL "Hreg Hmem Hdev";
+      [rewrite ?sregs_set_reg ?mem_set_reg ?mdev_set_reg; by iFrame|].
+    rewrite hregwrite_resume_red. iApply ("HK" with "Hpt").
+  Qed.
+
   (* ------------------------------------------------------------------ *)
   (* GPR ACCESS AT [gpr_file], which is what a leaf actually holds.        *)
   (*                                                                      *)
@@ -523,34 +551,19 @@ Section gpr.
     unfold gpr_pt; cbn match.
     destruct Hc as [H|[H|[H|[H|[H|[H|[H|[H|[H|[H|[H|[H|[H|[H|[H|[H|[H|
       [H|[H|[H|[H|[H|[H|[H|[H|[H|[H|[H|[H|[H|H]]]]]]]]]]]]]]]]]]]]]]]]]]]]]].
-    (* NOT collapsed onto [swp_write_reg_cell] the way [swp_rX_bits] is onto
-       [swp_read_reg_cell]: the write's continuation is INDEX-DEPENDENT (the
-       model binds [write_reg] to [if neq_int N 0 then xreg_write_callback
-       (Regidx (to_bits 5 N)) w else returnM ()]), so there is no bare node
-       for the shared leaf to match.  Collapsing this one needs a leaf stated
-       over that bind, not the cell lemma. *)
+    (* The write's continuation is INDEX-DEPENDENT (the model binds
+       [write_reg] to [if neq_int N 0 then xreg_write_callback (Regidx
+       (to_bits 5 N)) w else returnM ()]), so there is no bare
+       [Defs.write_reg] node here for [swp_write_reg_cell] to match -- but
+       the RAW node is there, and [swp_regwrite_node] above is that leaf.
+       Per branch this is now the reduction and one [iApply]; the twelve
+       proofmode steps it used to spell out are proved once. *)
     all: rewrite H; cbn match;
          unfold wX_bits, wX; rewrite H;
          cbn beta iota zeta delta [Defs.bind0 Defs.bind Interface.iMon_bind
            Defs.write_reg Defs.returnm returnM Z.eqb Pos.eqb];
-         lazymatch goal with
-         | |- context [Interface.RegWrite ?rg] =>
-             iApply (swp_hart_regwrite rg (regval_into_reg w) with "Hcert");
-             [cbn [hregwrite_val_at Defs.write_reg];
-              destruct (decide _) as [Heq|Hne]; [|congruence];
-              assert (Heq = eq_refl) as -> by apply proof_irrel;
-              reflexivity|];
-             iIntros (σ) "Hsi"; rewrite /mstate_interp;
-             iDestruct "Hsi" as "(Hreg & Hmem & Hdev)";
-             iMod (reg_update _ rg _ (regval_into_reg w) with "Hreg Hpt")
-               as "[Hreg Hpt]";
-             iApply fupd_mask_intro; [apply empty_subseteq|];
-             iIntros "Hcl"; iApply bi.later_intro; iMod "Hcl" as "_"; iModIntro;
-             iSplitL "Hreg Hmem Hdev";
-             [rewrite ?sregs_set_reg ?mem_set_reg ?mdev_set_reg; by iFrame|];
-             rewrite hregwrite_resume_red;
-             iApply swp_ret; iExact "Hpt"
-         end.
+         iApply (swp_regwrite_node with "Hcert Hpt");
+         iIntros "Hpt"; iApply swp_ret; iExact "Hpt".
   Qed.
 
   Lemma swp_rX_file (i : SailStdpp.Values.mword 5) (m : regfile) :

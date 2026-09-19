@@ -62,6 +62,66 @@ Require Import AppEcho.           (* [echo_fixed], [echo_taint], [echo_cl] *)
 Local Open Scope list_scope.
 
 (* ====================================================================== *)
+(*  0.  THE FIXED PART, AND THE SECOND PER-ERA RECORD (lane PIPE-2W-2)     *)
+(*                                                                        *)
+(*  The pipeline round's block is written by TWO processes (design 4.3d),  *)
+(*  so its alternative cannot be filed in [cs] at the block's first byte   *)
+(*  and the claim must read the block off a LEDGER instead.  That ledger   *)
+(*  is per ERA and its authority needs a gname that outlives every era, so *)
+(*  -- exactly as [FileOut.file_gn] does for the file application's boot   *)
+(*  state -- the RECORD's fixed part is [pipe_gn], [AppEcho]'s paired with *)
+(*  it, and [pgn_cl g] reads the echo half.  Nothing in [AppEcho] moves.   *)
+(*                                                                        *)
+(*  WHAT THE LEDGER HOLDS: the era's PROCESS BYTES, all of them --         *)
+(*  [pstream so] below, whose length is exactly the era's cursor [turn].   *)
+(*  That is what makes a writer's lower bound EXACT (a prefix of equal     *)
+(*  length is the list), which is the tie design 4.3d's family needs and   *)
+(*  the reason the ledger is not per ROUND: a per-round ledger would still *)
+(*  have to prove the writer's round IS the claim's, and the era-wide one  *)
+(*  gets that from [turn] alone.                                           *)
+(* ====================================================================== *)
+
+Record pipe_era := MkPEra {
+  pe_blk : gname;   (* mono_list (bv 8), carried at [EchoOut.eo_El]'s camera:
+                       the era's process bytes in wire order *)
+}.
+
+Record pipe_gn := MkPipeGn {
+  pgn_cl  : echo_fixed;   (* AppEcho's: the taint counter and the era map *)
+  pgn_era : gname;        (* ghost_map nat pipe_era: the era's BYTE LEDGER *)
+}.
+
+Class pipeOutG (Σ : gFunctors) := PipeOutG {
+  pog_era : ghost_mapG Σ nat pipe_era;
+}.
+#[global] Existing Instance pog_era.
+
+Definition pipeOutΣ : gFunctors := #[ ghost_mapΣ nat pipe_era ].
+
+Global Instance subG_pipeOutΣ {Σ} : subG pipeOutΣ Σ -> pipeOutG Σ.
+Proof. solve_inG. Qed.
+
+(* a byte, as the era's echoed-list camera carries it: no new functor is
+   added by the ledger *)
+Definition blk_enc (b : bv 8) : list mobs * bv 8 := ([], b).
+
+Lemma blk_enc_inj (b c : bv 8) : blk_enc b = blk_enc c -> b = c.
+Proof using. rewrite /blk_enc. by intros [= <-]. Qed.
+
+Lemma blk_fmap_prefix_inv (l1 l2 : list (bv 8)) :
+  (blk_enc <$> l1) `prefix_of` (blk_enc <$> l2) -> l1 `prefix_of` l2.
+Proof using.
+  revert l2. induction l1 as [| b l1 IH]; intros l2 Hp; [apply prefix_nil |].
+  destruct l2 as [| c l2].
+  { exfalso. rewrite fmap_nil in Hp. apply prefix_length in Hp.
+    rewrite fmap_cons in Hp. cbn [length] in Hp. lia. }
+  rewrite !fmap_cons in Hp.
+  pose proof (prefix_cons_inv_1 _ _ _ _ Hp) as Hhd.
+  pose proof (prefix_cons_inv_2 _ _ _ _ Hp) as Htl.
+  rewrite (blk_enc_inj b c Hhd). by apply prefix_cons, IH.
+Qed.
+
+(* ====================================================================== *)
 (*  1.  THE STAGE RECORD, REUSED                                           *)
 (*                                                                        *)
 (*  [EchoOut.ostage] with NOTHING ADDED: a pipe dies with its era, so the  *)
@@ -69,6 +129,70 @@ Local Open Scope list_scope.
 (*  definitional, which is what lets every [cs_len_ok] lemma apply.        *)
 (* ====================================================================== *)
 Definition postage : Type := ostage.
+
+(* THE ERA'S PROCESS BYTES, as the stage records them: everything the
+   programs have put on the wire in this era, in order.  Its LENGTH is
+   [pcount_p], i.e. the era's cursor, which is what ties a writer's lower
+   bound to the claim's own list. *)
+Definition pstream (so : postage) : list (bv 8) :=
+  proc_before_p (o_ps so) (o_cs so) (snd <$> o_E so) ++ o_w so.
+
+Lemma pstream_length (so : postage) :
+  length (pstream so)
+  = pcount_p (o_ps so) (o_cs so) (o_E so) (o_w so).
+Proof using. rewrite /pstream /pcount_p length_app. reflexivity. Qed.
+
+Lemma pstream_0 : pstream ostage0 = [].
+Proof using.
+  rewrite /pstream /ostage0. cbn [o_ps o_cs o_E o_w].
+  by rewrite fmap_nil proc_before_p_nil.
+Qed.
+
+(* A WRITE inside a block appends its byte and moves nothing else. *)
+Lemma pstream_write (ps cs : list nat) (E : list (list mobs * bv 8))
+    (w : list (bv 8)) (b : bv 8) :
+  pstream (MkO ps cs E (w ++ [b])) = pstream (MkO ps cs E w) ++ [b].
+Proof using. rewrite /pstream. cbn [o_ps o_cs o_E o_w]. by rewrite app_assoc. Qed.
+
+(* A BLOCK'S FIRST BYTE files an alternative, which the stage before this
+   line does not read. *)
+Lemma pstream_blk (ps cs : list nat) (E : list (list mobs * bv 8))
+    (a : nat) (b : bv 8) :
+  pro_pin_p ps cs (snd <$> E) ->
+  (nlines (removelast (snd <$> E)) <= length cs)%nat ->
+  pstream (MkO ps (cs ++ [a]) E [b]) = pstream (MkO ps cs E []) ++ [b].
+Proof using.
+  intros Hpin Hn. rewrite /pstream. cbn [o_ps o_cs o_E o_w].
+  rewrite app_nil_r.
+  rewrite -(proc_before_p_cs_prefix ps ps cs (cs ++ [a]) (snd <$> E)
+              ltac:(reflexivity) ltac:(by eexists) Hpin Hn).
+  reflexivity.
+Qed.
+
+(* A PROLOGUE ROUND'S CHOICE BYTE likewise: the prologue list grows past
+   the round the stage is standing in. *)
+Lemma pstream_pro (ps cs : list nat) (E : list (list mobs * bv 8))
+    (w : list (bv 8)) (a : nat) (b : bv 8) :
+  pro_pin_p ps cs (snd <$> E) ->
+  pstream (MkO (ps ++ [a]) cs E (w ++ [b])) = pstream (MkO ps cs E w) ++ [b].
+Proof using.
+  intros Hpin. rewrite /pstream. cbn [o_ps o_cs o_E o_w].
+  rewrite app_assoc. f_equal. f_equal.
+  symmetry. apply (proc_before_p_ps_ext ps (ps ++ [a]) cs (snd <$> E));
+    [by eexists | exact Hpin].
+Qed.
+
+(* AN ECHO closes the block it completed: the bytes move from [o_w] into
+   the stream's own account and the ledger does not grow. *)
+Lemma pstream_echo (ps cs : list nat) (E : list (list mobs * bv 8))
+    (x : list mobs * bv 8) :
+  pstream (MkO ps cs (E ++ [x]) [])
+  = pstream (MkO ps cs E (pending_at_p ps cs (snd <$> E))).
+Proof using.
+  rewrite /pstream. cbn [o_ps o_cs o_E o_w].
+  rewrite app_nil_r (fmap_snd_snoc E x) proc_before_p_snoc.
+  reflexivity.
+Qed.
 
 (* ====================================================================== *)
 (*  2.  THE PURE HISTORY LAYER                                             *)
@@ -659,6 +783,131 @@ Proof using.
   apply Forall_app. split; [exact Hcs |].
   rewrite Forall_singleton. exact Hgo.
 Qed.
+
+(* ====================================================================== *)
+(*  2b. THE ERA'S BYTE LEDGER: the ghosts and their laws                   *)
+(*                                                                        *)
+(*  [FileOut]'s second per-era record one application over.  The map is    *)
+(*  pinned in the fixed part, the era's record is inserted at the          *)
+(*  POWER-ON (where the era's other ghosts are born), and the era's list   *)
+(*  is a [mono_list] of its process bytes: the claim holds the authority   *)
+(*  and a writer a lower bound, and at EQUAL LENGTH -- which [turn] pins   *)
+(*  exactly -- the bound IS the list.                                      *)
+(* ====================================================================== *)
+Section pipe_ledger.
+  Context {Σ : gFunctors}.
+  Context `{!echoOutG Σ, !pipeOutG Σ}.
+  Context (g : pipe_gn).
+
+  Definition pera_pin (k : nat) (w : pipe_era) : iProp Σ :=
+    ghost_map_elem (pgn_era g) k DfracDiscarded w.
+
+  Global Instance pera_pin_persistent k w : Persistent (pera_pin k w).
+  Proof using . rewrite /pera_pin. apply _. Qed.
+  Global Instance pera_pin_timeless k w : Timeless (pera_pin k w).
+  Proof using . rewrite /pera_pin. apply _. Qed.
+
+  Lemma pera_pin_agree k w w' : pera_pin k w -∗ pera_pin k w' -∗ ⌜w = w'⌝.
+  Proof using .
+    rewrite /pera_pin. iIntros "H1 H2".
+    iDestruct (ghost_map_elem_agree with "H1 H2") as %Heq. by iPureIntro.
+  Qed.
+
+  Definition blk_auth (w : pipe_era) (l : list (bv 8)) : iProp Σ :=
+    own (pe_blk w)
+      (●ML ((blk_enc <$> l) : list (leibnizO (list mobs * bv 8)))).
+  Definition blk_lb (w : pipe_era) (l : list (bv 8)) : iProp Σ :=
+    own (pe_blk w)
+      (◯ML ((blk_enc <$> l) : list (leibnizO (list mobs * bv 8)))).
+
+  Global Instance blk_lb_persistent w l : Persistent (blk_lb w l).
+  Proof using . rewrite /blk_lb. apply _. Qed.
+  Global Instance blk_lb_timeless w l : Timeless (blk_lb w l).
+  Proof using . rewrite /blk_lb. apply _. Qed.
+  Global Instance blk_auth_timeless w l : Timeless (blk_auth w l).
+  Proof using . rewrite /blk_auth. apply _. Qed.
+
+  Lemma blk_lb_get w l : blk_auth w l -∗ blk_auth w l ∗ blk_lb w l.
+  Proof using .
+    rewrite /blk_auth /blk_lb. iIntros "H".
+    iDestruct (own_mono _ _ (◯ML ((blk_enc <$> l)
+                                    : list (leibnizO (list mobs * bv 8))))
+                 with "H") as "#Hl"; [apply mono_list_included |].
+    iFrame "H Hl".
+  Qed.
+
+  Lemma blk_auth_grow w l b :
+    blk_auth w l ==∗ blk_auth w (l ++ [b]) ∗ blk_lb w (l ++ [b]).
+  Proof using .
+    rewrite /blk_auth /blk_lb. iIntros "H".
+    iMod (own_update _ _ (●ML ((blk_enc <$> (l ++ [b]))
+                                 : list (leibnizO (list mobs * bv 8))))
+            with "H") as "H".
+    { apply mono_list_update. rewrite fmap_app. by eexists. }
+    iModIntro.
+    iDestruct (own_mono _ _ (◯ML ((blk_enc <$> (l ++ [b]))
+                                    : list (leibnizO (list mobs * bv 8))))
+                 with "H") as "#Hl"; [apply mono_list_included |].
+    iFrame "H Hl".
+  Qed.
+
+  Lemma blk_lb_prefix w l l' :
+    blk_auth w l -∗ blk_lb w l' -∗ ⌜l' `prefix_of` l⌝.
+  Proof using .
+    rewrite /blk_auth /blk_lb. iIntros "Ha Hl".
+    iDestruct (own_valid_2 with "Ha Hl") as %Hv.
+    iPureIntro. apply mono_list_both_valid_L in Hv.
+    exact (blk_fmap_prefix_inv l' l Hv).
+  Qed.
+
+  (* THE TIE: a writer's bound is a prefix of the claim's list, and at
+     equal length it IS the claim's list.  [turn] is what supplies the
+     length. *)
+  Lemma blk_lb_agree w l l' :
+    length l = length l' -> blk_auth w l -∗ blk_lb w l' -∗ ⌜l' = l⌝.
+  Proof using .
+    intros Hlen. iIntros "Ha Hl".
+    iDestruct (blk_lb_prefix with "Ha Hl") as %Hp. iPureIntro.
+    assert (Hle : (length l <= length l')%nat) by lia.
+    exact (prefix_length_eq l' l Hp Hle).
+  Qed.
+
+  Lemma blk_alloc : ⊢ |==> ∃ w : pipe_era, blk_auth w [].
+  Proof using .
+    iMod (own_alloc (●ML ([] : list (leibnizO (list mobs * bv 8)))))
+      as (gb) "Ha"; [by apply mono_list_auth_valid |].
+    iModIntro. iExists (MkPEra gb). rewrite /blk_auth. cbn [pe_blk].
+    by rewrite fmap_nil.
+  Qed.
+
+  (* the map, and its two moves -- [FileOut.f0_map] verbatim *)
+  Definition pera_map (h : list mobs) : iProp Σ :=
+    (∃ M : gmap nat pipe_era,
+       ghost_map_auth (pgn_era g) 1 M ∗ ⌜pin_dom M (obs_boots h)⌝)%I.
+
+  Global Instance pera_map_timeless h : Timeless (pera_map h).
+  Proof using . rewrite /pera_map. apply _. Qed.
+
+  Lemma pera_map_step (h : list mobs) (e : mobs) :
+    obs_boots [e] = 0%nat -> pera_map h -∗ pera_map (h ++ [e]).
+  Proof using .
+    intros He. rewrite /pera_map obs_boots_app He Nat.add_0_r. by iIntros "$".
+  Qed.
+
+  Lemma pera_map_on (h : list mobs) (w : pipe_era) :
+    pera_map h ==∗
+      pera_map (h ++ [ObsPowerOn]) ∗ pera_pin (S (obs_boots h)) w.
+  Proof using .
+    rewrite /pera_map /pera_pin obs_boots_app. cbn [obs_boots].
+    rewrite Nat.add_1_r.
+    iIntros "H". iDestruct "H" as (M) "[Hm %Hd]".
+    iMod (ghost_map_insert_persist (S (obs_boots h)) w
+            (pin_dom_absent _ _ Hd) with "Hm") as "[Hm #Hpin]".
+    iModIntro. iFrame "Hpin". iExists _. iFrame "Hm".
+    iPureIntro. by apply pin_dom_insert.
+  Qed.
+
+End pipe_ledger.
 
 (* ====================================================================== *)
 (*  3.  THE CLAIM, THE TAG, THE TURN AND THE LEDGER                        *)

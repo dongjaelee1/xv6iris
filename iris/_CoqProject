@@ -1500,6 +1500,7 @@ ConsLog.v
 EchoOutPure.v
 FileOutPure.v
 PipeOutPure.v
+PipeBothPure.v
 EchoOut.v
 EchoLinks.v
 EchoLinksPro.v

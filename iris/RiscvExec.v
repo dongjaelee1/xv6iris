@@ -1114,6 +1114,11 @@ Section WPDev.
     gen_cert -∗
     (∀ gr m d (h : list mobs),
        ⌜trace_shape h true⌝ -∗ ⌜obs_wire i (open_seg h) = u_wire (duart d i)⌝ -∗
+       (* ...AND THE INPUT TIE beside it (relax-d2, lane K1): the era-so-far
+          [ObsUartIn] events at this port ARE what its receiver accepted, so
+          the rx arm can say WHICH input the byte it is about to queue is.
+          The receive FIFO is consumed, so the count exists nowhere else. *)
+       ⌜obs_ins i (open_seg h) = u_recv (duart d i)⌝ -∗
        ⌜obs_boots h = S gen_id⌝ -∗
        gregs_interp gr ∗ gen_heap_interp m ∗ dev_interp d ∗ obs_auth h ={⊤,∅}=∗
        ▷ (∀ κ d', ⌜uart_step i d κ d'⌝ ={∅,⊤}=∗
@@ -1159,12 +1164,12 @@ Section WPDev.
     iDestruct "Hdur" as (dmap) "[Hdauth %Hdview]".
     (* the history so far, and what the callback may know about it *)
     iDestruct "Hobs" as (h) "(%Htot & %Hwf & Hoauth)".
-    pose proof Hwf as (Hsh & Hbt & Hwire). rewrite Hpw in Hsh Hwire Hbt.
-    specialize (Hwire eq_refl i).
+    pose proof Hwf as (Hsh & Hbt & Hwire & Hrecv). rewrite Hpw in Hsh Hwire Hrecv Hbt.
+    specialize (Hwire eq_refl i). specialize (Hrecv eq_refl i).
     (* the era stamp: [obs_wf]'s boot count at a live thread *)
     assert (Hstamp : obs_boots h = S gen_id) by (rewrite Hbt Heq; lia).
     iMod ("H" $! g.(gregs) g.(gmem) g.(gdev) h
-            with "[//] [//] [//] [$Hgr $Hmem $Hdev $Hoauth]") as "Hk".
+            with "[//] [//] [//] [//] [$Hgr $Hmem $Hdev $Hoauth]") as "Hk".
     iModIntro. iSplitR.
     { iPureIntro. exists [], (UartLoopE gen_id i),
         (GState g.(gregs) g.(gmem) g.(gdev) g.(ggen) g.(gpow) g.(gresv)

@@ -96,6 +96,51 @@ Definition log_ok (pops : list log_entry) : Prop :=
 Global Instance log_echoed_dec (e : log_entry) : Decision (log_echoed e).
 Proof. unfold log_echoed. apply _. Defined.
 
+(* HOW MANY OF THE LOG'S ENTRIES WERE ECHOED -- what [cons_drop_ok]'s
+   full-ring disjunct counts, AS A NAME.  Every file that consumes that
+   clause takes the Sail imports, which re-export [Stdlib.List] and shadow
+   stdpp's [filter] with a bool-valued one that does not typecheck at the
+   [Prop]-valued [log_echoed]; naming the quantity here, where the shadow is
+   already lifted, is what keeps those files from having to fight it. *)
+Definition echoed_count (L : list log_entry) : nat :=
+  length (base.filter log_echoed L).
+
+Lemma echoed_count_eq (L : list log_entry) :
+  echoed_count L = length (base.filter log_echoed L).
+Proof. reflexivity. Qed.
+
+(* THE ERASE RUN IS NEVER ONE GLYPH (relax-d2, K3).  An erase arm's echo is
+   a whole number of [consputc_bs] triples, so it is never the single byte
+   [echo_of c] a STORE arm sends -- which is what lets the store arm's
+   [ca_sent = 1] clause be stated over every arm and discharged vacuously on
+   the erase ones, the kill loop's early stop included. *)
+Lemma cons_bs_join_length (n : nat) :
+  length (mjoin (replicate n consputc_bs)) = (3 * n)%nat.
+Proof.
+  induction n as [| k IH]; [reflexivity |].
+  assert (Hc : mjoin (replicate (S k) consputc_bs)
+               = (consputc_bs ++ mjoin (replicate k consputc_bs))%list)
+    by reflexivity.
+  rewrite Hc, length_app, IH. cbn [length consputc_bs]. lia.
+Qed.
+
+Lemma cons_bs_join_not_single (n : nat) (x : bv 8) :
+  mjoin (replicate n consputc_bs) <> [x].
+Proof.
+  intro He. apply (f_equal (@length (bv 8))) in He.
+  rewrite cons_bs_join_length in He. cbn [length] in He. lia.
+Qed.
+
+(* ...and the same for a run SPLIT at the arm's position, which is the shape
+   the kill loop's early stop is in *)
+Lemma cons_bs_join_app_not_single (i n : nat) (x : bv 8) :
+  ((mjoin (replicate i consputc_bs)) ++ mjoin (replicate n consputc_bs))%list
+  <> [x].
+Proof.
+  intro He. apply (f_equal (@length (bv 8))) in He.
+  rewrite length_app, !cons_bs_join_length in He. cbn [length] in He. lia.
+Qed.
+
 (* an echoed entry has a nonempty echo -- the one step that turns the gap
    clause's left disjunct into "not an echoed entry" *)
 Lemma log_echoed_nonnil (e : log_entry) : log_echoed e -> le_echo e <> [].
@@ -268,6 +313,38 @@ Definition cons_step (H : cons_hist) (ev : cons_ev) : cons_hist :=
   | EvRead ws => MkCH (ch_acc H) (ch_log H) (ch_dl H ++ ws) (ch_arm H)
   end.
 
+(* WHAT A DROP ARM ([cs = []]) OWES (relaxed discipline, D2 deleted).  A
+   [consoleintr] arm that echoes nothing is one of four: a NUL byte, ^P
+   (procdump), an erase byte with nothing to erase, or a FULL RING.  The
+   fourth is the one the application must be able to refute from its own
+   discipline, and it can only do so if the kernel says what a full ring
+   MEANS in the boundary's own terms: the ring's 128 live bytes are echoed
+   log entries no read has delivered, so the log has at least 128 echoed
+   entries beyond the delivered ones.  (The kernel proves it from the ring's
+   [cons_logged]/[cons_chain] clauses and the consumed cursor, which bounds
+   the delivered count from above.) *)
+Definition cons_drop_ok (c : bv 8) (L : list log_entry)
+    (dl : list (list mobs * bv 8)) : Prop :=
+  bv_unsigned c = 0%Z \/ bv_unsigned c = 16%Z \/ cons_erase c = true
+  \/ (128 + length dl <= length (base.filter log_echoed L))%nat.
+
+(* WHAT THE RECEIVER MAY HAVE LOST (relaxed discipline).  The log is complete
+   up to ONE exception the hardware forces: uartinit's FCR write clears the
+   receive FIFO, so bytes the environment pushed before the console was
+   initialised are discarded and no arm ever files them.  The kernel cannot
+   refute that input; it can say WHEN it happened -- before any byte reached
+   the console's wire -- and how many bytes it was.  [flush_lost h f]: [f]
+   inputs of this era were lost, and if any were, some prefix of the era's
+   segment holds exactly those [f] inputs and NO console output.  The
+   application refutes [f > 0] from its own discipline: a disciplined user
+   types nothing before the first prompt, so no input precedes the first
+   output. *)
+Definition flush_lost (h : list mobs) (f : nat) : Prop :=
+  f = 0%nat
+  \/ exists sf : list mobs,
+       sf `prefix_of` open_seg h /\ obs_wire Uart0 sf = []
+       /\ length (obs_ins Uart0 sf) = f.
+
 (* THE KERNEL'S PURE PREMISE at each event -- what the kernel proves from
    its own state before firing the application's link.
 
@@ -293,10 +370,26 @@ Definition cons_ev_ok (H : cons_hist) (ev : cons_ev) : Prop :=
       (* the WIRE RIDER: what the application has accounted for is already
          on the wire the kernel is about to extend *)
       /\ obs_wire Uart0 (open_seg h) `prefix_of` ch_acc H
+      (* THE LOG IS COMPLETE (relaxed discipline): every input of this era
+         before [c] has been popped and FILED -- the receive FIFO is drained
+         in arrival order and each popped byte's arm closes before the next
+         pop -- so the entry this arm will file is input number [length
+         (ch_log H) + 1], up to the [f] bytes uartinit's flush lost
+         ([flush_lost]).  This is what lets the application know, without
+         waiting for echoes, that the echoed list is a PREFIX of the input. *)
+      /\ (exists f : nat, flush_lost h f
+            /\ (length (ch_log H) + 1 + f)%nat = length (obs_ins Uart0 (open_seg h)))
+      (* ...AND A DROP SAYS WHY ([cons_drop_ok]) *)
+      /\ (cs = [] -> cons_drop_ok c (ch_log H) (ch_dl H))
   | EvByte b => exists a, ch_arm H = Some a /\ ca_echo a !! ca_sent a = Some b
   | EvClose =>
       exists a, ch_arm H = Some a
                 /\ cons_echo (ca_byte a) (take (ca_sent a) (ca_echo a))
+                (* A STORE ARM SENDS ITS BYTE (relaxed discipline): the arm
+                   whose echo is the byte itself closes only after that
+                   byte went out, so the entry it files is ECHOED.  The
+                   erase arms are stoppable early and owe nothing here. *)
+                /\ (ca_echo a = [echo_of (ca_byte a)] -> ca_sent a = 1%nat)
   | EvRead ws => read_ok (ch_log H) (ch_dl H) ws
   end.
 
@@ -343,7 +436,7 @@ Proof.
     split; [exact Hle |]. split; [exact Hbelow |].
     etrans; [exact Hwire | by apply prefix_app_r].
   - (* EvOpen: the arm is founded, and its facts ARE the premises *)
-    destruct Hev as (Hnone & Hends & Hecho & Hbelow & Hwire).
+    destruct Hev as (Hnone & Hends & Hecho & Hbelow & Hwire & _ & _).
     simpl in *. split; [exact Hlog |].
     split; [exact Hends |]. split; [exact Hecho |].
     split; [apply Nat.le_0_l |]. split; [exact Hbelow | exact Hwire].
@@ -359,7 +452,7 @@ Proof.
     etrans; [exact Hwire | by apply prefix_app_r].
   - (* EvClose: the entry is filed, and the arm's facts are exactly
        [cl_log_ok_snoc]'s premises *)
-    destruct Hev as (a & Ha & Hpre). destruct a as [[[h c] cs] j].
+    destruct Hev as (a & Ha & Hpre & _). destruct a as [[[h c] cs] j].
     rewrite Ha in Harm. rewrite Ha. simpl in *.
     destruct Harm as (Hends & _ & _ & Hbelow & _).
     split; [| exact I].

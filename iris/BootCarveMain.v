@@ -581,9 +581,13 @@ Section BootCarveMain.
        a fourth row from the same mint, and the ring is born knowing that
        nothing has been typed. *)
     cons_logm cn [] -∗
+    (* ...AND THE DELIVERED COUNT AT ZERO (relax-d2, lane K2): a fifth row
+       from the same mint, so the ring is born able to say that nothing has
+       been handed out. *)
+    cons_dlcnt cn 0%nat -∗
     cons_res cn.
   Proof using .
-    intros Hmem Hlo Hbss Hhi Hal. iIntros "#Hcl H Hsa Hcu Hhi Hlm".
+    intros Hmem Hlo Hbss Hhi Hal. iIntros "#Hcl H Hsa Hcu Hhi Hlm Hdc".
     assert (Hal4 : forall k : Z, k mod 4 = 0 -> (KernelSyms.cons + k) mod 4 = 0)
       by (intros k Hk; rewrite Z.add_mod; [| lia]; rewrite Hal Hk; reflexivity).
     (* the four windows, in address order *)
@@ -638,7 +642,7 @@ Section BootCarveMain.
     rewrite /cons_res /a_cons_r /a_cons_w /a_cons_e.
     iExists (mword_of_int 0 : mword 32), (mword_of_int 0 : mword 32),
             (mword_of_int 0 : mword 32), bs, (replicate INPUT_BUF_SIZE None),
-            0%nat, 0%nat, [], [], None, [], false.
+            0%nat, 0%nat, 0%nat, [], [], None, [], false.
     (* BUILD [cons_res] in its own conjunct order rather than framing it: a
        named [iFrame] here still walks the whole goal per name (2.6s
        measured), and every row is either in hand or pure. *)
@@ -687,6 +691,9 @@ Section BootCarveMain.
         + intros i h1 c1 h2 c2 H1. rewrite lookup_nil in H1. discriminate H1.
         + intros h c Hz. rewrite lookup_nil in Hz. discriminate Hz.
       - cbn [cons_gp_ok]. intros e He. exfalso. by apply elem_of_nil in He. }
+    (* the delivered count, and the two bounds it sits between: all zero *)
+    iSplitL "Hdc"; [iExact "Hdc" |].
+    iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
     (* NOBODY HAS READ BEHIND THE TOKEN HOLDER'S BACK: the ring is born
        clean, and the clean token that says so leaves with the reader. *)
     iLeft. by iPureIntro.

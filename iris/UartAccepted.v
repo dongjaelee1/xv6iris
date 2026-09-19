@@ -271,7 +271,7 @@ Theorem run_out_accepted (n : nat) (t t2 : list (expr riscv_lang))
   obs_wire i (open_seg κs) `sublist_of` uart_acc (duart g2.(gdev) i).
 Proof.
   intros Hpw Hgen Hn.
-  pose proof (run_obs_wf n t t2 g g2 κs Hpw Hgen Hn) as (Hsh & _ & Hwire).
+  pose proof (run_obs_wf n t t2 g g2 κs Hpw Hgen Hn) as (Hsh & _ & Hwire & _).
   pose proof (nsteps_gout_wire_ok n (t, g) (t2, g2) κs Hn
                 (gout_wire_ok_off g Hpw)) as Hok.
   destruct (g2.(gpow)) eqn:Hpw2.

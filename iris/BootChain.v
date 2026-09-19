@@ -360,6 +360,10 @@ Section BootPrimary.
     (K_kvmmake + 64 + 3 < length ps)%nat ->
     (* the disk's protocol is in its not-live arm at boot *)
     virtio_live c0 = false ->
+    (* ...AND NEITHER TRANSMITTER HAS BEEN USED (relax-d2, lane K1):
+       forwarded whole to [SpecMain], where uartinit's FCR FIFO-clear
+       spends it ([ConsLog.flush_lost]'s witness). *)
+    l0 = [] -> l1 = [] ->
     (* the console ring's names carry the RECEIVE side's, which is where the
        high-water mark's two halves live (app-echo.md, CONS-CURSOR C2) *)
     cn_uart cn = γd ->
@@ -484,7 +488,7 @@ Section BootPrimary.
     ([∗ list] p ∈ ps, page_own p) -∗
     mWP (Loop : expr riscv_lang).
   Proof.
-    intros Hreset Hz Hprun Hlen Hlive Hcnu Himg.
+    intros Hreset Hz Hprun Hlen Hlive Hl0 Hl1 Hcnu Himg.
     iIntros "#Htext #Hdata Hres Hthr #Hstarted Hprim #Hecho Hlk Hgl Hfirst Hnext Hpark Hpst Hpav Hchb
              Hfs Hmir Hirslot Hirauth #Hcert #Hseam
              #Hdev #Hwire Hinitb Htx Hsent Hlb Htok Hhi Hlgh Harm Hdlab
@@ -500,7 +504,8 @@ Section BootPrimary.
               γd1 l1 b1
               dk sb nib cov ndisk S Pb Rspent
               (register_lookup tlb rs) γi ξd (main_dep γd γv)
-              (cid_word_of_zero _ Hz) K_main_boot_le eq_refl eq_refl Hprun Hlen
+              (cid_word_of_zero _ Hz) K_main_boot_le Hl0 Hl1
+              eq_refl eq_refl Hprun Hlen
               Hlive Hcnu Himg eq_refl
               with "Hcap Hctx Hcpu Hg Htext Hdata Hpc Hstarted Hprim [] Hecho Hlk Hgl
                     Hfirst Hnext Hpark Hpst Hpav Hchb Hfs Hmir Hirslot Hirauth

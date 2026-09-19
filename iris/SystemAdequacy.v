@@ -818,14 +818,14 @@ Section SystemBoot.
        builds [PidLock]'s lock, which is allocproc's premise and hence
        userinit's.  `first` rides along and is dropped there -- its consumer
        is forkret's [if (first)] arm. *)
-    iDestruct "Huart" as (l0) "(Htx & #Hsent & #Hlb)".
+    iDestruct "Huart" as (l0) "(Htx & #Hsent & #Hlb & %Hl0)".
     iDestruct "Hdlab" as (b0) "Hdlab".
     (* ...AND THE SAME TWO ROWS AT THE SECOND PORT (bump 163d39b): main runs
        [uartinitone] there too, so port 1 owes the transmitter token, the
        transmitted-prefix bound, the receipt and the UNFROZEN DLAB half,
        exactly as the console does.  What it does NOT owe is any claim about
        the bytes -- its output is unconstrained. *)
-    iDestruct "Huart1" as (l1) "(Htx1 & #Hsent1 & #Hlb1)".
+    iDestruct "Huart1" as (l1) "(Htx1 & #Hsent1 & #Hlb1 & %Hl1)".
     iDestruct "Hdlab1" as (b1) "Hdlab1".
     iDestruct "Hcfg" as (c0) "[%Hlive Hcfg]".
     iDestruct "Hpages" as (ps) "(%Hprun & %Hplen & Hpages)".
@@ -894,7 +894,7 @@ Section SystemBoot.
                   (v_disk (g.(gdev).(dvirtio))) (fss_sb S) (fs_nib S) cov
                   XV6_DISK_BYTES S Pb Rspent
                   (boot_regs_of_facts g Hbf 0%fin) fin_0_z Hprun Hplen Hlive
-                  Hcnu Hbundle) as "HP".
+                  Hl0 Hl1 Hcnu Hbundle) as "HP".
         iSpecialize ("HP" with "Htext").
         iSpecialize ("HP" with "Hdata").
         iSpecialize ("HP" with "Hh0").

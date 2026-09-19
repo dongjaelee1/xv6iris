@@ -219,6 +219,7 @@ Section WpSconfUartAccess.
                 ltac:(exact (uart_read_wire _ _ _ _ Hread))
                 ltac:(exact (proj1 (proj2 (uart_read_stable _ _ _ _ Hread))))
                 ltac:(exact (proj1 (uart_read_stable _ _ _ _ Hread)))
+                ltac:(exact (uart_read_recv _ _ _ _ Hread))
                 with "Hcol") as "Hcol".
       rewrite uart_read_lsr in Hread. injection Hread as <- <-.
       iDestruct "Hg" as "(Hs & Hout & Htx & Hdl)".
@@ -326,6 +327,7 @@ Section WpSconfUartAccess.
                 ltac:(exact (uart_read_wire _ _ _ _ Hread))
                 ltac:(exact (proj1 (proj2 (uart_read_stable _ _ _ _ Hread))))
                 ltac:(exact (proj1 (uart_read_stable _ _ _ _ Hread)))
+                ltac:(exact (uart_read_recv _ _ _ _ Hread))
                 with "Hcol").
     - iEval (rewrite /wp_next). iIntros (CID1 Hs1 bt) "Hcg Hpc _".
       iSpecialize ("Hcont" $! CID1 with "[]"); [iPureIntro; exact Hs1|].
@@ -418,12 +420,13 @@ Section WpSconfUartAccess.
       (* THE OUTPUT CLAIM MOVES BY THE CALLER'S LINK (lane OUT-FUPD), and
          this is the ONE place in the machine where it does: the accepted
          sequence grows by exactly [sb] here and nowhere else. *)
-      iMod ("HΨ" $! u u' with "[%] [%] [%] [%] [%] Hout Hcol Hin")
+      iMod ("HΨ" $! u u' with "[%] [%] [%] [%] [%] [%] Hout Hcol Hin")
         as "(Hout & Hcol & Hin & HΦ)";
         [ exact Hrxe | exact Hlbe
         | exact (uart_write_wire _ _ _ _ Hwrite)
         | exact (uart_write_out _ _ _ _ Hwrite)
-        | rewrite Hacc' Haccu; reflexivity |].
+        | rewrite Hacc' Haccu; reflexivity
+        | exact (uart_write_recv _ _ _ _ Hwrite) |].
       iMod (uart_tx_own_update γd u l u' with "Htx Hown") as "[Htx Hown]".
       iMod (uart_sent_update γd u u' with "Hs") as "[Hs Hsent]".
       { rewrite Haccu Hacc'. by apply prefix_app_r. }
@@ -494,6 +497,7 @@ Section WpSconfUartAccess.
                 ltac:(exact (uart_read_wire _ _ _ _ Hread))
                 ltac:(exact (proj1 (proj2 (uart_read_stable _ _ _ _ Hread))))
                 ltac:(exact (proj1 (uart_read_stable _ _ _ _ Hread)))
+                ltac:(exact (uart_read_recv _ _ _ _ Hread))
                 with "Hcol") as "Hcol".
       rewrite uart_read_lsr in Hread. injection Hread as <- <-.
       destruct (uart_rx_ready u) eqn:Hdr.
@@ -550,6 +554,14 @@ Section WpSconfUartAccess.
          (* ...and the byte's ERA STAMP (milestone C), which is what says
             the shift it pays for is the CURRENT era's. *)
          ⌜obs_boots h = S gen_id⌝ ∗
+         (* ...AND THE TWO INPUT NUMBERS (relax-d2, lane K1): this byte is
+            the [S k]th the host typed at this port in this era, and the
+            anchor it replaces was the [k]th.  Read together they say the
+            two are ADJACENT, which is exactly what the console boundary's
+            log-completeness clause needs. *)
+         ⌜length (obs_ins i (open_seg h)) = S k⌝ ∗
+         ⌜ins_len i hl = k⌝ ∗
+         ⌜trace_shape h true⌝ ∗
          uart_rx_tok γd (S k) (Some h)) -∗
       mWP (Loop : expr riscv_lang)) -∗
     mWP (Loop : expr riscv_lang).
@@ -566,6 +578,9 @@ Section WpSconfUartAccess.
                  riscv_rx_tag h ∗ obs_hist_lb h ∗
                  uart_out_lb γd (obs_wire i (open_seg h)) ∗
                  ⌜obs_boots h = S gen_id⌝ ∗
+                 ⌜length (obs_ins i (open_seg h)) = S k⌝ ∗
+                 ⌜ins_len i hl = k⌝ ∗
+                 ⌜trace_shape h true⌝ ∗
                  uart_rx_tok γd (S k) (Some h))%I b p
               ltac:(unfold uart_size; lia) Hrd Hrdok
               ltac:(rewrite Haddr; exact Hg1)
@@ -580,11 +595,17 @@ Section WpSconfUartAccess.
               ltac:(exact (uart_read_wire _ _ _ _ Hread))
                 ltac:(exact (proj1 (proj2 (uart_read_stable _ _ _ _ Hread))))
                 ltac:(exact (proj1 (uart_read_stable _ _ _ _ Hread)))
-              with "Hcol Htok Hlb") as "(Hcol & Hh)".
+                ltac:(exact (uart_read_recv _ _ _ _ Hread))
+              with "Hcol Htok Hlb") as "(Hcol & %Hanum & Hh)".
       (* the four transmitter ghosts are untouched by any read *)
       destruct (uart_read_stable u 0 bt u' Hread) as (Ha & Ho & Hdl).
       iDestruct (uart_ghosts_stable γd u u' Ha Ho Hdl with "Hg") as "Hg".
-      iModIntro. iFrame "Hg Hcol Hh".
+      iModIntro. iFrame "Hg Hcol".
+      iDestruct "Hh" as (hh)
+        "(%He & %Hx & #Htg & #Hlbh & #Hwlb & %Hbts & %Hnum & %Hshh & Htok)".
+      iExists hh. iFrame "Htg Hlbh Hwlb Htok". iPureIntro.
+      split_and!; [exact He | exact Hx | exact Hbts | exact Hnum | exact Hanum
+                  | exact Hshh].
     - iEval (rewrite /wp_next). iIntros (CID1 Hs1 c) "Hcg Hpc Hh".
       iSpecialize ("Hcont" $! CID1 with "[]"); [iPureIntro; exact Hs1|].
       iApply ("Hcont" $! c with "Hcg Hpc Hh").
@@ -613,13 +634,25 @@ Section WpSconfUartAccess.
        produce [uart_ghosts] at [u'] (its [uart_sent_auth] is monotone), so
        saying so costs it nothing, and it is what carries the console's
        output claim over the store. *)
+    (* ...AND THAT NOTHING HAS LEFT THE TRANSMITTER (relax-d2, lane K1).
+       uartinit's FCR write is the one receive flush in the machine, and the
+       bytes it discards are unaccountable UNLESS no console output preceded
+       them -- which at uartinit is true and which only the caller, holding
+       the transmitter token, can say. *)
     (∀ u u', ⌜ uart_write u 2 sb = Some u' ⌝ -∗
        uart_ghosts γd u -∗ R ==∗
-       ⌜uart_acc u' = uart_acc u⌝ ∗ uart_ghosts γd u' ∗ S) -∗
+       ⌜uart_acc u' = uart_acc u⌝ ∗ ⌜u_out u = []⌝ ∗
+       uart_ghosts γd u' ∗ S) -∗
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt m n b p -∗
       pc_is (add_vec_int pc 4) -∗
-      (∃ (k' : nat) (hl' : option (list mobs)), uart_rx_tok γd k' hl') -∗
+      (* ...AND WHAT THE CLEAR DISCARDED (relax-d2, lane K1): either the
+         FIFO was empty and the anchor did not move, or everything the
+         popper has removed went to this flush with no console output
+         before it ([WpUart.uart_flushed]). *)
+      (∃ (k' : nat) (hl' : option (list mobs)),
+         uart_rx_tok γd k' hl'
+         ∗ ⌜hl' = hl \/ uart_flushed i hl'⌝) -∗
       S -∗
       mWP (Loop : expr riscv_lang)) -∗
     mWP (Loop : expr riscv_lang).
@@ -635,7 +668,8 @@ Section WpSconfUartAccess.
     iApply (Uart.wp_sb_uart_uinv_s_sconf_at kt (CID:=CID) i γd 2 pc false rs2 rs1 imm
               m n (uart_rx_tok γd k hl ∗ R)%I
               ((∃ (k' : nat) (hl' : option (list mobs)),
-                  uart_rx_tok γd k' hl') ∗ S)%I b p
+                  uart_rx_tok γd k' hl'
+                  ∗ ⌜hl' = hl \/ uart_flushed i hl'⌝) ∗ S)%I b p
               ltac:(unfold uart_size; lia)
               ltac:(rewrite Haddr; exact Hg1)
               ltac:(rewrite Haddr; exact Hg2)
@@ -644,7 +678,7 @@ Section WpSconfUartAccess.
     - iFrame "Htok HR".
     - iIntros (u u') "%Hwrite Hg Hcol Hin [Htok HR]".
       destruct (uart_write_fcr_rx u sb u' Hwrite) as [Hrxe Hlbe].
-      iMod ("Hstep" $! u u' with "[//] Hg HR") as "(%Hacce & Hg & HS)".
+      iMod ("Hstep" $! u u' with "[//] Hg HR") as "(%Hacce & %Hout0 & Hg & HS)".
       (* an FCR write leaves the ACCEPTED bytes alone, so the port's console
          claim rides across the transition the invariant closes at *)
       iDestruct (cons_claim_at_stable i γd u u' Hacce with "Hin") as "Hin".
@@ -653,14 +687,23 @@ Section WpSconfUartAccess.
                 ltac:(exact (uart_write_wire _ _ _ _ Hwrite))
                 ltac:(exact (uart_write_out _ _ _ _ Hwrite))
                 Hacce
+                ltac:(exact (uart_write_recv _ _ _ _ Hwrite))
                 with "Hcol Htok") as "[Hcol Htok]".
-        iModIntro. iFrame "Hg Hcol Hin Htok HS".
+        iModIntro. iFrame "Hg Hcol Hin HS".
+        iDestruct "Htok" as (k' hl') "(Htok & %Hb' & %Hw')".
+        iExists k', hl'. iFrame "Htok". iPureIntro. right.
+        apply (uart_flushed_intro i hl' Hb').
+        rewrite Hout0 in Hw'. by apply prefix_nil_inv in Hw'.
       + iDestruct (uart_colE_stable i γd u u' Hrxe Hlbe
                 ltac:(exact (uart_write_wire _ _ _ _ Hwrite))
                 ltac:(exact (uart_write_out _ _ _ _ Hwrite))
                 Hacce
+                ltac:(exact (uart_write_recv _ _ _ _ Hwrite))
                 with "Hcol") as "Hcol".
-        iModIntro. iFrame "Hg Hcol Hin HS". iExists k, hl. iExact "Htok".
+        iModIntro. iFrame "Hg Hcol Hin HS". iExists k, hl. iFrame "Htok".
+        (* the clear found an EMPTY FIFO: nothing was discarded and the
+           anchor did not move. *)
+        iPureIntro. by left.
     - iEval (rewrite /wp_next). iIntros (CID1 Hs1) "Hcg Hpc [Htok HS]".
       iApply ("Hcont" $! CID1 with "[] Hcg Hpc Htok HS").
       iPureIntro. exact Hs1.
@@ -822,6 +865,14 @@ Section WpSconfUartAccess.
          riscv_rx_tag h ∗ obs_hist_lb h ∗
          uart_out_lb γd (obs_wire Uart0 (open_seg h)) ∗
          ⌜obs_boots h = S gen_id⌝ ∗
+         (* ...AND THE TWO INPUT NUMBERS (relax-d2, lane K1): this byte is
+            the [S k]th the host typed at this port in this era, and the
+            anchor it replaces was the [k]th.  Read together they say the
+            two are ADJACENT, which is exactly what the console boundary's
+            log-completeness clause needs. *)
+         ⌜length (obs_ins Uart0 (open_seg h)) = S k⌝ ∗
+         ⌜ins_len Uart0 hl = k⌝ ∗
+         ⌜trace_shape h true⌝ ∗
          uart_rx_tok γd (S k) (Some h)) -∗
       mWP (Loop : expr riscv_lang)) -∗
     mWP (Loop : expr riscv_lang).
@@ -848,13 +899,25 @@ Section WpSconfUartAccess.
        produce [uart_ghosts] at [u'] (its [uart_sent_auth] is monotone), so
        saying so costs it nothing, and it is what carries the console's
        output claim over the store. *)
+    (* ...AND THAT NOTHING HAS LEFT THE TRANSMITTER (relax-d2, lane K1).
+       uartinit's FCR write is the one receive flush in the machine, and the
+       bytes it discards are unaccountable UNLESS no console output preceded
+       them -- which at uartinit is true and which only the caller, holding
+       the transmitter token, can say. *)
     (∀ u u', ⌜ uart_write u 2 sb = Some u' ⌝ -∗
        uart_ghosts γd u -∗ R ==∗
-       ⌜uart_acc u' = uart_acc u⌝ ∗ uart_ghosts γd u' ∗ S) -∗
+       ⌜uart_acc u' = uart_acc u⌝ ∗ ⌜u_out u = []⌝ ∗
+       uart_ghosts γd u' ∗ S) -∗
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt m n b p -∗
       pc_is (add_vec_int pc 4) -∗
-      (∃ (k' : nat) (hl' : option (list mobs)), uart_rx_tok γd k' hl') -∗
+      (* ...AND WHAT THE CLEAR DISCARDED (relax-d2, lane K1): either the
+         FIFO was empty and the anchor did not move, or everything the
+         popper has removed went to this flush with no console output
+         before it ([WpUart.uart_flushed]). *)
+      (∃ (k' : nat) (hl' : option (list mobs)),
+         uart_rx_tok γd k' hl'
+         ∗ ⌜hl' = hl \/ uart_flushed Uart0 hl'⌝) -∗
       S -∗
       mWP (Loop : expr riscv_lang)) -∗
     mWP (Loop : expr riscv_lang).

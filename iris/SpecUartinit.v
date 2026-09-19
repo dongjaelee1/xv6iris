@@ -108,6 +108,11 @@ Definition wp_uartinit_sconf_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{CID 
   let ret_tgt := ret_pc (m !!! Regidx (mword_of_int 1 : mword 5) : mword 64) in
   (* uartinit's own two slots over [uartinitone]'s four *)
   (6 <= K)%nat ->
+  (* ...AND NEITHER TRANSMITTER HAS BEEN USED (relax-d2, lane K1): uartinit
+     is the first thing main runs, so the bytes each port's FCR FIFO-clear
+     discards had no console output before them -- [ConsLog.flush_lost]'s
+     witness, which is how the console boundary later accounts for them. *)
+  l0 = [] -> l1 = [] ->
   sie_cap_gpr KT0 m K false p -∗
   (* [kernel_data] is load-bearing: it is where the two "uart0"/"uart1"
      string literals the [auipc a1 / addi a1] pairs point at come from. *)
@@ -136,11 +141,14 @@ Definition wp_uartinit_sconf_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{CID 
     ⌜ callee_saved m mr ⌝ -∗
     (* neither call writes THR, so both accepted traces are untouched *)
     uart_tx_own γ0 l0 -∗ uart_sent γ0 l0 -∗
-    (∃ (k' : nat) (hl' : option (list mobs)), uart_rx_tok γ0 k' hl') -∗
+    (* ...WITH WHAT THE CLEAR DISCARDED (relax-d2, lane K1) *)
+    (∃ (k' : nat) (hl' : option (list mobs)),
+       uart_rx_tok γ0 k' hl' ∗ ⌜hl' = hl0 \/ uart_flushed Uart0 hl'⌝) -∗
     uart_dlab_off γ0 -∗
     lk_fresh (a_tx_lock_at Uart0) (uart_name Uart0) -∗
     uart_tx_own γ1 l1 -∗ uart_sent γ1 l1 -∗
-    (∃ (k' : nat) (hl' : option (list mobs)), uart_rx_tok γ1 k' hl') -∗
+    (∃ (k' : nat) (hl' : option (list mobs)),
+       uart_rx_tok γ1 k' hl' ∗ ⌜hl' = hl1 \/ uart_flushed Uart1 hl'⌝) -∗
     uart_dlab_off γ1 -∗
     lk_fresh (a_tx_lock_at Uart1) (uart_name Uart1) -∗
     mWP (Loop : expr riscv_lang)) -∗

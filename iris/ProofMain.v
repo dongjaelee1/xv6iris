@@ -433,6 +433,12 @@ Section ProofMain.
       (γd1 : uart_names) (l1 : list (bv 8)) (b1 : bool)
       (k1 : nat) (hl1 : option (list mobs)) :
     (K_userinit <= n)%nat ->
+    (* ...AND NEITHER TRANSMITTER HAS BEEN USED (relax-d2, lane K1): what
+       makes uartinit's FCR FIFO-clear accountable at the boundary.  The two
+       anchors start at [None] for the same reason: nothing has been popped
+       when this group runs, so a flush that moves the anchor is the ONLY
+       way it can be anywhere else. *)
+    l0 = [] -> l1 = [] -> hl0 = None -> hl1 = None ->
     (* the ring's names carry the RECEIVE side's, which is where the
        high-water mark's two halves live *)
     cn_uart cn = γd ->
@@ -536,7 +542,7 @@ Section ProofMain.
         mWP (Loop : expr riscv_lang)) -∗
     mWP (Loop : expr riscv_lang).
   Proof using .
-    intros Hn Hcnu Hconsq.
+    intros Hn Hl0 Hl1 Hhl0 Hhl1 Hcnu Hconsq.
     iIntros "Hcg #Htext #Hkdata #Hdev Hpc Hfree Hcpu Hlcons Hltx0 Hltx1 Hlpr".
     iIntros "Hkprintk Hdevsw Hrest Hring Hclean Htx Hsent Hlb Htok Hhi Hlgh Harm Hdlab".
     iIntros "#Hplic #Hpinned #Huinv1 #Hubw0 #Hurw0 #Hubw1 #Hurw1".
@@ -585,7 +591,7 @@ Section ProofMain.
        [SpecPrputc.prputc_env] -- printk's own credential -- is built from. *)
     iApply (Consoleinit.wp_consoleinit_sconf γd C0 n l0 b0 k0 hl0
               γd1 l1 b1 k1 hl1
-              vcl vcn vcc dr0 dw0 p0 ltac:(lia)
+              vcl vcn vcc dr0 dw0 p0 ltac:(lia) Hl0 Hl1
               with "Hcg Htext Hkdata Hpc Huinv Htx Hlb Hsent Htok Hdlab
                     Hubw0 Hurw0 Hubw1 Hurw1
                     Huinv1 Htx1 Hlb1 Hsent1 Htok1 Hdlab1
@@ -604,11 +610,19 @@ Section ProofMain.
        BOTH go through the CONCRETE [plic_inv γd γd1]: the slot the deposit
        moves is keyed by the port's own bundle, and [dev_inv]'s ∃-packed PLIC
        conjunct cannot name the second one. ===== *)
-    iDestruct "Htok" as (ktok hltok) "Htok".
-    iDestruct "Htok1" as (ktok1 hltok1) "Htok1".
+    (* WHAT UARTINIT'S FCR CLEAR DISCARDED (relax-d2, lane K1): each port's
+       token comes back with it, and it is exactly what the deposit's
+       [uart_log_at] arm asks for -- the log is empty here, so the mark can
+       only be the anchor if the clear moved nothing. *)
+    iDestruct "Htok" as (ktok hltok) "[Htok %Hfl0]".
+    iDestruct "Htok1" as (ktok1 hltok1) "[Htok1 %Hfl1]".
+    assert (Hlat0 : uart_log_at Uart0 None hltok).
+    { cbn [uart_log_at]. destruct Hfl0 as [-> | Hf].
+      - rewrite Hhl0. by left.
+      - right. split; [reflexivity | exact Hf]. }
     iApply fupd_wp.
     iMod (uart_rx_tok_deposit ⊤ γd γd1 Uart0 ktok hltok None None
-            ltac:(solve_ndisj) (ohist_le_none hltok) (ohist_le_none hltok)
+            ltac:(solve_ndisj) (ohist_le_none hltok) Hlat0
             with "Hplic Htok Hhi Hlgh Harm") as "#Hinit".
     iMod (uart_rx_tok_deposit ⊤ γd γd1 Uart1 ktok1 hltok1 None None
             ltac:(solve_ndisj) (ohist_le_none hltok1) (ohist_le_none hltok1)
@@ -2416,7 +2430,7 @@ Section ProofMain.
         γd γv cn l0 b0 c0 γd1 l1 b1 dk sb nib cov ndisk S Pb Rspent tlbvec0 γi ξd P.
   Proof.
     cbv beta delta [wp_main_boot_sconf_body].
-    intros pcE Hcid HK Hphystop Hs1 Hprun Hlen Hlive Hcnu Hsnap Hp0.
+    intros pcE Hcid HK Hl0 Hl1 Hphystop Hs1 Hprun Hlen Hlive Hcnu Hsnap Hp0.
     (* THE SNAPSHOT HYPOTHESIS, READ HERE (fs-cfg-boot.md stage (f);
        durable-disk lane E-himg).  Two of its rows are main's own ([0 < nib]
        for userinit's namei corner, [0 ∉ cov] for [bio_init_at]); the rest
@@ -2541,7 +2555,7 @@ Section ProofMain.
     iIntros (m1) "Hcg Hpc".
     (* --- 0x42 .. 0x6a : console / printk --- *)
     iApply (mn_grp_printk γd γv cn m1 (K - 2)%nat p0 l0 b0 0%nat None
-              γd1 l1 b1 0%nat None Hn50
+              γd1 l1 b1 0%nat None Hn50 Hl0 Hl1 eq_refl eq_refl
               Hcnu Hconsq
               with "Hcg Htext Hkdata Hdev Hpc Hfree Hcpu Hlcons Hltx0 Hltx1 Hlpr
                     Hkprintk Hdevsw Hdevrest Hring Hclean Htx Hsent Hlb Htok

@@ -376,6 +376,23 @@ Definition pcl_pure (k : nat) (ho : list mobs) (so : postage)
   /\ ch_arm_era_p k ho (LogEntryDefs.ch_arm H)
   /\ o_E so = ch_E H.
 
+(* THE DELIVERED BYTES ARE INSIDE THE ERA'S INPUT.  [EchoOut.inp_lb] is a
+   lower bound of the DELIVERED list, and the read never hands out more than
+   the log has echoed -- so a writer's bound is a bound on the era's input
+   too.  [EchoOut.ecl_pure_dl_E] at this claim. *)
+Lemma pcl_pure_dl_E (k : nat) (ho : list mobs) (so : postage)
+    (H : LogEntryDefs.cons_hist) :
+  pcl_pure k ho so H ->
+  (snd <$> LogEntryDefs.ch_dl H) `prefix_of` (snd <$> o_E so).
+Proof using.
+  intros (_ & _ & _ & Hin & _ & HE).
+  destruct Hin as (_ & _ & _ & Hdlp & _).
+  rewrite HE /ch_E.
+  etrans; [exact (epu_fmap_prefix snd _ _ Hdlp) |].
+  rewrite -(seg_of_snd (echoed (LogEntryDefs.ch_log H))).
+  apply epu_fmap_prefix. by apply prefix_app_r.
+Qed.
+
 Lemma pcl_pure_arm (k : nat) (ho : list mobs) (so : postage)
     (H : LogEntryDefs.cons_hist) :
   pcl_pure k ho so H -> ch_arm_era_p k ho (LogEntryDefs.ch_arm H).
@@ -687,6 +704,10 @@ Section pipe_out.
         ∗ ps_auth v (o_ps so)
         ∗ Elist_auth v (o_E so)
         ∗ dl_cnt v (1/2) (length (LogEntryDefs.ch_dl H))
+        (* ...AND THE DELIVERED LIST ITSELF, beside its count: [inp_lb] is a
+           bound of it, so a writer's bound says what the console has HANDED
+           OVER and not only what it has echoed. *)
+        ∗ dl_list_auth v (LogEntryDefs.ch_dl H)
         ∗ ⌜pcl_pure k ho so H⌝)%I.
 
   Global Instance pecl_timeless k ho H : Timeless (pecl k ho H).
@@ -723,9 +744,9 @@ Section pipe_out.
   Proof using .
     intros Hok Hev. rewrite /pecl.
     iIntros "[HT | Hc]"; [by iLeft |]. iRight.
-    iDestruct "Hc" as (v so) "(Hpin & Htn & Hcs & Hps & HE & Hdl & %Hpure)".
+    iDestruct "Hc" as (v so) "(Hpin & Htn & Hcs & Hps & HE & Hdl & Hdll & %Hpure)".
     iExists v, so. iFrame "Hpin Htn Hcs Hps HE".
-    rewrite ch_dl_close. iFrame "Hdl". iPureIntro.
+    rewrite ch_dl_close. iFrame "Hdl Hdll". iPureIntro.
     by apply (pcl_pure_close k ho so H Hok Hev Hpure).
   Qed.
 
@@ -741,10 +762,10 @@ Section pipe_out.
   Proof using .
     intros Hn Hd Hb Hdh Hsh Hends Hord Hlt. rewrite /pecl.
     iIntros "[HT | Hc]"; [by iLeft |]. iRight.
-    iDestruct "Hc" as (v so) "(Hpin & Htn & Hcs & Hps & HE & Hdl & %Hpure)".
+    iDestruct "Hc" as (v so) "(Hpin & Htn & Hcs & Hps & HE & Hdl & Hdll & %Hpure)".
     iExists v, so. iFrame "Hpin Htn Hcs Hps HE".
-    rewrite /ConsLog.cons_step. cbn [LogEntryDefs.ch_dl]. iFrame "Hdl".
-    iPureIntro.
+    rewrite /ConsLog.cons_step. cbn [LogEntryDefs.ch_dl].
+    iFrame "Hdl Hdll". iPureIntro.
     by apply (pcl_pure_open k ho so H h c cs Hn Hd Hb Hdh Hsh Hends Hord Hlt
                 Hpure).
   Qed.
@@ -763,9 +784,9 @@ Section pipe_out.
   Proof using .
     rewrite /pecl. iIntros "[#HT | Hp]".
     { iSplitR; [by iLeft | by iLeft]. }
-    iDestruct "Hp" as (v so) "(#Hpin & Htn & Hcs & Hps & HE & Hdl & %Hall)".
+    iDestruct "Hp" as (v so) "(#Hpin & Htn & Hcs & Hps & HE & Hdl & Hdll & %Hall)".
     iSplitL.
-    - iRight. iExists v, so. iFrame "Hpin Htn Hcs Hps HE Hdl". by iPureIntro.
+    - iRight. iExists v, so. iFrame "Hpin Htn Hcs Hps HE Hdl Hdll". by iPureIntro.
     - iRight. iPureIntro. exact (pcl_pure_arm k ho so CH Hall).
   Qed.
 
@@ -781,9 +802,9 @@ Section pipe_out.
   Proof using .
     intros Hsh Hk Hends Hord. rewrite /pecl. iIntros "[#HT | Hp]".
     { iSplitR; [by iLeft | by iLeft]. }
-    iDestruct "Hp" as (v so) "(#Hpin & Htn & Hcs & Hps & HE & Hdl & %Hall)".
+    iDestruct "Hp" as (v so) "(#Hpin & Htn & Hcs & Hps & HE & Hdl & Hdll & %Hall)".
     iSplitL.
-    - iRight. iExists v, so. iFrame "Hpin Htn Hcs Hps HE Hdl". by iPureIntro.
+    - iRight. iExists v, so. iFrame "Hpin Htn Hcs Hps HE Hdl Hdll". by iPureIntro.
     - iRight. iPureIntro.
       destruct Hall as (_ & _ & _ & Hin & _ & _).
       destruct Hin as (_ & _ & Hstamp & _ & Hidx & _ & _).
@@ -810,7 +831,7 @@ Section pipe_out.
     iIntros "#Hpin Ht #Hpslb #Hcslb #Hilb Hcl".
     iDestruct "Hcl" as "[#HT | Hp]".
     { iModIntro. iSplitR; [rewrite /pecl; by iLeft | by iRight]. }
-    iDestruct "Hp" as (v2 so) "(#Hpin2 & Hta & Hcs & Hps & HE & Hdl & %Hall)".
+    iDestruct "Hp" as (v2 so) "(#Hpin2 & Hta & Hcs & Hps & HE & Hdl & Hdll & %Hall)".
     iDestruct (era_pin_agree with "Hpin2 Hpin") as %->.
     pose proof Hall as Hall0.
     destruct Hall as (Hpure & Hcsl & Hpsl & _ & _ & _).
@@ -819,7 +840,9 @@ Section pipe_out.
     iDestruct (turn_agree with "Ht Hta") as %HP.
     iDestruct (cs_lb_prefix with "Hcs Hcslb") as %Hcsp.
     iDestruct (ps_lb_prefix with "Hps Hpslb") as %Hpsp.
-    iDestruct (inp_lb_le with "HE Hilb") as %HI0.
+    iDestruct (inp_lb_le with "Hdll Hilb") as %HI0dl.
+    assert (HI0 : I0 `prefix_of` (snd <$> o_E so)).
+    { etrans; [exact HI0dl | exact (pcl_pure_dl_E k ho so H Hall0)]. }
     destruct (write_stage_byte_p ps0 (o_ps so) cs0 (o_cs so) (o_E so)
                 (o_w so) I0 P b Hpsp Hpin0 Hcsp Hn HI0 HP Hb)
       as [HlenE Hnext].
@@ -844,7 +867,7 @@ Section pipe_out.
       iExists v, (MkO (o_ps so) (o_cs so) (o_E so) (o_w so ++ [b])).
       cbn [o_ps o_cs o_E o_w]. rewrite pcount_p_write -HP.
       rewrite /ConsLog.cons_step. cbn [LogEntryDefs.ch_dl].
-      iFrame "Hpin Hta Hcs Hps HE Hdl". iPureIntro.
+      iFrame "Hpin Hta Hcs Hps HE Hdl Hdll". iPureIntro.
       apply (pcl_pure_out k ho so
                (MkO (o_ps so) (o_cs so) (o_E so) (o_w so ++ [b])) H b);
         [cbn [o_cs]; lia | reflexivity | | | | exact Hall0].
@@ -894,7 +917,7 @@ Section pipe_out.
     iIntros "#Hpin Ht #Hpslb #Hcslb #Hilb Hcl".
     iDestruct "Hcl" as "[#HT | Hp]".
     { iModIntro. iSplitR; [rewrite /pecl; by iLeft | by iRight]. }
-    iDestruct "Hp" as (v2 so) "(#Hpin2 & Hta & Hcs & Hps & HE & Hdl & %Hall)".
+    iDestruct "Hp" as (v2 so) "(#Hpin2 & Hta & Hcs & Hps & HE & Hdl & Hdll & %Hall)".
     iDestruct (era_pin_agree with "Hpin2 Hpin") as %->.
     pose proof Hall as Hall0.
     destruct Hall as (Hpure & Hcsl & Hpsl & _ & _ & _).
@@ -904,7 +927,9 @@ Section pipe_out.
     iDestruct (turn_agree with "Ht Hta") as %HP.
     iDestruct (cs_lb_prefix with "Hcs Hcslb") as %Hcsp.
     iDestruct (ps_lb_prefix with "Hps Hpslb") as %Hpsp.
-    iDestruct (inp_lb_le with "HE Hilb") as %HI0.
+    iDestruct (inp_lb_le with "Hdll Hilb") as %HI0dl.
+    assert (HI0 : I0 `prefix_of` (snd <$> o_E so)).
+    { etrans; [exact HI0dl | exact (pcl_pure_dl_E k ho so H Hall0)]. }
     assert (Hstream : proc_before_p ps0 cs0 I0
                       = proc_before_p (o_ps so) (o_cs so) I0).
     { apply (proc_before_p_cs_prefix ps0 (o_ps so) cs0 (o_cs so) I0
@@ -981,7 +1006,7 @@ Section pipe_out.
       iExists v, (MkO (o_ps so) (o_cs so ++ [a]) (o_E so) [b]).
       cbn [o_ps o_cs o_E o_w]. rewrite Hpc2.
       rewrite /ConsLog.cons_step. cbn [LogEntryDefs.ch_dl].
-      iFrame "Hpin Hta Hcs Hps HE Hdl". iPureIntro.
+      iFrame "Hpin Hta Hcs Hps HE Hdl Hdll". iPureIntro.
       apply (pcl_pure_out k ho so
                (MkO (o_ps so) (o_cs so ++ [a]) (o_E so) [b]) H b);
         [cbn [o_cs]; rewrite length_app; cbn [length]; lia
@@ -1033,7 +1058,7 @@ Section pipe_out.
     iIntros "#Hpin Ht #Hpslb #Hcslb #Hilb Hcl".
     iDestruct "Hcl" as "[#HT | Hp]".
     { iModIntro. iSplitR; [rewrite /pecl; by iLeft | by iRight]. }
-    iDestruct "Hp" as (v2 so) "(#Hpin2 & Hta & Hcs & Hps & HE & Hdl & %Hall)".
+    iDestruct "Hp" as (v2 so) "(#Hpin2 & Hta & Hcs & Hps & HE & Hdl & Hdll & %Hall)".
     iDestruct (era_pin_agree with "Hpin2 Hpin") as %->.
     pose proof Hall as Hall0.
     destruct Hall as (Hpure & Hcsl & Hpsl & _ & _ & _).
@@ -1043,7 +1068,9 @@ Section pipe_out.
     iDestruct (turn_agree with "Ht Hta") as %HP.
     iDestruct (cs_lb_prefix with "Hcs Hcslb") as %Hcsp.
     iDestruct (ps_lb_prefix with "Hps Hpslb") as %Hpsp.
-    iDestruct (inp_lb_le with "HE Hilb") as %HI0.
+    iDestruct (inp_lb_le with "Hdll Hilb") as %HI0dl.
+    assert (HI0 : I0 `prefix_of` (snd <$> o_E so)).
+    { etrans; [exact HI0dl | exact (pcl_pure_dl_E k ho so CH Hall0)]. }
     assert (Hpsb0 : Forall (fun x => (x < length pro_alts)%nat) ps0).
     { pose proof Hpsp as Hq. destruct Hq as [z Hz]. pose proof Hpsb as Hpsb2.
       rewrite Hz in Hpsb2. by apply Forall_app in Hpsb2 as [? _]. }
@@ -1226,7 +1253,7 @@ Section pipe_out.
       iExists v, (MkO (o_ps so ++ [a]) (o_cs so) (o_E so) (o_w so ++ [b])).
       cbn [o_ps o_cs o_E o_w]. rewrite Hpc2.
       rewrite /ConsLog.cons_step. cbn [LogEntryDefs.ch_dl].
-      iFrame "Hpin Hta Hcs Hps HE Hdl". iPureIntro.
+      iFrame "Hpin Hta Hcs Hps HE Hdl Hdll". iPureIntro.
       apply (pcl_pure_out k ho so
                (MkO (o_ps so ++ [a]) (o_cs so) (o_E so) (o_w so ++ [b]))
                CH b);
@@ -1316,7 +1343,7 @@ Section pipe_out.
     intros Hread. iIntros "#Hpinr Hdlr Hcl".
     iDestruct "Hcl" as "[#HT | Hp]".
     { iModIntro. iSplitR; [rewrite /pecl; by iLeft |]. iLeft. by iFrame "Hdlr". }
-    iDestruct "Hp" as (v2 so) "(#Hpin & Hta & Hcs & Hps & HE & Hdl & %Hall)".
+    iDestruct "Hp" as (v2 so) "(#Hpin & Hta & Hcs & Hps & HE & Hdl & Hdll & %Hall)".
     iDestruct (era_pin_agree with "Hpin Hpinr") as %->.
     iDestruct (dl_cnt_agree with "Hdl Hdlr") as %Hdleq.
     pose proof Hall as Hall0.
@@ -1401,16 +1428,19 @@ Section pipe_out.
     iDestruct (turn_lb_get with "Hta") as "#Htlb".
     iMod (dl_cnt_update v (length (LogEntryDefs.ch_dl CH)) n
             (n + length ws)%nat with "Hdl Hdlr") as "[Hdl Hdlr]".
-    iModIntro. iSplitL "Hta Hcs Hps HE Hdl".
+    iMod (dl_list_auth_grow v (LogEntryDefs.ch_dl CH) ws with "Hdll")
+      as "[Hdll #Hdllb]".
+    iModIntro. iSplitL "Hta Hcs Hps HE Hdl Hdll".
     { rewrite /pecl. iRight. iExists v, so.
       rewrite /ConsLog.cons_step. cbn [LogEntryDefs.ch_dl].
-      rewrite length_app Hdleq. iFrame "Hpin Hta Hcs Hps HE Hdl".
+      rewrite length_app Hdleq. iFrame "Hpin Hta Hcs Hps HE Hdl Hdll".
       iPureIntro. exact (pcl_pure_read k ho so CH ws Hpref Hall0). }
     iRight. iFrame "Hdlr".
     iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
     iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
     iSplitR.
-    { iApply (inp_lb_of_lb v (o_E so) _ HEpre). iExact "HElb". }
+    { iApply (inp_lb_of_dl_lb v (LogEntryDefs.ch_dl CH ++ ws) _
+                (reflexivity _)). iExact "Hdllb". }
     iSplitR; [by iPureIntro |].
     iRight. iExists csq, (o_ps so). iFrame "Hcslbq Hpslb".
     iSplitR; [by iPureIntro |].
@@ -1446,7 +1476,7 @@ Section pipe_out.
     iIntros "Hcl".
     iDestruct "Hcl" as "[#HT | Hp]".
     { iModIntro. rewrite /pecl. by iLeft. }
-    iDestruct "Hp" as (v so) "(#Hpin & Hta & Hcs & Hps & HE & Hdl & %Hall)".
+    iDestruct "Hp" as (v so) "(#Hpin & Hta & Hcs & Hps & HE & Hdl & Hdll & %Hall)".
     pose proof Hall as Hall0.
     destruct Hall as (Hpure & Hcsl & Hpsl & Hin & Hera & HEtie).
     destruct Hpure as (Hacc & Hwpre & Hidx & Hbyte & Hpsb & Hpin & Hcsb' & Hdsc
@@ -1610,7 +1640,7 @@ Section pipe_out.
     rewrite (pcount_p_echo (o_ps so) (o_cs so) (o_E so) (open_seg h, c)
                (o_w so) Hweq).
     rewrite ch_dl_byte.
-    iFrame "Hpin Hta Hcs Hps HE Hdl". iPureIntro.
+    iFrame "Hpin Hta Hcs Hps HE Hdl Hdll". iPureIntro.
     apply (pcl_pure_byte (obs_boots h) ho h so
              (MkO (o_ps so) (o_cs so) (o_E so ++ [(open_seg h, c)]) [])
              CH (echo_of c) h c Harm eq_refl);
@@ -1689,13 +1719,13 @@ Section pipe_out.
     iIntros "Hcl".
     iDestruct "Hcl" as "[#HT | Hp]".
     - iSplitR; [iLeft; iExact "HT" | iLeft; iExact "HT"].
-    - iDestruct "Hp" as (v so) "(#Hpin & Hta & Hcs & Hps & HE & Hdl & %Hall)".
+    - iDestruct "Hp" as (v so) "(#Hpin & Hta & Hcs & Hps & HE & Hdl & Hdll & %Hall)".
       pose proof Hall as Hall2.
       destruct Hall2 as (Hpure & Hcsl & Hpsl & Hin & Hera & HEtie).
       destruct Hpure as (Hacc & Hwp & Hidx & Hbyte & Hpsb & Hpin & Hcs' & Hdsc
                          & Hpre1 & Hpre2 & Hpre3).
-      iSplitL "Hta Hcs Hps HE Hdl".
-      { iRight. iExists v, so. iFrame "Hpin Hta Hcs Hps HE Hdl".
+      iSplitL "Hta Hcs Hps HE Hdl Hdll".
+      { iRight. iExists v, so. iFrame "Hpin Hta Hcs Hps HE Hdl Hdll".
         by iPureIntro. }
       iRight. iPureIntro.
       assert (Hbytes : (snd <$> o_E so) `prefix_of` ins seg).
@@ -1762,7 +1792,7 @@ Section pipe_out.
     era_pin γ k v -∗ era_full v -∗
       pecl k [] (LogEntryDefs.MkCH [] [] [] None) ∗ pturn k.
   Proof using .
-    iIntros "#Hpin (Ht & Hcs & Hps & HE & Hdl)".
+    iIntros "#Hpin (Ht & Hcs & Hps & HE & Hdl & Hdll)".
     iAssert (turn_lb v 0%nat) as "#Htlb0".
     { rewrite /turn_lb. iApply (mono_nat_lb_own_get with "Ht"). }
     iEval (rewrite -Qp.half_half) in "Ht".
@@ -1771,12 +1801,12 @@ Section pipe_out.
     iDestruct (ghost_var_split with "Hdl") as "[Hdl1 Hdl2]".
     iDestruct (cs_lb_get with "Hcs") as "[Hcs #Hcslb]".
     iDestruct (ps_lb_get with "Hps") as "[Hps #Hpslb]".
-    iDestruct (Elist_lb_get with "HE") as "[HE #HElb]".
-    iSplitL "Ht1 Hcs Hps HE Hdl1".
+    iDestruct (dl_list_lb_get with "Hdll") as "[Hdll #Hdllb]".
+    iSplitL "Ht1 Hcs Hps HE Hdl1 Hdll".
     { rewrite /pecl. iRight. iExists v, ostage0.
       cbn [o_ps o_cs o_E o_w ostage0 length LogEntryDefs.ch_dl].
       rewrite /pcount_p fmap_nil proc_before_p_nil. cbn [length].
-      iFrame "Hpin Ht1 Hcs Hps HE Hdl1". iPureIntro.
+      iFrame "Hpin Ht1 Hcs Hps HE Hdl1 Hdll". iPureIntro.
       rewrite /pcl_pure.
       cbn [LogEntryDefs.ch_acc LogEntryDefs.ch_log LogEntryDefs.ch_dl
            LogEntryDefs.ch_arm].
@@ -1789,7 +1819,7 @@ Section pipe_out.
       - rewrite /ch_E. cbn [LogEntryDefs.ch_log LogEntryDefs.ch_arm ch_arm_E].
         rewrite app_nil_r echoed_nil /seg_of. by rewrite fmap_nil. }
     rewrite /pturn /eturn. iExists v. iFrame "Hpin Ht2 Hdl2 Hcslb Hpslb".
-    iApply (inp_lb_of_lb v [] []); [apply prefix_nil | iExact "HElb"].
+    iApply (inp_lb_of_dl_lb v [] []); [apply prefix_nil | iExact "Hdllb"].
   Qed.
 
   Lemma pipe_led_pow (h : list mobs) (on : bool) :

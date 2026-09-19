@@ -114,7 +114,7 @@ Section ConsoleinitBody.
       vclock vcname vccpu dread0 dwrite0 p.
   Proof using wp_initlock wp_uartinit.
     cbv beta delta [wp_consoleinit_sconf_body].
-    intros pcE ret_tgt clk c_cname c_ccpu HK.
+    intros pcE ret_tgt clk c_cname c_ccpu HK Hl Hl1.
     pose proof (cni_cap_bounds K HK) as (Hc2 & HK4).
     iIntros "Hcg #Htext #Hkdata Hpc #Huinv Htx #Hlb #Hsent Htok Hdlab
              #Hbw0 #Hrw0 #Hbw1 #Hrw1
@@ -292,7 +292,7 @@ Section ConsoleinitBody.
     assert (HU0sp : U0 !!! Regidx csp_rs1 = add_vec (m !!! Regidx csp_rs1) (sign_extend' 64 (sign_extend' 12 (mword_of_int 48 : mword 6))))
       by (rewrite /U0 upd_ne; [exact Hmilsp | reg_neq]).
     iApply (wp_uartinit γd γd1 U0 (K - 2)%nat l l1 b0 b1 k k1 hl hl1 p
-              ltac:(lia)
+              ltac:(lia) Hl Hl1
               with "Hcg Htext Hkdata Hpc Hbw0 Hrw0 Hbw1 Hrw1
                     Huinv Htx Hlb Hsent Htok Hdlab Hraw
                     Huinv1 Htx1 Hlb1 Hsent1 Htok1 Hdlab1 Hraw1").

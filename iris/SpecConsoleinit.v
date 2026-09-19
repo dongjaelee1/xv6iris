@@ -115,6 +115,10 @@ Definition wp_consoleinit_sconf_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{C
      seven register writes into a called function, so the chain is one frame
      deeper).  So the budget is 2 + 6. *)
   (8 <= K)%nat ->
+  (* ...AND NEITHER TRANSMITTER HAS BEEN USED (relax-d2, lane K1): what
+     makes the bytes uartinit's FCR FIFO-clear discards accountable at the
+     console boundary -- no output preceded them ([SpecUartinit.v]). *)
+  l = [] -> l1 = [] ->
   sie_cap_gpr KT0 m K false p -∗
   (* [kernel_data] supplies the "cons" string literal consoleinit's [auipc a1 /
      addi a1] points at -- the name it hands to initlock -- and, through
@@ -170,7 +174,10 @@ Definition wp_consoleinit_sconf_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{C
     (* uartinit writes no THR, so the accepted trace is unchanged; its final
        LCR write cleared DLAB, so the half is frozen for good. *)
     uart_tx_own γd l -∗ uart_sent γd l -∗
-    (∃ (k' : nat) (hl' : option (list mobs)), uart_rx_tok γd k' hl') -∗ uart_dlab_off γd -∗
+    (* ...WITH WHAT THE CLEAR DISCARDED (relax-d2, lane K1) *)
+    (∃ (k' : nat) (hl' : option (list mobs)),
+       uart_rx_tok γd k' hl' ∗ ⌜hl' = hl \/ uart_flushed Uart0 hl'⌝) -∗
+    uart_dlab_off γd -∗
     (* cons.lock comes back initialized; it is a static global that is never
        freed, so its name field is DISCARDED for the persistent [lock_name],
        ready to be sealed into an [is_lock]. *)
@@ -185,7 +192,8 @@ Definition wp_consoleinit_sconf_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{C
        UNCONSTRAINED (the bump's ruling), so a caller that has no use for
        the trace claims simply drops them. *)
     uart_tx_own γd1 l1 -∗ uart_sent γd1 l1 -∗
-    (∃ (k' : nat) (hl' : option (list mobs)), uart_rx_tok γd1 k' hl') -∗
+    (∃ (k' : nat) (hl' : option (list mobs)),
+       uart_rx_tok γd1 k' hl' ∗ ⌜hl' = hl1 \/ uart_flushed Uart1 hl'⌝) -∗
     uart_dlab_off γd1 -∗
     lk_fresh (UartTxInv.a_tx_lock_at Uart1) (UartTxInv.uart_lock_name Uart1) -∗
     (* ...and the table, filled and DUPLICABLE.  [ConsoleInv.console_inv] is

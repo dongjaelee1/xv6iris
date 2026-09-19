@@ -220,6 +220,14 @@ Section WpUartgetc.
                uart_out_lb γd (obs_wire i (open_seg h)) ∗
                (* ...and its ERA STAMP (milestone C) *)
                ⌜obs_boots h = S gen_id⌝ ∗
+               (* ...AND THE TWO INPUT NUMBERS (relax-d2, lane K1): this
+                  byte is the [S k]th input of the era at this port, and
+                  the anchor it replaces was the [k]th.  Relayed verbatim
+                  to uartintr, which turns the pair into consoleintr's
+                  log-completeness premise. *)
+               ⌜length (obs_ins i (open_seg h)) = S k⌝ ∗
+               ⌜ins_len i hl = k⌝ ∗
+               ⌜trace_shape h true⌝ ∗
                uart_rx_tok γd (S k) (Some h)) -∗
             mWP (Loop : expr riscv_lang)) )) -∗
     mWP (Loop : expr riscv_lang).

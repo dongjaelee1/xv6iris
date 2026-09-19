@@ -860,6 +860,27 @@ split premise already).  `wp_kshp_parsecmd_bar`, not `wp_kshp_parser_pipe`,
 is the walk's parser (the seam wants the nodes unclosed).  `S (S gp)` and
 `gp + 3` are not convertible — replace at the whole index.
 
+**AS LANDED (lane PIPE-LINK-INST, 2026-09-19; 18 hours across two merges of
+main).**  `PipeLinksLine.v` (1,925: the line model, the pure `wr_*_p`
+shapes with all five steps, the banner arithmetic, the credential families
+`pwc_*` with every timelessness/taint/conversion/byte-step law) and
+`PipeLinkInst.v` (329: `pipe_link_inst_at γ : LinkRec` at all 94 fields,
+twenty `reflexivity` checks, `UShRound`'s facing set).  `Print Assumptions
+pipe_link_inst_at` = Closed under the global context.  Corrections: `lk_ab`
+IS guarded by `palt_ok` (§5.7's "no guard" was wrong — `pcont` is
+non-empty at every alternative, admissible or not); `lk_exf` is per-line
+(`pexf_of`), not echo's literal `1` (`palt_ok (LPipe ws) (PEcho 1)` is
+false; only the BYTES are echo's, `alt_execL_echo`); `lk_noc` is inert
+(no law, no consumer — upstream's `fnoc` shares the defect); one record,
+not two (no state → `pipe_link_inst = pipe_link_inst_at`, no `FileLinksAt*`
+layer); `lk_rres := pwc_rres` names no gname.  NOT landed: the
+`StageRec`/`CurRec` instance — at the pipeline the block is written by CAT,
+so the cursor is cat's (`UCatPipe.pcch`): SH-PIPE-ROUND-2's design step.
+Trap: after a rebuild of a dependency's `.vo`, a dependent `.vo` make
+considers up to date can throw "inconsistent assumptions" — remove the
+lane's own `.vo/.vos/.glob` and re-make (the `.vo` form of the `.vos`
+staleness trap).
+
 ## 6. Lanes
 
 Wave 1, independent, in parallel (each in its own clone with its own

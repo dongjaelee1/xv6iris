@@ -18,6 +18,26 @@ CAT-PIPE in `claude-notes/projects/app-pipe.md`.  THE MOULD is
 newest: the redirect child's walk on the application's own call and the
 paid diagnostic) for the child side.
 
+## Corrections from PIPE-LINK-INST (landed; read its Findings block first)
+
+- `pipe_link_inst_at γ : LinkRec` is landed at all 94 fields, Closed under
+  the global context, with `UShRound`'s facing set (`pipe_Wcl_at`,
+  `pipe_Wbl_at`, `pipe_Hwbl`, `pipe_Hwbwc`, `pipe_Hcltaint`, `pipe_Hwc`,
+  `pipe_Hwbr`).  `lk_ab` IS guarded by `palt_ok` (unguarded, a byte lookup
+  says nothing); `lk_exf` is PER-LINE (`pexf_of`), NOT echo's literal `1` —
+  use `pipe_inst_exfb_echo` (gives `lk_exfb FI I = alt_execfail` and the
+  `17` the diagnostic printer wants); `lk_pan` is the literal `3`;
+  `lk_noc` is inert (echo's `2`; `pnoc_of` does the real work).
+- **The `StageRec`/`CurRec` instance is NOT landed and is not a port**: at
+  the pipeline the running round is `PRan` and the block is written by
+  CAT, so the cursor is cat's — `ck_lineok` and that instance are YOUR
+  design step, together with `UCatOut`-at-the-pipe-stage (CAT-PIPE landed
+  `pcatcs`/`pcch` as the cursor family; read `UCatPipe.v` §1–2).  If the
+  `CurRec` instance needs a field the pipe stage cannot supply, STOP and
+  report the field.
+- One record, not two: `pipe_link_inst` and `pipe_link_inst_at` coincide;
+  no `FileLinksAt*` packing layer exists or is owed.
+
 ## What to land (NEW `iris/UShPipeRound.v`; `UkShPipe.v` edited only as (1) says)
 
 1. `wp_kshr_pipe_arm` RE-CUT at the lent pair (`□ (Cr -∗ ukn_pay N (-1)) ∗

@@ -330,7 +330,8 @@ Section PipeApp.
   Proof using .
     intros Himg Hdk Hsb Hcov c.
     cbn [app_pipe app_fixed app_names app_pred] in c |- *.
-    exact (pipe_init_img c _ XV6_DISK_BYTES sb nib cov Himg Hdk Hsb Hcov).
+    exact (pipe_init_img (pgn_cl c) _ XV6_DISK_BYTES sb nib cov
+             Himg Hdk Hsb Hcov).
   Qed.
 
   (* ---- ANTI-VACUITY: the CLAIM EQUATION the program tier takes as a

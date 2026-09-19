@@ -626,6 +626,30 @@ wrappers, `pipe_laws`, four `Context` types; `UPipeBootAdequacy`,
 `AppPipeClaim`/`AppPipeCons`/`UInitConsPipe` bind the fixed part
 abstractly and do not move.  Lane PIPE-2W-2, then SH-PIPE-ROUND-3.
 
+### 4.3e AS LANDED (PIPE-2W-2) and RULED: the exclusive current-round ghost
+
+`app_fixed app_pipe := pipe_gn` landed on FileOut's precedent (`pgn_cl`,
+`pgn_era`; `pipe_era := { pe_blk }`; the ledger's bytes ride the era's
+echoed-list camera, no new functor; every statement's text unchanged
+through `Local Notation γ := (pgn_cl g)`; the claim's non-taint arm
+carries `pera_pin g k w ∗ blk_auth w (pstream so)` where `pstream so :=
+proc_before_p … ++ o_w so`; an echo does not grow the ledger).  The three
+unfiled-block steps did NOT land: the ledger ties the BYTES and `turn`
+the LENGTH, but neither excludes a family created for an EARLIER round of
+the same era (the turn equation gives only `c1 + c2 ≥ |pending| + |o_w|`).
+Refuted: a per-round key alone (the stale pin sits at another key, no
+agreement fires); the `$` refutation (leaves the panic corner).  RULED, the
+lane's own route: `pipe_era` gains `pe_cur : gname`, a `ghost_var (nat *
+gname)` — the CURRENT ROUND's index and its round-ledger gname — one half
+in the claim, one in the round's family; `ghost_var_agree` forces the
+family's round and ledger to be the claim's, so a stale family cannot
+exist; the round ledger is per-round again (`blk_lb gb (pend2 R sel)`),
+minted by a FOURTH step, the block's OPENING, and returned at the filing.
+Also from the lane: `pecl_step_echo`'s refutation of the both-arm is the
+DISCIPLINE's (`disc_pt` needs the round's block including its prompt on
+the wire at every input byte, and a running merge is `$`-free), not the
+stage's.  Lane PIPE-2W-3.
+
 ## 5. Programs
 
 ### 5.1 sh: the PIPE arm (lanes SH-PARSE-PIPE, SH-PIPE)

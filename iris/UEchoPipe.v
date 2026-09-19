@@ -33,15 +33,18 @@
 (*  the read-open premise PQ-FLAG-2 put on [pipe_wlink]).  So [ep_halt]   *)
 (*  CARRIES THE SHOT and pays for itself; [ep_derail] is gone.            *)
 (*                                                                       *)
-(*  THE ONE ARM THIS FILE STILL CANNOT PAY is the KILL: [pipe_wpost]'s    *)
-(*  kill arm hands only [Rk = ChildTok.kill_shot gn], and a writer can    *)
-(*  build nothing from that.  It enters as ONE NAMED PREMISE, in the same *)
-(*  shape [UCatPipe]'s round takes on the read side --                    *)
-(*  [box (forall gn, ChildTok.kill_shot gn -* app_taint)] -- because a    *)
-(*  kill TAINTS the application (design/applications.md: the taint is the *)
-(*  application's kill price).  Lane KILL-TAINT retires it on both sides  *)
-(*  at once.  It is a premise of the ENTRY and NOT of [ep_pay]: it is a   *)
-(*  fact about the kernel and the claim, not a resource sh lends.         *)
+(*  THE KILL ARM IS PAID BY THE KERNEL (lane KILL-TAINT).  [pipe_wpost]'s *)
+(*  kill arm used to hand only [Rk = ChildTok.kill_shot gn], which a      *)
+(*  writer can build nothing from, and this file took the difference as   *)
+(*  a NAMED PREMISE, [box (forall gn, kill_shot gn -* app_taint)].  That  *)
+(*  premise is REFUTABLE ([PipeKillMark.kill_taint_premise_gives_T]: a    *)
+(*  shot at a fresh generation is free, so the premise entails the taint  *)
+(*  outright), and it is gone.  What replaces it is a KERNEL row: a       *)
+(*  process inside a syscall holds its own incarnation's marker, so a     *)
+(*  nonzero killed flag was written by a THIRD PARTY, who paid the taint  *)
+(*  into <p->lock>'s killed row -- [SchedCtx.kill_paid_shot_tear], read   *)
+(*  at pipewrite's [killed()] call.  So [Rk] IS                           *)
+(*  [ChildTok.kill_shot gn * app_taint] and [ep_post_ok] spends it.       *)
 (*                                                                       *)
 (*  WHAT THE EXIT PAYLOAD SAYS: [ep_ok pn L (length L)] -- the cursor at  *)
 (*  the line's end (which IS [the line is in], [pws_lb pn L], design      *)
@@ -247,9 +250,10 @@ Section UEchoPipe.
     (c + n <= length L)%nat ->
     (forall j : nat, (j < n)%nat ->
        UserPtTree.uva_rmapped Pt (uint (add_vec_int ua (Z.of_nat j)))) ->
-    (* [Hktaint] AT THIS CALL -- see the header.  The kill is the one
-       reason a write stops short that the writer cannot pay from, and a
-       kill is the application's taint. *)
+    (* THE KILL'S PAYMENT, AT THIS CALL -- see the header.  The kill is
+       the one reason a write stops short that the writer cannot pay
+       from, and the kernel's post now carries the killer's taint beside
+       the shot, so the caller supplies this wand by projection. *)
     (Rk -∗ app_taint) -∗
     pipe_wpost Pt (pn_queue γp) M ua (pipe_wQ pn L c) (pipe_wQe pn L c)
       Rk n r -∗
@@ -337,20 +341,19 @@ Section UEchoPipe.
     (c + nb <= length L)%nat ->
     (forall j : nat, (j < nb)%nat -> L !!! (c + j)%nat = fb j) ->
     pipe_inv pn γp L -∗
-    (* [Hktaint]: THE ONE ROW STILL OWED (see the header; the same premise
-       [UCatPipe]'s round takes on the read side).  A write answers -1 when
-       the writer was KILLED, and nothing at a pipe descriptor refutes
-       that; what is assumed is the weakest thing that closes the arm and
-       the one the design already says of a kill -- a kill TAINTS the
-       application.  Lane KILL-TAINT retires it. *)
-    □ (∀ gn : gname, ChildTok.kill_shot gn -∗ app_taint) -∗
+    (* THE KILL ARM IS PAID BY THE KERNEL (lane KILL-TAINT).  A pipe write
+       answers short when the writer was KILLED; the post's [Rk] is now
+       [ChildTok.kill_shot gn * app_taint], the credential the KILLER paid
+       into <p->lock>'s killed row, which a process inside a syscall reads
+       off it with its own incarnation's marker ([PipeKillMark]).  The
+       named premise this file used to take is GONE. *)
     ustr (ukn_d N) DfracDiscarded ua nb fb -∗
     kecho_w N (mword_of_int ua) nb
       (UserFd.ustd (ukn_fd N) l ∗ ep_car pn L c)
       (UserFd.ustd (ukn_fd N) l ∗ ep_car pn L (c + nb)).
   Proof using .
     intros Hl1 Hle Hbytes.
-    iIntros "#Hinv #Hkt #Hstr" (h m avail)
+    iIntros "#Hinv #Hstr" (h m avail)
       "%Ha0 %Ha1 %Ha2 #Hcode [Hstd [Hfr Hok]] Hrun Hcont".
     iDestruct (urun_ustr_bnd N h m _ avail DfracDiscarded ua nb fb
                  with "Hrun Hstr") as %[Hlo Hhi].
@@ -430,10 +433,13 @@ Section UEchoPipe.
                       ltac:(unfold NSTD; lia) Htk Hl1)
                    with "Hextra") as "Hwp".
       rewrite Htn.
-      iAssert (ChildTok.kill_shot (uvis_gen W) -∗ app_taint)%I
-        with "[]" as "Hkw"; [ iApply ("Hkt" $! (uvis_gen W)) | ].
+      (* the kill arm's payment comes off the POST now (lane KILL-TAINT):
+         [Rk] is [ChildTok.kill_shot gn * app_taint], the taint the KILLER
+         paid into <p->lock>'s killed row -- see [PipeKillMark]. *)
+      iAssert ((ChildTok.kill_shot (uvis_gen W) ∗ app_taint) -∗ app_taint)%I
+        with "[]" as "Hkw"; [ iIntros "[_ $]" | ].
       iDestruct (ep_post_ok Pt pn γp L (uvis_M W) (m !!! Regidx a1_idx) c nb
-                   (ChildTok.kill_shot (uvis_gen W)) ret Hle
+                   (ChildTok.kill_shot (uvis_gen W) ∗ app_taint)%I ret Hle
                    ltac:(intros j Hj; exact (Hnf Pt j Hwfp Hpmp (Hlzp Hlz) Hj))
                    with "Hkw Hwp") as "Hok".
       iApply ("Hcont" $! h' ret with "[Hstd Hfr Hok] Hrun").
@@ -474,7 +480,7 @@ Section UEchoPipe.
                    with "Hextra") as "Hwp".
       rewrite Htn.
       iDestruct (ep_post_halt Pt pn γp L (uvis_M W) (m !!! Regidx a1_idx) nb
-                   (ChildTok.kill_shot (uvis_gen W)) ret with "Hwp") as "Hh".
+                   (ChildTok.kill_shot (uvis_gen W) ∗ app_taint)%I ret with "Hwp") as "Hh".
       iApply ("Hcont" $! h' ret with "[Hstd Hfr Hh] Hrun").
       iFrame "Hstd Hfr". rewrite /ep_ok. iRight. iExact "Hh".
   Qed.
@@ -491,13 +497,12 @@ Section UEchoPipe.
     L !!! c = b ->
     0 <= ua < 2 ^ 38 ->
     pipe_inv pn γp L -∗
-    (* [Hktaint]: THE ONE ROW STILL OWED (see the header; the same premise
-       [UCatPipe]'s round takes on the read side).  A write answers -1 when
-       the writer was KILLED, and nothing at a pipe descriptor refutes
-       that; what is assumed is the weakest thing that closes the arm and
-       the one the design already says of a kill -- a kill TAINTS the
-       application.  Lane KILL-TAINT retires it. *)
-    □ (∀ gn : gname, ChildTok.kill_shot gn -∗ app_taint) -∗
+    (* THE KILL ARM IS PAID BY THE KERNEL (lane KILL-TAINT).  A pipe write
+       answers short when the writer was KILLED; the post's [Rk] is now
+       [ChildTok.kill_shot gn * app_taint], the credential the KILLER paid
+       into <p->lock>'s killed row, which a process inside a syscall reads
+       off it with its own incarnation's marker ([PipeKillMark]).  The
+       named premise this file used to take is GONE. *)
     utext (ukn_t N) ua b -∗
     kecho_w N (mword_of_int ua) 1%nat
       (UserFd.ustd (ukn_fd N) l ∗ ep_car pn L c)
@@ -505,7 +510,7 @@ Section UEchoPipe.
   Proof using .
     intros Hl1 Hle Hbyte Hrange.
     change (2 ^ 38) with 274877906944 in Hrange.
-    iIntros "#Hinv #Hkt #Hb" (h m avail)
+    iIntros "#Hinv #Hb" (h m avail)
       "%Ha0 %Ha1 %Ha2 #Hcode [Hstd [Hfr Hok]] Hrun Hcont".
     assert (Hua : uint (m !!! Regidx a1_idx) = ua)
       by (rewrite Ha1; apply uint_moi; unfold Z64; lia).
@@ -583,10 +588,13 @@ Section UEchoPipe.
                       ltac:(unfold NSTD; lia) Htk Hl1)
                    with "Hextra") as "Hwp".
       rewrite Htn.
-      iAssert (ChildTok.kill_shot (uvis_gen W) -∗ app_taint)%I
-        with "[]" as "Hkw"; [ iApply ("Hkt" $! (uvis_gen W)) | ].
+      (* the kill arm's payment comes off the POST now (lane KILL-TAINT):
+         [Rk] is [ChildTok.kill_shot gn * app_taint], the taint the KILLER
+         paid into <p->lock>'s killed row -- see [PipeKillMark]. *)
+      iAssert ((ChildTok.kill_shot (uvis_gen W) ∗ app_taint) -∗ app_taint)%I
+        with "[]" as "Hkw"; [ iIntros "[_ $]" | ].
       iDestruct (ep_post_ok Pt pn γp L (uvis_M W) (m !!! Regidx a1_idx) c 1%nat
-                   (ChildTok.kill_shot (uvis_gen W)) ret Hle
+                   (ChildTok.kill_shot (uvis_gen W) ∗ app_taint)%I ret Hle
                    ltac:(intros j Hj; exact (Hnf Pt j Hwfp Hpmp (Hlzp Hlz) Hj))
                    with "Hkw Hwp") as "Hok".
       iApply ("Hcont" $! h' ret with "[Hstd Hfr Hok] Hrun").
@@ -627,7 +635,7 @@ Section UEchoPipe.
                    with "Hextra") as "Hwp".
       rewrite Htn.
       iDestruct (ep_post_halt Pt pn γp L (uvis_M W) (m !!! Regidx a1_idx) 1%nat
-                   (ChildTok.kill_shot (uvis_gen W)) ret with "Hwp") as "Hh".
+                   (ChildTok.kill_shot (uvis_gen W) ∗ app_taint)%I ret with "Hwp") as "Hh".
       iApply ("Hcont" $! h' ret with "[Hstd Hfr Hh] Hrun").
       iFrame "Hstd Hfr". rewrite /ep_ok. iRight. iExact "Hh".
   Qed.
@@ -670,7 +678,6 @@ Section UEchoPipe.
       □ (ep_car pn (wl_line (drop 1 ws))
            (length (wl_line (drop 1 ws))) -∗ ukn_pay N (-1)) -∗
       pipe_inv pn γp (wl_line (drop 1 ws)) -∗
-      □ (∀ gn : gname, ChildTok.kill_shot gn -∗ app_taint) -∗
       echo_rodata (ukn_t N) -∗
       uargv (ukn_d N) av args -∗
       kecho_pay N args k i
@@ -681,7 +688,7 @@ Section UEchoPipe.
     intros Hargv Hl1 k.
     pose proof Hargv as [Hlen Hargs].
     induction k as [| k IH]; intros i Hi1 Hik;
-      iIntros "#Hq #Hinv #Hkt #Hro #Hargv"; cbn [kecho_pay];
+      iIntros "#Hq #Hinv #Hro #Hargv"; cbn [kecho_pay];
       iIntros (g) "%Hg";
       [ pose proof (Hargs i g Hi1 Hg) as [Hgl Hgb]
       | pose proof (Hargs i g Hi1 Hg) as [Hgl Hgb] ];
@@ -714,7 +721,7 @@ Section UEchoPipe.
       iSplitR.
       + iApply (ep_w_data N pn γp (wl_line (drop 1 ws)) l rb
                   (out_cur ws i) (ua_ptr g) (ua_len g) (ua_bytes g)
-                  Hl1 Hbnd Hbytes with "Hinv Hkt Hs").
+                  Hl1 Hbnd Hbytes with "Hinv Hs").
       + rewrite Hgl.
         iApply (kecho_w_mono N (mword_of_int echo_nl_ptr) 1%nat
                   (UserFd.ustd (ukn_fd N) l
@@ -733,7 +740,7 @@ Section UEchoPipe.
                   Hl1 ltac:(lia) Hnlb
                   ltac:(unfold echo_nl_ptr;
                         change (2 ^ 38) with 274877906944; lia)
-                  with "Hinv Hkt [Hro]").
+                  with "Hinv [Hro]").
         iApply (ep_rodata_byte (ukn_t N) echo_nl_ptr wl_nl
                   echo_nl_ro with "Hro").
     - (* ...AND ANOTHER FOLLOWS: its bytes, then the separator *)
@@ -754,7 +761,7 @@ Section UEchoPipe.
       iSplitR; [| iSplitR ].
       + iApply (ep_w_data N pn γp (wl_line (drop 1 ws)) l rb
                   (out_cur ws i) (ua_ptr g) (ua_len g) (ua_bytes g)
-                  Hl1 Hbnd Hbytes with "Hinv Hkt Hs").
+                  Hl1 Hbnd Hbytes with "Hinv Hs").
       + rewrite Hgl HS.
         replace (S (out_cur ws i + length (ws !!! i)))%nat
           with (out_cur ws i + length (ws !!! i) + 1)%nat by lia.
@@ -763,11 +770,11 @@ Section UEchoPipe.
                   Hl1 ltac:(lia) Hspb
                   ltac:(unfold echo_sep_ptr;
                         change (2 ^ 38) with 274877906944; lia)
-                  with "Hinv Hkt [Hro]").
+                  with "Hinv [Hro]").
         iApply (ep_rodata_byte (ukn_t N) echo_sep_ptr wl_sp
                   echo_sep_ro with "Hro").
       + iApply (IH (S i) ltac:(lia) ltac:(lia)
-                  with "Hq Hinv Hkt Hro Hargv").
+                  with "Hq Hinv Hro Hargv").
   Qed.
 
   (* ...AND THE WHOLE CHAIN, at main's own entry. *)
@@ -780,7 +787,6 @@ Section UEchoPipe.
     □ (ep_car pn (wl_line (drop 1 ws))
          (length (wl_line (drop 1 ws))) -∗ ukn_pay N (-1)) -∗
     pipe_inv pn γp (wl_line (drop 1 ws)) -∗
-    □ (∀ gn : gname, ChildTok.kill_shot gn -∗ app_taint) -∗
     echo_rodata (ukn_t N) -∗
     uargv (ukn_d N) av args -∗
     kecho_pay_all N args
@@ -789,7 +795,7 @@ Section UEchoPipe.
   Proof using .
     intros Hws2 Hargv Hl1.
     pose proof Hargv as [Hlen _].
-    iIntros "#Hq #Hinv #Hkt #Hro #Hargv".
+    iIntros "#Hq #Hinv #Hro #Hargv".
     rewrite /kecho_pay_all. iSplit.
     - iIntros "%Hsmall". exfalso. lia.
     - iIntros "_".
@@ -799,7 +805,7 @@ Section UEchoPipe.
                     (length args - 2)%nat 1%nat ltac:(lia) ltac:(lia))
         as Hfrom.
       rewrite H0 in Hfrom.
-      iApply (Hfrom with "Hq Hinv Hkt Hro Hargv").
+      iApply (Hfrom with "Hq Hinv Hro Hargv").
   Qed.
 
   (* =================================================================== *)
@@ -847,7 +853,6 @@ Section UEchoPipe.
     uvis_lazy W = false ->
     □ (ep_exit pn (wl_line (drop 1 ws)) -∗ Q (-1)) -∗
     pipe_inv pn γp (wl_line (drop 1 ws)) -∗
-    □ (∀ gn : gname, ChildTok.kill_shot gn -∗ app_taint) -∗
     UkRun.urun_nopipe (uvis_fd W) -∗
     udep -∗
     my_pay (uvis_gen W) Q -∗
@@ -858,7 +863,7 @@ Section UEchoPipe.
   Proof using ghost_varG0 ghost_varG1 ufdG0.
     intros HQc Hws2 Hargv1 Hl1 Hpc Hsub Hsub2 Hx Hroom Hal8 Hstk Hargs
            Havd Havs Hfdlen Hstop Hlzf.
-    iIntros "#Hq #Hinv #Hkt #Hnpw #Hdep Hpay Hc".
+    iIntros "#Hq #Hinv #Hnpw #Hdep Hpay Hc".
     assert (Hsp0 : 0 <= uint (uvis_sp W)) by lia.
     assert (Hargc0 : 0 <= uvis_argc W)
       by exact (proj1 (uka_argc _ _ _ _ _ _ Hargs)).
@@ -882,7 +887,7 @@ Section UEchoPipe.
     { iApply (ep_pay_all N pn γp ws (uvis_av W)
                 (echo_args (uvis_M W) (uvis_av W) (Z.to_nat (uvis_argc W)))
                 (take NSTD (uvis_fd W)) rb Hws2 Hargv1 Hl1
-                with "[] Hinv Hkt [] []").
+                with "[] Hinv [] []").
       { rewrite Hpayeq. iExact "Hq". }
       - iApply (echo_rodata_of_text (ukn_t N) (uvis_M W) (uvis_perm W)
                   Hsub2 Hx with "Ht").
@@ -916,15 +921,13 @@ Section UEchoPipe.
     length sts = NOFILE ->
     take NSTD sts !! 1%nat = Some (FdOpen rb true (FdPipe γp)) ->
     □ (ep_exit pn (wl_line (drop 1 ws)) -∗ Q (-1)) -∗
-    (* [Hktaint], the one row still owed (see the header) *)
-    □ (∀ gn : gname, ChildTok.kill_shot gn -∗ app_taint) -∗
     UkRun.urun_nopipe sts -∗
     udep -∗
     image_entry ElfUser.echo_elf M (mword_of_int (t + 8) : mword 64) sts
       cw cs pidv Q (ep_pay pn γp (wl_line (drop 1 ws))) uslot.
   Proof using ghost_varG0 ghost_varG1 ufdG0.
     intros HQc Hok Himg Hbytes Hfdl Hl1.
-    iIntros "#Hq #Hkt #Hnpw #Hdep".
+    iIntros "#Hq #Hnpw #Hdep".
     iApply image_entry_of_at. iIntros "!>" (na alen afun) "%Hargs".
     destruct (UShEcho.echo_args_det_holds ws Hok M s0 t g na alen afun
                 Himg Hbytes Hargs) as (Hna & Halen & Hafun).
@@ -953,7 +956,7 @@ Section UEchoPipe.
               ltac:(rewrite Hfd; exact Hl1)
               Hpc Hsub Hsub2 Hx Hroom96 Hal8 Hstkrow Hargsrow Havd Havs
               Hfdlen Hstop Hlzf
-              with "Hq Hinv Hkt Hnpw' Hdep Hmp Hc").
+              with "Hq Hinv Hnpw' Hdep Hmp Hc").
   Qed.
 
   (* =================================================================== *)
@@ -1027,7 +1030,6 @@ Section UEchoPipe.
     UkShEcho.echo_argv_bytes ep_hi_ws g ->
     length sts = NOFILE ->
     take NSTD sts !! 1%nat = Some (FdOpen rb true (FdPipe γp)) ->
-    □ (∀ gn : gname, ChildTok.kill_shot gn -∗ app_taint) -∗
     UkRun.urun_nopipe sts -∗
     udep -∗
     image_entry ElfUser.echo_elf M (mword_of_int (t + 8) : mword 64) sts
@@ -1038,14 +1040,14 @@ Section UEchoPipe.
             ∨ ep_halt pn (wl_line (drop 1 ep_hi_ws))))%I
       (ep_pay pn γp (wl_line (drop 1 ep_hi_ws))) uslot.
   Proof using ghost_varG0 ghost_varG1 ufdG0.
-    intros Himg Hbytes Hfdl Hl1. iIntros "#Hkt #Hnpw #Hdep".
+    intros Himg Hbytes Hfdl Hl1. iIntros "#Hnpw #Hdep".
     iApply (ep_image_entry ep_hi_ws M s0 t g sts cw cs pidv pn γp rb
               (fun _ : Z =>
                  side_L pn ∗ Wq
                  ∗ (pws_lb pn (wl_line (drop 1 ep_hi_ws))
                     ∨ ep_halt pn (wl_line (drop 1 ep_hi_ws))))%I
               ltac:(intros x y; reflexivity) ep_hi_line_ok Himg Hbytes
-              Hfdl Hl1 with "[] Hkt Hnpw Hdep").
+              Hfdl Hl1 with "[] Hnpw Hdep").
     iIntros "!> Hex".
     iApply (ep_exit_line pn (wl_line (drop 1 ep_hi_ws)) with "Hex").
   Qed.
@@ -1062,7 +1064,6 @@ Section UEchoPipe.
     UkShEcho.echo_argv_bytes ep_hi_ws g ->
     length sts = NOFILE ->
     take NSTD sts !! 1%nat = Some (FdOpen rb true (FdPipe γp)) ->
-    □ (∀ gn : gname, ChildTok.kill_shot gn -∗ app_taint) -∗
     UkRun.urun_nopipe sts -∗
     udep -∗
     image_entry ElfUser.echo_elf M (mword_of_int (t + 8) : mword 64) sts
@@ -1072,13 +1073,13 @@ Section UEchoPipe.
          ∗ (pipe_payL pn (wl_line (drop 1 ep_hi_ws)) ∨ app_taint))%I
       (ep_pay pn γp (wl_line (drop 1 ep_hi_ws))) uslot.
   Proof using ghost_varG0 ghost_varG1 ufdG0.
-    intros Himg Hbytes Hfdl Hl1. iIntros "#Hkt #Hnpw #Hdep".
+    intros Himg Hbytes Hfdl Hl1. iIntros "#Hnpw #Hdep".
     iApply (ep_image_entry ep_hi_ws M s0 t g sts cw cs pidv pn γp rb
               (fun _ : Z =>
                  side_L pn ∗ Wq
                  ∗ (pipe_payL pn (wl_line (drop 1 ep_hi_ws)) ∨ app_taint))%I
               ltac:(intros x y; reflexivity) ep_hi_line_ok Himg Hbytes
-              Hfdl Hl1 with "[] Hkt Hnpw Hdep").
+              Hfdl Hl1 with "[] Hnpw Hdep").
     iIntros "!> Hex".
     iApply (ep_exit_payL pn (wl_line (drop 1 ep_hi_ws)) with "Hex").
   Qed.

@@ -164,11 +164,15 @@ Definition wp_pipewrite_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslo
       pipe_ref γp w q -∗
       (* THE QUEUE'S POST ([PipeQueue.pipe_wpost]): the chain at the stop
          cursor with the answer's reason -- the request met, copyin's
-         unreadable byte, the read end observed shut, or the kill shot --
-         or the taint with the payment back.  The short reason is stated at
-         the ENTRY table, which is the one the caller can name. *)
+         unreadable byte, the read end observed shut, or the kill shot
+         WITH THE KILLER'S TAINT -- or the taint with the payment back.
+         The short reason is stated at the ENTRY table, which is the one
+         the caller can name.  For the kill arm's taint see lane
+         KILL-TAINT and [PipeKillMark]: the caller reads <p->lock>'s
+         killed row holding its own incarnation's marker, which refutes
+         the row's spent arm and leaves the third party's payment. *)
       pipe_wpost (pv_upt (us_V U)) (pn_queue γp) (us_M U) addr Q Qe
-        (kill_shot (pv_gen (us_V U))) (Z.to_nat n)
+        (kill_shot (pv_gen (us_V U)) ∗ app_taint)%I (Z.to_nat n)
         (mf !!! Regidx (mword_of_int 10 : mword 5)) -∗
       proc_priv_core pj pid (us_upt U P') -∗
       WP (Loop : expr riscv_lang)) -∗

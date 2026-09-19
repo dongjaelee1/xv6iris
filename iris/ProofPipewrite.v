@@ -81,6 +81,7 @@ Require Import SpecMyproc SpecAcquire SpecKilled SpecWakeup SpecSleepPrepare Spe
 Require Import CodePipewrite.
 Require Import SpecPipewrite.
 Require Import ChildTok.   (* [kill_shot]: the -1-by-kill exit's evidence *)
+Require Import PipeKillMark.  (* the marker off the private block: the kill arm pays the taint *)
 Require Import PipeQueue.  (* the byte queue: the chain, the links, the post *)
 From Kernel Require KernelSyms.
 Require Import Riscv.rv64d_types Riscv.rv64d Riscv.riscv_extras.
@@ -693,7 +694,7 @@ Section PwConts.
       (Q : nat -> iProp Σ) (Qe : nat -> pipe_st -> iProp Σ)
       (n : Z) (r : mword 64) : iProp Σ :=
     pipe_wpost (pv_upt (us_V U)) (pn_queue γp) (us_M U) ua Q Qe
-      (ChildTok.kill_shot (pv_gen (us_V U))) (Z.to_nat n) r.
+      ((ChildTok.kill_shot (pv_gen (us_V U)) ∗ app_taint)%I) (Z.to_nat n) r.
 
   (* the three links are [Typeclasses Opaque], so they cannot be
      [iSpecialize]d at a state; these are their eliminations. *)
@@ -753,7 +754,7 @@ Section PwConts.
   Lemma pw_post_kill (γp : pipe_names) (U : ustate) (ua : mword 64)
       (Q : nat -> iProp Σ) (Qe : nat -> pipe_st -> iProp Σ) (n : Z) (k : nat) :
     (k < Z.to_nat n)%nat ->
-    ChildTok.kill_shot (pv_gen (us_V U)) -∗
+    (ChildTok.kill_shot (pv_gen (us_V U)) ∗ app_taint)%I -∗
     pw_pay γp (us_M U) ua Q Qe k (Z.to_nat n) -∗
     pw_post γp U ua Q Qe n (mword_of_int (-1) : mword 64).
   Proof using .
@@ -2528,26 +2529,33 @@ Section ProofPipewrite.
              WHY, so this caller lends the pid quarter and the registration
              eighth off its own block and takes the flag's reading -- and
              the block -- back. *)
-          iDestruct (proc_priv_core_pid_reg with "Hpriv") as "(Hqp & Hrg & Hpvback)".
+          (* ...AND THE MARKER WITH THEM (lane KILL-TAINT): the block's own
+             [ChildTok.taken_at] refutes the SPENT arm of <p->lock>'s killed
+             row, so a nonzero flag read by a process inside a syscall was
+             written by a THIRD PARTY -- who paid [RiscvPtsto.app_taint]
+             into the row.  [SchedCtx.kill_paid_shot_tear] is that reading;
+             see [PipeKillMark]. *)
+          iDestruct (proc_priv_core_pid_reg_taken with "Hpriv")
+            as "(Hqp & Hrg & Htk & Hpvback)".
           iAssert (∀ (pidr klr : mword 32),
                      p_pid (proc_addr j) ↦₄{DfracOwn (1/4)} pidr -∗
                      SchedCtx.kill_paid pidr klr -∗
                      p_pid (proc_addr j) ↦₄{DfracOwn (1/4)} pidr ∗
                      SchedCtx.kill_paid pidr klr ∗
                      ((⌜klr = (mword_of_int 0 : mword 32)⌝
-                       ∨ ChildTok.kill_shot (pv_gen (us_V U))) ∗
+                       ∨ (ChildTok.kill_shot (pv_gen (us_V U)) ∗ app_taint)%I) ∗
                       proc_priv_core (proc_addr j) pid (us_upt U Pc)))%I
-            with "[Hqp Hrg Hpvback]" as "Hkacc".
+            with "[Hqp Hrg Htk Hpvback]" as "Hkacc".
           { iIntros (pidr klr) "Hpq Hpr".
             iDestruct (ctx_word4_pointsto_agree with "Hpq Hqp") as %->.
-            iDestruct (SchedCtx.kill_paid_shot pid klr _ (pv_gen (us_V U))
-                         with "Hpr Hrg") as "(Hpr & Hrg & Hs)".
-            iFrame "Hpq Hpr Hs". iApply ("Hpvback" with "Hqp Hrg"). }
+            iDestruct (SchedCtx.kill_paid_shot_tear pid klr _ (pv_gen (us_V U))
+                         with "Hpr Hrg Htk") as "(Hpr & Hrg & Htk & Hs)".
+            iFrame "Hpq Hpr Hs". iApply ("Hpvback" with "Hqp Hrg Htk"). }
           iApply (Killed.wp_killed_sconf γs j γlp L3 (trap_res true + (av - 14))%nat 1%nat true (proc_addr j) false
                     ({["pipe"]} ∪ lks)
                     (fun (klv : mword 32) =>
                        ((⌜klv = (mword_of_int 0 : mword 32)⌝
-                         ∨ ChildTok.kill_shot (pv_gen (us_V U))) ∗
+                         ∨ (ChildTok.kill_shot (pv_gen (us_V U)) ∗ app_taint)%I) ∗
                         proc_priv_core (proc_addr j) pid (us_upt U Pc))%I)
                     Ha0L3 Hj Hjlp Hlvl1 Hav14 ltac:(lkbelow)
                     with "Hkacc Hcg Hown Htext Hpc Hpinv").

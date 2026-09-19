@@ -470,7 +470,7 @@ Section UCatPipe.
        ⌜ forall j : nat, (j < k)%nat ->
            uva_wmapped Pt
              (uint (add_vec_int (ua) (Z.of_nat j))) ⌝ -∗
-       pipe_rpost_img Pt (pn_queue γp) Rp Rpe (ChildTok.kill_shot gn)
+       pipe_rpost_img Pt (pn_queue γp) Rp Rpe (ChildTok.kill_shot gn ∗ app_taint)%I
          cap r M' (ua) -∗
        UserFd.ustd γfd l -∗
        urun N h' (<[Regidx a0_idx := r]> m) (add_vec_int pc 4) avail -∗
@@ -592,7 +592,7 @@ Section UCatPipe.
        ⌜ forall j : nat, (j < cnt)%nat ->
            uva_wmapped Pt
              (uint (add_vec_int (mword_of_int a : mword 64) (Z.of_nat j))) ⌝ -∗
-       pipe_rpost_img Pt (pn_queue γp) Rp Rpe (ChildTok.kill_shot gn)
+       pipe_rpost_img Pt (pn_queue γp) Rp Rpe (ChildTok.kill_shot gn ∗ app_taint)%I
          cnt rv M' (mword_of_int a : mword 64) -∗
        UserFd.ustd γfd l -∗
        ubytes γd a cnt gb -∗
@@ -723,17 +723,16 @@ Section UCatPipe.
     l !! 0%nat = Some (FdOpen true wb (FdPipe γp)) ->
     (* THE PROTOCOL -- the whole of what cat knows about the pipe *)
     pipe_inv pn γp L -∗
-    (* [Hktaint]: THE ONE ROW THE KERNEL OWES (this lane's finding, SS3).
-       A pipe read answers -1 when the reader was KILLED while it waited,
-       and nothing at a pipe descriptor refutes that: [UexecRet.
-       uexec_live_ok] states the row for [FdDevice 1] alone.  What is
-       assumed here is the WEAKEST thing that closes the arm and the one
-       the design already says of a kill -- a kill TAINTS the application
-       (design/applications.md: the taint is the application's kill
-       price; [AppPipe.pipe_kill] is the echo taint).  It is NOT -- nobody
-       is ever killed --: the round stays true at a tainted era, where cat
-       prints its diagnostic and the model says nothing. *)
-    □ (∀ gn : gname, ChildTok.kill_shot gn -∗ T) -∗
+    (* THE KILL ARM IS PAID BY THE KERNEL NOW (lane KILL-TAINT).  A pipe
+       read answers -1 when the reader was KILLED while it waited, and
+       what the post hands over at that arm is no longer the bare shot
+       but [ChildTok.kill_shot gn * app_taint]: a process inside a
+       syscall holds its own incarnation's marker, so a nonzero killed
+       flag was written by a THIRD PARTY, who paid the taint into
+       <p->lock>'s killed row ([PipeKillMark], [SchedCtx.
+       kill_paid_shot_tear]).  The named premise this round used to take
+       ([box (forall gn, kill_shot gn -* T)]) is GONE -- and it had to
+       go: it is refutable, [PipeKillMark.kill_taint_premise_gives_T]. *)
     (* [Hdg]: cat's `read error` tail, payable at a TAINTED era out of the
        free write law ([UkCatCat.kcat_round_of_law]'s route) *)
     □ (T -∗ UkCatCat.kcat_dg_cr N) -∗
@@ -773,7 +772,7 @@ Section UCatPipe.
       (pcat_round_inv pn l v ps0 cs0 I0 P) Cend.
   Proof using Hcons Hkill.
     intros Hst HL Hl0.
-    iIntros "#Hinv #Hktaint #Hdg #Hw #Hend #Hcode".
+    iIntros "#Hinv #Hdg #Hw #Hend #Hcode".
     assert (Hm1s : bv_signed (mword_of_int (-1) : mword 64) = -1)
       by (vm_compute; reflexivity).
     rewrite /UkCatCat.kcat_round. iModIntro.
@@ -844,7 +843,7 @@ Section UCatPipe.
       iAssert T as "#HT".
       { iDestruct "Hwhy" as "[%Hnm | [Hk | %Hn0]]".
         - exfalso. apply Hnm. rewrite Hd0. apply Hnf. lia.
-        - iApply ("Hktaint" $! gn with "Hk").
+        - iDestruct "Hk" as "[_ HTa]". rewrite -Hkill. iExact "HTa".
         - exfalso. lia. }
       iSplit; [| iSplit ].
       - iIntros "_". iApply ("Hdg" with "HT").

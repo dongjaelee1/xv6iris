@@ -193,7 +193,7 @@ Section UkWritePipe.
       (Q : nat -> iProp Σ) (Qe : nat -> pipe_st -> iProp Σ) (r : mword 64) :
     st = FdOpen rb true (FdPipe γp) ->
     filewrite_extra gn Pt st n Mv ua Q Qe r -∗
-    pipe_wpost Pt (pn_queue γp) Mv ua Q Qe (ChildTok.kill_shot gn)
+    pipe_wpost Pt (pn_queue γp) Mv ua Q Qe (ChildTok.kill_shot gn ∗ app_taint)%I
       (Z.to_nat n) r.
   Proof using . intros ->. by iIntros "$". Qed.
 
@@ -282,7 +282,7 @@ Section UkWritePipe.
                  (sys_rw_count (m !!! Regidx a2_idx)) (uvis_M W)
                  (m !!! Regidx a1_idx) Q Qe r Hkey with "Hextra") as "Hwp".
     rewrite Hcnt Nat2Z.id.
-    iApply ("Hcont" $! h' r Pt (uvis_M W) (ChildTok.kill_shot (uvis_gen W))
+    iApply ("Hcont" $! h' r Pt (uvis_M W) ((ChildTok.kill_shot (uvis_gen W) ∗ app_taint)%I)
               with "[%] Hwp Hufdh Hbuf Hrun").
     (* the source row's first component: the chain's nodes were pinned to
        the caller's own bytes, which is exactly [usrc_ok]'s reading, and
@@ -474,7 +474,7 @@ Section UkWritePipe.
                     (FdOpen rb true (FdPipe γp)) H0 Hlt Htake Hl)
                  with "Hextra") as "Hwp".
     rewrite Hcnt Nat2Z.id.
-    iApply ("Hcont" $! h' r Pt (uvis_M W) (ChildTok.kill_shot (uvis_gen W))
+    iApply ("Hcont" $! h' r Pt (uvis_M W) ((ChildTok.kill_shot (uvis_gen W) ∗ app_taint)%I)
               with "[%] Hwp Hstd Hbuf Hrun").
     exact (proj1 Hsrc).
   Qed.

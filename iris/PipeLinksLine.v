@@ -1085,7 +1085,11 @@ Qed.
 (* ===================================================================== *)
 Section pipe_links_line.
   Context {Σ : gFunctors} `{!echoOutG Σ}.
-  Context (γ : echo_fixed).
+  (* THE FIXED PART IS [PipeOut.pipe_gn] (lane PIPE-2W-2): the echo half
+     is [pgn_cl g], so every statement below names [γ] as it did. *)
+  Context `{!pipeOutG Σ}.
+  Context (g : pipe_gn).
+  Local Notation γ := (pgn_cl g).
   Context `{HRg : !riscvGS Σ}.
 
   Notation PT := (echo_taint γ).
@@ -1162,7 +1166,7 @@ Section pipe_links_line.
        ∗ ps_lb v ps0 ∗ cs_lb v cs0)%I.
 
   (* THE ERA'S TURN: [PipeOut.pturn], which is [EchoOut.eturn] verbatim *)
-  Definition pturn_pre (k : nat) : iProp Σ := PipeOut.pturn γ k.
+  Definition pturn_pre (k : nat) : iProp Σ := PipeOut.pturn g k.
 
   (* ---- structure ----
 
@@ -1389,7 +1393,7 @@ Section pipe_links_line.
   Lemma pban_step (k : nat) (v : era_pins) (I : list (bv 8)) (i : nat)
       (b : bv 8) (Φ : iProp Σ) :
     u_banner !! i = Some b ->
-    era_pin γ k v -∗ pipe_links γ -∗ pwc_ban k v I i -∗
+    era_pin γ k v -∗ pipe_links g -∗ pwc_ban k v I i -∗
     (pwc_ban k v I (S i) -∗ Φ) -∗ out_link Uart0 k b Φ.
   Proof using .
     intros Hb. iIntros "#Hpin #Hlk Hc HΦ".
@@ -1443,7 +1447,7 @@ Section pipe_links_line.
   Lemma pblk_step (k : nat) (v : era_pins) (I : list (bv 8)) (a i : nat)
       (b : bv 8) (Φ : iProp Σ) :
     pab I a !! i = Some b ->
-    era_pin γ k v -∗ pipe_links γ -∗ pwc_blk k v I a i -∗
+    era_pin γ k v -∗ pipe_links g -∗ pwc_blk k v I a i -∗
     (pwc_blk k v I a (S i) -∗ Φ) -∗ out_link Uart0 k b Φ.
   Proof using .
     intros Hb. iIntros "#Hpin #Hlk Hc HΦ".
@@ -1507,7 +1511,7 @@ Section pipe_links_line.
   Lemma pprompt_dollar (k : nat) (v : era_pins) (I : list (bv 8))
       (b : bv 8) (Φ : iProp Σ) :
     b = u_prompt !!! 0%nat ->
-    era_pin γ k v -∗ pipe_links γ -∗ pwc_owed k v I -∗
+    era_pin γ k v -∗ pipe_links g -∗ pwc_owed k v I -∗
     (pwc_sp k v I -∗ Φ) -∗ out_link Uart0 k b Φ.
   Proof using .
     intros Hb. iIntros "#Hpin #Hlk Hc HΦ".
@@ -1563,7 +1567,7 @@ Section pipe_links_line.
   Lemma pprompt_space (k : nat) (v : era_pins) (I : list (bv 8))
       (b : bv 8) (Φ : iProp Σ) :
     b = u_prompt !!! 1%nat ->
-    era_pin γ k v -∗ pipe_links γ -∗ pwc_sp k v I -∗
+    era_pin γ k v -∗ pipe_links g -∗ pwc_sp k v I -∗
     (pwc_open k v I -∗ Φ) -∗ out_link Uart0 k b Φ.
   Proof using .
     intros Hb. iIntros "#Hpin #Hlk Hc HΦ".
@@ -1589,7 +1593,7 @@ Section pipe_links_line.
   Lemma pprompt_dollar_ban (k : nat) (v : era_pins) (I : list (bv 8))
       (b : bv 8) (Φ : iProp Σ) :
     b = u_prompt !!! 0%nat ->
-    era_pin γ k v -∗ pipe_links γ -∗ pwc_ban k v I 0%nat -∗
+    era_pin γ k v -∗ pipe_links g -∗ pwc_ban k v I 0%nat -∗
     (pwc_sp k v I -∗ Φ) -∗ out_link Uart0 k b Φ.
   Proof using .
     intros Hb. iIntros "#Hpin #Hlk Hc HΦ".
@@ -1627,7 +1631,7 @@ Section pipe_links_line.
   Lemma pprompt_dollar_post (k : nat) (v : era_pins) (I : list (bv 8))
       (a : nat) (b : bv 8) (Φ : iProp Σ) :
     papr I a -> b = u_prompt !!! 0%nat ->
-    era_pin γ k v -∗ pipe_links γ -∗ pwc_post k v I a -∗
+    era_pin γ k v -∗ pipe_links g -∗ pwc_post k v I a -∗
     (pwc_sp_t k v I -∗ Φ) -∗ out_link Uart0 k b Φ.
   Proof using .
     intros Ha Hb. iIntros "#Hpin #Hlk Hc HΦ".
@@ -1645,7 +1649,7 @@ Section pipe_links_line.
   Lemma pprompt_space_t (k : nat) (v : era_pins) (I : list (bv 8))
       (b : bv 8) (Φ : iProp Σ) :
     b = u_prompt !!! 1%nat ->
-    era_pin γ k v -∗ pipe_links γ -∗ pwc_sp_t k v I -∗
+    era_pin γ k v -∗ pipe_links g -∗ pwc_sp_t k v I -∗
     (pwc_open_t k v I -∗ Φ) -∗ out_link Uart0 k b Φ.
   Proof using .
     intros Hb. iIntros "#Hpin #Hlk Hc HΦ".
@@ -1671,7 +1675,7 @@ Section pipe_links_line.
   Lemma pprompt_dollar_line (k : nat) (v : era_pins) (I : list (bv 8))
       (b : bv 8) (Φ : iProp Σ) :
     b = u_prompt !!! 0%nat ->
-    era_pin γ k v -∗ pipe_links γ -∗ pwc_line k v I -∗
+    era_pin γ k v -∗ pipe_links g -∗ pwc_line k v I -∗
     (pwc_sp_t k v I -∗ Φ) -∗ out_link Uart0 k b Φ.
   Proof using .
     intros Hb. iIntros "#Hpin #Hlk Hc HΦ".
@@ -1723,7 +1727,7 @@ Section pipe_links_line.
   Lemma powed_read_taint (k : nat) (v : era_pins) (n : nat)
       (I : list (bv 8)) (ws : list (list mobs * bv 8)) :
     length I = n -> (0 < length ws)%nat ->
-    pwc_owed k v I -∗ pread_ret γ k v n ws -∗ PT.
+    pwc_owed k v I -∗ pread_ret g k v n ws -∗ PT.
   Proof using .
     intros HIn Hws. iIntros "Hc Hr".
     rewrite /pwc_owed. iDestruct "Hc" as "[Hl | #HT]"; last by iExact "HT".
@@ -1858,7 +1862,7 @@ Section pipe_links_line.
   Lemma ppdiag_step (k : nat) (v : era_pins) (I : list (bv 8)) (a i : nat)
       (b : bv 8) (Φ : iProp Σ) :
     pro_alts !!! a !! i = Some b ->
-    era_pin γ k v -∗ pipe_links γ -∗ pwc_pdiag k v I a i -∗
+    era_pin γ k v -∗ pipe_links g -∗ pwc_pdiag k v I a i -∗
     (pwc_pdiag k v I a (S i) -∗ Φ) -∗ out_link Uart0 k b Φ.
   Proof using .
     intros Hb. iIntros "#Hpin #Hlk Hc HΦ".

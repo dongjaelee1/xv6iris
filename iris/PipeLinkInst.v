@@ -48,39 +48,43 @@ Local Open Scope list_scope.
 Section pipe_link_inst.
   Context {Σ : gFunctors}.
   Context `{!echoOutG Σ}.
-  Context (γ : echo_fixed).
+  (* THE FIXED PART IS [PipeOut.pipe_gn] (lane PIPE-2W-2): the echo half
+     is [pgn_cl g], so every statement below names [γ] as it did. *)
+  Context `{!pipeOutG Σ}.
+  Context (g : pipe_gn).
+  Local Notation γ := (pgn_cl g).
   Context `{HRg : !riscvGS Σ}.
 
   Definition pipe_link_inst_at : LinkRec Σ :=
     {| lk_T := echo_taint γ;
        lk_pin := era_pin γ;
        lk_epin := era_pin γ;
-       lk_links := PipeLinks.pipe_links γ;
+       lk_links := PipeLinks.pipe_links g;
        lk_ab := pab;
        lk_apr := papr;
        lk_pan := fun _ => 3%nat;
        lk_exf := fun I => pexf_of (pline_at I);
        lk_exfb := fun I => pexfb (pline_at I);
        lk_noc := 2%nat;
-       lk_ban := pwc_ban γ;
-       lk_owed := pwc_owed γ;
-       lk_sp := pwc_sp γ;
-       lk_open := pwc_open γ;
-       lk_blk := pwc_blk γ;
-       lk_pro := pwc_pro γ;
-       lk_sp_t := pwc_sp_t γ;
-       lk_open_t := pwc_open_t γ;
-       lk_line := pwc_line γ;
-       lk_pr := pwc_pr γ;
-       lk_lpr := pwc_lpr γ;
-       lk_lend := pwc_lend γ;
-       lk_rr := fun k v n ws => PipeLinks.pread_ret γ k v n ws;
+       lk_ban := pwc_ban g;
+       lk_owed := pwc_owed g;
+       lk_sp := pwc_sp g;
+       lk_open := pwc_open g;
+       lk_blk := pwc_blk g;
+       lk_pro := pwc_pro g;
+       lk_sp_t := pwc_sp_t g;
+       lk_open_t := pwc_open_t g;
+       lk_line := pwc_line g;
+       lk_pr := pwc_pr g;
+       lk_lpr := pwc_lpr g;
+       lk_lend := pwc_lend g;
+       lk_rr := fun k v n ws => PipeLinks.pread_ret g k v n ws;
        lk_rres := pwc_rres;
-       lk_turn := pturn_pre γ;
+       lk_turn := pturn_pre g;
 
        lk_T_pers := echo_taint_persistent γ;
        lk_T_tl := echo_taint_timeless γ;
-       lk_links_pers := PipeLinks.pipe_links_persistent γ;
+       lk_links_pers := PipeLinks.pipe_links_persistent g;
        lk_pin_pers := era_pin_persistent γ;
        lk_pin_tl := era_pin_timeless γ;
        lk_pin_agr := era_pin_agree γ;
@@ -88,18 +92,18 @@ Section pipe_link_inst.
        lk_epin_tl := era_pin_timeless γ;
        lk_epin_agr := era_pin_agree γ;
        lk_pin_epin := pi_pin_epin γ;
-       lk_ban_tl := pwc_ban_timeless γ;
-       lk_owed_tl := pwc_owed_timeless γ;
-       lk_sp_tl := pwc_sp_timeless γ;
-       lk_open_tl := pwc_open_timeless γ;
-       lk_blk_tl := pwc_blk_timeless γ;
-       lk_pro_tl := pwc_pro_timeless γ;
-       lk_sp_t_tl := pwc_sp_t_timeless γ;
-       lk_open_t_tl := pwc_open_t_timeless γ;
-       lk_line_tl := pwc_line_timeless γ;
-       lk_pr_tl := pwc_pr_timeless γ;
-       lk_lpr_tl := pwc_lpr_timeless γ;
-       lk_lend_tl := pwc_lend_timeless γ;
+       lk_ban_tl := pwc_ban_timeless g;
+       lk_owed_tl := pwc_owed_timeless g;
+       lk_sp_tl := pwc_sp_timeless g;
+       lk_open_tl := pwc_open_timeless g;
+       lk_blk_tl := pwc_blk_timeless g;
+       lk_pro_tl := pwc_pro_timeless g;
+       lk_sp_t_tl := pwc_sp_t_timeless g;
+       lk_open_t_tl := pwc_open_t_timeless g;
+       lk_line_tl := pwc_line_timeless g;
+       lk_pr_tl := pwc_pr_timeless g;
+       lk_lpr_tl := pwc_lpr_timeless g;
+       lk_lend_tl := pwc_lend_timeless g;
        lk_rres_pers := pwc_rres_persistent;
        lk_rres_tl := pwc_rres_timeless;
 
@@ -111,47 +115,47 @@ Section pipe_link_inst.
        lk_lpr_2 := fun _ _ _ => eq_refl;
        lk_lpr_S3 := fun _ _ _ _ => eq_refl;
 
-       lk_ban_taint := pwc_ban_taint γ;
-       lk_owed_taint := pwc_owed_taint γ;
-       lk_sp_taint := pwc_sp_taint γ;
-       lk_open_taint := pwc_open_taint γ;
-       lk_blk_taint := pwc_blk_taint γ;
-       lk_pro_taint := pwc_pro_taint γ;
-       lk_sp_t_taint := pwc_sp_t_taint γ;
-       lk_open_t_taint := pwc_open_t_taint γ;
-       lk_line_taint := pwc_line_taint γ;
-       lk_lend_taint := pwc_lend_taint γ;
+       lk_ban_taint := pwc_ban_taint g;
+       lk_owed_taint := pwc_owed_taint g;
+       lk_sp_taint := pwc_sp_taint g;
+       lk_open_taint := pwc_open_taint g;
+       lk_blk_taint := pwc_blk_taint g;
+       lk_pro_taint := pwc_pro_taint g;
+       lk_sp_t_taint := pwc_sp_t_taint g;
+       lk_open_t_taint := pwc_open_t_taint g;
+       lk_line_taint := pwc_line_taint g;
+       lk_lend_taint := pwc_lend_taint g;
 
-       lk_pro_owed := pwc_pro_owed γ;
-       lk_blk_owed := pwc_blk_owed γ;
-       lk_sp_t_sp := pwc_sp_t_sp γ;
-       lk_open_t_open := pwc_open_t_open γ;
-       lk_blk_0 := pwc_blk_0 γ;
-       lk_line_of_blk0 := pwc_line_of_blk0 γ;
-       lk_line_of_post := pwc_line_of_post γ;
-       lk_line_of_pro := pwc_line_of_pro γ;
-       lk_lend_of_blk0 := pwc_lend_of_blk0 γ;
+       lk_pro_owed := pwc_pro_owed g;
+       lk_blk_owed := pwc_blk_owed g;
+       lk_sp_t_sp := pwc_sp_t_sp g;
+       lk_open_t_open := pwc_open_t_open g;
+       lk_blk_0 := pwc_blk_0 g;
+       lk_line_of_blk0 := pwc_line_of_blk0 g;
+       lk_line_of_post := pwc_line_of_post g;
+       lk_line_of_pro := pwc_line_of_pro g;
+       lk_lend_of_blk0 := pwc_lend_of_blk0 g;
 
        lk_ban_step := pban_step γ;
-       lk_ban_owed := pwc_ban_owed γ;
-       lk_ban_pro := pwc_ban_pro γ;
-       lk_ban_done := pwc_ban_done γ;
-       lk_ban_done_line := pwc_ban_done_line γ;
-       lk_ban_inp := pwc_ban_inp γ;
+       lk_ban_owed := pwc_ban_owed g;
+       lk_ban_pro := pwc_ban_pro g;
+       lk_ban_done := pwc_ban_done g;
+       lk_ban_done_line := pwc_ban_done_line g;
+       lk_ban_inp := pwc_ban_inp g;
 
        lk_prompt_dollar := pprompt_dollar γ;
        lk_prompt_space := pprompt_space γ;
        lk_prompt_dollar_ban := pprompt_dollar_ban γ;
-       lk_read := pwc_read γ;
+       lk_read := pwc_read g;
        lk_owed_read_taint := powed_read_taint γ;
 
        lk_blk_step := pblk_step γ;
-       lk_blk_sp := pwc_blk_sp γ;
+       lk_blk_sp := pwc_blk_sp g;
 
        lk_prompt_dollar_post := pprompt_dollar_post γ;
        lk_prompt_space_t := pprompt_space_t γ;
        lk_prompt_dollar_line := pprompt_dollar_line γ;
-       lk_read_t := pwc_read_t γ;
+       lk_read_t := pwc_read_t g;
 
        lk_ab_pan := fun I => pab_pan I;
        lk_ab_exf := fun I => pab_exf I;
@@ -159,19 +163,19 @@ Section pipe_link_inst.
 
        lk_ban_read_taint := pban_read_taint γ;
        lk_turn0 := pturn0 γ;
-       lk_panic_done := pwc_panic_done γ;
+       lk_panic_done := pwc_panic_done g;
 
-       lk_pban := pwc_pban γ;
-       lk_pdiag := pwc_pdiag γ;
-       lk_pban_tl := pwc_pban_timeless γ;
-       lk_pdiag_tl := pwc_pdiag_timeless γ;
-       lk_pban_taint := pwc_pban_taint γ;
-       lk_pdiag_taint := pwc_pdiag_taint γ;
-       lk_pdiag_0 := pwc_pdiag_0 γ;
-       lk_pban_of_ban_done := pwc_pban_of_ban_done γ;
-       lk_pro_of_pban := pwc_pro_of_pban γ;
+       lk_pban := pwc_pban g;
+       lk_pdiag := pwc_pdiag g;
+       lk_pban_tl := pwc_pban_timeless g;
+       lk_pdiag_tl := pwc_pdiag_timeless g;
+       lk_pban_taint := pwc_pban_taint g;
+       lk_pdiag_taint := pwc_pdiag_taint g;
+       lk_pdiag_0 := pwc_pdiag_0 g;
+       lk_pban_of_ban_done := pwc_pban_of_ban_done g;
+       lk_pro_of_pban := pwc_pro_of_pban g;
        lk_pdiag_step := ppdiag_step γ;
-       lk_pdiag_done_1 := pwc_pdiag_done_1 γ;
+       lk_pdiag_done_1 := pwc_pdiag_done_1 g;
     |}.
 
   (* =================================================================== *)
@@ -188,45 +192,45 @@ Section pipe_link_inst.
   Lemma pipe_inst_epin : lk_epin pipe_link_inst_at = era_pin γ.
   Proof using . reflexivity. Qed.
   Lemma pipe_inst_links :
-    lk_links pipe_link_inst_at = PipeLinks.pipe_links γ.
+    lk_links pipe_link_inst_at = PipeLinks.pipe_links g.
   Proof using . reflexivity. Qed.
   Lemma pipe_inst_ab : lk_ab pipe_link_inst_at = pab.
   Proof using . reflexivity. Qed.
   Lemma pipe_inst_apr : lk_apr pipe_link_inst_at = papr.
   Proof using . reflexivity. Qed.
   Lemma pipe_inst_ban k v I i :
-    lk_ban pipe_link_inst_at k v I i = pwc_ban γ k v I i.
+    lk_ban pipe_link_inst_at k v I i = pwc_ban g k v I i.
   Proof using . reflexivity. Qed.
   Lemma pipe_inst_owed k v I :
-    lk_owed pipe_link_inst_at k v I = pwc_owed γ k v I.
+    lk_owed pipe_link_inst_at k v I = pwc_owed g k v I.
   Proof using . reflexivity. Qed.
   Lemma pipe_inst_blk k v I a i :
-    lk_blk pipe_link_inst_at k v I a i = pwc_blk γ k v I a i.
+    lk_blk pipe_link_inst_at k v I a i = pwc_blk g k v I a i.
   Proof using . reflexivity. Qed.
   Lemma pipe_inst_post k v I a :
-    lk_post pipe_link_inst_at k v I a = pwc_post γ k v I a.
+    lk_post pipe_link_inst_at k v I a = pwc_post g k v I a.
   Proof using . reflexivity. Qed.
   Lemma pipe_inst_panic k v I i :
-    lk_panic pipe_link_inst_at k v I i = pwc_blk γ k v I 3%nat i.
+    lk_panic pipe_link_inst_at k v I i = pwc_blk g k v I 3%nat i.
   Proof using . reflexivity. Qed.
-  Lemma pipe_inst_pr : lk_pr pipe_link_inst_at = pwc_pr γ.
+  Lemma pipe_inst_pr : lk_pr pipe_link_inst_at = pwc_pr g.
   Proof using . reflexivity. Qed.
-  Lemma pipe_inst_lpr : lk_lpr pipe_link_inst_at = pwc_lpr γ.
+  Lemma pipe_inst_lpr : lk_lpr pipe_link_inst_at = pwc_lpr g.
   Proof using . reflexivity. Qed.
   Lemma pipe_inst_lend k v I :
-    lk_lend pipe_link_inst_at k v I = pwc_lend γ k v I.
+    lk_lend pipe_link_inst_at k v I = pwc_lend g k v I.
   Proof using . reflexivity. Qed.
   Lemma pipe_inst_rres : lk_rres pipe_link_inst_at = pwc_rres.
   Proof using . reflexivity. Qed.
-  Lemma pipe_inst_turn : lk_turn pipe_link_inst_at = pturn_pre γ.
+  Lemma pipe_inst_turn : lk_turn pipe_link_inst_at = pturn_pre g.
   Proof using . reflexivity. Qed.
   Lemma pipe_inst_cred k I p :
     lk_cred pipe_link_inst_at k I p
-    = (∃ v : era_pins, era_pin γ k v ∗ pwc_pr γ k v I p)%I.
+    = (∃ v : era_pins, era_pin γ k v ∗ pwc_pr g k v I p)%I.
   Proof using . reflexivity. Qed.
   Lemma pipe_inst_lcred k I p :
     lk_lcred pipe_link_inst_at k I p
-    = (∃ v : era_pins, era_pin γ k v ∗ pwc_lpr γ k v I p)%I.
+    = (∃ v : era_pins, era_pin γ k v ∗ pwc_lpr g k v I p)%I.
   Proof using . reflexivity. Qed.
 
   (* ---- the three NAMED alternatives, read at the instance.  [lk_pan]
@@ -264,7 +268,7 @@ Section sh_round_facing.
   Context `{HRg : !riscvGS Σ}.
   Context `{GEN : GenId}.
 
-  Local Notation PI := (pipe_link_inst_at γ).
+  Local Notation PI := (pipe_link_inst_at g).
 
   Definition pipe_Wcl_at (I : list (bv 8)) (p : nat) : iProp Σ :=
     lk_lcred PI (S gen_id) I p.

@@ -220,9 +220,15 @@ arm is the theorem's one named premise (`pipe_both_law`).
   both need the taint the kernel already travels with the shot at the trap
   tail; make the two posts carry `app_taint` beside the shot, so `Hktaint`
   leaves `Hprog` and the writer's kill-cause short write pays from it.
-- [ ] **PIPE-ARM-PAID** (design §4.3c): the paid twin of `wp_kshr_pipe_arm`
-  — the three panic tails through a parameterised `ush_panic_law` at the
-  lent credential, no `sh_deps`; the success path at the lease's lends.
+- [x] **PIPE-ARM-PAID** (design §4.3c): `UkShPipePaid.v` —
+  `wp_kshd_panic_paid_at` (the paid panic walk at an arbitrary message;
+  the walk underneath was general in it all along) and
+  `wp_kshr_pipe_arm_paid`, the arm at the three paid tails with no
+  `sh_deps`, its lends and redemptions as parameters.  `UkShPipe.v`'s arm
+  was re-cut as `wp_kshr_pipe_arm_g` (three tails as continuations, `Cr`
+  and `Cx γp` as parameters) with `wp_kshr_pipe_arm`'s statement
+  BYTE-IDENTICAL.  The law to take is `UkShDiag.ush_execfail_law_at`, not
+  `ush_panic_law` — see the Findings block.
 - [ ] **PIPE-2W** AMENDED (design §4.3c): the ledger records the block's
   bytes; the family serves all four block shapes; the exit files the
   alternative at the prompt; no `pipe_both_law`.
@@ -4396,3 +4402,105 @@ lanes and not one: **PIPE-ARM-PAID** (the paid twin of
 five bytes, and the exit payload off the credential) and then the round
 itself, whose whole contract is `UShPipeRound.sh_pipe_child_law` — every
 other premise of `sh_round_holds_pipe` is proved.
+
+### PIPE-ARM-PAID (2026-09-19) — the PAID pipe arm lands, and it costs no new walk: the landed arm was re-cut GENERIC in its three tails (statement byte-identical) and the panic walk was general in its message all along
+
+Branch `app-pipe/pipe-arm-paid` off `main` (84f975648).  ONE new `iris/`
+file (`iris/UkShPipePaid.v`), ONE landed file edited (`iris/UkShPipe.v` —
+see below), one `iris/_CoqProject` row.  Whole-tree
+`ec2-lane.sh round2 build` **RC=0**; no `Admitted`; `Proof using` on
+every result; `audit-echo-only` UNMOVED (fourteen).
+
+**THE ONE DEVIATION FROM THE BRIEF, AND WHY.**  The brief said to keep
+`wp_kshr_pipe_arm` as it is and put the paid twin in a new file.  The
+paid twin is in the new file, and `wp_kshr_pipe_arm`'s STATEMENT IS
+BYTE-IDENTICAL (`diff` against `git show main:iris/UkShPipe.v` — the
+check is in the lane's commit message); what moved is that its PROOF is
+now one application of a new `wp_kshr_pipe_arm_g`, the same walk with its
+three panic tails as CONTINUATIONS.  The alternative was a 1,030-line
+copy of the walk into the new file, which the guiding principle forbids
+("a hoist proposed because two near-duplicates cannot see each other is
+usually a generalization in disguise") and which would have had to be
+kept in step with the original for ever.  Upstream did exactly this for
+the redirect (`UkShRedirSeam.wp_kshm_child_alloc_redir_g`,
+`UkShRedir.ush_open_call_g`), so the shape is the campaign's own.
+
+**WHAT LANDED — `iris/UkShPipe.v`, `wp_kshr_pipe_arm_g`.**  The arm with
+
+  - `(⊢ ukn_pay N (-1))` and `UkSh.sh_deps` GONE;
+  - `Cr : iProp Σ` — the credential the arm is entered at.  It is spent
+    EITHER on the `pipe(2)`-failed tail (where nothing has been split)
+    OR by the split at the two forks, never both, and **the ARM makes
+    that choice**, so no caller has to split it up front (durable-notes:
+    two continuations of which exactly one fires are an additive pair,
+    never two wands — here the disjunction is the arm's own, so neither
+    is needed);
+  - `Cx : pipe_names -> iProp Σ` — the FOURTH component of the split
+    (`∀ γp, Cr -∗ R γp -∗ RcL γp ∗ (RcR γp ∗ (Rk γp ∗ Cx γp))`), which
+    is what the two `fork1`s BORROW as `UkShRun.wp_kshr_fork1`'s `Pex`
+    and what either `panic("fork")` tail is paid from; it comes back on
+    the returning arm and reaches the parent continuation unspent (the
+    one place the parent's premise list grew);
+  - three `□` continuations, one per panic tail, each at `panic`'s own
+    entry with the message's address in a0 (0x12c8 for `pipe`, 0x1298
+    for `fork`), holding the ledger and the credential that pays it.
+    The two fork tails also receive `wp_kshr_fork1`'s own answer
+    (the lend back, or the child token) — which the free instance drops
+    and a paid caller may read.
+
+  and the landed `wp_kshr_pipe_arm` re-derived from it at `Cr := emp`,
+  `Cx := fun _ => ukn_pay N (-1)` and the three tails filled by
+  `UkShDiag.ush_diag_leaf_holds` out of `UkSh.sh_deps`.
+
+**WHAT LANDED — `iris/UkShPipePaid.v`.**
+
+1. **`wp_kshd_panic_paid_at`** — `UkShDiag.wp_kshd_panic_paid` with its
+   MESSAGE as a parameter.  **This cost no walk at all**: the walk
+   underneath, `UkShDiag.wp_kshd_panic_chain`, already takes `sa`, `slen`
+   and `sf` as parameters; only the landed *wrapper* was hard-wired to
+   0x1298 / `alt_panic`.  So the lemma is the wrapper at
+   `(msg, dg)` with the four byte facts as premises, and that is the
+   whole of the "message-parameterised panic law" the brief asked for.
+2. **AND THE LAW IT TAKES IS `UkShDiag.ush_execfail_law_at`, NOT
+   `ush_panic_law`** — a finding at the statement.  The two have the same
+   shape (a family, a byte step, an end), but `ush_panic_law Wc Wb` fixes
+   BOTH the bytes (`alt_panic`) AND what the end leaves: the BANNER-owed
+   credential, because at the echo era the MAIN loop's fork panic kills
+   the shell and re-enters the prologue.  Neither is right for a `runcmd`
+   child: its panic kills the CHILD, the parent's `wait(0)` returns and
+   the PARENT prints the prompt, so what the tail leaves is a BLOCK
+   credential.  `ush_execfail_law_at dg n Cr Cd` is already general in
+   all three, so nothing new had to be defined.
+3. `ushq_pipe_msg_len` / `_fmt` / `_byte` / `_nl` — the `pipe` literal at
+   0x12c8 and its five bytes `wl_line PipeDisc.dg_pipe`, by the same
+   `ush_bytes_of_forallb` computation as `UkShDiag`'s `fork` ones (which
+   are reused verbatim for the two fork tails: `PipeDisc.alt_forkc =
+   alt_panic ++ u_prompt` is free, as the brief said).
+4. **`wp_kshr_pipe_arm_paid`** — the generic arm at the paid tails, its
+   statement verbatim in the lane report.  ONE premise the free arm did
+   not have: **`UkSh.ush_fd2p ld`**, fd 2 is the console.  The free arm
+   never needed it because `ush_diag_leaf_holds` writes out of write's
+   deposit and names no row; a PAID write names the row it goes out on.
+
+**WHAT THE NEXT LANE GETS.**  `sh_pipe_child_law`
+(`UShPipeRound.sh_pipe_child_law`, the round's ONE premise) is now
+`wp_kshm_child_pipe`'s paid twin plus this arm: `RcL`/`RcR` carry one
+cursor half of PIPE-2W's block family plus the child's entry payment,
+`Rk` what sh keeps for the end of the round, `Qc` the symmetric payload,
+`Cr` the lend, `Cx γp`/`Bx γp` the forks' borrowed credential and its
+residue, `Bp` the pipe panic's.  All of them are parameters here because
+the family they are built from is PIPE-2W's.
+
+**THE OPERATIONAL FINDING, AGAIN AND AT A SECOND CARRIER.**
+SH-PIPE-ROUND-2 measured that `iIntros "#"` on `PipeLinks.pipe_links`
+does not return although the bundle has a `Global Instance`.  The SAME
+thing happened here at `UkShDiag.ush_execfail_law_at` — one `□` behind a
+transparent definition, with its own `Global Instance
+ush_execfail_law_at_persistent` — and at a `∀ γp` over it.  The intro of
+the paid arm's premises alone ran 13 minutes and was still growing.  Two
+one-line fixes, both worth making a habit of: **name the leaf at priority
+0** (`#[local] Instance … | 0 := <the named instance>`) and **write the
+`□` where you mean it** (a `∀ γp, <persistent>` premise introduced with
+`#` makes the search do the work the box would have stated).  The
+localizer is `Set Default Timeout N.`: it turns the wedge into
+`Error: Timeout!` at its line in ONE build.

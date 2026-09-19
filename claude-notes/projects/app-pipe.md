@@ -208,7 +208,7 @@ arm is the theorem's one named premise (`pipe_both_law`).
   `Hprog`), `pipe_prog_law` discharged → `pipe_adequacy_pipeΣ` closed
   modulo `pipe_both_law` only.
 
-- [ ] **KILL-TAINT** (kernel/U tier, after PIPE-2W; CAT-PIPE's and PIPE-PROTO-2's
+- [x] **KILL-TAINT** (kernel/U tier, after PIPE-2W; CAT-PIPE's and PIPE-PROTO-2's
   shared debt).  A pipe READ's `-1` by the reader's own kill shot
   (`UexecRet.uexec_live_ok`'s read clause is stated for `FdDevice 1` alone)
   and a pipe WRITE's kill arm (`pipe_wpost` hands only `Rk = kill_shot gn`)
@@ -3809,3 +3809,165 @@ discharges `Hdsc_line` from `uline_ws_of_pline` / `uline_ok_of_pline` /
 `line_bytes_of_pline`, and supplies `ush_posw`'s conjunct with
 `FileDisc.fline_ok_of (FileDisc.LPipe ws)`.  The pipe twin of
 `UShRound.file_D_of_line` is still the first thing that lane writes.
+
+### KILL-TAINT (2026-09-19) — the premise two lanes took is REFUTABLE (it IS the taint), and the honest row costs two lines of kernel proof: the marker in the private block buys the killer's payment
+
+Branch `app-pipe/kill-taint`, four commits (`9810a8e13`, `ceb0293e2`,
+`56f99bbde`, plus this notes commit).  ONE new file
+(`iris/PipeKillMark.v`) and one line of `iris/_CoqProject`; TEN landed
+files edited, every edit inside route B's own list.
+Whole-tree `ec2-lane.sh kill build` **RC=0** (twice: after the port, and
+after the contract comments).  No `Admitted`, no `Axiom`; `Proof using`
+on all three new results.  **ALL FOUR AUDITS AT THEIR BAR, re-run on the
+lane's clone after the port:** `audit-only` **13**, `audit-echo-only`
+**14**, `audit-tree-only` **13**, `audit-pipe-only` **14** — textually
+the standing sets.
+
+**THE ROUTE: B, and the brief's STOP rule for it is WRONG.**  The brief
+said route B fails if "the trap tail pairs the shot only on the exit
+path, not on the resume path".  The trap tail is not the only place the
+pair exists.  `SchedCtx.kill_paid_shot_tear` hands
+`⌜kl = 0⌝ ∨ (kill_shot gn ∗ app_taint)` to ANY caller that holds the
+incarnation's MARKER (`ChildTok.taken_at gn`) — the marker refutes the
+row's spent arm (`taken_at_excl`), so the flag was set by a THIRD PARTY,
+who paid `app_taint` into `kill_row`'s live arm.  **And a process inside
+a syscall holds its marker: it is the last conjunct of
+`ProcInv.proc_priv_core` (via `SlotGen.gen_halves_priv`), which piperead
+and pipewrite both hold across their `killed()` call.**  The landed
+proofs called `kill_paid_shot`, which throws the credential away.  They
+now call `_tear` and keep it.  That is the whole fix; everything else is
+the term travelling.
+
+**WHAT LANDED**
+
+- `iris/PipeKillMark.v` — **`kill_shot_alloc`** (`⊢ |==> ∃ gn,
+  ChildTok.kill_shot gn`: a shot at a FRESH generation is free —
+  `ChildTok.gen_alloc` then `kill_pend_fire`, neither touching a process,
+  a slot or a lock) and **`kill_taint_premise_gives_T`**
+  (`□ (∀ gn, kill_shot gn -∗ T) -∗ |==> T`, at an abstract `T`, so it
+  refutes the premise at `UCatPipe`'s `T` and `UEchoPipe`'s `app_taint`
+  alike); **`gen_halves_priv_taken`** and
+  **`proc_priv_core_pid_reg_taken`** (the pid quarter, the registration
+  eighth AND the marker, lent together off the private block and taken
+  back — `ProcInv.proc_priv_core_pid_reg` one conjunct further).  All
+  three: *Closed under the global context*.
+- **The kernel**: `SpecPiperead`/`SpecPipewrite`'s post `Rk` is
+  `ChildTok.kill_shot (pv_gen (us_V U)) ∗ app_taint`;
+  `ProofPiperead`/`ProofPipewrite`'s `killed()` accessor lends the marker
+  and reads the row with `kill_paid_shot_tear`.  **Nothing else in either
+  proof changed** — `Rk` is a parameter at every site below the
+  instantiation, so the four `pr_noobs_*`/`pw_post_*` constructors and
+  the whole sleep loop took the new term without a tactic moving.
+- **The syscall tier**: `SpecFileread.fileread_extra_core`'s pipe arm and
+  `SpecFilewrite.filewrite_extra`'s carry the pair (plus the two
+  constructors each).  **No statement between there and the U tier moves
+  at all** — rows 5 and 16 of `UexecExecInst`'s post read those two
+  definitions, so `spost_at`, `uexec_ret_cont_*`, `UkRunSys`'s walks and
+  `ProofFileread`/`ProofFilewrite`/`ProofSyscall` are untouched and
+  compile unchanged.
+- **The U tier**: `UkReadPipe.uread_pipe_core` and `UkWritePipe`'s twin
+  move; `wp_uk_ecall_read_pipe{,_std}` / `..._write_pipe{,_std}` do NOT —
+  their `Rk` is a continuation BINDER, so only the instantiation changed.
+- **The entries**: `UCatPipe.pcat_round_at` loses `Hktaint` (the read's
+  third `-1` arm now hands the taint out itself, and closes like the
+  other two); `UEchoPipe` loses it from ALL EIGHT statements that carried
+  it (`ep_w_data`, `ep_w_txt`, `ep_pay_from`, `ep_pay_all`,
+  `ep_uexec_slot_at`, `ep_image_entry`, `ep_test_hi`, `ep_test_hi_payL`).
+  `ep_post_ok` KEEPS its `Rk`-generic `(Rk -∗ app_taint)` premise — it is
+  the right shape for a lemma about an abstract `Rk` — and its two call
+  sites discharge it by projection (`iIntros "[_ $]"`) instead of from an
+  assumption.  **No premise of the shape `∀ gn, kill_shot gn -∗ T`
+  survives anywhere in the tree.**
+- `Print Assumptions`, all unmoved from the lanes that reported them:
+  `pcat_round_at` THREE (`resv_matches`, `resv_is_valid`, funext),
+  `pcat_image_entry` / `ep_image_entry` / `ep_test_hi` /
+  `ep_test_hi_payL` the standing FOURTEEN.
+
+**WHAT WAS REFUTED (two, and the first is the lane's real finding)**
+
+1. **`Hktaint` IS NOT "a kill taints the application"; it is "the
+   application is tainted", and assuming it made both entries statements
+   about a TAINTED era.**  `ChildTok.kill_shot gn` is a one-shot at a
+   generation, and a generation is FREELY ALLOCATABLE
+   (`ChildTok.gen_alloc` is an unconditional `|==>`, `kill_pend_fire`
+   fires it) — a shot says nothing whatever about any process that is
+   running.  So `□ (∀ gn, kill_shot gn -∗ T) ⊢ |==> T`, mechanised as
+   `PipeKillMark.kill_taint_premise_gives_T`.  Under it,
+   `AppPipe.pipe_kill = AppEcho.echo_taint` holds, the claim
+   `pipe_pred γ r av = echo_taint γ ∨ (…∗ cons_state r av)` answers out
+   of its taint arm, and the pipeline theorem says nothing about the
+   console.  This is durable-notes' vacuity class in its "gap premise
+   parked as a bare `∀`" form, one step worse than usual: the premise is
+   satisfiable, but only by already owning what it was supposed to buy.
+   **Whatever else a lane does here, that premise could not have stayed.**
+   (The quantifier is what does it.  The row the kernel actually proves
+   names ONE generation — the running process's — and that one is not
+   free.)
+2. **Route A (liveness) is refuted AT THE STATEMENT, twice over, and
+   neither reason is about proof effort.**  `UexecRet.uexec_live_ok` is a
+   pure `Prop` over `(n, tf, sts, r, cs')`, i.e. over two trapframe words
+   and the descriptor table.  (i) The brief's premise "the buffer mapped"
+   is `UserPtTree.uva_wmapped P (uint addr)` for the page table `P` the
+   syscall post EXISTENTIALLY binds (`spost_at`'s `∃ P, ⌜perm_of (ud_um P)
+   (uvis_sz W) = uvis_perm W⌝ ∗ …`); it is not a function of `tf`/`sts`,
+   so it cannot be a premise of that row, and its negation is exactly the
+   copy-out-fault arm of `pipe_rstop_noobs` that the trap tail — which
+   knows nothing of the caller's buffer — cannot refute.  Giving
+   `uexec_live_ok` the key's permission map as an extra argument changes
+   its ARITY, which moves `UexecRet.uexec_ret_cont_*`, `SpecUservec`,
+   `ProofUservec`, `UexecApply`, `UkRunSys.wp_uk_ecall_read_at` and
+   `UkReadFile` — the cone the bar forbids.  (ii) Independently,
+   `pipe_rpost_img` has a TAINT arm (`app_taint ∗ pipe_rpay …`), a
+   RESOURCE disjunct, so even with (i) the tail could only conclude
+   `r ≠ -1 ∨ app_taint` and a pure `Prop` cannot carry the right side.
+   **`console_receipt` has no taint arm** — its whole `-1` reason is
+   `⌜n < 0⌝ ∨ kill_shot gn`, two arms of which the zero flag kills one —
+   and THAT is why the console's clause can be pure.  The console's
+   clause and `uexec_live_ok` are byte-identical after this lane.
+
+**WHAT THE DESIGN GOT WRONG (three)**
+
+1. **"The trap tail pairs the shot with the taint" located the pairing one
+   tier too high.**  The pairing is `SchedCtx.kill_row`'s live arm and it
+   is readable at EVERY `killed()` call whose caller holds its own
+   marker — the trap tail is merely the call that had already been written
+   that way (`ProofUsertrapTail` uses `kill_paid_shot_tear`; piperead and
+   pipewrite used `kill_paid_shot` and dropped the credential on the
+   floor).  The design page's "The exit path" should say the row, not the
+   site.
+2. **`design/app-pipe.md` §5.3's queued kernel lane READ-KILL-TAINT asks
+   for a twin that cannot be written.**  It says the honest discharge is
+   "the pipe twin of `uexec_live_ok`'s read clause = usertrap's second
+   `killed()` check".  The KILL arm really is dead at a resumed process,
+   for exactly the console's reason — but the clause it would be a twin OF
+   cannot be stated, because the console's `-1` has TWO reasons (sign
+   guard, kill) and the pipe's has FOUR.  The extra live one is the
+   COPY-OUT FAULT AT THE FIRST BYTE, and it is a fact about the binary,
+   not a modelling slack: at piperead +0xfc/+0x100 a fault with `i = 0`
+   moves copyout's `-1` into the return register, so a pipe read genuinely
+   answers -1 there while consoleread answers 0.  Refuting it needs the
+   caller's own mapped-buffer row, which a pure trapframe row cannot
+   carry.  So the discharge is the PAYMENT, not the liveness — and the
+   payer is the killer, not the reader.
+3. **A pipe read's `-1` has FOUR arms at the U tier, not three.**  CAT-PIPE
+   counted `pipe_rstop_noobs`'s three; `pipe_rpost_img`'s own taint arm is
+   a fourth, and it is the one that makes the pure-row route impossible.
+   `pcat_rpost`/`PipeProto.pipe_rpost_line` already carry it as their
+   right disjunct, so no consumer was wrong — only the count in the note.
+
+**ONE TRAP WORTH RECORDING.**  A textual sweep that deletes a premise
+line at four-space indentation also matches the same line at six, and
+what it leaves behind is two spaces glued to the NEXT line — a silent
+re-indent in a file the compiler will accept.  Diff the whitespace after
+any premise-deleting sed, not just the statement.
+
+**THE ONE THING THE NEXT LANE NEEDS FIRST**
+
+For **SH-PIPE-ROUND-2**: `ep_image_entry` and `pcat_round_at` no longer
+owe a persistent premise of ANY kind about kills — sh lends `ep_pay pn γp L`
+and cat's three (`pipe_inv`, `rtok`, `pcch … 0`) and nothing else, so the
+only named premise left inside `Hprog` is `pipe_both_law` (PIPE-2W's).
+For **PIPE-2W** and anyone else touching a kernel post that hands a bare
+`ChildTok.kill_shot`: `PipeKillMark.proc_priv_core_pid_reg_taken` is the
+accessor, `SchedCtx.kill_paid_shot_tear` the reading, and the price is
+two lines — do not take the shot alone again.

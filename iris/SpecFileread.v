@@ -1348,7 +1348,15 @@ Section SpecFileread.
     (* THE PIPE ARM: the chain at the dequeued bytes, the caller's buffer
        holding them, and the stop's reason -- request met, ring observed
        empty (an end-of-file if nothing came), copy-out fault, the kill
-       shot -- or the taint with the payment back ([PipeQueue.pipe_rpost_img]). *)
+       shot -- or the taint with the payment back ([PipeQueue.pipe_rpost_img]).
+       THE KILL ARM CARRIES THE KILLER'S TAINT BESIDE THE SHOT (lane
+       KILL-TAINT).  piperead reads <p->lock>'s killed row holding its own
+       incarnation's marker, which refutes the row's spent arm, so a
+       nonzero flag it sees was written by a THIRD PARTY -- and that party
+       paid [RiscvPtsto.app_taint] into the row
+       ([SchedCtx.kill_paid_shot_tear], [PipeKillMark]).  Without it a
+       program cannot close a pipe read's -1 at all: it is the one of the
+       four reasons no caller-side row refutes. *)
     | FdOpen true _ (FdPipe γp) =>
         pipe_rpost_img pt (pn_queue γp) Rp Rpe (ChildTok.kill_shot gn ∗ app_taint)%I (Z.to_nat n) r M' addr
     (* A DESCRIPTOR THAT CANNOT BE READ RETURNS -1, and the post says so.

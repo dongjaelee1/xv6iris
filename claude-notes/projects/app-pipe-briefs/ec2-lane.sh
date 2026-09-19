@@ -4,8 +4,12 @@
 #   ec2-lane.sh <lane> sync                 mirror this worktree's SOURCES (.v, _CoqProject) into the lane's remote clone
 #   ec2-lane.sh <lane> check File.v [...]   sync, then FAST statement check (make File.vos) -- catches a broken
 #                                           statement, NOT a broken proof (opaque proofs are skipped)
-#   ec2-lane.sh <lane> build [make targets] sync, then make -j6 targets in iris/ (default: the whole iris tree);
-#                                           prints errors with context and "RC=<n>" LAST -- trust ONLY that line
+#   ec2-lane.sh <lane> build [make targets] sync, then start make -j6 targets in iris/ (default: the whole iris tree)
+#                                           DETACHED on the mirror (nohup) and return at once -- a tool-call timeout can
+#                                           no longer kill the build; then `wait` (below) for the result
+#   ec2-lane.sh <lane> wait                 poll the detached build every 60 s until it ends; prints errors with
+#                                           context and "RC=<n>" LAST -- trust ONLY that line.  If your tool call
+#                                           times out, just run `wait` again: the build is still running remotely
 #   ec2-lane.sh <lane> run '<shell>'        run a command in the remote clone's iris/ with the opam env set
 #   ec2-lane.sh <lane> pull <path> [...]    copy files FROM the remote clone into this worktree (paths relative to the
 #                                           tree root, e.g. iris/UCodeShP.v) -- for generated tracked files (make gen-ucode)
@@ -51,7 +55,11 @@ case "$CMD" in
          tgts=""; for f in "$@"; do f="${f#iris/}"; tgts="$tgts ${f%.v}.vos"; done
          remote "make -f CoqMakefile -j6 $tgts" ;;
   build) sync
-         remote "make -f CoqMakefile -j6 $*" ;;
+         "${SSH[@]}" "cd $REMOTE/iris && rm -f /tmp/lane-$LANE-build.log && nohup bash -c '$ENV && ulimit -s unlimited && make -f CoqMakefile -j6 -k $*; echo RC=\$?' > /tmp/lane-$LANE-build.log 2>&1 < /dev/null & echo 'build started detached; run: ec2-lane.sh $LANE wait'" ;;
+  wait)  "${SSH[@]}" "until grep -q '^RC=' /tmp/lane-$LANE-build.log 2>/dev/null; do sleep 60; done; \
+           grep -Ev '^(COQC|ROCQC|ROCQ compile|ROCQ DEP|COQDEP|ROCQDEP|make\[|Warning: (No common logical root|In this case|Otherwise|in orphan))' /tmp/lane-$LANE-build.log | tail -30; \
+           if grep -Eq 'Error|Segmentation fault|Anomaly' /tmp/lane-$LANE-build.log; then echo '---- errors, with context:'; grep -E 'Error|Segmentation fault|Anomaly' -B3 -A8 /tmp/lane-$LANE-build.log | tail -120; fi; \
+           grep '^RC=' /tmp/lane-$LANE-build.log | tail -1" ;;
   run)   remote "$*" ;;
   pull)  for f in "$@"; do scp -q -i "$KEY" "ubuntu@$HOST:$REMOTE/$f" "$LOCAL/$f" && echo "pulled $f"; done ;;
   *) echo "unknown command $CMD" >&2; exit 2 ;;

@@ -30,8 +30,10 @@ names, and to REPORT — precisely — anything the design got wrong.
   helper in this directory, from anywhere:
 
       claude-notes/projects/app-pipe-briefs/ec2-lane.sh <lane> check File.v   # seconds: statement check (make File.vos)
-      claude-notes/projects/app-pipe-briefs/ec2-lane.sh <lane> build File.vo  # this file and its cone, for real
-      claude-notes/projects/app-pipe-briefs/ec2-lane.sh <lane> build          # the whole iris tree (minutes) -- before you report "landed"
+      claude-notes/projects/app-pipe-briefs/ec2-lane.sh <lane> build File.vo  # this file and its cone, for real (DETACHED; returns at once)
+      claude-notes/projects/app-pipe-briefs/ec2-lane.sh <lane> build          # the whole iris tree (DETACHED) -- before you report "landed"
+      claude-notes/projects/app-pipe-briefs/ec2-lane.sh <lane> wait           # poll the detached build to its RC line; if YOUR tool call
+                                                                              # times out, run `wait` again -- the build keeps running
       claude-notes/projects/app-pipe-briefs/ec2-lane.sh <lane> run '<cmd>'    # e.g. run 'make -f CoqMakefile audit-echo-only' if the brief asks
 
   `<lane>` is the suffix of your worktree (`/shared/xv6iris-pipe-<lane>`).

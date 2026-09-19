@@ -4164,7 +4164,8 @@ headline results — `good_out_p_of_stage_blk2`, `wr_blk2_step_L`/`_R`,
 `pblk2_exit`, `pblk2_cstep_L`/`_R`, `pblk2_chain`,
 `pipe_round_lend_holds`, `pwc_blk2_of_lend` — is **Closed under the
 global context** (not even the standing PrimString/PrimInt63
-primitives).
+primitives).  `make audit-echo-only` = **14** (unmoved) and
+`make audit-pipe-only` = **14**, echo's list exactly.
 
 **0.  WHAT THE COORDINATOR'S AMENDMENT CHANGED, and what survived it.**
 The lane was briefed to build the `PBoth` arm's merge lease and discharge

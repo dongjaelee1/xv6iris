@@ -197,7 +197,7 @@ arm is the theorem's one named premise (`pipe_both_law`).
   dead/constant arm; `FileDisc.line_bytes (LPipe ws)` = `PipeDisc`'s.  Bar:
   every landed FILE statement unchanged in meaning (the file audit at its
   current count); whole tree green.
-- [ ] **PIPE-LINK-INST** (design §5.8 STOP B): `PipeLinksLine.v` +
+- [x] **PIPE-LINK-INST** (design §5.8 STOP B): `PipeLinksLine.v` +
   `PipeLinkInst.v`, the port of `FileLinksLine`/`FileLinkInst` to the pipe
   stage (`pipe_link_inst_at`; `lk_ab` at `pcont` unguarded; the named
   alternatives echo's by reflexivity); the `pipe_link_inst_*` reflexivity
@@ -3971,3 +3971,171 @@ For **PIPE-2W** and anyone else touching a kernel post that hands a bare
 `ChildTok.kill_shot`: `PipeKillMark.proc_priv_core_pid_reg_taken` is the
 accessor, `SchedCtx.kill_paid_shot_tear` the reading, and the price is
 two lines — do not take the shot alone again.
+
+### PIPE-LINK-INST (2026-09-19) — the `LinkRec` instance lands for the pipeline application at all 94 fields, CLOSED UNDER THE GLOBAL CONTEXT; the design's "`lk_ab` needs no guard" and "`lk_exf` is the literal 1" are BOTH refuted at the statement, and `lk_noc` is a field the pipeline cannot fill honestly
+
+Branch `app-pipe/pipe-link-inst`, five code commits (`d3bef1f31`,
+`7b900a4b7`, `e7874fe73`, `34f19dd15`, `49c3ec578`) plus TWO merges of
+`main` (`8eaab601b` = the leaf-instance naming pass + the `StringBytes`
+split; `a1fec5ebb` = PROGRAM-STREAM stretch 9, the second performance
+batch and lane ULINE-LPIPE).  TWO new files — `iris/PipeLinksLine.v`
+(1,880) and `iris/PipeLinkInst.v` (325) — plus two lines of
+`iris/_CoqProject`.  **No landed statement moved**; nothing outside the
+lane's own two files was edited, and `grep -rn 'PipeLinksLine\|PipeLinkInst'
+iris/*.v` finds no importer, so every audit's cone is untouched.
+Whole-tree `ec2-lane.sh link build` **RC=0** (and `make -n` on the whole
+tree reports ZERO files left to compile at the second merge).  No
+`Admitted`; `Proof using` on every result.
+
+**`Print Assumptions PipeLinkInst.pipe_link_inst_at` = _Closed under the
+global context_.**  The record is a literal carrying all 94 fields, so
+that one call covers every law in it: the instance costs the tree NOTHING,
+not even the standing PrimString/PrimInt63 primitives.
+
+**WHAT LANDED — `iris/PipeLinksLine.v`.**  `EchoLinks` + `EchoLinksLine` +
+`EchoLinksPro` at the pipeline stage, in `FileLinksLine`'s layout with a
+`p` where the file writes an `f`:
+
+- **the line model** — `pline_at I` (the last complete body's parse),
+  `pab I a` (`lk_ab`), `papr I a` (`lk_apr`), `pcont_prompt` (the "ends
+  with the prompt" half of `PipeDisc.pcont_shape` WITHOUT the `pline_ok`
+  premise a writer does not hold), `prompt_tail_facts`, `pab_len_ge2` /
+  `pab_dollar` / `pab_space`, and the three named alternatives with
+  `pab_pan`, `pexf_of` / `pexfb` / `pab_exf` / `papr_exf` /
+  `pexfb_execfail`, `pnoc_of` / `pab_noc` / `papr_noc` / `pab_noc_len`;
+- **the pure shapes** — `wr_pro_p`, `wr_blk_p`, `wr_open_p`, `wr_owed_p`,
+  `wr_sp_p`, `wr_ban_p` / `wr_banp_p`, `wr_tail_p` and the tight trio
+  `wr_blk_t_p` / `wr_sp_t_p` / `wr_open_t_p`, `blkcs_p`; the five steps
+  (`wr_pro_dollar_p`, `wr_blk_dollar_c_p` / `wr_blk_dollar_p`,
+  `wr_sp_open_p`, `wr_open_read_p`, `wr_blk_ban_p`) and the tight ones
+  (`wr_blk_open_p`, `wr_blk_sp_p`, `wr_sp_open_t_p`, `wr_open_read_t_p`,
+  `wr_pro_tail_p`, `wr_pro_dollar_t_p`); the banner arithmetic
+  (`wr_ban_pro_p`, `wr_ban_low_p`, `wr_ban_filed_p`, `wr_ban_byte_p`,
+  `wr_ban_done_p`, `wr_ban_round0_p`); the gap law
+  (`proc_before_from_p_gap`, `proc_before_p_line`); and the DISCIPLINE
+  REFUTATION `wr_owed_read_refute_p`;
+- **the prologue diagnostics** — `wr_pban_p`, `wr_pdiag_p`,
+  `wr_pdiag_byte_p`, `wr_pdiag_1_of_pro_p`, `wr_pdiag_S_p`,
+  `wr_pdiag_done_1_p`;
+- **the credential families** — `pwc_pro`, `pwc_blk`, `pwc_owed`,
+  `pwc_sp`, `pwc_open`, `pwc_sp_t`, `pwc_open_t`, `pwc_ban`, `pwc_post`,
+  `pwc_line`, `pwc_lend`, `pwc_pr`, `pwc_lpr`, `pwc_rres`, `pwc_pban`,
+  `pwc_pdg`/`pwc_pdiag`, `pturn_pre`, with every timelessness, taint
+  route, conversion and byte step the record asks for (`pban_step`,
+  `pblk_step`, `pprompt_dollar{,_ban,_post,_line}`, `pprompt_space{,_t}`,
+  `pwc_read`, `pwc_read_t`, `powed_read_taint`, `pban_read_taint`,
+  `pwc_panic_done`, `pturn0`, `ppdiag_step`, `pwc_pdiag_done_1`).
+
+**WHAT LANDED — `iris/PipeLinkInst.v`.**  `pipe_link_inst_at γ : LinkRec Σ`
+at ALL 94 fields; the twenty `pipe_inst_*` checks (LINK-GEN's checker for
+the refactor's silent failure mode: every family the record exposes IS the
+landed `PipeLinksLine` family BY `reflexivity`, `lk_post` / `lk_panic` /
+`lk_cred` / `lk_lcred` included, and none of them needed a tactic); and
+`UShRound`'s facing set — `pipe_Wcl_at`, `pipe_Wbl_at`, `pipe_Hwbl`,
+`pipe_Hwbwc`, `pipe_Hcltaint`, `pipe_Hwc`, `pipe_Hwbr`, i.e.
+`FileLinkInst`'s `file_W*_at` section one application over.
+
+**WHAT THE DESIGN GOT WRONG.**
+
+1. **`lk_ab` STILL NEEDS THE ADMISSIBILITY GUARD.**  §5.7 finding 8, §5.8
+   and the lane brief all say `lk_ab I a := pcont (pline_at I) (palt_of a)`
+   needs "NO guard".  Only the STATE guard is gone — the file's
+   `fstate_free`, which sends `RCRan` at a present `f` to `[]`.
+   `palt_ok` must STAY: `PipeOutPure.pcont_nonnil` says `pcont l a` is
+   non-empty at EVERY alternative, admissible or not
+   (`pcont (LEcho ws) PPipe = alt_pipe`,
+   `pcont (LPipe ws) (PEcho 1) = alt_execfail`), where echo's
+   `line_alts_of ws !!! a` is `[]` out of range and the file's `fab`
+   decides.  Unguarded, `lk_ab I a !! i = Some b` would say nothing, and
+   `PipeLinks.pipe_write_link_blk`'s `palt_ok` premise would be
+   unsuppliable — i.e. **`lk_blk_step` would be UNPROVABLE**.  So
+   `pab I a := if decide (palt_ok (pline_at I) (palt_of a))
+   then pcont (pline_at I) (palt_of a) else []`, and `pab_ok` is what
+   every byte step spends.  The pipeline is simpler than the file by ONE
+   conjunct of the guard, not by the guard.
+2. **`lk_exf` CANNOT BE THE LITERAL 1.**  `palt_ok (LPipe ws) (PEcho 1)`
+   is FALSE — PIPE-MODEL-2's ruling admits exactly `PEcho 3` at a pipeline
+   line — so `lk_ab I 1 = []` there and BOTH `lk_ab_exf` and `lk_apr_exf`
+   would fail.  `lk_exf` is PER-LINE, as the file's is:
+   `pexf_of (LEcho _) := 1`, `pexf_of (LPipe _) := palt_code PExecL`.
+   What IS echo's verbatim is the BYTES —
+   `pexfb_execfail : forall l, pexfb l = alt_execfail`, through
+   `PipeDisc.alt_execL_echo` — and that is all `UShRound`'s
+   `file_exfb_echo` twin and `UkShDiag`'s printer read;
+   `pipe_inst_exfb_echo` states it at the record together with the `17`
+   the printer wants.  `lk_pan` IS the literal `3` (both line shapes admit
+   `PEcho 3`), so exactly one of the three named alternatives is echo's
+   number, not three.
+3. **`lk_noc` IS AN INERT FIELD AND THE PIPELINE CANNOT FILL IT
+   HONESTLY.**  `lk_noc : nat` is a CONSTANT, but the "nobody chose"
+   alternative is per-line here (`PEcho 2` at an echo line, `PSilent` at a
+   pipeline one).  `LinkRec` carries NO law for `lk_noc` and
+   `grep lk_noc iris/*.v` finds no consumer at all, so the instance sets
+   it to echo's `2` and the real per-line choice is `pnoc_of`, which is
+   what `pprompt_dollar`'s block arm and `lk_line_of_blk0` actually file.
+   If a consumer ever reads `lk_noc`, the field must become
+   `list (bv 8) -> nat`; upstream's `fnoc` has the same defect and is
+   equally inert today.
+4. **THERE IS ONLY ONE RECORD, NOT TWO.**  `FileLinkInst` carries
+   `file_link_inst` (the era's state under each family's own existential)
+   AND `file_link_inst_at s0`, with packing lemmas both ways.  The
+   pipeline era has no state, so the two coincide; the name kept is
+   `pipe_link_inst_at` (the design's, and the one the round is stated at).
+   There is no `_at`-vs-`_ex` packing layer to port — that is ~150 lines
+   of `FileLinkInst` and the whole of `FileLinksAt*` that the pipeline
+   simply does not owe.
+5. **`pcont_shape` IS NOT USABLE BY A WRITER**, and the port needed a
+   replacement the design did not price.  It needs `pline_ok l`, which a
+   credential holder does not have (`pab`'s guard is `palt_ok` alone).
+   `pcont_prompt` reads "ends with `u_prompt`" off the eight constructors
+   instead — every one of them is literally `_ ++ u_prompt` — and the
+   three readings the record wants (`pab_len_ge2`, `pab_dollar`,
+   `pab_space`) come out of ONE arithmetic lemma, `prompt_tail_facts`.
+   This is `FileLinksLine`'s "read it off the twelve cases instead" at the
+   pipeline, and it is CHEAPER: no case needs a `vm_compute` over a parse.
+6. **`pwc_rres` NAMES NO GHOST AT ALL**, which is not a detail: the
+   reader's residue is `rd_stage_p` plus three lower bounds, so its body
+   mentions neither the taint nor the era pin and the section discharges
+   it WITHOUT the fixed part — `lk_rres := pwc_rres`, not `pwc_rres γ`.
+   (Upstream's file instance went the other way in the same week:
+   `lk_rres := fwc_rresw g` gained the typed lines' witness beside the
+   cursor bounds.  The pipeline has no deed and takes the bare residue.)
+
+**WHAT THE LANE DID NOT LAND, and why.**  The `StageRec`/`CurRec`
+instance.  `FileLinkInst` has `file_stage_inst_at` because the FILE era's
+cursor IS `fwc_blk_at g s0 k v I 0` and its `ck_lineok` reading is "the
+block is the LINE's own alternative", i.e. `fline I = LEcho …`.  At the
+pipeline the round that RUNS is `PRan` and the block is written by **cat**,
+not by the line's own child, so the cursor is cat's and `ck_lineok` is a
+DESIGN question rather than a port — it belongs with SH-PIPE-ROUND-2's
+`UCatOut`-at-the-pipe-stage work.  Everything `UShRound.v` needs that is
+NOT the stage record (`Wcl`/`Wbl`, the five credential conversions,
+`lk_exfb`, `lk_rres`) is landed here.
+
+**TWO OPERATIONAL NOTES, for the next lane and for durable-notes.**
+
+- **Upstream's leaf-instance idiom is now mandatory in this band.**  The
+  naming pass replaced every `apply _` for `Timeless`/`Persistent` in
+  `LinkRec`/`EchoLinksLine`/`EchoLinksPro`/`FileLinksLine`/`FileLinkInst`
+  with an explicit descent through the connectives to the named leaf (455
+  `Timeless` instances tree-wide under transparent definitions; the hint
+  net cannot discriminate).  `PipeLinksLine` carries the same `tl_leaf` /
+  `ps_leaf` dispatch and `PipeLinkInst` names `lk_T_pers` / `lk_T_tl` and
+  descends in `pipe_Wbl_at_timeless`.
+- **The mirror's "inconsistent assumptions over library X" fired on a
+  `.vo` that make thought was up to date.**  After the `StringBytes`
+  split, `PipeLinksLine.vo` survived from an earlier run while
+  `EchoDisc.vo` had been rebuilt, and `make PipeLinkInst.vo` did not
+  reconsider it.  `rm` the lane's own `.vo`/`.vos`/`.glob` and re-make is
+  the fix (durable-notes' staleness section covers the `.vos` form of
+  this; this is the `.vo` form, and the tell is that the error names a
+  library the file has not changed against).
+
+**THE ONE THING THE NEXT LANE NEEDS FIRST.**  `pipe_link_inst_at γ` is the
+record `UShRound`'s port instantiates at; `pipe_Wcl_at` / `pipe_Wbl_at`
+are what `Wcl` / `Wbl` become, and `pipe_Hwbl` / `pipe_Hwbwc` /
+`pipe_Hcltaint` / `pipe_Hwc` / `pipe_Hwbr` are the five obligations by
+name.  Two things SH-PIPE-ROUND-2 must NOT assume: `lk_exf FI I` is
+`pexf_of (pline_at I)` and not `1` (use `pipe_inst_exfb_echo`, which gives
+`lk_exfb FI I = alt_execfail` and the `17`), and the STAGE RECORD is still
+owed — it is cat's cursor, and it is a design step, not a rename.

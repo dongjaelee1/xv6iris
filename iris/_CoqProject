@@ -1675,3 +1675,5 @@ UInitFile.v
 PipeKillMark.v
 UEchoPipe.v
 UCatPipe.v
+PipeLinksLine.v
+PipeLinkInst.v

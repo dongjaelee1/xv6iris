@@ -75,7 +75,7 @@ Section pipe_link_inst.
        lk_lpr := pwc_lpr γ;
        lk_lend := pwc_lend γ;
        lk_rr := fun k v n ws => PipeLinks.pread_ret γ k v n ws;
-       lk_rres := pwc_rres γ;
+       lk_rres := pwc_rres;
        lk_turn := pturn_pre γ;
 
        lk_T_pers := echo_taint_persistent γ;
@@ -100,8 +100,8 @@ Section pipe_link_inst.
        lk_pr_tl := pwc_pr_timeless γ;
        lk_lpr_tl := pwc_lpr_timeless γ;
        lk_lend_tl := pwc_lend_timeless γ;
-       lk_rres_pers := pwc_rres_persistent γ;
-       lk_rres_tl := pwc_rres_timeless γ;
+       lk_rres_pers := pwc_rres_persistent;
+       lk_rres_tl := pwc_rres_timeless;
 
        lk_pr_0 := fun _ _ _ => eq_refl;
        lk_pr_1 := fun _ _ _ => eq_refl;
@@ -216,7 +216,7 @@ Section pipe_link_inst.
   Lemma pipe_inst_lend k v I :
     lk_lend pipe_link_inst_at k v I = pwc_lend γ k v I.
   Proof using . reflexivity. Qed.
-  Lemma pipe_inst_rres : lk_rres pipe_link_inst_at = pwc_rres γ.
+  Lemma pipe_inst_rres : lk_rres pipe_link_inst_at = pwc_rres.
   Proof using . reflexivity. Qed.
   Lemma pipe_inst_turn : lk_turn pipe_link_inst_at = pturn_pre γ.
   Proof using . reflexivity. Qed.

@@ -4345,13 +4345,32 @@ Uart0` is a premise of `pblk2_cstep_L`/`_R`).  `out_link`'s
 `={⊤ ∖ ↑uartN i}=∗` is what makes the whole thing possible at all — a
 basic-update link could not have admitted two writers.
 
-**TWO OPERATIONAL NOTES.**  `set_solver` on a coPset goal of the form
-`↑N ⊆ ⊤ ∖ ↑uartN Uart0` does not terminate in this tree; the two-line
-`apply subseteq_difference_r; [exact Hns | apply top_subseteq]` does.
-And `rewrite length_app` UNFOLDS `length dg_execL` (a `wl_line`, i.e. an
-append) into a sum whose association no longer matches an opaque
-`length dg_execL` in the hypotheses — rewrite `dg_execL_len` / `dg_execR_len`
-FIRST, or `lia` fails on a goal that is arithmetically true.
+**FOUR OPERATIONAL NOTES, all of them rules.**
+
+1. **An intuitionistic `iIntros` on `PipeLinks.pipe_links` HANGS in this
+   file's cone** — durable-notes' "a bundle of wands can hang the
+   Persistent search", and the same tactic is fine in `PipeLinksLine`.
+   It cost this lane four 28-minute builds before it was located, and the
+   locator is worth keeping: `coqc -time` (through `ec2-lane.sh <lane>
+   run`, with the `-R ../user-rocq User` include the durable note's
+   command line omits) prints one line per command and the compile simply
+   STOPS at the offending tactic — here `iIntros` inside `pblk2_step_L`,
+   with every command before it at 0.00 s.  The fix is to take
+   `pipe_link_taint γ` alone: it is `□`-headed with a head-indexed
+   instance, and it is all these lemmas ever spend.
+2. **`set_solver` on `↑N ⊆ ⊤ ∖ ↑uartN Uart0` does not terminate**; the
+   two-line `apply subseteq_difference_r; [exact Hns | apply
+   top_subseteq]` does.
+3. **`rewrite length_app` UNFOLDS `length dg_execL`** (a `wl_line`, i.e.
+   an append) into a sum whose association no longer matches an opaque
+   `length dg_execL` in the hypotheses — rewrite `dg_execL_len` /
+   `dg_execR_len` FIRST, or `lia` fails on a goal that is arithmetically
+   true.
+4. **`sel ++ []` is not convertible to `sel`** (while `[] ++ sel` and
+   `0 + c` are), so a chain's empty tail is closed on the continuation's
+   own argument with `app_nil_r`, not by rewriting a goal that no longer
+   mentions it.  The same asymmetry is why the round's lend needs no
+   rewrites at its entry.
 
 **THE ONE THING THE NEXT LANE NEEDS FIRST.**  The owner's ruling on §2 —
 `app_fixed app_pipe := pipe_gn` (FileOut's precedent, blast radius

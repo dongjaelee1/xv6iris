@@ -599,6 +599,33 @@ an `LPipe` line — the stage record is the echo arm's; cat's cursor stays
 `UCatPipe.pcch`.  `ush_bstate` is at `uline_ws lu = ws ++ [bar; cat]`, so
 the child's line shape binds the left words existentially (`ushq_lp`).
 
+### 4.3d AS LANDED (PIPE-2W, 2026-09-19) and RULED: the ledger's gname joins the FIXED PART
+
+`PipeBothPure.v` (the merge layer; F4 at an UNFILED block of any shape —
+the console claim holds at every byte of a block whose code is not yet
+filed, the witness being `cs ++ [code]`; `sessp_prefix_det` untouched: no
+`$` in a running merge) and `PipeBoth.v` (the per-ROUND byte ledger
+`blk_auth`/`blk_lb`, the two exclusive cursor halves, the family `pwc_blk2`
+taking the right child's SOURCE `R` so one family serves `PRan`/`PExecL`/
+`PExecR`/`PBoth`, its two steps under an INVARIANT (two processes cannot
+pass a family linearly — the invariant is opened inside the link's own
+fupd, which forces the claim's steps to be basic updates and the namespace
+disjoint from the port's), the exit at four instances into the shared
+`pwc_sp_t`, and `pipe_round_lend`), all Closed.  Refuted along the way:
+the bytes do NOT determine the split (`pend_both_not_inj`: the two
+diagnostics share `exec `), so the split lives in the family AND the bytes
+in a ledger — both forced; an era-wide ledger (a code may be filed whose
+bytes never entered it) — so indexed by the round; `cs_len_ok` is not
+weakened, the pipe claim gets a second arm at `length cs = nlines I − 1`.
+**OWED, one ruling:** the ledger's gname must live in the application's
+FIXED part.  RULED: adopt `FileOut`'s precedent — `app_fixed app_pipe :=
+pipe_gn` (echo's fixed part paired with the ledger's gname; `pgn_cl g`
+reads the echo half), so the claim's three unfiled-block steps
+`pblk2_ecl_L`/`_R`/`_file` land; measured blast radius: `AppPipe.v`'s six
+wrappers, `pipe_laws`, four `Context` types; `UPipeBootAdequacy`,
+`AppPipeClaim`/`AppPipeCons`/`UInitConsPipe` bind the fixed part
+abstractly and do not move.  Lane PIPE-2W-2, then SH-PIPE-ROUND-3.
+
 ## 5. Programs
 
 ### 5.1 sh: the PIPE arm (lanes SH-PARSE-PIPE, SH-PIPE)

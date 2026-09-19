@@ -220,7 +220,16 @@ arm is the theorem's one named premise (`pipe_both_law`).
   both need the taint the kernel already travels with the shot at the trap
   tail; make the two posts carry `app_taint` beside the shot, so `Hktaint`
   leaves `Hprog` and the writer's kill-cause short write pays from it.
-## Findings (append as lanes report)## Findings (append as lanes report)
+- [ ] **PIPE-ARM-PAID** (design §4.3c): the paid twin of `wp_kshr_pipe_arm`
+  — the three panic tails through a parameterised `ush_panic_law` at the
+  lent credential, no `sh_deps`; the success path at the lease's lends.
+- [ ] **PIPE-2W** AMENDED (design §4.3c): the ledger records the block's
+  bytes; the family serves all four block shapes; the exit files the
+  alternative at the prompt; no `pipe_both_law`.
+- [ ] **SH-PIPE-ROUND-3** (after both): `sh_pipe_child_law` proved = the paid
+  arm at the lease; `pipe_prog_law` discharged; `pipe_adequacy_pipeΣ` with
+  NO premise of its own.
+## Findings (append as lanes report)## Findings (append as lanes report)## Findings (append as lanes report)
 
 ### PQ-FLAG-2 (2026-09-18) — the write link's second premise, paid by the CODE
 

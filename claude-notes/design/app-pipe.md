@@ -563,6 +563,42 @@ record: `lk_exfb`'s twin for two writers), the pure readings, and
 discharges `pipe_both_law` in the round; it needs `pipe_link_inst_at`
 (PIPE-LINK-INST) and the round (SH-PIPE-ROUND-2) first.
 
+### 4.3c RULED (2026-09-19, after SH-PIPE-ROUND-2): the lease is the ROUND'S LEND, on every arm
+
+Mechanised by the round lane (`pipe_turn_one_writer`): `EchoOut.turn v P`
+is half a `mono_nat` authority whose other half is the claim's, so the
+console admits ONE block writer at a time; the runcmd child forks TWICE
+and which child writes the round's block — left (`PExecL`), right (`PRan`
+or `PExecR`), both (`PBoth`) — is unknown at fork time.  So the block
+credential can never be lent at the forks on ANY arm, and §4.3's "the
+two-writer lease is the `PBoth` arm's mechanism, everything else lands
+without it, `pipe_both_law` the one named premise" was WRONG in both
+halves (visible at the two landed entries: `ep_frame`'s `Wq` and
+`pcat_pay_at`'s `pcch` are two console credentials at one pin).  There is
+no honest `pipe_both_law`; the round states none.  RULED: PIPE-2W's
+ledger records the block's BYTES (a per-round `mono_list` prefix, with
+the per-byte side bits beside it as the `PBoth` witness), the family
+`pwc_blk2 v I pre c1 c2` with two exclusive cursor halves lent one per
+child at the forks, each child's step appending ITS next byte (left:
+`dg_execL`; right: `L` when cat prints the line or `dg_execR` when its
+exec failed — a per-child mode fixed at its first byte), and the exit at
+the prompt filing the alternative from the recorded prefix and the two
+exit payloads (`PRan`/`PExecL`/`PExecR`/`PBoth sel`), all four block
+shapes from ONE family.  `sh_round_holds_pipe` is landed reduced to ONE
+premise, `sh_pipe_child_law`, and the round proper (SH-PIPE-ROUND-3) is
+that law: the paid arm (below) at the lease's lends and redemptions.
+
+Also from the lane: **`UkShPipe.wp_kshr_pipe_arm` prints its three panics
+on the FREE write law** (`UkSh.sh_deps`), which a verified shell holds only
+under the taint — the round cannot apply it; lane **PIPE-ARM-PAID** lands
+the paid twin (`ush_panic_law` parameterised by its message and bytes; the
+two `fork` tails are `alt_forkc = alt_panic ++ u_prompt`, free; only
+`alt_pipe` at 0x12c8 is new; mould `UkShRedirChild`/`UkShRedirPaid`).  And
+`StageRec.sk_apr0` owes `lk_apr L I 0`, the literal alternative 0, false at
+an `LPipe` line — the stage record is the echo arm's; cat's cursor stays
+`UCatPipe.pcch`.  `ush_bstate` is at `uline_ws lu = ws ++ [bar; cat]`, so
+the child's line shape binds the left words existentially (`ushq_lp`).
+
 ## 5. Programs
 
 ### 5.1 sh: the PIPE arm (lanes SH-PARSE-PIPE, SH-PIPE)

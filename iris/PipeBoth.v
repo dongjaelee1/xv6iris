@@ -300,7 +300,8 @@ Section pipe_both.
   Proof using .
     intros Hlen. iIntros "Ha Hl".
     iDestruct (blk_lb_prefix with "Ha Hl") as %Hp. iPureIntro.
-    exact (prefix_length_eq pre' pre Hp ltac:(lia)).
+    assert (Hle : (length pre <= length pre')%nat) by lia.
+    exact (prefix_length_eq pre' pre Hp Hle).
   Qed.
 
   (* ================================================================= *)
@@ -447,7 +448,12 @@ Section pipe_both.
   Global Instance pblk2_ecl_file_persistent : Persistent pblk2_ecl_file.
   Proof using . rewrite /pblk2_ecl_file. apply _. Qed.
   Global Instance pblk2_ecl_persistent : Persistent pblk2_ecl.
-  Proof using . rewrite /pblk2_ecl. apply _. Qed.
+  Proof using .
+    rewrite /pblk2_ecl.
+    apply bi.sep_persistent; [apply pblk2_ecl_L_persistent |].
+    apply bi.sep_persistent;
+      [apply pblk2_ecl_R_persistent | apply pblk2_ecl_file_persistent].
+  Qed.
 
   Lemma pblk2_ecl_l : pblk2_ecl -∗ pblk2_ecl_L.
   Proof using . by iIntros "($ & _ & _)". Qed.
@@ -458,18 +464,27 @@ Section pipe_both.
 
   (* ================================================================= *)
   (*  S5  THE TWO BYTE STEPS, at the family held LINEARLY               *)
+  (*                                                                   *)
+  (*  THE PREMISE IS THE TAINT LINK ALONE, not [PipeLinks.pipe_links].  *)
+  (*  Introducing the six-component bundle with an intuitionistic intro *)
+  (*  pattern sends the [Persistent] search into its wand chains and it *)
+  (*  does not return in THIS file's cone -- durable-notes, the entry   *)
+  (*  on a bundle of wands hanging the Persistent search; the same      *)
+  (*  tactic is fine in [PipeLinksLine].  The taint link is             *)
+  (*  [box]-headed with its own instance, so it answers at once, and it *)
+  (*  is all these lemmas ever spend; a caller projects it with         *)
+  (*  [PipeLinks.pipe_links_taint].                                     *)
   (* ================================================================= *)
 
   Lemma pblk2_step_L (k : nat) (v : era_pins) (I R : list (bv 8))
       (sel : list bool) (c1 c2 : nat) (b : bv 8) (Φ : iProp Σ) :
     dg_execL !! c1 = Some b ->
-    pblk2_ecl_L -∗ pipe_links γ -∗ era_pin γ k v -∗
+    pblk2_ecl_L -∗ pipe_link_taint γ -∗ era_pin γ k v -∗
     pwc_blk2 k v I R sel c1 c2 -∗
     (pwc_blk2 k v I R (sel ++ [true]) (S c1) c2 -∗ Φ) -∗
     out_link Uart0 k b Φ.
   Proof using Hcons.
-    intros Hb. iIntros "#HL #Hlk #Hpin Hc HΦ".
-    iDestruct (pipe_links_taint with "Hlk") as "#Ht".
+    intros Hb. iIntros "#HL #Ht #Hpin Hc HΦ".
     rewrite {1}/pwc_blk2. iDestruct "Hc" as "[Hx | #HT]"; last first.
     { iApply ("Ht" $! k b Φ with "HT [HΦ]").
       iIntros "#HT'". iApply "HΦ". by iApply pwc_blk2_taint. }
@@ -491,13 +506,12 @@ Section pipe_both.
   Lemma pblk2_step_R (k : nat) (v : era_pins) (I R : list (bv 8))
       (sel : list bool) (c1 c2 : nat) (b : bv 8) (Φ : iProp Σ) :
     R !! c2 = Some b ->
-    pblk2_ecl_R -∗ pipe_links γ -∗ era_pin γ k v -∗
+    pblk2_ecl_R -∗ pipe_link_taint γ -∗ era_pin γ k v -∗
     pwc_blk2 k v I R sel c1 c2 -∗
     (pwc_blk2 k v I R (sel ++ [false]) c1 (S c2) -∗ Φ) -∗
     out_link Uart0 k b Φ.
   Proof using Hcons.
-    intros Hb. iIntros "#HR #Hlk #Hpin Hc HΦ".
-    iDestruct (pipe_links_taint with "Hlk") as "#Ht".
+    intros Hb. iIntros "#HR #Ht #Hpin Hc HΦ".
     rewrite {1}/pwc_blk2. iDestruct "Hc" as "[Hx | #HT]"; last first.
     { iApply ("Ht" $! k b Φ with "HT [HΦ]").
       iIntros "#HT'". iApply "HΦ". by iApply pwc_blk2_taint. }
@@ -530,13 +544,12 @@ Section pipe_both.
       (sel : list bool) (c1 c2 : nat) (a : nat) (b : bv 8) (Φ : iProp Σ) :
     pblk2_code I R sel a ->
     b = u_prompt !!! 0%nat ->
-    pblk2_ecl_file -∗ pipe_links γ -∗ era_pin γ k v -∗
+    pblk2_ecl_file -∗ pipe_link_taint γ -∗ era_pin γ k v -∗
     pwc_blk2 k v I R sel c1 c2 -∗
     (pwc_sp_t γ k v I -∗ Φ) -∗
     out_link Uart0 k b Φ.
   Proof using Hcons.
-    intros Hcode Hb. iIntros "#HF #Hlk #Hpin Hc HΦ".
-    iDestruct (pipe_links_taint with "Hlk") as "#Ht".
+    intros Hcode Hb. iIntros "#HF #Ht #Hpin Hc HΦ".
     rewrite {1}/pwc_blk2. iDestruct "Hc" as "[Hx | #HT]"; last first.
     { iApply ("Ht" $! k b Φ with "HT [HΦ]").
       iIntros "#HT'". iApply "HΦ". rewrite /pwc_sp_t. by iRight. }
@@ -586,10 +599,10 @@ Section pipe_both.
     Persistent (blk2_inv N k v I R gL gR).
   Proof using . rewrite /blk2_inv. apply _. Qed.
 
-  Lemma blk2_inv_alloc (N : namespace) (k : nat) (v : era_pins)
+  Lemma blk2_inv_alloc (E : coPset) (N : namespace) (k : nat) (v : era_pins)
       (I R : list (bv 8)) (gL gR : gname) (sel : list bool) (c1 c2 : nat) :
-    pwc_blk2 k v I R sel c1 c2 -∗ wcur gL (1/2) c1 -∗ wcur gR (1/2) c2 ==∗
-      blk2_inv N k v I R gL gR.
+    pwc_blk2 k v I R sel c1 c2 -∗ wcur gL (1/2) c1 -∗ wcur gR (1/2) c2
+    ={E}=∗ blk2_inv N k v I R gL gR.
   Proof using .
     iIntros "Hf HL HR". rewrite /blk2_inv.
     iApply inv_alloc. iNext. iExists sel, c1, c2. iFrame.
@@ -600,12 +613,12 @@ Section pipe_both.
       (Φ : iProp Σ) :
     (↑N : coPset) ## (↑uartN Uart0 : coPset) ->
     dg_execL !! c1 = Some b ->
-    pblk2_ecl_L -∗ pipe_links γ -∗ era_pin γ k v -∗
+    pblk2_ecl_L -∗ pipe_link_taint γ -∗ era_pin γ k v -∗
     blk2_inv N k v I R gL gR -∗ wcur gL (1/2) c1 -∗
     (wcur gL (1/2) (S c1) -∗ Φ) -∗
     out_link Uart0 k b Φ.
   Proof using Hcons.
-    intros Hns Hb. iIntros "#HL #Hlk #Hpin #Hinv HcL HΦ".
+    intros Hns Hb. iIntros "#HL #Ht #Hpin #Hinv HcL HΦ".
     rewrite /out_link. iIntros (o H) "#Hlb Hres". rewrite !pbchist_at0.
     assert (Hsub : (↑N : coPset) ⊆ (⊤ ∖ ↑uartN Uart0 : coPset)).
     { apply subseteq_difference_r; [exact Hns | apply top_subseteq]. }
@@ -646,12 +659,12 @@ Section pipe_both.
       (Φ : iProp Σ) :
     (↑N : coPset) ## (↑uartN Uart0 : coPset) ->
     R !! c2 = Some b ->
-    pblk2_ecl_R -∗ pipe_links γ -∗ era_pin γ k v -∗
+    pblk2_ecl_R -∗ pipe_link_taint γ -∗ era_pin γ k v -∗
     blk2_inv N k v I R gL gR -∗ wcur gR (1/2) c2 -∗
     (wcur gR (1/2) (S c2) -∗ Φ) -∗
     out_link Uart0 k b Φ.
   Proof using Hcons.
-    intros Hns Hb. iIntros "#HR #Hlk #Hpin #Hinv HcR HΦ".
+    intros Hns Hb. iIntros "#HR #Ht #Hpin #Hinv HcR HΦ".
     rewrite /out_link. iIntros (o H) "#Hlb Hres". rewrite !pbchist_at0.
     assert (Hsub : (↑N : coPset) ⊆ (⊤ ∖ ↑uartN Uart0 : coPset)).
     { apply subseteq_difference_r; [exact Hns | apply top_subseteq]. }
@@ -708,7 +721,7 @@ Section pipe_both.
     (c1 + count_true tail <= length dg_execL)%nat ->
     (c2 + (length tail - count_true tail) <= length R)%nat ->
     (length sel = c1 + c2)%nat -> count_true sel = c1 ->
-    pblk2_ecl_L -∗ pblk2_ecl_R -∗ pipe_links γ -∗ era_pin γ k v -∗
+    pblk2_ecl_L -∗ pblk2_ecl_R -∗ pipe_link_taint γ -∗ era_pin γ k v -∗
     pwc_blk2 k v I R sel c1 c2 -∗
     (pwc_blk2 k v I R (sel ++ tail) (c1 + count_true tail)%nat
        (c2 + (length tail - count_true tail))%nat -∗ Φ) -∗
@@ -716,10 +729,15 @@ Section pipe_both.
   Proof using Hcons.
     revert sel c1 c2 Φ.
     induction tail as [| [|] t IH]; intros sel c1 c2 Φ H1 H2 Hlen Hcnt;
-      iIntros "#HL #HR #Hlk #Hpin Hc HΦ".
-    - cbn [both_bytes2 out_chain count_true length].
-      rewrite !app_nil_r !Nat.add_0_r !Nat.sub_0_r.
-      iApply ("HΦ" with "Hc").
+      iIntros "#HL #HR #Ht #Hpin Hc HΦ".
+    - (* nothing left to write: [sel ++ []] is not CONVERTIBLE to [sel],
+         so the empty tail is closed on the continuation's own argument *)
+      cbn [both_bytes2 out_chain].
+      iApply "HΦ". cbn [count_true length].
+      rewrite app_nil_r.
+      replace (c1 + 0)%nat with c1 by lia.
+      replace (c2 + (0 - 0))%nat with c2 by lia.
+      iExact "Hc".
     - (* a LEFT byte, then the rest *)
       cbn [both_bytes2 count_true length] in H1, H2 |- *.
       pose proof (count_true_le t) as Hle.
@@ -727,13 +745,21 @@ Section pipe_both.
       destruct (lookup_lt_is_Some_2 dg_execL c1 Hlt) as [b Hb].
       rewrite Hcnt (list_lookup_total_correct dg_execL c1 b Hb).
       cbn [out_chain].
-      iApply (pblk2_step_L k v I R sel c1 c2 b _ Hb with "HL Hlk Hpin Hc").
+      iApply (pblk2_step_L k v I R sel c1 c2 b _ Hb with "HL Ht Hpin Hc").
       iIntros "Hc".
-      iApply (IH (sel ++ [true]) (S c1) c2 Φ
-                ltac:(lia) ltac:(lia)
-                ltac:(rewrite length_app Hlen; cbn [length]; lia)
-                ltac:(rewrite count_true_app Hcnt; cbn [count_true]; lia)
-             with "HL HR Hlk Hpin Hc [HΦ]").
+      (* the four premises are HOISTED, never spliced as [ltac:] into an
+         application the proofmode still has evars in
+         (claude-notes/optimization.md, "Inline [ltac:] in argument
+         position": re-elaboration against unresolved evars can fail to
+         terminate) *)
+      assert (HA : (S c1 + count_true t <= length dg_execL)%nat) by lia.
+      assert (HB : (c2 + (length t - count_true t) <= length R)%nat) by lia.
+      assert (HC : length (sel ++ [true]) = (S c1 + c2)%nat)
+        by (rewrite length_app Hlen; cbn [length]; lia).
+      assert (HD : count_true (sel ++ [true]) = S c1)
+        by (rewrite count_true_app Hcnt; cbn [count_true]; lia).
+      iApply (IH (sel ++ [true]) (S c1) c2 Φ HA HB HC HD
+             with "HL HR Ht Hpin Hc [HΦ]").
       iIntros "Hc". iApply "HΦ". cbn [count_true length].
       replace (sel ++ true :: t) with ((sel ++ [true]) ++ t)
         by (by rewrite -app_assoc).
@@ -750,13 +776,16 @@ Section pipe_both.
       replace (length sel - count_true sel)%nat with c2 by lia.
       rewrite (list_lookup_total_correct R c2 b Hb).
       cbn [out_chain].
-      iApply (pblk2_step_R k v I R sel c1 c2 b _ Hb with "HR Hlk Hpin Hc").
+      iApply (pblk2_step_R k v I R sel c1 c2 b _ Hb with "HR Ht Hpin Hc").
       iIntros "Hc".
-      iApply (IH (sel ++ [false]) c1 (S c2) Φ
-                ltac:(lia) ltac:(lia)
-                ltac:(rewrite length_app Hlen; cbn [length]; lia)
-                ltac:(rewrite count_true_app Hcnt; cbn [count_true]; lia)
-             with "HL HR Hlk Hpin Hc [HΦ]").
+      assert (HA : (c1 + count_true t <= length dg_execL)%nat) by lia.
+      assert (HB : (S c2 + (length t - count_true t) <= length R)%nat) by lia.
+      assert (HC : length (sel ++ [false]) = (c1 + S c2)%nat)
+        by (rewrite length_app Hlen; cbn [length]; lia).
+      assert (HD : count_true (sel ++ [false]) = c1)
+        by (rewrite count_true_app Hcnt; cbn [count_true]; lia).
+      iApply (IH (sel ++ [false]) c1 (S c2) Φ HA HB HC HD
+             with "HL HR Ht Hpin Hc [HΦ]").
       iIntros "Hc". iApply "HΦ". cbn [count_true length].
       replace (sel ++ false :: t) with ((sel ++ [false]) ++ t)
         by (by rewrite -app_assoc).
@@ -792,11 +821,11 @@ Section pipe_both.
     (count_true sel <= length dg_execL)%nat ->
     (length sel - count_true sel <= length R)%nat ->
     pblk2_code I R sel a ->
-    pblk2_ecl -∗ pipe_links γ -∗ era_pin γ k v -∗
+    pblk2_ecl -∗ pipe_link_taint γ -∗ era_pin γ k v -∗
     pipe_round_lend k v I R sel.
   Proof using Hcons.
     intros Hline H1 H2 Hcode.
-    iIntros "#Hecl #Hlk #Hpin" (Φ) "#Hblk0 Hlend HΦ".
+    iIntros "#Hecl #Ht #Hpin" (Φ) "#Hblk0 Hlend HΦ".
     iDestruct (pblk2_ecl_l with "Hecl") as "#HL".
     iDestruct (pblk2_ecl_r with "Hecl") as "#HR".
     iDestruct (pblk2_ecl_f with "Hecl") as "#HF".
@@ -807,13 +836,15 @@ Section pipe_both.
          | rewrite app_nil_l /sel_wf2; split; lia]. }
     rewrite Hb (pb_out_chain_app Uart0 k (both_bytes2 R [] sel)
                   [u_prompt !!! 0%nat] Φ).
-    iApply (pblk2_chain k v I R sel [] 0%nat 0%nat with "HL HR Hlk Hpin Hc");
-      [lia | lia | done | done |].
+    assert (HA : (0 + count_true sel <= length dg_execL)%nat) by lia.
+    assert (HB : (0 + (length sel - count_true sel) <= length R)%nat) by lia.
+    iApply (pblk2_chain k v I R sel [] 0%nat 0%nat _ HA HB eq_refl eq_refl
+             with "HL HR Ht Hpin Hc").
     iIntros "Hc". cbn [out_chain].
     rewrite app_nil_l !Nat.add_0_l.
     iApply (pblk2_exit k v I R sel (count_true sel)
               (length sel - count_true sel)%nat a (u_prompt !!! 0%nat) Φ
-              Hcode eq_refl with "HF Hlk Hpin Hc HΦ").
+              Hcode eq_refl with "HF Ht Hpin Hc HΦ").
   Qed.
 
 End pipe_both.

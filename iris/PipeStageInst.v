@@ -158,10 +158,14 @@ Qed.
 Section pipe_stage_inst.
   Context {Σ : gFunctors}.
   Context `{!echoOutG Σ}.
-  Context (γ : echo_fixed).
+  (* THE FIXED PART IS [PipeOut.pipe_gn] (lane PIPE-2W-2): the echo half
+     is [pgn_cl g], so every statement below names [γ] as it did. *)
+  Context `{!pipeOutG Σ}.
+  Context (g : pipe_gn).
+  Local Notation γ := (pgn_cl g).
   Context `{HRg : !riscvGS Σ}.
 
-  Local Notation PI := (pipe_link_inst_at γ).
+  Local Notation PI := (pipe_link_inst_at g).
 
   (* the stage a paid child runs at: the era's input, and nothing else --
      [FileLinkInst.file_stg] verbatim (the pipeline has no boot state
@@ -169,15 +173,15 @@ Section pipe_stage_inst.
   Record pipe_stg := MkPipeStg { ps_I : list (bv 8) }.
 
   Local Lemma pi_cur_tl (k : nat) (v : era_pins) (st : pipe_stg) (p : nat) :
-    Timeless (pwc_blk γ k v (ps_I st) 0%nat p).
+    Timeless (pwc_blk g k v (ps_I st) 0%nat p).
   Proof using . apply pwc_blk_timeless. Qed.
 
   Local Lemma pi_step (k : nat) (v : era_pins) (st : pipe_stg)
       (ws : list (list (bv 8))) (i : nat) (b : bv 8) (Φ : iProp Σ) :
     (pline_at (ps_I st) = LEcho ws /\ last_ws (ps_I st) = ws) ->
     line_alts_of ws !!! 0%nat !! i = Some b ->
-    ⊢ lk_pin PI k v -∗ lk_links PI -∗ pwc_blk γ k v (ps_I st) 0%nat i -∗
-      (pwc_blk γ k v (ps_I st) 0%nat (S i) -∗ Φ) -∗ out_link Uart0 k b Φ.
+    ⊢ lk_pin PI k v -∗ lk_links PI -∗ pwc_blk g k v (ps_I st) 0%nat i -∗
+      (pwc_blk g k v (ps_I st) 0%nat (S i) -∗ Φ) -∗ out_link Uart0 k b Φ.
   Proof using .
     intros [Hln Hlast] Hb. iIntros "#Hpin #Hlk Hc HΦ".
     iApply (pblk_step γ k v (ps_I st) 0%nat i b Φ with "Hpin Hlk Hc HΦ").
@@ -191,7 +195,7 @@ Section pipe_stage_inst.
       (fun st ws => pline_at (ps_I st) = LEcho ws /\ last_ws (ps_I st) = ws)
       (fun ws => line_alts_of ws !!! 0%nat)
       pipe_lineok
-      (fun k v st p => pwc_blk γ k v (ps_I st) 0%nat p)
+      (fun k v st p => pwc_blk g k v (ps_I st) 0%nat p)
       pi_cur_tl pi_step.
 
   (* THE LEND, OPENED.  [pwc_lend] and [pwc_blk _ _ _ 0 0] are the same
@@ -199,13 +203,13 @@ Section pipe_stage_inst.
      END pays is [lk_post PI], that family at [length (pab I 0) - 2]. *)
   Local Lemma pi_lend_stage (k : nat) (v : era_pins) (I : list (bv 8)) :
     pipe_lineok I ->
-    ⊢ pwc_lend γ k v I -∗
+    ⊢ pwc_lend g k v I -∗
       (∃ st : pipe_stg,
          ⌜pline_at (ps_I st) = LEcho (last_ws I) /\ last_ws (ps_I st) = last_ws I⌝
          ∗ ⌜line_alts_of (last_ws I) !!! 0%nat
             = line_alts_of (last_ws I) !!! 0%nat⌝
-         ∗ pwc_blk γ k v (ps_I st) 0%nat 0%nat
-         ∗ □ (pwc_blk γ k v (ps_I st) 0%nat
+         ∗ pwc_blk g k v (ps_I st) 0%nat 0%nat
+         ∗ □ (pwc_blk g k v (ps_I st) 0%nat
                 (length (wl_line (drop 1 (last_ws I)))) -∗
               lk_post PI k v I 0%nat))
       ∨ lk_T PI.
@@ -239,7 +243,7 @@ Section pipe_stage_inst.
   Lemma pipe_stage_inst_cur (k : nat) (v : era_pins) (I : list (bv 8))
       (p : nat) :
     ck_cur (sk_cur pipe_stage_inst_at) k v (MkPipeStg I) p
-    = pwc_blk γ k v I 0%nat p.
+    = pwc_blk g k v I 0%nat p.
   Proof using . reflexivity. Qed.
   Lemma pipe_stage_inst_alt (ws : list (list (bv 8))) :
     ck_alt (sk_cur pipe_stage_inst_at) ws = line_alts_of ws !!! 0%nat.

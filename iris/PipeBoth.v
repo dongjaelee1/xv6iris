@@ -209,18 +209,22 @@ Qed.
 Section pipe_both.
   Context {Σ : gFunctors}.
   Context `{!echoOutG Σ}.
-  Context (γ : echo_fixed).
+  (* THE FIXED PART IS [PipeOut.pipe_gn] (lane PIPE-2W-2): the echo half
+     is [pgn_cl g], so every statement below names [γ] as it did. *)
+  Context `{!pipeOutG Σ}.
+  Context (g : pipe_gn).
+  Local Notation γ := (pgn_cl g).
   Context `{HRg : !riscvGS Σ}.
 
   Notation PT := (echo_taint γ).
 
   (* the record equation, as in [PipeLinks]: the port's claim IS the
      pipeline application's *)
-  Context (Hcons : @riscv_cons_res Σ (@riscv_fixedGS Σ HRg) = pecl γ).
+  Context (Hcons : @riscv_cons_res Σ (@riscv_fixedGS Σ HRg) = pecl g).
 
   Lemma pbchist_at0 (kk : nat) (hh : list mobs)
       (HH : LogEntryDefs.cons_hist) :
-    chist_at Uart0 kk hh HH = pecl γ kk hh HH.
+    chist_at Uart0 kk hh HH = pecl g kk hh HH.
   Proof using Hcons. rewrite /chist_at. by rewrite Hcons. Qed.
 
   (* ================================================================= *)
@@ -378,7 +382,7 @@ Section pipe_both.
   Lemma pwc_blk2_of_lend (k : nat) (v : era_pins) (I : list (bv 8))
       (R : list (bv 8)) :
     pboth_line I ->
-    blk_lb [] -∗ pwc_lend γ k v I -∗ pwc_blk2 k v I R [] 0%nat 0%nat.
+    blk_lb [] -∗ pwc_lend g k v I -∗ pwc_blk2 k v I R [] 0%nat 0%nat.
   Proof using .
     intros Hl. iIntros "#Hblk Hc". rewrite /pwc_lend /pwc_blk2.
     iDestruct "Hc" as "[Hx | #HT]"; last by iRight.
@@ -406,8 +410,8 @@ Section pipe_both.
         ⌜dg_execL !! c1 = Some b⌝ -∗
         era_pin γ k v -∗ turn v (P + c1 + c2)%nat -∗ ps_lb v ps -∗
         cs_lb v cs -∗ blk_lb (pend2 R sel) -∗ inp_lb v I -∗
-        pecl γ k ho H ==∗
-          pecl γ k ho (ConsLog.cons_step H (ConsLog.EvOut b))
+        pecl g k ho H ==∗
+          pecl g k ho (ConsLog.cons_step H (ConsLog.EvOut b))
           ∗ ((turn v (S (P + c1 + c2))%nat
               ∗ blk_lb (pend2 R (sel ++ [true]))) ∨ PT))%I.
 
@@ -419,8 +423,8 @@ Section pipe_both.
         ⌜R !! c2 = Some b⌝ -∗
         era_pin γ k v -∗ turn v (P + c1 + c2)%nat -∗ ps_lb v ps -∗
         cs_lb v cs -∗ blk_lb (pend2 R sel) -∗ inp_lb v I -∗
-        pecl γ k ho H ==∗
-          pecl γ k ho (ConsLog.cons_step H (ConsLog.EvOut b))
+        pecl g k ho H ==∗
+          pecl g k ho (ConsLog.cons_step H (ConsLog.EvOut b))
           ∗ ((turn v (S (P + c1 + c2))%nat
               ∗ blk_lb (pend2 R (sel ++ [false]))) ∨ PT))%I.
 
@@ -434,8 +438,8 @@ Section pipe_both.
         ⌜pblk2_code I R sel a⌝ -∗ ⌜b = u_prompt !!! 0%nat⌝ -∗
         era_pin γ k v -∗ turn v (P + c1 + c2)%nat -∗ ps_lb v ps -∗
         cs_lb v cs -∗ blk_lb (pend2 R sel) -∗ inp_lb v I -∗
-        pecl γ k ho H ==∗
-          pecl γ k ho (ConsLog.cons_step H (ConsLog.EvOut b))
+        pecl g k ho H ==∗
+          pecl g k ho (ConsLog.cons_step H (ConsLog.EvOut b))
           ∗ ((turn v (S (P + c1 + c2))%nat ∗ cs_lb v (cs ++ [a])) ∨ PT))%I.
 
   Definition pblk2_ecl : iProp Σ :=
@@ -479,7 +483,7 @@ Section pipe_both.
   Lemma pblk2_step_L (k : nat) (v : era_pins) (I R : list (bv 8))
       (sel : list bool) (c1 c2 : nat) (b : bv 8) (Φ : iProp Σ) :
     dg_execL !! c1 = Some b ->
-    pblk2_ecl_L -∗ pipe_link_taint γ -∗ era_pin γ k v -∗
+    pblk2_ecl_L -∗ pipe_link_taint g -∗ era_pin γ k v -∗
     pwc_blk2 k v I R sel c1 c2 -∗
     (pwc_blk2 k v I R (sel ++ [true]) (S c1) c2 -∗ Φ) -∗
     out_link Uart0 k b Φ.
@@ -506,7 +510,7 @@ Section pipe_both.
   Lemma pblk2_step_R (k : nat) (v : era_pins) (I R : list (bv 8))
       (sel : list bool) (c1 c2 : nat) (b : bv 8) (Φ : iProp Σ) :
     R !! c2 = Some b ->
-    pblk2_ecl_R -∗ pipe_link_taint γ -∗ era_pin γ k v -∗
+    pblk2_ecl_R -∗ pipe_link_taint g -∗ era_pin γ k v -∗
     pwc_blk2 k v I R sel c1 c2 -∗
     (pwc_blk2 k v I R (sel ++ [false]) c1 (S c2) -∗ Φ) -∗
     out_link Uart0 k b Φ.
@@ -544,9 +548,9 @@ Section pipe_both.
       (sel : list bool) (c1 c2 : nat) (a : nat) (b : bv 8) (Φ : iProp Σ) :
     pblk2_code I R sel a ->
     b = u_prompt !!! 0%nat ->
-    pblk2_ecl_file -∗ pipe_link_taint γ -∗ era_pin γ k v -∗
+    pblk2_ecl_file -∗ pipe_link_taint g -∗ era_pin γ k v -∗
     pwc_blk2 k v I R sel c1 c2 -∗
-    (pwc_sp_t γ k v I -∗ Φ) -∗
+    (pwc_sp_t g k v I -∗ Φ) -∗
     out_link Uart0 k b Φ.
   Proof using Hcons.
     intros Hcode Hb. iIntros "#HF #Ht #Hpin Hc HΦ".
@@ -568,7 +572,7 @@ Section pipe_both.
     iApply "HΦ".
     iDestruct "Hret" as "[[Htn #Hcs'] | #HT]";
       last by (rewrite /pwc_sp_t; iRight).
-    iApply (pwc_blk_sp γ k v I a Hpapr).
+    iApply (pwc_blk_sp g k v I a Hpapr).
     rewrite /pwc_blk Hab. iLeft. iExists ps, cs, P.
     replace (S (S (c1 + c2)) - 1)%nat with (S (c1 + c2))%nat by lia.
     cbn [blkcs_p].
@@ -613,7 +617,7 @@ Section pipe_both.
       (Φ : iProp Σ) :
     (↑N : coPset) ## (↑uartN Uart0 : coPset) ->
     dg_execL !! c1 = Some b ->
-    pblk2_ecl_L -∗ pipe_link_taint γ -∗ era_pin γ k v -∗
+    pblk2_ecl_L -∗ pipe_link_taint g -∗ era_pin γ k v -∗
     blk2_inv N k v I R gL gR -∗ wcur gL (1/2) c1 -∗
     (wcur gL (1/2) (S c1) -∗ Φ) -∗
     out_link Uart0 k b Φ.
@@ -628,7 +632,7 @@ Section pipe_both.
     rewrite {1}/pwc_blk2. iDestruct "Hf" as "[Hx | #HT]"; last first.
     { (* the era is tainted: the claim answers any event out of its taint
          arm and the cursor moves on its own *)
-      iMod (pecl_sup γ k (default [] o) H (ConsLog.EvOut b) with "HT Hres")
+      iMod (pecl_sup g k (default [] o) H (ConsLog.EvOut b) with "HT Hres")
         as "Hres".
       iMod (wcur_update gL c1 c1 (S c1) with "HcL HgL") as "[HcL HgL]".
       iMod ("Hclose" with "[HgL HgR]") as "_".
@@ -659,7 +663,7 @@ Section pipe_both.
       (Φ : iProp Σ) :
     (↑N : coPset) ## (↑uartN Uart0 : coPset) ->
     R !! c2 = Some b ->
-    pblk2_ecl_R -∗ pipe_link_taint γ -∗ era_pin γ k v -∗
+    pblk2_ecl_R -∗ pipe_link_taint g -∗ era_pin γ k v -∗
     blk2_inv N k v I R gL gR -∗ wcur gR (1/2) c2 -∗
     (wcur gR (1/2) (S c2) -∗ Φ) -∗
     out_link Uart0 k b Φ.
@@ -672,7 +676,7 @@ Section pipe_both.
     iDestruct "Hin" as (sel c1 c2') "(>Hf & >HgL & >HgR)".
     iDestruct (wcur_agree with "HcR HgR") as %<-.
     rewrite {1}/pwc_blk2. iDestruct "Hf" as "[Hx | #HT]"; last first.
-    { iMod (pecl_sup γ k (default [] o) H (ConsLog.EvOut b) with "HT Hres")
+    { iMod (pecl_sup g k (default [] o) H (ConsLog.EvOut b) with "HT Hres")
         as "Hres".
       iMod (wcur_update gR c2 c2 (S c2) with "HcR HgR") as "[HcR HgR]".
       iMod ("Hclose" with "[HgL HgR]") as "_".
@@ -721,7 +725,7 @@ Section pipe_both.
     (c1 + count_true tail <= length dg_execL)%nat ->
     (c2 + (length tail - count_true tail) <= length R)%nat ->
     (length sel = c1 + c2)%nat -> count_true sel = c1 ->
-    pblk2_ecl_L -∗ pblk2_ecl_R -∗ pipe_link_taint γ -∗ era_pin γ k v -∗
+    pblk2_ecl_L -∗ pblk2_ecl_R -∗ pipe_link_taint g -∗ era_pin γ k v -∗
     pwc_blk2 k v I R sel c1 c2 -∗
     (pwc_blk2 k v I R (sel ++ tail) (c1 + count_true tail)%nat
        (c2 + (length tail - count_true tail))%nat -∗ Φ) -∗
@@ -812,7 +816,7 @@ Section pipe_both.
   Definition pipe_round_lend (k : nat) (v : era_pins) (I R : list (bv 8))
       (sel : list bool) : iProp Σ :=
     (∀ Φ : iProp Σ,
-       blk_lb [] -∗ pwc_lend γ k v I -∗ (pwc_sp_t γ k v I -∗ Φ) -∗
+       blk_lb [] -∗ pwc_lend g k v I -∗ (pwc_sp_t g k v I -∗ Φ) -∗
        out_chain Uart0 k (pend2 R sel ++ [u_prompt !!! 0%nat]) Φ)%I.
 
   Lemma pipe_round_lend_holds (k : nat) (v : era_pins) (I R : list (bv 8))
@@ -821,7 +825,7 @@ Section pipe_both.
     (count_true sel <= length dg_execL)%nat ->
     (length sel - count_true sel <= length R)%nat ->
     pblk2_code I R sel a ->
-    pblk2_ecl -∗ pipe_link_taint γ -∗ era_pin γ k v -∗
+    pblk2_ecl -∗ pipe_link_taint g -∗ era_pin γ k v -∗
     pipe_round_lend k v I R sel.
   Proof using Hcons.
     intros Hline H1 H2 Hcode.

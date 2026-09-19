@@ -276,9 +276,13 @@ Qed.
 Section PCatOut.
   Context {Σ : gFunctors}.
   Context `{!echoOutG Σ}.
-  Context (γ : echo_fixed).
+  (* THE FIXED PART IS [PipeOut.pipe_gn] (lane PIPE-2W-2): the echo half
+     is [pgn_cl g], so every statement below names [γ] as it did. *)
+  Context `{!pipeOutG Σ}.
+  Context (g : pipe_gn).
+  Local Notation γ := (pgn_cl g).
   Context `{HRg : !riscvGS Σ}.
-  Context (Hcons : @riscv_cons_res Σ (@riscv_fixedGS Σ HRg) = pecl γ).
+  Context (Hcons : @riscv_cons_res Σ (@riscv_fixedGS Σ HRg) = pecl g).
 
   Definition pcatcs (cs0 : list nat) (a p : nat) : list nat :=
     match p with O => cs0 | S _ => cs0 ++ [a] end.
@@ -386,7 +390,7 @@ Section UCatPipe.
      a SECOND instance whose [UkRun.urun] prints identically and does not
      unify with the one [UkReadPipe]'s leaf and [UkCatCat]'s walk run at. *)
   Context (γ : echo_fixed).
-  Context (Hcons : @riscv_cons_res Σ (@riscv_fixedGS Σ HRg) = pecl γ).
+  Context (Hcons : @riscv_cons_res Σ (@riscv_fixedGS Σ HRg) = pecl g).
   (* the record's kill equation, [UShRound]'s [Hkill] at this claim: the
      pipeline application's kill credential IS the echo taint
      ([AppPipe.pipe_kill]).  It is an EQUATION, so both directions are

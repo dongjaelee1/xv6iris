@@ -62,6 +62,66 @@ Require Import AppEcho.           (* [echo_fixed], [echo_taint], [echo_cl] *)
 Local Open Scope list_scope.
 
 (* ====================================================================== *)
+(*  0.  THE FIXED PART, AND THE SECOND PER-ERA RECORD (lane PIPE-2W-2)     *)
+(*                                                                        *)
+(*  The pipeline round's block is written by TWO processes (design 4.3d),  *)
+(*  so its alternative cannot be filed in [cs] at the block's first byte   *)
+(*  and the claim must read the block off a LEDGER instead.  That ledger   *)
+(*  is per ERA and its authority needs a gname that outlives every era, so *)
+(*  -- exactly as [FileOut.file_gn] does for the file application's boot   *)
+(*  state -- the RECORD's fixed part is [pipe_gn], [AppEcho]'s paired with *)
+(*  it, and [pgn_cl g] reads the echo half.  Nothing in [AppEcho] moves.   *)
+(*                                                                        *)
+(*  WHAT THE LEDGER HOLDS: the era's PROCESS BYTES, all of them --         *)
+(*  [pstream so] below, whose length is exactly the era's cursor [turn].   *)
+(*  That is what makes a writer's lower bound EXACT (a prefix of equal     *)
+(*  length is the list), which is the tie design 4.3d's family needs and   *)
+(*  the reason the ledger is not per ROUND: a per-round ledger would still *)
+(*  have to prove the writer's round IS the claim's, and the era-wide one  *)
+(*  gets that from [turn] alone.                                           *)
+(* ====================================================================== *)
+
+Record pipe_era := MkPEra {
+  pe_blk : gname;   (* mono_list (bv 8), carried at [EchoOut.eo_El]'s camera:
+                       the era's process bytes in wire order *)
+}.
+
+Record pipe_gn := MkPipeGn {
+  pgn_cl  : echo_fixed;   (* AppEcho's: the taint counter and the era map *)
+  pgn_era : gname;        (* ghost_map nat pipe_era: the era's BYTE LEDGER *)
+}.
+
+Class pipeOutG (Σ : gFunctors) := PipeOutG {
+  pog_era : ghost_mapG Σ nat pipe_era;
+}.
+#[global] Existing Instance pog_era.
+
+Definition pipeOutΣ : gFunctors := #[ ghost_mapΣ nat pipe_era ].
+
+Global Instance subG_pipeOutΣ {Σ} : subG pipeOutΣ Σ -> pipeOutG Σ.
+Proof. solve_inG. Qed.
+
+(* a byte, as the era's echoed-list camera carries it: no new functor is
+   added by the ledger *)
+Definition blk_enc (b : bv 8) : list mobs * bv 8 := ([], b).
+
+Lemma blk_enc_inj (b c : bv 8) : blk_enc b = blk_enc c -> b = c.
+Proof using. rewrite /blk_enc. by intros [= <-]. Qed.
+
+Lemma blk_fmap_prefix_inv (l1 l2 : list (bv 8)) :
+  (blk_enc <$> l1) `prefix_of` (blk_enc <$> l2) -> l1 `prefix_of` l2.
+Proof using.
+  revert l2. induction l1 as [| b l1 IH]; intros l2 Hp; [apply prefix_nil |].
+  destruct l2 as [| c l2].
+  { exfalso. rewrite fmap_nil in Hp. apply prefix_length in Hp.
+    rewrite fmap_cons in Hp. cbn [length] in Hp. lia. }
+  rewrite !fmap_cons in Hp.
+  pose proof (prefix_cons_inv_1 _ _ _ _ Hp) as Hhd.
+  pose proof (prefix_cons_inv_2 _ _ _ _ Hp) as Htl.
+  rewrite (blk_enc_inj b c Hhd). by apply prefix_cons, IH.
+Qed.
+
+(* ====================================================================== *)
 (*  1.  THE STAGE RECORD, REUSED                                           *)
 (*                                                                        *)
 (*  [EchoOut.ostage] with NOTHING ADDED: a pipe dies with its era, so the  *)
@@ -69,6 +129,70 @@ Local Open Scope list_scope.
 (*  definitional, which is what lets every [cs_len_ok] lemma apply.        *)
 (* ====================================================================== *)
 Definition postage : Type := ostage.
+
+(* THE ERA'S PROCESS BYTES, as the stage records them: everything the
+   programs have put on the wire in this era, in order.  Its LENGTH is
+   [pcount_p], i.e. the era's cursor, which is what ties a writer's lower
+   bound to the claim's own list. *)
+Definition pstream (so : postage) : list (bv 8) :=
+  proc_before_p (o_ps so) (o_cs so) (snd <$> o_E so) ++ o_w so.
+
+Lemma pstream_length (so : postage) :
+  length (pstream so)
+  = pcount_p (o_ps so) (o_cs so) (o_E so) (o_w so).
+Proof using. rewrite /pstream /pcount_p length_app. reflexivity. Qed.
+
+Lemma pstream_0 : pstream ostage0 = [].
+Proof using.
+  rewrite /pstream /ostage0. cbn [o_ps o_cs o_E o_w].
+  by rewrite fmap_nil proc_before_p_nil.
+Qed.
+
+(* A WRITE inside a block appends its byte and moves nothing else. *)
+Lemma pstream_write (ps cs : list nat) (E : list (list mobs * bv 8))
+    (w : list (bv 8)) (b : bv 8) :
+  pstream (MkO ps cs E (w ++ [b])) = pstream (MkO ps cs E w) ++ [b].
+Proof using. rewrite /pstream. cbn [o_ps o_cs o_E o_w]. by rewrite app_assoc. Qed.
+
+(* A BLOCK'S FIRST BYTE files an alternative, which the stage before this
+   line does not read. *)
+Lemma pstream_blk (ps cs : list nat) (E : list (list mobs * bv 8))
+    (a : nat) (b : bv 8) :
+  pro_pin_p ps cs (snd <$> E) ->
+  (nlines (removelast (snd <$> E)) <= length cs)%nat ->
+  pstream (MkO ps (cs ++ [a]) E [b]) = pstream (MkO ps cs E []) ++ [b].
+Proof using.
+  intros Hpin Hn. rewrite /pstream. cbn [o_ps o_cs o_E o_w].
+  rewrite app_nil_r.
+  rewrite -(proc_before_p_cs_prefix ps ps cs (cs ++ [a]) (snd <$> E)
+              ltac:(reflexivity) ltac:(by eexists) Hpin Hn).
+  reflexivity.
+Qed.
+
+(* A PROLOGUE ROUND'S CHOICE BYTE likewise: the prologue list grows past
+   the round the stage is standing in. *)
+Lemma pstream_pro (ps cs : list nat) (E : list (list mobs * bv 8))
+    (w : list (bv 8)) (a : nat) (b : bv 8) :
+  pro_pin_p ps cs (snd <$> E) ->
+  pstream (MkO (ps ++ [a]) cs E (w ++ [b])) = pstream (MkO ps cs E w) ++ [b].
+Proof using.
+  intros Hpin. rewrite /pstream. cbn [o_ps o_cs o_E o_w].
+  rewrite app_assoc. f_equal. f_equal.
+  symmetry. apply (proc_before_p_ps_ext ps (ps ++ [a]) cs (snd <$> E));
+    [by eexists | exact Hpin].
+Qed.
+
+(* AN ECHO closes the block it completed: the bytes move from [o_w] into
+   the stream's own account and the ledger does not grow. *)
+Lemma pstream_echo (ps cs : list nat) (E : list (list mobs * bv 8))
+    (x : list mobs * bv 8) :
+  pstream (MkO ps cs (E ++ [x]) [])
+  = pstream (MkO ps cs E (pending_at_p ps cs (snd <$> E))).
+Proof using.
+  rewrite /pstream. cbn [o_ps o_cs o_E o_w].
+  rewrite app_nil_r (fmap_snd_snoc E x) proc_before_p_snoc.
+  reflexivity.
+Qed.
 
 (* ====================================================================== *)
 (*  2.  THE PURE HISTORY LAYER                                             *)
@@ -661,17 +785,146 @@ Proof using.
 Qed.
 
 (* ====================================================================== *)
+(*  2b. THE ERA'S BYTE LEDGER: the ghosts and their laws                   *)
+(*                                                                        *)
+(*  [FileOut]'s second per-era record one application over.  The map is    *)
+(*  pinned in the fixed part, the era's record is inserted at the          *)
+(*  POWER-ON (where the era's other ghosts are born), and the era's list   *)
+(*  is a [mono_list] of its process bytes: the claim holds the authority   *)
+(*  and a writer a lower bound, and at EQUAL LENGTH -- which [turn] pins   *)
+(*  exactly -- the bound IS the list.                                      *)
+(* ====================================================================== *)
+Section pipe_ledger.
+  Context {Σ : gFunctors}.
+  Context `{!echoOutG Σ, !pipeOutG Σ}.
+  Context (g : pipe_gn).
+
+  Definition pera_pin (k : nat) (w : pipe_era) : iProp Σ :=
+    ghost_map_elem (pgn_era g) k DfracDiscarded w.
+
+  Global Instance pera_pin_persistent k w : Persistent (pera_pin k w).
+  Proof using . rewrite /pera_pin. apply _. Qed.
+  Global Instance pera_pin_timeless k w : Timeless (pera_pin k w).
+  Proof using . rewrite /pera_pin. apply _. Qed.
+
+  Lemma pera_pin_agree k w w' : pera_pin k w -∗ pera_pin k w' -∗ ⌜w = w'⌝.
+  Proof using .
+    rewrite /pera_pin. iIntros "H1 H2".
+    iDestruct (ghost_map_elem_agree with "H1 H2") as %Heq. by iPureIntro.
+  Qed.
+
+  Definition blk_auth (w : pipe_era) (l : list (bv 8)) : iProp Σ :=
+    own (pe_blk w)
+      (●ML ((blk_enc <$> l) : list (leibnizO (list mobs * bv 8)))).
+  Definition blk_lb (w : pipe_era) (l : list (bv 8)) : iProp Σ :=
+    own (pe_blk w)
+      (◯ML ((blk_enc <$> l) : list (leibnizO (list mobs * bv 8)))).
+
+  Global Instance blk_lb_persistent w l : Persistent (blk_lb w l).
+  Proof using . rewrite /blk_lb. apply _. Qed.
+  Global Instance blk_lb_timeless w l : Timeless (blk_lb w l).
+  Proof using . rewrite /blk_lb. apply _. Qed.
+  Global Instance blk_auth_timeless w l : Timeless (blk_auth w l).
+  Proof using . rewrite /blk_auth. apply _. Qed.
+
+  Lemma blk_lb_get w l : blk_auth w l -∗ blk_auth w l ∗ blk_lb w l.
+  Proof using .
+    rewrite /blk_auth /blk_lb. iIntros "H".
+    iDestruct (own_mono _ _ (◯ML ((blk_enc <$> l)
+                                    : list (leibnizO (list mobs * bv 8))))
+                 with "H") as "#Hl"; [apply mono_list_included |].
+    iFrame "H Hl".
+  Qed.
+
+  Lemma blk_auth_grow w l b :
+    blk_auth w l ==∗ blk_auth w (l ++ [b]) ∗ blk_lb w (l ++ [b]).
+  Proof using .
+    rewrite /blk_auth /blk_lb. iIntros "H".
+    iMod (own_update _ _ (●ML ((blk_enc <$> (l ++ [b]))
+                                 : list (leibnizO (list mobs * bv 8))))
+            with "H") as "H".
+    { apply mono_list_update. rewrite fmap_app. by eexists. }
+    iModIntro.
+    iDestruct (own_mono _ _ (◯ML ((blk_enc <$> (l ++ [b]))
+                                    : list (leibnizO (list mobs * bv 8))))
+                 with "H") as "#Hl"; [apply mono_list_included |].
+    iFrame "H Hl".
+  Qed.
+
+  Lemma blk_lb_prefix w l l' :
+    blk_auth w l -∗ blk_lb w l' -∗ ⌜l' `prefix_of` l⌝.
+  Proof using .
+    rewrite /blk_auth /blk_lb. iIntros "Ha Hl".
+    iDestruct (own_valid_2 with "Ha Hl") as %Hv.
+    iPureIntro. apply mono_list_both_valid_L in Hv.
+    exact (blk_fmap_prefix_inv l' l Hv).
+  Qed.
+
+  (* THE TIE: a writer's bound is a prefix of the claim's list, and at
+     equal length it IS the claim's list.  [turn] is what supplies the
+     length. *)
+  Lemma blk_lb_agree w l l' :
+    length l = length l' -> blk_auth w l -∗ blk_lb w l' -∗ ⌜l' = l⌝.
+  Proof using .
+    intros Hlen. iIntros "Ha Hl".
+    iDestruct (blk_lb_prefix with "Ha Hl") as %Hp. iPureIntro.
+    assert (Hle : (length l <= length l')%nat) by lia.
+    exact (prefix_length_eq l' l Hp Hle).
+  Qed.
+
+  Lemma blk_alloc : ⊢ |==> ∃ w : pipe_era, blk_auth w [].
+  Proof using .
+    iMod (own_alloc (●ML ([] : list (leibnizO (list mobs * bv 8)))))
+      as (gb) "Ha"; [by apply mono_list_auth_valid |].
+    iModIntro. iExists (MkPEra gb). rewrite /blk_auth. cbn [pe_blk].
+    by rewrite fmap_nil.
+  Qed.
+
+  (* the map, and its two moves -- [FileOut.f0_map] verbatim *)
+  Definition pera_map (h : list mobs) : iProp Σ :=
+    (∃ M : gmap nat pipe_era,
+       ghost_map_auth (pgn_era g) 1 M ∗ ⌜pin_dom M (obs_boots h)⌝)%I.
+
+  Global Instance pera_map_timeless h : Timeless (pera_map h).
+  Proof using . rewrite /pera_map. apply _. Qed.
+
+  Lemma pera_map_step (h : list mobs) (e : mobs) :
+    obs_boots [e] = 0%nat -> pera_map h -∗ pera_map (h ++ [e]).
+  Proof using .
+    intros He. rewrite /pera_map obs_boots_app He Nat.add_0_r. by iIntros "$".
+  Qed.
+
+  Lemma pera_map_on (h : list mobs) (w : pipe_era) :
+    pera_map h ==∗
+      pera_map (h ++ [ObsPowerOn]) ∗ pera_pin (S (obs_boots h)) w.
+  Proof using .
+    rewrite /pera_map /pera_pin obs_boots_app. cbn [obs_boots].
+    rewrite Nat.add_1_r.
+    iIntros "H". iDestruct "H" as (M) "[Hm %Hd]".
+    iMod (ghost_map_insert_persist (S (obs_boots h)) w
+            (pin_dom_absent _ _ Hd) with "Hm") as "[Hm #Hpin]".
+    iModIntro. iFrame "Hpin". iExists _. iFrame "Hm".
+    iPureIntro. by apply pin_dom_insert.
+  Qed.
+
+End pipe_ledger.
+
+(* ====================================================================== *)
 (*  3.  THE CLAIM, THE TAG, THE TURN AND THE LEDGER                        *)
 (* ====================================================================== *)
 
 Section pipe_out.
   Context {Σ : gFunctors}.
-  Context `{!echoOutG Σ}.
+  Context `{!echoOutG Σ, !pipeOutG Σ}.
   (* THE FIXED PART IS THE ECHO APPLICATION'S, and the taint is
      [AppEcho.echo_taint] -- not a parameter, because the pipeline
      application's claim about the FILE SYSTEM is echo's verbatim, so the
      two share the counter. *)
-  Context (γ : echo_fixed).
+  (* THE FIXED PART IS [pipe_gn] (lane PIPE-2W-2): AppEcho's, paired with
+     the byte ledger's map.  [pgn_cl g] reads the echo half, and every
+     statement below names [γ] exactly as it did. *)
+  Context (g : pipe_gn).
+  Local Notation γ := (pgn_cl g).
 
   Notation T := (echo_taint γ).
 
@@ -680,8 +933,8 @@ Section pipe_out.
   Definition pecl (k : nat) (ho : list mobs)
       (H : LogEntryDefs.cons_hist) : iProp Σ :=
     ( T
-    ∨ ∃ (v : era_pins) (so : postage),
-        era_pin γ k v
+    ∨ ∃ (v : era_pins) (w : pipe_era) (so : postage),
+        era_pin γ k v ∗ pera_pin g k w ∗ blk_auth w (pstream so)
         ∗ turn_auth v (pcount_p (o_ps so) (o_cs so) (o_E so) (o_w so))
         ∗ cs_auth v (o_cs so)
         ∗ ps_auth v (o_ps so)
@@ -723,8 +976,8 @@ Section pipe_out.
   Proof using .
     intros Hok Hev. rewrite /pecl.
     iIntros "[HT | Hc]"; [by iLeft |]. iRight.
-    iDestruct "Hc" as (v so) "(Hpin & Htn & Hcs & Hps & HE & Hdl & %Hpure)".
-    iExists v, so. iFrame "Hpin Htn Hcs Hps HE".
+    iDestruct "Hc" as (v w so) "(Hpin & Hpera & Hblk & Htn & Hcs & Hps & HE & Hdl & %Hpure)".
+    iExists v, w, so. iFrame "Hpin Hpera Hblk Htn Hcs Hps HE".
     rewrite ch_dl_close. iFrame "Hdl". iPureIntro.
     by apply (pcl_pure_close k ho so H Hok Hev Hpure).
   Qed.
@@ -741,8 +994,8 @@ Section pipe_out.
   Proof using .
     intros Hn Hd Hb Hdh Hsh Hends Hord Hlt. rewrite /pecl.
     iIntros "[HT | Hc]"; [by iLeft |]. iRight.
-    iDestruct "Hc" as (v so) "(Hpin & Htn & Hcs & Hps & HE & Hdl & %Hpure)".
-    iExists v, so. iFrame "Hpin Htn Hcs Hps HE".
+    iDestruct "Hc" as (v w so) "(Hpin & Hpera & Hblk & Htn & Hcs & Hps & HE & Hdl & %Hpure)".
+    iExists v, w, so. iFrame "Hpin Hpera Hblk Htn Hcs Hps HE".
     rewrite /ConsLog.cons_step. cbn [LogEntryDefs.ch_dl]. iFrame "Hdl".
     iPureIntro.
     by apply (pcl_pure_open k ho so H h c cs Hn Hd Hb Hdh Hsh Hends Hord Hlt
@@ -763,9 +1016,9 @@ Section pipe_out.
   Proof using .
     rewrite /pecl. iIntros "[#HT | Hp]".
     { iSplitR; [by iLeft | by iLeft]. }
-    iDestruct "Hp" as (v so) "(#Hpin & Htn & Hcs & Hps & HE & Hdl & %Hall)".
+    iDestruct "Hp" as (v w so) "(#Hpin & #Hpera & Hblk & Htn & Hcs & Hps & HE & Hdl & %Hall)".
     iSplitL.
-    - iRight. iExists v, so. iFrame "Hpin Htn Hcs Hps HE Hdl". by iPureIntro.
+    - iRight. iExists v, w, so. iFrame "Hpin Hpera Hblk Htn Hcs Hps HE Hdl". by iPureIntro.
     - iRight. iPureIntro. exact (pcl_pure_arm k ho so CH Hall).
   Qed.
 
@@ -781,9 +1034,9 @@ Section pipe_out.
   Proof using .
     intros Hsh Hk Hends Hord. rewrite /pecl. iIntros "[#HT | Hp]".
     { iSplitR; [by iLeft | by iLeft]. }
-    iDestruct "Hp" as (v so) "(#Hpin & Htn & Hcs & Hps & HE & Hdl & %Hall)".
+    iDestruct "Hp" as (v w so) "(#Hpin & #Hpera & Hblk & Htn & Hcs & Hps & HE & Hdl & %Hall)".
     iSplitL.
-    - iRight. iExists v, so. iFrame "Hpin Htn Hcs Hps HE Hdl". by iPureIntro.
+    - iRight. iExists v, w, so. iFrame "Hpin Hpera Hblk Htn Hcs Hps HE Hdl". by iPureIntro.
     - iRight. iPureIntro.
       destruct Hall as (_ & _ & _ & Hin & _ & _).
       destruct Hin as (_ & _ & Hstamp & _ & Hidx & _ & _).
@@ -810,7 +1063,7 @@ Section pipe_out.
     iIntros "#Hpin Ht #Hpslb #Hcslb #Hilb Hcl".
     iDestruct "Hcl" as "[#HT | Hp]".
     { iModIntro. iSplitR; [rewrite /pecl; by iLeft | by iRight]. }
-    iDestruct "Hp" as (v2 so) "(#Hpin2 & Hta & Hcs & Hps & HE & Hdl & %Hall)".
+    iDestruct "Hp" as (v2 w so) "(#Hpin2 & #Hpera & Hblk & Hta & Hcs & Hps & HE & Hdl & %Hall)".
     iDestruct (era_pin_agree with "Hpin2 Hpin") as %->.
     pose proof Hall as Hall0.
     destruct Hall as (Hpure & Hcsl & Hpsl & _ & _ & _).
@@ -839,12 +1092,14 @@ Section pipe_out.
       rewrite -HlenE in Hn. lia. }
     iMod (turn_update v P (pcount_p (o_ps so) (o_cs so) (o_E so) (o_w so))
             (S P) ltac:(lia) with "Ht Hta") as "[Ht Hta]".
+    iMod (blk_auth_grow w (pstream so) b with "Hblk") as "[Hblk _]".
     iModIntro. iSplitR "Ht".
     - rewrite /pecl. iRight.
-      iExists v, (MkO (o_ps so) (o_cs so) (o_E so) (o_w so ++ [b])).
+      iExists v, w, (MkO (o_ps so) (o_cs so) (o_E so) (o_w so ++ [b])).
       cbn [o_ps o_cs o_E o_w]. rewrite pcount_p_write -HP.
+      rewrite (pstream_write (o_ps so) (o_cs so) (o_E so) (o_w so) b).
       rewrite /ConsLog.cons_step. cbn [LogEntryDefs.ch_dl].
-      iFrame "Hpin Hta Hcs Hps HE Hdl". iPureIntro.
+      iFrame "Hpin Hpera Hblk Hta Hcs Hps HE Hdl". iPureIntro.
       apply (pcl_pure_out k ho so
                (MkO (o_ps so) (o_cs so) (o_E so) (o_w so ++ [b])) H b);
         [cbn [o_cs]; lia | reflexivity | | | | exact Hall0].
@@ -894,7 +1149,7 @@ Section pipe_out.
     iIntros "#Hpin Ht #Hpslb #Hcslb #Hilb Hcl".
     iDestruct "Hcl" as "[#HT | Hp]".
     { iModIntro. iSplitR; [rewrite /pecl; by iLeft | by iRight]. }
-    iDestruct "Hp" as (v2 so) "(#Hpin2 & Hta & Hcs & Hps & HE & Hdl & %Hall)".
+    iDestruct "Hp" as (v2 w so) "(#Hpin2 & #Hpera & Hblk & Hta & Hcs & Hps & HE & Hdl & %Hall)".
     iDestruct (era_pin_agree with "Hpin2 Hpin") as %->.
     pose proof Hall as Hall0.
     destruct Hall as (Hpure & Hcsl & Hpsl & _ & _ & _).
@@ -972,16 +1227,24 @@ Section pipe_out.
     assert (Hao2 : alts_pre_p (snd <$> o_E so) (o_cs so ++ [a])).
     { apply alts_pre_p_snoc; [exact Hcsb' | rewrite HlenE Hq; lia |].
       rewrite HlenE Hq. exact Halt. }
+    assert (Hrlbnd : (nlines (removelast (snd <$> o_E so))
+                      <= length (o_cs so))%nat).
+    { rewrite HlenE Hrl0 Hq. lia. }
     iMod (turn_update v P (pcount_p (o_ps so) (o_cs so) (o_E so) (o_w so))
             (S P) ltac:(lia) with "Ht Hta") as "[Ht Hta]".
     iMod (cs_auth_grow v (o_cs so) a with "Hcs") as "[Hcs #Hcslb2]".
     iDestruct (ps_lb_get with "Hps") as "[Hps #Hpslb2]".
+    iMod (blk_auth_grow w (pstream so) b with "Hblk") as "[Hblk _]".
     iModIntro. iSplitR "Ht".
     - rewrite /pecl. iRight.
-      iExists v, (MkO (o_ps so) (o_cs so ++ [a]) (o_E so) [b]).
+      iExists v, w, (MkO (o_ps so) (o_cs so ++ [a]) (o_E so) [b]).
       cbn [o_ps o_cs o_E o_w]. rewrite Hpc2.
+      rewrite (pstream_blk (o_ps so) (o_cs so) (o_E so) a b Hpin Hrlbnd).
+      rewrite (_ : pstream (MkO (o_ps so) (o_cs so) (o_E so) []) = pstream so);
+        last first.
+      { rewrite /pstream. cbn [o_ps o_cs o_E o_w]. by rewrite Hwnil. }
       rewrite /ConsLog.cons_step. cbn [LogEntryDefs.ch_dl].
-      iFrame "Hpin Hta Hcs Hps HE Hdl". iPureIntro.
+      iFrame "Hpin Hpera Hblk Hta Hcs Hps HE Hdl". iPureIntro.
       apply (pcl_pure_out k ho so
                (MkO (o_ps so) (o_cs so ++ [a]) (o_E so) [b]) H b);
         [cbn [o_cs]; rewrite length_app; cbn [length]; lia
@@ -1033,7 +1296,7 @@ Section pipe_out.
     iIntros "#Hpin Ht #Hpslb #Hcslb #Hilb Hcl".
     iDestruct "Hcl" as "[#HT | Hp]".
     { iModIntro. iSplitR; [rewrite /pecl; by iLeft | by iRight]. }
-    iDestruct "Hp" as (v2 so) "(#Hpin2 & Hta & Hcs & Hps & HE & Hdl & %Hall)".
+    iDestruct "Hp" as (v2 w so) "(#Hpin2 & #Hpera & Hblk & Hta & Hcs & Hps & HE & Hdl & %Hall)".
     iDestruct (era_pin_agree with "Hpin2 Hpin") as %->.
     pose proof Hall as Hall0.
     destruct Hall as (Hpure & Hcsl & Hpsl & _ & _ & _).
@@ -1221,12 +1484,14 @@ Section pipe_out.
     iMod (turn_update v P (pcount_p (o_ps so) (o_cs so) (o_E so) (o_w so))
             (S P) ltac:(lia) with "Ht Hta") as "[Ht Hta]".
     iMod (ps_auth_grow v (o_ps so) a with "Hps") as "[Hps #Hpslb2]".
+    iMod (blk_auth_grow w (pstream so) b with "Hblk") as "[Hblk _]".
     iModIntro. iSplitR "Ht".
     - rewrite /pecl. iRight.
-      iExists v, (MkO (o_ps so ++ [a]) (o_cs so) (o_E so) (o_w so ++ [b])).
+      iExists v, w, (MkO (o_ps so ++ [a]) (o_cs so) (o_E so) (o_w so ++ [b])).
       cbn [o_ps o_cs o_E o_w]. rewrite Hpc2.
+      rewrite (pstream_pro (o_ps so) (o_cs so) (o_E so) (o_w so) a b Hpin).
       rewrite /ConsLog.cons_step. cbn [LogEntryDefs.ch_dl].
-      iFrame "Hpin Hta Hcs Hps HE Hdl". iPureIntro.
+      iFrame "Hpin Hpera Hblk Hta Hcs Hps HE Hdl". iPureIntro.
       apply (pcl_pure_out k ho so
                (MkO (o_ps so ++ [a]) (o_cs so) (o_E so) (o_w so ++ [b]))
                CH b);
@@ -1316,7 +1581,7 @@ Section pipe_out.
     intros Hread. iIntros "#Hpinr Hdlr Hcl".
     iDestruct "Hcl" as "[#HT | Hp]".
     { iModIntro. iSplitR; [rewrite /pecl; by iLeft |]. iLeft. by iFrame "Hdlr". }
-    iDestruct "Hp" as (v2 so) "(#Hpin & Hta & Hcs & Hps & HE & Hdl & %Hall)".
+    iDestruct "Hp" as (v2 w so) "(#Hpin & #Hpera & Hblk & Hta & Hcs & Hps & HE & Hdl & %Hall)".
     iDestruct (era_pin_agree with "Hpin Hpinr") as %->.
     iDestruct (dl_cnt_agree with "Hdl Hdlr") as %Hdleq.
     pose proof Hall as Hall0.
@@ -1401,10 +1666,10 @@ Section pipe_out.
     iDestruct (turn_lb_get with "Hta") as "#Htlb".
     iMod (dl_cnt_update v (length (LogEntryDefs.ch_dl CH)) n
             (n + length ws)%nat with "Hdl Hdlr") as "[Hdl Hdlr]".
-    iModIntro. iSplitL "Hta Hcs Hps HE Hdl".
-    { rewrite /pecl. iRight. iExists v, so.
+    iModIntro. iSplitL "Hta Hcs Hps HE Hdl Hblk".
+    { rewrite /pecl. iRight. iExists v, w, so.
       rewrite /ConsLog.cons_step. cbn [LogEntryDefs.ch_dl].
-      rewrite length_app Hdleq. iFrame "Hpin Hta Hcs Hps HE Hdl".
+      rewrite length_app Hdleq. iFrame "Hpin Hpera Hblk Hta Hcs Hps HE Hdl".
       iPureIntro. exact (pcl_pure_read k ho so CH ws Hpref Hall0). }
     iRight. iFrame "Hdlr".
     iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
@@ -1446,7 +1711,7 @@ Section pipe_out.
     iIntros "Hcl".
     iDestruct "Hcl" as "[#HT | Hp]".
     { iModIntro. rewrite /pecl. by iLeft. }
-    iDestruct "Hp" as (v so) "(#Hpin & Hta & Hcs & Hps & HE & Hdl & %Hall)".
+    iDestruct "Hp" as (v w so) "(#Hpin & #Hpera & Hblk & Hta & Hcs & Hps & HE & Hdl & %Hall)".
     pose proof Hall as Hall0.
     destruct Hall as (Hpure & Hcsl & Hpsl & Hin & Hera & HEtie).
     destruct Hpure as (Hacc & Hwpre & Hidx & Hbyte & Hpsb & Hpin & Hcsb' & Hdsc
@@ -1605,12 +1870,19 @@ Section pipe_out.
     iMod (Elist_auth_grow v (o_E so) (open_seg h, c) with "HE")
       as "[HE #HElb2]".
     iModIntro. rewrite /pecl. iRight.
-    iExists v, (MkO (o_ps so) (o_cs so) (o_E so ++ [(open_seg h, c)]) []).
+    iExists v, w, (MkO (o_ps so) (o_cs so) (o_E so ++ [(open_seg h, c)]) []).
     cbn [o_ps o_cs o_E o_w].
     rewrite (pcount_p_echo (o_ps so) (o_cs so) (o_E so) (open_seg h, c)
                (o_w so) Hweq).
+    rewrite (pstream_echo (o_ps so) (o_cs so) (o_E so) (open_seg h, c)).
+    (* [Hweq] is stated at [pending_p], which is [pending_at_p] at the
+       list's bytes: convertible, not syntactic *)
+    rewrite (_ : pending_at_p (o_ps so) (o_cs so) (snd <$> o_E so)
+                 = o_w so); [| symmetry; exact Hweq].
+    rewrite (_ : pstream (MkO (o_ps so) (o_cs so) (o_E so) (o_w so))
+                 = pstream so); [| reflexivity].
     rewrite ch_dl_byte.
-    iFrame "Hpin Hta Hcs Hps HE Hdl". iPureIntro.
+    iFrame "Hpin Hpera Hblk Hta Hcs Hps HE Hdl". iPureIntro.
     apply (pcl_pure_byte (obs_boots h) ho h so
              (MkO (o_ps so) (o_cs so) (o_E so ++ [(open_seg h, c)]) [])
              CH (echo_of c) h c Harm eq_refl);
@@ -1689,13 +1961,13 @@ Section pipe_out.
     iIntros "Hcl".
     iDestruct "Hcl" as "[#HT | Hp]".
     - iSplitR; [iLeft; iExact "HT" | iLeft; iExact "HT"].
-    - iDestruct "Hp" as (v so) "(#Hpin & Hta & Hcs & Hps & HE & Hdl & %Hall)".
+    - iDestruct "Hp" as (v w so) "(#Hpin & #Hpera & Hblk & Hta & Hcs & Hps & HE & Hdl & %Hall)".
       pose proof Hall as Hall2.
       destruct Hall2 as (Hpure & Hcsl & Hpsl & Hin & Hera & HEtie).
       destruct Hpure as (Hacc & Hwp & Hidx & Hbyte & Hpsb & Hpin & Hcs' & Hdsc
                          & Hpre1 & Hpre2 & Hpre3).
-      iSplitL "Hta Hcs Hps HE Hdl".
-      { iRight. iExists v, so. iFrame "Hpin Hta Hcs Hps HE Hdl".
+      iSplitL "Hta Hcs Hps HE Hdl Hblk".
+      { iRight. iExists v, w, so. iFrame "Hpin Hpera Hblk Hta Hcs Hps HE Hdl".
         by iPureIntro. }
       iRight. iPureIntro.
       assert (Hbytes : (snd <$> o_E so) `prefix_of` ins seg).
@@ -1737,6 +2009,7 @@ Section pipe_out.
     (mono_nat_auth_own (eg_taint γ) 1
        (if decide (disc_p h) then 0%nat else 1%nat)
      ∗ pin_map γ h
+     ∗ pera_map g h
      ∗ (⌜Forall good_out_p (cycles_of h)⌝ ∨ T))%I.
 
   Global Instance pipe_led_timeless h : Timeless (pipe_led h).
@@ -1744,25 +2017,28 @@ Section pipe_out.
 
   (* WHAT THE BIRTH STEP YIELDS: [AppEcho.echo_cl] unchanged, because the
      fixed part is the echo application's. *)
-  Definition pipe_cl_all : iProp Σ := echo_cl γ.
+  Definition pipe_cl_all : iProp Σ :=
+    (echo_cl γ ∗ ghost_map_auth (pgn_era g) 1 (∅ : gmap nat pipe_era))%I.
 
   Lemma pipe_led_init : pipe_cl_all -∗ pipe_led [].
   Proof using .
-    rewrite /pipe_cl_all /echo_cl /pipe_led /pin_map.
+    rewrite /pipe_cl_all /echo_cl /pipe_led /pin_map /pera_map.
     rewrite decide_True; [| exact disc_p_nil].
-    iIntros "[Ht Hm]". iFrame "Ht".
+    iIntros "[[Ht Hm] Hme]". iFrame "Ht".
     iSplitL "Hm".
     { iExists ∅. iFrame "Hm". iPureIntro. apply pin_dom_empty. }
+    iSplitL "Hme".
+    { iExists ∅. iFrame "Hme". iPureIntro. apply pin_dom_empty. }
     iLeft. iPureIntro. rewrite /cycles_of /cycles_rev /=. constructor.
   Qed.
 
   (* THE FOUNDING, as a resource split: the era's ghosts become the port's
      claim at the start of their era and init's console credential. *)
-  Lemma era_full_split_p (k : nat) (v : era_pins) :
-    era_pin γ k v -∗ era_full v -∗
+  Lemma era_full_split_p (k : nat) (v : era_pins) (w : pipe_era) :
+    era_pin γ k v -∗ pera_pin g k w -∗ blk_auth w [] -∗ era_full v -∗
       pecl k [] (LogEntryDefs.MkCH [] [] [] None) ∗ pturn k.
   Proof using .
-    iIntros "#Hpin (Ht & Hcs & Hps & HE & Hdl)".
+    iIntros "#Hpin #Hpera Hblk (Ht & Hcs & Hps & HE & Hdl)".
     iAssert (turn_lb v 0%nat) as "#Htlb0".
     { rewrite /turn_lb. iApply (mono_nat_lb_own_get with "Ht"). }
     iEval (rewrite -Qp.half_half) in "Ht".
@@ -1772,11 +2048,12 @@ Section pipe_out.
     iDestruct (cs_lb_get with "Hcs") as "[Hcs #Hcslb]".
     iDestruct (ps_lb_get with "Hps") as "[Hps #Hpslb]".
     iDestruct (Elist_lb_get with "HE") as "[HE #HElb]".
-    iSplitL "Ht1 Hcs Hps HE Hdl1".
-    { rewrite /pecl. iRight. iExists v, ostage0.
+    iSplitL "Ht1 Hcs Hps HE Hdl1 Hblk".
+    { rewrite /pecl. iRight. iExists v, w, ostage0.
+      rewrite pstream_0.
       cbn [o_ps o_cs o_E o_w ostage0 length LogEntryDefs.ch_dl].
       rewrite /pcount_p fmap_nil proc_before_p_nil. cbn [length].
-      iFrame "Hpin Ht1 Hcs Hps HE Hdl1". iPureIntro.
+      iFrame "Hpin Hpera Hblk Ht1 Hcs Hps HE Hdl1". iPureIntro.
       rewrite /pcl_pure.
       cbn [LogEntryDefs.ch_acc LogEntryDefs.ch_log LogEntryDefs.ch_dl
            LogEntryDefs.ch_arm].
@@ -1799,18 +2076,22 @@ Section pipe_out.
          else pecl (S (obs_boots h)) [] (LogEntryDefs.MkCH [] [] [] None)
               ∗ pturn (S (obs_boots h))).
   Proof using .
-    iIntros "(Ht & Hpm & Hphi)". rewrite /pipe_led.
+    iIntros "(Ht & Hpm & Hme & Hphi)". rewrite /pipe_led.
     rewrite (decide_ext _ (disc_p h) 0%nat 1%nat (disc_p_power h on)).
     destruct on.
     - iDestruct (pin_map_step γ h ObsPowerOff eq_refl with "Hpm") as "Hpm".
-      iModIntro. iSplitR ""; [| done]. iFrame "Ht Hpm".
+      iDestruct (pera_map_step g h ObsPowerOff eq_refl with "Hme") as "Hme".
+      iModIntro. iSplitR ""; [| done]. iFrame "Ht Hpm Hme".
       rewrite cycles_of_off. iExact "Hphi".
     - iMod era_full_alloc as (v) "Hfull".
       iMod (pin_map_on γ h v with "Hpm") as "[Hpm #Hpin]".
-      iDestruct (era_full_split_p (S (obs_boots h)) v with "Hpin Hfull")
-        as "(Hcl & Hturn)".
+      (* the era's BYTE LEDGER is born with the era's other ghosts *)
+      iMod blk_alloc as (w) "Hblk".
+      iMod (pera_map_on g h w with "Hme") as "[Hme #Hpera]".
+      iDestruct (era_full_split_p (S (obs_boots h)) v w
+                   with "Hpin Hpera Hblk Hfull") as "(Hcl & Hturn)".
       iModIntro. iSplitR "Hcl Hturn".
-      + iFrame "Ht Hpm".
+      + iFrame "Ht Hpm Hme".
         rewrite cycles_of_on.
         iDestruct "Hphi" as "[%Hg | HT]"; [| by iRight].
         iLeft. iPureIntro. apply Forall_app. split; [exact Hg |].
@@ -1823,11 +2104,12 @@ Section pipe_out.
     (T ∨ ⌜i = Uart0 -> good_out_p (open_seg h ++ [ObsUartOut i b])⌝) -∗
     pipe_led h ==∗ pipe_led (h ++ [ObsUartOut i b]).
   Proof using .
-    intros Hsh. iIntros "Hgo (Hcnt & Hpm & Hphi)".
+    intros Hsh. iIntros "Hgo (Hcnt & Hpm & Hme & Hphi)".
     iDestruct (pin_map_step γ h (ObsUartOut i b) eq_refl with "Hpm") as "Hpm".
+    iDestruct (pera_map_step g h (ObsUartOut i b) eq_refl with "Hme") as "Hme".
     rewrite /pipe_led.
     rewrite (decide_ext _ (disc_p h) 0%nat 1%nat (disc_p_out h i b Hsh)).
-    iModIntro. iFrame "Hcnt Hpm".
+    iModIntro. iFrame "Hcnt Hpm Hme".
     iDestruct "Hphi" as "[%Hg | HT]"; [| by iRight].
     iDestruct "Hgo" as "[HT | %Hgo]"; [by iRight |].
     iLeft. iPureIntro. destruct i.
@@ -1843,8 +2125,9 @@ Section pipe_out.
       pipe_led (h ++ [ObsUartIn i b])
       ∗ (⌜disc_p (h ++ [ObsUartIn i b])⌝ ∨ mono_nat_lb_own (eg_taint γ) 1).
   Proof using .
-    intros Hsh. iIntros "(Hcnt & Hpm & Hphi)".
+    intros Hsh. iIntros "(Hcnt & Hpm & Hme & Hphi)".
     iDestruct (pin_map_step γ h (ObsUartIn i b) eq_refl with "Hpm") as "Hpm".
+    iDestruct (pera_map_step g h (ObsUartIn i b) eq_refl with "Hme") as "Hme".
     iAssert (⌜Forall good_out_p (cycles_of (h ++ [ObsUartIn i b]))⌝ ∨ T)%I
       with "[Hphi]" as "Hphi".
     { iDestruct "Hphi" as "[%Hg | HT]"; [| by iRight].
@@ -1857,10 +2140,10 @@ Section pipe_out.
           [ exact (disc_p_in h b Hsh Hd')
           | exact (proj1 (disc_p_other h (ObsUartIn Uart1 b) eq_refl I Hsh)
                      Hd') ]. }
-      iModIntro. iFrame "Hcnt Hpm Hphi". iLeft. iPureIntro. exact Hd'.
+      iModIntro. iFrame "Hcnt Hpm Hme Hphi". iLeft. iPureIntro. exact Hd'.
     - iMod (mono_nat_own_update 1%nat with "Hcnt") as "[Hcnt #Hlb]";
         [destruct (decide (disc_p h)); lia |].
-      iModIntro. iFrame "Hcnt Hpm Hphi". iRight. iExact "Hlb".
+      iModIntro. iFrame "Hcnt Hpm Hme Hphi". iRight. iExact "Hlb".
   Qed.
 
   (* PHI's read at the end of the run.  [T] IS the counter's lower bound at
@@ -1869,7 +2152,7 @@ Section pipe_out.
   Lemma pipe_led_phi (h : list mobs) :
     pipe_led h -∗ ⌜disc_p h -> Forall good_out_p (cycles_of h)⌝.
   Proof using .
-    iIntros "(Hcnt & _ & [%Hg | HT'])".
+    iIntros "(Hcnt & _ & _ & [%Hg | HT'])".
     { iPureIntro. by intros _. }
     rewrite /echo_taint.
     iDestruct (mono_nat_lb_own_valid with "Hcnt HT'") as %[_ Hle].
@@ -1887,8 +2170,15 @@ End pipe_out.
 (* ====================================================================== *)
 Section pipe_birth.
   Context {Σ : gFunctors}.
-  Context `{!echoOutG Σ}.
+  Context `{!echoOutG Σ, !pipeOutG Σ}.
 
-  Lemma pipe_birth_all : ⊢ |==> ∃ γ : echo_fixed, pipe_cl_all γ.
-  Proof using . rewrite /pipe_cl_all. exact echo_birth. Qed.
+  (* THE BIRTH: echo's fixed part, and the byte ledger's map beside it --
+     [FileOut.file_birth_all]'s shape one application over. *)
+  Lemma pipe_birth_all : ⊢ |==> ∃ g : pipe_gn, pipe_cl_all g.
+  Proof using .
+    iMod echo_birth as (γ) "Hcl".
+    iMod (ghost_map_alloc_empty (K := nat) (V := pipe_era)) as (gm) "Hm".
+    iModIntro. iExists (MkPipeGn γ gm). rewrite /pipe_cl_all. cbn [pgn_cl pgn_era].
+    iFrame "Hcl Hm".
+  Qed.
 End pipe_birth.

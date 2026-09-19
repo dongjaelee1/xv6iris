@@ -1182,6 +1182,18 @@ Proof using.
   intros J _ H2 H3. rewrite app_nil_l in H2, H3. by apply Hj.
 Qed.
 
+(* ...and the PROLOGUE list's, which a prologue round's own choice byte
+   spends: every block BELOW the round the stage stands in has settled
+   ([pro_pin_p]), so extending the resolution moves none of them. *)
+Lemma proc_before_p_ps_ext ps ps' cs I :
+  ps `prefix_of` ps' -> pro_pin_p ps cs I ->
+  proc_before_p ps cs I = proc_before_p ps' cs I.
+Proof using.
+  intros Hp Hpin. apply proc_before_p_ext. intros J HJ Hne.
+  apply (pending_at_p_ps_ext ps ps' cs J Hp).
+  apply Hpin. exact (nstarted_strict J I HJ Hne).
+Qed.
+
 Lemma proc_before_p_cs_prefix ps0 ps cs0 cs I0 :
   ps0 `prefix_of` ps -> cs0 `prefix_of` cs -> pro_pin_p ps0 cs0 I0 ->
   (nlines (removelast I0) <= length cs0)%nat ->

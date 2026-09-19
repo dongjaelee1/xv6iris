@@ -268,17 +268,20 @@ Section UShPipeRound.
   (* the era's fixed record and its name record -- ECHO'S, because the
      pipeline claim is echo's shape with a persistent instance-free /cat
      conjunct (design SS5.7, lane PIPE-CLAIM) *)
-  Context (γ : echo_fixed) (r : echo_names).
+  (* THE FIXED PART IS [PipeOut.pipe_gn] (lane PIPE-2W-2). *)
+  Context `{!pipeOutG Σ}.
+  Context (g : pipe_gn) (r : echo_names).
+  Local Notation γ := (pgn_cl g).
 
   (* the record equations the top theorem hands over ([UInitBoot.
      echo_Hinit_boot]'s [Hcons]/[Htag]/[Hkill], one application on) *)
-  Context (Hcons : @riscv_cons_res Σ (@riscv_fixedGS Σ _) = pecl γ).
-  Context (Htag : @riscv_rx_tag Σ (@riscv_fixedGS Σ _) = ptag γ).
+  Context (Hcons : @riscv_cons_res Σ (@riscv_fixedGS Σ _) = pecl g).
+  Context (Htag : @riscv_rx_tag Σ (@riscv_fixedGS Σ _) = ptag g).
   Context (Hkill : @app_taint Σ (@riscv_fixedGS Σ _) = echo_taint γ).
 
   Local Notation T := (echo_taint γ).
-  Local Notation PI := (pipe_link_inst_at γ).
-  Local Notation SI := (pipe_stage_inst_at γ).
+  Local Notation PI := (pipe_link_inst_at g).
+  Local Notation SI := (pipe_stage_inst_at g).
 
   (* sh's own half of the console position pair ([UkSh]'s [γp]) *)
   Context (γp : gname).
@@ -298,21 +301,21 @@ Section UShPipeRound.
   (*  NAME THE LEAF, DO NOT SEARCH.                                        *)
   (*                                                                       *)
   (*  MEASURED HERE, and it is the lane's first operational finding: in a  *)
-  (*  file with this cone, [iIntros "#Hlk"] on [PipeLinks.pipe_links γ] --  *)
+  (*  file with this cone, [iIntros "#Hlk"] on [PipeLinks.pipe_links g] --  *)
   (*  six [□]-wands behind ONE transparent definition -- DOES NOT RETURN.   *)
   (*  The bundle has a [Global Instance] ([pipe_links_persistent], the one  *)
   (*  [PipeLinkInst] puts in [lk_links_pers]) and the hint net still does   *)
   (*  not reach it: the tree carries hundreds of [Persistent]/[Timeless]    *)
   (*  instances under transparent definitions (PIPE-LINK-INST's note on     *)
   (*  upstream's leaf-instance pass) and the search unfolds its way into    *)
-  (*  the wand chain instead.  A bare probe -- [⊢ pipe_links γ -∗ ⌜True⌝]   *)
+  (*  the wand chain instead.  A bare probe -- [⊢ pipe_links g -∗ ⌜True⌝]   *)
   (*  proved by [iIntros "#Hlk"] -- times out at 200 s on its own.          *)
   (*                                                                       *)
   (*  So every [Persistent]/[Timeless] obligation this file raises is       *)
   (*  answered BY NAME at priority 0.                                       *)
   (* ===================================================================== *)
-  #[local] Instance pipe_links_pers0 : Persistent (PipeLinks.pipe_links γ) | 0
-    := PipeLinks.pipe_links_persistent γ.
+  #[local] Instance pipe_links_pers0 : Persistent (PipeLinks.pipe_links g) | 0
+    := PipeLinks.pipe_links_persistent g.
   #[local] Instance pipe_T_pers0 : Persistent T | 0 := echo_taint_persistent γ.
   #[local] Instance pipe_T_tl0 : Timeless T | 0 := echo_taint_timeless γ.
   #[local] Instance pipe_Wcf_tl0 (I : list (bv 8)) (p : nat) :
@@ -407,7 +410,7 @@ Section UShPipeRound.
 
   (* ---- THE ECHO CHILD'S EXEC SUPPLY, at the era's guard ---- *)
   Lemma pipe_Hchild_echo :
-    ⊢ PipeLinks.pipe_links γ -∗ udep (PS := uprogSG_free) -∗
+    ⊢ PipeLinks.pipe_links g -∗ udep (PS := uprogSG_free) -∗
       UShEcho.sh_echo_slot T -∗
       UkShEcho.sh_exec_sup_echo_wq_at pipe_D Wcf.
   Proof using Hkill.
@@ -420,7 +423,7 @@ Section UShPipeRound.
 
   (* ---- THE EXEC-FAILED DIAGNOSTIC'S LAW, at the parameterized carrier *)
   Lemma pipe_Hexecfail_D :
-    ⊢ PipeLinks.pipe_links γ -∗
+    ⊢ PipeLinks.pipe_links g -∗
       UkShEcho.ush_execfail_law_wq_at_D (PS := uprogSG_free) pipe_D
         (lk_exfb PI)
         (fun I : list (bv 8) => (length (lk_exfb PI I) - 2)%nat)
@@ -443,7 +446,7 @@ Section UShPipeRound.
 
   (* ---- sh's OWN FORK PANIC, at the era's families ---- *)
   Lemma pipe_Hpanic :
-    ⊢ PipeLinks.pipe_links γ -∗
+    ⊢ PipeLinks.pipe_links g -∗
       UkShDiag.ush_panic_law (PS := uprogSG_free) Wcf Wbf.
   Proof using .
     iIntros "#Hlk".
@@ -460,7 +463,7 @@ Section UShPipeRound.
 
   (* ---- ...AND THE ECHO CHILD'S WHOLE LAW ---- *)
   Lemma pipe_child_law_echo :
-    ⊢ PipeLinks.pipe_links γ -∗ udep (PS := uprogSG_free) -∗
+    ⊢ PipeLinks.pipe_links g -∗ udep (PS := uprogSG_free) -∗
       UShEcho.sh_echo_slot T -∗
       UkShFork.ushf_child_law (PS := uprogSG_free) (SG := uexecSG_xv6) Wcf.
   Proof using Hkill.
@@ -524,7 +527,7 @@ Section UShPipeRound.
      twice opens it once and is done.) *)
   Lemma pipe_blk_one_writer (k : nat) (v : era_pins) (I I' : list (bv 8))
       (a a' i i' P : nat) :
-    turn_auth v P -∗ pwc_blk γ k v I a i -∗ pwc_blk γ k v I' a' i' -∗ T.
+    turn_auth v P -∗ pwc_blk g k v I a i -∗ pwc_blk g k v I' a' i' -∗ T.
   Proof using .
     iIntros "Ha Hb1 Hb2". rewrite /pwc_blk.
     iDestruct "Hb1" as "[Hb1 | #HT]"; last iExact "HT".
@@ -674,7 +677,7 @@ Section UShPipeRound.
      era's families, which is what [UInitSh.sh_pay_of_parts_at] takes and
      therefore what the pipeline theorem's [Hprog] spends. *)
   Lemma sh_round_holds_pipe (N : uk_names Σ) :
-    ⊢ PipeLinks.pipe_links γ -∗
+    ⊢ PipeLinks.pipe_links g -∗
       udep (PS := uprogSG_free) -∗
       UShEcho.sh_echo_slot T -∗
       (∃ v : era_pins, era_pin γ (S gen_id) v) -∗

@@ -46,18 +46,22 @@ Local Open Scope list_scope.
 Section pipe_links.
   Context {Σ : gFunctors}.
   Context `{!echoOutG Σ}.
-  Context (γ : echo_fixed).
+  (* THE FIXED PART IS [PipeOut.pipe_gn] (lane PIPE-2W-2): the echo half
+     is [pgn_cl g], so every statement below names [γ] as it did. *)
+  Context `{!pipeOutG Σ}.
+  Context (g : pipe_gn).
+  Local Notation γ := (pgn_cl g).
   Context `{HRg : !riscvGS Σ}.
 
   Notation T := (echo_taint γ).
 
   (* the record equations, as section parameters: [App.al_echo] hands them
      over at the [boot_fixedGS] literal *)
-  Context (Hcons : @riscv_cons_res Σ (@riscv_fixedGS Σ HRg) = pecl γ).
-  Context (Htag : @riscv_rx_tag Σ (@riscv_fixedGS Σ HRg) = ptag γ).
+  Context (Hcons : @riscv_cons_res Σ (@riscv_fixedGS Σ HRg) = pecl g).
+  Context (Htag : @riscv_rx_tag Σ (@riscv_fixedGS Σ HRg) = ptag g).
 
   Lemma pchist_at0 (kk : nat) (hh : list mobs) (HH : LogEntryDefs.cons_hist) :
-    chist_at Uart0 kk hh HH = pecl γ kk hh HH.
+    chist_at Uart0 kk hh HH = pecl g kk hh HH.
   Proof using Hcons. rewrite /chist_at. by rewrite Hcons. Qed.
 
   (* ---- the taint route: once the era is off the discipline every link of
@@ -99,7 +103,7 @@ Section pipe_links.
     intros Hn Hpin0 Hb.
     iIntros "#Hpin Ht #Hpslb #Hcslb #Hilb HΦ" (o H) "#Hlb Hres".
     rewrite !pchist_at0.
-    iMod (pecl_step_write γ k v P b ps0 cs0 I0 (default [] o) H
+    iMod (pecl_step_write g k v P b ps0 cs0 I0 (default [] o) H
             Hn Hpin0 Hb with "Hpin Ht Hpslb Hcslb Hilb Hres")
       as "(Hres & Hret)".
     iModIntro. iExists o. rewrite pchist_at0. iFrame "Hlb Hres".
@@ -131,7 +135,7 @@ Section pipe_links.
     intros Hne0 Hr0 Hdiv Hpin0 HPeq Halt Hhead.
     iIntros "#Hpin Ht #Hpslb #Hcslb #Hilb HΦ" (o H) "#Hlb Hres".
     rewrite !pchist_at0.
-    iMod (pecl_step_write_blk γ k v P a b ps0 cs0 I0 (default [] o) H
+    iMod (pecl_step_write_blk g k v P a b ps0 cs0 I0 (default [] o) H
             Hne0 Hr0 Hdiv Hpin0 HPeq Halt Hhead
             with "Hpin Ht Hpslb Hcslb Hilb Hres") as "(Hres & Hret)".
     iModIntro. iExists o. rewrite pchist_at0. iFrame "Hlb Hres".
@@ -161,7 +165,7 @@ Section pipe_links.
     intros Hr0 Hopen Hdiv Hpin0 Hnd HPeq Halt Hhead.
     iIntros "#Hpin Ht #Hpslb #Hcslb #Hilb HΦ" (o H) "#Hlb Hres".
     rewrite !pchist_at0.
-    iMod (pecl_step_write_pro γ k v P a b ps0 cs0 I0 (default [] o) H
+    iMod (pecl_step_write_pro g k v P a b ps0 cs0 I0 (default [] o) H
             Hr0 Hopen Hdiv Hpin0 Hnd HPeq Halt Hhead
             with "Hpin Ht Hpslb Hcslb Hilb Hres") as "(Hres & Hret)".
     iModIntro. iExists o. rewrite pchist_at0. iFrame "Hlb Hres".
@@ -198,7 +202,7 @@ Section pipe_links.
   Proof using Hcons.
     iIntros "#Hpin Hdlr HΦ" (o H) "#Hlb Hres _ %Hread".
     rewrite !pchist_at0.
-    iMod (pecl_step_read γ k v n (default [] o) H ws Hread
+    iMod (pecl_step_read g k v n (default [] o) H ws Hread
             with "Hpin Hdlr Hres") as "(Hres & Hret)".
     iModIntro. iExists o. rewrite pchist_at0. iFrame "Hlb Hres".
     iApply "HΦ". rewrite /pread_ret.
@@ -219,7 +223,7 @@ Section pipe_links.
   Proof using Hcons.
     iIntros "HΦ" (o H) "#Hlb Hres %Hok %Hev".
     rewrite pchist_at0.
-    iDestruct (pecl_close γ k (default [] o) H Hok Hev with "Hres") as "Hres".
+    iDestruct (pecl_close g k (default [] o) H Hok Hev with "Hres") as "Hres".
     iModIntro. iExists o. rewrite pchist_at0. by iFrame "Hlb Hres HΦ".
   Qed.
 
@@ -228,7 +232,7 @@ Section pipe_links.
   Proof using Hcons.
     iIntros "HΦ" (o H) "#Hlb Hres %Hok %Hev".
     rewrite pchist_at0.
-    iMod (pecl_step_byte γ k (default [] o) H b Hok Hev with "Hres") as "Hres".
+    iMod (pecl_step_byte g k (default [] o) H b Hok Hev with "Hres") as "Hres".
     iModIntro. iExists o. rewrite pchist_at0. by iFrame "Hlb Hres HΦ".
   Qed.
 
@@ -390,12 +394,12 @@ Section pipe_links.
     pose proof Hev as Hev0.
     destruct Hev0 as (Hnone & _ & _ & Hord & _).
     rewrite pchist_at0.
-    iDestruct (pecl_lt γ (S gen_id) h c (default [] o) H Hsh Hk Hends Hord
+    iDestruct (pecl_lt g (S gen_id) h c (default [] o) H Hsh Hk Hends Hord
                  with "Hres") as "[Hres [#HT | %Hlt]]".
     { iModIntro. iExists o. iFrame "Hlb".
       rewrite pchist_at0. iSplitR; [rewrite /pecl; by iLeft |].
       by iApply pipe_cons_run. }
-    iDestruct (pecl_open γ (S gen_id) (default [] o) H h c cs Hnone
+    iDestruct (pecl_open g (S gen_id) (default [] o) H h c cs Hnone
                  (disc_seg_p_open_seg h Hsh Hdisc) Hk Hdisc Hsh Hends Hord Hlt
                  with "Hres") as "Hres".
     iModIntro. iExists (Some h). cbn [obs_hist_lb_o from_option id].

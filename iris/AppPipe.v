@@ -90,17 +90,17 @@ Definition pipe_phi : gstate -> list mobs -> Prop :=
 
 Section PipeApp.
   Context {Σ : gFunctors}.
-  Context `{!echoOutG Σ, !inG Σ (mono_listR (leibnizO Z))}.
+  Context `{!echoOutG Σ, !inG Σ (mono_listR (leibnizO Z)), !pipeOutG Σ}.
 
   (* ---- the four fields that are resources ---- *)
 
-  Definition pipe_R (c : echo_fixed) (h : list mobs) : iProp Σ :=
+  Definition pipe_R (c : pipe_gn) (h : list mobs) : iProp Σ :=
     pipe_led c h.
 
   Global Instance pipe_R_timeless c h : Timeless (pipe_R c h).
   Proof using . rewrite /pipe_R. apply _. Qed.
 
-  Definition pipe_tag (c : echo_fixed) (h : list mobs) : iProp Σ := ptag c h.
+  Definition pipe_tag (c : pipe_gn) (h : list mobs) : iProp Σ := ptag c h.
 
   Global Instance pipe_tag_persistent c h : Persistent (pipe_tag c h).
   Proof using . rewrite /pipe_tag. apply _. Qed.
@@ -110,14 +110,14 @@ Section PipeApp.
   (* THE KILL CREDENTIAL IS THE ECHO APPLICATION'S TAINT, unchanged: a kill
      under this discipline is impossible, so what a party a kill touched may
      keep is the fact the taint already states. *)
-  Definition pipe_kill (c : echo_fixed) : iProp Σ := echo_taint c.
+  Definition pipe_kill (c : pipe_gn) : iProp Σ := echo_taint (pgn_cl c).
 
   Global Instance pipe_kill_persistent c : Persistent (pipe_kill c).
   Proof using . rewrite /pipe_kill. apply _. Qed.
   Global Instance pipe_kill_timeless c : Timeless (pipe_kill c).
   Proof using . rewrite /pipe_kill. apply _. Qed.
 
-  Definition pipe_cons (c : echo_fixed)
+  Definition pipe_cons (c : pipe_gn)
     : nat -> list mobs -> LogEntryDefs.cons_hist -> iProp Σ := pecl c.
 
   Global Instance pipe_cons_timeless c k h H : Timeless (pipe_cons c k h H).
@@ -128,7 +128,7 @@ Section PipeApp.
      the CREDENTIAL rather than at the supply.  The pipeline application's
      kill price is the echo application's taint, and a tainted claim
      answers any boundary event out of its taint arm. *)
-  Lemma pipe_cons_lic (c : echo_fixed) :
+  Lemma pipe_cons_lic (c : pipe_gn) :
     pipe_kill c ⊢
       □ (∀ (k : nat) (h : list mobs) (H : LogEntryDefs.cons_hist)
            (ev : ConsLog.cons_ev),
@@ -138,18 +138,19 @@ Section PipeApp.
     iApply (pecl_sup c k h H ev with "Ht Ho").
   Qed.
 
-  Definition pipe_ifc (c : echo_fixed) : app_iface Σ :=
+  Definition pipe_ifc (c : pipe_gn) : app_iface Σ :=
     MkAppIface (pipe_tag c) (pipe_tag_persistent c) (pipe_tag_timeless c)
                (pipe_kill c) (pipe_kill_persistent c) (pipe_kill_timeless c)
                (pipe_cons c) (pipe_cons_timeless c) (pipe_cons_lic c).
 
-  Definition pipe_turn (c : echo_fixed) : nat -> iProp Σ := pturn c.
+  Definition pipe_turn (c : pipe_gn) : nat -> iProp Σ := pturn c.
 
   (* ====================================================================== *)
   (*  2.  THE RECORD                                                        *)
   (* ====================================================================== *)
   Definition app_pipe : xv6_app Σ :=
-    MkApp echo_fixed pipe_cl_all echo_names pipe_pred pipe_boot
+    MkApp pipe_gn pipe_cl_all echo_names
+          (fun c => pipe_pred (pgn_cl c)) (fun c => pipe_boot (pgn_cl c))
           pipe_R pipe_ifc pipe_turn pipe_phi.
 
   (* ---- the birth step ---- *)
@@ -170,7 +171,7 @@ Section PipeApp.
     cbn [app_pipe app_fixed app_names app_pred app_ifc pipe_ifc ai_kill]
       in c, r |- *.
     iIntros "#Hs". iModIntro. rewrite /pipe_kill.
-    iApply (pipe_taint_of_sup c r with "Hs").
+    iApply (pipe_taint_of_sup (pgn_cl c) r with "Hs").
   Qed.
 
   Lemma pipe_al_sup (c : app_fixed app_pipe) (r : app_names app_pipe) :
@@ -184,7 +185,7 @@ Section PipeApp.
     cbn [app_pipe app_fixed app_names app_ifc pipe_ifc ai_cons pipe_cons]
       in c, r |- *.
     iIntros "#Hs".
-    iDestruct (pipe_taint_of_sup c r with "Hs") as "#Ht".
+    iDestruct (pipe_taint_of_sup (pgn_cl c) r with "Hs") as "#Ht".
     iIntros "!>" (k h H ev) "Ho".
     iApply (pecl_sup c k h H ev with "Ht Ho").
   Qed.
@@ -241,7 +242,7 @@ Section PipeApp.
     iIntros "!>" (h b u u' ho H)
       "%Htxp %Hlp %Hsh %Hwi %Hwo %Hbt %Hpo %Hacc Ho Hg Hled".
     iAssert (|==> (if i is Uart0 then pecl c (S gen_id) ho H else emp)
-                  ∗ (echo_taint c
+                  ∗ (echo_taint (pgn_cl c)
                      ∨ ⌜i = Uart0 ->
                         good_out_p (open_seg h ++ [ObsUartOut i b])⌝))%I
       with "[Ho]" as ">[Ho Hgo]".
@@ -329,7 +330,8 @@ Section PipeApp.
   Proof using .
     intros Himg Hdk Hsb Hcov c.
     cbn [app_pipe app_fixed app_names app_pred] in c |- *.
-    exact (pipe_init_img c _ XV6_DISK_BYTES sb nib cov Himg Hdk Hsb Hcov).
+    exact (pipe_init_img (pgn_cl c) _ XV6_DISK_BYTES sb nib cov
+             Himg Hdk Hsb Hcov).
   Qed.
 
   (* ---- ANTI-VACUITY: the CLAIM EQUATION the program tier takes as a
@@ -373,7 +375,7 @@ Section PipeLaws.
   Context `{!xv6G Σ, !riscvGpreS Σ, !fileGpreS Σ, !pavGpreS Σ,
             !fdslotGpreS Σ, !irefslotGpreS Σ, !bioslotGpreS Σ, !wchGpreS Σ}.
   Context `{!ufdG Σ}.
-  Context `{!echoOutG Σ, !inG Σ (mono_listR (leibnizO Z))}.
+  Context `{!echoOutG Σ, !inG Σ (mono_listR (leibnizO Z)), !pipeOutG Σ}.
 
   (* lane SH-PIPE-ROUND's field, verbatim from [App.xv6_app_laws] *)
   Context (Hprog :

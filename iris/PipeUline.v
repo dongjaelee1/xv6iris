@@ -25,7 +25,6 @@
 From Stdlib Require Import ZArith Lia List String.
 From stdpp Require Import list bitvector.definitions.
 Require Import RiscvLang.
-Require Import ObsTrace.
 Require Import LineWords.
 Require Import EchoDisc.
 Require FileDisc.

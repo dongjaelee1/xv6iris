@@ -49,19 +49,17 @@ Require Import Riscv.rv64d_types Riscv.rv64d Riscv.riscv_extras.
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.MachineWord.
 Require Import RiscvLang RiscvPtsto RiscvExtras RiscvModelBytes.
 Require Import RegFile.
-Require Import ObsTrace.
 Require Import UmodeArith UmodeAbi.
 Require Import UserHeap UkRun UkRunLeaf UkRunSys.
 Require Import UserPtTree.         (* [uptd] / [uva_wmapped] *)
 Require Import VcGen.              (* [trunc32_subrange] *)
-Require Import SpecConsolewrite.   (* [cons_out_chain] *)
 Require Import SpecSysRead.        (* [sys_rw_count] *)
 Require Import WpUart.             (* [out_link] *)
 Require Import UCodeCat.
 Require User.CatSyms User.CatInstrs.
 Require Import ChildTok.
-Require Import FdSlots PipeNames ProcGeom UserFd UserCwd.
-Require Import UexecSG UexecSlot UexecRet UsysMemOk.
+Require Import FdSlots PipeNames ProcGeom UserFd.
+Require Import UexecSlot UexecRet UsysMemOk.
 Require Import UexecExecInst.      (* THE INSTANCES: [uexecSG_xv6], [uprogSG_gen] *)
 Require Import UkCat.
 Require Import UkCatCat.
@@ -74,15 +72,13 @@ Require Import UEchoKernel.        (* [echo_args] / the key's argument reading *
 Require Import UShEcho.            (* [echo_node_img] *)
 Require Import UkShEcho.           (* [echo_argv_bytes] / [echo_off_lt] *)
 Require Import UShCat.             (* cat's exec/argv geometry and entry carve *)
-Require Import Xv6Cameras Xv6G IrefSlots ProcAvail FileInvDefs BioDefs.
+Require Import Xv6Cameras Xv6G IrefSlots ProcAvail FileInvDefs.
 Require Import PipeQueue.          (* the payments and the posts *)
-Require Import PipeReg.            (* [pipe_reg] / [pipe_row_reg] *)
 Require Import PipeProto.          (* the protocol: [pipe_inv] / [rcur] / [pipe_rQ] *)
 Require Import UkReadRows.         (* [spost_at_read_elim] / [std_fd_st_of_key] *)
-Require Import SpecFileread.       (* [fileread_in] / [fileread_extra_core] *)
 Require Import UkReadPipe.         (* the standard-slot pipe read leaf *)
-Require Import LineWords EchoDisc ConsLog EchoOutPure.
-Require Import PipeDisc PipeDiscDec PipeOutPure PipeOut PipeLinks.
+Require Import LineWords EchoDisc.
+Require Import PipeDisc PipeOutPure PipeOut PipeLinks.
 Require Import EchoOut AppEcho.
 Require Import CtxIdDefs.
 Import Defs.

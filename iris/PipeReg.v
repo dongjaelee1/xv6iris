@@ -57,7 +57,6 @@ From iris.base_logic.lib Require Import own invariants.
 Require Import SailStdpp.ConcurrencyInterface SailStdpp.ConcurrencyInterfaceBuiltins SailStdpp.ConcurrencyInterfaceTypes SailStdpp.Operators_mwords.
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.MachineWord.
 Require Import RiscvPtsto.       (* [riscvGS], [app_taint] *)
-Require Import Xv6Cameras.
 Require Import Xv6G.             (* the ONE ghost bundle: [xv6_pipe] is how
                                     [pipeG] is reached here, so that this
                                     file's terms elaborate at the same

@@ -168,8 +168,6 @@ Require Import Xv6G.   (* the ghost-state bundle; see its header *)
 Require Import PathElems.       (* [path_elems], [SLASH] *)
 Require Import FsTree.          (* [fname] *)
 Require Import FsBytesGamma.    (* [fs_gamma_L]: the live Γ *)
-Require Import SysWriteDefs.  (* the splice algebra it re-exports, which
-                                   the mint justification below is cut from *)
 Require Import FsAbsEra.        (* [elend]: the era lend the hops fire;
                                    [ex_start]/[ep_start]: the walk one-shot
                                    AT ONE PATH, which the two bundles are

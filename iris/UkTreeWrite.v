@@ -49,31 +49,21 @@ Require Import ProcAvail.
 Require Import FileInvDefs.
 Require Import UserFd.
 Require Import UserHeap.
-Require Import UserPerm.
 Require Import ProcGeom.           (* [NOFILE] / [tf_arg_idx] *)
-Require Import VcGen.              (* [trunc32] *)
-Require Import UexecSlot UexecRet UexecSG.
+Require Import UexecSlot UexecRet.
 Require Import UkRun UkRunSys.
 Require Import UexecExecInst.
 Require Import UkReadRows.
 Require Import UkWriteLeaf.
 Require Import UkWriteFile.        (* the file arm of the write leaf *)
-Require Import SpecArgfd.
 Require Import SpecFilewrite.
 Require Import SpecSysRead.        (* [sys_rw_count] *)
-Require Import SpecCopyin.
 Require Import SysWriteDefs.       (* [wchunks] *)
 Require Import AppCfg AppInv.
 Require Import FsCfg.
-Require Import FsBlocks.
-Require Import FsBytesGamma.
-Require Import FsTree.
-Require Import FsAbsWriteFire.
 Require Import TreeView.
 Require Import AppTree.
-Require Import TreeObs.
 Require Import TreeMove.           (* the owner's move at the write fire *)
-Require Import FsAbs.
 Require Import FsAbsDefs.
 Require Import CtxIdDefs.
 Local Open Scope Z_scope.

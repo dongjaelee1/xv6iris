@@ -51,11 +51,8 @@ Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values
         SailStdpp.MachineWord.
 Require Import RiscvLang.
 Require Import RiscvPtsto.
-Require Import ObsTrace.
 Require Import LineWords.
 Require Import EchoDisc.
-Require Import ConsLog.
-Require Import EchoOutPure.
 Require Import FileState.
 Require Import FileDisc.
 Require Import FileOutPure.
@@ -66,7 +63,6 @@ Require Import FileOut.
 Require Import FileLinks.
 Require Import SpecConsolewrite.   (* [cons_out_chain] *)
 Require Import WpUart.
-Require Import CtxIdDefs.
 Local Open Scope list_scope.
 
 (* ===================================================================== *)

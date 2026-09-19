@@ -108,22 +108,17 @@ Require Import OffGv.              (* [off_gv] *)
 Require Import AppCfg.
 Require Import AppInv.             (* [app_inv], [app_body], [app_step], [appE] *)
 Require Import FsInitPin.          (* [INIT_INO] *)
-Require Import FsInitPinBoot.      (* [era0_pins] *)
 Require Import FsShPin.            (* [SH_INO], [era0_sh_pins] *)
 Require Import FsEchoPin.          (* [ECHO_INO], [era0_echo_pins] *)
 Require Import FsCatPin.           (* [CAT_INO], [era0_cat_pins] *)
 Require Import FsConsPin.          (* [file_pin] and its family, [cons_state] *)
-Require Import EchoFsPure.         (* [echo_fs_pure] *)
 Require Import FileFsPure.         (* [file_fs_pure] *)
-Require Import FsFPin.             (* [f_absent] *)
 Require Import EchoDisc.           (* [line_ok] *)
 Require Import EchoOut.            (* [echoOutG] *)
 Require Import FileState.          (* [fstate], [echo_chunks], [subseq], [sel_ok] *)
-Require Import AppEcho.
 Require Import AppFile.
 Require Import UserOff.            (* [uoff] -- THE PROGRAM'S HALF *)
 Require Import FsAbsWriteFire.     (* [awrite_full_adv] -- the advanced node *)
-Require Import FsAbs.              (* [γtop] (FsAbs's own rule: LAST but one) *)
 Local Open Scope Z_scope.
 
 (* ===================================================================== *)

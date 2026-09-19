@@ -39,9 +39,6 @@ Require Import UkShParseCmd.
 Require Import UkShRedirCmd.
 Require Import UkShRedirPc.
 Require Import UkShRedir.
-Require Import UkShLoop.
-Require Import UkShRedirLine.
-Require Import LineWords.
 Require Import UkShMain.
 Require Import UkShRun.
 Require Import UkShDiag.

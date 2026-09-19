@@ -33,7 +33,6 @@ From iris.algebra.lib Require Import mono_list.
 Require Import RiscvLang.
 Require Import ObsTrace.
 Require Import FsCrash.
-Require Import FsDurSnap.
 Require Import FsImgDisk.
 Require Import SystemAdequacy.
 Require Import FsBootParams.
@@ -65,14 +64,8 @@ Require Import InodeInv.
 Require Import RiscvAdequacy.
 Require Import EchoDisc.
 Require Import ConsLog.
-Require Import EchoOutPure.
 Require Import PipeDisc.
-Require Import PipeDiscDec.
-Require Import PipeOutPure.
 Require Import EchoOut.
-Require Import EchoFsPure.
-Require Import FileFsPure.
-Require Import FsCatPin.
 Require Import AppEcho.
 Require Import AppPipeClaim.
 Require Import PipeOut.

@@ -66,7 +66,6 @@ Require Import FsAbsEra.           (* [ex_start] / [ex_hop] / [elend] *)
 Require Import SysOpenDefs SpecSysOpen.
 Require Import FsConsPin.
 Require Import PinnedObs.
-Require Import AppEcho.
 Require Import EchoOut.            (* [echoOutG]: the class [AppEcho]'s claims
                                       and its ledger are stated at (lane
                                       ECHO-OUT part 5).  It CARRIES

@@ -61,25 +61,17 @@ Require Import UserFd.
 Require Import UkShParse.
 Require Import UkShParseSym.
 Require Import UkShParseLex.
-Require Import UkShParseTok.
-Require Import UkShParseRedir.
-Require Import UkShRedirLex.
-Require Import UkShRedirGtk.
 Require Import UkShRedirCmd.
 Require Import UkShRedirPr.
-Require Import UkShRedirEx.
-Require Import UkShRedirPex.
 
 Require Import UexecSG.   (* [uexecSG] / [uprogSG]: the ARM deposit class *)
 
-Require Import UkShRedirCm.
 Require Import UkShPipeLex.
 Require Import UkShPipeTok.
 Require Import UkShPipeParse.
 Require Import UkShPipeEx.
 Require Import UkShPipeCmd.
 Require Import UkShParseCmd.
-Require Import UkShRedirPc.
 Require Import UkShPipePex.
 Require Import UkShPipeRight.
 

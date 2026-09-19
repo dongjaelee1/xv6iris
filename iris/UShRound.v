@@ -54,7 +54,6 @@ Require Import Riscv.rv64d_types Riscv.rv64d Riscv.riscv_extras.
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.MachineWord.
 Require Import RiscvLang RiscvPtsto RiscvExtras RiscvModelBytes.
 Require Import RegFile.
-Require Import ObsTrace.
 Require Import Xv6Cameras.
 Require Import Xv6G.
 Require Import FdSlots.
@@ -65,18 +64,14 @@ Require Import UserFd.
 Require Import UserPerm.
 Require Import UserCwd.
 Require Import UserChildren.
-Require Import UserConsole.
 Require Import UmodeArith UmodeAbi.
 Require Import ProcGeom.
-Require Import ChildTok.
-Require Import UexecSlot UexecRet UexecSG.
+Require Import UexecRet.
 Require Import ExecEntry.
 Require Import UkRun UkRunSys.
 Require Import UkRunLeaf.                (* [wp_uk_cli] / [wp_uk_cjr]: the stub *)
 Require Import UexecExecInst.            (* THE INSTANCES *)
 Require Import WpUart.
-Require Import ConsLog.
-Require Import LogEntryDefs.
 Require Import FsCfg.
 Require Import FsImg.
 Require Import FsImgCheck.
@@ -89,7 +84,6 @@ Require Import AppCfg.
 Require Import AppInv.
 Require Import LineWords.
 Require Import EchoDisc.
-Require Import EchoOutPure.
 Require Import EchoOut.
 Require Import FileDisc.
 Require Import FileOutPure.
@@ -111,10 +105,8 @@ Require Import UkShMalloc.
 Require Import UkShParse.
 Require Import UCodeShP.
 Require Import UCodeShK.
-Require Import UkShRedir.
 Require Import UkShRedirLine.
 Require Import UkShRedirAns.
-Require Import UkShRedirSeam.
 Require Import UkShEcho.
 Require Import UkShFork.
 Require Import UkFileOpen.
@@ -135,9 +127,7 @@ Require Import UShKernel.
 Require Import UInitSh.
 Require Import UCatOut.                  (* [cat_tie] -- the pure round tie *)
 Require Import UCatKernel.
-Require Import UEchoFile.                (* K1: echo's entry at `f` *)
 Require Import CtxIdDefs.
-Require Import FsAbs.
 Local Open Scope Z_scope.
 Import Defs.
 

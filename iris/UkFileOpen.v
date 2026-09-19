@@ -50,7 +50,6 @@ Require Import UserFd.
 Require Import UserHeap.
 Require Import UserCwd.
 Require Import ProcGeom.           (* [NOFILE] / [tf_arg_idx] *)
-Require Import UmodeArith.         (* [moi_small] *)
 Require Import PieceFam.
 Require Import UexecSlot UexecRet UsysMemOk UexecSG.
 Require Import UkRun UkRunSys.
@@ -71,21 +70,14 @@ Require Import SpecSysOpen.
 Require Import ArgPath.
 Require Import AppCfg AppInv.
 Require Import FsCfg.
-Require Import FsBlocks.
-Require Import FsBytesGamma.
 Require Import PathElems.
 Require Import FsTree.
 Require Import FsImgCheck.         (* [fname_f] *)
-Require Import InodeInv.
-Require Import BioDefs.
-Require Import FsAbsReadFire.
 Require Import FsAbsEra.
 Require Import PinnedObs.
-Require Import ConsoleInv.
 Require Import EchoOut.
 Require Import AppEcho.
 Require Import AppFile.
-Require Import FileDeltas.
 Require Import FileOpen.
 Require Import FsImg.              (* re-IMPORTED late, as FileOpen does *)
 Require Import FsAbsDefs.

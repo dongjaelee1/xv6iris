@@ -50,7 +50,7 @@ Require Import RegFile.
 Require Import WpMmodeLeafBase.
 Require Import UmodeArith UmodeAbi.
 Require Import UserHeap UkRun UkRunLeaf UkRunMem.
-Require Import UCodeShK UCodeShP.
+Require Import UCodeShP.
 Require Import CtxIdDefs.
 Require User.ShSyms User.ShInstrs.
 Require Import ChildTok.
@@ -59,7 +59,6 @@ Import Defs.
 Require Import UserFd.
 Require Import UkSh.
 Require Import UkShParse.
-Require Import UkShParseSym.
 Require Import UkShParseLex.
 
 Require Import UexecSG.

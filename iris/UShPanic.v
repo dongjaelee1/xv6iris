@@ -79,7 +79,6 @@ Require Import UkWriteClosed.      (* [ksh_w_of_closed]: the prompt on a
                                       closed fd 2 (step 3) *)
 Require Import UShKernel.          (* [sh_prompt_law] *)
 Require Import UShOut.             (* the prompt's pure half and its call *)
-Require Import LineWords.           (* [last_ws] *)
 Require Import EchoDisc.
 Require Import EchoOut.
 Require Import EchoLinks.

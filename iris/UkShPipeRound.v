@@ -42,9 +42,7 @@ Require Import Riscv.rv64d_types Riscv.rv64d Riscv.riscv_extras.
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.MachineWord.
 Require Import RiscvLang RiscvPtsto RiscvExtras RiscvModelBytes.
 Require Import RegFile.
-Require Import UserPtTree.
 Require Import UmodeArith UmodeAbi.
-Require Import UserPerm.
 Require Import UserHeap UkRun UkRunLeaf.
 Require Import FdSlots UserFd.
 Require Import PipeNames.
@@ -56,17 +54,14 @@ Require Import UkSh.
 Require Import UkShParse.
 Require Import UkShParseSym.
 Require Import UkShParseCmd.
-Require Import UkShLoop.
 Require Import UkShMain.
 Require Import UkShRun.
 Require Import UkShDiag.
-Require Import UkShMalloc.
 Require Import UkShRedirSeam.   (* [ushs_toks_below] -- the truncation *)
 Require Import UkShPipe.        (* the runcmd arm *)
 Require Import LineWords.
 Require Import PipeDisc.
 Require Import UkShPipeLex.
-Require Import UkShPipeParse.
 Require Import UkShPipeSeam.
 Require Import UkShPipeCm.
 Require Import CtxIdDefs.

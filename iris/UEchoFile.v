@@ -50,7 +50,6 @@ Require Import ProcPtOwn.
 Require Import UserPtTree.
 Require Import UmodeArith UmodeAbi.
 Require Import ProcGeom.
-Require Import VcGen.
 Require Import ChildTok.
 Require Import UexecSlot UexecRet UexecSG.
 Require Import ExecEntry.               (* [image_entry] -- the exec channel *)
@@ -62,7 +61,6 @@ Require Import SpecCopyin.              (* [ubytes_at] *)
 Require Import SysWriteDefs.            (* [wri_pre], [wchunks], [FW_MAX] *)
 Require Import SpecFilewrite.
 Require Import UkWriteLeaf.
-Require Import UkWriteFile.             (* [write_file_fam], the handle-fixed leaf *)
 Require Import UkAbi.
 Require Import FsBlocks.
 Require Import FsNode.
@@ -72,18 +70,13 @@ Require Import FsBytesGamma.
 Require Import FsCfg.
 Require Import AppCfg.
 Require Import AppInv.
-Require Import FsImg.
-Require Import FsImgCheck.
 Require Import FsInitPin FsShPin FsEchoPin FsCatPin.
 Require Import EchoDisc.
 Require Import EchoOut.
 Require Import LineWords.
 Require Import FileState.                (* [echo_chunks], [subseq], [sel_ok] *)
-Require Import AppEcho.
 Require Import AppFile.
-Require Import UserOff.                  (* [uoff] -- THE PROGRAM'S HALF *)
 Require Import FsAbsWriteFire.           (* [awrite_chain] and its two nodes *)
-Require Import FsAbsInvFire.
 Require Import UserHeap.
 Require Import UCodeEcho.
 Require Import UkEcho.
@@ -97,12 +90,9 @@ Require Import UShKernel.                (* [uimg_sub_union_l] *)
 Require Import ElfFile.                  (* [elf_image] *)
 Require Import CtxIdDefs.
 Require User.EchoSyms.
-Require Import BioDefs.                  (* [BSIZE] -- the block the chunk sits in *)
-Require Import SpecWritei.               (* [wi_blocks]: the single-block shape *)
 Require Import FileWritePart.            (* [file_awrite_part_adv]: the partial arm, from the cursor *)
 Require Import FileWrite.                (* [file_wq], [file_awrite_node] *)
 Require Import UkWriteFile.              (* the two ledger-slot write leaves *)
-Require Import FsAbs.                    (* [γtop] -- FsAbs's own rule *)
 Local Open Scope Z_scope.
 Import Defs.
 

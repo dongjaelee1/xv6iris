@@ -69,7 +69,6 @@ Require Import SailStdpp.ConcurrencyInterface SailStdpp.ConcurrencyInterfaceBuil
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.MachineWord.
 Require Import RiscvPtsto.       (* [riscvGS] *)
 Require Import UserPtTree.       (* [uptd] -- the posts' entry table *)
-Require Import Xv6Cameras.
 Require Import Xv6G.             (* the ONE bundle; [pipeG] is reached through it *)
 Require Import PipeNames.        (* [pipe_st] / [pst_*] / [pipe_names] / [pn_queue] *)
 Require Import PipeQueue.        (* the links, the chains, the payments, the posts *)

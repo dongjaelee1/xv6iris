@@ -27,7 +27,7 @@ Require Import Riscv.rv64d_types Riscv.rv64d Riscv.riscv_extras.
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.MachineWord.
 Require Import RiscvLang RiscvPtsto RiscvExtras RiscvModelBytes.
 Require Import RegFile.
-Require Import UmodeArith UmodeAbi.
+Require Import UmodeArith.
 Require Import UserHeap UkRun UkRunLeaf UkRunSys.
 Require Import UCodeCat.
 Require Import CtxIdDefs.
@@ -40,7 +40,6 @@ Local Open Scope Z_scope.
 Import Defs.
 
 Require Import FdSlots.   (* [fdstate]/[fdtype] -- what a handle names *)
-Require Import PipeNames. (* [pipe_names] -- what a pipe descriptor carries *)
 Require Import ProcGeom.  (* [NOFILE] -- how many slots a table has *)
 Require Import UserFd.   (* [ufd_auth] -- the PROGRAM's own view of
                             its descriptor table, the authority for

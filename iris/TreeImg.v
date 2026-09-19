@@ -51,7 +51,6 @@ From iris.proofmode Require Import proofmode.
 Require Import SailStdpp.Values.
 Require Import RiscvLang.          (* [gstate] *)
 Require Import VirtioModel.        (* [v_disk] / [dvirtio] *)
-Require Import Xv6Cameras.
 Require Import FsState.            (* [fs_state_rec] / [fss_inodes] *)
 Require Import FsStateInode.       (* [fn_type] / [fn_nlink] / [dir_entries] *)
 Require Import BioDefs.            (* [BSIZE] *)
@@ -67,7 +66,7 @@ Require Import FsBootParams.       (* [XV6_DISK_BYTES] / [fsimg_cov] / [fsimg_ni
 Require Import FsImgDisk.          (* [fsimg_P] *)
 Require Import FsImgCheck.
 Require Import FsImg.
-Require Import FsAbs.              (* [abs_of] / [abs_view] / [astep] *)
+Require Import FsAbsDefs.              (* [abs_of] / [abs_view] / [astep] *)
 Require Import TreeView.
 Require Import App.                (* [xv6_app]'s projections *)
 Require Import AppTree.

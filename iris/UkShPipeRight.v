@@ -41,10 +41,8 @@ Require Import Riscv.rv64d_types Riscv.rv64d Riscv.riscv_extras.
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.MachineWord.
 Require Import RiscvLang RiscvPtsto RiscvExtras RiscvModelBytes.
 Require Import RegFile.
-Require Import WpMmodeLeafBase.
-Require Import WpUmodeBranch.
 Require Import UmodeArith UmodeAbi.
-Require Import UserHeap UkRun UkRunLeaf UkRunMem.
+Require Import UserHeap UkRun.
 Require Import UCodeShP.
 Require Import CtxIdDefs.
 Require User.ShSyms User.ShInstrs.
@@ -52,8 +50,6 @@ Require Import ChildTok.
 Require Import UserFd.
 Require Import UkShParse.
 Require Import UkShParseSym.
-Require Import UkShParseLex.
-Require Import UkShParseExec.
 Require Import UkShParseCmd.
 Require Import UkShPipeLex.
 Require Import UexecSG.

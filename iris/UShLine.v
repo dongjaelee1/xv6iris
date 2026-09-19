@@ -94,10 +94,7 @@ Require UkInit.                    (* [init_rd]: the exit family, the pair *)
    neither the boot record nor its four equations -- the law arrives as a
    premise, exactly as [UkSh.sh_deps] does.  [EchoOut] requires nothing
    above [SpecConsoleintr], so there is no cycle with the U tier. *)
-Require Import LogEntryDefs.            (* [log_entry] / [read_ok] *)
 Require Import LineWords.          (* [rest_of] / [wl_nl] *)
-Require Import EchoDisc.           (* [disc_input] / [line_ok] *)
-Require Import EchoOutPure.        (* [E_disc] / [echoed] *)
 Require Import EchoOut.            (* [era_pin] / [dl_cnt] / [read_ret] *)
 Require Import EchoLinksLine.      (* [ewc_lcred]: the loop's tight family (step 4) *)
 Require Import LinkRec.            (* the era's link record: [lk_rres],

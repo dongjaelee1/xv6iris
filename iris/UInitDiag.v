@@ -84,8 +84,6 @@ Require Import UkInit UkInitLit UkInitMain.
 Require Import EchoDisc.
 Require Import EchoOut.
 Require Import EchoLinks.
-Require Import EchoLinksPro.       (* [ewc_pro] / [ewc_pdiag]: the echo
-                                      instance's own spellings *)
 Require Import LinkRec.            (* lane LINK-GEN: the record this file
                                       is generic over *)
 Require Import UInitBanner.        (* the mould: the halves, [kbn_fam_at],

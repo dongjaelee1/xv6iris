@@ -118,7 +118,7 @@ Require Import SpecIunlockput.
 Require Import SpecDirlookup.
 Require Import SpecCreate.
 Require Import DirentEnc.        (* [bview]                               *)
-Require Import FsAbsMknodFire.   (* [np_start_of_mknod], the walk premise *)
+Require Import FsAbsCreateFire.   (* [np_start_of_mknod], the walk premise *)
 Require Import CodeSysMkdir.
 Require Import SpecSysMkdir.
 Require Import ArgPath.          (* [arg_path_of] / [arg_path_of_bview]:

@@ -88,7 +88,7 @@ From iris.program_logic Require Import language lifting adequacy.
 Require Import SailStdpp.Operators_mwords.
 Require Import Riscv.rv64d_types Riscv.rv64d.
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.MachineWord.
-Require Import RiscvLang ObsTrace RiscvPtsto.
+Require Import RiscvLang.
 Require Import Xv6Cameras.
 Require Import Xv6G.
 Require Import FdSlots.
@@ -102,7 +102,6 @@ Require Import FsImgDisk.
 Require Import AppFile.
 Require Import EchoOut.
 Require Import FileOut.
-Require Import AppFileRec.
 Require Import UFileBootAdequacy.        (* [file_prog_law], [fileΣ] *)
 Local Open Scope Z_scope.
 

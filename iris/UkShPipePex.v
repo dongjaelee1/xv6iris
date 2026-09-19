@@ -51,7 +51,6 @@ Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.Mac
 Require Import RiscvLang RiscvPtsto RiscvExtras RiscvModelBytes.
 Require Import RegFile.
 Require Import WpMmodeLeafBase.
-Require Import WpUmodeBranch.
 Require Import UmodeArith UmodeAbi.
 Require Import UserHeap UkRun UkRunLeaf UkRunMem.
 Require Import UCodeShP.
@@ -64,18 +63,11 @@ Require Import UserFd.
 Require Import UkShParse.
 Require Import UkShParseSym.
 Require Import UkShParseLex.
-Require Import UkShParseTok.
-Require Import UkShParseRedir.
-Require Import UkShRedirLex.
-Require Import UkShRedirGtk.
 Require Import UkShRedirCmd.
 Require Import UkShRedirPr.
-Require Import UkShRedirEx.
 
 Require Import UexecSG.   (* [uexecSG] / [uprogSG]: the ARM deposit class *)
 Require Import UkShPipeLex.
-Require Import UkShPipeTok.
-Require Import UkShPipeEx.
 Require Import UkShPipePr.
 Require Import UkShPipeEx2.
 

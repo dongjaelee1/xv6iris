@@ -85,8 +85,6 @@ Require Import LineWords.   (* [wl_sp] / [wl_nl] / [wl_off] *)
 Require Import EchoDisc.
 Require Import EchoOut.
 Require Import EchoLinks.
-Require Import EchoLinksLine.   (* [wr_blk_byte] / [wr_blk_pin_snoc]:
-                                   echo's block step IS the writer's *)
 Require Import LinkRec.        (* the era's link record *)
 Require Import StageRec.       (* the cursor / stage record *)
 Require Import CtxIdDefs.

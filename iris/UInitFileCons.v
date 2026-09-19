@@ -57,17 +57,9 @@ Require Import UexecExecInst.      (* the INSTANCES: [uprogSG_free] *)
 Require Import UexecExecMint.      (* [udepw_law_of_sup] / [uslot_mint_all] *)
 Require Import AppCfg.
 Require Import AppInv.
-Require Import FsCfg.
-Require Import FsImg.
-Require Import FsInitPin.
 Require Import FsInitPinBoot.      (* [era0_pins] *)
-Require Import LineWords.
-Require Import EchoDisc.
-Require Import EchoOutPure.
 Require Import EchoOut.
-Require Import EchoFsPure.
 Require Import FileFsPure.
-Require Import AppEcho.
 Require Import FileState.
 Require Import FileDisc.
 Require Import FileOutPure.
@@ -77,12 +69,10 @@ Require Import FileOut.
 Require Import FileLinks.
 Require Import FileLinksLine.
 Require Import LinkRec.
-Require Import UCatOut.            (* [cat_tie] -- the deed's pure tie *)
 Require Import FileLinksAt.        (* the families at a NAMED boot state *)
 Require Import FileLinksAtBan.
 Require Import FileLinkInst.       (* [file_link_inst] / [file_link_inst_at] *)
 Require Import UkRun.
-Require Import UkRunSys.
 Require Import UkWriteClosed.      (* [kinit_w1_of_closed_l0] *)
 Require Import UkInit.
 Require Import UkInitMain.

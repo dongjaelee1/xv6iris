@@ -22,9 +22,7 @@ Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values
                SailStdpp.MachineWord.
 Require Import RiscvLang.
 Require Import ObsTrace.
-Require Import LineWords.
 Require Import EchoDisc.
-Require Import LogEntryDefs.
 Require Import ConsLog.
 Require Import EchoOutPure.
 Require Import FileDisc.

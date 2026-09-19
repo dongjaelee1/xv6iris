@@ -25,10 +25,7 @@ From iris.proofmode Require Import proofmode.
 From iris.base_logic.lib Require Import mono_nat own ghost_var ghost_map.
 From iris.algebra.lib Require Import mono_list.
 Require Import RiscvLang.
-Require Import ObsTrace.
 Require Import FsAbsDefs.
-Require Import AppCfg.
-Require Import AppInv.
 Require Import FsConsPin.
 Require Import EchoFsPure.
 Require Import FileFsPure.

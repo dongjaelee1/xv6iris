@@ -41,23 +41,17 @@ From iris.proofmode Require Import proofmode.
 From iris.base_logic.lib Require Import mono_nat own ghost_var ghost_map.
 From iris.algebra.lib Require Import mono_list.
 Require Import RiscvLang.
-Require Import ObsTrace.
 Require Import FsCrash.
 Require Import FsDurSnap.
 Require Import FsImgDisk.
-Require Import SystemAdequacy.
 Require Import FsBootParams.
 Require Import FsImgCheck.
 Require Import FsImg.
 Require Import FsState.
-Require Import FsAbsDefs.
 Require Import FsInitPin.
 Require Import FsInitPinBoot.
-Require Import FsShPin.
-Require Import FsEchoPin.
 Require Import FsCatPin.          (* [era0_cat_pins], [CAT_INO] *)
 Require Import FsConsPin.
-Require Import EchoFsPure.
 Require Import FileFsPure.        (* [file_fs_pure] -- upstream's, READ-ONLY *)
 Require Import FsCfgBoot.
 Require Import FsDurImg.

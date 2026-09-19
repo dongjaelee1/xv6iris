@@ -182,7 +182,6 @@ Require Import FsBytesGamma.     (* [fs_gamma_L]: the live Γ                 *)
 Require Import SpecCopyin.       (* [ubytes_at]: the content seam (RULING A) *)
 Require Import SysWriteDefs.   (* [FW_MAX], [wri_pre], [wchunks]           *)
 Require Import FsAbsWriteFire.   (* [awrite_chain]: the cursor chain         *)
-Require Import UserOff.          (* [uoff]: the HELD row's link (lane OFF-LINK-4) *)
 Require Import SpecConsolewrite. (* [cons_out_chain]: the callee's premise  *)
 Require Import SpecUartPutc.     (* [uart_base_word]: relayed to consolewrite *)
 Require Import TsoCtx.

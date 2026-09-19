@@ -56,11 +56,8 @@ Require Import SailStdpp.Operators_mwords.
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values
         SailStdpp.MachineWord.
 Require Import RiscvLang.
-Require Import ObsTrace.
 Require Import LineWords.
 Require Import EchoDisc.
-Require Import ConsLog.
-Require Import EchoOutPure.
 Require Import RiscvPtsto.
 Require Import WpUart.
 Require Import EchoOut.

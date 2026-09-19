@@ -42,21 +42,16 @@ Require Import ProcAvail.
 Require Import FileInvDefs.
 Require Import UserFd.
 Require Import UserHeap.
-Require Import UserPerm.
 Require Import UserCwd.
 Require Import UmodeAbi.           (* [uimg_sub] *)
 Require Import ProcGeom.           (* [NOFILE] / [tf_arg_idx] *)
-Require Import VcGen.              (* [trunc32] *)
 Require Import PieceFam.
 Require Import UexecSlot UexecRet UsysMemOk UexecSG.
 Require Import UkRun UkRunSys.
 Require Import UexecExecInst.      (* THE INSTANCE: [uexecSG_xv6] *)
-Require Import UkReadRows.
-Require Import UkWriteFile.
 Require Import UConsOpen.          (* [xfam_open]'s two key-level rows *)
 Require Import UkTreeRead.         (* the read side: open, read, and the tie *)
 Require Import UkTreeWrite.        (* the write side: the deed moves *)
-Require Import SpecArgfd.
 Require Import SpecSysRead.        (* [sys_rw_count] *)
 Require Import SysReadDefs.        (* [ard_count] *)
 Require Import SysOpenDefs.
@@ -69,7 +64,6 @@ Require Import SpecDirlookup.      (* [T_DIR] *)
 Require Import ArgPath.
 Require Import AppCfg AppInv.
 Require Import FsCfg.
-Require Import FsBlocks.
 Require Import FsBytesGamma.
 Require Import FsImg.
 Require Import PathElems.
@@ -80,9 +74,7 @@ Require Import DirView.           (* [T_DIR_z] *)
 Require Import FsAbsCreateFire.
 Require Import TreeView.
 Require Import AppTree.
-Require Import TreeObs.
 Require Import TreeMove.           (* the owner's move at the create fires *)
-Require Import FsAbs.
 Require Import FsAbsDefs.
 Require Import CtxIdDefs.
 Import Defs.

@@ -68,7 +68,6 @@ Require Import UserHeap.
 Require Import ProcGeom.           (* [NOFILE] / [tf_arg_idx] *)
 Require Import UexecRet UexecSG.
 Require Import UkRun.
-Require Import UserPerm.   (* [uperm] -- RULING WR-TB *)
 Require Import SpecFilewrite.      (* [filewrite_in] *)
 Require Import UkWriteLeaf.        (* [xfam_wr] / [sbundle_at_write_intro_at] *)
 Require Import UkSh.               (* [ksh_w] / [wp_ksh_write_chain] *)

@@ -57,44 +57,32 @@ Require Import Riscv.rv64d_types Riscv.rv64d Riscv.riscv_extras.
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.MachineWord.
 Require Import RiscvLang RiscvPtsto RiscvExtras RiscvModelBytes.
 Require Import Xv6Cameras Xv6G FdSlots IrefSlots ProcAvail FileInvDefs.
-Require Import RegFile.           (* [regfile] *)
 Require Import ProcGeom.          (* [NOFILE] *)
 Require Import UserPerm UexecSlot UexecRet.
-Require Import UserHeap UkRun UkRunLeaf.
+Require Import UserHeap UkRun.
 Require Import UserFd UserCwd.
 Require Import ChildTok.
 Require Import ElfFile ElfUser ElfLoadable.
-Require Import PathElems.
-Require Import FsCfg.
 Require Import PageGeom.          (* [PGSIZE] *)
 Require Import UmodeArith UmodeAbi.
-Require Import FsImg FsImgCheck.
-Require Import FsAbsDefs FsAbsEra.
-Require Import AppCfg AppInv.
-Require Import PinnedExec.
-Require Import ExecEntry.
-Require Import ExecArgs.
+Require Import FsAbsDefs.
 Require Import ArgPath.
-Require Import SpecKexec SpecSysExec SpecCopyin.
-Require Import UImgWordDefs.
+Require Import SpecKexec.
 Require Import UShKernel.
 Require Import KexecBuilt.
 Require Import UserPtTree.        (* [pgroundup] *)
-Require Import WpUmodeLoad.
 Require Import KexecDefs.
 Require Import UkAbi.
 Require Import UCodeCat.
 Require Import UEchoKernel.       (* [echo_arg] / [echo_args] /
                                      [echo_uargv_of_area] -- the argument
                                      reading, which names no program *)
-Require Import UkCat UkCatCat UkCatMain.
-Require Import LineWords.         (* [wl_line] *)
-Require Import UkShRun UkShEcho.
+Require Import UkCatMain.
+Require Import UkShEcho.
 Require Import EchoDisc.
 Require Import UShEcho.           (* the push's own lemmas, and the node
                                      reading [echo_args_det_holds] *)
 Require User.CatSyms User.CatInstrs.
-Require Import UexecSG.
 Require Import CtxIdDefs.     (* [GenId] / [CurCtx] -- the real classes, so
                                  the section's binders are not fresh types *)
 Local Open Scope Z_scope.

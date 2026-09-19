@@ -45,14 +45,7 @@ Require Import UserFd.
 Require Import UkShParse.
 Require Import UkShParseSym.
 Require Import UkShParseLex.
-Require Import UkShParseTok.
-Require Import UkShParseRedir.
-Require Import UkShRedirLex.
-Require Import UkShRedirGtk.
 Require Import UkShRedirCmd.
-Require Import UkShRedirPr.
-Require Import UkShRedirEx.
-Require Import UkShRedirPex.
 Require Import UkShParseCmd.
 Require Import UkShRedirNul.
 Require Import UkShRedirCm.

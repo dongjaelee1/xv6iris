@@ -65,12 +65,9 @@ Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.Mac
 Require Import Riscv.rv64d_types Riscv.rv64d.
 Require Import RiscvLang RiscvPtsto.
 Require Import WpUart.            (* [cons_licence_triv]: free at a trivial claim *)
-Require Import Xv6Cameras.
 Require Import Xv6G.
 Require Import FdSlots.
 Require Import FileInvDefs.
-Require Import ChildTok.
-Require Import UexecSG.
 Require Import AppCfg.
 Require Import AppInv.
 Require Import UexecExecInst.     (* [uprogSG_free] -- /init's instance *)
@@ -82,7 +79,6 @@ Require Import UkRun.             (* [udepw_law] *)
 Require Import UkInit.            (* [init_kill_law] / [kinit_w1] / the deposits *)
 Require Import UkInitMain.        (* [kinit_ban_law] / [kinit_diag_law] *)
 Require Import UkWriteClosed.     (* [kinit_w1_of_closed_l0] *)
-Require Import App.
 Require Import AppTree.           (* the licence, the taint and the claim *)
 
 Local Open Scope Z_scope.

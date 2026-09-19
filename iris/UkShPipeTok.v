@@ -78,9 +78,7 @@ Import Defs.
 Require Import UserFd.
 Require Import UkShParse.
 Require Import UkShParseSym.
-Require Import UkShParseLex.
 Require Import UkShParseTok.
-Require Import UkShRedirLex.
 Require Import UkShRedirTok.
 
 Require Import UexecSG.

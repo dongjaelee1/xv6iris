@@ -103,7 +103,6 @@ Require Import UserPtTree.         (* [uptd]: the partial arm's table *)
 Require Import AppInv.             (* [appE] / [app_sup] *)
 Require Import FsBytesGamma.       (* [fs_gamma_L] *)
 Require Import FsAbsWriteFire.     (* [awrite_chain] and its cursor *)
-Require Import UserOff.            (* [uoff]: the held slot's link (OFF-LINK-4) *)
 Require Import FsAbsInvFire.       (* [fsabs_awrite_chain] *)
 Require Import FsCfg.
 Require Import CtxIdDefs.

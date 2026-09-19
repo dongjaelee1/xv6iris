@@ -62,10 +62,7 @@ Require Import FileInvDefs.
 Require Import PipeNames.          (* [pipe_names] *)
 Require Import UserFd.
 Require Import UserHeap.
-Require Import UserPerm.
-Require Import ProcGeom.           (* [NOFILE] / [NSTD] *)
 Require Import UsysMemOk.         (* [USYS_close] / [USYS_dup] *)
-Require Import UexecSlot UexecRet UexecSG.
 Require Import UkRun UkRunSys.
 Require Import UexecExecInst.      (* THE INSTANCE: [uexecSG_xv6] *)
 Require Import CtxIdDefs.

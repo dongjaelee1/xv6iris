@@ -79,12 +79,11 @@ Require Import ProcAvail.
 Require Import FileInvDefs.
 Require Import UserFd.
 Require Import UserHeap.
-Require Import UserPerm.
 Require Import UserCwd.
 Require Import UmodeAbi.           (* [uimg_sub] *)
 Require Import ProcGeom.           (* [NOFILE] / [tf_arg_idx] *)
 Require Import PieceFam.
-Require Import UexecSlot UexecRet UsysMemOk UexecSG.
+Require Import UexecSlot UexecRet UsysMemOk.
 Require Import UkRun UkRunLeaf UkRunSys.
 Require Import UCodeInit UkInit.
 Require Import UexecExecInst.      (* THE INSTANCE: [uexecSG_xv6] *)
@@ -93,7 +92,6 @@ Require Import UkTreeRead.         (* the tree's read side: open at a FILE *)
 Require Import UkTreeCreate.       (* the tree's mknod corollary *)
 Require Import SysOpenDefs.
 Require Import SpecSysOpen.
-Require Import SysMknodDefs.       (* [dev_arg] *)
 Require Import SpecSysMknod.       (* [mknod_arms] / [mknod_post_ok] *)
 Require Import ArgPath.
 Require Import AppCfg AppInv.

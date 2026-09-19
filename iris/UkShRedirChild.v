@@ -17,40 +17,32 @@ From iris.program_logic Require Import language lifting.
 Require Import SailStdpp.ConcurrencyInterface SailStdpp.ConcurrencyInterfaceBuiltins SailStdpp.ConcurrencyInterfaceTypes SailStdpp.Operators_mwords.
 Require Import Riscv.rv64d_types Riscv.rv64d Riscv.riscv_extras.
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.MachineWord.
-Require Import RiscvLang RiscvPtsto RiscvExtras RiscvModelBytes.
+Require Import RiscvLang RiscvPtsto RiscvModelBytes.
 Require Import RegFile.
-Require Import WpUmodeBranch.  (* [uv_btaken] -- the branch's own reading *)
-Require Import UmodeArith UmodeAbi.
-Require Import UserHeap UkRun UkRunLeaf UkRunMem.
+Require Import UmodeArith.
+Require Import UserHeap UkRun.
 Require Import FdSlots UserFd.
 Require Import UCodeShK UCodeShP.
 Require Import LineWords.
-Require Import EchoDisc.
 Require Import FileDisc.        (* [uline]: the three lines the file
                                    discipline admits *)
 Require Import UkSh.
 Require Import UkShParse.
 Require Import UkShDiag.
 Require Import UkShMalloc.
-Require Import UkShLoop.
-Require Import UkShParseCmd.    (* [ushp_setb] / [ushp_nulfold]: the cut *)
 Require Import UkShRedirPc.     (* [ushs_nulcut]: the redirect line's cut *)
-Require Import UkShWords.       (* [wl_cut_in] / [wl_cut_end] *)
 Require Import UkShEcho.        (* [echo_argv_bytes] and the exec arm *)
-Require Import UkShRedir.       (* [ush_open_call]: the open as a premise *)
 Require Import UkShRedirSeam.   (* [wp_kshm_child_alloc_redir]: the walk *)
 Require Import UShLexRedir.     (* [ush_line_toks_holds_redir] *)
-Require Import UserPerm.        (* [usz_ok] *)
 Require Import PipeNames.
 Require Import UkShRedirLine.   (* [ushs_line_is] and the typed bridge *)
-Require Import UkShFork.        (* [ushf_body_law] / [wp_kshm_body_at] *)
 Require Import CtxIdDefs.
 Require Import UexecSG.
 Require Import UserCwd.
 Require Import UserChildren.
 Require Import UserPerm.        (* [usz_ok] *)
 Require Import UserPtTree.
-Require Import Xv6Cameras.
+Require Import ChildTok.
 Require Import UkShRedirBody.   (* [ushs_fd1f] / [echo_argv_bytes_of_redir] *)
 Require Import UkShRedirAns.    (* [ush_open_call2]: the open, the deed its hand *)
 Require Import UkShRedirPaid.   (* the paid open-failed diagnostic; the call's adapter *)

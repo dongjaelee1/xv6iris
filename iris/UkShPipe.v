@@ -105,13 +105,10 @@ Require Import Riscv.rv64d_types Riscv.rv64d Riscv.riscv_extras.
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.MachineWord.
 Require Import RiscvLang RiscvPtsto RiscvExtras RiscvModelBytes.
 Require Import RegFile.
-Require Import WpMmodeLeafBase.
 Require Import WpUmodeBranch.
 Require Import UmodeArith UmodeAbi.
 Require Import ProcGeom.     (* [NOFILE] / [PIDMAX] *)
-Require Import UsysMemOk.
 Require Import UserHeap UkRun UkRunLeaf UkRunMem UkRunSys UkRunBr.
-Require UkLoad.
 Require Import UCodeShK.
 Require Import UkSh.
 Require Import UkShRun.
@@ -126,7 +123,6 @@ Require Import UserChildren.
 Require Import UexecSG.
 Require Import ChildTok.
 Require Import UexecRet.     (* [uwait_ans] -- what a reap answers *)
-Require Import UkFork.
 Local Open Scope Z_scope.
 Import Defs.
 

@@ -40,10 +40,8 @@ Require Import UserHeap UkRun UkRunLeaf UkRunSys.
 Require Import UCodeCat.
 Require Import CtxIdDefs.
 Require User.CatSyms User.CatInstrs.
-Require Import ChildTok.
-Require Import FdSlots PipeNames ProcGeom UserFd UserCwd.
-Require Import UexecSG UexecSlot UexecRet UsysMemOk.
-Require Import UexecExecInst.  (* THE INSTANCES: [uexecSG_xv6], [uprogSG_gen] *)
+Require Import FdSlots UserFd UserCwd.
+Require Import UsysMemOk.
 Require Import UkCat.
 Require Import UserOff.            (* [foff_pub] *)
 Require Import UkFileOpen.
@@ -54,9 +52,8 @@ Require Import SysOpenDefs.      (* [om_create] / [om_readable] *)
 Require Import FsAbsEra.         (* [um_start_of] *)
 Require Import FsImg.            (* [FsImg.ROOTINO] *)
 Require Import ProcGeom.         (* [NOFILE] *)
-Require Import ConsoleInv.
 Require Import SysReadDefs.     (* [ard_count] -- what a read of a parked row delivers *)
-Require Import Xv6Cameras Xv6G IrefSlots ProcAvail FileInvDefs BioDefs.
+Require Import Xv6Cameras Xv6G IrefSlots ProcAvail FileInvDefs.
 Require Import EchoOut AppEcho.
 Import Defs.
 

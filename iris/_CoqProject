@@ -1500,6 +1500,7 @@ ConsLog.v
 EchoOutPure.v
 FileOutPure.v
 PipeOutPure.v
+PipeBothPure.v
 EchoOut.v
 EchoLinks.v
 EchoLinksPro.v
@@ -1677,6 +1678,7 @@ PipeKillMark.v
 UEchoPipe.v
 UCatPipe.v
 PipeLinksLine.v
+PipeBoth.v
 PipeLinkInst.v
 PipeStageInst.v
 UShPipeRound.v

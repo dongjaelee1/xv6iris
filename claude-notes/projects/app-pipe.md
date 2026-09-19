@@ -187,7 +187,7 @@ arm is the theorem's one named premise (`pipe_both_law`).
 - [ ] **PIPE-ADEQUACY**: `iris/UPipeBootAdequacy.v`, `iris/PipeAssumptions.v`,
   `make audit-pipe{,-only}`; the design page's §0 rewritten as landed;
   `pipe_both_law` reported as the one premise.
-- [ ] **PIPE-2W** (design §4.3): the merge lease; `pipe_both_law` discharged;
+- [~] **PIPE-2W** (design §4.3): the merge lease; `pipe_both_law` discharged;
   the premise removed.
 
 - [x] **ULINE-LPIPE** (design §5.8 STOP A; the ONE edit of upstream's files):
@@ -4504,3 +4504,246 @@ one-line fixes, both worth making a habit of: **name the leaf at priority
 `#` makes the search do the work the box would have stated).  The
 localizer is `Set Default Timeout N.`: it turns the wedge into
 `Error: Timeout!` at its line in ONE build.
+
+### PIPE-2W (2026-09-19) — the ROUND'S LEND lands: the block ledger, the two-cursor family, its two byte steps, its entry and its FOUR exits; the one thing that cannot land without moving `app_pipe`'s fixed part is the ledger's NAME, and the reason both a ledger AND a family are needed is a refutation (`pend_both_not_inj`)
+
+Branch `app-pipe/pipe-2w`.  TWO new files — `iris/PipeBothPure.v` (1,051:
+the pure layer, 68 results) and `iris/PipeBoth.v` (819: the ledger, the
+family, the steps, the four exits, the chain and the round's lend, 43
+results) — plus two rows of `iris/_CoqProject`.  **No landed statement
+moved**; nothing outside the lane's own two files was edited and
+`grep -rln 'PipeBoth' iris/*.v` finds no importer, so every audit's cone
+is untouched.  Whole-tree `ec2-lane.sh 2w build` **RC=0**; no `Admitted`;
+`Proof using` on every result; and `Print Assumptions` on THIRTEEN
+headline results — `good_out_p_of_stage_blk2`, `wr_blk2_step_L`/`_R`,
+`pend_both_not_inj`, `pcont_not_prefix_pend_both`, `pblk2_step_L`/`_R`,
+`pblk2_exit`, `pblk2_cstep_L`/`_R`, `pblk2_chain`,
+`pipe_round_lend_holds`, `pwc_blk2_of_lend` — is **Closed under the
+global context** (not even the standing PrimString/PrimInt63
+primitives).  `make audit-echo-only` = **14** (unmoved) and
+`make audit-pipe-only` = **14**, echo's list exactly.
+
+**0.  WHAT THE COORDINATOR'S AMENDMENT CHANGED, and what survived it.**
+The lane was briefed to build the `PBoth` arm's merge lease and discharge
+`pipe_both_law`.  Mid-lane, SH-PIPE-ROUND-2's `pipe_turn_one_writer`
+established that `EchoOut.turn v P` is half a `mono_nat` authority (ONE
+console writer at a time) and that the runcmd child cannot know at fork
+time which child will write the round's block — so the two-cursor lease
+is THE ROUND'S LEND on every arm, and there is no `PBoth`-only law.
+What survived unchanged: the pure merge layer, the cursors, the family's
+shape, the byte steps, the invariant form, the chain, and the ledger's
+homelessness (§2).  What changed: the ledger records the block's BYTES
+(not the selector); the family takes the RIGHT child's source `R` as a
+parameter, so ONE family covers all four alternatives; `pipe_both_law` is
+replaced by `pipe_round_lend`; and the pure layer gained the generalised
+`pend2 R sel` beside the `PBoth`-specific `pend_both`.
+
+**1.  THE REFUTATION THAT DECIDES WHY THERE ARE TWO PIECES.**
+`PipeBothPure.pend_both_not_inj` exhibits two selectors of equal length
+whose blocks are the SAME bytes and whose next LEFT byte DIFFERS: the two
+diagnostics share their first five bytes (`exec `), so the six-byte block
+is the merge of `dg_execL`'s first six AND of one left byte after
+`dg_execR`'s first five, and the next left byte is `c` (of `echo`) in one
+split and `x` (of `exec`) in the other.  So:
+
+- the block's BYTES do not determine the SPLIT — a claim carrying only
+  the bytes could not decide which byte a writer at its own cursor may
+  append, so the split must live in the FAMILY;
+- and the split does not reach the claim's own `o_w` — so the BYTES must
+  live in a LEDGER the claim and the writers share.
+
+Each of the two covers exactly what the other cannot.  That is why
+`blk_auth`/`blk_lb` (the bytes) and `pwc_blk2`'s existential `sel` (the
+split) are both there, and neither is decoration.
+
+**2.  WHERE THE LEDGER'S NAME HAS TO LIVE — THE LANE'S STOP.**  A gname
+bound existentially inside the claim cannot be named by a writer, so the
+ledger's name must come off the era pin or the fixed part.
+`EchoOut.era_pins` has five fields and all five are taken.  Reusing an
+existing per-era gname under a SECOND camera is sound in principle (`own`
+is indexed by (camera, gname)) but NOT AVAILABLE: `own` can only be
+created fresh, so a second resource at `ep_go v` would have to be
+allocated at the same moment as `turn` — inside echo's era birth.  So the
+route is upstream's FILE one, exactly: `FileOut.file_gn` pairs
+`AppFile.file_fixed` WITH a new gname and pins a second per-era record
+(`file_era`) in a map of its own, "and nothing in `AppFile.v` moves".
+The pipeline's twin is `pipe_gn := echo_fixed * gname` and a per-ROUND
+record — **INDEXED BY THE ROUND, not reset at it** (the brief asks which
+and why): a `mono_list` cannot be reset, and the round index
+`nlines I − 1` is already on both sides.  The era-wide alternative (one
+ledger per era plus an offset) was worked out and REJECTED:
+`pecl_step_write_blk` may legally file a round code without its bytes
+ever entering the ledger, which silently misaligns every later round.
+
+That change moves `AppPipe.app_pipe`'s `app_fixed` field, which is
+outside this lane's brief — **so the lane STOPPED there**, and the
+claim-side steps are STATED, NAMED and OWED rather than proved:
+`PipeBoth.pblk2_ecl_L`, `pblk2_ecl_R`, `pblk2_ecl_file` (the bundle
+`pblk2_ecl`).  Everything above them is landed.  THE BLAST RADIUS,
+measured: `UPipeBootAdequacy` binds `c : app_fixed (app_pipe)`
+ABSTRACTLY and does not move; `AppPipeClaim`/`AppPipeCons`/
+`UInitConsPipe` bind `γ : echo_fixed` and are read at `pgn_cl g` at the
+record, so they do not move either; what moves is `AppPipe.v`'s six
+wrappers and `pipe_laws`, and the `Context (γ : echo_fixed)` of
+`PipeOut`/`PipeLinks`/`PipeLinksLine`/`PipeLinkInst` (their statements
+keep their text).  **The ledger costs the functor list NOTHING**: the
+bytes ride the era's own echoed-list camera (`echoOutG`'s `eo_El`, at
+`([], b)`), so no class, no functor row, no `subG`.
+
+**3.  THE STAGE LAW THE BRIEF'S STOP RULE ASKS ABOUT.**  It is
+`EchoOut.cs_len_ok`, reused verbatim as a conjunct of `PipeOut.pcl_pure`:
+it forces `length cs = nlines I` as soon as `o_w ≠ []`, i.e. the round's
+entry must be filed at (or before) the block's FIRST byte.  A block two
+children write cannot do that.  The shape that works does NOT weaken the
+echo stage: the pipe claim keeps `cs_len_ok` on its ordinary arm and gets
+a SECOND arm whose length law is `length cs = nlines I − 1` with
+`o_w ≠ []`.  `ps_len_ok_p` needs NO twin: its second clause is guarded by
+`ps_opens_p`, which reads `palt_panic` of the round's entry — absent in
+that state, hence `PEcho 0`, hence not a panic, hence vacuous.
+
+**4.  WHAT LANDED.**
+
+`iris/PipeBothPure.v` — the merge layer at the RIGHT child's own source:
+`pend2 R sel := pmerge sel dg_execL R` with `sel_wf2`, `pend2_length`,
+`pend2_mono`, the two byte steps `pend2_true` / `pend2_false` (from
+`pmerge_snoc_true`/`_false`, which are GUARDED and had to be: `pmerge`
+stops at the exhausted side, so a bit after a stall adds nothing),
+`both_bytes2` + `both_bytes2_app`, the one-sided readings
+`pmerge_all_true` / `pmerge_all_false` / `pend2_left_only` /
+`pend2_right_only`, the family's pure shape `wr_blk2_p` with its entry
+and its two steps, the four alternatives' blocks (`pcont_ran`,
+`pcont_execL`, `pcont_execR`, `pend2_both_full`), and **F4 at an unfiled
+block of ANY shape**:
+
+```coq
+Lemma good_out_p_of_stage_blk2 (ps cs : list nat)
+    (E : list (list mobs * bv 8)) (w : list (bv 8)) (a : nat)
+    (seg : list mobs) :
+  Forall (fun x => (x < length pro_alts)%nat) ps ->
+  alts_pre_p (ins seg) cs -> E_disc_p E -> pro_pin_p ps cs (snd <$> E) ->
+  pblk2_at cs (snd <$> E) w a ->
+  obs_wire Uart0 seg `prefix_of` (D_p ps cs E ++ w) ->
+  (snd <$> E) `prefix_of` ins seg ->
+  good_out_p seg.
+```
+
+— the console claim holds at EVERY byte of a block whose code has not
+been filed: the witness the theorem's existential wants is the round's
+own code, appended (`D_p` does not move, because the entry lands at the
+last index).  `sessp_prefix_det` is UNAFFECTED, and the one-line reason
+is landed as `pcont_not_prefix_pend_both`: every non-panic alternative's
+continuation ends with the prompt, whose first byte is `$`, and no byte
+of a running merge is a `$` — so an unfiled block can never be read as a
+completed one.
+
+`iris/PipeBoth.v` — the ledger `blk_auth` / `blk_lb` with `blk_lb_get`,
+`blk_auth_grow`, `blk_lb_prefix` and `blk_lb_agree` (**at equal length
+the writer's bound IS the ledger** — and the length is pinned by `turn`);
+the two cursors `wcur g q c` (halves, exclusive, ONE LENT TO EACH CHILD
+AT THE FORKS); THE FAMILY
+
+```coq
+Definition pwc_blk2 (k : nat) (v : era_pins) (I R : list (bv 8))
+    (sel : list bool) (c1 c2 : nat) : iProp Σ :=
+  ((∃ (ps cs : list nat) (P : nat),
+      ⌜wr_blk2_p ps cs I P R sel c1 c2⌝ ∗ ⌜wr_tail_p ps cs⌝
+      ∗ turn v (P + c1 + c2)%nat ∗ ps_lb v ps ∗ cs_lb v cs
+      ∗ blk_lb (pend2 R sel) ∗ inp_lb v I) ∨ PT)%I.
+```
+
+(design §4.3b's shape with TWO additions: `wr_tail_p`, without which the
+exit cannot produce the ordinary block credential, and the right child's
+source `R`); the ENTRY `pwc_blk2_of_lend` (`PipeLinksLine.pwc_lend` — the
+round's owed block, i.e. `lk_lcred`'s owed arm — IS the family at the
+empty selector, at any `R`); the two byte steps `pblk2_step_L` /
+`pblk2_step_R`; the EXIT
+
+```coq
+Lemma pblk2_exit k v I R sel c1 c2 a b Φ :
+  pblk2_code I R sel a -> b = u_prompt !!! 0%nat ->
+  pblk2_ecl_file -∗ pipe_links γ -∗ era_pin γ k v -∗
+  pwc_blk2 k v I R sel c1 c2 -∗ (pwc_sp_t γ k v I -∗ Φ) -∗
+  out_link Uart0 k b Φ.
+```
+
+— ONE lemma at FOUR instances (`pblk2_code_ran` / `_execL` / `_execR` /
+`_both`, each proved from the two cursors alone; `_both` is the ONE place
+a `PBoth` code is ever built).  The prompt's `$` files the code and **the
+round rejoins the shared vocabulary at `PipeLinksLine.pwc_sp_t`**, so
+sh's walk continues byte for byte as at every other alternative
+(`pwc_blk_sp` is the seam, and `length (pab I a) = S (S (c1 + c2))` is
+what makes its index line up).  Then the CONCURRENT form `blk2_inv` +
+`pblk2_cstep_L` / `_R`, the chain `pblk2_chain` (from the family at any
+point, ANY interleaving of the remaining bytes is an `out_chain` — the
+alternating run and the four one-sided runs are instances), and the
+round's lend:
+
+```coq
+Definition pipe_round_lend (k : nat) (v : era_pins) (I R : list (bv 8))
+    (sel : list bool) : iProp Σ :=
+  (∀ Φ : iProp Σ,
+     blk_lb [] -∗ pwc_lend γ k v I -∗ (pwc_sp_t γ k v I -∗ Φ) -∗
+     out_chain Uart0 k (pend2 R sel ++ [u_prompt !!! 0%nat]) Φ)%I.
+
+Lemma pipe_round_lend_holds k v I R sel a :
+  pboth_line I ->
+  (count_true sel <= length dg_execL)%nat ->
+  (length sel - count_true sel <= length R)%nat ->
+  pblk2_code I R sel a ->
+  pblk2_ecl -∗ pipe_links γ -∗ era_pin γ k v -∗ pipe_round_lend k v I R sel.
+```
+
+— discharged from the three owed claim steps and nothing else.  This is
+deliverable 5 in its amended form, and `pipe_both_law` is GONE.
+
+**5.  A DESIGN CORRECTION the next lane needs.**  §4.3b's step laws pass
+the family LINEARLY.  That is right for ONE holder, and the two children
+are TWO PROCESSES: neither can hold it between its own bytes.  What they
+run on is `blk2_inv` — the family in an invariant keyed by the two
+cursors' gnames, each child holding half of its own cursor — and the step
+opens that invariant INSIDE the link's own fancy update.  Two things
+follow and are landed as such: (a) the claim's three steps must be BASIC
+updates over `pecl` (they compose at any mask), which is why
+`pblk2_ecl_*` are stated at `pecl` and not at `out_link`; (b) the
+invariant's namespace must be DISJOINT from the port's (`↑N ## ↑uartN
+Uart0` is a premise of `pblk2_cstep_L`/`_R`).  `out_link`'s
+`={⊤ ∖ ↑uartN i}=∗` is what makes the whole thing possible at all — a
+basic-update link could not have admitted two writers.
+
+**FOUR OPERATIONAL NOTES, all of them rules.**
+
+1. **An intuitionistic `iIntros` on `PipeLinks.pipe_links` HANGS in this
+   file's cone** — durable-notes' "a bundle of wands can hang the
+   Persistent search", and the same tactic is fine in `PipeLinksLine`.
+   It cost this lane four 28-minute builds before it was located, and the
+   locator is worth keeping: `coqc -time` (through `ec2-lane.sh <lane>
+   run`, with the `-R ../user-rocq User` include the durable note's
+   command line omits) prints one line per command and the compile simply
+   STOPS at the offending tactic — here `iIntros` inside `pblk2_step_L`,
+   with every command before it at 0.00 s.  The fix is to take
+   `pipe_link_taint γ` alone: it is `□`-headed with a head-indexed
+   instance, and it is all these lemmas ever spend.
+2. **`set_solver` on `↑N ⊆ ⊤ ∖ ↑uartN Uart0` does not terminate**; the
+   two-line `apply subseteq_difference_r; [exact Hns | apply
+   top_subseteq]` does.
+3. **`rewrite length_app` UNFOLDS `length dg_execL`** (a `wl_line`, i.e.
+   an append) into a sum whose association no longer matches an opaque
+   `length dg_execL` in the hypotheses — rewrite `dg_execL_len` /
+   `dg_execR_len` FIRST, or `lia` fails on a goal that is arithmetically
+   true.
+4. **`sel ++ []` is not convertible to `sel`** (while `[] ++ sel` and
+   `0 + c` are), so a chain's empty tail is closed on the continuation's
+   own argument with `app_nil_r`, not by rewriting a goal that no longer
+   mentions it.  The same asymmetry is why the round's lend needs no
+   rewrites at its entry.
+
+**THE ONE THING THE NEXT LANE NEEDS FIRST.**  The owner's ruling on §2 —
+`app_fixed app_pipe := pipe_gn` (FileOut's precedent, blast radius
+measured above).  With it, the three `pblk2_ecl_*` steps are `PipeOut`
+work of the same size as `pecl_step_write_blk`, and the refutations they
+need in the claim's OTHER arm are already identified: `pecl_step_write`
+is refuted in the unfiled-block state by `nlines I ≤ length cs =
+nlines I − 1`; `pecl_step_write_blk` / `_pro` by the turn's position; and
+`pecl_step_echo` by `pcont_not_prefix_pend_both` — a byte echoed
+mid-block would put a completed round's block inside a running merge, and
+the `$` refutes it.

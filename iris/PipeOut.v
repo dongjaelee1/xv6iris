@@ -57,6 +57,7 @@ Require Import EchoOutPure.
 Require Import PipeDisc.
 Require Import PipeDiscDec.      (* [disc_p_dec]: the ledger's counter *)
 Require Import PipeOutPure.
+Require Import PipeBothPure.
 Require Import EchoOut.           (* the ghost algebra, [ch_E] and its laws *)
 Require Import AppEcho.           (* [echo_fixed], [echo_taint], [echo_cl] *)
 Local Open Scope list_scope.
@@ -510,6 +511,121 @@ Definition pcl_pure (k : nat) (ho : list mobs) (so : postage)
   /\ ch_arm_era_p k ho (LogEntryDefs.ch_arm H)
   /\ o_E so = ch_E H.
 
+(* ====================================================================== *)
+(*  2c. THE ROUND IN PROGRESS (lane PIPE-2W-3)                             *)
+(*                                                                        *)
+(*  While a pipeline round's block is being written by TWO processes its   *)
+(*  alternative cannot be filed in [cs] (design 4.3b), so the stage's own  *)
+(*  reading of the block -- [pending_p] at the filed entry -- is not what  *)
+(*  is on the wire: the ROUND'S LEDGER's [pre] is.  Everything else in     *)
+(*  [pout_pure] holds verbatim, which is why the claim's pure part is ONE  *)
+(*  disjunction and not a second arm.                                      *)
+(* ====================================================================== *)
+
+Definition pout_pure_o (k : nat) (ho : list mobs) (so : postage)
+    (acc : list (bv 8)) : Prop :=
+  acc = D_p (o_ps so) (o_cs so) (o_E so) ++ o_w so
+  /\ E_index (o_E so)
+  /\ E_disc_p (o_E so)
+  /\ Forall (fun a => (a < length pro_alts)%nat) (o_ps so)
+  /\ pro_pin_p (o_ps so) (o_cs so) (snd <$> o_E so)
+  /\ alts_pre_p (snd <$> o_E so) (o_cs so)
+  /\ Forall (fun x => disc_seg_p x.1) (o_E so)
+  /\ Forall (fun x => x.1 `prefix_of` open_seg ho) (o_E so)
+  /\ (length (o_E so) <= length (ins (open_seg ho)))%nat
+  /\ (o_E so = [] \/ obs_boots ho = k).
+
+Lemma pout_pure_o_of (k : nat) (ho : list mobs) (so : postage)
+    (acc : list (bv 8)) :
+  pout_pure k ho so acc -> pout_pure_o k ho so acc.
+Proof using.
+  intros (H1 & _ & H3 & H4 & H5 & H6 & H7 & H8 & H9 & H10 & H11).
+  by rewrite /pout_pure_o.
+Qed.
+
+(* THE BLOCK IN PROGRESS: the round's index, the bytes written so far, and
+   the fact that they are a `$`-free prefix of an alternative the line
+   admits.  The `$`-freeness is what refutes an ECHO here (the discipline
+   wants the round's whole block, prompt included, on the wire before the
+   next input byte). *)
+Definition pblk_open (so : postage) (r : nat) (pre : list (bv 8)) : Prop :=
+  r = (nlines (snd <$> o_E so) - 1)%nat
+  /\ o_w so = pre
+  /\ pre <> []
+  /\ Forall nodollar pre
+  /\ exists a : nat, pblk2_at (o_cs so) (snd <$> o_E so) pre a.
+
+(* the claim's pure part WHILE A ROUND IS OPEN -- [pcl_pure] with the
+   block read off the round's ledger instead of off [cs].  It is a
+   DEFINITION and not a raw conjunction on purpose: every step's tactic
+   script below is [pcl_pure]'s, and those scripts unfold the goal's own
+   name. *)
+Definition pcl_pure_o (k : nat) (ho : list mobs) (so : postage)
+    (r : nat) (pre : list (bv 8)) (H : LogEntryDefs.cons_hist) : Prop :=
+  pout_pure_o k ho so (LogEntryDefs.ch_acc H)
+  /\ pblk_open so r pre
+  /\ ps_len_ok_p so
+  /\ pein_pure k (LogEntryDefs.ch_log H) (LogEntryDefs.ch_dl H) (o_cs so)
+  /\ ch_arm_era_p k ho (LogEntryDefs.ch_arm H)
+  /\ o_E so = ch_E H.
+
+Definition pcl_pure2 (k : nat) (ho : list mobs) (so : postage)
+    (r : nat) (pre : list (bv 8)) (H : LogEntryDefs.cons_hist) : Prop :=
+  pcl_pure k ho so H \/ pcl_pure_o k ho so r pre H.
+
+Lemma pcl_pure2_of (k : nat) (ho : list mobs) (so : postage)
+    (r : nat) (pre : list (bv 8)) (H : LogEntryDefs.cons_hist) :
+  pcl_pure k ho so H -> pcl_pure2 k ho so r pre H.
+Proof using. intro Hc. by left. Qed.
+
+(* the three readings every step takes, from EITHER disjunct *)
+Lemma pcl_pure2_arm (k : nat) (ho : list mobs) (so : postage)
+    (r : nat) (pre : list (bv 8)) (H : LogEntryDefs.cons_hist) :
+  pcl_pure2 k ho so r pre H -> ch_arm_era_p k ho (LogEntryDefs.ch_arm H).
+Proof using.
+  intros [(_ & _ & _ & _ & Hera & _) | (_ & _ & _ & _ & Hera & _)];
+    exact Hera.
+Qed.
+
+Lemma pcl_pure2_E (k : nat) (ho : list mobs) (so : postage)
+    (r : nat) (pre : list (bv 8)) (H : LogEntryDefs.cons_hist) :
+  pcl_pure2 k ho so r pre H -> o_E so = ch_E H.
+Proof using.
+  intros [(_ & _ & _ & _ & _ & HE) | (_ & _ & _ & _ & _ & HE)]; exact HE.
+Qed.
+
+Lemma pcl_pure2_pein (k : nat) (ho : list mobs) (so : postage)
+    (r : nat) (pre : list (bv 8)) (H : LogEntryDefs.cons_hist) :
+  pcl_pure2 k ho so r pre H ->
+  pein_pure k (LogEntryDefs.ch_log H) (LogEntryDefs.ch_dl H) (o_cs so).
+Proof using.
+  intros [(_ & _ & _ & Hin & _) | (_ & _ & _ & Hin & _)]; exact Hin.
+Qed.
+
+Lemma pcl_pure2_out (k : nat) (ho : list mobs) (so : postage)
+    (r : nat) (pre : list (bv 8)) (H : LogEntryDefs.cons_hist) :
+  pcl_pure2 k ho so r pre H -> pout_pure_o k ho so (LogEntryDefs.ch_acc H).
+Proof using.
+  intros [(Hout & _) | (Hout & _)]; [by apply pout_pure_o_of | exact Hout].
+Qed.
+
+Lemma pcl_pure2_ps (k : nat) (ho : list mobs) (so : postage)
+    (r : nat) (pre : list (bv 8)) (H : LogEntryDefs.cons_hist) :
+  pcl_pure2 k ho so r pre H -> ps_len_ok_p so.
+Proof using.
+  intros [(_ & _ & Hps & _) | (_ & _ & Hps & _)]; exact Hps.
+Qed.
+
+(* the open round's own length law, which is [cs_len_ok]'s boundary case *)
+Lemma pblk_open_cs (so : postage) (r : nat) (pre : list (bv 8)) :
+  pblk_open so r pre ->
+  length (o_cs so) = (nlines (snd <$> o_E so) - 1)%nat
+  /\ rest_of (snd <$> o_E so) = []
+  /\ (snd <$> o_E so) <> [].
+Proof using.
+  intros (_ & _ & _ & _ & a & (Hne & Hr & Hq & _)). by split_and!.
+Qed.
+
 Lemma pcl_pure_arm (k : nat) (ho : list mobs) (so : postage)
     (H : LogEntryDefs.cons_hist) :
   pcl_pure k ho so H -> ch_arm_era_p k ho (LogEntryDefs.ch_arm H).
@@ -531,6 +647,21 @@ Proof using.
   - destruct Hd as [_ Hr]. rewrite (pop_nlines_removelast _ Hr). lia.
   - apply nlines_prefix, pop_removelast_prefix.
 Qed.
+
+Lemma pcl_pure2_rd_stage (k : nat) (ho : list mobs) (so : postage)
+    (r : nat) (pre : list (bv 8)) (H : LogEntryDefs.cons_hist) :
+  pcl_pure2 k ho so r pre H ->
+  rd_stage_p (o_ps so) (o_cs so) (snd <$> o_E so).
+Proof using.
+  intros [Hc | (Hout & Hop & _)].
+  { exact (pcl_pure_rd_stage k ho so H Hc). }
+  destruct Hout as (_ & _ & _ & Hpsb & Hpin & Hcsb & _).
+  destruct (pblk_open_cs so r pre Hop) as (Hq & Hr & _).
+  rewrite /rd_stage_p. split_and!;
+    [exact Hpsb | exact Hcsb | exact Hpin |].
+  rewrite (pop_nlines_removelast _ Hr) Hq. lia.
+Qed.
+
 
 (* ---- the five event steps of the pure part ---- *)
 
@@ -591,6 +722,78 @@ Proof using.
     rewrite app_nil_r. by rewrite Hseg.
 Qed.
 
+Lemma pcl_pure_o_close (k : nat) (ho : list mobs) (so : postage)
+    (r : nat) (pre : list (bv 8)) (H : LogEntryDefs.cons_hist) :
+  ConsLog.cons_hist_ok H ->
+  ConsLog.cons_ev_ok H ConsLog.EvClose ->
+  pcl_pure_o k ho so r pre H ->
+  pcl_pure_o k ho so r pre (ConsLog.cons_step H ConsLog.EvClose).
+Proof using.
+  intros Hok Hev Hecl.
+  pose proof (ch_E_close H) as Hclose.
+  pose proof (ch_E_close_len H) as Hlen.
+  pose proof (ConsLog.cons_hist_ok_step H ConsLog.EvClose Hok Hev) as Hok'.
+  unfold ConsLog.cons_hist_ok in Hok'. destruct Hok' as [Hlog' _].
+  destruct (LogEntryDefs.ch_arm H) as [[[[h c] cs] j] |] eqn:Ha; cycle 1.
+  { rewrite /ConsLog.cons_step Ha. exact Hecl. }
+  destruct Hecl as (Hout & Hop & Hps & Hin & Hera & HE).
+  destruct Hin as (_ & Hdsc & Hbts & Hdl & _ & _ & _).
+  rewrite Ha in Hera. cbn [ch_arm_era_p] in Hera.
+  destruct Hera as (Hdseg & Hboots & _ & _ & _).
+  destruct Hout as (Hacc & HEi & HEb & Hpsf & Hpin & Hcsf & Hdse & Hpre0
+                    & Hle & Hbo).
+  destruct (pblk_open_cs so r pre Hop) as (Hqq & Hrr & Hnn).
+  pose proof (nlines_pos_of_rest_nil _ Hnn Hrr) as Hposn.
+  rewrite /ConsLog.cons_step Ha in Hlog', Hlen |- *.
+  cbn [LogEntryDefs.ch_acc LogEntryDefs.ch_log LogEntryDefs.ch_dl
+       LogEntryDefs.ch_arm] in Hlog', Hlen |- *.
+  assert (Hseg : seg_of (echoed (LogEntryDefs.ch_log H ++ [(h, c, take j cs)]))
+                 = o_E so).
+  { rewrite HE -Hclose /ch_E /ConsLog.cons_step Ha.
+    cbn [LogEntryDefs.ch_log LogEntryDefs.ch_arm ch_arm_E].
+    by rewrite app_nil_r. }
+  rewrite /pcl_pure_o.
+  cbn [LogEntryDefs.ch_acc LogEntryDefs.ch_log LogEntryDefs.ch_dl
+       LogEntryDefs.ch_arm].
+  split_and!.
+  - by split_and!.
+  - exact Hop.
+  - exact Hps.
+  - split_and!.
+    + exact Hlog'.
+    + intros e He. apply elem_of_app in He as [He | He].
+      * exact (Hdsc e He).
+      * apply elem_of_list_singleton in He as ->.
+        cbn [le_hist fst snd]. exact Hdseg.
+    + intros e He. apply elem_of_app in He as [He | He].
+      * exact (Hbts e He).
+      * apply elem_of_list_singleton in He as ->.
+        cbn [le_hist fst snd]. exact Hboots.
+    + destruct (decide (log_echoed (h, c, take j cs))) as [Hy | Hn].
+      * rewrite (echoed_snoc_yes _ _ Hy).
+        by apply (prefix_app_r _ _ [(le_hist (h, c, take j cs),
+                                     le_byte (h, c, take j cs))]).
+      * by rewrite (echoed_snoc_no _ _ Hn).
+    + by rewrite Hseg.
+    + by rewrite Hseg.
+    + rewrite -(seg_of_snd (echoed _)) Hseg. rewrite Hqq. lia.
+  - exact I.
+  - rewrite /ch_E. cbn [LogEntryDefs.ch_log LogEntryDefs.ch_arm ch_arm_E].
+    rewrite app_nil_r. by rewrite Hseg.
+Qed.
+
+Lemma pcl_pure2_close (k : nat) (ho : list mobs) (so : postage)
+    (r : nat) (pre : list (bv 8)) (H : LogEntryDefs.cons_hist) :
+  ConsLog.cons_hist_ok H ->
+  ConsLog.cons_ev_ok H ConsLog.EvClose ->
+  pcl_pure2 k ho so r pre H ->
+  pcl_pure2 k ho so r pre (ConsLog.cons_step H ConsLog.EvClose).
+Proof using.
+  intros Hok Hev [Hc | Ho].
+  - left. exact (pcl_pure_close k ho so H Hok Hev Hc).
+  - right. exact (pcl_pure_o_close k ho so r pre H Hok Hev Ho).
+Qed.
+
 Lemma pcl_pure_out (k : nat) (ho : list mobs) (so so' : postage)
     (H : LogEntryDefs.cons_hist) (b : bv 8) :
   (length (o_cs so) <= length (o_cs so'))%nat -> o_E so' = o_E so ->
@@ -627,6 +830,35 @@ Proof using.
 Qed.
 
 (* MOVING THE WITNESS, [EchoOut.eout_pure_move]'s twin. *)
+Lemma pcl_pure_o_read (k : nat) (ho : list mobs) (so : postage)
+    (r : nat) (pre : list (bv 8))
+    (H : LogEntryDefs.cons_hist) (ws : list (list mobs * bv 8)) :
+  (LogEntryDefs.ch_dl H ++ ws) `prefix_of` echoed (LogEntryDefs.ch_log H) ->
+  pcl_pure_o k ho so r pre H ->
+  pcl_pure_o k ho so r pre (ConsLog.cons_step H (ConsLog.EvRead ws)).
+Proof using.
+  intros Hpre (Hout & Hop & Hp & Hin & Hera & HE).
+  destruct Hin as (Hlog & Hdsc & Hbts & _ & HEi & HEb & Hcnt).
+  rewrite /pcl_pure_o /ConsLog.cons_step.
+  cbn [LogEntryDefs.ch_acc LogEntryDefs.ch_log LogEntryDefs.ch_dl
+       LogEntryDefs.ch_arm].
+  split_and!; [exact Hout | exact Hop | exact Hp | | exact Hera
+              | by rewrite HE /ch_E].
+  by split_and!.
+Qed.
+
+Lemma pcl_pure2_read (k : nat) (ho : list mobs) (so : postage)
+    (r : nat) (pre : list (bv 8))
+    (H : LogEntryDefs.cons_hist) (ws : list (list mobs * bv 8)) :
+  (LogEntryDefs.ch_dl H ++ ws) `prefix_of` echoed (LogEntryDefs.ch_log H) ->
+  pcl_pure2 k ho so r pre H ->
+  pcl_pure2 k ho so r pre (ConsLog.cons_step H (ConsLog.EvRead ws)).
+Proof using.
+  intros Hpre [Hc | Ho].
+  - left. exact (pcl_pure_read k ho so H ws Hpre Hc).
+  - right. exact (pcl_pure_o_read k ho so r pre H ws Hpre Ho).
+Qed.
+
 Lemma pout_pure_move (k : nat) (ho h : list mobs) (so : postage)
     (acc : list (bv 8)) (L : list log_entry)
     (dl : list (list mobs * bv 8)) :
@@ -642,6 +874,39 @@ Proof using.
     (Hacc & Hwpre & Hidx & Hbyte & Hpsb & Hpin & Hcsb & Hdsc & _ & _ & _).
   destruct Hin as (Hlog & Hdsc2 & Hstamp & Hdlp & Hidxi & Hbytei & Hbndi).
   split_and!; [exact Hacc | exact Hwpre | exact Hidx | exact Hbyte
+              | exact Hpsb | exact Hpin | exact Hcsb | exact Hdsc
+              | | exact Hle |].
+  - rewrite -Hseg. apply Forall_lookup_2. intros j x Hx.
+    rewrite /seg_of list_lookup_fmap in Hx.
+    destruct (echoed L !! j) as [y |] eqn:Hy; [| discriminate].
+    cbn in Hx. injection Hx as Hx. rewrite -Hx. cbn [fst].
+    assert (Hyin : y ∈ echoed L) by (by eapply elem_of_list_lookup_2).
+    destruct (echoed_elem_inv L y Hyin) as (e & He & _ & Hye).
+    apply open_seg_prefix_boots.
+    + rewrite -Hye. cbn [fst]. by destruct (Hord e He) as [Hpre _].
+    + rewrite -Hye. cbn [fst]. rewrite (Hstamp e He). by rewrite Hk.
+    + exact Hsh.
+  - right. exact Hk.
+Qed.
+
+(* the same move at the ROUND-IN-PROGRESS reading: [pout_pure_o] is
+   [pout_pure] minus the conjunct that reads the block off [cs], and that
+   conjunct is the only one this move does not touch. *)
+Lemma pout_pure_o_move (k : nat) (ho h : list mobs) (so : postage)
+    (acc : list (bv 8)) (L : list log_entry)
+    (dl : list (list mobs * bv 8)) :
+  trace_shape h true ->
+  obs_boots h = k ->
+  (forall e, e ∈ L -> hist_ext (le_hist e) h) ->
+  pein_pure k L dl (o_cs so) ->
+  seg_of (echoed L) = o_E so ->
+  (length (o_E so) <= length (ins (open_seg h)))%nat ->
+  pout_pure_o k ho so acc -> pout_pure_o k h so acc.
+Proof using.
+  intros Hsh Hk Hord Hin Hseg Hle
+    (Hacc & Hidx & Hbyte & Hpsb & Hpin & Hcsb & Hdsc & _ & _ & _).
+  destruct Hin as (Hlog & Hdsc2 & Hstamp & Hdlp & Hidxi & Hbytei & Hbndi).
+  split_and!; [exact Hacc | exact Hidx | exact Hbyte
               | exact Hpsb | exact Hpin | exact Hcsb | exact Hdsc
               | | exact Hle |].
   - rewrite -Hseg. apply Forall_lookup_2. intros j x Hx.
@@ -685,6 +950,57 @@ Proof using.
   - cbn [ch_arm_era_p]. by split_and!.
   - rewrite HE -Hopen /ConsLog.cons_step /ch_E.
     by cbn [LogEntryDefs.ch_log LogEntryDefs.ch_arm].
+Qed.
+
+Lemma pcl_pure_o_open (k : nat) (ho : list mobs) (so : postage)
+    (r : nat) (pre : list (bv 8))
+    (H : LogEntryDefs.cons_hist) (h : list mobs) (c : bv 8)
+    (cs : list (bv 8)) :
+  LogEntryDefs.ch_arm H = None ->
+  disc_seg_p (open_seg h) -> obs_boots h = k ->
+  disc_p h -> trace_shape h true -> obs_ends_in Uart0 h c ->
+  (forall e, e ∈ LogEntryDefs.ch_log H -> hist_ext (le_hist e) h) ->
+  (length (echoed (LogEntryDefs.ch_log H)) < length (ins (open_seg h)))%nat ->
+  pcl_pure_o k ho so r pre H ->
+  pcl_pure_o k h so r pre (ConsLog.cons_step H (ConsLog.EvOpen h c cs)).
+Proof using.
+  intros Hn Hd Hb Hdh Hsh Hends Hord Hlt (Hout & Hop & Hp & Hin & _ & HE).
+  pose proof (ch_E_open H h c cs Hn) as Hopen.
+  assert (Hseg : seg_of (echoed (LogEntryDefs.ch_log H)) = o_E so).
+  { rewrite HE /ch_E Hn. cbn [ch_arm_E]. by rewrite app_nil_r. }
+  assert (Hle : (length (o_E so) <= length (ins (open_seg h)))%nat).
+  { rewrite -Hseg seg_of_length. lia. }
+  rewrite /pcl_pure_o /ConsLog.cons_step.
+  cbn [LogEntryDefs.ch_acc LogEntryDefs.ch_log LogEntryDefs.ch_dl
+       LogEntryDefs.ch_arm].
+  split_and!;
+    [ exact (pout_pure_o_move k ho h so (LogEntryDefs.ch_acc H)
+               (LogEntryDefs.ch_log H) (LogEntryDefs.ch_dl H)
+               Hsh Hb Hord Hin Hseg Hle Hout)
+    | exact Hop | exact Hp | exact Hin | | ].
+  - cbn [ch_arm_era_p]. by split_and!.
+  - rewrite HE -Hopen /ConsLog.cons_step /ch_E.
+    by cbn [LogEntryDefs.ch_log LogEntryDefs.ch_arm].
+Qed.
+
+Lemma pcl_pure2_open (k : nat) (ho : list mobs) (so : postage)
+    (r : nat) (pre : list (bv 8))
+    (H : LogEntryDefs.cons_hist) (h : list mobs) (c : bv 8)
+    (cs : list (bv 8)) :
+  LogEntryDefs.ch_arm H = None ->
+  disc_seg_p (open_seg h) -> obs_boots h = k ->
+  disc_p h -> trace_shape h true -> obs_ends_in Uart0 h c ->
+  (forall e, e ∈ LogEntryDefs.ch_log H -> hist_ext (le_hist e) h) ->
+  (length (echoed (LogEntryDefs.ch_log H)) < length (ins (open_seg h)))%nat ->
+  pcl_pure2 k ho so r pre H ->
+  pcl_pure2 k h so r pre (ConsLog.cons_step H (ConsLog.EvOpen h c cs)).
+Proof using.
+  intros Hn Hd Hb Hdh Hsh Hends Hord Hlt [Hc | Ho].
+  - left.
+    exact (pcl_pure_open k ho so H h c cs Hn Hd Hb Hdh Hsh Hends Hord Hlt Hc).
+  - right.
+    exact (pcl_pure_o_open k ho so r pre H h c cs
+             Hn Hd Hb Hdh Hsh Hends Hord Hlt Ho).
 Qed.
 
 Lemma pcl_pure_byte (k : nat) (ho ho' : list mobs) (so so' : postage)
@@ -1071,7 +1387,7 @@ Section pipe_out.
         ∗ ps_auth v (o_ps so)
         ∗ Elist_auth v (o_E so)
         ∗ dl_cnt v (1/2) (length (LogEntryDefs.ch_dl H))
-        ∗ ⌜pcl_pure k ho so H⌝)%I.
+        ∗ ⌜pcl_pure2 k ho so r pre H⌝)%I.
 
   Global Instance pecl_timeless k ho H : Timeless (pecl k ho H).
   Proof using . rewrite /pecl. apply _. Qed.
@@ -1110,7 +1426,7 @@ Section pipe_out.
     iDestruct "Hc" as (v w so r gb pre) "(Hpin & Hpera & Hblk & Hcur & Hrb & Htn & Hcs & Hps & HE & Hdl & %Hpure)".
     iExists v, w, so, r, gb, pre. iFrame "Hpin Hpera Hblk Hcur Hrb Htn Hcs Hps HE".
     rewrite ch_dl_close. iFrame "Hdl". iPureIntro.
-    by apply (pcl_pure_close k ho so H Hok Hev Hpure).
+    by apply (pcl_pure2_close k ho so r pre H Hok Hev Hpure).
   Qed.
 
   Lemma pecl_open (k : nat) (ho : list mobs) (H : LogEntryDefs.cons_hist)
@@ -1129,8 +1445,8 @@ Section pipe_out.
     iExists v, w, so, r, gb, pre. iFrame "Hpin Hpera Hblk Hcur Hrb Htn Hcs Hps HE".
     rewrite /ConsLog.cons_step. cbn [LogEntryDefs.ch_dl]. iFrame "Hdl".
     iPureIntro.
-    by apply (pcl_pure_open k ho so H h c cs Hn Hd Hb Hdh Hsh Hends Hord Hlt
-                Hpure).
+    by apply (pcl_pure2_open k ho so r pre H h c cs
+                Hn Hd Hb Hdh Hsh Hends Hord Hlt Hpure).
   Qed.
 
   (* THE SUPPLY'S LAW: a tainted era answers any event out of its taint
@@ -1150,7 +1466,7 @@ Section pipe_out.
     iDestruct "Hp" as (v w so r gb pre) "(#Hpin & #Hpera & Hblk & Hcur & Hrb & Htn & Hcs & Hps & HE & Hdl & %Hall)".
     iSplitL.
     - iRight. iExists v, w, so, r, gb, pre. iFrame "Hpin Hpera Hblk Hcur Hrb Htn Hcs Hps HE Hdl". by iPureIntro.
-    - iRight. iPureIntro. exact (pcl_pure_arm k ho so CH Hall).
+    - iRight. iPureIntro. exact (pcl_pure2_arm k ho so r pre CH Hall).
   Qed.
 
   (* ...AND THE COUNTING FACT the echo's step spends *)
@@ -1169,8 +1485,8 @@ Section pipe_out.
     iSplitL.
     - iRight. iExists v, w, so, r, gb, pre. iFrame "Hpin Hpera Hblk Hcur Hrb Htn Hcs Hps HE Hdl". by iPureIntro.
     - iRight. iPureIntro.
-      destruct Hall as (_ & _ & _ & Hin & _ & _).
-      destruct Hin as (_ & _ & Hstamp & _ & Hidx & _ & _).
+      destruct (pcl_pure2_pein k ho so r pre CH Hall)
+        as (_ & _ & Hstamp & _ & Hidx & _ & _).
       exact (echoed_lt_ins_p k h c (LogEntryDefs.ch_log CH)
                Hsh Hk Hends Hord Hstamp Hidx).
   Qed.
@@ -1196,10 +1512,6 @@ Section pipe_out.
     { iModIntro. iSplitR; [rewrite /pecl; by iLeft | by iRight]. }
     iDestruct "Hp" as (v2 w so r gb pre) "(#Hpin2 & #Hpera & Hblk & Hcur & Hrb & Hta & Hcs & Hps & HE & Hdl & %Hall)".
     iDestruct (era_pin_agree with "Hpin2 Hpin") as %->.
-    pose proof Hall as Hall0.
-    destruct Hall as (Hpure & Hcsl & Hpsl & _ & _ & _).
-    destruct Hpure as (Hacc & Hwpre & Hidx & Hbyte & Hpsb & Hpin & Hcsb' & Hdsc
-                       & Hpre1 & Hpre2 & Hpre3).
     iDestruct (turn_agree with "Ht Hta") as %HP.
     iDestruct (cs_lb_prefix with "Hcs Hcslb") as %Hcsp.
     iDestruct (ps_lb_prefix with "Hps Hpslb") as %Hpsp.
@@ -1207,6 +1519,20 @@ Section pipe_out.
     destruct (write_stage_byte_p ps0 (o_ps so) cs0 (o_cs so) (o_E so)
                 (o_w so) I0 P b Hpsp Hpin0 Hcsp Hn HI0 HP Hb)
       as [HlenE Hnext].
+    (* THE ROUND'S BLOCK CANNOT BE OPEN HERE: an unfiled entry leaves the
+       choice list ONE SHORT, and this writer's own bound already needs a
+       filed one. *)
+    destruct Hall as [Hall | Hopen]; last first.
+    { destruct Hopen as (_ & Hop & _).
+      destruct (pblk_open_cs so r pre Hop) as (Hq & Hrr & Hnn).
+      pose proof (prefix_length _ _ Hcsp) as Hcl0.
+      rewrite HlenE in Hq, Hrr, Hnn.
+      pose proof (nlines_pos_of_rest_nil I0 Hnn Hrr) as Hpos0.
+      assert (HF : False) by lia. destruct HF. }
+    pose proof Hall as Hall0.
+    destruct Hall as (Hpure & Hcsl & Hpsl & _ & _ & _).
+    destruct Hpure as (Hacc & Hwpre & Hidx & Hbyte & Hpsb & Hpin & Hcsb' & Hdsc
+                       & Hpre1 & Hpre2 & Hpre3).
     assert (Hcase : o_w so <> []
                     \/ rest_of (snd <$> o_E so) <> []
                     \/ (snd <$> o_E so) = []).
@@ -1230,7 +1556,7 @@ Section pipe_out.
       cbn [o_ps o_cs o_E o_w]. rewrite pcount_p_write -HP.
       rewrite (pstream_write (o_ps so) (o_cs so) (o_E so) (o_w so) b).
       rewrite /ConsLog.cons_step. cbn [LogEntryDefs.ch_dl].
-      iFrame "Hpin Hpera Hblk Hcur Hrb Hta Hcs Hps HE Hdl". iPureIntro.
+      iFrame "Hpin Hpera Hblk Hcur Hrb Hta Hcs Hps HE Hdl". iPureIntro. left.
       apply (pcl_pure_out k ho so
                (MkO (o_ps so) (o_cs so) (o_E so) (o_w so ++ [b])) H b);
         [cbn [o_cs]; lia | reflexivity | | | | exact Hall0].
@@ -1282,15 +1608,31 @@ Section pipe_out.
     { iModIntro. iSplitR; [rewrite /pecl; by iLeft | by iRight]. }
     iDestruct "Hp" as (v2 w so r gb pre) "(#Hpin2 & #Hpera & Hblk & Hcur & Hrb & Hta & Hcs & Hps & HE & Hdl & %Hall)".
     iDestruct (era_pin_agree with "Hpin2 Hpin") as %->.
+    iDestruct (turn_agree with "Ht Hta") as %HP.
+    iDestruct (cs_lb_prefix with "Hcs Hcslb") as %Hcsp.
+    iDestruct (ps_lb_prefix with "Hps Hpslb") as %Hpsp.
+    iDestruct (inp_lb_le with "HE Hilb") as %HI0.
+    (* THE ROUND'S BLOCK CANNOT BE OPEN HERE EITHER: this writer stands at
+       a block's FIRST byte, and an open round has already written one. *)
+    destruct Hall as [Hall | Hopen]; last first.
+    { destruct Hopen as (_ & Hop & _).
+      pose proof Hop as (_ & Hwpre' & Hne' & _ & _).
+      assert (Hs2 : proc_before_p ps0 cs0 I0
+                    = proc_before_p (o_ps so) (o_cs so) I0).
+      { apply (proc_before_p_cs_prefix ps0 (o_ps so) cs0 (o_cs so) I0
+                 Hpsp Hcsp Hpin0). lia. }
+      pose proof (prefix_length _ _
+        (proc_before_p_prefix (o_ps so) (o_cs so) I0 (snd <$> o_E so) HI0))
+        as Hle2.
+      assert (Hwne : (1 <= length (o_w so))%nat).
+      { rewrite Hwpre'. destruct pre; [by destruct (Hne' eq_refl) | cbn; lia]. }
+      rewrite /pcount_p in HP. rewrite HPeq Hs2 in HP.
+      assert (HF : False) by lia. destruct HF. }
     pose proof Hall as Hall0.
     destruct Hall as (Hpure & Hcsl & Hpsl & _ & _ & _).
     destruct Hpure as (Hacc & Hwpre & Hidx & Hbyte & Hpsb & Hpin & Hcsb' & Hdsc
                        & Hpre1 & Hpre2 & Hpre3).
     pose proof Hcsb' as Hcsb.
-    iDestruct (turn_agree with "Ht Hta") as %HP.
-    iDestruct (cs_lb_prefix with "Hcs Hcslb") as %Hcsp.
-    iDestruct (ps_lb_prefix with "Hps Hpslb") as %Hpsp.
-    iDestruct (inp_lb_le with "HE Hilb") as %HI0.
     assert (Hstream : proc_before_p ps0 cs0 I0
                       = proc_before_p (o_ps so) (o_cs so) I0).
     { apply (proc_before_p_cs_prefix ps0 (o_ps so) cs0 (o_cs so) I0
@@ -1375,7 +1717,7 @@ Section pipe_out.
         last first.
       { rewrite /pstream. cbn [o_ps o_cs o_E o_w]. by rewrite Hwnil. }
       rewrite /ConsLog.cons_step. cbn [LogEntryDefs.ch_dl].
-      iFrame "Hpin Hpera Hblk Hcur Hrb Hta Hcs Hps HE Hdl". iPureIntro.
+      iFrame "Hpin Hpera Hblk Hcur Hrb Hta Hcs Hps HE Hdl". iPureIntro. left.
       apply (pcl_pure_out k ho so
                (MkO (o_ps so) (o_cs so ++ [a]) (o_E so) [b]) H b);
         [cbn [o_cs]; rewrite length_app; cbn [length]; lia
@@ -1429,15 +1771,38 @@ Section pipe_out.
     { iModIntro. iSplitR; [rewrite /pecl; by iLeft | by iRight]. }
     iDestruct "Hp" as (v2 w so r gb pre) "(#Hpin2 & #Hpera & Hblk & Hcur & Hrb & Hta & Hcs & Hps & HE & Hdl & %Hall)".
     iDestruct (era_pin_agree with "Hpin2 Hpin") as %->.
+    iDestruct (turn_agree with "Ht Hta") as %HP.
+    iDestruct (cs_lb_prefix with "Hcs Hcslb") as %Hcsp.
+    iDestruct (ps_lb_prefix with "Hps Hpslb") as %Hpsp.
+    iDestruct (inp_lb_le with "HE Hilb") as %HI0.
+    (* AND NOT HERE: a prologue round's byte comes after the whole stream
+       through [I0], which an open round's own bytes already run past. *)
+    destruct Hall as [Hall | Hopen2]; last first.
+    { pose proof Hopen2 as (_ & Hop & _).
+      pose proof Hop as (_ & Hwpre' & Hne' & _ & a0 & Hb2).
+      pose proof Hb2 as (Hne0' & Hrr & Hqq & _).
+      assert (Hwne : (1 <= length (o_w so))%nat).
+      { rewrite Hwpre'. destruct pre; [by destruct (Hne' eq_refl) | cbn; lia]. }
+      rewrite /pcount_p in HP.
+      destruct (decide ((snd <$> o_E so) = I0)) as [Heq | Hne2].
+      - rewrite Heq in Hqq, Hrr, Hne0'.
+        pose proof (nlines_pos_of_rest_nil I0 Hne0' Hrr) as Hpos0.
+        pose proof (prefix_length _ _ Hcsp) as Hcl0.
+        assert (HF : False) by lia. destruct HF.
+      - pose proof (proc_stream_p_before (o_ps so) (o_cs so) I0
+                      (snd <$> o_E so) HI0
+                      ltac:(intros Hq; apply Hne2; symmetry; exact Hq))
+          as Hpre2.
+        apply prefix_length in Hpre2.
+        pose proof (prefix_length _ _
+          (proc_stream_p_prefix ps0 (o_ps so) cs0 (o_cs so) I0
+             Hpsp Hcsp Hpin0 Hdiv)) as Hle3.
+        assert (HF : False) by lia. destruct HF. }
     pose proof Hall as Hall0.
     destruct Hall as (Hpure & Hcsl & Hpsl & _ & _ & _).
     destruct Hpure as (Hacc & Hwpre & Hidx & Hbyte & Hpsb & Hpin & Hcsb' & Hdsc
                        & Hpre1 & Hpre2 & Hpre3).
     pose proof Hcsb' as Hcsb.
-    iDestruct (turn_agree with "Ht Hta") as %HP.
-    iDestruct (cs_lb_prefix with "Hcs Hcslb") as %Hcsp.
-    iDestruct (ps_lb_prefix with "Hps Hpslb") as %Hpsp.
-    iDestruct (inp_lb_le with "HE Hilb") as %HI0.
     assert (Hpsb0 : Forall (fun x => (x < length pro_alts)%nat) ps0).
     { pose proof Hpsp as Hq. destruct Hq as [z Hz]. pose proof Hpsb as Hpsb2.
       rewrite Hz in Hpsb2. by apply Forall_app in Hpsb2 as [? _]. }
@@ -1622,7 +1987,7 @@ Section pipe_out.
       cbn [o_ps o_cs o_E o_w]. rewrite Hpc2.
       rewrite (pstream_pro (o_ps so) (o_cs so) (o_E so) (o_w so) a b Hpin).
       rewrite /ConsLog.cons_step. cbn [LogEntryDefs.ch_dl].
-      iFrame "Hpin Hpera Hblk Hcur Hrb Hta Hcs Hps HE Hdl". iPureIntro.
+      iFrame "Hpin Hpera Hblk Hcur Hrb Hta Hcs Hps HE Hdl". iPureIntro. left.
       apply (pcl_pure_out k ho so
                (MkO (o_ps so ++ [a]) (o_cs so) (o_E so) (o_w so ++ [b]))
                CH b);
@@ -1716,7 +2081,7 @@ Section pipe_out.
     iDestruct (era_pin_agree with "Hpin Hpinr") as %->.
     iDestruct (dl_cnt_agree with "Hdl Hdlr") as %Hdleq.
     pose proof Hall as Hall0.
-    destruct Hall as (Hpure & Hcsl & Hpsl & Hin & Hera & HEtie).
+    pose proof (pcl_pure2_pein k ho so r pre CH Hall0) as Hin.
     pose proof Hin as Hin2.
     destruct Hin2 as (_ & _ & _ & _ & Hidx & Hbyte & _).
     destruct (pein_read_pure k (LogEntryDefs.ch_log CH)
@@ -1724,14 +2089,15 @@ Section pipe_out.
       as (Hpref & Hp' & Hbnd').
     assert (HEpre : (snd <$> (LogEntryDefs.ch_dl CH ++ ws))
                     `prefix_of` (snd <$> o_E so)).
-    { rewrite (pcl_pure_E k ho so CH Hall0) /ch_E.
+    { rewrite (pcl_pure2_E k ho so r pre CH Hall0) /ch_E.
       etrans; [exact (epu_fmap_prefix snd _ _ Hpref) |].
       rewrite -(seg_of_snd (echoed (LogEntryDefs.ch_log CH))).
       apply epu_fmap_prefix. by apply prefix_app_r. }
     assert (Hdi : disc_input_p (snd <$> (LogEntryDefs.ch_dl CH ++ ws))).
     { apply (disc_input_p_prefix _ (snd <$> o_E so) HEpre).
-      by destruct Hpure as (_ & _ & _ & Hd & _). }
-    pose proof (pcl_pure_rd_stage k ho so CH Hall0) as Hrd.
+      by destruct (pcl_pure2_out k ho so r pre CH Hall0)
+        as (_ & _ & Hd & _). }
+    pose proof (pcl_pure2_rd_stage k ho so r pre CH Hall0) as Hrd.
     pose proof Hrd as (Hpsb & Hcsb' & Hpinf & Hbd).
     (* THE READER EXPORTS A TRUNCATED CHOICE LIST: the claim's list may run
        past the window's far end, and [alts_pre_p] ties every entry to the
@@ -1801,7 +2167,7 @@ Section pipe_out.
     { rewrite /pecl. iRight. iExists v, w, so, r, gb, pre.
       rewrite /ConsLog.cons_step. cbn [LogEntryDefs.ch_dl].
       rewrite length_app Hdleq. iFrame "Hpin Hpera Hblk Hcur Hrb Hta Hcs Hps HE Hdl".
-      iPureIntro. exact (pcl_pure_read k ho so CH ws Hpref Hall0). }
+      iPureIntro. exact (pcl_pure2_read k ho so r pre CH ws Hpref Hall0). }
     iRight. iFrame "Hdlr".
     iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
     iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
@@ -1844,6 +2210,140 @@ Section pipe_out.
     { iModIntro. rewrite /pecl. by iLeft. }
     iDestruct "Hp" as (v w so r gb pre) "(#Hpin & #Hpera & Hblk & Hcur & Hrb & Hta & Hcs & Hps & HE & Hdl & %Hall)".
     pose proof Hall as Hall0.
+    (* AN ECHO CANNOT HAPPEN WHILE A ROUND'S BLOCK IS OPEN, and the reason
+       is the DISCIPLINE's, not the stage's: [disc_pt] wants the round's
+       whole block -- its PROMPT included -- on the wire before the next
+       input byte, and an open round's bytes are `$`-free. *)
+    destruct Hall as [Hall | Hopen]; last first.
+    { pose proof Hopen as (Hout & Hop & Hpsl & Hin & Hera & HEtie).
+      destruct Hout as (Hacc & Hidx & Hbyte & Hpsb & Hpin & Hcsb' & Hdsc
+                        & Hpre1 & Hpre2 & Hpre3).
+      destruct Hin as (Hlog & Hdsc2 & Hstamp & Hdlp & Hidxi & Hbytei & Hbndi).
+      pose proof Hop as (Hreq & Hwp' & Hne' & Hnd' & ao & Hb2).
+      pose proof Hb2 as (Hnn & Hrr & Hqq & Hokaa & Hpanaa & Hprefaa).
+      pose proof (nlines_pos_of_rest_nil _ Hnn Hrr) as Hposn.
+    assert (Hseg : seg_of (echoed (LogEntryDefs.ch_log CH)) = o_E so).
+      { rewrite HEtie /ch_E Harm ch_arm_E_open app_nil_r. reflexivity. }
+      pose proof (disc_seg_p'_open_seg h Hsh Hdisc) as Hd'.
+      pose proof (proj1 Hd') as Hdseg.
+      pose proof (open_seg_ends_in h c Hends) as Hends'.
+      destruct (disc_seg_p'_pt_last (open_seg h) c Hd' Hends')
+        as (ps' & cs' & Hok' & Hcs'b & Hlow').
+      assert (Hprefixes : Forall (fun x => x.1 `prefix_of` open_seg h) (o_E so)).
+      { rewrite -Hseg.
+        apply Forall_lookup_2. intros j x Hx.
+        rewrite /seg_of list_lookup_fmap in Hx.
+        destruct (echoed (LogEntryDefs.ch_log CH) !! j) as [y |] eqn:Hy;
+          [| discriminate].
+        cbn in Hx. injection Hx as Hx. rewrite -Hx. cbn [fst].
+        assert (Hyin : y ∈ echoed (LogEntryDefs.ch_log CH))
+          by (by eapply elem_of_list_lookup_2).
+        destruct (echoed_elem_inv (LogEntryDefs.ch_log CH) y Hyin)
+          as (e & He & _ & Hye).
+        apply open_seg_prefix_boots.
+        - rewrite -Hye. cbn [fst]. by destruct (Hord e He) as [Hpre _].
+        - rewrite -Hye. cbn [fst]. exact (Hstamp e He).
+        - exact Hsh. }
+      assert (Hpl : forall j x, o_E so !! j = Some x ->
+                      x.1 `prefix_of` open_seg h)
+        by (intros j x Hx; exact (Forall_lookup_1 _ _ _ _ Hprefixes Hx)).
+      assert (Hoi : length (o_E so) = length (echoed (LogEntryDefs.ch_log CH)))
+        by (by rewrite -Hseg seg_of_length).
+      assert (Hbytes : (snd <$> o_E so)
+                       = take (length (o_E so)) (ins (open_seg h)))
+        by (apply (E_bytes_of_hist (o_E so) (open_seg h) Hidx Hpl); lia).
+      assert (Hnew' : forall x, x ∈ o_E so -> hist_ext x.1 (open_seg h)).
+      { intros x Hx. apply elem_of_list_lookup in Hx as [jj Hj].
+        destruct (Hidx jj x Hj) as [Hxe Hxlen].
+        pose proof (Forall_lookup_1 _ _ _ _ Hprefixes Hj) as Hpx.
+        apply lookup_lt_Some in Hj.
+        split; [exact Hpx |].
+        destruct Hpx as [z Hz]. destruct z as [| aa z'].
+        - exfalso. rewrite app_nil_r in Hz. rewrite -Hz in Hxlen. lia.
+        - rewrite Hz length_app /=. lia. }
+      assert (Hup : obs_wire Uart0 (open_seg h)
+                    `prefix_of` (D_p (o_ps so) (o_cs so) (o_E so) ++ o_w so))
+        by (rewrite -Hacc; exact Hwire).
+      assert (Hdi1 : disc_input_p (removelast (ins (open_seg h)))).
+      { apply (disc_input_p_prefix _ (ins (open_seg h)));
+          [apply pop_removelast_prefix | exact Hdseg]. }
+      (* the claim's own resolution, PADDED to a full one -- which is what
+         [PipeDisc.sessp_prefix_det] is stated at, and F2 is run THERE and
+         carried back ([FileOut.fecl_step_echo]'s route) *)
+      (* the claim's resolution PADDED WITH THE ROUND'S OWN CODE: that is
+         the resolution the block in progress is a prefix of. *)
+      set (csA := (o_cs so ++ [ao])%list).
+      assert (HlenA : length csA = nlines (snd <$> o_E so))
+        by (rewrite /csA length_app Hqq; cbn [length]; lia).
+      assert (HaoA : alts_pre_p (snd <$> o_E so) csA).
+      { apply (alts_pre_p_snoc (snd <$> o_E so) (o_cs so) ao Hcsb');
+          [rewrite Hqq; lia |].
+        rewrite Hqq. exact Hokaa. }
+      assert (HpinA : pro_pin_p (o_ps so) csA (snd <$> o_E so)).
+      { intros qq Hqq2. rewrite /csA pro_idx_p_app_le; [by apply Hpin |].
+        rewrite (pop_nstarted_rest_nil _ Hrr) in Hqq2. rewrite Hqq. lia. }
+      assert (HpendA : pending_p (o_ps so) csA (o_E so)
+                       = pcont (pline_of (bodies_of (snd <$> o_E so)
+                                  !!! (nlines (snd <$> o_E so) - 1)%nat))
+                           (palt_of ao)).
+      { rewrite /pending_p /csA.
+        exact (pending_at_p_filed_gen (o_ps so) (o_cs so) (snd <$> o_E so)
+                 ao Hnn Hrr Hqq Hpanaa). }
+      assert (HwpreA : o_w so `prefix_of` pending_p (o_ps so) csA (o_E so)).
+      { rewrite HpendA Hwp'. exact Hprefaa. }
+      assert (HrlA : (nlines (removelast (snd <$> o_E so))
+                      <= length csA)%nat).
+      { rewrite (pop_nlines_removelast _ Hrr) HlenA. lia. }
+      assert (HlastA : (nlines (snd <$> o_E so) <= length csA)%nat
+                       \/ o_w so = []) by (left; lia).
+      destruct (stage_sessp_pad (o_ps so) csA (o_E so) (o_w so)
+                  HaoA HrlA HlastA Hbyte HpinA HwpreA)
+        as (HokP & HpinP & HDP & HwP & HstP).
+      assert (HDA : D_p (o_ps so) csA (o_E so)
+                    = D_p (o_ps so) (o_cs so) (o_E so)).
+      { symmetry.
+        apply (D_p_cs_prefix (o_ps so) (o_ps so) (o_cs so) csA (o_E so));
+          [reflexivity | rewrite /csA; by eexists | exact Hpin |].
+        rewrite (pop_nlines_removelast _ Hrr) Hqq. lia. }
+      assert (Hbelow : sessp ps' cs' (removelast (ins (open_seg h)))
+                       `prefix_of`
+                       sessp (o_ps so) (alts_pad_p (snd <$> o_E so) csA)
+                         (snd <$> o_E so)).
+      { etrans; [exact Hlow' |]. etrans; [exact Hup |].
+        rewrite -HDA. exact HstP. }
+      destruct (sessp_prefix_det2 (o_ps so) ps'
+                  (alts_pad_p (snd <$> o_E so) csA) cs'
+                  (removelast (ins (open_seg h))) (snd <$> o_E so)
+                  Hpsb Hok' HokP Hcs'b HpinP Hbyte Hdi1 Hbelow)
+        as (_ & HokPres & HeqP).
+      assert (Hlow : sessp (o_ps so) (alts_pad_p (snd <$> o_E so) csA)
+                       (removelast (ins (open_seg h)))
+                     `prefix_of` obs_wire Uart0 (open_seg h)).
+      { rewrite -HeqP. exact Hlow'. }
+      assert (HupP : obs_wire Uart0 (open_seg h)
+                     `prefix_of`
+                     (D_p (o_ps so) (alts_pad_p (snd <$> o_E so) csA)
+                        (o_E so) ++ o_w so))
+        by (rewrite -HDP HDA; exact Hup).
+      destruct (D2_next_input_p (o_ps so)
+                  (alts_pad_p (snd <$> o_E so) csA) (o_E so) (o_w so)
+                  (obs_wire Uart0 (open_seg h)) (open_seg h) c
+                  (length (ins (open_seg h)))
+                  Hbyte Hidx Hnew' Hends' eq_refl HwP
+                  ltac:(rewrite -pop_removelast_take; exact Hlow) HupP)
+        as [Hmeq HweqP].
+      (* ...so the block would have to be COMPLETE -- prompt and all --
+         which a `$`-free run is not. *)
+      exfalso.
+      apply (pcont_ne_nodollar
+               (pline_of (bodies_of (snd <$> o_E so)
+                  !!! (nlines (snd <$> o_E so) - 1)%nat)) (palt_of ao)
+               (o_w so) Hokaa Hpanaa ltac:(rewrite Hwp'; exact Hnd')).
+      rewrite -HpendA HweqP /pending_p. symmetry.
+      apply (pending_at_p_cs_ext (o_ps so) csA
+               (alts_pad_p (snd <$> o_E so) csA) (snd <$> o_E so));
+        [apply alts_pad_p_prefix | lia]. }
+    pose proof Hall as Hallc.
     destruct Hall as (Hpure & Hcsl & Hpsl & Hin & Hera & HEtie).
     destruct Hpure as (Hacc & Hwpre & Hidx & Hbyte & Hpsb & Hpin & Hcsb' & Hdsc
                        & Hpre1 & Hpre2 & Hpre3).
@@ -2013,11 +2513,11 @@ Section pipe_out.
     rewrite (_ : pstream (MkO (o_ps so) (o_cs so) (o_E so) (o_w so))
                  = pstream so); [| reflexivity].
     rewrite ch_dl_byte.
-    iFrame "Hpin Hpera Hblk Hcur Hrb Hta Hcs Hps HE Hdl". iPureIntro.
+    iFrame "Hpin Hpera Hblk Hcur Hrb Hta Hcs Hps HE Hdl". iPureIntro. left.
     apply (pcl_pure_byte (obs_boots h) ho h so
              (MkO (o_ps so) (o_cs so) (o_E so ++ [(open_seg h, c)]) [])
              CH (echo_of c) h c Harm eq_refl);
-      [cbn [o_cs]; lia | reflexivity | | | | exact Hall0].
+      [cbn [o_cs]; lia | reflexivity | | | | exact Hallc].
     - rewrite /pout_pure. cbn [o_ps o_cs o_E o_w]. split_and!.
       + rewrite Hacc Hweq (D_p_app (o_ps so) (o_cs so) (o_E so)
                              (open_seg h, c)).
@@ -2094,9 +2594,9 @@ Section pipe_out.
     - iSplitR; [iLeft; iExact "HT" | iLeft; iExact "HT"].
     - iDestruct "Hp" as (v w so r gb pre) "(#Hpin & #Hpera & Hblk & Hcur & Hrb & Hta & Hcs & Hps & HE & Hdl & %Hall)".
       pose proof Hall as Hall2.
-      destruct Hall2 as (Hpure & Hcsl & Hpsl & Hin & Hera & HEtie).
-      destruct Hpure as (Hacc & Hwp & Hidx & Hbyte & Hpsb & Hpin & Hcs' & Hdsc
-                         & Hpre1 & Hpre2 & Hpre3).
+      pose proof (pcl_pure2_out (obs_boots h) ho so r pre CH Hall2)
+        as (Hacc & Hidx & Hbyte & Hpsb & Hpin & Hcs' & Hdsc
+            & Hpre1 & Hpre2 & Hpre3).
       iSplitL "Hta Hcs Hps HE Hdl Hblk Hcur Hrb".
       { iRight. iExists v, w, so, r, gb, pre. iFrame "Hpin Hpera Hblk Hcur Hrb Hta Hcs Hps HE Hdl".
         by iPureIntro. }
@@ -2111,20 +2611,35 @@ Section pipe_out.
           etrans; [apply prefix_take |].
           rewrite Hins. apply ins_prefix_of, open_seg_prefix_boots;
             [exact Hpre | by rewrite Hbo | exact Hsh]. }
-      apply (good_out_p_of_stage (o_ps so) (o_cs so) (o_E so) (o_w so) seg
-               Hpsb).
-      + exact (alts_pre_p_mono (snd <$> o_E so) (ins seg) (o_cs so)
-                 Hbytes Hcs').
-      + rewrite Hcsl. case_decide as Hd.
-        * destruct Hd as [_ Hr]. rewrite (pop_nlines_removelast _ Hr). lia.
-        * apply nlines_prefix, pop_removelast_prefix.
-      + rewrite Hcsl. case_decide as Hd; [by right; destruct Hd as [Hw _] |].
-        left. lia.
-      + exact Hbyte.
-      + exact Hpin.
-      + exact Hwp.
-      + rewrite -Hacc. exact Hwire.
-      + exact Hbytes.
+      assert (Hao : alts_pre_p (ins seg) (o_cs so))
+        by exact (alts_pre_p_mono (snd <$> o_E so) (ins seg) (o_cs so)
+                    Hbytes Hcs').
+      assert (Hwire' : obs_wire Uart0 seg
+                       `prefix_of` (D_p (o_ps so) (o_cs so) (o_E so)
+                                    ++ o_w so)) by (rewrite -Hacc; exact Hwire).
+      destruct Hall2 as [Hc | Ho].
+      { (* the ordinary reading *)
+        pose proof Hc as Hc2.
+        destruct Hc2 as (_ & Hcsl & _ & _ & _ & _).
+        apply (good_out_p_of_stage (o_ps so) (o_cs so) (o_E so) (o_w so) seg
+                 Hpsb Hao).
+        + rewrite Hcsl. case_decide as Hd.
+          * destruct Hd as [_ Hr]. rewrite (pop_nlines_removelast _ Hr). lia.
+          * apply nlines_prefix, pop_removelast_prefix.
+        + rewrite Hcsl. case_decide as Hd; [by right; destruct Hd as [Hw _] |].
+          left. lia.
+        + exact Hbyte.
+        + exact Hpin.
+        + by destruct Hc as (Hout & _); destruct Hout as (_ & Hwp & _).
+        + exact Hwire'.
+        + exact Hbytes. }
+      (* THE ROUND IN PROGRESS: F4 at an UNFILED block, whose witness is
+         the round's own code ([PipeBothPure.good_out_p_of_stage_blk2]). *)
+      destruct Ho as (_ & Hop & _).
+      pose proof Hop as (_ & Hwp' & _ & _ & ao & Hb2).
+      apply (good_out_p_of_stage_blk2 (o_ps so) (o_cs so) (o_E so) (o_w so)
+               ao seg Hpsb Hao Hbyte Hpin);
+        [by rewrite Hwp' | exact Hwire' | exact Hbytes].
   Qed.
 
   (* ====================================================================== *)
@@ -2187,7 +2702,7 @@ Section pipe_out.
       cbn [o_ps o_cs o_E o_w ostage0 length LogEntryDefs.ch_dl].
       rewrite /pcount_p fmap_nil proc_before_p_nil. cbn [length].
       iFrame "Hpin Hpera Hblk Hcur1 Hrb Ht1 Hcs Hps HE Hdl1". iPureIntro.
-      rewrite /pcl_pure.
+      left. rewrite /pcl_pure.
       cbn [LogEntryDefs.ch_acc LogEntryDefs.ch_log LogEntryDefs.ch_dl
            LogEntryDefs.ch_arm].
       split_and!.

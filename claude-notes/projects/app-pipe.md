@@ -4828,6 +4828,26 @@ contradictory.  The same panic corner applies and is handled the way
 `pd_head_ne_panic` handles it (the panic line opens on `f`, a merge on
 `e`).
 
+**3a.  BUILD STATE (honest).**  `PipeOutPure.vo`, `PipeOut.vo` and
+`PipeLinks.vo` are **RC=0** at the new fixed part; `AppPipe.v`'s one
+leftover (`pipe_init_img` wants the echo half) is fixed and the rest of
+the cone -- `PipeLinksLine`, `PipeLinkInst`, `PipeStageInst`, `PipeBoth`,
+`UCatPipe`, `UShPipeRound` and the whole tree -- is compiling as this
+block is written.  The three claim steps are not in the tree at all, so
+nothing above the cone can depend on them.
+
+**3b.  A BUILD-HARNESS TRAP that cost this lane two hours.**  The helper's
+`build` runs `make` over ssh; when the LOCAL wrapper `timeout` fires it
+kills ssh, the remote `coqc` children die with it, and `make` is left
+sitting at `Waiting for unfinished jobs....` with no children -- it never
+returns, and the next `build` finds the tree half-made.  Read a
+`WRAPPER_EXIT=124` with no `RC=` line as "I killed my own build", not as
+a hang: check `pgrep -c coqc` on the mirror (0 means nothing is running)
+and `pkill -f "make -f CoqMakefile"` before starting another.  The pipe
+cone's big files (`PipeLinksLine`, and whatever builds the 94-field
+record) need a wrapper budget of hours, not the 30-40 minutes that is
+plenty for `PipeOut`.
+
 **4.  OPERATIONAL.**  A section variable is discharged into a definition
 only if the definition MENTIONS it: `blk_auth w l` (which names only
 `pe_blk w`) takes no `g`, while `pera_pin g k w` does — the error reads

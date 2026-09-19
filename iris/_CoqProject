@@ -1677,4 +1677,5 @@ PipeKillMark.v
 UEchoPipe.v
 UCatPipe.v
 PipeLinksLine.v
+PipeBoth.v
 PipeLinkInst.v

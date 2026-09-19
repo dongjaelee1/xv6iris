@@ -326,6 +326,14 @@ Proof using.
   rewrite Nat.sub_diag. exact (palt_of_code a).
 Qed.
 
+(* ...and at a RAW code, which is what the round's four exits file *)
+Lemma palt_at_snoc (cs : list nat) (i : nat) (a : nat) :
+  length cs = i -> palt_at (cs ++ [a]) i = palt_of a.
+Proof using.
+  intros <-. rewrite /palt_at list_lookup_total_alt lookup_app_r; [| lia].
+  by rewrite Nat.sub_diag.
+Qed.
+
 (* the pending reading AT THE FILED ENTRY is the alternative's continuation:
    the block the running merge is a prefix of *)
 Lemma pending_at_p_filed (ps cs : list nat) (I : list (bv 8))
@@ -551,6 +559,67 @@ Proof using.
 Qed.
 
 (* ====================================================================== *)
+(*  4a. THE BYTES A RUN OF THE TWO WRITERS PUTS ON THE WIRE                *)
+(*                                                                        *)
+(*  The consumer's view: from the block already written under [sel], the   *)
+(*  bytes a further run [tail] of the two writers emits, in order.  This   *)
+(*  is what an [out_chain] over the merged diagnostic is indexed by.       *)
+(* ====================================================================== *)
+
+Fixpoint both_bytes (sel : list bool) (tail : list bool) : list (bv 8) :=
+  match tail with
+  | [] => []
+  | true :: t =>
+      dg_execL !!! count_true sel :: both_bytes (sel ++ [true]) t
+  | false :: t =>
+      dg_execR !!! (length sel - count_true sel)%nat
+        :: both_bytes (sel ++ [false]) t
+  end.
+
+Lemma both_bytes_length (sel tail : list bool) :
+  length (both_bytes sel tail) = length tail.
+Proof using.
+  revert sel. induction tail as [| [|] t IH]; intros sel; cbn [both_bytes length];
+    [reflexivity | by rewrite IH | by rewrite IH].
+Qed.
+
+Lemma both_bytes_app (sel tail : list bool) :
+  sel_wf (sel ++ tail) ->
+  pend_both (sel ++ tail) = pend_both sel ++ both_bytes sel tail.
+Proof using.
+  revert sel. induction tail as [| [|] t IH]; intros sel Hwf.
+  - rewrite app_nil_r. cbn [both_bytes]. by rewrite app_nil_r.
+  - (* a LEFT byte *)
+    assert (Hwf0 : sel_wf sel)
+      by (apply (sel_wf_prefix sel (sel ++ (true :: t))); [by eexists | done]).
+    assert (Hlt : (count_true sel < length dg_execL)%nat).
+    { destruct Hwf as [H1 _]. rewrite count_true_app in H1.
+      cbn [count_true] in H1. lia. }
+    destruct (lookup_lt_is_Some_2 dg_execL (count_true sel) Hlt) as [b Hb].
+    assert (Hshape : (sel ++ (true :: t)) = ((sel ++ [true]) ++ t))
+      by (by rewrite -app_assoc).
+    rewrite Hshape in Hwf |- *. rewrite (IH (sel ++ [true]) Hwf).
+    rewrite (pend_both_true sel b Hwf0 Hb). cbn [both_bytes].
+    rewrite -app_assoc. cbn [app]. do 2 f_equal.
+    by rewrite (list_lookup_total_correct dg_execL (count_true sel) b Hb).
+  - (* a RIGHT byte *)
+    assert (Hwf0 : sel_wf sel)
+      by (apply (sel_wf_prefix sel (sel ++ (false :: t))); [by eexists | done]).
+    assert (Hlt : (length sel - count_true sel < length dg_execR)%nat).
+    { destruct Hwf as [_ H2]. rewrite count_true_app length_app in H2.
+      cbn [count_true length] in H2.
+      pose proof (count_true_le t). pose proof (count_true_le sel). lia. }
+    destruct (lookup_lt_is_Some_2 dg_execR (length sel - count_true sel)%nat
+                Hlt) as [b Hb].
+    assert (Hshape : (sel ++ (false :: t)) = ((sel ++ [false]) ++ t))
+      by (by rewrite -app_assoc).
+    rewrite Hshape in Hwf |- *. rewrite (IH (sel ++ [false]) Hwf).
+    rewrite (pend_both_false sel b Hwf0 Hb). cbn [both_bytes].
+    rewrite -app_assoc. cbn [app]. do 2 f_equal.
+    by rewrite (list_lookup_total_correct dg_execR _ b Hb).
+Qed.
+
+(* ====================================================================== *)
 (*  5.  WHAT A COMPLETED ROUND'S BLOCK CANNOT BE                           *)
 (*                                                                        *)
 (*  The refutation the claim's ECHO step needs in the both arm, and the    *)
@@ -592,4 +661,391 @@ Proof using.
   intros Hl Ha Hp Heq.
   apply (pcont_not_prefix_pend_both l a sel Hl Ha Hp).
   rewrite Heq. reflexivity.
+Qed.
+
+(* ====================================================================== *)
+(*  6.  THE ROUND'S LEND, GENERALISED (coordinator's amendment,           *)
+(*      2026-09-19, after SH-PIPE-ROUND-2's [pipe_turn_one_writer])        *)
+(*                                                                        *)
+(*  [EchoOut.turn] is half a [mono_nat] authority, so ONE console writer   *)
+(*  at a time -- and sh's runcmd child forks TWICE without knowing which   *)
+(*  child will write the round's block.  So the two-cursor lease is not    *)
+(*  the [PBoth] arm's mechanism: it is THE ROUND'S LEND on every arm.      *)
+(*  The LEFT child's console bytes are always a prefix of [dg_execL] (it   *)
+(*  either execs and writes into the PIPE, or fails and prints its         *)
+(*  diagnostic); the RIGHT child's are a prefix of ONE list [R] fixed at   *)
+(*  its first byte -- the LINE (cat printing what it read, [PRan]) or      *)
+(*  [dg_execR] (its own diagnostic, [PExecR]).  So ALL FOUR block shapes   *)
+(*  are [pmerge sel dg_execL R] at the two cursors, and the four           *)
+(*  alternatives are four ways of finishing it.                           *)
+(* ====================================================================== *)
+
+Definition pend2 (R : list (bv 8)) (sel : list bool) : list (bv 8) :=
+  pmerge sel dg_execL R.
+
+Definition sel_wf2 (R : list (bv 8)) (sel : list bool) : Prop :=
+  (count_true sel <= length dg_execL)%nat
+  /\ (length sel - count_true sel <= length R)%nat.
+
+Lemma pend2_execR (sel : list bool) : pend2 dg_execR sel = pend_both sel.
+Proof using. reflexivity. Qed.
+
+Lemma sel_wf2_execR (sel : list bool) : sel_wf2 dg_execR sel <-> sel_wf sel.
+Proof using. rewrite /sel_wf2 /sel_wf. done. Qed.
+
+Lemma pend2_nil (R : list (bv 8)) : pend2 R [] = [].
+Proof using. rewrite /pend2. apply pmerge_nil_sel. Qed.
+
+Lemma pend2_length (R : list (bv 8)) (sel : list bool) :
+  sel_wf2 R sel -> length (pend2 R sel) = length sel.
+Proof using. intros [H1 H2]. by apply pmerge_length. Qed.
+
+Lemma sel_wf2_prefix (R : list (bv 8)) (sel sel' : list bool) :
+  sel `prefix_of` sel' -> sel_wf2 R sel' -> sel_wf2 R sel.
+Proof using.
+  intros [z ->] [H1 H2]. rewrite count_true_app length_app in H1, H2.
+  pose proof (count_true_le z). rewrite /sel_wf2. lia.
+Qed.
+
+Lemma pend2_take (R : list (bv 8)) (sel : list bool) (k : nat) :
+  take k (pend2 R sel) = pend2 R (take k sel).
+Proof using. rewrite /pend2. apply pmerge_take. Qed.
+
+Lemma pend2_mono (R : list (bv 8)) (sel sel' : list bool) :
+  sel `prefix_of` sel' -> pend2 R sel `prefix_of` pend2 R sel'.
+Proof using.
+  intros Hp.
+  assert (Hs : take (length sel) sel' = sel)
+    by (destruct Hp as [z ->]; by rewrite take_app_length).
+  assert (H2 : pend2 R sel = take (length sel) (pend2 R sel'))
+    by (rewrite pend2_take Hs; reflexivity).
+  rewrite H2. apply prefix_take.
+Qed.
+
+Lemma pend2_true (R : list (bv 8)) (sel : list bool) (b : bv 8) :
+  sel_wf2 R sel -> dg_execL !! count_true sel = Some b ->
+  pend2 R (sel ++ [true]) = pend2 R sel ++ [b].
+Proof using.
+  intros [H1 H2] Hb. rewrite /pend2 (pmerge_snoc_true sel _ _ H1 H2).
+  by rewrite (pop_take1_drop_lookup dg_execL (count_true sel) b Hb).
+Qed.
+
+Lemma pend2_false (R : list (bv 8)) (sel : list bool) (b : bv 8) :
+  sel_wf2 R sel -> R !! (length sel - count_true sel)%nat = Some b ->
+  pend2 R (sel ++ [false]) = pend2 R sel ++ [b].
+Proof using.
+  intros [H1 H2] Hb. rewrite /pend2 (pmerge_snoc_false sel _ _ H1 H2).
+  by rewrite (pop_take1_drop_lookup R _ b Hb).
+Qed.
+
+(* the bytes a run of the two children emits, at the right child's own
+   source *)
+Fixpoint both_bytes2 (R : list (bv 8)) (sel : list bool) (tail : list bool)
+  : list (bv 8) :=
+  match tail with
+  | [] => []
+  | true :: t =>
+      dg_execL !!! count_true sel :: both_bytes2 R (sel ++ [true]) t
+  | false :: t =>
+      R !!! (length sel - count_true sel)%nat
+        :: both_bytes2 R (sel ++ [false]) t
+  end.
+
+Lemma both_bytes2_app (R : list (bv 8)) (sel tail : list bool) :
+  sel_wf2 R (sel ++ tail) ->
+  pend2 R (sel ++ tail) = pend2 R sel ++ both_bytes2 R sel tail.
+Proof using.
+  revert sel. induction tail as [| [|] t IH]; intros sel Hwf.
+  - rewrite app_nil_r. cbn [both_bytes2]. by rewrite app_nil_r.
+  - assert (Hwf0 : sel_wf2 R sel)
+      by (apply (sel_wf2_prefix R sel (sel ++ (true :: t)));
+          [by eexists | done]).
+    assert (Hlt : (count_true sel < length dg_execL)%nat).
+    { destruct Hwf as [H1 _]. rewrite count_true_app in H1.
+      cbn [count_true] in H1. lia. }
+    destruct (lookup_lt_is_Some_2 dg_execL (count_true sel) Hlt) as [b Hb].
+    assert (Hshape : (sel ++ (true :: t)) = ((sel ++ [true]) ++ t))
+      by (by rewrite -app_assoc).
+    rewrite Hshape in Hwf |- *. rewrite (IH (sel ++ [true]) Hwf).
+    rewrite (pend2_true R sel b Hwf0 Hb). cbn [both_bytes2].
+    rewrite -app_assoc. cbn [app]. do 2 f_equal.
+    by rewrite (list_lookup_total_correct dg_execL (count_true sel) b Hb).
+  - assert (Hwf0 : sel_wf2 R sel)
+      by (apply (sel_wf2_prefix R sel (sel ++ (false :: t)));
+          [by eexists | done]).
+    assert (Hlt : (length sel - count_true sel < length R)%nat).
+    { destruct Hwf as [_ H2]. rewrite count_true_app length_app in H2.
+      cbn [count_true length] in H2.
+      pose proof (count_true_le t). pose proof (count_true_le sel). lia. }
+    destruct (lookup_lt_is_Some_2 R (length sel - count_true sel)%nat Hlt)
+      as [b Hb].
+    assert (Hshape : (sel ++ (false :: t)) = ((sel ++ [false]) ++ t))
+      by (by rewrite -app_assoc).
+    rewrite Hshape in Hwf |- *. rewrite (IH (sel ++ [false]) Hwf).
+    rewrite (pend2_false R sel b Hwf0 Hb). cbn [both_bytes2].
+    rewrite -app_assoc. cbn [app]. do 2 f_equal.
+    by rewrite (list_lookup_total_correct R _ b Hb).
+Qed.
+
+(* ---- THE ROUND'S BLOCK SHAPE, at the two cursors and the right child's
+       own source ---- *)
+
+Definition wr_blk2_p (ps cs : list nat) (I : list (bv 8)) (P : nat)
+    (R : list (bv 8)) (sel : list bool) (c1 c2 : nat) : Prop :=
+  I <> []
+  /\ rest_of I = []
+  /\ length cs = (nlines I - 1)%nat
+  /\ pboth_line I
+  /\ pro_pin_p ps cs I
+  /\ P = length (proc_before_p ps cs I)
+  /\ length sel = (c1 + c2)%nat
+  /\ count_true sel = c1
+  /\ (c1 <= length dg_execL)%nat
+  /\ (c2 <= length R)%nat.
+
+Lemma wr_blk2_p_sel_wf (ps cs : list nat) (I : list (bv 8)) (P : nat)
+    (R : list (bv 8)) (sel : list bool) (c1 c2 : nat) :
+  wr_blk2_p ps cs I P R sel c1 c2 -> sel_wf2 R sel.
+Proof using.
+  intros (_ & _ & _ & _ & _ & _ & Hl & Hc & H1 & H2). rewrite /sel_wf2 Hl Hc.
+  split; lia.
+Qed.
+
+Lemma wr_blk2_p_entry (ps cs : list nat) (I : list (bv 8))
+    (R : list (bv 8)) :
+  I <> [] -> rest_of I = [] ->
+  length cs = (nlines I - 1)%nat ->
+  pboth_line I ->
+  pro_pin_p ps cs I ->
+  wr_blk2_p ps cs I (length (proc_before_p ps cs I)) R [] 0%nat 0%nat
+  /\ pend2 R [] = [].
+Proof using.
+  intros Hne Hr Hq Hl Hpin. split; [| exact (pend2_nil R)].
+  rewrite /wr_blk2_p. split_and!; try done; cbn [count_true length]; lia.
+Qed.
+
+Lemma wr_blk2_step_L (ps cs : list nat) (I : list (bv 8)) (P : nat)
+    (R : list (bv 8)) (sel : list bool) (c1 c2 : nat) (b : bv 8) :
+  wr_blk2_p ps cs I P R sel c1 c2 ->
+  dg_execL !! c1 = Some b ->
+  wr_blk2_p ps cs I P R (sel ++ [true]) (S c1) c2
+  /\ pend2 R (sel ++ [true]) = pend2 R sel ++ [b].
+Proof using.
+  intros Hw Hb. pose proof Hw as (Hne & Hr & Hq & Hl & Hpin & HP & Hlen & Hcnt
+                                  & H1 & H2).
+  pose proof (lookup_lt_Some _ _ _ Hb) as Hlt.
+  assert (Hstep : pend2 R (sel ++ [true]) = pend2 R sel ++ [b]).
+  { apply (pend2_true R sel b (wr_blk2_p_sel_wf _ _ _ _ _ _ _ _ Hw)).
+    by rewrite Hcnt. }
+  split; [| exact Hstep].
+  rewrite /wr_blk2_p. split_and!;
+    first [ done
+          | rewrite length_app Hlen; cbn [length]; lia
+          | rewrite count_true_app Hcnt; cbn [count_true]; lia
+          | lia ].
+Qed.
+
+Lemma wr_blk2_step_R (ps cs : list nat) (I : list (bv 8)) (P : nat)
+    (R : list (bv 8)) (sel : list bool) (c1 c2 : nat) (b : bv 8) :
+  wr_blk2_p ps cs I P R sel c1 c2 ->
+  R !! c2 = Some b ->
+  wr_blk2_p ps cs I P R (sel ++ [false]) c1 (S c2)
+  /\ pend2 R (sel ++ [false]) = pend2 R sel ++ [b].
+Proof using.
+  intros Hw Hb. pose proof Hw as (Hne & Hr & Hq & Hl & Hpin & HP & Hlen & Hcnt
+                                  & H1 & H2).
+  pose proof (lookup_lt_Some _ _ _ Hb) as Hlt.
+  assert (Hstep : pend2 R (sel ++ [false]) = pend2 R sel ++ [b]).
+  { apply (pend2_false R sel b (wr_blk2_p_sel_wf _ _ _ _ _ _ _ _ Hw)).
+    by replace (length sel - count_true sel)%nat with c2 by lia. }
+  split; [| exact Hstep].
+  rewrite /wr_blk2_p. split_and!;
+    first [ done
+          | rewrite length_app Hlen; cbn [length]; lia
+          | rewrite count_true_app Hcnt; cbn [count_true]; lia
+          | lia ].
+Qed.
+
+(* ====================================================================== *)
+(*  7.  THE ROUND'S FOUR EXITS, AND F4 AT AN UNFILED BLOCK OF ANY SHAPE    *)
+(* ====================================================================== *)
+
+(* the stage reading at the round's own filed entry, for ANY non-panic
+   alternative *)
+Lemma pending_at_p_filed_gen (ps cs : list nat) (I : list (bv 8))
+    (a : nat) :
+  I <> [] -> rest_of I = [] ->
+  length cs = (nlines I - 1)%nat ->
+  palt_panic (palt_of a) = false ->
+  pending_at_p ps (cs ++ [a]) I
+  = pcont (pline_of (bodies_of I !!! (nlines I - 1)%nat)) (palt_of a).
+Proof using.
+  intros Hne Hr Hq Hpan. rewrite /pending_at_p.
+  rewrite decide_False; [| exact Hne]. rewrite decide_True; [| exact Hr].
+  rewrite /alt_cont_p (palt_at_snoc cs (nlines I - 1)%nat a Hq) Hpan.
+  by rewrite app_nil_r.
+Qed.
+
+(* THE BLOCK IN PROGRESS, of any shape: the round's entry is absent and
+   the bytes so far are a prefix of the continuation of an alternative the
+   line admits. *)
+Definition pblk2_at (cs : list nat) (I : list (bv 8)) (w : list (bv 8))
+    (a : nat) : Prop :=
+  I <> []
+  /\ rest_of I = []
+  /\ length cs = (nlines I - 1)%nat
+  /\ palt_ok (pline_of (bodies_of I !!! (nlines I - 1)%nat)) (palt_of a)
+  /\ palt_panic (palt_of a) = false
+  /\ w `prefix_of`
+     pcont (pline_of (bodies_of I !!! (nlines I - 1)%nat)) (palt_of a).
+
+(* F4 AT THE ROUND'S LEND: the console claim holds at every byte of a
+   block whose alternative has NOT been filed -- the witness the
+   theorem's existential wants is the round's own code, appended. *)
+Lemma good_out_p_of_stage_blk2 (ps cs : list nat)
+    (E : list (list mobs * bv 8)) (w : list (bv 8)) (a : nat)
+    (seg : list mobs) :
+  Forall (fun x => (x < length pro_alts)%nat) ps ->
+  alts_pre_p (ins seg) cs ->
+  E_disc_p E ->
+  pro_pin_p ps cs (snd <$> E) ->
+  pblk2_at cs (snd <$> E) w a ->
+  obs_wire Uart0 seg `prefix_of` (D_p ps cs E ++ w) ->
+  (snd <$> E) `prefix_of` ins seg ->
+  good_out_p seg.
+Proof using.
+  intros Hps Hao HE Hpin Hblk Hwire Hinp.
+  pose proof Hblk as (Hne & Hr & Hq & Hok0 & Hpan & Hpre).
+  pose proof (nlines_pos_of_rest_nil _ Hne Hr) as Hpos.
+  set (cs' := (cs ++ [a])%list).
+  assert (Hcsp : cs `prefix_of` cs') by (rewrite /cs'; by eexists).
+  assert (Hlen' : length cs' = nlines (snd <$> E))
+    by (rewrite /cs' length_app Hq; cbn [length]; lia).
+  assert (Hnl : (nlines (snd <$> E) <= nlines (ins seg))%nat)
+    by (by apply nlines_prefix).
+  assert (Hbod : bodies_of (ins seg) !!! (nlines (snd <$> E) - 1)%nat
+                 = bodies_of (snd <$> E) !!! (nlines (snd <$> E) - 1)%nat).
+  { destruct (bodies_of_prefix (snd <$> E) (ins seg) Hinp) as [z Hz].
+    rewrite Hz !list_lookup_total_alt lookup_app_l;
+      [reflexivity | rewrite /nlines in Hpos |- *; lia]. }
+  assert (Hok : palt_ok (pline_of (bodies_of (ins seg) !!! length cs))
+                  (palt_of a)) by (rewrite Hq Hbod; exact Hok0).
+  assert (Hao' : alts_pre_p (ins seg) cs').
+  { apply (alts_pre_p_snoc (ins seg) cs a Hao); [| exact Hok].
+    rewrite Hq. rewrite /nlines in Hpos, Hnl |- *. lia. }
+  assert (Hpin' : pro_pin_p ps cs' (snd <$> E)).
+  { intros qq Hqq. rewrite /cs' pro_idx_p_app_le; [by apply Hpin |].
+    rewrite (pop_nstarted_rest_nil _ Hr) in Hqq. rewrite Hq. lia. }
+  assert (HD : D_p ps cs' E = D_p ps cs E).
+  { symmetry. apply (D_p_cs_prefix ps ps cs cs' E);
+      [reflexivity | exact Hcsp | exact Hpin |].
+    rewrite (pop_nlines_removelast _ Hr) Hq. lia. }
+  apply (good_out_p_of_stage ps cs' E w seg Hps Hao').
+  - rewrite (pop_nlines_removelast _ Hr) Hlen'. lia.
+  - left. lia.
+  - exact HE.
+  - exact Hpin'.
+  - rewrite /pending_p
+      (pending_at_p_filed_gen ps cs (snd <$> E) a Hne Hr Hq Hpan).
+    exact Hpre.
+  - by rewrite HD.
+  - exact Hinp.
+Qed.
+
+(* ---- THE FOUR ALTERNATIVES THE ROUND CAN FILE, and the block each of
+       them owes.  Every one is [_ ++ u_prompt], which is what makes the
+       exit ONE lemma at four instances. ---- *)
+
+Lemma palt_ok_LPipe_ran (ws : list (list (bv 8))) : palt_ok (LPipe ws) PRan.
+Proof using. by cbn. Qed.
+Lemma palt_ok_LPipe_execL (ws : list (list (bv 8))) :
+  palt_ok (LPipe ws) PExecL.
+Proof using. by cbn. Qed.
+Lemma palt_ok_LPipe_execR (ws : list (list (bv 8))) :
+  palt_ok (LPipe ws) PExecR.
+Proof using. by cbn. Qed.
+
+Lemma pcont_ran (ws : list (list (bv 8))) :
+  pcont (LPipe ws) PRan = wl_line (drop 1 ws) ++ u_prompt.
+Proof using. reflexivity. Qed.
+Lemma pcont_execL (ws : list (list (bv 8))) :
+  pcont (LPipe ws) PExecL = dg_execL ++ u_prompt.
+Proof using. reflexivity. Qed.
+Lemma pcont_execR (ws : list (list (bv 8))) :
+  pcont (LPipe ws) PExecR = dg_execR ++ u_prompt.
+Proof using. reflexivity. Qed.
+
+Lemma palt_panic_ran : palt_panic PRan = false.
+Proof using. reflexivity. Qed.
+Lemma palt_panic_execL : palt_panic PExecL = false.
+Proof using. reflexivity. Qed.
+Lemma palt_panic_execR : palt_panic PExecR = false.
+Proof using. reflexivity. Qed.
+Lemma palt_panic_both (sel : list bool) : palt_panic (PBoth sel) = false.
+Proof using. reflexivity. Qed.
+
+(* the block the two cursors have written, read as one of the four:
+   [c1 = 0] and the right child at its whole source is [PRan] (source =
+   the line) or [PExecR] (source = the right diagnostic); [c2 = 0] and the
+   left child at its whole diagnostic is [PExecL]; both complete is
+   [PBoth sel]. *)
+Lemma pmerge_all_true (sel : list bool) (d1 d2 : list (bv 8)) :
+  count_true sel = length sel -> (length sel <= length d1)%nat ->
+  pmerge sel d1 d2 = take (length sel) d1.
+Proof using.
+  revert d1 d2. induction sel as [| [|] s IH]; intros d1 d2 Hc Hle.
+  - by rewrite pmerge_nil_sel.
+  - cbn [count_true length] in Hc, Hle |- *.
+    destruct d1 as [| b d1']; [cbn [length] in Hle; lia |].
+    rewrite pmerge_true_cons. cbn [take]. f_equal.
+    apply IH; [lia | cbn [length] in Hle; lia].
+  - exfalso. cbn [count_true length] in Hc.
+    pose proof (count_true_le s). lia.
+Qed.
+
+Lemma pmerge_all_false (sel : list bool) (d1 d2 : list (bv 8)) :
+  count_true sel = 0%nat -> (length sel <= length d2)%nat ->
+  pmerge sel d1 d2 = take (length sel) d2.
+Proof using.
+  revert d1 d2. induction sel as [| [|] s IH]; intros d1 d2 Hc Hle.
+  - by rewrite pmerge_nil_sel.
+  - exfalso. cbn [count_true] in Hc. lia.
+  - cbn [count_true length] in Hc, Hle |- *.
+    destruct d2 as [| b d2']; [cbn [length] in Hle; lia |].
+    rewrite pmerge_false_cons. cbn [take]. f_equal.
+    apply IH; [lia | cbn [length] in Hle; lia].
+Qed.
+
+(* THE LEFT CHILD ALONE: the block is its whole diagnostic, and the
+   alternative is [PExecL]. *)
+Lemma pend2_left_only (R : list (bv 8)) (sel : list bool) :
+  count_true sel = length dg_execL -> length sel = length dg_execL ->
+  pend2 R sel = dg_execL.
+Proof using.
+  intros Hc Hl. rewrite /pend2 (pmerge_all_true sel dg_execL R);
+    [| lia | lia].
+  rewrite Hl. apply take_ge. lia.
+Qed.
+
+(* THE RIGHT CHILD ALONE: the block is its whole source -- the LINE at
+   [PRan], its own diagnostic at [PExecR]. *)
+Lemma pend2_right_only (R : list (bv 8)) (sel : list bool) :
+  count_true sel = 0%nat -> length sel = length R ->
+  pend2 R sel = R.
+Proof using.
+  intros Hc Hl. rewrite /pend2 (pmerge_all_false sel dg_execL R);
+    [| lia | lia].
+  rewrite Hl. apply take_ge. lia.
+Qed.
+
+(* BOTH COMPLETE: the block is the merge, and the alternative is
+   [PBoth sel] -- the ONE place the code is built, out of the selector's
+   length and its count of trues. *)
+Lemma pend2_both_full (ws : list (list (bv 8))) (sel : list bool) :
+  count_true sel = length dg_execL ->
+  length sel = (length dg_execL + length dg_execR)%nat ->
+  palt_ok (LPipe ws) (PBoth sel)
+  /\ pcont (LPipe ws) (PBoth sel) = pend2 dg_execR sel ++ u_prompt.
+Proof using.
+  intros Hc Hl. split; [by apply palt_ok_both | reflexivity].
 Qed.

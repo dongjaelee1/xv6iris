@@ -4747,3 +4747,91 @@ nlines I − 1`; `pecl_step_write_blk` / `_pro` by the turn's position; and
 `pecl_step_echo` by `pcont_not_prefix_pend_both` — a byte echoed
 mid-block would put a completed round's block inside a running merge, and
 the `$` refutes it.
+
+### PIPE-2W-2 (2026-09-19) — the ruling IMPLEMENTED: `app_fixed app_pipe := pipe_gn` with the era's byte ledger inside the claim, and the cone swept; the three claim steps are NOT landed, and the reason is a TIE that needs one more exclusive ghost — worked out here in full
+
+Branch `app-pipe/pipe-2w-2` off main.
+
+**1.  WHAT LANDED.**  `PipeOut.v` now carries the pipeline application's
+own fixed part and the era's ledger:
+
+- `Record pipe_gn := MkPipeGn { pgn_cl : echo_fixed; pgn_era : gname }`
+  and `Record pipe_era := MkPEra { pe_blk : gname }`, with the class
+  `pipeOutG`, `pipeOutΣ` and the `subG` instance — `FileOut.file_gn` /
+  `file_era` one application over.  **The ledger adds no functor**: its
+  bytes ride the era's own echoed-list camera at `blk_enc b := ([], b)`.
+- the ghosts and their laws (`pera_pin`, `pera_map` with `FileOut.f0_map`'s
+  two moves, `blk_auth`/`blk_lb`, `blk_alloc`, and **`blk_lb_agree`: at
+  equal length a writer's bound IS the claim's list** — the tie).
+- `pstream so := proc_before_p … ++ o_w so`, the era's PROCESS BYTES,
+  whose length is exactly `pcount_p`, i.e. the era's cursor; its five
+  moves (`_0`, `_write`, `_blk`, `_pro`, `_echo`).  The echo one is worth
+  keeping: an echo does NOT grow the ledger, because the completed
+  block's bytes simply move from `o_w` into the stream's own account
+  (`proc_before_p_snoc`), which is also why `turn` does not move there.
+- `Section pipe_out` runs at `g : pipe_gn` with `Local Notation γ :=
+  (pgn_cl g)`, so **every statement's text is unchanged**; the claim's
+  non-taint arm gained `pera_pin g k w ∗ blk_auth w (pstream so)`, the
+  three write steps grow it, the founding hands it over with the era's
+  other ghosts, and `pipe_led`/`pipe_cl_all`/`pipe_led_init`/`_pow`/`_tx`/
+  `_rx`/`pipe_birth_all` carry the map.
+- THE SWEEP, as measured in PIPE-2W: `Context (γ : echo_fixed)` becomes
+  `Context (g : pipe_gn)` + the notation in PipeLinks, PipeLinksLine,
+  PipeLinkInst, PipeStageInst, PipeBoth, UShPipeRound and UCatPipe (only
+  the ARGUMENT at a pipe-side call site moves), and `AppPipe`'s six
+  wrappers take `pipe_gn` with the record reading `pgn_cl c`.  **The ten
+  `App` laws bind the fixed part abstractly and did not move**, and
+  neither did `AppPipeClaim`, `AppPipeCons`, `UInitConsPipe`,
+  `UPipeBootAdequacy` or `PipeAssumptions` — the measurement in PIPE-2W's
+  block was right.
+
+**2.  WHAT IS NOT LANDED, AND THE EXACT REASON.**  The three steps
+`pblk2_ecl_L`/`_R`/`_file` need the writer's family and the claim to be
+talking about THE SAME ROUND.  The ledger ties the BYTES (a lower bound
+of equal length is the list), and `turn` supplies the length — but the
+two together do NOT exclude a family created for an EARLIER round of the
+same era: with `I_w ⊊ I_c` the turn equation `P + c1 + c2 =
+|proc_before_c| + |o_w|` and `proc_stream_p_before`'s
+`|proc_before_w| + |pending_w| ≤ |proc_before_c|` only give
+`c1 + c2 ≥ |pending_w| + |o_w|`, which is satisfiable.  Three routes were
+worked out and two refuted:
+
+- a per-ROUND ledger keyed by the round index does NOT help: the claim
+  would look its round up and the stale family's pin is at another key,
+  so the agreement simply does not fire — the same hole one level down;
+- the '$' refutation (the stale round's block is complete inside
+  `pend2 R sel`, and a completed block ends with the prompt while a
+  running merge has no `$`) WORKS for every non-panic alternative but
+  leaves the panic corner, where the block is `alt_panic` and the
+  prologue that carries the prompt may be empty;
+- **THE ONE THAT CLOSES IT: an exclusive per-era "current round" ghost.**
+  Put `pe_cur : gname` (a `ghost_var (nat * gname)`) in `pipe_era`; the
+  claim holds one half and the round's family the other, at the era's
+  pinned record.  `ghost_var_agree` then forces the family's round index
+  AND its round-ledger gname to be the claim's, so a stale family cannot
+  exist — and the round ledger can go back to being per-round (the
+  simple `blk_lb gb (pend2 R sel)` PIPE-2W landed), with the era-wide
+  `pstream` ledger kept for the ordinary steps.  The half is handed out
+  by a FOURTH claim step, the block's OPENING (`pecl_blk2_open`: from the
+  ordinary arm at a block boundary at an `LPipe` line, allocate the
+  round's ledger, take the current-round ghost from (r−1) to r, and hand
+  back the half with `blk_lb gb []`), and comes back at the filing step.
+
+**3.  THE OTHER REFUTATION THE STEPS STILL OWE**, now understood:
+`pecl_step_echo` must refute the claim's both-arm (a byte echoed while a
+block is unfiled).  It is refutable and the argument is the discipline's,
+not the stage's: `disc_pt` requires that at every input byte the wire
+ALREADY carry `sessp` for the input so far, whose last round's block
+includes its PROMPT; in the both-arm the prompt is not out yet and the
+wire's tail is a `$`-free merge, so the echo step's own premises are
+contradictory.  The same panic corner applies and is handled the way
+`pd_head_ne_panic` handles it (the panic line opens on `f`, a merge on
+`e`).
+
+**4.  OPERATIONAL.**  A section variable is discharged into a definition
+only if the definition MENTIONS it: `blk_auth w l` (which names only
+`pe_blk w`) takes no `g`, while `pera_pin g k w` does — the error reads
+as a type mismatch on `g` at the first use.  And `Hweq : o_w = pending_p
+…` does not rewrite a goal spelling `pending_at_p … (snd <$> E)`: the two
+are convertible, not syntactic, so the rewrite goes through
+`(_ : … = …); [| symmetry; exact Hweq]`.

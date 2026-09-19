@@ -695,6 +695,32 @@ after PIPE-2W.  Also: a standalone `ctokG` section variable makes
 `ChildTok.kill_shot` a different term from the one the post carries
 (resolve through `xv6G`) — durable-notes' two-instance wedge again.
 
+**AS LANDED (lane KILL-TAINT, 2026-09-19) — and my §5.3 ruling was WRONG.**
+`Hktaint : □ (∀ gn, kill_shot gn -∗ app_taint)` is not "a kill taints the
+application": a kill shot at a FRESH generation is freely allocatable
+(`ChildTok.gen_alloc` + `kill_pend_fire`), so the premise entails
+`|==> app_taint` outright (`PipeKillMark.kill_taint_premise_gives_T`,
+mechanised) — under it `pipe_pred` answers from its taint arm and both
+entries were statements about a TAINTED era.  It could not have stayed
+whatever route was taken.  Route A (liveness) is refuted at the
+statement: `uexec_live_ok` is a pure Prop over two trapframe words and
+the table; a pipe read's `-1` has a LIVE reason (the first-byte copy-out
+fault, which the binary really answers with `-1` where consoleread
+answers 0), "the buffer is mapped" is not a function of those words, and
+`pipe_rpost_img` carries a taint arm no Prop can.  Route B landed IN THE
+KERNEL: `SpecPiperead`/`SpecPipewrite`'s post `Rk` is `kill_shot (pv_gen
+(us_V U)) ∗ app_taint`; the `killed()` accessor lends the incarnation's
+marker off the private block (`proc_priv_core_pid_reg_taken`) and reads
+the row with `SchedCtx.kill_paid_shot_tear` — the pairing was available
+to piperead/pipewrite all along (any caller holding `taken_at gn` has it;
+the brief's "only the trap tail pairs them" was wrong).  The file and
+syscall pipe arms carry the pair; NOTHING between them and the U tier
+moves (`Rk` is a parameter); `uread_pipe_core` and its write twin read
+it; both entries lose the premise.  Audits 13/14/13/14 unmoved.  A pipe
+read's `-1` has FOUR arms at the U tier (`pipe_rpost_img`'s own taint arm
+is the fourth).  Rule: never take a bare `kill_shot` out of a kernel post
+again — the accessor and the reading are two lines.
+
 ### 5.4 The pipe leaves at the standard slots (lane PIPE-STD)
 
 `UkReadPipe.wp_uk_ecall_read_pipe` and `UkWritePipe.wp_uk_ecall_write_pipe`

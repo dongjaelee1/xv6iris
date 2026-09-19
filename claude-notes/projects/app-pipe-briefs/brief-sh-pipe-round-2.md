@@ -55,8 +55,8 @@ paid diagnostic) for the child side.
    (`ep_pay_of_alloc` is the instance: it mints echo's whole lend plus
    `rtok`/`side_R`/`pipe_reg`), the left fork lending `ep_pay pn γp L` +
    echo's exec-supply inputs (mould `UShEchoPay`, the entry `ep_image_entry`
-   as the (E) obligation, `Hktaint` supplied from the record's kill
-   equation `app_taint = echo_taint γ`), the right fork lending
+   as the (E) obligation — it owes NO kill premise any more, lane
+   KILL-TAINT retired `Hktaint` on both entries), the right fork lending
    `pcat_pay_at` + cat's exec-supply inputs (mould `UShCat`, the entry
    `pcat_image_entry`), `Qc := pipe_Qc`, the closes from `pipe_reg`, the
    two waits → `pipe_Qc_two` → `pipe_round_reading` → the prompt credential
@@ -70,12 +70,12 @@ paid diagnostic) for the child side.
 4. `Hprog`: `UPipeBootAdequacy.pipe_prog_law` DISCHARGED from the round
    (`AppPipeCons`/`UInitConsPipe` supply /init; `pipe_cat_pins_acc` the
    exec of cat), so `pipe_adequacy_pipeΣ` is closed modulo `pipe_both_law`
-   and `Hktaint` only — state the final theorem with exactly those two
-   `Context` hypotheses and re-run `make audit-pipe-only`; report the list.
+   ONLY — state the final theorem with exactly that one `Context`
+   hypothesis and re-run `make audit-pipe-only`; report the list.
 
 ## Bar
-Whole-tree `ec2-lane.sh round2 build` RC=0; no `Admitted`; the two named
-premises the ONLY `Context` hypotheses of the closed theorem (list every
+Whole-tree `ec2-lane.sh round2 build` RC=0; no `Admitted`; `pipe_both_law`
+the ONLY `Context` hypothesis of the closed theorem (list every
 other one you had to add, with its reason); `audit-pipe-only` and
 `audit-echo-only` reported (echo 14 unmoved).
 

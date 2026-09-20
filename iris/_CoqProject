@@ -1684,3 +1684,6 @@ PipeBoth.v
 PipeLinkInst.v
 PipeStageInst.v
 UShPipeRound.v
+PipeReadInst.v
+UInitPipe.v
+UInitPipeAdequacy.v

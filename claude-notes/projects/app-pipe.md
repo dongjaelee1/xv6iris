@@ -6439,7 +6439,10 @@ row): **all eighteen Closed under the global context** — `palt_of_code`,
 `elem_of_forkS_sels`, `disc_p_dec`, `d4_p_nomerge_snoc`,
 `good_out_p_of_stage`, `D2_next_input_p`, `demo_p_fork`,
 `demo_p_fork_disc`, `demo_p_bad`, `pfork_execL_admitted`,
-`pfork_execL_only_forkS`, `gap_mixed_no_wit`.
+`pfork_execL_only_forkS`, `gap_mixed_no_wit`.  **All four audits at
+their baselines**, measured on the mirror after the changes:
+`audit-pipe-only` **14**, `audit-echo-only` **14**, `audit-tree-only`
+**13**, `audit-only` **13**.
 
 **THE ALTERNATIVE, VERBATIM.**
 

@@ -140,6 +140,28 @@ Section pipe_exit.
   Qed.
 
   (* =================================================================== *)
+  (*  S1b  THE ENTRY, WHICH IS FINE -- the other half of the STOP rule    *)
+  (*                                                                     *)
+  (*  [lk_lcred]'s owed arm at an [LPipe] line IS the family at the empty *)
+  (*  selector.  [PipeLinkInst.pipe_inst_lcred_at] reads [Wcf I 3] as     *)
+  (*  [exists v, era_pin * pwc_lpr g k v I 3] and [pwc_lpr _ _ _ 3] is    *)
+  (*  [pwc_blk k v I 0 0] by [lk_lpr_S3]'s [eq_refl]; the two steps below *)
+  (*  are landed ([pwc_lend_of_blk0], [pwc_blk2_of_lend]).  The ONE thing *)
+  (*  the child law does not hand over literally is [pboth_line I] -- the *)
+  (*  last body parses to [LPipe] -- which is a pure consequence of the   *)
+  (*  line facts it does hand over ([UShPipeRound.ushq_lp] and            *)
+  (*  [FileDisc.fline_ok (ush_lastbody I)]), through [PipeUline].         *)
+  (* =================================================================== *)
+  Lemma pipe_blk2_of_lpr3 (k : nat) (v : era_pins) (I R : list (bv 8)) :
+    pboth_line I ->
+    pwc_lpr g k v I 3%nat -∗ pwc_blk2 g k v I R [] 0%nat 0%nat.
+  Proof using .
+    intros Hl. iIntros "Hc".
+    iApply (pwc_blk2_of_lend g k v I R Hl).
+    iApply (pwc_lend_of_blk0 g k v I 0%nat with "Hc").
+  Qed.
+
+  (* =================================================================== *)
   (*  S2  THE REFUTATION, at the shell's two boundary shapes              *)
   (* =================================================================== *)
 

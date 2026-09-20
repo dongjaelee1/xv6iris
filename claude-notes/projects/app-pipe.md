@@ -6947,8 +6947,8 @@ file `iris/PipeRound5Assumptions.v` (NOT a `_CoqProject` row).
 `PipeBoth.v`, `PipeOut.v`, `PipeLinkInst.v`, `UInitPipe.v`,
 `UInitPipeAdequacy.v` and `PipeAssumptions.v` are byte-identical to
 main.  Whole-tree `ec2-lane.sh round5 build` **RC=0**; no `Admitted`;
-`Proof using` on every result.  `Print Assumptions` on all NINE results:
-**all nine Closed under the global context**.
+`Proof using` on every result.  `Print Assumptions` on all TEN results:
+**all ten Closed under the global context**.
 
 **THE STOP, AND IT IS A THEOREM (`pipe_fork_exit_not_lpr`).**
 
@@ -6980,6 +6980,29 @@ of the arm's four pieces repairs it: the STRAY holds `wcur gL (1/2)` for
 ever, so `blk2_inv_close` can never run again at that round, and the
 main loop must write the `$ ` at the family and not at the credential —
 which is exactly what §4.3i ruled.
+
+**AND THE SHARP FORM, which covers a TRADE (`pipe_half_not_lpr`).**  The
+lemma above is at the standard of ROUND-3's landed stop
+(`UShPipeExit.pipe_blk2_not_line`): it refutes HOLDING both shapes.  Its
+companion refutes the only escape, which is to give the terminal shape
+up for the credential:
+
+```coq
+  Lemma pipe_half_not_lpr (E : coPset) (N : namespace) ... (c1 p : nat) ... :
+    era_pin γ k v -∗
+    blk2_inv g N k v I L gL gR gM XL YR -∗
+    PipeBoth.wcur gL (1/2) c1 -∗
+    pwc_lpr2 g k v I p -∗
+    pecl g k ho H ={E}=∗ PT.
+```
+
+`blk2_inv` is an `inv` and therefore PERSISTENT, so a process that ever
+had it has it still, whatever it surrenders; and while ANY party holds a
+cursor half the invariant cannot be in its DONE arm, so the family — and
+its `turn` — is still inside.  At a terminal round the STRAY holds
+`wcur gL (1/2)` for ever (it is never waited for), so the premise is the
+model fact §4.3h landed, and the conclusion is that no boundary
+credential exists at that round at all.
 
 **WHY THAT IS A STOP AND NOT WORK.**  `UShPipeRound.sh_pipe_child_law`
 is *by definition*

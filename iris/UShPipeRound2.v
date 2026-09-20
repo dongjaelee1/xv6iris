@@ -6,11 +6,12 @@
 (*                                                                       *)
 (*  WHAT IS HERE.                                                        *)
 (*                                                                       *)
-(*   S1  the round's NAMESPACE and the children's EXCLUSION at the       *)
-(*       pipeline protocol -- [XL := PipeProto.wcur pn 0],               *)
-(*       [YR := pws_lb pn (take 1 L)], [Eex := pipeN], and the mask      *)
-(*       side condition [PipeBoth.pblk2_cstep_L] asks for, discharged    *)
-(*       once and for all at this file's namespace.                      *)
+(*   S1  the round's NAMESPACE, and the two mask side conditions the     *)
+(*       family's byte steps ask for, discharged once and for all at it: *)
+(*       PIPE-EXEC-ECHO's exclusion is at [Eex := pipeN]                 *)
+(*       ([XL := PipeProto.wcur pn 0], [YR := pws_lb pn (take 1 L)]),    *)
+(*       so the round's own namespace has to miss BOTH the port's and    *)
+(*       the protocol's.                                                  *)
 (*   S2  the round's ENTRY: sh's fork lends [Wcf I 3] and that IS the    *)
 (*       family at the empty selector, with the three cursor halves the  *)
 (*       round keeps.                                                    *)
@@ -25,6 +26,9 @@
 (*   S6  THE STOP: at a round whose second [fork1] failed, the runcmd    *)
 (*       child's exit payload CANNOT be [UkShFork.ushf_wq], and the      *)
 (*       refutation is a theorem and not an impression.                  *)
+(*   S7  ...and the CONTRAST: with both cursors at zero the family IS    *)
+(*       the lend again, which is what makes the FIRST panic tail        *)
+(*       (panic("pipe"), no child alive) payable.                        *)
 (*                                                                       *)
 (*  WHAT IS NOT HERE, and why: the WALK.  [UShPipeChild.                 *)
 (*  wp_kshm_child_pipe_paid_line] is applied at the payloads S2-S4       *)
@@ -281,6 +285,51 @@ Section UShPipeRound2.
         [| iRight; iExact "HT"].
       iDestruct "H" as (ps cs P) "(_ & Ht & _)".
       iLeft. iExists (P + 0)%nat. iExact "Ht".
+  Qed.
+
+  (* THE SHARP FORM, and the one that covers a TRADE: while ANY party
+     still holds a cursor half -- the STRAY does, for ever, at a
+     terminal round -- the loop's boundary credential is unreachable
+     beside the family's invariant, whatever the holder gives up for it.
+     [blk2_inv] is an [inv] and therefore PERSISTENT, so a process that
+     ever had it has it still; the only way out is the DONE arm, and the
+     outstanding half refutes that. *)
+  Lemma pipe_half_not_lpr (E : coPset) (N : namespace)
+      (k : nat) (v : era_pins) (I L : list (bv 8)) (gL gR gM : gname)
+      (XL YR : iProp Σ) (c1 p : nat)
+      (ho : list mobs) (H : LogEntryDefs.cons_hist) :
+    Timeless XL -> Timeless YR ->
+    (↑N : coPset) ⊆ E ->
+    era_pin γ k v -∗
+    blk2_inv g N k v I L gL gR gM XL YR -∗
+    PipeBoth.wcur gL (1/2) c1 -∗
+    pwc_lpr2 g k v I p -∗
+    pecl g k ho H ={E}=∗ PT.
+  Proof using .
+    intros HX HY HN. iIntros "#Hpin #Hinv HcL Hlpr Hcl".
+    rewrite {1}/pecl. iDestruct "Hcl" as "[#HT | Hc]";
+      [by iModIntro; iExact "HT" |].
+    iDestruct "Hc"
+      as (v2 w so r gb pre opn)
+         "(#Hpin2 & _ & _ & _ & _ & Hta & _)".
+    iDestruct (era_pin_agree with "Hpin2 Hpin") as %->.
+    iDestruct (pwc_lpr2_turn k v I p with "Hlpr") as "[Hb | #HT]";
+      [| by iModIntro; iExact "HT"].
+    iDestruct "Hb" as (Pb) "Htb".
+    iMod (inv_acc E N _ HN with "Hinv") as "[Hin Hclose]".
+    iDestruct "Hin" as ">Hin". rewrite {1}/blk2_body.
+    iDestruct "Hin" as "[Hfam | Hdone]"; last first.
+    { iDestruct (blk2_done_not_L gL gR c1 with "HcL Hdone") as %[]. }
+    iDestruct "Hfam" as (R sel c1' c2') "(Hf & HgL & HgR & Hxl & Hrm)".
+    rewrite {1}/pwc_blk2. iDestruct "Hf" as "[Hf | #HT]"; last first.
+    { iMod ("Hclose" with "[HgL HgR Hxl Hrm]") as "_".
+      { iNext. rewrite /blk2_body. iLeft.
+        iExists R, sel, c1', c2'. iFrame "HgL HgR Hxl Hrm".
+        iApply (pwc_blk2_taint g k v I R sel c1' c2' with "HT"). }
+      iModIntro. iExact "HT". }
+    iDestruct "Hf" as (ps cs P) "(_ & _ & Htn & _)".
+    iDestruct (pround_turn_three v (P + c1' + c2')%nat Pb _
+                 with "Htn Htb Hta") as %[].
   Qed.
 
   (* THE REFUTATION.  [p] is arbitrary: no index of the loop's boundary

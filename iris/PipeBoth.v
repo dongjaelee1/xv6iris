@@ -549,11 +549,11 @@ Section pipe_both.
         as "(Hcl & Hret)".
       (* [replace P with ...] would rewrite P inside [Htn] too -- the
          Iris context is part of the Coq goal.  Convert the INDEX. *)
-      { iExactEq "Htn". f_equal. cbn [count_true]. lia. }
+      { cbn [count_true]. rewrite ?Nat.add_0_r. iExact "Htn". }
       iModIntro. iFrame "Hcl".
       iDestruct "Hret" as "[Hx | #HT]"; [| by iRight].
       iDestruct "Hx" as (w gb) "(Htn & #Hpera & Hcur & #Hrlb & _ & _ & _)".
-      iLeft. replace (S (P + 0 + 0))%nat with (S P) by lia. iFrame "Htn".
+      iLeft. cbn [count_true]. rewrite ?Nat.add_0_r. iFrame "Htn".
       rewrite /pblk_led. iRight. iExists w, gb. iFrame "Hpera Hcur".
       rewrite Hstep (pend2_nil R). cbn [app]. iFrame "Hrlb".
     - (* A FURTHER BYTE: the round's own ledger, under the writer's half *)
@@ -602,11 +602,11 @@ Section pipe_both.
       iMod (pecl_blk2_open g k v P a b ps cs I ho H Hne Hr Hle Hpp HP
               Hok Hpan Hb0 Hnd with "Hpin [Htn] Hps Hcs HE Hcl")
         as "(Hcl & Hret)".
-      { replace P with (P + 0 + 0)%nat by lia. iExact "Htn". }
+      { cbn [count_true]. rewrite ?Nat.add_0_r. iExact "Htn". }
       iModIntro. iFrame "Hcl".
       iDestruct "Hret" as "[Hx | #HT]"; [| by iRight].
       iDestruct "Hx" as (w gb) "(Htn & #Hpera & Hcur & #Hrlb & _ & _ & _)".
-      iLeft. replace (S (P + 0 + 0))%nat with (S P) by lia. iFrame "Htn".
+      iLeft. cbn [count_true]. rewrite ?Nat.add_0_r. iFrame "Htn".
       rewrite /pblk_led. iRight. iExists w, gb. iFrame "Hpera Hcur".
       rewrite Hstep (pend2_nil R). cbn [app]. iFrame "Hrlb".
     - iDestruct "Hled" as (w gb) "(#Hpera & Hcur & #Hrlb)".

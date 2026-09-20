@@ -4952,8 +4952,13 @@ both the first byte and the rest.
   least one byte — otherwise the block never opened and the ordinary
   `pwc_blk` path applies).
 
-**5.  VERIFICATION STATE: THE WHOLE TREE IS GREEN (`RC=0`).**  Everything
-in this block is machine-checked — `PipeOut.v` (`pe_cur` and all four
+**5.  VERIFICATION STATE: THE WHOLE TREE IS GREEN (`RC=0`), AND THE FOUR
+STEPS ARE CLOSED.**  `Print Assumptions` on `PipeOut.pecl_blk2_open`,
+`pecl_blk2_byte`, `pecl_blk2_file` and on `PipeBoth.pblk2_ecl_holds` (the
+three discharges together) prints **`Closed under the global context`**
+for all four: the round's ledger, `pe_cur` and the family's byte steps
+rest on nothing but the tree.  Everything in this block is
+machine-checked — `PipeOut.v` (`pe_cur` and all four
 claim steps), `PipeBothPure.v` (`pend2_prefix`), `PipeBoth.v` (the
 family's per-round ledger and the three discharges) and the whole
 dependent cone.  With the wedge of §6 out of the way a whole-tree build

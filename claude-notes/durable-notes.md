@@ -1655,3 +1655,42 @@ mean it (a `∀ γp, <persistent>` introduced with `#` makes the search do
 the box's work).  `Set Default Timeout N.` localises the site in one build
 (`Error: Timeout!` at the line) where `Admitted`-bisection costs a build
 per lemma.  Kill a wedged `rocqworker` by PID, never by pattern.
+
+## A bundle a proof `iIntros "#"` on must be `Typeclasses Opaque`, its instance named at priority 0 (2026-09-20)
+
+Measured on `PipeLinksLine.v` (lane PIPE-2W-3): `PipeLinks.pipe_links`, a
+six-fold `∗` of `□ ∀ …` wands, was TRANSPARENT to the instance search, so
+`iIntros "#Hlk"` unfolded the name and descended into the wands instead
+of taking `pipe_links_persistent`.  Minutes per site with five cameras in
+the section (most of the file's old ~40 min); non-terminating (6+ CPU
+hours) once a seventh camera joined.  Fix at the SOURCE, not the
+consumer: `#[global] Typeclasses Opaque pipe_links` and every leaf's
+`Persistent` instance named `| 0`.  14 s afterwards.  ONLY the bundle —
+making the leaves opaque broke `iApply ("Ht" $! k b Φ)`, which must see
+the `∀` through the name.  Locator: `Set Default Timeout 300.` at the top
+of the file names the sentence within minutes.  The same runaway hits
+`iAssert P as "#H"` (it raises `Persistent P` on the statement — take the
+resource linearly instead) and any `Instance` mentioning `riscvGS`/`GenId`
+stated in a section binding neither (lane PIPE-CC).
+
+## A one-letter section variable shadows binders tree-wide (2026-09-20)
+
+`Context (g : pipe_gn)` made `iIntros (… g …)`, a `gname` binder and a
+byte-function binder all fail with `g is already used` in three files.
+Name a fixed part with two letters (`pg`); rename the binder, not the
+section variable.
+
+## `++` parses in `string_scope` above `RiscvAdequacy` (2026-09-20)
+
+`ArchReset.v`/`BootReset.v`/`ColdBoot.v` do a non-`Local` `Open Scope
+string.`; any file importing them writes `(I ++ [b])%list`.  Lane PIPE-CC.
+
+## A lane cut before a sibling's rename lands is red at the merge, not in its own tree (2026-09-20)
+
+PIPE-CC (off the round-3 merge) stated a lemma at `pwc_lpr`; SH-PIPE-ROUND-4
+re-pointed the record's `lk_lpr` to `pwc_lpr2` and merged first.  Each
+lane was green alone; the combined gate failed at `iSpecialize: cannot
+instantiate`.  Rule: after merging two lanes cut from different bases,
+gate the COMBINED head before calling either pushable — and a fix tested
+by `scp` into the mirror's main tree must be `git checkout --`'d there
+before the next `ec2-gate.sh`, which refuses a dirty mirror.

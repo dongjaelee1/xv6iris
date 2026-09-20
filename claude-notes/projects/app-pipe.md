@@ -285,9 +285,11 @@ arm is the theorem's one named premise (`pipe_both_law`).
   which is REFUTED**: the second shape carries the family's `inv` and
   every boundary field of `LinkRec` (`lk_line`, `lk_sp_t`, `lk_open_t`)
   is a `Timeless` field.  See the Findings block.
-- [ ] **SH-PIPE-ROUND-5** (after STAGE-3): the assembly; `pcat_image_entry`
-  restated; the third paid diagnostic; `sh_pipe_child_law_all` proved →
-  `pipe_adequacy_pipeΣ_of_child` premise-free.
+- [ ] **SH-PIPE-ROUND-5** (after STAGE-3, merged be9425f7e; design §4.3i:
+  the terminal round at the pipe fork arm's re-entry): the assembly;
+  `pcat_image_entry` restated; the third paid diagnostic;
+  `sh_pipe_child_law_all` proved → `pipe_adequacy_pipeΣ_final` with no
+  premise.  Brief `brief-sh-pipe-round-5.md`.
 - [x] **PIPE-CC** (in parallel with ROUND-4; ROUND-3's item 3): the pipe
   era's `cons_cred` instance (`UInitPipe.v`, five `UShLine` `_at` twins),
   `pipe_prog_law` discharged modulo `sh_pipe_child_law`;

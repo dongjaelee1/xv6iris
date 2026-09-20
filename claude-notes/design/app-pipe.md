@@ -936,6 +936,36 @@ STAGE-3's first item: the terminal twins of `pecl_blk2_byte`/
 reconstructing `pblk_open`'s right arm; the family's `R = L` branch must
 be unreachable at mode fork.
 
+### 4.3i RULED (2026-09-21, after PIPE-STAGE-3): the terminal round lives at the PIPE FORK ARM's re-entry, not in the link record
+
+STAGE-3 landed everything in §4.3h's stage paragraph except the carrier:
+the second shape (`PipeBoth.pwc_fork_exit N k v I L gL gR gM XL YR c2 :=
+blk2_inv … ∗ wcur gR (1/2) c2 ∗ wcur gM (1/2) 3`) cannot be an arm of
+any `LinkRec` boundary family — `inv` is not `Timeless` (`lk_line_tl`,
+`lk_sp_t_tl`, `lk_open_t_tl` demand it), `lk_sp_t_sp`/`lk_open_t_open`
+need `nlines I = length cs` and a terminal round is never filed, and
+`lk_read_t` is handed the next line as a RESOURCE while "the next line
+never arrives" (D4) lives in the claim.  RULED: the record is untouched;
+the terminal round is handled where the runcmd child's exit is consumed,
+sh's fork arm re-entry, by a PIPE-SPECIFIC twin (`UkShPipeFork` or the
+end of `UShPipeRound`; upstream's `UkShFork.wp_kshf_fork_at` and its
+`ushf_wq I = Wc I 3 ∨ Wc I 0` stay as they are): the child's exit payload
+at the pipe line is `ushf_wq I ∨ (∃ …, pwc_fork_exit … 5)`; at the third
+arm the parent writes the prompt with `pprompt_dollar_fork` /
+`pprompt_space_fork` (positions 5, 6; no filing), then enters `getcmd`'s
+`read` at the terminal state; if the read ever returns, the claim's
+terminal INPUT step (D4 spent — `pecl_step_echo`'s terminal case) yields
+the DIRTY input credential, which reads as the taint (`echo_taint γ`, the
+`echo_taint_of_sup` route PIPE-CC's `pipe_cons_sup_of_sh_slot` uses), and
+the generic loop continues at `pwc_line_taint`.  So the pipeline round
+law covers sh's main loop from the child's exit to the next `read`, and
+after a terminal round the theorem promises nothing about a session the
+user continues (D4 false ⇒ `pipe_phi` vacuous) while the WP stays safe.
+The alternative — moving the two cursors, the mode and the exclusion into
+the claim so the boundary credential is timeless ghost halves — is the
+principled refactor of R2 and is NOT taken now; record it under §7 if
+ROUND-5 finds the read leaf at the terminal state unpayable.
+
 ## 5. Programs
 
 ### 5.1 sh: the PIPE arm (lanes SH-PARSE-PIPE, SH-PIPE)

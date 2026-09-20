@@ -1001,6 +1001,31 @@ unnecessary); `UCatPipe.pcat_image_entry` (vacuous, no caller) is
 RETIRED rather than restated — `UShCatPay.cat_image_entry_1w` is the
 entry.
 
+### 4.3k RULED (2026-09-22, after SH-PIPE-ROUND-5 part 2): the loop's read hypothesis gets a fancy update — the ONE upstream edit of this wave
+
+Part 2 landed the terminal payload (`UkShPipeFork.pterm_pay`), the
+widened loop credential `pterm_wc I p := Wcf I p ∨ (⌜p < 3⌝ ∗ pterm_shape
+I (5 + p))` (= `Wcf` at 3, so the body, the fork arm and the child law
+transfer for free and the terminal re-entry is the LANDED loop at
+`pterm_wc` — no second loop walk), and stopped at exactly one
+obligation: `UkSh.ush_wc_read` at the terminal arm.  That hypothesis is
+a PLAIN entailment (`Pm (I++l++[nl]) -∗ Wc I 2 -∗ Pm … ∗ Wc (I++l++[nl])
+3`), and "a line was delivered after a fork-failure round" is refuted
+only by the CLAIM (the family's ledger pins the open round at `nlines I
+- 1`, `inp_lb` forces `nlines I`; `UShPipeExit.pecl_open_cs_len`), which
+needs `pecl`, i.e. opening `blk2_inv` and the console invariant — a
+`={⊤}=∗`.  No pure predicate on `I` distinguishes the good run from the
+fork-failure run (that is why D4 is read off the bytes).  RULED, route
+(α): `UkSh.ush_wc_read` becomes `⊢ Pm (I++l++[nl]) -∗ Wc I 2 ={⊤}=∗ Pm
+(I++l++[nl]) ∗ Wc (I++l++[nl]) 3`; `ush_gets_done_at`'s producer (the
+lemma at `UkSh.v` ~2546) carries the fupd out and `wp_ksh_gets_loop` /
+`wp_ksh_getcmd` `iMod` it at the read's return (a WP point); every era's
+instance of the hypothesis (echo, file, pipe — grep `ush_wc_read`) is
+the landed entailment under `iModIntro`.  One upstream file (`UkSh.v`),
+statement-shape only, every landed proof re-discharged by a one-token
+change.  Route (β) — the family into the claim — stays the recorded
+alternative (§7) and is not taken: it is a lane, (α) is an afternoon.
+
 ## 5. Programs
 
 ### 5.1 sh: the PIPE arm (lanes SH-PARSE-PIPE, SH-PIPE)

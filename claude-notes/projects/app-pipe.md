@@ -7332,7 +7332,13 @@ elimination), `iris/UShKernel.v` (three threaded copies),
 (`Hwc_f`, the FILE era), `iris/UInitBoot.v` (`Hsh_wc`, the ECHO era),
 `iris/UInitPipe.v` (item (5), the PIPE era), `iris/UkShPipeFork.v`
 (`pterm_read_law` / `pterm_wc_read_of`).  Whole-tree
-`ec2-lane.sh round5 build` **RC=0**.
+`ec2-lane.sh round5 build` **RC=0**; `Print Assumptions` on the lane's
+twenty-one results: **all twenty-one still Closed under the global
+context**; **all four audits at their baselines**, re-measured after the
+shape change: `audit-only` **13**, `audit-echo-only` **14**,
+`audit-tree-only` **13**, `audit-pipe-only` **14** — the system and tree
+counts did not move, as §4.3k required (the echo cone re-discharges
+under `iModIntro` only).
 
 **(1) ROUTE (α) LANDED, AND IT IS CHEAP — exactly as ruled.**
 

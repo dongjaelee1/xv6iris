@@ -22,7 +22,7 @@ case "${1:-}" in
     cat > /tmp/gate-audit.sh <<'EOS'
 cd /shared/xv6iris && eval $(opam env --switch=/shared/xv6rocq --set-switch)
 echo "AUDITS at $(git rev-parse --short HEAD)"
-for t in audit-only audit-echo-only audit-tree-only; do
+for t in audit-only audit-echo-only audit-tree-only audit-pipe-only; do
   echo "== $t"; /usr/bin/time -f %es make -s $t 2>&1 | grep -Ev '^(Warning|make)' | tail -30
 done
 echo AUDITS_DONE

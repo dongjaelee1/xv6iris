@@ -241,6 +241,16 @@ arm is the theorem's one named premise (`pipe_both_law`).
   `UkShFork.ushf_wq`'s two arms cannot carry an unfiled block — refuted,
   `pipe_open_not_line`.  `pipe_prog_law` not reached.  See the Findings
   block for the three-part reconciliation the coordinator has to rule on.
+  RULED: design §4.3f (R1 `pwc_line2`'s third arm, R2 the recoverable
+  family with the right child's mode, R3 cat's generic cursor).
+- [ ] **SH-PIPE-ROUND-4** (design §4.3f; after SH-PIPE-ROUND-3): R1+R2+R3
+  implemented and `sh_pipe_child_law` PROVED; `sh_round_holds_pipe`
+  premise-free.  Brief `brief-sh-pipe-round-4.md`.
+- [ ] **PIPE-CC** (in parallel with ROUND-4; ROUND-3's item 3): the pipe
+  era's `cons_cred` instance (`UInitPipe.v`, five `UShLine` `_at` twins),
+  `pipe_prog_law` discharged modulo `sh_pipe_child_law`;
+  `pipe_adequacy_pipeΣ` with the child law as its ONE hypothesis.  Brief
+  `brief-pipe-cc.md`.
 ## Findings (append as lanes report)## Findings (append as lanes report)## Findings (append as lanes report)
 
 ### PQ-FLAG-2 (2026-09-18) — the write link's second premise, paid by the CODE

@@ -1628,7 +1628,7 @@ Section pipe_out.
     iIntros "[HT | Hc]"; [by iLeft |]. iRight.
     iDestruct "Hc" as (v w so r gb pre opn) "(Hpin & Hpera & Hblk & Hcur & Hrb & Htn & Hcs & Hps & HE & Hdl & Hdll & %Hpure)".
     iExists v, w, so, r, gb, pre, opn. iFrame "Hpin Hpera Hblk Hcur Hrb Htn Hcs Hps HE".
-    rewrite ch_dl_close. iFrame "Hdl". iPureIntro.
+    rewrite ch_dl_close. iFrame "Hdl Hdll". iPureIntro.
     by apply (pcl_pure2_close k ho so r pre opn H Hok Hev Hpure).
   Qed.
 
@@ -1646,7 +1646,7 @@ Section pipe_out.
     iIntros "[HT | Hc]"; [by iLeft |]. iRight.
     iDestruct "Hc" as (v w so r gb pre opn) "(Hpin & Hpera & Hblk & Hcur & Hrb & Htn & Hcs & Hps & HE & Hdl & Hdll & %Hpure)".
     iExists v, w, so, r, gb, pre, opn. iFrame "Hpin Hpera Hblk Hcur Hrb Htn Hcs Hps HE".
-    rewrite /ConsLog.cons_step. cbn [LogEntryDefs.ch_dl]. iFrame "Hdl".
+    rewrite /ConsLog.cons_step. cbn [LogEntryDefs.ch_dl]. iFrame "Hdl Hdll".
     iPureIntro.
     by apply (pcl_pure2_open k ho so r pre opn H h c cs
                 Hn Hd Hb Hdh Hsh Hends Hord Hlt Hpure).

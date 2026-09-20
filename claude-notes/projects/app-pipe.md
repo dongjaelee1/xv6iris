@@ -5541,6 +5541,37 @@ character for character.
   such instances must be declared in a section that has the full binder
   list.  `Set Default Timeout 300.` found all three in minutes.
 
+**THE AUDITS, ALL FOUR, at the new target.**  `audit-pipe-only` =
+**FOURTEEN** and `audit-echo-only` = **FOURTEEN**, and the two lists are
+TEXTUALLY IDENTICAL; `audit-only` = **THIRTEEN**, `audit-tree-only` =
+**THIRTEEN** (the pipe/echo pair's extra entry over those two is
+`PrimString.length`).  The pipeline list, verbatim:
+
+```
+Axioms:
+PrimInt63.sub : PrimInt63.int -> PrimInt63.int -> PrimInt63.int
+PrimString.string : Set
+xv6iris_extras.resv_matches : forall n : BinNums.Z, Values.mword n -> bool
+xv6iris_extras.resv_is_valid : bool
+PrimInt63.lsr : PrimInt63.int -> PrimInt63.int -> PrimInt63.int
+PrimInt63.lsl : PrimInt63.int -> PrimInt63.int -> PrimInt63.int
+PrimInt63.lor : PrimInt63.int -> PrimInt63.int -> PrimInt63.int
+PrimString.length : PrimString.string -> PrimInt63.int
+PrimInt63.land : PrimInt63.int -> PrimInt63.int -> PrimInt63.int
+PrimInt63.int : Set
+PrimString.get : PrimString.string -> PrimInt63.int -> PrimString.char63
+FunctionalExtensionality.functional_extensionality_dep :
+  forall (A : Type) (B : A -> Type) (f g : forall x : A, B x),
+  (forall x : A, f x = g x) -> f = g
+PrimInt63.eqb : PrimInt63.int -> PrimInt63.int -> bool
+PrimString.cat : PrimString.string -> PrimString.string -> PrimString.string
+```
+
+i.e. 1 `functional_extensionality_dep` + the 2 `xv6iris_extras`
+reservation `Parameter`s + 11 `PrimString`/`PrimInt63` primitives, and NO
+`Spec*`/`Link*` module `Parameter`.  The count did NOT move although the
+audited cone GREW by the whole program tier.
+
 **THE ONE THING THE NEXT LANE NEEDS FIRST.**  ROUND-4 owes exactly
 `UInitPipe.sh_pipe_child_law_all` and nothing else.  The day it lands,
 `pipe_adequacy_pipeΣ_of_child` loses its only premise by application and

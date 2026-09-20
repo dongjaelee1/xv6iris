@@ -494,8 +494,10 @@ Section UShKernel.
       (Hpmwb : forall (N : uk_names Σ) (I : list (bv 8)),
          ukn_pay N = Q ->
          ⊢ Pm I -∗ Wb I -∗ UkSh.ush_at N γp (length I))
+      (* A FANCY UPDATE AT [top] (design SS4.3k): every era but the
+         pipeline's terminal arm discharges it under [iModIntro]. *)
       (Hwc : forall I l : list (bv 8), wl_nl ∉ l ->
-         ⊢ Pm (I ++ l ++ [wl_nl]) -∗ Wc I 2%nat -∗
+         ⊢ Pm (I ++ l ++ [wl_nl]) -∗ Wc I 2%nat ={⊤}=∗
            Pm (I ++ l ++ [wl_nl]) ∗ Wc (I ++ l ++ [wl_nl]) 3%nat)
       (* ...AND THE THREE CONVERSIONS OF STEP 4, Coq-level like [Hwc]: the
          banner-owed credential is the prompt's once the console reaches
@@ -796,8 +798,10 @@ Section UShKernel.
       (Hpmwb : forall (N : uk_names Σ) (I : list (bv 8)),
          ukn_pay N = Q ->
          ⊢ Pm I -∗ Wb I -∗ UkSh.ush_at N γp (length I))
+      (* A FANCY UPDATE AT [top] (design SS4.3k): every era but the
+         pipeline's terminal arm discharges it under [iModIntro]. *)
       (Hwc : forall I l : list (bv 8), wl_nl ∉ l ->
-         ⊢ Pm (I ++ l ++ [wl_nl]) -∗ Wc I 2%nat -∗
+         ⊢ Pm (I ++ l ++ [wl_nl]) -∗ Wc I 2%nat ={⊤}=∗
            Pm (I ++ l ++ [wl_nl]) ∗ Wc (I ++ l ++ [wl_nl]) 3%nat)
       (* ...AND THE THREE CONVERSIONS OF STEP 4, Coq-level like [Hwc]: the
          banner-owed credential is the prompt's once the console reaches
@@ -1066,8 +1070,10 @@ Section UShKernel.
       (Hpmwb : forall (N : uk_names Σ) (I : list (bv 8)),
          ukn_pay N = Q ->
          ⊢ Pm I -∗ Wb I -∗ UkSh.ush_at N γp (length I))
+      (* A FANCY UPDATE AT [top] (design SS4.3k): every era but the
+         pipeline's terminal arm discharges it under [iModIntro]. *)
       (Hwc : forall I l : list (bv 8), wl_nl ∉ l ->
-         ⊢ Pm (I ++ l ++ [wl_nl]) -∗ Wc I 2%nat -∗
+         ⊢ Pm (I ++ l ++ [wl_nl]) -∗ Wc I 2%nat ={⊤}=∗
            Pm (I ++ l ++ [wl_nl]) ∗ Wc (I ++ l ++ [wl_nl]) 3%nat)
       (Hwbwc : forall I : list (bv 8), ⊢ Wb I -∗ Wc I 0%nat)
       (Hwbl : forall I : list (bv 8), ⊢ Wc I 3%nat -∗ Wc I 0%nat)

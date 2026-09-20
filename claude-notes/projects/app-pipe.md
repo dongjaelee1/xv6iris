@@ -298,7 +298,14 @@ arm is the theorem's one named premise (`pipe_both_law`).
   `ush_wc_read` at the terminal arm**: `UkSh.ush_wc_read` is a PLAIN
   entailment and the terminal fact is a CLAIM fact (D4), so it cannot be
   reached without a fupd — §4.3i's own fallback (move the cursors into
-  the claim) is the repair.
+  the claim) is the repair.  PART 3 (route (α) of §4.3k): the fancy
+  update LANDS tree-wide at eight sites with no proof rewritten (tree
+  RC=0) — and it does NOT close the gap: the claim is handed out only at
+  a LINK STEP (`out_link` TAKES `chist_at`; nothing at the read's
+  credential step holds `uart_inv`), and the fragment-only route dies at
+  `d4_ambiguous`.  **Route (β) — the family into the claim — is
+  required**, and it retires `UkShPipeFork` and §4.3j's redefinition
+  with it.
   LANDED (`iris/UShPipeRound2.v`, tree RC=0, all four audits at their
   baselines): the round's ENTRY, EXIT, UNWIND and code at the resource
   level, and `ep_pay`'s separable frame.  **STOPPED at the terminal
@@ -7314,3 +7321,112 @@ PIPE-EXEC-ECHO's H1/H3, EXEC-CAT's H2 and PIPE-CC's credential.  On
 route (β) the round's own assembly (brief item 3) is then the only
 remaining work and its two ends are already theorems
 (`UShPipeRound2.pipe_round_entry` / `pipe_round_exit`).
+
+### SH-PIPE-ROUND-5 — PART 3 (2026-09-22, route (α) of §4.3k) — the fancy update LANDS tree-wide and costs nothing; but it does NOT close the gap, and the reason is REACHABILITY and not shape: D4 lives in the CLAIM, and the claim is handed out only at a LINK STEP. Route (β) is required
+
+Branch continued off main (`c7ec7ae31`), one code commit (`870750303`).
+Files moved, **statement-shape only, not one proof rewritten**:
+`iris/UkSh.v` (the hypothesis + its one consumer + the consumer's
+elimination), `iris/UShKernel.v` (three threaded copies),
+`iris/UInitSh.v` (`cons_cred`'s fifth conjunct), `iris/UShRound.v`
+(`Hwc_f`, the FILE era), `iris/UInitBoot.v` (`Hsh_wc`, the ECHO era),
+`iris/UInitPipe.v` (item (5), the PIPE era), `iris/UkShPipeFork.v`
+(`pterm_read_law` / `pterm_wc_read_of`).  Whole-tree
+`ec2-lane.sh round5 build` **RC=0**; `Print Assumptions` on the lane's
+twenty-one results: **all twenty-one still Closed under the global
+context**; **all four audits at their baselines**, re-measured after the
+shape change: `audit-only` **13**, `audit-echo-only` **14**,
+`audit-tree-only` **13**, `audit-pipe-only` **14** — the system and tree
+counts did not move, as §4.3k required (the echo cone re-discharges
+under `iModIntro` only).
+
+**(1) ROUTE (α) LANDED, AND IT IS CHEAP — exactly as ruled.**
+
+```coq
+  Hypothesis ush_wc_read :
+    forall (I l : list (bv 8)),
+      wl_nl ∉ l ->
+      ⊢ Pm (I ++ l ++ [wl_nl]) -∗ Wc I 2%nat ={⊤}=∗
+        Pm (I ++ l ++ [wl_nl]) ∗ Wc (I ++ l ++ [wl_nl]) 3%nat.
+```
+
+The mask is `⊤` and not a parameter: the step is taken at the read's
+return, a WP point, where `⊤` is the ambient mask (`RiscvPtsto`'s
+`mWP e := wp_triv ⊤ e`).  The one consumer in `UkSh.v`,
+`ush_gets_done_line_at`, carries the update out
+(`… -∗ Pm (I0 ++ J ++ [wl_nl]) ={⊤}=∗ ush_gets_done_at …`), and
+`wp_ksh_gets_loop` eliminates it at the read's return with **one
+character** — the spec pattern `[>Hans Hwc]` in the `iApply ("Hcont" …)`
+that hands the loop's answer on; its three taint arms gain one
+`iModIntro` each.  Every era's discharge is the landed entailment under
+one `iModIntro`.  **Cost: eight sites, no walk, no proof rewritten,
+tree green.**
+
+**(2) AND IT DOES NOT CLOSE THE GAP.**  With the update in hand the
+terminal arm still cannot be discharged, and the obstruction is one
+level below the shape:
+
+- What must be refuted is "a line was delivered after a fork-failure
+  round" = **D4**, which PIPE-MODEL-3 put in `disc_seg_p'` — a fact
+  about the era's CLAIM (`PipeOut.pecl`).
+- **The claim is handed out ONLY at a link step.**  `WpUart.chist_at
+  Uart0 k ho H` *is* `riscv_cons_res k ho H` (= `pecl g k ho H` under
+  `Hcons`), and it is owned by `uart_inv Uart0 γ`'s body
+  (`uart_inv_body i γ := ∃ u, uart_frag ∗ uart_ghosts ∗ uart_colE ∗
+  cons_claim_at i γ u`).  A writer never opens that invariant: it
+  *receives* the claim, because `out_link i k b Φ` is a WAND **taking**
+  `chist_at i k … H` at `⊤ ∖ ↑uartN i`.  At `ush_wc_read`'s site nothing
+  in scope holds `uart_inv` — neither `Pm` (which is
+  `UShLine.ush_mid_at`: `upos ∗ upos_a ∗ ucons_reader ∗ ∃ v, era_pin ∗
+  dl_cnt v (1/2) ∗ inp_lb v I' ∗ pwc_rres v I'`) nor `pterm_shape`
+  (`era_pin ∗ blk2_inv ∗ wcur gR (1/2) 7 ∗ wcur gM (1/2) 3`) nor the
+  era's `pipe_links` bundle, whose six leaves are `□`-wands that are
+  themselves spent INSIDE `out_link`.  `WpUart.dev_inv_uart` is the only
+  producer of `uart_inv Uart0 γ` and `dev_inv` is not a field of
+  `RiscvPtsto`'s fixed GS.
+- **And the fragment-only route is refuted, at the same witness
+  PIPE-MODEL-3 built.**  Every claim-side fragment the two sides carry
+  is MONOTONE (`cs_lb`, `ps_lb`, `inp_lb`, `rblk_lb`), so none can
+  contradict a longer resolution.  The one non-monotone fragment is the
+  turn: the family holds `turn v (P + c1 + c2)` (half the `mono_nat`
+  authority) and `pwc_rres` holds `turn_lb v (length (proc_before_p ps0
+  cs0 I'))`, which gives `Y ≤ X` — and at the ambiguous line
+  `echo fork | cat` the good run's block IS `alt_forkc` byte for byte,
+  so `Y = X` exactly and there is nothing to refute.  That is
+  `PipeDisc.d4_ambiguous` read at the resource level, and it is why D4
+  had to be read off the BYTES in the first place.
+
+So (α) moves the shape and not the reachability: **the terminal
+refutation cannot be taken at the read's credential step at all, under
+any mask.**
+
+**(3) THE EDIT IS KEPT, NOT REVERTED.**  It is strictly more permissive,
+it costs nothing, and route (β) wants it anyway: under (β) the terminal
+fact is a CLAIM fact and the step that spends it is a claim step, i.e.
+a fancy update.  Reverting would only have to be undone.
+
+**(4) WHAT ROUTE (β) IS, AND WHY IT IS NOW THE ONLY ONE.**  Move the two
+cursors, the mode and the exclusion INTO THE CLAIM — `PipeOut.pblk_led`
+/ `pe_cur`'s own precedent, the move PIPE-2W-3 already made once.  Then
+
+- the boundary credential is ghost halves and is TIMELESS, so STAGE-3's
+  `Timeless` obstruction disappears and `pwc_line2`'s third arm can
+  carry the terminal round: `lk_line` / `lk_sp_t` / `lk_open_t` take it,
+  `lk_prompt_dollar_line` writes the `$` at it, and **no twin of
+  `UkShFork` is needed at all** — `UkShPipeFork.v`, `pterm_wc` and the
+  four transfers become unnecessary, and so does §4.3j's redefinition of
+  `sh_pipe_child_law`;
+- the terminal refutation happens where every other D4 refutation
+  already happens — inside `pecl_step_echo`'s terminal case, which
+  PIPE-MODEL-3 LANDED and which is the only place in the tree that both
+  holds the claim and knows D4;
+- the round's own assembly is unchanged: part 1's `pipe_round_entry` /
+  `pipe_round_exit` remain its two ends.
+
+It is one lane, and it is the lane STAGE-3 recommended, §4.3i recorded
+as the fallback "if ROUND-5 finds the read leaf at the terminal state
+unpayable", and §4.3k deferred.  ROUND-5 has now found exactly that,
+twice, at two different shapes.
+
+**THE ONE THING THE NEXT LANE NEEDS FIRST.**  The owner's word on (β).
+Everything else is landed, green and Closed.

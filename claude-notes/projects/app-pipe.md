@@ -5530,8 +5530,10 @@ are lanes, the fourth is a RULING and it is about the MODEL.
   is missing is (W) and the argv layer.  This is the campaign's largest
   remaining lane and the design never costed it.
 - **(H3) The left child's exec of /echo AT A PIPE does not exist
-  either.**  `UShEchoPay.sh_exec_sup_echo_wq_holds_at_D` is built on
-  `UShEcho.echo_image_entry` — echo at the CONSOLE, fd 1 = `ush_fd1p`.
+  either.**  `UShEchoPay.sh_exec_sup_echo_wq_holds_at_D`'s (E) half is
+  `UShEchoPay.echo_slot_of_kexec_at_at`, i.e. `UEchoOut`'s CONSOLE slot
+  at fd 1 = `ush_fd1p`; the pipe's is `UEchoPipe.ep_uexec_slot_at` /
+  `ep_image_entry`.
   The pipe needs `UEchoPipe.ep_image_entry` (landed) at fd 1 = the pipe's
   write end, which is a second discharge of the same 300-line shape at
   `sh_exec_sup_echo_at Fd1` with `Fd1 ld := take NSTD ld !! 1 = Some

@@ -119,6 +119,7 @@ Require Import PipeOut.
 Require Import PipeLinks.
 Require Import PipeLinksLine.
 Require Import PipeLinkInst.
+Require Import PipeBoth.        (* [pwc_lpr2], the record's lk_lpr since SH-PIPE-ROUND-4 *)
 Require Import PipeReadInst.
 Require Import PipeUline.
 Require Import AppPipeClaim.
@@ -235,12 +236,50 @@ Section UInitPipeSeam.
       iRight. iExists a. iSplitR; [ by iPureIntro | ]. iExact "Hp".
   Qed.
 
+  (* ...AND THE TWO-WRITER BLOCK (lane SH-PIPE-ROUND-4's R1): the record's
+     [lk_lpr] is [PipeBoth.pwc_lpr2], whose index 0 is the WIDENED boundary
+     credential [pwc_line2] with the unfiled two-writer block as its third
+     arm; that arm carries the input prefix too. *)
+  Local Lemma pwc_blk2_inp (k : nat) (v : era_pins) (I R : list (bv 8))
+      (sel : list bool) (c1 c2 : nat) :
+    PipeBoth.pwc_blk2 g k v I R sel c1 c2 -∗
+    PipeBoth.pwc_blk2 g k v I R sel c1 c2 ∗ (inp_lb v I ∨ T).
+  Proof using .
+    rewrite /PipeBoth.pwc_blk2. iIntros "[Hl | #HT]"; last first.
+    { iSplit; [ iRight; iExact "HT" | iRight; iExact "HT" ]. }
+    iDestruct "Hl" as (ps cs P) "(%Hw & %Htl & Ht & #Hps & #Hcs & Hled & #HE)".
+    iSplitL "Ht Hled".
+    - iLeft. iExists ps, cs, P. iFrame "Ht Hps Hcs Hled HE". by iPureIntro.
+    - iLeft. iExact "HE".
+  Qed.
+
+  Local Lemma pwc_line2_inp (k : nat) (v : era_pins) (I : list (bv 8)) :
+    PipeBoth.pwc_line2 g k v I -∗
+    PipeBoth.pwc_line2 g k v I ∗ (inp_lb v I ∨ T).
+  Proof using .
+    rewrite /PipeBoth.pwc_line2. iIntros "[Hp | [Hq | Hb]]".
+    - iDestruct (pwc_pro_inp k v I with "Hp") as "[Hp Hi]".
+      iSplitL "Hp"; [ by iLeft | iExact "Hi" ].
+    - iDestruct "Hq" as (a) "[%Ha Hp]".
+      rewrite /pwc_post.
+      iDestruct (pwc_blk_inp k v I a (length (pab I a) - 2)%nat with "Hp")
+        as "[Hp Hi]".
+      iSplitL "Hp"; [ | iExact "Hi" ].
+      iRight; iLeft. iExists a. iSplitR; [ by iPureIntro | ]. iExact "Hp".
+    - iDestruct "Hb" as (R sel c1 c2 a) "(%Hc & %Hn & Hp)".
+      iDestruct (pwc_blk2_inp k v I R sel c1 c2 with "Hp") as "[Hp Hi]".
+      iSplitL "Hp"; [ | iExact "Hi" ].
+      iRight; iRight. iExists R, sel, c1, c2, a.
+      iSplitR; [ by iPureIntro | ]. iSplitR; [ by iPureIntro | ]. iExact "Hp".
+  Qed.
+
   Local Lemma pwc_lpr_inp (k : nat) (v : era_pins) (I : list (bv 8))
       (p : nat) :
-    pwc_lpr g k v I p -∗ pwc_lpr g k v I p ∗ (inp_lb v I ∨ T).
+    PipeBoth.pwc_lpr2 g k v I p -∗
+    PipeBoth.pwc_lpr2 g k v I p ∗ (inp_lb v I ∨ T).
   Proof using .
-    destruct p as [| [| [| p']]]; cbn [pwc_lpr].
-    - exact (pwc_line_inp k v I).
+    destruct p as [| [| [| p']]]; cbn [PipeBoth.pwc_lpr2].
+    - exact (pwc_line2_inp k v I).
     - exact (pwc_sp_t_inp k v I).
     - exact (pwc_open_t_inp k v I).
     - exact (pwc_blk_inp k v I 0%nat 0%nat).

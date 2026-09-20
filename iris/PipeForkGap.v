@@ -5,8 +5,8 @@
 (*                                                                       *)
 (*  THE BEHAVIOUR.  [runcmd]'s PIPE arm forks twice.  If [fork1] #1       *)
 (*  succeeds and [fork1] #2 fails, the runcmd child panics -- [panic]     *)
-(*  prints "fork\n" on fd 2 and exits -- while child #1 is alive.  If     *)
-(*  child #1's [exec] of /echo fails it prints "exec echo failed\n" on    *)
+(*  prints `fork\n' on fd 2 and exits -- while child #1 is alive.  If     *)
+(*  child #1's [exec] of /echo fails it prints `exec echo failed\n' on    *)
 (*  fd 2, one byte per [write], CONCURRENTLY.  Both alternatives exist in *)
 (*  the model ([PFork] and [PExecL]) and a round files exactly ONE code,  *)
 (*  so the wire that carries bytes of BOTH has to be some admissible      *)
@@ -38,6 +38,7 @@ Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values
 Require Import LineWords.
 Require Import EchoDisc.
 Require Import PipeDisc.
+Require Import PipeBothPure.
 Local Open Scope list_scope.
 
 (* the line: `echo hello | cat' *)
@@ -125,4 +126,102 @@ Proof using.
   - intros _. exact gap_not_pipe.
   - intros _. exact gap_not_fork.
   - intros _. exact gap_not_silent.
+Qed.
+
+(* ===================================================================== *)
+(*  THE SECOND GAP, in the same file because it is the same shape:        *)
+(*  DESIGN 4.3f (R2) OMITS THE TWO CHILDREN'S EXCLUSION.                  *)
+(*                                                                       *)
+(*  The witness every byte step of [PipeBoth]'s family spends is          *)
+(*  [pblk2_wit I R sel] -- `some admissible, non-panicking alternative of *)
+(*  the round's line has [pend2 R sel] as a prefix`.  The ruling makes    *)
+(*  [R] EXISTENTIAL in [blk2_inv] and pins it by the right child's mode,  *)
+(*  so at mode 1 ([R] = the LINE, cat printing what it read) the LEFT     *)
+(*  child's step would have to spend the witness at a selector with a     *)
+(*  [true] bit AND a [false] one.  It is FALSE there: the block would     *)
+(*  begin with a byte of [dg_execL] and continue with a byte of the LINE, *)
+(*  and no alternative of an [LPipe] line has that continuation.          *)
+(*                                                                       *)
+(*  Which is why [PipeBoth]'s [pblk2_cstep_L] / [pblk2_cstep_R] carry an  *)
+(*  EXCLUSION premise the ruling does not mention.  The theorem below is  *)
+(*  [pblk2_wit]'s body, spelled out (it names only [PipeDisc] and         *)
+(*  [PipeBothPure], so this file stays out of the Iris cone).             *)
+(* ===================================================================== *)
+Definition gap_L : list (bv 8) := wl_line (drop 1 gap_ws).   (* `hello<nl>' *)
+
+Lemma gap_pend2_mixed :
+  pend2 gap_L [true; false] = [dg_execL !!! 0%nat; gap_L !!! 0%nat].
+Proof using. vm_compute. reflexivity. Qed.
+
+Notation mixp := ([dg_execL !!! 0%nat; gap_L !!! 0%nat]).
+
+Lemma mix_not_ran : ~ (mixp `prefix_of` pcont (LPipe gap_ws) PRan).
+Proof using. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
+Lemma mix_not_execL : ~ (mixp `prefix_of` pcont (LPipe gap_ws) PExecL).
+Proof using. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
+Lemma mix_not_execR : ~ (mixp `prefix_of` pcont (LPipe gap_ws) PExecR).
+Proof using. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
+Lemma mix_not_pipe : ~ (mixp `prefix_of` pcont (LPipe gap_ws) PPipe).
+Proof using. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
+Lemma mix_not_fork : ~ (mixp `prefix_of` pcont (LPipe gap_ws) PFork).
+Proof using. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
+Lemma mix_not_silent : ~ (mixp `prefix_of` pcont (LPipe gap_ws) PSilent).
+Proof using. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
+
+Lemma dgL_cons2 : exists dl : list (bv 8),
+    dg_execL = dg_execL !!! 0%nat :: dg_execL !!! 1%nat :: dl.
+Proof using. exists (drop 2 dg_execL). vm_compute. reflexivity. Qed.
+
+Lemma dgR_cons2 : exists dr : list (bv 8),
+    dg_execR = dg_execL !!! 0%nat :: dg_execL !!! 1%nat :: dr.
+Proof using. exists (drop 2 dg_execR). vm_compute. reflexivity. Qed.
+
+Lemma gapL0_ne_0 : gap_L !!! 0%nat <> dg_execL !!! 0%nat.
+Proof using. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
+Lemma gapL0_ne_1 : gap_L !!! 0%nat <> dg_execL !!! 1%nat.
+Proof using. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
+
+Lemma gap_both_len2 : (2 <= length dg_execL + length dg_execR)%nat.
+Proof using. vm_compute. lia. Qed.
+
+Lemma mix_not_both (sel : list bool) :
+  palt_ok (LPipe gap_ws) (PBoth sel) ->
+  ~ (mixp `prefix_of` pcont (LPipe gap_ws) (PBoth sel)).
+Proof using.
+  intros [Hlen Hcnt] Hpre.
+  assert (Hge : (2 <= length sel)%nat)
+    by (rewrite Hlen; exact gap_both_len2).
+  destruct dgL_cons2 as [dl HL]. destruct dgR_cons2 as [dr HR].
+  destruct sel as [| u [| w s]];
+    [ cbn [length] in Hge; lia | cbn [length] in Hge; lia | ].
+  cbn [pcont] in Hpre. rewrite HL in Hpre. rewrite HR in Hpre.
+  destruct u; destruct w;
+    rewrite ?pmerge_true_cons, ?pmerge_false_cons in Hpre;
+    cbn [app] in Hpre;
+    apply prefix_cons_inv_2 in Hpre;
+    apply prefix_cons_inv_1 in Hpre;
+    first [ exact (gapL0_ne_0 Hpre) | exact (gapL0_ne_1 Hpre) ].
+Qed.
+
+(* [pblk2_wit I gap_L [true; false]] at an [I] whose last body is this
+   line, spelled out: FALSE. *)
+Theorem gap_mixed_no_wit :
+  ~ (exists a : nat,
+       palt_ok (LPipe gap_ws) (palt_of a)
+       /\ palt_panic (palt_of a) = false
+       /\ pend2 gap_L [true; false]
+            `prefix_of` pcont (LPipe gap_ws) (palt_of a)).
+Proof using.
+  intros [a (Hok & Hpan & Hpre)].
+  rewrite gap_pend2_mixed in Hpre.
+  revert Hok Hpan Hpre. generalize (palt_of a). intros al Hok Hpan Hpre.
+  destruct al as [k | | | | sel | | | ].
+  - cbn [palt_ok] in Hok. subst k. vm_compute in Hpan. discriminate Hpan.
+  - exact (mix_not_ran Hpre).
+  - exact (mix_not_execL Hpre).
+  - exact (mix_not_execR Hpre).
+  - exact (mix_not_both sel Hok Hpre).
+  - exact (mix_not_pipe Hpre).
+  - exact (mix_not_fork Hpre).
+  - exact (mix_not_silent Hpre).
 Qed.

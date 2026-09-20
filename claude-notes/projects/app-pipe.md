@@ -5465,7 +5465,12 @@ ruling.**
    are incompatible — TRUE of the machine (the left child prints
    `dg_execL` only when its exec failed, and then nothing ever enters the
    pipe, so cat prints nothing) but a fact about the PROTOCOL, not about
-   the console.  It enters as two abstract witnesses and one premise:
+   the console.  **MECHANISED** beside H4, `PipeForkGap.gap_mixed_no_wit`:
+   at `echo hello | cat`, `pblk2_wit`'s body at `pend2 gap_L [true;false]`
+   — the mixed selector with `R` = the line — is refuted against every
+   admissible non-panicking alternative (the `PBoth` arm because ITS two
+   sources both begin `ex`, so its second byte is never the line's `h`).
+   The exclusion enters as two abstract witnesses and one premise:
    `XL` ("the left child kept echo's write permit"), `YR` ("a byte
    reached the reader"), and `□ (XL -∗ YR ={Eex}=∗ False)`, spent at both
    byte steps.  `PipeBoth.v` stays protocol-free; the round supplies the
@@ -5618,6 +5623,10 @@ are lanes, the fourth is a RULING and it is about the MODEL.
   Route (b) is worth the coordinator's attention for a second reason: it
   is also the cheapest route to R2's exclusion, and it would delete `XL`,
   `YR` and the `Eex` premise from the four S7 laws.
+
+  `iris/PipeForkGap.v` carries BOTH refutations (`pfork_execL_gap` for
+  H4, `gap_mixed_no_wit` for R2's omission) — 227 lines, no Iris, nothing
+  imports it.
 
 **WHAT THE DESIGN GOT WRONG.**
 1. section 4.3f (R1)'s placement advice: "`pblk_led` and `pblk2_code` and

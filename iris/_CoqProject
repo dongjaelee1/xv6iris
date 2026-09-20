@@ -1599,6 +1599,8 @@ UkShPipePex.v
 UkShPipeCm.v
 UkShPipePaid.v
 UkShPipeRound.v
+UShPipeChild.v
+UShPipeExit.v
 UkShRedirBody.v
 UInitCons.v
 UConsOpen.v

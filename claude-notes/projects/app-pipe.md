@@ -5362,8 +5362,15 @@ new), `iris/PipeLinkInst.v` (ten fields re-pointed), `iris/UCatPipe.v`
 `UShPipeExit.v` and `UShPipeRound.v` are untouched, and so is
 `UPipeBootAdequacy.v`.
 Whole-tree `ec2-lane.sh round4 build` **RC=0**; no `Admitted`;
-`Proof using` on every result; **`audit-pipe-only` = FOURTEEN** and
-**`audit-echo-only` = FOURTEEN**, echo's list exactly and unmoved.
+`Proof using` on every result; **`audit-pipe-only` = FOURTEEN**, echo's
+list exactly (1 `functional_extensionality_dep` + the 2 `xv6iris_extras`
+reservation `Parameter`s + 11 PrimString/PrimInt63), measured after the
+changes.  `audit-echo-only` is unmoved BY CONSTRUCTION and the
+dependency graph says so: `EchoAssumptions.v` is
+`Require Import UInitBootAdequacy. Print Assumptions
+echo_adequacy_echoΣ.`, and the transitive cone of `UInitBootAdequacy`
+(1,484 modules) contains NONE of this lane's five files -- every one of
+them sits above or beside `AppEcho`/`EchoOut`, never under them.
 
 **(R1) LANDED — and the ruling's PREFERRED route is IMPOSSIBLE, while its
 FALLBACK is unnecessary.**  The ruling offered the filing step as a

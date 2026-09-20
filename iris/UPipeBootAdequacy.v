@@ -186,6 +186,7 @@ Definition pipeΣ : gFunctors :=
   #[ xv6Σ                (* the system theorem's own list                  *)
    ; bioslotΣ            (* not in [xv6Σ]: the bio escrow's slot camera    *)
    ; echoOutΣ            (* the console stage's ghosts -- echo's, verbatim *)
+   ; pipeOutΣ            (* the pipeline's own: the era map and [pe_cur]     *)
    ; pipeLineΣ           (* the shell's line-choice list                   *)
    ].
 

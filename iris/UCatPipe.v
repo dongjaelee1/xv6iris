@@ -502,7 +502,7 @@ Section UCatPipe.
               with "Hi Hrun [Hsb] Hstd Hbuf").
     { iApply (udepwf_K_std N m pc USYS_read
                 (UkReadPipe.read_pipe_fam (ukn_pay N) Rp Rpe) l with "Hsb"). }
-    iIntros (h' r d g W M' fdv' cw' cs')
+    iIntros (h' r d gW W M' fdv' cw' cs')
       "%Hd %Hgf %Hlin %Himg %Hnf %H0 %H1 %H2 %Htake %Hlz %Hlive
        Hstd Hpost Hrun Hbuf".
     iDestruct (spost_at_read_elim uslot
@@ -527,7 +527,7 @@ Section UCatPipe.
               uva_wmapped P
                 (uint (add_vec_int (m !!! Regidx a1_idx) (Z.of_nat j))))
       by (intros j Hj; exact (Hnf P j Hwfp Hpmp (Hlzp Hlz) Hj)).
-    iApply ("Hcont" $! h' r d g M' P (uvis_gen W)
+    iApply ("Hcont" $! h' r d gW M' P (uvis_gen W)
               with "[%] [%] [%] [%] [%] [%] Hrp Hstd Hrun Hbuf");
       [ exact Hd | exact Hgf
       | exact (UkReadPipe.uread_pipe_ans_of_ret cap r Hret)
@@ -720,7 +720,7 @@ Section UCatPipe.
 
   Definition pcat_round_inv (pn : pnames) (l : list fdstate) (v : era_pins)
       (ps0 cs0 : list nat) (I0 : list (bv 8)) (P : nat) : iProp Σ :=
-    (∃ c : nat, pcat_hold pn l c ∗ pcch γ v ps0 cs0 I0 pcat_alt P c)%I.
+    (∃ c : nat, pcat_hold pn l c ∗ pcch g v ps0 cs0 I0 pcat_alt P c)%I.
 
   Lemma pcat_round_at (pn : pnames) (γp : pipe_names) (L : list (bv 8))
       (l : list fdstate) (wb : bool) (v : era_pins)
@@ -759,13 +759,13 @@ Section UCatPipe.
                 = Some (fbb j)⌝
           ∨ T) -∗
          UserFd.ustd γfd l -∗
-         pcch γ v ps0 cs0 I0 pcat_alt P c -∗
+         pcch g v ps0 cs0 I0 pcat_alt P c -∗
          UkCat.kcat_wr N (mword_of_int 1) (mword_of_int CatSyms.buf) nb
            (ubytes γd CatSyms.buf 512 fbb)
            (fun wret : mword 64 =>
               (⌜wret = (mword_of_int (Z.of_nat nb) : mword 64)⌝
                ∗ UserFd.ustd γfd l
-               ∗ pcch γ v ps0 cs0 I0 pcat_alt P
+               ∗ pcch g v ps0 cs0 I0 pcat_alt P
                    (c + Z.to_nat (bv_unsigned rv))%nat
                ∗ ubytes γd CatSyms.buf 512 fbb))) -∗
     (* [Hend]: the loop's NORMAL exit, which is END OF FILE -- the read
@@ -774,7 +774,7 @@ Section UCatPipe.
     □ (∀ c : nat,
          (eof_shot pn (take c L) ∨ T) -∗
          pcat_hold pn l c -∗
-         pcch γ v ps0 cs0 I0 pcat_alt P c -∗ Cend) -∗
+         pcch g v ps0 cs0 I0 pcat_alt P c -∗ Cend) -∗
     cat_code γt -∗
     UkCatCat.kcat_round N (mword_of_int 0)
       (pcat_round_inv pn l v ps0 cs0 I0 P) Cend.
@@ -818,7 +818,7 @@ Section UCatPipe.
                   (fun wret : mword 64 =>
                      (⌜wret = (mword_of_int (Z.of_nat nb) : mword 64)⌝
                       ∗ UserFd.ustd γfd l
-                      ∗ pcch γ v ps0 cs0 I0 pcat_alt P
+                      ∗ pcch g v ps0 cs0 I0 pcat_alt P
                           (c + Z.to_nat (bv_unsigned rv))%nat
                       ∗ ubytes γd CatSyms.buf 512 gb)%I)
                   _ with "[] [Hstd Hc]").
@@ -863,7 +863,7 @@ Section UCatPipe.
                   (fun wret : mword 64 =>
                      (⌜wret = (mword_of_int (Z.of_nat nb) : mword 64)⌝
                       ∗ UserFd.ustd γfd l
-                      ∗ pcch γ v ps0 cs0 I0 pcat_alt P
+                      ∗ pcch g v ps0 cs0 I0 pcat_alt P
                           (c + Z.to_nat (bv_unsigned rv))%nat
                       ∗ ubytes γd CatSyms.buf 512 gb)%I)
                   _ with "[] [Hstd Hc]").
@@ -903,7 +903,7 @@ Section UCatPipe.
                 (fun wret : mword 64 =>
                    (⌜wret = (mword_of_int (Z.of_nat nb) : mword 64)⌝
                     ∗ UserFd.ustd γfd l
-                    ∗ pcch γ v ps0 cs0 I0 pcat_alt P
+                    ∗ pcch g v ps0 cs0 I0 pcat_alt P
                         (c + Z.to_nat (bv_unsigned rv))%nat
                     ∗ ubytes γd CatSyms.buf 512 gb)%I)
                 _ with "[Hr] [Hstd Hc]").

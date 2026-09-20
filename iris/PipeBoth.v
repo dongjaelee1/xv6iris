@@ -240,6 +240,22 @@ Proof using.
   rewrite replicate_S. cbn [count_true]. by rewrite IH.
 Qed.
 
+(* THE PADDED SELECTOR'S LENGTH, WITH THE TWO BOUNDS ABSTRACT.  [L] and
+   [R] must be VARIABLES here: with [length dg_execL] in the goal,
+   [rewrite !length_app] walks into [dg_execL = wl_line dg_exec] and
+   splits it into the lengths of its words, while the hypotheses keep
+   [length dg_execL] whole -- and then [lia] has two different atoms for
+   one number and answers "Cannot find witness". *)
+Lemma length_pad (sel : list bool) (L R : nat) :
+  (count_true sel <= L)%nat -> (length sel - count_true sel <= R)%nat ->
+  length (sel ++ replicate (L - count_true sel) true
+              ++ replicate (R - (length sel - count_true sel)) false)
+  = (L + R)%nat.
+Proof using.
+  intros H1 H2. pose proof (count_true_le sel) as Hcle.
+  rewrite !length_app !length_replicate. lia.
+Qed.
+
 Lemma pblk2_wit_mono (I R : list (bv 8)) (sel sel' : list bool) :
   sel `prefix_of` sel' -> sel_wf2 R sel' ->
   pblk2_wit I R sel' -> pblk2_wit I R sel.
@@ -270,7 +286,7 @@ Proof using.
       count_true_replicate_false. lia. }
   assert (Hlen' : length sel'
                   = (length dg_execL + length dg_execR)%nat).
-  { rewrite /sel' !length_app !length_replicate. lia. }
+  { exact (length_pad sel (length dg_execL) (length dg_execR) H1 H2). }
   apply (pblk2_wit_mono I dg_execR sel sel').
   - rewrite /sel'. by eexists.
   - rewrite /sel_wf2 Hc' Hlen'. lia.
@@ -315,27 +331,27 @@ Section pipe_both.
   (*  child will write.                                                 *)
   (* ================================================================= *)
 
-  Definition wcur (g : gname) (q : Qp) (c : nat) : iProp Σ :=
-    ghost_var g q c.
+  Definition wcur (gc : gname) (q : Qp) (c : nat) : iProp Σ :=
+    ghost_var gc q c.
 
-  Global Instance wcur_timeless g q c : Timeless (wcur g q c).
+  Global Instance wcur_timeless gc q c : Timeless (wcur gc q c).
   Proof using . rewrite /wcur. apply _. Qed.
 
-  Lemma wcur_agree g q1 q2 c1 c2 :
-    wcur g q1 c1 -∗ wcur g q2 c2 -∗ ⌜c1 = c2⌝.
+  Lemma wcur_agree gc q1 q2 c1 c2 :
+    wcur gc q1 c1 -∗ wcur gc q2 c2 -∗ ⌜c1 = c2⌝.
   Proof using .
     rewrite /wcur. iIntros "H1 H2".
     by iDestruct (ghost_var_agree with "H1 H2") as %->.
   Qed.
 
-  Lemma wcur_update g c1 c2 m :
-    wcur g (1/2) c1 -∗ wcur g (1/2) c2 ==∗ wcur g (1/2) m ∗ wcur g (1/2) m.
+  Lemma wcur_update gc c1 c2 m :
+    wcur gc (1/2) c1 -∗ wcur gc (1/2) c2 ==∗ wcur gc (1/2) m ∗ wcur gc (1/2) m.
   Proof using .
     rewrite /wcur. iIntros "H1 H2".
     by iMod (ghost_var_update_halves m with "H1 H2") as "[$ $]".
   Qed.
 
-  Lemma wcur_excl g c1 c2 : wcur g 1 c1 -∗ wcur g 1 c2 -∗ False.
+  Lemma wcur_excl gc c1 c2 : wcur gc 1 c1 -∗ wcur gc 1 c2 -∗ False.
   Proof using .
     rewrite /wcur. iIntros "H1 H2".
     by iDestruct (ghost_var_valid_2 with "H1 H2") as %[Hq _].
@@ -531,7 +547,9 @@ Section pipe_both.
       iMod (pecl_blk2_open g k v P a b ps cs I ho H Hne Hr Hle Hpp HP
               Hok Hpan Hb0 Hnd with "Hpin [Htn] Hps Hcs HE Hcl")
         as "(Hcl & Hret)".
-      { replace P with (P + 0 + 0)%nat by lia. iExact "Htn". }
+      (* [replace P with ...] would rewrite P inside [Htn] too -- the
+         Iris context is part of the Coq goal.  Convert the INDEX. *)
+      { iExactEq "Htn". f_equal. cbn [count_true]. lia. }
       iModIntro. iFrame "Hcl".
       iDestruct "Hret" as "[Hx | #HT]"; [| by iRight].
       iDestruct "Hx" as (w gb) "(Htn & #Hpera & Hcur & #Hrlb & _ & _ & _)".

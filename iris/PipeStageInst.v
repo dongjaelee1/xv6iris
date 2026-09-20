@@ -184,7 +184,7 @@ Section pipe_stage_inst.
       (pwc_blk g k v (ps_I st) 0%nat (S i) -∗ Φ) -∗ out_link Uart0 k b Φ.
   Proof using .
     intros [Hln Hlast] Hb. iIntros "#Hpin #Hlk Hc HΦ".
-    iApply (pblk_step γ k v (ps_I st) 0%nat i b Φ with "Hpin Hlk Hc HΦ").
+    iApply (pblk_step g k v (ps_I st) 0%nat i b Φ with "Hpin Hlk Hc HΦ").
     rewrite (pipe_pab0 (ps_I st)
                ltac:(rewrite /pipe_lineok Hlast; exact Hln)).
     rewrite Hlast. exact Hb.

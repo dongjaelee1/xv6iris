@@ -225,7 +225,8 @@ Proof using.
   destruct sel as [| u [| w s]].
   - by destruct (Hne eq_refl).
   - exfalso. apply prefix_length in Hpre.
-    rewrite /pcont (pmerge_length [u] dg_execL alt_forkc H1 H2) in Hpre.
+    cbn [pcont] in Hpre.
+    rewrite (pmerge_length [u] dg_execL alt_forkc H1 H2) in Hpre.
     cbn [length] in Hpre. lia.
   - cbn [pcont] in Hpre. rewrite HL in Hpre. rewrite HF in Hpre.
     destruct u; destruct w;

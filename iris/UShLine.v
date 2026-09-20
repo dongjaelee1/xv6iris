@@ -810,6 +810,145 @@ Section UShLine.
     iExists v. iFrame "Hpin Hdl HE Hres".
   Qed.
 
+  (* =================================================================== *)
+  (*  THE FOUR LAWS ABOVE AT AN ABSTRACT RESIDUE (lane PIPE-CC).          *)
+  (*                                                                     *)
+  (*  [ush_mid_of_at], [ush_at_of_mid_taint], [ush_at_of_mid_wb] and      *)
+  (*  [ush_posb_of_lend] are already generic in the credential families   *)
+  (*  [Wc]/[Wb]; what they are NOT generic in is the reader's RESIDUE --  *)
+  (*  they name [ush_mid]/[ush_rd_x]/[ush_rd_pin], which are the [_at]    *)
+  (*  families at [rd_res], the ECHO era's.  A second era's round carries *)
+  (*  [ush_mid_at (lk_rres L) γ γp] ([UShPipeRound]'s [Pm]), so it needs  *)
+  (*  the same four one parameter up.  SAME PROOFS, character for         *)
+  (*  character, with the residue threaded LINEARLY -- the landed ones    *)
+  (*  intro it as persistent, which an abstract residue need not be.      *)
+  (*                                                                     *)
+  (*  The landed four do not move and are not re-proved through these:    *)
+  (*  they are [Qed] and their callers ([UInitBoot.echo_cc_holds]) must   *)
+  (*  not be disturbed.                                                   *)
+  (*                                                                     *)
+  (*  NAMES: [ush_lease_of_at] is [ush_mid_of_at]'s twin under a name     *)
+  (*  that does not end in two [_at]s -- the landed one's [_at] is        *)
+  (*  [UkSh.ush_at], the suffix here is the residue.                      *)
+  (* =================================================================== *)
+  Lemma ush_lease_of_at (Rres : era_pins -> list (bv 8) -> iProp Σ)
+      (γ : echo_gn) (T : iProp Σ) `{!Persistent T}
+      (Wb : list (bv 8) -> iProp Σ) (N : uk_names Σ) (γp : gname) (n : nat) :
+    ukn_pay N = ucons_pay fsc_cons γp T (ush_rd_x_at Rres γ Wb) ->
+    ⊢ UkSh.ush_at N γp n -∗
+      ∃ I : list (bv 8), ⌜length I = n⌝
+        ∗ UkSh.ush_lease N γp T (ush_mid_at Rres γ γp) I.
+  Proof using .
+    intro Hpay. rewrite /UkSh.ush_at /UkSh.ush_lease.
+    iIntros "[Hpos Hlease]". iEval (rewrite Hpay /ucons_pay) in "Hlease".
+    iDestruct "Hlease" as "[Hl | #HT]"; last first.
+    { iExists (replicate n wl_nl).
+      iSplitR; [ iPureIntro; apply length_replicate | ].
+      iRight. iFrame "HT". rewrite /UkSh.ush_pos /UkSh.ush_at.
+      iExists n. iFrame "Hpos". rewrite Hpay.
+      iApply (ucons_pay_taint with "HT"). }
+    iDestruct "Hl" as (n') "(Hrd0 & Hpa & Hcred)".
+    iDestruct (upos_agree γp n n' with "Hpos Hpa") as %<-.
+    rewrite /ush_rd_x_at /UkInit.init_rd /UkInit.init_rd_cred.
+    iDestruct "Hcred" as "[Hcred _]".
+    iDestruct "Hcred" as (v I) "([%Hlen %Hrest] & #Hpin & Hdl & #HE & Hres)".
+    iExists I. iSplitR; [ by iPureIntro | ].
+    iLeft. rewrite /ush_mid_at Hlen. iFrame "Hpos Hpa Hrd0".
+    iExists v. iFrame "Hpin Hdl HE Hres".
+  Qed.
+
+  Lemma ush_at_of_mid_taint_at (Rres : era_pins -> list (bv 8) -> iProp Σ)
+      (γ : echo_gn) (T : iProp Σ) `{!Persistent T}
+      (Wb : list (bv 8) -> iProp Σ) (N : uk_names Σ) (γp : gname)
+      (I : list (bv 8)) :
+    ukn_pay N = ucons_pay fsc_cons γp T (ush_rd_x_at Rres γ Wb) ->
+    ⊢ T -∗ ush_mid_at Rres γ γp I -∗ UkSh.ush_at N γp (length I).
+  Proof using .
+    intro Hpay. rewrite /ush_mid_at /UkSh.ush_at.
+    iIntros "#HT (Hpos & _ & _ & _)". iFrame "Hpos". rewrite Hpay.
+    iApply (ucons_pay_taint with "HT").
+  Qed.
+
+  Lemma ush_at_of_mid_wb_at (Rres : era_pins -> list (bv 8) -> iProp Σ)
+      (γ : echo_gn) (T : iProp Σ) `{!Persistent T}
+      (Wb : list (bv 8) -> iProp Σ) (N : uk_names Σ) (γp : gname)
+      (I : list (bv 8)) :
+    ukn_pay N = ucons_pay fsc_cons γp T (ush_rd_x_at Rres γ Wb) ->
+    ush_wb_inp γ T Wb ->
+    ⊢ ush_mid_at Rres γ γp I -∗ Wb I -∗ UkSh.ush_at N γp (length I).
+  Proof using .
+    intros Hpay Hwbi. iIntros "Hmid Hb".
+    iDestruct (Hwbi I with "Hb") as "[Hb Hrd]".
+    iDestruct "Hrd" as "[[_ %Hrest] | #HT]"; last first.
+    { iApply (ush_at_of_mid_taint_at Rres γ T Wb N γp I Hpay with "HT Hmid"). }
+    iEval (rewrite /ush_mid_at) in "Hmid".
+    iDestruct "Hmid" as "(Hpos & Hpa & Hrd0 & Hcred)".
+    rewrite /UkSh.ush_at. iFrame "Hpos". rewrite Hpay.
+    iApply (ucons_pay_tok fsc_cons γp T (ush_rd_x_at Rres γ Wb)
+              (length I) (-1) with "Hrd0 Hpa [Hcred Hb]").
+    rewrite /ush_rd_x_at /UkInit.init_rd /UkInit.init_rd_cred /ush_rd_pin_at.
+    iSplitR "Hb"; last first.
+    { iExists I. iSplitR; [ by iPureIntro | ]. iExact "Hb". }
+    iDestruct "Hcred" as (v) "(#Hpin & Hdl & #HE & Hres)".
+    iExists v, I. iSplitR; [ by iPureIntro | ]. iFrame "Hpin Hdl HE Hres".
+  Qed.
+
+  Lemma ush_posb_of_lend_at (Rres : era_pins -> list (bv 8) -> iProp Σ)
+      (γ : echo_gn) (T : iProp Σ) `{!Persistent T}
+      (N : uk_names Σ) (γp : gname)
+      (Wc : list (bv 8) -> nat -> iProp Σ)
+      (Wb : list (bv 8) -> iProp Σ) (l : list fdstate) (n : nat) :
+    ukn_pay N = ucons_pay fsc_cons γp T (ush_rd_x_at Rres γ Wb) ->
+    ush_wc_inp γ T Wc ->
+    ush_wb_inp γ T Wb ->
+    ⊢ upos γp n -∗ ucons_pay fsc_cons γp T (ush_rd_pin_at Rres γ) (-1) -∗
+      ((∃ I : list (bv 8), ⌜length I = n⌝ ∗ UkSh.ush_wcp Wc Wb l I 0%nat)
+       ∨ T) -∗
+      UkSh.ush_posb N γp T Wc Wb (ush_mid_at Rres γ γp) l 0%nat.
+  Proof using .
+    intros Hpay Hwci Hwbi. rewrite /ucons_pay.
+    iAssert (□ (T -∗ upos γp n -∗
+               UkSh.ush_posb N γp T Wc Wb (ush_mid_at Rres γ γp) l 0%nat))%I
+      as "#Htaint".
+    { iModIntro. iIntros "#HT Hpos".
+      iApply (UkSh.ush_posb_taint N γp T Wc Wb (ush_mid_at Rres γ γp) l 0%nat
+                with "HT [Hpos]").
+      rewrite /UkSh.ush_pos /UkSh.ush_at. iExists n. iFrame "Hpos".
+      rewrite Hpay. iApply (ucons_pay_taint with "HT"). }
+    iIntros "Hpos Hl [Hwc | #HT]"; last first.
+    { iApply ("Htaint" with "HT Hpos"). }
+    iDestruct "Hl" as "[Hl | #HT]"; last first.
+    { iApply ("Htaint" with "HT Hpos"). }
+    iDestruct "Hwc" as (I) "[%Hlen Hwc]".
+    iDestruct "Hl" as (n') "(Hrd0 & Hpa & Hcred)".
+    iDestruct (upos_agree γp n n' with "Hpos Hpa") as %<-.
+    iDestruct "Hcred" as (v I0) "([%Hlen0 %Hrest] & #Hpin & Hdl & #HE & Hres)".
+    iAssert (UkSh.ush_wcp Wc Wb l I 0%nat
+             ∗ ((∃ v' : era_pins, era_pin γ (S gen_id) v' ∗ inp_lb v' I) ∨ T))%I
+      with "[Hwc]" as "[Hwc Hrd]".
+    { iEval (rewrite /UkSh.ush_wcp) in "Hwc".
+      iDestruct "Hwc" as "[[%Hrow Hc] | [%Hrow Hb]]".
+      - iDestruct (Hwci I 0%nat with "Hc") as "[Hc Hr]".
+        iSplitR "Hr"; [ | iExact "Hr" ].
+        rewrite /UkSh.ush_wcp. iLeft. iSplitR; [ by iPureIntro | ].
+        iExact "Hc".
+      - iDestruct (Hwbi I with "Hb") as "[Hb Hr]".
+        iSplitR "Hr".
+        + rewrite /UkSh.ush_wcp. iRight. iSplitR; [ by iPureIntro | ].
+          iExact "Hb".
+        + iDestruct "Hr" as "[[Hrv _] | #HT]";
+            [ iLeft; iExact "Hrv" | iRight; iExact "HT" ]. }
+    iDestruct "Hrd" as "[Hrd | #HT]"; last first.
+    { iApply ("Htaint" with "HT Hpos"). }
+    iDestruct "Hrd" as (v') "[#Hpin' #HE']".
+    iDestruct (era_pin_agree with "Hpin Hpin'") as %<-.
+    iDestruct (inp_lb_agree v I0 I ltac:(lia) with "HE HE'") as %<-.
+    iApply (UkSh.ush_posb_of_wc N γp T Wc Wb (ush_mid_at Rres γ γp) l 0%nat
+              I0 Hrest with "[Hpos Hpa Hrd0 Hdl Hres] Hwc").
+    rewrite /ush_mid_at Hlen0. iFrame "Hpos Hpa Hrd0".
+    iExists v. iFrame "Hpin Hdl HE Hres".
+  Qed.
+
   (* WHAT SH ASKS TO BE TOLD ABOUT THE WINDOW IT CONSUMED.  [EchoOut.
      read_ret] is the era's own answer: the delivered count moved to the
      window's far end, the prefix fact, and the two index laws SH-LINE

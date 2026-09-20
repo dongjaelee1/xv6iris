@@ -7178,7 +7178,10 @@ did not move".  Whole-tree `ec2-lane.sh round5 build` **RC=0**; no
 `Admitted`, no `Axiom`; `Proof using` on every result.  `Print
 Assumptions` on the lane's **twenty-one** results (parts 1 + 2,
 `iris/PipeRound5Assumptions.v`): **all twenty-one Closed under the
-global context**.
+global context**.  **ALL FOUR AUDITS AT THEIR BASELINES**, re-measured
+on the mirror after the retirement: `audit-only` **13**,
+`audit-echo-only` **14**, `audit-tree-only` **13**, `audit-pipe-only`
+**14**.
 
 **(0) `UCatPipe.pcat_image_entry` IS RETIRED**, as §4.3j directs: it had
 no caller anywhere in the tree and its premises were jointly

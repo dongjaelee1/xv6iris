@@ -2625,7 +2625,9 @@ Lemma alt_seq_p_prefix_det (q' : nat) :
     /\ (pro_idx_p cs q' < pro_rounds ps)%nat
     /\ alt_seq_p ps' cs' bs' q' = alt_seq_p ps cs bs q'
     /\ (q' = q -> t' `prefix_of` t)
-    /\ (q' < q -> t' `prefix_of` bs !!! q').
+    /\ (q' < q -> t' `prefix_of` bs !!! q')
+    /\ (forall i, (i < q')%nat ->
+          alt_cont_p ps' cs' bs' i = alt_cont_p ps cs bs i).
 Proof using.
   induction q' as [| n IH];
     intros ps ps' cs cs' bs bs' q t' t Hps Hps' Hlt' Hpos Hbelow Htlast
@@ -2633,7 +2635,7 @@ Proof using.
   { rewrite alt_seq_p_0 app_nil_l in Hpre.
     split; [lia |]. split; [by rewrite !take_0 |].
     split; [cbn [pro_idx_p]; lia |]. split; [reflexivity |].
-    split.
+    split; [| split; [| intros i Hi; lia]].
     - intros Hq. rewrite -Hq alt_seq_p_0 app_nil_l in Hpre. exact Hpre.
     - intros Hq. destruct q as [| p]; [lia |].
       rewrite alt_seq_p_cons_assoc in Hpre.
@@ -2699,7 +2701,7 @@ Proof using.
               (drop 1 cs) (drop 1 cs')
               (drop 1 bs) (drop 1 bs') p t' t
               (pro_from_Forall _ _ ps Hps) (pro_from_Forall _ _ ps' Hps'))
-    as (Hle & Htk & Hrd & Heq & Hteq & Htlt).
+    as (Hle & Htk & Hrd & Heq & Hteq & Htlt & Hcnt).
   { rewrite pro_rounds_from.
     pose proof (pro_idx_p_add cs' 1%nat n) as Hadd.
     replace (1 + n)%nat with (S n) in Hadd by lia. lia. }
@@ -2741,11 +2743,23 @@ Proof using.
     rewrite (alt_cont_p_bs0 ps' cs' bs' bs ltac:(by rewrite Hhd)).
     by rewrite !alt_cont_p_0 Hcont. }
   split.
-  - intros Hqe. apply Hteq. lia.
-  - intros Hqlt.
+  { intros Hqe. apply Hteq. lia. }
+  split.
+  { intros Hqlt.
     pose proof (Htlt ltac:(lia)) as H.
     rewrite pd_lookup_total_drop in H.
-    replace (1 + n)%nat with (S n) in H by lia. exact H.
+    replace (1 + n)%nat with (S n) in H by lia. exact H. }
+  (* ...AND THE BLOCKS THEMSELVES, round by round.  [pcont_pair_det]
+     settles one round's BYTES, and the recursion carries them: this is
+     what the claim's terminal round spends, because what it has to know
+     of the DISCIPLINE's resolution is that the discipline read the same
+     bytes there. *)
+  intros i Hi. destruct i as [| j].
+  { rewrite (alt_cont_p_bs0 ps' cs' bs' bs ltac:(by rewrite Hhd)).
+    rewrite !alt_cont_p_0. exact Hcont. }
+  pose proof (Hcnt j ltac:(lia)) as H.
+  rewrite !alt_cont_p_drop in H.
+  by replace (1 + j)%nat with (S j) in H by lia.
 Qed.
 
 (* ...AND THE SESSION TRANSCRIPTS THEMSELVES.  This is what the stage
@@ -2762,7 +2776,9 @@ Lemma sessp_prefix_det (ps ps' cs cs' : list nat) (I' I : list (bv 8)) :
      ~ pmergeable (pcont (pline_of (bodies_of I' !!! i)) (palt_at cs' i))) ->
   sessp ps' cs' I' `prefix_of` sessp ps cs I ->
   I' `prefix_of` I /\ pro_ok_p ps cs (nlines I')
-  /\ sessp ps' cs' I' = sessp ps cs I'.
+  /\ sessp ps' cs' I' = sessp ps cs I'
+  /\ (forall i, (i < nlines I')%nat ->
+        alt_cont_p ps' cs' (bodies_of I') i = alt_cont_p ps cs (bodies_of I) i).
 Proof using.
   intros Hps [Hps' Hlt'] Hcs Hcs' Hpin Hd Hd' Hd4 Hnm Hpre.
   assert (Hdone' : pro_done ps') by (apply pro_done_rounds; lia).
@@ -2811,7 +2827,7 @@ Proof using.
               Hline Hokc Hokc' Hd4 Hnm
               (wl_cut_bodies_nonl I) (wl_cut_bodies_nonl I')
               (wl_cut_rest_nonl I') (wl_cut_rest_nonl I) Hpre)
-    as (Hqle & Htk & Hround & Hseq & Hteq & Htlt).
+    as (Hqle & Htk & Hround & Hseq & Hteq & Htlt & Hcnt).
   assert (HI' : I' `prefix_of` I).
   { apply wl_cut_prefix_of.
     - assert (Hb' : bodies_of I' = take (nlines I') (bodies_of I))
@@ -2820,6 +2836,7 @@ Proof using.
     - exact Hteq.
     - exact Htlt. }
   split; [exact HI' |]. split; [split; [exact Hps | exact Hround] |].
+  split; [| exact Hcnt].
   rewrite /sessp Heq0. do 2 f_equal. rewrite Hseq.
   apply alt_seq_p_bs_ext. intros j Hj. symmetry.
   exact (pd_lta_take_eq (bodies_of I) (bodies_of I') (nlines I') j Htk Hj).
@@ -3367,7 +3384,7 @@ Proof using.
               ltac:(intros i Hi; rewrite pd_nlines_nil in Hi; lia)
               ltac:(intros i Hi; rewrite pd_nlines_nil in Hi; lia)
               HT)
-    as (_ & _ & Heq).
+    as (_ & _ & Heq & _).
   rewrite !sessp_nil pro_of_good in Heq.
   (* so the adversary's prologue IS init's banner and sh's first prompt *)
   rewrite Hw Hins in Hpre.

@@ -912,6 +912,24 @@ Qed.
 Definition alts_pad_p (I : list (bv 8)) (cs : list nat) : list nat :=
   cs ++ (palt_def <$> drop (length cs) (plines_of I)).
 
+(* A RESOLUTION THAT IS ALREADY FULL IS ITS OWN PADDING. *)
+Lemma alts_pad_p_full (I : list (bv 8)) (cs : list nat) :
+  length cs = nlines I -> alts_pad_p I cs = cs.
+Proof using.
+  intro H. rewrite /alts_pad_p drop_ge; [by rewrite fmap_nil app_nil_r |].
+  rewrite plines_of_length. lia.
+Qed.
+
+(* ...AND THE DEFAULT IS NEVER THE TERMINAL ROUND, which is what lets the
+   claim's padded resolution carry D4's unprimed reading for free. *)
+Lemma palt_isforkS_def (l : pline) :
+  palt_isforkS (palt_of (palt_def l)) = false.
+Proof using.
+  destruct l as [ws | ws]; cbn [palt_def].
+  - rewrite (palt_of_lt4 0%nat ltac:(lia)). reflexivity.
+  - rewrite palt_of_code. reflexivity.
+Qed.
+
 Lemma alts_pad_p_prefix I cs : cs `prefix_of` alts_pad_p I cs.
 Proof using. rewrite /alts_pad_p. by eexists. Qed.
 
@@ -1517,6 +1535,34 @@ Proof using.
     rewrite /palt_at Hlk. exact (palt_panic_def _).
 Qed.
 
+(* the same reading at [palt_isforkS]: a padded resolution is terminal
+   nowhere the stage's own one is not *)
+Lemma alts_pad_p_isforkS (I : list (bv 8)) (cs : list nat) (i : nat) :
+  Forall (fun c => palt_isforkS (palt_of c) = false) cs ->
+  palt_isforkS (palt_at (alts_pad_p I cs) i) = false.
+Proof using.
+  intro HF. destruct (decide (i < length cs)%nat) as [Hlt | Hge].
+  - rewrite /palt_at (pop_lta_prefix cs (alts_pad_p I cs) i
+                        (alts_pad_p_prefix I cs) Hlt).
+    destruct (lookup_lt_is_Some_2 cs i Hlt) as [c Hc].
+    rewrite (list_lookup_total_correct cs i c Hc).
+    exact (Forall_lookup_1 _ _ _ _ HF Hc).
+  - destruct (decide (i < length (alts_pad_p I cs))%nat) as [Hlt2 | Hge2];
+      last first.
+    { rewrite (palt_at_ge (alts_pad_p I cs) i ltac:(lia)). reflexivity. }
+    rewrite /alts_pad_p length_app length_fmap length_drop
+            plines_of_length in Hlt2.
+    assert (Hjl : (i < length (plines_of I))%nat)
+      by (rewrite plines_of_length; lia).
+    destruct (lookup_lt_is_Some_2 (plines_of I) i Hjl) as [l Hl].
+    assert (Hlk : alts_pad_p I cs !!! i = palt_def l).
+    { rewrite /alts_pad_p list_lookup_total_alt lookup_app_r; [| lia].
+      rewrite list_lookup_fmap lookup_drop.
+      replace (length cs + (i - length cs))%nat with i by lia.
+      by rewrite Hl. }
+    rewrite /palt_at Hlk. exact (palt_isforkS_def l).
+Qed.
+
 Lemma alts_pad_p_pro_idx (I : list (bv 8)) (cs : list nat) (q : nat) :
   (q <= nlines I)%nat -> pro_idx_p (alts_pad_p I cs) q = pro_idx_p cs q.
 Proof using.
@@ -1616,7 +1662,9 @@ Lemma sessp_prefix_det2 (ps ps' cs cs' : list nat) (I' I : list (bv 8)) :
      ~ pmergeable (pcont (pline_of (bodies_of I' !!! i)) (palt_at cs' i))) ->
   sessp ps' cs' I' `prefix_of` sessp ps cs I ->
   I' `prefix_of` I /\ pro_ok_p ps cs (nlines I')
-  /\ sessp ps' cs' I' = sessp ps cs I'.
+  /\ sessp ps' cs' I' = sessp ps cs I'
+  /\ (forall i, (i < nlines I')%nat ->
+        alt_cont_p ps' cs' (bodies_of I') i = alt_cont_p ps cs (bodies_of I) i).
 Proof using.
   exact (sessp_prefix_det ps ps' cs cs' I' I).
 Qed.

@@ -266,8 +266,15 @@ arm is the theorem's one named premise (`pipe_both_law`).
   `length ws = 1` are jointly unsatisfiable); repaired additively as
   `UShCatPay.cat_image_entry_1w`, and `UCatPipe.v` owes the restatement.
   See the Findings block.
-- [ ] **PIPE-MODEL-3 / PIPE-STAGE-3 / SH-PIPE-ROUND-5** (the strays, design
-  §4.3g) — NOT launched; awaiting the owner's ruling.
+- [ ] **PIPE-MODEL-3** (design §4.3h, owner ruled "strays" 2026-09-21; the
+  sound form: the covered session ENDS at a pipeline fork failure):
+  `PForkS sel`, D4, the terminal open block.  Brief `brief-pipe-model-3.md`.
+- [ ] **PIPE-STAGE-3** (after MODEL-3): mode `alt_forkc` pinned by the
+  runcmd child; `pwc_line2`'s third arm's second shape; the main loop's
+  `$ ` as two right steps; the stray's steps.
+- [ ] **SH-PIPE-ROUND-5** (after STAGE-3): the assembly; `pcat_image_entry`
+  restated; the third paid diagnostic; `sh_pipe_child_law_all` proved →
+  `pipe_adequacy_pipeΣ_of_child` premise-free.
 - [x] **PIPE-CC** (in parallel with ROUND-4; ROUND-3's item 3): the pipe
   era's `cons_cred` instance (`UInitPipe.v`, five `UShLine` `_at` twins),
   `pipe_prog_law` discharged modulo `sh_pipe_child_law`;

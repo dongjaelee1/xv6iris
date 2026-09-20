@@ -843,6 +843,69 @@ bound in `PipeProto` (`rcur pn c`, `c > 0`, `pipe_inv` ⊢ `pws_lb pn
 (take c L)`), which discharges the exclusion premise at `XL := wcur pn
 0`, `YR := pws_lb pn (take 1 L)`.
 
+### 4.3h RULED (2026-09-21, owner: "strays"): the stray is modelled, and the covered session ENDS at a pipeline fork failure
+
+The owner chose the stray model over the "pipeline line last" restriction.
+Working it out to a statement showed that the FULLY general stray model
+(strays interleaved with later rounds, any session) cannot be stated
+soundly over the observation trace: the input discipline D2 ("type the
+next byte only after the session's transcript so far is on the wire")
+must be read under the REAL attribution of bytes to writers, and the
+attribution is not observable — a stray `e` and the echo of a typed `e`
+are the same byte.  Every attribution-free reading fails: "under some
+valid decomposition" is too weak for the claim (the ghost holds the real
+attribution and cannot re-attribute a byte another process owns), "under
+every valid decomposition" is vacuous (a phantom stray tag on the last
+echoed `e` is always a valid reading once a fork failure has happened),
+and a canonical greedy decomposition dead-ends where a valid one exists.
+The sound version of "strays" is therefore:
+
+**RULED.** A pipeline round whose `fork1` failed is the LAST round of the
+covered session (discipline rule D4: no input byte after it; the user
+sees `fork`), and its block is the merge of the runcmd child's panic and
+the main loop's prompt with a prefix of the stray's diagnostic:
+
+- `PipeDisc`: `PFork` at an `LPipe` line becomes `PForkS (sel : list bool)`
+  with `pcont (LPipe ws) (PForkS sel) = pmerge sel alt_forkc (take
+  (length sel - count_true sel) dg_execL)` (right = `alt_forkc` =
+  `fork\n$ `, written by the runcmd child then the main loop; left = the
+  stray, at most `dg_execL`), `palt_ok`: `count_true sel <= length
+  alt_forkc`, `length sel - count_true sel <= length dg_execL`; D4 in
+  `alts_ok_p` (or beside it): a resolution with `PForkS` at line `i` has
+  `nlines I = S i` and `rest_of I = []`.  `PForkS []` is the old `PFork`.
+  Fork failures at ECHO lines (`PEcho 3`) are unchanged — no child exists.
+  `sessp_prefix_det` compares completed rounds before an input point and
+  no input follows a terminal round; if it must weaken, it weakens to
+  "codes agree on the non-terminal rounds", as it already tolerates
+  `PBoth`'s selector ambiguity (`pend_both_not_inj`).  `PipeDiscDec` gains
+  the case (the code is built, never computed — PIPE-MODEL-2's rule).
+- `PipeOutPure`/`PipeOut`: the open-block reading `pblk_open` (`Forall
+  nodollar pre`, which refutes an echo mid-block) gains the terminal
+  arm: an open block MAY contain the prompt when its round is `PForkS`,
+  and then D4 refutes the echo instead.  The claim's open-round state
+  stays open for ever at a terminal round (the code is never filed — the
+  stray never signals completion); `good_out_p_of_stage` reads the
+  terminal round's alternative from the ledger as it stands.
+- The stage families (lane PIPE-STAGE-3): the right source gains a third
+  mode `alt_forkc`, pinned by the RUNCMD CHILD at its panic's first byte
+  (it holds the right cursor half — it has not forked the right child);
+  `pwc_line2`'s third arm gains a second shape, `blk2_inv ∗ wcur gR (1/2)
+  5 ∗ (mode = fork)`, for the runcmd child that exits WITHOUT the family
+  (the stray holds the left half); the main loop's `$ ` at that shape is
+  two `pblk2_cstep_R` (positions 5, 6 of `alt_forkc`), no filing; the
+  stray's later bytes are `pblk2_cstep_L` on the same invariant, at any
+  time.  Nothing else in R1–R3 moves.
+- ROUND-5 then assembles the round: `PFork` #2's tail is the family at
+  mode fork; `PFork` #1's tail (no child) is the same at `sel` all-true.
+
+What the theorem says afterwards: for any session of echo and pipeline
+lines, the console follows the discipline; if a pipeline round's fork
+fails, the console shows `fork`, the prompt, and at most the stray
+diagnostic interleaved with them, and the theorem covers nothing typed
+after that.  This is strictly stronger than "pipeline line last" (a
+pipeline line may appear anywhere; only a fork FAILURE ends coverage)
+and it is the only stray model whose premise is a fact about the wire.
+
 ## 5. Programs
 
 ### 5.1 sh: the PIPE arm (lanes SH-PARSE-PIPE, SH-PIPE)

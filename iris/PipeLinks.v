@@ -13,6 +13,8 @@
    empty stage, exactly as at the echo application.  The bundle therefore
    has SIX components where the file's has seven, and a writer's argument
    list is echo's with the byte read off [PipeOutPure.proc_stream_p].
+   (SH-PIPE-ROUND-4 added a SEVENTH: [pipe_link_file], the two-writer
+   round's filing step at the prompt's first byte -- see [pipe_file_link].)
 
    A link runs at [⊤ ∖ ↑uartN Uart0] and opens NOTHING but the port
    invariant: every authority an era has is in the claim the link is handed,
@@ -172,6 +174,52 @@ Section pipe_links.
     by iApply "HΦ".
   Qed.
 
+  (* (F) THE ROUND'S FILING LINK -- THE SEVENTH LEAF (lane SH-PIPE-ROUND-4,
+     design section 4.3f (R1), preferred route).  [PipeOut.pecl_blk2_file] wrapped
+     as an [out_link], exactly as (W') wraps [pecl_step_write_blk]: the
+     prompt's own first byte, which files a TWO-WRITER round's code.
+
+     WHY IT HAS TO BE A LEAF AND CANNOT BE A FREE LEMMA WHERE IT IS SPENT.
+     The step itself is free ([PipeBoth.pblk2_ecl_file_holds] is a closed
+     entailment), but it is a [pecl] step and its consumer -- the record
+     field [lk_prompt_dollar_line], which takes no [Hcons] -- needs it as
+     an [out_link].  The conversion is [Hcons], and the bundle is where
+     this application keeps [Hcons].
+
+     ITS PREMISES ARE [pecl_blk2_file]'S OWN, not [PipeBoth]'s
+     [wr_blk2_p]/[pblk2_code]: the latter name [PipeLinksLine.pline_at],
+     [pab] and [wr_tail_p], which live ABOVE this file. *)
+  Lemma pipe_file_link (k : nat) (v : era_pins) (w : pipe_era) (gb : gname)
+      (P r a : nat) (b : bv 8) (pre0 : list (bv 8))
+      (ps0 cs0 : list nat) (I0 : list (bv 8)) (Phi : iProp Σ) :
+    I0 <> [] ->
+    rest_of I0 = [] ->
+    r = (nlines I0 - 1)%nat ->
+    length cs0 = r ->
+    pro_pin_p ps0 cs0 I0 ->
+    P = length (proc_before_p ps0 cs0 I0) ->
+    palt_ok (pline_of (bodies_of I0 !!! r)) (palt_of a) ->
+    palt_panic (palt_of a) = false ->
+    pcont (pline_of (bodies_of I0 !!! r)) (palt_of a) = pre0 ++ u_prompt ->
+    b = u_prompt !!! 0%nat ->
+    era_pin γ k v -∗ pera_pin g k w -∗
+    turn v (P + length pre0)%nat -∗ cur_half w (1/2) r gb -∗
+    rblk_lb gb pre0 -∗ ps_lb v ps0 -∗ cs_lb v cs0 -∗ inp_lb v I0 -∗
+    (((turn v (S (P + length pre0))%nat ∗ ps_lb v ps0
+       ∗ cs_lb v (cs0 ++ [a]) ∗ inp_lb v I0) ∨ T) -∗ Phi) -∗
+    out_link Uart0 k b Phi.
+  Proof using Hcons.
+    intros Hne0 Hr0 Hreq Hcseq Hpin0 HPeq Halt Hpan Hcont Hbv.
+    iIntros "#Hpin #Hpera Ht Hcw #Hrlb #Hpslb #Hcslb #Hilb HPhi" (o H) "#Hlb Hres".
+    rewrite !pchist_at0.
+    iMod (pecl_blk2_file g k v w gb P r a b pre0 ps0 cs0 I0 (default [] o) H
+            Hne0 Hr0 Hreq Hcseq Hpin0 HPeq Halt Hpan Hcont Hbv
+            with "Hpin Hpera Ht Hcw Hrlb Hpslb Hcslb Hilb Hres")
+      as "(Hres & Hret)".
+    iModIntro. iExists o. rewrite pchist_at0. iFrame "Hlb Hres".
+    by iApply "HPhi".
+  Qed.
+
   (* (R) THE READ LINK.  Beside the window it exports THE ERA'S INPUT AT
      THE WINDOW'S FAR END, its discipline and the stage the writer has
      reached -- with the choice list read at [PipeOutPure.alts_pre_p],
@@ -316,9 +364,31 @@ Section pipe_links.
     (□ ∀ (k : nat) (ws : list (list mobs * bv 8)) (Φ : iProp Σ),
         T -∗ (T -∗ Φ) -∗ cons_link Uart0 k (ConsLog.EvRead ws) Φ)%I.
 
+  (* THE SEVENTH LEAF (lane SH-PIPE-ROUND-4).  See [pipe_file_link]. *)
+  Definition pipe_link_file : iProp Σ :=
+    (□ ∀ (k : nat) (v : era_pins) (w : pipe_era) (gb : gname)
+         (P r a : nat) (b : bv 8) (pre0 : list (bv 8))
+         (ps0 cs0 : list nat) (I0 : list (bv 8)) (Phi : iProp Σ),
+        ⌜I0 <> []⌝ -∗
+        ⌜rest_of I0 = []⌝ -∗
+        ⌜r = (nlines I0 - 1)%nat⌝ -∗
+        ⌜length cs0 = r⌝ -∗
+        ⌜pro_pin_p ps0 cs0 I0⌝ -∗
+        ⌜P = length (proc_before_p ps0 cs0 I0)⌝ -∗
+        ⌜palt_ok (pline_of (bodies_of I0 !!! r)) (palt_of a)⌝ -∗
+        ⌜palt_panic (palt_of a) = false⌝ -∗
+        ⌜pcont (pline_of (bodies_of I0 !!! r)) (palt_of a) = pre0 ++ u_prompt⌝ -∗
+        ⌜b = u_prompt !!! 0%nat⌝ -∗
+        era_pin γ k v -∗ pera_pin g k w -∗
+        turn v (P + length pre0)%nat -∗ cur_half w (1/2) r gb -∗
+        rblk_lb gb pre0 -∗ ps_lb v ps0 -∗ cs_lb v cs0 -∗ inp_lb v I0 -∗
+        (((turn v (S (P + length pre0))%nat ∗ ps_lb v ps0
+           ∗ cs_lb v (cs0 ++ [a]) ∗ inp_lb v I0) ∨ T) -∗ Phi) -∗
+        out_link Uart0 k b Phi)%I.
+
   Definition pipe_links : iProp Σ :=
     (pipe_link_w ∗ pipe_link_blk ∗ pipe_link_pro ∗ pipe_link_taint
-     ∗ pipe_link_rd ∗ pipe_link_rd_taint)%I.
+     ∗ pipe_link_rd ∗ pipe_link_rd_taint ∗ pipe_link_file)%I.
 
   Global Instance pipe_link_w_persistent : Persistent pipe_link_w | 0.
   Proof using . rewrite /pipe_link_w. apply _. Qed.
@@ -333,28 +403,33 @@ Section pipe_links.
   Global Instance pipe_link_rd_taint_persistent :
     Persistent pipe_link_rd_taint | 0.
   Proof using . rewrite /pipe_link_rd_taint. apply _. Qed.
+  Global Instance pipe_link_file_persistent : Persistent pipe_link_file | 0.
+  Proof using . rewrite /pipe_link_file. apply _. Qed.
   Global Instance pipe_links_persistent : Persistent pipe_links | 0.
   Proof using . rewrite /pipe_links. apply _. Qed.
 
-  (* ---- the six projections, which is all a consumer ever uses ---- *)
+  (* ---- the seven projections, which is all a consumer ever uses ---- *)
   Lemma pipe_links_w : pipe_links -∗ pipe_link_w.
-  Proof using . by iIntros "($ & _ & _ & _ & _ & _)". Qed.
+  Proof using . by iIntros "($ & _ & _ & _ & _ & _ & _)". Qed.
   Lemma pipe_links_blk : pipe_links -∗ pipe_link_blk.
-  Proof using . by iIntros "(_ & $ & _ & _ & _ & _)". Qed.
+  Proof using . by iIntros "(_ & $ & _ & _ & _ & _ & _)". Qed.
   Lemma pipe_links_pro : pipe_links -∗ pipe_link_pro.
-  Proof using . by iIntros "(_ & _ & $ & _ & _ & _)". Qed.
+  Proof using . by iIntros "(_ & _ & $ & _ & _ & _ & _)". Qed.
   Lemma pipe_links_taint : pipe_links -∗ pipe_link_taint.
-  Proof using . by iIntros "(_ & _ & _ & $ & _ & _)". Qed.
+  Proof using . by iIntros "(_ & _ & _ & $ & _ & _ & _)". Qed.
   Lemma pipe_links_rd : pipe_links -∗ pipe_link_rd.
-  Proof using . by iIntros "(_ & _ & _ & _ & $ & _)". Qed.
+  Proof using . by iIntros "(_ & _ & _ & _ & $ & _ & _)". Qed.
   Lemma pipe_links_rd_taint : pipe_links -∗ pipe_link_rd_taint.
-  Proof using . by iIntros "(_ & _ & _ & _ & _ & $)". Qed.
+  Proof using . by iIntros "(_ & _ & _ & _ & _ & $ & _)". Qed.
+  Lemma pipe_links_file : pipe_links -∗ pipe_link_file.
+  Proof using . by iIntros "(_ & _ & _ & _ & _ & _ & $)". Qed.
 
   Lemma pipe_links_holds : ⊢ pipe_links.
   Proof using Hcons.
     rewrite /pipe_links /pipe_link_w /pipe_link_blk /pipe_link_pro
-            /pipe_link_taint /pipe_link_rd /pipe_link_rd_taint.
-    iSplit; [| iSplit; [| iSplit; [| iSplit; [| iSplit]]]].
+            /pipe_link_taint /pipe_link_rd /pipe_link_rd_taint
+            /pipe_link_file.
+    iSplit; [| iSplit; [| iSplit; [| iSplit; [| iSplit; [| iSplit]]]]].
     - iIntros "!>" (k v P b ps0 cs0 I0 Φ) "%Hbnd %Hpin0 %Hb".
       iIntros "Hpin Ht Hps Hcs HE HΦ".
       iApply (pipe_write_link with "Hpin Ht Hps Hcs HE HΦ"); try assumption.
@@ -375,6 +450,11 @@ Section pipe_links.
     - iIntros "!>" (k ws Φ) "#HT HΦ".
       iApply (pipe_cons_link_of_taint with "HT [HΦ]").
       by iApply "HΦ".
+    - iIntros "!>" (k v w gb P r a b pre0 ps0 cs0 I0 Phi).
+      iIntros "%Hne %Hrest %Hreq %Hcseq %Hpin0 %HPeq %Halt %Hpan %Hcont %Hbv".
+      iIntros "Hpin Hpera Ht Hcw Hrlb Hps Hcs HE HPhi".
+      iApply (pipe_file_link with "Hpin Hpera Ht Hcw Hrlb Hps Hcs HE HPhi");
+        try assumption.
   Qed.
 
   (* ==================================================================== *)

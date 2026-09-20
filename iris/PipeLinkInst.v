@@ -37,6 +37,7 @@ Require Import AppEcho.
 Require Import PipeOut.
 Require Import PipeLinks.
 Require Import PipeLinksLine.
+Require Import PipeBoth.      (* SH-PIPE-ROUND-4: the WIDENED line credential *)
 Require Import EchoLinks.
 Require Import EchoLinksLine.
 Require Import LinkRec.
@@ -74,9 +75,9 @@ Section pipe_link_inst.
        lk_pro := pwc_pro g;
        lk_sp_t := pwc_sp_t g;
        lk_open_t := pwc_open_t g;
-       lk_line := pwc_line g;
+       lk_line := pwc_line2 g;
        lk_pr := pwc_pr g;
-       lk_lpr := pwc_lpr g;
+       lk_lpr := pwc_lpr2 g;
        lk_lend := pwc_lend g;
        lk_rr := fun k v n ws => PipeLinks.pread_ret g k v n ws;
        lk_rres := pwc_rres;
@@ -100,9 +101,9 @@ Section pipe_link_inst.
        lk_pro_tl := pwc_pro_timeless g;
        lk_sp_t_tl := pwc_sp_t_timeless g;
        lk_open_t_tl := pwc_open_t_timeless g;
-       lk_line_tl := pwc_line_timeless g;
+       lk_line_tl := pwc_line2_timeless g;
        lk_pr_tl := pwc_pr_timeless g;
-       lk_lpr_tl := pwc_lpr_timeless g;
+       lk_lpr_tl := pwc_lpr2_timeless g;
        lk_lend_tl := pwc_lend_timeless g;
        lk_rres_pers := pwc_rres_persistent;
        lk_rres_tl := pwc_rres_timeless;
@@ -123,7 +124,7 @@ Section pipe_link_inst.
        lk_pro_taint := pwc_pro_taint g;
        lk_sp_t_taint := pwc_sp_t_taint g;
        lk_open_t_taint := pwc_open_t_taint g;
-       lk_line_taint := pwc_line_taint g;
+       lk_line_taint := pwc_line2_taint g;
        lk_lend_taint := pwc_lend_taint g;
 
        lk_pro_owed := pwc_pro_owed g;
@@ -131,16 +132,16 @@ Section pipe_link_inst.
        lk_sp_t_sp := pwc_sp_t_sp g;
        lk_open_t_open := pwc_open_t_open g;
        lk_blk_0 := pwc_blk_0 g;
-       lk_line_of_blk0 := pwc_line_of_blk0 g;
-       lk_line_of_post := pwc_line_of_post g;
-       lk_line_of_pro := pwc_line_of_pro g;
+       lk_line_of_blk0 := pwc_line2_of_blk0 g;
+       lk_line_of_post := pwc_line2_of_post g;
+       lk_line_of_pro := pwc_line2_of_pro g;
        lk_lend_of_blk0 := pwc_lend_of_blk0 g;
 
        lk_ban_step := pban_step g;
        lk_ban_owed := pwc_ban_owed g;
        lk_ban_pro := pwc_ban_pro g;
        lk_ban_done := pwc_ban_done g;
-       lk_ban_done_line := pwc_ban_done_line g;
+       lk_ban_done_line := pwc_ban_done_line2 g;
        lk_ban_inp := pwc_ban_inp g;
 
        lk_prompt_dollar := pprompt_dollar g;
@@ -154,7 +155,7 @@ Section pipe_link_inst.
 
        lk_prompt_dollar_post := pprompt_dollar_post g;
        lk_prompt_space_t := pprompt_space_t g;
-       lk_prompt_dollar_line := pprompt_dollar_line g;
+       lk_prompt_dollar_line := pprompt_dollar_line2 g;
        lk_read_t := pwc_read_t g;
 
        lk_ab_pan := fun I => pab_pan I;
@@ -215,7 +216,7 @@ Section pipe_link_inst.
   Proof using . reflexivity. Qed.
   Lemma pipe_inst_pr : lk_pr pipe_link_inst_at = pwc_pr g.
   Proof using . reflexivity. Qed.
-  Lemma pipe_inst_lpr : lk_lpr pipe_link_inst_at = pwc_lpr g.
+  Lemma pipe_inst_lpr : lk_lpr pipe_link_inst_at = pwc_lpr2 g.
   Proof using . reflexivity. Qed.
   Lemma pipe_inst_lend k v I :
     lk_lend pipe_link_inst_at k v I = pwc_lend g k v I.
@@ -230,7 +231,7 @@ Section pipe_link_inst.
   Proof using . reflexivity. Qed.
   Lemma pipe_inst_lcred k I p :
     lk_lcred pipe_link_inst_at k I p
-    = (∃ v : era_pins, era_pin γ k v ∗ pwc_lpr g k v I p)%I.
+    = (∃ v : era_pins, era_pin γ k v ∗ pwc_lpr2 g k v I p)%I.
   Proof using . reflexivity. Qed.
 
   (* ---- the three NAMED alternatives, read at the instance.  [lk_pan]

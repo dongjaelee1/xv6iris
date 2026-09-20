@@ -4878,6 +4878,25 @@ sweep, and both are the fixed part's type):
   (g : pipe_gn)` + `Local Notation γ := (pgn_cl g)`, exactly as
   `PCatOut` above it, and the three call sites pass `g`.
 
+THE REST OF THAT SWEEP, found once the tree could be built to the end
+(see §6 -- before the wedge fix it could not): `PipeLinkInst.v`'s
+`pi_pin_epin` and its twelve step fields (`pban_step` ...
+`ppdiag_step`), whose lemmas live in `PipeLinksLine`'s section;
+`PipeLinkInst.v`'s SECOND section `sh_round_facing`, which still
+declared `Context (γ : echo_fixed)` while its body reads
+`pipe_link_inst_at g` -- `g` was unbound; `PipeStageInst.v:187`
+(`pblk_step γ`); `UCatPipe.v`'s seven `pcch γ`; `UShPipeRound.v`'s
+`pipe_Wcl_at`/`pipe_Wbl_at`/their `Timeless` leaves/`pipe_Hwbl`/
+`pipe_Hcltaint`/`pipe_inst_exfb_echo`; and `UPipeBootAdequacy.v`'s
+`pipeΣ`, which did not carry `pipeOutΣ`, so `pipeOutG pipeΣ` had no
+instance at the adequacy corollary.  TWO OF THEM ARE A DIFFERENT KIND OF
+BREAKAGE and worth naming: the new `Context (g : pipe_gn)` SHADOWS any
+local binder called `g`, and Rocq answers `g is already used` -- it hit
+`UCatPipe.v`'s `iIntros (h' r d g W ...)` (renamed `gW`), `PipeBoth.v`'s
+`wcur`'s gname (renamed `gc`) and `UShPipeRound.v`'s `ushq_lp`/`ushq_lp0`
+byte function (renamed `gf`).  A one-letter fixed part is cheap to write
+and expensive to land; if the campaign names another, name it `pg`.
+
 **1.  `pe_cur`, THE EXCLUSIVE CURRENT-ROUND GHOST** (design §4.3e, as
 ruled).  `pipe_era` is `MkPEra { pe_blk ; pe_cur }`, `pipeOutG` gains
 `ghost_varG Σ (nat * gname)`, and `cur_half w q r gb := ghost_var
@@ -4933,17 +4952,14 @@ both the first byte and the rest.
   least one byte — otherwise the block never opened and the ordinary
   `pwc_blk` path applies).
 
-**5.  VERIFICATION STATE AT HAND-OFF (be precise about this).**
-`PipeOut.v` — the file that carries `pe_cur` and all four claim steps
-(`pecl_blk2_open`/`_byte`/`_file` and the era-wide moves) — is **green
-on its own (`RC=0`)**, and so is `PipeBothPure.v` with `pend2_prefix`.
-`PipeBoth.v`'s discharge and the three fixed-part fixes are written and
-committed but **not yet machine-checked**: the whole-tree build is stuck
-in `PipeLinksLine.v`, which on the current mirror takes **about six CPU
-hours** (the coordinator's own gate build of `main`, in
-`/shared/xv6iris/iris`, was 6h17m into the same file at the same time).
-So no audit/`Print Assumptions` numbers are reported here — they would
-be guesses.
+**5.  VERIFICATION STATE: THE WHOLE TREE IS GREEN (`RC=0`).**  Everything
+in this block is machine-checked — `PipeOut.v` (`pe_cur` and all four
+claim steps), `PipeBothPure.v` (`pend2_prefix`), `PipeBoth.v` (the
+family's per-round ledger and the three discharges) and the whole
+dependent cone.  With the wedge of §6 out of the way a whole-tree build
+takes MINUTES, which is what made the rest of the sweep findable at all:
+seven further consumers of the old fixed part surfaced only once the
+tree could be compiled to the end (§0 lists the first two).
 
 **6.  THE `PipeLinksLine.v` WEDGE, LOCALIZED AND FIXED** (the
 coordinator was right: it was NOT the box).  Before the fixed-part change
@@ -4988,7 +5004,17 @@ Opaque`; it is only tolerable because the echo cone has the five cameras
 and not seven.  RULE for the campaign: a bundle a proof `iIntros "#"` on
 must be `Typeclasses Opaque` with its instance named at priority 0.
 
-**7.  AN OPERATIONAL TRAP worth the note.**  Three `make`s were running
+**7.  A COMMENT IN `PipeBoth.v` THAT IS NOW HALF-OBSOLETE.**  S5's header
+says the byte steps take `pipe_link_taint g` and NOT the whole
+`PipeLinks.pipe_links` bundle because introducing the bundle with `#`
+"does not return in THIS file's cone".  That was the §6 wedge, and it is
+fixed; the bundle is now instant everywhere.  The design still stands on
+its own merits (a step spends the taint link and nothing else, and a
+caller projects it with `pipe_links_taint`), so the lemmas are unchanged
+-- but the REASON in that comment should be reread as history, not as a
+live constraint.
+
+**8.  AN OPERATIONAL TRAP worth the note.**  Three `make`s were running
 in this lane's remote clone at once — my detached whole-tree build plus
 two ORPHANS from earlier wrapper timeouts — all compiling
 `PipeLinksLine.v` into the same directory and invalidating each other's

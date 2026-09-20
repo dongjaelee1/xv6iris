@@ -331,6 +331,12 @@ arm is the theorem's one named premise (`pipe_both_law`).
   `pipe_prog_law` discharged modulo `sh_pipe_child_law`;
   `pipe_adequacy_pipeΣ` with the child law as its ONE hypothesis.  Brief
   `brief-pipe-cc.md`.
+- [ ] **PIPE-STAGE-4** (design §4.3m, route β: the family INTO THE CLAIM;
+  the terminal fire freezes `cs`; the terminal round through the record;
+  `UkShPipeFork` retired).  Brief `brief-pipe-stage-4.md`.
+- [ ] **SH-PIPE-ROUND-6** (after STAGE-4): the assembly at
+  `pipe_round_entry`/`pipe_round_exit`; `sh_pipe_child_law_all`;
+  `pipe_adequacy_pipeΣ_final`.
 ## Findings (append as lanes report)## Findings (append as lanes report)## Findings (append as lanes report)
 
 ### PQ-FLAG-2 (2026-09-18) — the write link's second premise, paid by the CODE

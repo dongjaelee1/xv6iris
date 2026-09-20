@@ -1058,6 +1058,70 @@ pre-authorised fallback ONLY if `pecl`'s terminal arm cannot hold the
 frozen auth (some landed claim step at a terminal round needs `cs_auth`
 at fraction 1): the lane reports the step and proceeds with (β).
 
+### 4.3m RULED (2026-09-22, after SH-PIPE-ROUND-5 part 4): route (β) — the two-writer family moves INTO THE CLAIM
+
+Part 4 landed the freeze (`PipeOut.cs_frozen`, `cs_freeze`,
+`cs_frozen_lb_absurd`) and showed why the claim cannot use it yet:
+`pecl_blk2_file` can still fire at a terminal round, because at `echo
+fork | cat` the terminal round and the good round print the same bytes
+(`pterm_gamma_witness`) — the claim has no discriminator.  The only ghost
+that knows a round is terminal is the family's MODE, and the family lives
+in `PipeBoth.blk2_inv`, outside the claim.  Three routes (the record arm,
+α, γ) were measured to their leaf; each named this one.  RULED (β):
+
+- **The family's state joins `pecl`'s open-round arm** beside `pblk_led`
+  and `pe_cur` (PIPE-2W-3's move, once more): the two cursors (`wcur gL`,
+  `wcur gR` — the claim holds one half of each, each child the other),
+  the mode (`rmode gM`: the claim's half, and the runcmd child's then
+  cat's), and the `(⌜c1 = 0⌝ ∨ XL)` witness; the exclusion `□ (XL -∗ YR
+  ={Eex}=∗ False)` stays a parameter of the byte steps.  `blk2_inv` is
+  RETIRED; `blk2_inv_alloc`/`_close`, `blk2_mode_fire`,
+  `pblk2_cstep_L/_R/_R_t` become CLAIM STEPS (basic updates on `pecl`
+  inside `out_link`'s fupd, at the stepping child's half);
+  `UShPipeRound2.pipe_round_entry`/`pipe_round_exit` are re-derived at
+  them and remain the round's two ends.
+- **The terminal fire freezes the resolution.**  `blk2_mode_fire` at `n :=
+  3` (the runcmd child, before its first panic byte, holding the right
+  and mode halves) runs `cs_freeze`: `pecl`'s terminal arm holds
+  `cs_frozen v cs` in place of `cs_auth v cs`, and the child gets the
+  persistent copy with `⌜length cs = nlines I - 1⌝`.  Sound now: every
+  step that grows `cs` at an open two-writer round (`pecl_blk2_file`)
+  takes the filer's mode half at `n ≠ 3`, which the claim's mode auth
+  refutes at a terminal round; `pecl_step_write_blk` is already refuted
+  there by the turn.
+- **The boundary credential is timeless ghost halves**, so the record
+  carries the terminal round: `pwc_line2`'s third arm gains the terminal
+  shape `era_pin ∗ wcur gR (1/2) 5 ∗ wcur gM (1/2) 3 ∗ cs_frozen v cs ∗
+  ⌜length cs = nlines I - 1⌝` (no `inv`, so `lk_line_tl` holds);
+  `lk_prompt_dollar_line` at it is `pprompt_dollar_fork` restated as the
+  claim step (position 5), landing in `pwc_sp_t`'s terminal arm (c2 = 6),
+  and the space step in `pwc_open_t`'s (c2 = 7).  The record's laws that
+  read a FILED round at indices 1–2 (`lk_sp_t_sp`, `lk_open_t_open`,
+  whatever the loop consumes through them) are the ERA's own fields: give
+  the pipe's `lk_sp`/`lk_open` the same terminal arm; if a GENERIC law in
+  `LinkRec.v`/`UkSh.v` states `nlines I = length cs` at those indices, it
+  gains a terminal disjunct and the echo/file instances re-discharge by
+  `left` — the second and last upstream shape change of this wave, and
+  only if measured necessary.
+- **The read after the terminal prompt refutes purely** (route γ's
+  lemma at its true site): the pipe's instance of `UkSh.ush_wc_read` at
+  the terminal arm combines `pwc_rres`'s `cs_lb v cs0` (`rd_stage_p`:
+  `nlines (removelast I') <= length cs0`, i.e. `length cs0 >= nlines I`)
+  with `cs_frozen v cs` (`length cs = nlines I - 1`) — `cs_frozen_lb_absurd`.
+  α's fancy update stays (harmless).  The claim's input step at a
+  terminal round (D4 → the dirty arm) is unchanged.
+- **Retired:** `UkShPipeFork.v` (`pterm_shape`/`pterm_pay`/`pterm_wc`,
+  the transfers) and §4.3j's redefinition of `sh_pipe_child_law` — the
+  child law stays `ushf_child_law_at Wcf ushq_lp 68` at `ushf_wq`, whose
+  `Wcf I 0` now carries the terminal round; §4.3i's "handled at the fork
+  arm's re-entry" is superseded.  `PipeBoth.pwc_fork_exit` is the
+  ghost-halves shape.
+
+Lanes: **PIPE-STAGE-4** (β, the tree green with the family in the claim
+and the terminal round through the record), then **SH-PIPE-ROUND-6**
+(the assembly at `pipe_round_entry`/`pipe_round_exit`, the child law,
+the theorem).
+
 ## 5. Programs
 
 ### 5.1 sh: the PIPE arm (lanes SH-PARSE-PIPE, SH-PIPE)

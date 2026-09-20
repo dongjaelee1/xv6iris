@@ -6427,8 +6427,9 @@ other way.
 
 ### PIPE-MODEL-3 (2026-09-21) — the terminal round LANDS, and D4 AS RULED IS UNSOUND: the wire does not say which process wrote `fork\n$ `, so D4 has to be read off the BYTES
 
-Branch `app-pipe/pipe-model-3`, seven commits (`58b37f35d`, `fda55f34c`,
-`ac966dafd`, `6e5e7f2..`-series; see `git log`).  Whole-tree
+Branch `app-pipe/pipe-model-3`, six code commits (`58b37f35d`,
+`fda55f34c`, `ac966dafd`, `55e726f73`, `73c00bcc3`, `f4bd3b27e`) beside
+the notes.  Whole-tree
 `ec2-lane.sh model3 build` **RC=0**; no `Admitted`; `Proof using` on
 every new result.  `Print Assumptions` on EIGHTEEN headline results
 (`iris/PipeModel3Assumptions.v`, a report file, not a `_CoqProject`

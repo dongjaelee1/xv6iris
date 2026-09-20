@@ -1958,34 +1958,49 @@ Qed.
    the confusable lines, and it is a fact about the WIRE, which is what
    design section 4.3h asks a stray premise to be.
 
+   THE PRICE, MEASURED AND REPORTED: the test is on [pcont] and not on
+   the whole block, so it does not read the prologue a PANIC round
+   re-enters -- and [alt_panic] ("fork\n") is ITSELF a shuffle prefix.
+   So D4 as landed ALSO ends the covered session at sh's main-loop fork
+   panic, at either line shape.  That is sound and it is honest ("fork\n"
+   on the wire does not say which process wrote it), but it is wider
+   than the ruling asks for.  Narrowing it to "the block is a COMPLETE
+   fork block" needs the test to read [alt_cont_p] -- the prologue
+   included, because a panic followed by a BARE-PROMPT prologue is
+   [alt_forkc] byte for byte and the model admits that prologue
+   ([pro_alts !!! 0]) -- and then [d4_p] depends on [ps], which
+   [PipeDiscDec]'s prologue canonicalisation does not preserve.  A
+   ruling is asked for.
+
    [d4_p] is a [Forall] over [seq] rather than a bounded quantifier so
    that it is decidable and [vm_compute]-able, which is what
    [PipeDiscDec] and the demos of section 8 need. *)
-Definition d4_p (ps cs : list nat) (I : list (bv 8)) : Prop :=
-  Forall (fun i => pmergeable (alt_cont_p ps cs (bodies_of I) i) ->
+Definition d4_p (cs : list nat) (I : list (bv 8)) : Prop :=
+  Forall (fun i => pmergeable (pcont (pline_of (bodies_of I !!! i))
+                                 (palt_at cs i)) ->
                    nlines I = S i /\ rest_of I = [])
     (seq 0 (nlines I)).
 
-Global Instance d4_p_dec ps cs I : Decision (d4_p ps cs I).
+Global Instance d4_p_dec cs I : Decision (d4_p cs I).
 Proof using. rewrite /d4_p. apply _. Defined.
 
 Lemma pd_nlines_nil : nlines [] = 0%nat.
 Proof using. by vm_compute. Qed.
 
-Lemma d4_p_at (ps cs : list nat) (I : list (bv 8)) (i : nat) :
-  d4_p ps cs I -> (i < nlines I)%nat ->
-  pmergeable (alt_cont_p ps cs (bodies_of I) i) ->
+Lemma d4_p_at (cs : list nat) (I : list (bv 8)) (i : nat) :
+  d4_p cs I -> (i < nlines I)%nat ->
+  pmergeable (pcont (pline_of (bodies_of I !!! i)) (palt_at cs i)) ->
   nlines I = S i /\ rest_of I = [].
 Proof using.
   intros Hd Hi. apply (proj1 (Forall_forall _ _) Hd i).
   apply elem_of_seq. lia.
 Qed.
 
-Lemma d4_p_intro (ps cs : list nat) (I : list (bv 8)) :
+Lemma d4_p_intro (cs : list nat) (I : list (bv 8)) :
   (forall i, (i < nlines I)%nat ->
-     pmergeable (alt_cont_p ps cs (bodies_of I) i) ->
+     pmergeable (pcont (pline_of (bodies_of I !!! i)) (palt_at cs i)) ->
      nlines I = S i /\ rest_of I = []) ->
-  d4_p ps cs I.
+  d4_p cs I.
 Proof using.
   intro H. apply Forall_forall. intros i Hi.
   apply elem_of_seq in Hi. apply H. lia.
@@ -1996,7 +2011,7 @@ Definition disc_seg_p' (seg : list mobs) : Prop :=
   disc_seg_p seg
   /\ exists ps cs : list nat,
        alts_ok_p (ins seg) cs
-       /\ d4_p ps cs (ins seg)
+       /\ d4_p cs (ins seg)
        /\ forall p : list mobs, p ∈ in_pres seg ->
             pro_ok_p ps cs (nlines (ins p)) /\ disc_pt_p ps cs p.
 
@@ -2012,7 +2027,7 @@ Global Instance disc_pt_all_p_dec ps cs seg : Decision (disc_pt_all_p ps cs seg)
 Proof using. rewrite /disc_pt_all_p. apply _. Defined.
 
 Lemma disc_seg_p'_intro (seg : list mobs) (ps cs : list nat) :
-  disc_seg_p seg -> alts_ok_p (ins seg) cs -> d4_p ps cs (ins seg) ->
+  disc_seg_p seg -> alts_ok_p (ins seg) cs -> d4_p cs (ins seg) ->
   disc_pt_all_p ps cs seg ->
   disc_seg_p' seg.
 Proof using.
@@ -2437,7 +2452,7 @@ Lemma pcont_pair_det (ps ps' : list nat) (l : pline)
   (palt_panic a' = true -> (1 < pro_rounds ps')%nat) ->
   (palt_panic a = true -> X <> [] -> (1 < pro_rounds ps)%nat) ->
   (palt_isforkS a = true -> X = []) ->
-  ~ pmergeable (pcont_all ps' l a') ->
+  ~ pmergeable (pcont l a') ->
   (pcont_all ps' l a' ++ X') `prefix_of` (pcont_all ps l a ++ X) ->
   (palt_panic a = true -> (1 < pro_rounds ps)%nat)
   /\ pcont_all ps' l a' = pcont_all ps l a
@@ -2458,14 +2473,14 @@ Proof using.
   assert (Hfa' : palt_isforkS a' = false).
   { destruct (palt_isforkS a') eqn:Hf; [exfalso | reflexivity].
     destruct (palt_isforkS_inv a' Hf) as [sl ->].
-    apply Hnm. rewrite /pcont_all palt_panic_forkS app_nil_r.
-    exact (pmergeable_forkS l sl Ha'). }
+    exact (Hnm (pmergeable_forkS l sl Ha')). }
   assert (Hfa : palt_isforkS a = false).
   { destruct (palt_isforkS a) eqn:Hf; [exfalso | reflexivity].
     destruct (palt_isforkS_inv a Hf) as [sl ->].
     rewrite (Hd4 eq_refl) app_nil_r in Hp.
     apply Hnm. apply (pmergeable_prefix _ (pcont_all ps l (PForkS sl))).
-    - etrans; [apply prefix_app_r; reflexivity | exact Hp].
+    - etrans; [| etrans; [apply prefix_app_r; reflexivity | exact Hp]].
+      rewrite /pcont_all. apply prefix_app_r. reflexivity.
     - rewrite /pcont_all palt_panic_forkS app_nil_r.
       exact (pmergeable_forkS l sl Ha). }
   destruct (palt_panic a) eqn:Hpa; destruct (palt_panic a') eqn:Hpa'.
@@ -2600,7 +2615,8 @@ Lemma alt_seq_p_prefix_det (q' : nat) :
     (forall i, (i < q')%nat -> palt_ok (pline_of (bs' !!! i)) (palt_at cs' i)) ->
     (forall i, (i < q')%nat -> palt_isforkS (palt_at cs i) = true ->
        (S i = q /\ t = [])) ->
-    (forall i, (i < q')%nat -> ~ pmergeable (alt_cont_p ps' cs' bs' i)) ->
+    (forall i, (i < q')%nat ->
+       ~ pmergeable (pcont (pline_of (bs' !!! i)) (palt_at cs' i))) ->
     Forall (fun l => wl_nl ∉ l) bs -> Forall (fun l => wl_nl ∉ l) bs' ->
     wl_nl ∉ t' -> wl_nl ∉ t ->
     (alt_seq_p ps' cs' bs' q' ++ t')
@@ -2666,9 +2682,8 @@ Proof using.
     assert (Hp0 : p = 0%nat) by lia.
     by rewrite Hp0 alt_seq_p_0 Ht. }
   assert (Hnmh : ~ pmergeable
-                   (pcont_all ps' (pline_of (bs !!! 0%nat))
-                      (palt_at cs' 0%nat))).
-  { rewrite -Hhd -alt_cont_p_0. exact (Hnmp 0%nat ltac:(lia)). }
+                   (pcont (pline_of (bs !!! 0%nat)) (palt_at cs' 0%nat))).
+  { rewrite -Hhd. exact (Hnmp 0%nat ltac:(lia)). }
   rewrite !alt_cont_p_0 in Hrest.
   destruct (pcont_pair_det ps ps' (pline_of (bs !!! 0%nat))
               (palt_at cs 0%nat) (palt_at cs' 0%nat) _ _
@@ -2706,7 +2721,7 @@ Proof using.
     replace (1 + i)%nat with (S i) in Hf by lia.
     destruct (Hd4u (S i) ltac:(lia) Hf) as [Hq Ht].
     split; [lia | exact Ht]. }
-  { intros i Hi. rewrite alt_cont_p_drop.
+  { intros i Hi. rewrite /palt_at !pd_lookup_total_drop.
     replace (1 + i)%nat with (S i) by lia. apply Hnmp. lia. }
   { by apply pd_Forall_drop. }
   { by apply pd_Forall_drop. }
@@ -2744,7 +2759,7 @@ Lemma sessp_prefix_det (ps ps' cs cs' : list nat) (I' I : list (bv 8)) :
   (forall i, (i < nlines I')%nat -> palt_isforkS (palt_at cs i) = true ->
      (S i = nlines I /\ rest_of I = [])) ->
   (forall i, (i < nlines I')%nat ->
-     ~ pmergeable (alt_cont_p ps' cs' (bodies_of I') i)) ->
+     ~ pmergeable (pcont (pline_of (bodies_of I' !!! i)) (palt_at cs' i))) ->
   sessp ps' cs' I' `prefix_of` sessp ps cs I ->
   I' `prefix_of` I /\ pro_ok_p ps cs (nlines I')
   /\ sessp ps' cs' I' = sessp ps cs I'.

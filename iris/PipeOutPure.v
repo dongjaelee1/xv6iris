@@ -333,18 +333,80 @@ Qed.
    byte drops at most one line, so the witness resolution is TRUNCATED --
    [PipeDisc.sessp_take] then says the shorter transcript is the same
    bytes, and [alts_ok_p_take] that the truncation is still a resolution. *)
+(* ---- D4 AT AN INPUT PREFIX IS VACUOUS ------------------------------- *)
+
+(* THE ONE CLOSURE LAW D4 NEEDS, and it is the strongest form: at a
+   STRICTLY SHORTER input no round can be terminal at all, because D4's
+   conclusion asks for the input to END at that round.  One more byte was
+   typed, so either it opened a partial line ([rest_of <> []]) or it
+   closed one ([nlines] grew) -- and either way the round D4 fired at is
+   not the input's last.  This is what every consumer spends: it is how
+   the claim refutes the next input at the terminal round, and how the
+   truncations below keep the discipline prefix-closed. *)
+Lemma d4_p_snoc_vacuous (cs : list nat) (I : list (bv 8)) (b : bv 8)
+    (i : nat) :
+  d4_p cs (I ++ [b]) -> (i < nlines I)%nat ->
+  pmergeable (pcont (pline_of (bodies_of (I ++ [b]) !!! i))
+               (palt_at cs i)) ->
+  False.
+Proof using.
+  intros Hd4 Hi Hm.
+  assert (Hle : (nlines I <= nlines (I ++ [b]))%nat)
+    by (apply nlines_prefix; by eexists).
+  destruct (d4_p_at cs (I ++ [b]) i Hd4 ltac:(lia) Hm) as [Hn Hr].
+  destruct (decide (b = wl_nl)) as [-> | Hb].
+  - rewrite nlines_snoc_nl in Hn. lia.
+  - rewrite (rest_of_snoc_other I b Hb) in Hr.
+    by apply app_nil in Hr as [_ Hb2].
+Qed.
+
+(* ...and the same reading at the TRUNCATED resolution the prefix
+   carries.  This is the exact premise [PipeDisc.sessp_prefix_det] asks
+   of the DISCIPLINE's side. *)
+Lemma d4_p_nomerge_snoc (cs : list nat) (I : list (bv 8)) (b : bv 8) :
+  alts_ok_p (I ++ [b]) cs -> d4_p cs (I ++ [b]) ->
+  forall i, (i < nlines I)%nat ->
+    ~ pmergeable (pcont (pline_of (bodies_of I !!! i))
+                    (palt_at (take (nlines I) cs) i)).
+Proof using.
+  intros Hao Hd4 i Hi Hm.
+  assert (Hle : (nlines I <= nlines (I ++ [b]))%nat)
+    by (apply nlines_prefix; by eexists).
+  assert (Hlen : length cs = nlines (I ++ [b]))
+    by exact (alts_ok_p_length _ _ Hao).
+  assert (Hpa : palt_at (take (nlines I) cs) i = palt_at cs i).
+  { rewrite /palt_at. f_equal. symmetry.
+    apply (pop_lta_prefix (take (nlines I) cs) cs i (prefix_take _ _)).
+    rewrite length_take. lia. }
+  assert (Hbod : bodies_of (I ++ [b]) !!! i = bodies_of I !!! i).
+  { destruct (bodies_of_prefix I (I ++ [b]) ltac:(by eexists)) as [z Hz].
+    rewrite Hz !list_lookup_total_alt lookup_app_l;
+      [reflexivity | rewrite /nlines in Hi; lia]. }
+  rewrite Hpa in Hm. rewrite -Hbod in Hm.
+  exact (d4_p_snoc_vacuous cs I b i Hd4 Hi Hm).
+Qed.
+
+Lemma d4_p_take_snoc (cs : list nat) (I : list (bv 8)) (b : bv 8) :
+  alts_ok_p (I ++ [b]) cs -> d4_p cs (I ++ [b]) ->
+  d4_p (take (nlines I) cs) I.
+Proof using.
+  intros Hao Hd4. apply d4_p_intro. intros i Hi Hm.
+  by destruct (d4_p_nomerge_snoc cs I b Hao Hd4 i Hi Hm).
+Qed.
+
 Lemma disc_seg_p'_in (seg : list mobs) (b : bv 8) :
   disc_seg_p' (seg ++ [ObsUartIn Uart0 b]) -> disc_seg_p' seg.
 Proof using.
-  intros [Hd (ps & cs & Hl & Hall)].
+  intros [Hd (ps & cs & Hl & Hd4 & Hall)].
   rewrite /disc_seg_p ins_app ins_in in Hd.
-  rewrite ins_app ins_in in Hl.
+  rewrite ins_app ins_in in Hl, Hd4.
   assert (Hpre : ins seg `prefix_of` (ins seg ++ [b])) by (by eexists).
   assert (Hle : (nlines (ins seg) <= nlines (ins seg ++ [b]))%nat)
     by (by apply nlines_prefix).
   split; [exact (disc_input_p_prefix _ _ Hpre Hd) |].
   exists ps, (take (nlines (ins seg)) cs).
   split; [exact (alts_ok_p_take _ _ cs Hpre Hl) |].
+  split; [exact (d4_p_take_snoc cs (ins seg) b Hl Hd4) |].
   intros p Hp.
   assert (Hpin : p ∈ in_pres (seg ++ [ObsUartIn Uart0 b])).
   { rewrite in_pres_in. apply elem_of_app. by left. }
@@ -927,7 +989,7 @@ Proof using.
   assert (Hpr : u_prompt <> []).
   { pose proof u_prompt_pos as Hup.
     destruct u_prompt as [| z zs]; [cbn [length] in Hup; lia | done]. }
-  destruct a as [k | | | | sel | | |]; rewrite /pcont.
+  destruct a as [k | | | | sel | | sel |]; rewrite /pcont.
   - assert (Hk : (k < 4)%nat).
     { destruct Ha as [Ha | Heq]; [| injection Heq as <-; lia].
       destruct l as [ws | ws]; [exact Ha | rewrite /palt_ok in Ha; lia]. }
@@ -937,7 +999,18 @@ Proof using.
   - rewrite /alt_execR. by apply pop_app_nonnil_r.
   - by apply pop_app_nonnil_r.
   - rewrite /alt_pipe. by apply pop_app_nonnil_r.
-  - rewrite /alt_forkc. by apply pop_app_nonnil_r.
+  - (* THE TERMINAL ROUND'S BLOCK IS NONEMPTY because [palt_ok] refuses
+       the empty selector: a fork-failure round that has printed nothing
+       is not a round the claim has opened.  (Design section 4.3h's
+       "[PForkS []] is the old [PFork]" would break this lemma, and with
+       it every [pending_p] length argument below.) *)
+    assert (Hok : palt_ok l (PForkS sel)).
+    { destruct Ha as [Ha | Heq]; [exact Ha | discriminate Heq]. }
+    destruct l as [ws | ws]; [by destruct Hok |].
+    destruct Hok as (Hne & H1 & H2). intro Hq.
+    apply (f_equal length) in Hq.
+    rewrite (pmerge_length sel dg_execL alt_forkc H1 H2) in Hq.
+    cbn [length] in Hq. by destruct sel.
   - exact Hpr.
 Qed.
 
@@ -1537,6 +1610,10 @@ Lemma sessp_prefix_det2 (ps ps' cs cs' : list nat) (I' I : list (bv 8)) :
   pro_ok_p ps' cs' (nlines I') ->
   alts_ok_p I cs -> alts_ok_p I' cs' ->
   pro_pin_p ps cs I -> disc_input_p I -> disc_input_p I' ->
+  (forall i, (i < nlines I')%nat -> palt_isforkS (palt_at cs i) = true ->
+     (S i = nlines I /\ rest_of I = [])) ->
+  (forall i, (i < nlines I')%nat ->
+     ~ pmergeable (pcont (pline_of (bodies_of I' !!! i)) (palt_at cs' i))) ->
   sessp ps' cs' I' `prefix_of` sessp ps cs I ->
   I' `prefix_of` I /\ pro_ok_p ps cs (nlines I')
   /\ sessp ps' cs' I' = sessp ps cs I'.
@@ -1552,9 +1629,13 @@ Lemma disc_seg_p'_pt_last (seg : list mobs) (c : bv 8) :
   exists ps' cs' : list nat,
     pro_ok_p ps' cs' (nlines (removelast (ins seg)))
     /\ alts_ok_p (removelast (ins seg)) cs'
+    /\ (forall i, (i < nlines (removelast (ins seg)))%nat ->
+          ~ pmergeable
+              (pcont (pline_of (bodies_of (removelast (ins seg)) !!! i))
+                 (palt_at cs' i)))
     /\ sessp ps' cs' (removelast (ins seg)) `prefix_of` obs_wire Uart0 seg.
 Proof using.
-  intros [Hd (ps & cs & Hao & Hall)] [seg0 ->].
+  intros [Hd (ps & cs & Hao & Hd4 & Hall)] [seg0 ->].
   assert (Hip : seg0 ∈ in_pres (seg0 ++ [ObsUartIn Uart0 c])).
   { rewrite in_pres_in. apply elem_of_app. right. apply elem_of_list_here. }
   destruct (Hall _ Hip) as [Hok Hpt]. rewrite /disc_pt_p in Hpt.
@@ -1573,6 +1654,9 @@ Proof using.
                ltac:(lia)). exact Hlt. }
   split.
   { exact (alts_ok_p_take _ _ cs Hpr Hao). }
+  split.
+  { rewrite ins_app ins_in in Hao, Hd4.
+    exact (d4_p_nomerge_snoc cs (ins seg0) c Hao Hd4). }
   rewrite Heq. etrans; [exact Hpt |]. rewrite obs_wire_app. by eexists.
 Qed.
 

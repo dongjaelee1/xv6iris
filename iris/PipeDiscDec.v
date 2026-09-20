@@ -119,6 +119,77 @@ Proof using.
         apply IH. split; lia.
 Qed.
 
+(* ---- EVERY SELECTOR THE TERMINAL ROUND ADMITS ------------------------ *)
+
+(* [PForkS]'s selector is NOT of one fixed length: the stray writes
+   anything from nothing to the whole of [dg_execL] and the fork round
+   writes anything from one byte to the whole of [alt_forkc].  So the
+   enumerator is every list of booleans up to [|dg_execL| + |alt_forkc|]
+   = 24 entries, filtered by [palt_ok].  Like the [PBoth] branch it is a
+   THEOREM's enumerator and not a program's: 2^24 entries, none of which
+   any proof evaluates. *)
+Lemma pdd_elem_of_concat {A} (x : A) (ls : list (list A)) :
+  x ∈ concat ls <-> exists l, l ∈ ls /\ x ∈ l.
+Proof using.
+  induction ls as [| l ls IH]; cbn [concat].
+  - split; [intro H; by apply elem_of_nil in H |].
+    intros (l & Hl & _). by apply elem_of_nil in Hl.
+  - rewrite elem_of_app IH. split.
+    + intros [H | (l' & Hl' & Hx)].
+      * exists l. split; [apply elem_of_list_here | exact H].
+      * exists l'. split; [by apply elem_of_list_further | exact Hx].
+    + intros (l' & Hl' & Hx). apply elem_of_cons in Hl' as [-> | Hl'].
+      * by left.
+      * right. by exists l'.
+Qed.
+
+Definition sels_len (n : nat) : list (list bool) :=
+  concat ((fun k => choose n k) <$> seq 0 (S n)).
+
+Lemma elem_of_sels_len (n : nat) (sel : list bool) :
+  sel ∈ sels_len n <-> length sel = n.
+Proof using.
+  rewrite /sels_len pdd_elem_of_concat. split.
+  - intros (l & Hl & Hx). apply elem_of_list_fmap in Hl as (k & -> & _).
+    exact (proj1 (proj1 (elem_of_choose n k sel) Hx)).
+  - intro Hlen. exists (choose n (count_true sel)). split.
+    + apply elem_of_list_fmap. exists (count_true sel).
+      split; [reflexivity |]. apply elem_of_seq.
+      pose proof (count_true_le sel). lia.
+    + apply elem_of_choose. split; [exact Hlen | reflexivity].
+Qed.
+
+Definition all_sels (n : nat) : list (list bool) :=
+  concat (sels_len <$> seq 0 (S n)).
+
+Lemma elem_of_all_sels (n : nat) (sel : list bool) :
+  sel ∈ all_sels n <-> (length sel <= n)%nat.
+Proof using.
+  rewrite /all_sels pdd_elem_of_concat. split.
+  - intros (l & Hl & Hx). apply elem_of_list_fmap in Hl as (m & -> & Hm).
+    apply elem_of_seq in Hm. apply elem_of_sels_len in Hx. lia.
+  - intro Hle. exists (sels_len (length sel)). split.
+    + apply elem_of_list_fmap. exists (length sel).
+      split; [reflexivity |]. apply elem_of_seq. lia.
+    + by apply elem_of_sels_len.
+Qed.
+
+Definition forkS_sels : list (list bool) :=
+  List.filter (fun sel => bool_decide (palt_ok (LPipe []) (PForkS sel)))
+    (all_sels (length dg_execL + length alt_forkc)).
+
+Lemma elem_of_forkS_sels (ws : list (list (bv 8))) (sel : list bool) :
+  sel ∈ forkS_sels <-> palt_ok (LPipe ws) (PForkS sel).
+Proof using.
+  rewrite /forkS_sels elem_of_list_In filter_In -elem_of_list_In. split.
+  - intros [_ Hb]. apply bool_decide_eq_true in Hb. exact Hb.
+  - intro Hok. split.
+    + apply elem_of_all_sels.
+      destruct Hok as (_ & H1 & H2).
+      pose proof (count_true_le sel). lia.
+    + by apply bool_decide_eq_true.
+Qed.
+
 (* ====================================================================== *)
 (*  2.  THE CODES ONE LINE ADMITS                                          *)
 (* ====================================================================== *)
@@ -126,7 +197,7 @@ Qed.
 Definition palt_fix_cands (l : pline) : list palt :=
   match l with
   | LEcho _ => [PEcho 0%nat; PEcho 1%nat; PEcho 2%nat; PEcho 3%nat]
-  | LPipe _ => [PEcho 3%nat; PRan; PExecL; PExecR; PPipe; PFork; PSilent]
+  | LPipe _ => [PEcho 3%nat; PRan; PExecL; PExecR; PPipe; PSilent]
   end.
 
 (* the CANONICAL codes of the alternatives one line shape admits: the
@@ -137,8 +208,9 @@ Definition palt_cands (l : pline) : list nat :=
   ++ match l with
      | LEcho _ => []
      | LPipe _ =>
-         (fun sel => palt_code (PBoth sel))
-           <$> choose (length dg_execL + length dg_execR) (length dg_execL)
+         ((fun sel => palt_code (PBoth sel))
+            <$> choose (length dg_execL + length dg_execR) (length dg_execL))
+         ++ ((fun sel => palt_code (PForkS sel)) <$> forkS_sels)
      end.
 
 Lemma palt_fix_cands_ok l : Forall (palt_ok l) (palt_fix_cands l).
@@ -156,7 +228,7 @@ Qed.
 Lemma palt_cands_alt l a : palt_ok l a -> palt_code a ∈ palt_cands l.
 Proof using.
   intro H. rewrite /palt_cands elem_of_app.
-  destruct l as [ws | ws]; destruct a as [k | | | | sel | | |];
+  destruct l as [ws | ws]; destruct a as [k | | | | sel | | sel |];
     cbn [palt_ok] in H; try done.
   - left. apply elem_of_list_fmap. exists (PEcho k). split; [reflexivity |].
     cbn [palt_fix_cands].
@@ -170,12 +242,14 @@ Proof using.
     cbn [palt_fix_cands]. pdd_elem.
   - left. apply elem_of_list_fmap. exists PExecR. split; [reflexivity |].
     cbn [palt_fix_cands]. pdd_elem.
-  - right. apply elem_of_list_fmap. exists sel. split; [reflexivity |].
+  - right. apply elem_of_app. left.
+    apply elem_of_list_fmap. exists sel. split; [reflexivity |].
     apply elem_of_choose. exact H.
   - left. apply elem_of_list_fmap. exists PPipe. split; [reflexivity |].
     cbn [palt_fix_cands]. pdd_elem.
-  - left. apply elem_of_list_fmap. exists PFork. split; [reflexivity |].
-    cbn [palt_fix_cands]. pdd_elem.
+  - right. apply elem_of_app. right.
+    apply elem_of_list_fmap. exists sel. split; [reflexivity |].
+    apply (elem_of_forkS_sels ws sel). exact H.
   - left. apply elem_of_list_fmap. exists PSilent. split; [reflexivity |].
     cbn [palt_fix_cands]. pdd_elem.
 Qed.
@@ -191,9 +265,13 @@ Proof using.
       rewrite !palt_of_code. split; [| reflexivity].
       exact (proj1 (Forall_forall _ _) (palt_fix_cands_ok l) a Ha).
     + destruct l as [ws | ws]; [by apply elem_of_nil in Hin |].
-      apply elem_of_list_fmap in Hin as (sel & -> & Hsel).
-      rewrite !palt_of_code. split; [| reflexivity].
-      cbn [palt_ok]. by apply elem_of_choose.
+      apply elem_of_app in Hin as [Hin | Hin].
+      * apply elem_of_list_fmap in Hin as (sel & -> & Hsel).
+        rewrite !palt_of_code. split; [| reflexivity].
+        cbn [palt_ok]. by apply elem_of_choose.
+      * apply elem_of_list_fmap in Hin as (sel & -> & Hsel).
+        rewrite !palt_of_code. split; [| reflexivity].
+        by apply (elem_of_forkS_sels ws sel).
   - intros [Hok Hc]. rewrite Hc. exact (palt_cands_alt l (palt_of c) Hok).
 Qed.
 
@@ -209,6 +287,12 @@ Proof using. exact (palt_cands_alt l (palt_of c)). Qed.
 Lemma palt_cands_both_LR (ws : list (list (bv 8))) :
   palt_code (PBoth sel_LR) ∈ palt_cands (LPipe ws).
 Proof using. exact (palt_cands_alt _ _ (sel_LR_ok ws)). Qed.
+
+(* ...and the same at the branch this lane added: the terminal round that
+   took no stray byte is in the enumerator. *)
+Lemma palt_cands_forkS_old (ws : list (list (bv 8))) :
+  palt_code (PForkS sel_forkc) ∈ palt_cands (LPipe ws).
+Proof using. exact (palt_cands_alt _ _ (palt_ok_forkS_old ws)). Qed.
 
 (* ====================================================================== *)
 (*  3.  THE RESOLUTION LISTS, LINE BY LINE                                 *)
@@ -306,6 +390,15 @@ Proof using.
   intros l c Hc. exact (palt_cands_canon l c Hc).
 Qed.
 
+(* D4 reads [cs] only through [palt_at], so the canonical map moves it
+   no more than it moves anything else. *)
+Lemma d4_p_canon (cs : list nat) (I : list (bv 8)) :
+  d4_p cs I -> d4_p (cs_canon_p cs) I.
+Proof using.
+  rewrite /d4_p. intro H. eapply Forall_impl; [exact H |].
+  intros i Hi. by rewrite cs_canon_p_at.
+Qed.
+
 Lemma disc_pt_all_p_canon ps cs seg :
   disc_pt_all_p ps cs seg -> disc_pt_all_p ps (cs_canon_p cs) seg.
 Proof using.
@@ -366,17 +459,19 @@ Proof using.
   destruct (decide (disc_seg_p seg)) as [Hd | Hd];
     [| right; by intros [? _]].
   destruct (decide (Exists (fun cs =>
+      d4_p cs (ins seg) /\
       Exists (fun ps => disc_pt_all_p ps cs seg)
         (pro_cands (S (pro_idx_p cs (nlines_max (in_pres seg))))
                    (length seg)))
       (alts_cands_p (plines_of (ins seg))))) as [HE | HE].
-  - left. apply Exists_exists in HE as (cs & Hcs & HP).
+  - left. apply Exists_exists in HE as (cs & Hcs & [Hd4 HP]).
     apply Exists_exists in HP as (ps & _ & Hall).
     eapply disc_seg_p'_intro;
-      [exact Hd | by apply alts_cands_p_alts_ok | exact Hall].
-  - right. intros [_ (ps & cs & Hao & Hall)]. apply HE.
+      [exact Hd | by apply alts_cands_p_alts_ok | exact Hd4 | exact Hall].
+  - right. intros [_ (ps & cs & Hao & Hd4 & Hall)]. apply HE.
     apply Exists_exists. exists (cs_canon_p cs).
     split; [by apply alts_ok_p_cs_canon |].
+    split; [by apply d4_p_canon |].
     rewrite pro_idx_p_canon. apply Exists_exists.
     (* the deepest checked point bounds every round the transcript enters *)
     destruct (decide (in_pres seg = [])) as [Hz | Hz].

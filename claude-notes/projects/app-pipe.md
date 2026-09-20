@@ -6509,6 +6509,21 @@ shuffle too and ends the covered session as well.  **This is the only
 change of substance the lane made to the ruling, and section 4.3h
 should be amended.**
 
+**D4 IS IN THE DISCIPLINE AND IN NOTHING ELSE, against the brief.**  The
+brief asks for it "placed where `alts_ok_p` lives so that `disc_seg_p'`
+and `good_out_p` both carry it".  It must NOT go in `alts_ok_p`:
+`good_out_p` is the CONCLUSION, so a conjunct there is an obligation the
+claim owes at every step -- and at a round whose block is merge-shaped
+but whose fork did NOT fail (the `echo fork | cat` line again, resolved
+as `PRan`) the claim cannot discharge it, because "no filed round's
+block is a shuffle" is a fact about the USER's input and reaches the
+claim only through the discipline.  `alts_ok_p`, `expected_rel_p`,
+`good_out_p`, `alts_pad_p_ok`, `good_out_p_of_stage` and
+`good_out_p_of_stage_blk2` are therefore UNCHANGED, which is also why
+the terminal round's `good_out_p` costs nothing: the resolution it
+exhibits is `cs ++ [palt_code (PForkS sel)]` and `palt_ok` is all it has
+to check.
+
 **THE PRICE, AND ONE RULING ASKED FOR.**  `pmergeable` is tested on
 `pcont` and not on the whole block, so it does not read the prologue a
 PANIC round re-enters — and `alt_panic` ("fork\n") is itself a shuffle

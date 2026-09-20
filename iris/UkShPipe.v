@@ -784,7 +784,7 @@ Section UkShPipe.
          Cr -∗
          urun N h' m' (mword_of_int ShSyms.panic)
            (UkShDiag.ush_Dg + (2 + av)) -∗
-         WP (Loop : expr riscv_lang)) -∗
+         mWP (Loop : expr riscv_lang)) -∗
     □ (∀ (h' : CpuId) (m' : regfile) (r : mword 64) (γp : pipe_names),
          ⌜ uint (m' !!! Regidx a0_idx) = 0x1298 ⌝ -∗
          ⌜ r = (mword_of_int (-1) : mword 64) ⌝ -∗
@@ -798,7 +798,7 @@ Section UkShPipe.
          UserFd.ustd (ukn_fd N) ld -∗
          Cx γp -∗
          urun N h' m' (mword_of_int ShSyms.panic) (UkShDiag.ush_Dg + av) -∗
-         WP (Loop : expr riscv_lang)) -∗
+         mWP (Loop : expr riscv_lang)) -∗
     □ (∀ (h' : CpuId) (m' : regfile) (r : mword 64) (γp : pipe_names)
          (S1 : gset gname),
          ⌜ uint (m' !!! Regidx a0_idx) = 0x1298 ⌝ -∗
@@ -813,7 +813,7 @@ Section UkShPipe.
          UserFd.ustd (ukn_fd N) ld -∗
          Cx γp -∗
          urun N h' m' (mword_of_int ShSyms.panic) (UkShDiag.ush_Dg + av) -∗
-         WP (Loop : expr riscv_lang)) -∗
+         mWP (Loop : expr riscv_lang)) -∗
     urun N h m (mword_of_int ShSyms.runcmd)
       (6 + (2 + (UkShDiag.ush_Dg + av))) -∗
     (* ---- THE LEFT CHILD, at runcmd's own entry: fd 1 is the pipe's
@@ -1960,7 +1960,7 @@ Section UkShPipe.
        RcL γp -∗
        urun N' h' m' (mword_of_int ShSyms.runcmd)
          (2 + (UkShDiag.ush_Dg + av)) -∗
-       WP (Loop : expr riscv_lang)) -∗
+       mWP (Loop : expr riscv_lang)) -∗
     (* ---- THE RIGHT CHILD: fd 0 is the pipe's READ end ---- *)
     (∀ (N' : uk_names Σ) (h' : CpuId) (m' : regfile) (γ' : gname)
        (γp : pipe_names) (q : Z),
@@ -1980,7 +1980,7 @@ Section UkShPipe.
        RcR γp -∗
        urun N' h' m' (mword_of_int ShSyms.runcmd)
          (2 + (UkShDiag.ush_Dg + av)) -∗
-       WP (Loop : expr riscv_lang)) -∗
+       mWP (Loop : expr riscv_lang)) -∗
     (* ---- THE PARENT, at 0xea -- the [break]'s target, which is the
        common [exit(0)] every runcmd arm ends at ---- *)
     (∀ (h' : CpuId) (m' : regfile) (γp : pipe_names)
@@ -1996,8 +1996,8 @@ Section UkShPipe.
        UserCwd.ucwd (ukn_cwd N) cwdv -∗
        Rk γp -∗
        urun N h' m' (mword_of_int 0xea) (2 + (UkShDiag.ush_Dg + av)) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using Hpsok_free.
     intros HQc Hpx Ha0 Hl0 Hl1 Hne0 Hne1 Hnp0 Hnp1.
     iIntros "#Hdp #Hcode #Hjt #Htree Hsz Hstd Hcwd Hch #Hkw Hsplit Hpipe Hrun

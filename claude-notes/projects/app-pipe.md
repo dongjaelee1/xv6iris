@@ -5699,7 +5699,7 @@ moulds — H1 is a stub walk, H3 is a second copy of a landed discharge,
 H2 is a lane — but H4 decides the SHAPE of the family and of `palt_ok`,
 and (b) would delete R2's exclusion machinery as a side effect.  After
 it, the order is H1, H3, H2, then the assembly, and the first proof step
-of the assembly is `blk2_inv_alloc` on the `WP Loop` goal at 0x9c0
+of the assembly is `blk2_inv_alloc` on the `mWP Loop` goal at 0x9c0
 (`Cr := blk2_inv ∗ the three halves ∗ era_pin`), with the three paid
 diagnostics recovering the family through `blk2_inv_close` inside
 `ush_execfail_law_at`'s own `∃ Pf` — the existential is the law's

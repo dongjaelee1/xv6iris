@@ -135,7 +135,7 @@ Section UkShPipePaid.
     Cr -∗
     (UserFd.ustd (ukn_fd N) l -∗ Cd -∗ ukn_pay N (-1)) -∗
     urun N h m (mword_of_int ShSyms.panic) (ush_Dg + n) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hfd2 Hmsg Hnz Hok Hlen Hlo Hhi.
     iIntros "#Hlaw #Hcode #Hro Hstd Hc Hpay Hrun".
@@ -265,7 +265,7 @@ Section UkShPipePaid.
        RcL γp -∗
        urun N' h' m' (mword_of_int ShSyms.runcmd)
          (2 + (UkShDiag.ush_Dg + av)) -∗
-       WP (Loop : expr riscv_lang)) -∗
+       mWP (Loop : expr riscv_lang)) -∗
     (* ---- THE RIGHT CHILD ---- *)
     (∀ (N' : uk_names Σ) (h' : CpuId) (m' : regfile) (γ' : gname)
        (γp : pipe_names) (q : Z),
@@ -285,7 +285,7 @@ Section UkShPipePaid.
        RcR γp -∗
        urun N' h' m' (mword_of_int ShSyms.runcmd)
          (2 + (UkShDiag.ush_Dg + av)) -∗
-       WP (Loop : expr riscv_lang)) -∗
+       mWP (Loop : expr riscv_lang)) -∗
     (* ---- THE PARENT, at 0xea, with the forks' borrowed payload back ---- *)
     (∀ (h' : CpuId) (m' : regfile) (γp : pipe_names)
        (r1 r2 rw1 rw2 : mword 64) (S1 S2 S3 S4 : gset gname),
@@ -301,8 +301,8 @@ Section UkShPipePaid.
        Rk γp -∗
        Cx γp -∗
        urun N h' m' (mword_of_int 0xea) (2 + (UkShDiag.ush_Dg + av)) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using Hpsok_free.
     intros HQc Ha0 Hl0 Hl1 Hne0 Hne1 Hnp0 Hnp1 Hfd2.
     iIntros "#Hcode #Hro #Hjt #Htree Hsz Hstd Hcwd Hch #Hkw Hcr Hsplit Hpipe

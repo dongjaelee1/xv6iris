@@ -195,7 +195,7 @@ Section UShPipeChild.
        RcL γp -∗
        urun N' h' m' (mword_of_int ShSyms.runcmd)
          (2 + (UkShDiag.ush_Dg + (68 + n))) -∗
-       WP (Loop : expr riscv_lang)) -∗
+       mWP (Loop : expr riscv_lang)) -∗
     (* ---- THE RIGHT CHILD: fd 0 is the pipe's READ end ---- *)
     (∀ (N' : uk_names Σ) (h' : CpuId) (m' : regfile) (γ' : gname)
        (γp : pipe_names) (q : Z),
@@ -216,7 +216,7 @@ Section UShPipeChild.
        RcR γp -∗
        urun N' h' m' (mword_of_int ShSyms.runcmd)
          (2 + (UkShDiag.ush_Dg + (68 + n))) -∗
-       WP (Loop : expr riscv_lang)) -∗
+       mWP (Loop : expr riscv_lang)) -∗
     (* ---- THE PARENT, at 0xea, with the forks' borrowed credential ---- *)
     (∀ (h' : CpuId) (m' : regfile) (γp : pipe_names)
        (r1 r2 rw1 rw2 : mword 64) (S1 S2 S3 S4 : gset gname),
@@ -233,8 +233,8 @@ Section UShPipeChild.
        Cx γp -∗
        urun N h' m' (mword_of_int 0xea)
          (2 + (UkShDiag.ush_Dg + (68 + n))) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using Hpay Hpsok_free ushq_malloc_ok12.
     intros Hm01 Hm23 Hs1 Hpq Htoks Hpos Htlen Hs0 Hs64 Hs38
            HQc Hl0 Hl1 Hne0 Hne1 Hnp0 Hnp1 Hfd2.
@@ -416,7 +416,7 @@ Section UShPipeChild.
        RcL γp -∗
        urun N' h' m' (mword_of_int ShSyms.runcmd)
          (2 + (UkShDiag.ush_Dg + (68 + n))) -∗
-       WP (Loop : expr riscv_lang)) -∗
+       mWP (Loop : expr riscv_lang)) -∗
     (∀ (N' : uk_names Σ) (h' : CpuId) (m' : regfile) (γ' : gname)
        (γp : pipe_names) (q : Z),
        ⌜ ukn_pay N' = Qc ⌝ -∗
@@ -440,7 +440,7 @@ Section UShPipeChild.
        RcR γp -∗
        urun N' h' m' (mword_of_int ShSyms.runcmd)
          (2 + (UkShDiag.ush_Dg + (68 + n))) -∗
-       WP (Loop : expr riscv_lang)) -∗
+       mWP (Loop : expr riscv_lang)) -∗
     (∀ (h' : CpuId) (m' : regfile) (γp : pipe_names)
        (r1 r2 rw1 rw2 : mword 64) (S1 S2 S3 S4 : gset gname),
        UkShPipe.ush_fork_ans Sc S1 (RcL γp) Qc r1 -∗
@@ -456,8 +456,8 @@ Section UShPipeChild.
        Cx γp -∗
        urun N h' m' (mword_of_int 0xea)
          (2 + (UkShDiag.ush_Dg + (68 + n))) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using Hpay Hpsok_free ushq_malloc_ok12.
     intros Hm01 Hm23 Hs1 Hline Hs0 Hs64 Hs38 HQc Hl0 Hl1 Hne0 Hne1
            Hnp0 Hnp1 Hfd2.

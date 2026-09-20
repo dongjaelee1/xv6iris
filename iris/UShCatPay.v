@@ -576,7 +576,7 @@ Section UShCatPay.
       Cr -∗
       urun N h m (mword_of_int ShSyms.runcmd)
         (6 + (2 + (UkShDiag.ush_Dg + n))) -∗
-      WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang).
   Proof using xv6G0 ghost_varG0 ghost_varG1 ufdG0 uartGhostG0.
     intros Hpeq Ha0 Hbytes Hfd0 Hfd2.
     iIntros "#Hqt #Hround #Hslot #Hdep #Hcode #Hxl #Hcd #Hjt #Htree

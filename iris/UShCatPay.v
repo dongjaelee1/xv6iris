@@ -119,23 +119,23 @@ Set Printing Depth 40.
 Definition cat_pl : list (bv 8) := FsImgCheck.fname_cat.
 
 Lemma cat_path_elems : path_elems cat_pl = FsCatPin.cat_path.
-Proof. vm_compute. reflexivity. Qed.
+Proof using . vm_compute. reflexivity. Qed.
 
 Lemma cat_pl_len : length cat_pl = 3%nat.
-Proof. reflexivity. Qed.
+Proof using . reflexivity. Qed.
 
 (* ...and the bytes ARE the command name the pipe line's right side
    spells ([UkShPipeLex.ushq_cat], through [UkShCat.cmd_cat]) -- which is
    what ties the pin to what sh actually passes to exec. *)
 Lemma cat_pl_line (j : nat) :
   (j < 3)%nat -> cat_pl !!! j = UkShCat.cmd_cat !!! j.
-Proof.
+Proof using .
   intro Hj.
   do 3 (destruct j as [| j]; [ vm_compute; reflexivity | ]). lia.
 Qed.
 
 Lemma cat_pl_shape : arg_path_shape cat_pl.
-Proof.
+Proof using .
   split; [ vm_compute; reflexivity | ].
   intros j b Hj.
   destruct j as [| [| [| j]]]; cbn in Hj; try discriminate Hj;
@@ -148,7 +148,7 @@ Qed.
    LENGTH: a [bb_cstr] that stopped early would have to find one *)
 Lemma cmd_cat_nonul (j : nat) :
   (j < 3)%nat -> UkShCat.cmd_cat !!! j <> (mword_of_int 0 : mword 8).
-Proof.
+Proof using .
   intro Hj.
   do 3 (destruct j as [| j];
         [ intro Hc; apply (f_equal bv_unsigned) in Hc;
@@ -159,7 +159,7 @@ Lemma sh_cat_pin_resolves :
   pin_resolves FsCatPin.era0_cat_pins FsImg.ROOTINO cat_pl
     [FsImg.ROOTINO; FsCatPin.CAT_INO] FsCatPin.CAT_INO
     ElfUser.cat_elf 1%nat.
-Proof.
+Proof using .
   split_and!.
   - (* "cat" is RELATIVE, so the walk starts at the cwd -- the root *)
     unfold FsAbsEra.um_start_of.

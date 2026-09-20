@@ -285,11 +285,23 @@ arm is the theorem's one named premise (`pipe_both_law`).
   which is REFUTED**: the second shape carries the family's `inv` and
   every boundary field of `LinkRec` (`lk_line`, `lk_sp_t`, `lk_open_t`)
   is a `Timeless` field.  See the Findings block.
-- [ ] **SH-PIPE-ROUND-5** (after STAGE-3, merged be9425f7e; design §4.3i:
+- [~] **SH-PIPE-ROUND-5** (after STAGE-3, merged be9425f7e; design §4.3i:
   the terminal round at the pipe fork arm's re-entry): the assembly;
   `pcat_image_entry` restated; the third paid diagnostic;
   `sh_pipe_child_law_all` proved → `pipe_adequacy_pipeΣ_final` with no
   premise.  Brief `brief-sh-pipe-round-5.md`.
+  LANDED (`iris/UShPipeRound2.v`, tree RC=0, all four audits at their
+  baselines): the round's ENTRY, EXIT, UNWIND and code at the resource
+  level, and `ep_pay`'s separable frame.  **STOPPED at the terminal
+  round, mechanised (`pipe_fork_exit_not_lpr`): no index of the loop's
+  boundary family can be handed back beside `pwc_fork_exit`, so
+  `UkShFork.ushf_wq` — which `sh_pipe_child_law`'s own DEFINITION fixes
+  as the child's exit payload — is unreachable at a fork-2 panic.**
+  §4.3i's repair is a change to that definition and to
+  `ushq_body_law_pipe`, both in `UShPipeRound.v`; `sh_round_holds_pipe`'s
+  statement and everything above it do NOT move.  Items 1 and 2 of the
+  brief are both refuted as briefed (neither is needed).  See the
+  Findings block.
 - [x] **PIPE-CC** (in parallel with ROUND-4; ROUND-3's item 3): the pipe
   era's `cons_cred` instance (`UInitPipe.v`, five `UShLine` `_at` twins),
   `pipe_prog_law` discharged modulo `sh_pipe_child_law`;
@@ -6924,3 +6936,225 @@ round's terminal tail with the prompt written by `pprompt_dollar_fork` /
 round law must cover sh's main loop up to its next `read` — a bigger
 statement than SH-PIPE-ROUND-3's.  Nothing else in the terminal round is
 open.
+
+### SH-PIPE-ROUND-5 (2026-09-21) — the round's ENTRY, EXIT and UNWIND land as theorems; the assembly STOPS at the terminal round, and the leaf is `sh_pipe_child_law`'s OWN DEFINITION: §4.3i's repair changes the child's exit payload, which lives in a file this lane does not own
+
+Branch `app-pipe/sh-pipe-round-5` off main (`83c96d159`), two code
+commits (`02dffadce`, `f31336b46`) beside this one.  ONE new file,
+`iris/UShPipeRound2.v` (+ one `iris/_CoqProject` row), plus the report
+file `iris/PipeRound5Assumptions.v` (NOT a `_CoqProject` row).
+**Nothing else moved**: `UShPipeRound.v`, `UShPipeChild.v`, `UCatPipe.v`,
+`PipeBoth.v`, `PipeOut.v`, `PipeLinkInst.v`, `UInitPipe.v`,
+`UInitPipeAdequacy.v` and `PipeAssumptions.v` are byte-identical to
+main.  Whole-tree `ec2-lane.sh round5 build` **RC=0**; no `Admitted`;
+`Proof using` on every result.  `Print Assumptions` on all TEN results:
+**all ten Closed under the global context**.  **ALL FOUR AUDITS AT THEIR
+BASELINES**, measured on the mirror after the changes: `audit-only`
+**13**, `audit-echo-only` **14**, `audit-tree-only` **13**,
+`audit-pipe-only` **14** — the pipeline list unmoved and verbatim
+PIPE-CC's (1 `functional_extensionality_dep` + the 2 `xv6iris_extras`
+reservation `Parameter`s + 11 `PrimString`/`PrimInt63` primitives).
+Nothing imports `UShPipeRound2.v`, so this is true by construction as
+well as by measurement.
+
+**THE FINAL THEOREM IS NOT REACHED, and this lane states that plainly**:
+`pipe_adequacy_pipeΣ_final` does not exist, `UInitPipe.
+sh_pipe_child_law_all` is still owed, and `iris/PipeAssumptions.v` still
+audits `UInitPipeAdequacy.pipe_adequacy_pipeΣ_of_child` — whose ONE
+premise is the child law.  No `Context` hypothesis had to be carried by
+anything this lane landed: every result is `Proof using .` or names only
+section VARIABLES (`Σ`, the four classes, `g`, `GEN`), and in particular
+none of them needs `PipeBoth`'s `Hcons` (`riscv_cons_res = pecl g`).
+
+**THE STOP, AND IT IS A THEOREM (`pipe_fork_exit_not_lpr`).**
+
+```coq
+  Lemma pipe_fork_exit_not_lpr (E : coPset) (N : namespace)
+      (k : nat) (v : era_pins) (I L : list (bv 8)) (gL gR gM : gname)
+      (XL YR : iProp Σ) (c2 p : nat)
+      (ho : list mobs) (H : LogEntryDefs.cons_hist) :
+    Timeless XL -> Timeless YR ->
+    (↑N : coPset) ⊆ E ->
+    era_pin γ k v -∗
+    pwc_fork_exit g N k v I L gL gR gM XL YR c2 -∗
+    pwc_lpr2 g k v I p -∗
+    pecl g k ho H ={E}=∗ PT.
+```
+
+Read it at `p := 3` and `p := 0`: `UkShFork.ushf_wq (pipe_Wcl_at g) I` is
+`pipe_Wcl_at g I 3 ∨ pipe_Wcl_at g I 0`, and `PipeLinkInst.
+pipe_inst_lcred` makes each arm `∃ v', era_pin γ (S gen_id) v' ∗
+pwc_lpr2 g (S gen_id) v' I p`.  So **at a round whose second `fork1`
+failed, the runcmd child cannot pay its exit** except under the taint.
+Why: the terminal shape carries the family's `inv`, whose body carries
+the round's `turn`; every one of the four indices of `pwc_lpr2` carries
+a `turn` too (`pwc_lpr2_turn`, proved arm by arm — including
+`pwc_line2`'s new third one); and the claim holds the authority.  Three
+halves of one `mono_nat` (`pround_turn_three`, `UShPipeExit.
+pipe_turn_three` restated).  This is NOT a missing lemma and no re-split
+of the arm's four pieces repairs it: the STRAY holds `wcur gL (1/2)` for
+ever, so `blk2_inv_close` can never run again at that round, and the
+main loop must write the `$ ` at the family and not at the credential —
+which is exactly what §4.3i ruled.
+
+**AND THE SHARP FORM, which covers a TRADE (`pipe_half_not_lpr`).**  The
+lemma above is at the standard of ROUND-3's landed stop
+(`UShPipeExit.pipe_blk2_not_line`): it refutes HOLDING both shapes.  Its
+companion refutes the only escape, which is to give the terminal shape
+up for the credential:
+
+```coq
+  Lemma pipe_half_not_lpr (E : coPset) (N : namespace) ... (c1 p : nat) ... :
+    era_pin γ k v -∗
+    blk2_inv g N k v I L gL gR gM XL YR -∗
+    PipeBoth.wcur gL (1/2) c1 -∗
+    pwc_lpr2 g k v I p -∗
+    pecl g k ho H ={E}=∗ PT.
+```
+
+`blk2_inv` is an `inv` and therefore PERSISTENT, so a process that ever
+had it has it still, whatever it surrenders; and while ANY party holds a
+cursor half the invariant cannot be in its DONE arm, so the family — and
+its `turn` — is still inside.  At a terminal round the STRAY holds
+`wcur gL (1/2)` for ever (it is never waited for), so the premise is the
+model fact §4.3h landed, and the conclusion is that no boundary
+credential exists at that round at all.
+
+**WHY THAT IS A STOP AND NOT WORK.**  `UShPipeRound.sh_pipe_child_law`
+is *by definition*
+
+```coq
+  Definition sh_pipe_child_law : iProp Σ :=
+    UkShFork.ushf_child_law_at (PS := uprogSG_free) (SG := uexecSG_xv6)
+      Wcf ushq_lp 68.
+```
+
+and `ushf_child_law_at`'s FIRST premise is `⌜ukn_pay N' = (fun _ =>
+UkShFork.ushf_wq I)⌝`.  §4.3i's repair — "the child's exit payload at the
+pipe line is `ushf_wq I ∨ (∃ …, pwc_fork_exit … 5)`" — is therefore a
+change to **that definition**, and with it to `ushq_body_law_pipe`
+(which spends the law through the GENERIC `UkShFork.wp_kshm_body_at`,
+i.e. through the generic fork arm that fixes `ukn_pay N' := fun _ =>
+ushf_wq np` and re-enters the loop through `UkSh.ush_posb_of_wc`).  A
+pipe-specific `UkShPipeFork` twin is only reachable from a pipe-specific
+`wp_kshm_body_at`, and `ushq_body_law_pipe` is where that dispatch
+happens.  Both live in `iris/UShPipeRound.v`, which this lane's brief
+does not own and whose landed statements it may not move.  **GOOD NEWS
+for whoever does it**: `sh_round_holds_pipe`'s STATEMENT does not move
+(it names `sh_pipe_child_law` by name), so `UInitPipe.v`,
+`UInitPipeAdequacy.v`, `PipeAssumptions.v` and
+`sh_pipe_child_law_all` are untouched by the repair — only the
+DEFINITION of `sh_pipe_child_law` and the PROOF of `ushq_body_law_pipe`
+change.  That is the ruling the coordinator owes.
+
+**WHAT LANDED BESIDE IT — the round's resource interface, whole.**
+
+- `pround_case` / `pround_code`: the FOUR `(c1, R, c2)` combinations a
+  pipeline round can end in, each at its landed `pblk2_code_*` —
+  `(0, L, |L|)` = `PRan`, `(|dg_execL|, _, 0)` = `PExecL`,
+  `(0, dg_execR, |dg_execR|)` = `PExecR`,
+  `(|dg_execL|, dg_execR, |dg_execR|)` = `PBoth`.  The fifth, MIXED
+  combination (`|dg_execL|, L, |L|`) is absent on purpose: it is what
+  the children's exclusion refutes (`PipeForkGap.gap_mixed_no_wit`).
+- `blk2N := nroot.@"pipeblk2"` with its two side conditions
+  (`blk2N_uart`, `blk2N_pipeN`), so PIPE-EXEC-ECHO's exclusion at
+  `Eex := ↑pipeN` fits `pblk2_cstep_L`/`_R`'s mask premises by
+  `solve_ndisj` and not by hand.
+- `pipe_round_entry` : `pipe_Wcl_at g I 3 ={E}=∗ ∃ v gL gR gM, era_pin ∗
+  blk2_inv ∗ three halves` — sh's lend IS the family at the empty
+  selector (`pwc_lend_of_blk0` then `blk2_inv_alloc`).
+- `pipe_round_exit` : `era_pin -∗ blk2_inv -∗ wcur gL (1/2) c1 -∗
+  wcur gR (1/2) c2 ={E}=∗ pipe_Wcl_at g I 0`, at `0 < c1 + c2` and the
+  code as a premise (a fact about the two cursors, `pround_code`).  This
+  is §4.3f's whole point — the family closed at the two cursors IS the
+  loop's boundary credential — and it is now a theorem.
+- `pipe_round_unwind` : the SAME at `c1 = c2 = 0`, giving `pipe_Wcl_at g
+  I 3` BACK (through the new `pwc_blk2_zero_to_blk`).  This is what makes
+  the FIRST panic tail payable, and the contrast with the stop is the
+  lane's cleanest statement of the shape: **`panic("pipe")` is fine
+  because no child exists; `fork1` #1's panic is fine because the lend
+  came back whole (`ush_fork_ans`'s left arm hands `RcL γp` back);
+  `fork1` #2's panic is not, because the left child is alive and holding
+  half of `gL`.**
+
+**FOUND (2): `Wq` MUST BE `emp` AT THE `pipe(2)` REGISTRAR, and design
+§4.3f/PIPE-EXEC-ECHO §4 say otherwise.**  PIPE-EXEC-ECHO's closing note
+is "the runcmd child spends `Wq` at `pipe(2)` … and lends `ep_pay Wq pn
+γp L` to the left child beside `wcur gL (1/2) 0`".  `Wq` is echo's FRAME
+— the one thing that rides across echo's exec and comes back out of
+`ep_exit` — so the left cursor half has to BE `Wq`, and `Wq` is consumed
+when `ush_pipe_call_echo_pay` is applied, i.e. BEFORE `pipe(2)`'s
+outcome is known.  `UkShPipe.ush_pipe_ans`'s `-1` arm returns nothing of
+the registrar, so at a `pipe(2)` failure that half is GONE and
+`pipe_round_unwind` cannot run — the first panic tail becomes
+unpayable too.  The repair costs nothing and is mechanised
+(`ep_pay_frame`):
+
+```coq
+  Lemma ep_pay_frame (Wq : iProp Σ) (pn : pnames) (gp : pipe_names)
+      (L : list (bv 8)) :
+    (UEchoPipe.ep_pay emp%I pn gp L ∗ Wq) ⊣⊢ UEchoPipe.ep_pay Wq pn gp L.
+```
+
+`ep_pay Wq pn γp L` is `pipe_inv ∗ (side_L pn ∗ Wq) ∗ wcur pn 0 ∗
+pws_lb pn []`, so the frame is SEPARABLE: run the registrar at
+`Wq := emp`, keep all three cursor halves in `Cr`, and JOIN
+`wcur gL (1/2) 0` to `ep_pay emp` at the arm's own split
+(`∀ γp, Cr -∗ R γp -∗ RcL γp ∗ …`).  That is the only order in which the
+`pipe(2)` tail and echo's exec are both payable, and it is forced, not
+chosen — the split is a plain wand (no fupd), so the family must be
+allocated BEFORE `pipe(2)`, out of the very `Cr` the tail is paid from.
+
+**THE BRIEF'S ITEMS 1 AND 2 ARE BOTH REFUTED AS BRIEFED, and neither is
+needed.**
+
+1. *"`UShPipeChild.wp_kshm_child_pipe_paid_line` gains the third paid
+   diagnostic (`ush_execfail_law_at PipeDisc.alt_execR 16 Cr Cd`)"* — it
+   must NOT.  That law is a premise of `UShCatPay.wp_kshr_exec_cat_paid`,
+   which is what discharges the RIGHT CHILD'S CONTINUATION — and that
+   continuation is itself a premise of `wp_kshm_child_pipe_paid_line`,
+   proved by the round with the law (Persistent, `□`) already in its
+   context.  Adding it to the child walk would be a parameter no proof
+   in that file reads.  EXEC-CAT §4(iii)'s "which
+   `UShPipeChild.wp_kshm_child_pipe_paid` does not yet carry" is right
+   about the law being owed and wrong about who carries it.  Likewise
+   *"the right child's a0 at `s0 + a`"*: `wp_kshr_exec_cat_paid`'s a0
+   premise is `m !!! a0 = mword_of_int t` at the NODE's address, which
+   the landed walk already hands over; `s0 + a` is argv[0]'s address
+   INSIDE `sh_exec_sup_cat_at` and never reaches `UShPipeChild.v`.
+2. *"`pcat_image_entry` restated at premises a one-word line can meet"* —
+   measured, and it is a FILE RE-LAYERING, not a restatement.  The
+   premises EXEC-CAT names (`UkShCat.cat_argv_bytes`, `cat_args_det_1w`,
+   `cat_room_1w`) live in `UkShCat.v` and `UShCatPay.v`, both of which
+   sit ABOVE `UCatPipe.v` (`UShCatPay.v` imports it, to name
+   `pcat_pay_at`).  So `UCatPipe.v` cannot state it without moving
+   `cat_args_det_1w`/`cat_room_1w` down and importing `UkShCat`.  And it
+   buys the round NOTHING: the usable entry `UShCatPay.cat_image_entry_1w`
+   is landed and `wp_kshr_exec_cat_paid` already composes both halves at
+   it.  The honest disposition is to RETIRE the vacuous
+   `UCatPipe.pcat_image_entry` (nothing in the tree applies it) rather
+   than restate it below its own premises.
+
+**OPERATIONAL.**  The backtick-`Context` trap bit once more and exactly
+as UPSTREAM-MERGE-6 recorded it: `Context \`{!xv6G Σ}` in a file that
+does not `Require Import Xv6G` BINDS `xv6G : gFunctors → Type` and the
+error surfaces ~100 lines later as an uninferrable `?xv6G0 : Xv6G.xv6G
+Σ`.  Also: `ec2-lane.sh <lane> check` on a file at the top of the cone
+costs ~10 minutes here (coqdep over 1 855 modules dominates); `build
+File.vo` + `wait` answers in about one minute and is the right tool at
+this altitude.
+
+**THE ONE THING THE NEXT LANE NEEDS FIRST.**  The coordinator's word on
+where §4.3i's wider exit payload goes.  The cheapest shape, measured: in
+`iris/UShPipeRound.v`, change `sh_pipe_child_law`'s DEFINITION to a
+pipe-specific `ushf_child_law_at` twin at `ukn_pay N' := fun _ =>
+(ushf_wq I ∨ ∃ …, pwc_fork_exit … 5)` and re-prove `ushq_body_law_pipe`
+through a new `UkShPipeFork.wp_kshm_body_pipe` / `wp_kshf_fork_pipe`
+(twins of `UkShFork`'s two, upstream's untouched), whose re-entry writes
+the prompt with `pprompt_dollar_fork`/`pprompt_space_fork` and then
+enters `getcmd`'s `read` at the terminal state.  `sh_round_holds_pipe`'s
+statement, `UInitPipe.sh_pipe_child_law_all` and
+`pipe_adequacy_pipeΣ_of_child` do not move.  Everything else the round
+needs is landed and Closed: this lane's five resource lemmas, STAGE-3's
+terminal steps, PIPE-EXEC-ECHO's H1/H3, EXEC-CAT's H2, and PIPE-CC's
+credential.

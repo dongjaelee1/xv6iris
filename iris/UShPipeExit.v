@@ -62,9 +62,12 @@
 (*  arm carrying the complete unfiled block, so that                     *)
 (*  [PipeLinksLine.pprompt_dollar_line] -- the ONE consumer of           *)
 (*  [pwc_line], which already writes exactly the byte [pblk2_exit]       *)
-(*  wants -- can file the round's code there; and the family has to be   *)
+(*  wants -- can file the round's code there; the family has to be       *)
 (*  RECOVERABLE at the end of the round, which a plain [inv]             *)
-(*  ([PipeBoth.blk2_inv]) never is.                                      *)
+(*  ([PipeBoth.blk2_inv]) never is; and cat's round has to be generic in *)
+(*  its cursor ([UCatPipe.pcat_round_at] files [pcat_alt] at cat's first *)
+(*  byte through [pcch], which is the one thing a two-writer block may   *)
+(*  not do).                                                             *)
 (* ===================================================================== *)
 From Stdlib Require Import ZArith Lia List.
 From stdpp Require Import gmap list bitvector.definitions.

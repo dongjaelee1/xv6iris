@@ -232,9 +232,15 @@ arm is the theorem's one named premise (`pipe_both_law`).
 - [ ] **PIPE-2W** AMENDED (design §4.3c): the ledger records the block's
   bytes; the family serves all four block shapes; the exit files the
   alternative at the prompt; no `pipe_both_law`.
-- [ ] **SH-PIPE-ROUND-3** (after both): `sh_pipe_child_law` proved = the paid
+- [~] **SH-PIPE-ROUND-3** (after both): `sh_pipe_child_law` proved = the paid
   arm at the lease; `pipe_prog_law` discharged; `pipe_adequacy_pipeΣ` with
-  NO premise of its own.
+  NO premise of its own.  LANDED: `UShPipeChild.v` (the PAID child walk at
+  the pipe line, item 1) and `UShPipeExit.v` (the STOP, mechanised).
+  STOPPED at the round's EXIT: the family files the round's code at the
+  PROMPT'S FIRST BYTE, which sh's MAIN LOOP writes one process later, and
+  `UkShFork.ushf_wq`'s two arms cannot carry an unfiled block — refuted,
+  `pipe_open_not_line`.  `pipe_prog_law` not reached.  See the Findings
+  block for the three-part reconciliation the coordinator has to rule on.
 ## Findings (append as lanes report)## Findings (append as lanes report)## Findings (append as lanes report)
 
 ### PQ-FLAG-2 (2026-09-18) — the write link's second premise, paid by the CODE
@@ -5035,3 +5041,297 @@ own make lives in `/shared/xv6iris/iris` and must be left alone), and
 run `ec2-lane.sh <lane> wait` rather than a locally-timed wrapper: a
 `timeout N ... | tail` wrapper prints NOTHING when it is killed, which
 reads exactly like a hang.
+
+### SH-PIPE-ROUND-3 (2026-09-20) — the PAID child walk lands; the ROUND STOPS AT ITS EXIT, mechanised: the family files the round's code at the PROMPT'S FIRST BYTE, which sh's MAIN LOOP writes one process later, and the credential the runcmd child may hand back cannot carry an unfiled block
+
+Branch `app-pipe/sh-pipe-round-3` off main (`d3ff85ab4` + the brief
+commit), FOUR code commits (`0ddd8e565`, `7eb6f02ee`, `d1f96e867`,
+`aa1083510`) plus this one.  TWO new files — `iris/UShPipeChild.v` (item 1) and
+`iris/UShPipeExit.v` (the STOP, mechanised) — plus two rows of
+`iris/_CoqProject`.  **No landed statement moved**, `UPipeBootAdequacy.v`
+is untouched, and `grep -rn 'UShPipeChild\|UShPipeExit' iris/*.v` finds no
+importer.  Whole-tree `ec2-lane.sh round3 build` **RC=0**; no `Admitted`;
+`Proof using` on every result.  Audits below.
+
+**ITEM 1 LANDED — `iris/UShPipeChild.v`: the pipe line's child, PAID.**
+`wp_kshm_child_pipe_paid` and its corollary at the line
+`wp_kshm_child_pipe_paid_line`: `UkShPipeRound.wp_kshm_child_pipe`'s walk
+(0x9c0, `parsecmd`, the seam) ending on PIPE-ARM-PAID's
+`UkShPipePaid.wp_kshr_pipe_arm_paid` instead of the free arm.  Gone with
+the free arm: `UkSh.sh_deps` and the free exit payload `(⊢ ukn_pay N
+(-1))`.  In their place: the lend `Cr` carried whole across the parse with
+`□ (Cr -∗ ukn_pay N (-1))` paying the parse's own exits, the arm's
+four-way split with `Cx` for the two forks, the three paid diagnostics
+(`wl_line dg_pipe` at 0x12c8 and `alt_panic` twice) and `UkSh.ush_fd2p
+ld`.  It cost no new walk, exactly as PIPE-ARM-PAID predicted.  Two
+statement notes: the allocator's leftover `UM3` is DROPPED (the paid arm's
+split has no slot for it — the arm chooses between the `pipe(2)` tail and
+the forks, so no caller may split `Cr` up front — and the child exits at
+the end of the round), and `shk_rodata` is `UkSh.ush_jtab_ro` of the jump
+table the walk already holds, not a new premise.
+
+**ITEMS 2 AND 3 ARE STOPPED, AT THE BRIEF'S FIRST STOP RULE, AND THE STOP
+IS A THEOREM.**  Of the rule's two halves the ENTRY is fine and the EXIT
+is not.
+
+*THE ENTRY WORKS* (`UShPipeExit.pipe_blk2_of_lpr3`): `lk_lcred`'s owed arm
+at an `LPipe` line IS PIPE-2W's family at the empty selector.  `Wcf I 3` is
+`∃ v, era_pin γ k v ∗ pwc_lpr g k v I 3` (`PipeLinkInst.pipe_inst_lcred`)
+and `pwc_lpr _ _ _ 3` is `pwc_blk k v I 0 0` by `lk_lpr_S3`'s `eq_refl`, so
+the two landed steps `pwc_lend_of_blk0` and `pwc_blk2_of_lend` do it.  The
+one thing the child law does not hand over literally is `pboth_line I` (the
+last body parses to `LPipe`), a pure consequence of the line facts it does
+hand over (`ushq_lp`, `FileDisc.fline_ok (ush_lastbody I)`).
+
+*THE EXIT DOES NOT.*  The two shapes, verbatim:
+
+```coq
+  (* what the family's exit produces -- PipeBoth.pblk2_exit *)
+  Lemma pblk2_exit k v I R sel c1 c2 a b Φ :
+    pblk2_code I R sel a -> sel <> [] -> b = u_prompt !!! 0%nat ->
+    pblk2_ecl_file -∗ pipe_link_taint g -∗ era_pin γ k v -∗
+    pwc_blk2 k v I R sel c1 c2 -∗ (pwc_sp_t γ k v I -∗ Φ) -∗
+    out_link Uart0 k b Φ.                       (* pwc_sp_t = Wcf I 1 *)
+
+  (* what the round may hand back -- UkShFork.ushf_wq, and the fork arm's
+     own re-entry converts the first arm to the second *)
+  Definition ushf_wq (I : list (bv 8)) : iProp Σ :=
+    (Wc I 3%nat ∨ Wc I 0%nat)%I.
+  (* Wc I 0 = PipeLinksLine.pwc_line k v I
+           = pwc_pro k v I ∨ (∃ a, ⌜papr I a⌝ ∗ pwc_post k v I a) *)
+```
+
+Three facts make them irreconcilable, and all three are in the tree:
+
+1. **The filing is at the prompt and nowhere else.**  `PipeOut.pecl_blk2_file`
+   — the ONLY claim step that appends a round's code to `cs` while a block
+   is open — is stated at `b = u_prompt !!! 0%nat`.  A claim step needs
+   `pecl`, and `pecl` is reachable only inside `out_link`'s own fupd, so
+   there is no ghost-only filing.
+2. **The prompt is written by sh's MAIN LOOP, one process later.**  The
+   runcmd child forks, waits twice and exits at 0xea; the parent's `wait`
+   returns, `UkShFork.wp_kshf_fork_at`'s re-entry converts the payload to
+   `Wc np 0` and the loop's next `getcmd` prints `"$ "` out of it.  So the
+   byte `pblk2_exit` wants is not the child's to write.
+3. **`Wc I 0` cannot carry the round's unfiled block**, and that is not a
+   missing lemma: `pwc_post k v I a` at any block LONGER THAN THE PROMPT
+   carries `cs_lb v (cs ++ [a])` — THE CODE IS ALREADY FILED — while an
+   open round leaves the claim's own list one short.  (`pwc_line` does have
+   ONE unfiled state — the NO-OUTPUT alternative `pnoc_of`, whose whole
+   block is the prompt, so the index is 0 and `blkcs_p cs a 0 = cs`
+   (`pwc_line_of_blk0`) — and what excludes THAT is the TURN, not the
+   choice list: it stands at the block's START and the round has moved the
+   turn by `c1 + c2 > 0`.  S2b below is that, and §*THE ONE ESCAPE* after
+   the code block says why the trade form of it needs no theorem.)
+   Mechanised in `iris/UShPipeExit.v`, all headline results **Closed under
+   the global context**:
+
+```coq
+  Lemma pecl_open_cs_len (k r : nat) (w : pipe_era) (gb : gname) ho H :
+    pera_pin g k w -∗ cur_half w (1/2) r gb -∗ pecl g k ho H -∗
+    (PT ∨ ∃ v, era_pin γ k v ∗ (∃ cs, ⌜length cs = r⌝ ∗ cs_auth v cs)).
+
+  Lemma pipe_open_not_line k v w gb I a ho H :
+    I <> [] -> rest_of I = [] -> (2 < length (pab I a))%nat ->
+    era_pin γ k v -∗ pera_pin g k w -∗
+    cur_half w (1/2) (nlines I - 1)%nat gb -∗
+    (pwc_pro g k v I ∨ pwc_post g k v I a) -∗ pecl g k ho H -∗ PT.
+
+  Lemma pipe_blk2_not_line k v I R sel c1 c2 a ho H :
+    sel <> [] -> pblk2_code I R sel a ->        (* pblk2_exit's own two *)
+    era_pin γ k v -∗ pwc_blk2 g k v I R sel c1 c2 -∗
+    (pwc_pro g k v I ∨ pwc_post g k v I a) -∗ pecl g k ho H -∗ PT.
+
+  (* S2b: EVERY alternative, degenerate one included, in the hold-both
+     form -- three halves of one [mono_nat] authority *)
+  Lemma pipe_blk2_not_blk0 k v I R sel c1 c2 a i ho H :
+    era_pin γ k v -∗ pwc_blk2 g k v I R sel c1 c2 -∗
+    pwc_blk g k v I a i -∗ pecl g k ho H -∗ PT.
+```
+
+   (`PT` = the taint, which is the only state in which the two coexist —
+   `pipe_blk_one_writer`'s idiom.)  The lemmas are stated WITHOUT the
+   family on purpose: holding the family AND a block credential at once is
+   refuted by the turn alone (`pipe_turn_one_writer`), so such a lemma
+   would prove only that the exit must be a TRADE.  What is refuted is the
+   trade's RESULT — the post-block credential cannot exist while the round
+   is open, whether or not the family still does.  The hold-both form is
+   landed too, at EVERY alternative including the degenerate one
+   (`pipe_blk2_not_blk0`: the family's turn, the block's turn and the
+   claim's `turn_auth` are three halves of one `mono_nat` authority).
+
+*THE ONE ESCAPE, and why it needs no theorem.*  A trade into the
+no-output arm cannot move the turn (its other half is the claim's), so it
+would have to DROP the round's `cur_half` — and then the claim is stuck in
+its open arm for ever, where the ONLY step that can put the prompt's `$`
+on the wire is `PipeOut.pecl_blk2_file`, which asks for the very half that
+was dropped.  `pecl_step_write_blk`, the ordinary filing step, refutes the
+open state (PIPE-2W's own list: "by the turn's position").
+
+**WHICH ARMS ARE AFFECTED, exactly.**  Only the two-child ones
+(`PRan`/`PExecL`/`PExecR`/`PBoth`), and of those only the rounds that put
+at least ONE byte on the console — which is every real `echo … | cat`.  A
+round whose block stays EMPTY is fine as it stands: at `sel = []` the
+family's ledger arm carries nothing (`pblk_led`'s left disjunct) and its
+resources ARE the lend's, so the child hands back `pwc_blk k v I a 0`,
+which `pwc_line_of_blk0` turns into `Wc I 0` at the no-output alternative.  The `PFork` and `PPipe` tails are
+NOT: they are non-panicking alternatives (`palt_panic` is true of `PEcho
+3` alone) whose block is written by the runcmd child ITSELF, one writer,
+so the code is filed at the diagnostic's first byte by the ORDINARY
+`pwc_blk` family and the tail's residue is a block credential at the
+diagnostic's own alternative (`UkShDiag.ush_execfail_law_at`'s `Cd`,
+PIPE-ARM-PAID's finding 2) — the one-writer path the landed families
+already serve.  Item 1's walk is usable for those two arms as it stands;
+this lane did not instantiate them.
+
+**AND THE FILING CANNOT SIMPLY BE MOVED EARLIER.**  The obvious repair —
+file the code at the block's LAST byte, which would land the round in
+`pwc_post` exactly — is refuted by the program: nobody knows which byte is
+the last.  The final selector is settled by two separate processes whose
+sources are fixed but whose PARTICIPATION is not (at `PExecL` the right
+child writes nothing, at `PRan` the left one does), so a writer standing at
+the end of its own source cannot tell whether the other will write.  The
+`$` of the next prompt is the only unambiguous end-of-block signal, which
+is why the design put the filing there and why that half of §4.3c is
+RIGHT.
+
+**WHAT WOULD RECONCILE IT — three changes, all in landed files this lane
+may not move, and none of them is a new proof about the machine.**
+
+- **(R1) `pwc_line` needs a THIRD arm: the complete unfiled block.**
+  `Wc I 0` is `PipeLinksLine.pwc_line`; it fills the record's `lk_line`,
+  and the ONE field that CONSUMES `lk_line` is `lk_prompt_dollar_line`
+  (`= pprompt_dollar_line g`) — which writes exactly the byte
+  `pblk2_exit` wants.  Give `pwc_line` an arm `∃ R sel c1 c2, ⌜pblk2_code I R sel a ∧
+  sel ≠ []⌝ ∗ pwc_blk2 k v I R sel c1 c2` and extend
+  `pprompt_dollar_line` with `pblk2_exit`; `pwc_line_timeless`,
+  `pwc_line_taint` and the three `pwc_line_of_*` follow.  AND IT NEEDS NO
+  FILE MOVE — measured: `PipeBoth.v` imports `PipeLinksLine` and NOT
+  `PipeLinkInst`, and nothing in the tree imports `PipeBoth` at all, so
+  the widened line credential can be defined ABOVE `PipeBoth` (in
+  `PipeLinkInst.v` itself, or in a small file between them) and the
+  record's `lk_line`/`lk_prompt_dollar_line` pointed at it.  What stays in
+  `PipeLinksLine.v` is untouched; what is added is the widened definition,
+  its `Timeless`/taint/`of_*` wrappers and one case in the prompt step
+  (`pblk2_exit`).  The alternative — moving `pwc_blk2` and `pblk2_exit`
+  down beside `pwc_line` — is available (everything they need,
+  `PipeBothPure` and `PipeOut`, is already below `PipeLinksLine`) but is
+  the bigger edit.
+- **(R2) the family must be RECOVERABLE at the end of the round.**  The
+  two children write concurrently, so the family lives in
+  `PipeBoth.blk2_inv` — a plain `inv`, which can never be deallocated, so
+  after the two waits the runcmd child cannot get the family back to put
+  it into its exit payload.  Two ways, and the cheap one is the second.  A `cinv` (the cancel token in
+  the round's own hand, cancelled after both waits, when both children are
+  dead) — its `▷` costs nothing, the body is timeless
+  (`pwc_blk2_timeless`, `wcur_timeless`) — but the tree uses NO `cinv`
+  today, so it would put `cinvG` in `pipeΣ` and move the audit's functor
+  list.  Or give the invariant's body a `∨ DONE` arm with a one-shot built
+  from a camera the class already has (`wcur` is `ghost_var _ _ (c : nat)`,
+  `echoOutG`'s `eo_turn`), which costs the functor list NOTHING — the
+  ledger's own precedent (PIPE-2W: "the ledger costs the functor list
+  nothing").  The cursor halves
+  themselves come back fine: `PipeProto.pipe_Qc` is generic in its two
+  payloads and `pipe_Qc_two` is too, so `wcur gL (1/2) c1` / `wcur gR
+  (1/2) c2` ride the children's exits beside `pipe_payL`/`pipe_payR`.
+
+- **(R3) cat's round must be re-cut GENERIC in its cursor, and it costs no
+  walk.**  `UCatPipe.pcat_round_at` writes the right child's bytes through
+  `pcch g v ps0 cs0 I0 pcat_alt P c`, whose `pcatcs cs0 a p = cs0 ++ [a]`
+  at any positive `p` FILES `pcat_alt` at cat's first byte — the one thing
+  a two-writer block may not do.  The proof never unfolds `pcch` (only
+  `pcat_round_inv` and `pcat_hold`; `grep 'rewrite /pcch'` in it is empty),
+  so the cursor is a parameter `Ch : nat -> iProp Σ` away from being the
+  family's, with the landed statement byte-identical at `Ch := pcch …` —
+  `UkShPipe.wp_kshr_pipe_arm_g`'s precedent exactly.  The LEFT child needs
+  nothing: its diagnostic already goes through
+  `UkShDiag.ush_execfail_law_at`, which is generic in its credential
+  (PIPE-ARM-PAID's finding 2).  Both ENTRIES are ready as landed:
+  `UEchoPipe.ep_frame`'s `Wq` and `UCatPipe.pcat_pay_at`'s `Pay` are
+  abstract, so a cursor half plus `blk2_inv` crosses each exec untouched.
+
+A FOURTH route, mentioned and NOT recommended: take the prompt out of the
+pipeline round's block in `PipeDisc.pcont` and make it the next round's
+prologue.  That is a model change under the whole stage, and (R1) is the
+same idea as one disjunct instead.
+
+**ITEM 3 (`pipe_prog_law`, the final theorem) WAS NOT REACHED**, and it is
+blocked twice over: it spends `sh_round_holds_pipe`, whose one premise is
+the child law above; and its /init half is a LANE OF ITS OWN, whose size
+this lane measured rather than guessed.  The mould is
+`UInitBoot.echo_Hinit_boot` and the pipe twin needs
+`UInitSh.cons_cred_holds_at` (ten laws, already generic in the discipline
+and stated at a `cons_cred` RECORD) at a `pipe_cc`.  MEASURED, and the
+measurement CORRECTS a stale note: upstream's FILE twin `iris/UInitFile.v`
+is still an `Admitted` skeleton whose blocker (3) says *"`UInitDiag.v` is
+echo-only and needs a `LinkRec` field"* — that is HISTORY, `UInitDiag` and
+`UInitBanner` are `_at`-generic today (`kinit_pro_at`,
+`kinit_banner_law_pro_holds_at`, `kinit_execfail_law_holds_at`,
+`kinit_forkfail_law_holds_at`, `kinit_ban_at`, `kinit_ban0_of_eturn_at`),
+as is `UShPanic` (`ush_panic_law_hold_at` / `ush_execfail_law_hold_at`,
+which `UShPipeRound` already spends).  What is REALLY left, of the nine
+`UShLine` lemmas `echo_cc_holds` spends: four have `_at` twins already
+(`ush_read_recv_leaf_holds_at`, `ush_mid_of_at`, `ush_mid_wc_read_t_at`,
+`ush_wb_read_holds_at`); three more are already generic in `Wc`/`Wb` and
+need only the residue as one more parameter (`ush_mid`/`ush_rd_x`/
+`ush_rd_pin` → their `_at` forms; the same proof, not a new one):
+`ush_at_of_mid_taint`, `ush_at_of_mid_wb`, `ush_posb_of_lend`; and two
+are era-specific readings whose pipe twins are small lemmas about the pipe
+families (`ush_wc_inp_lcred`, `ush_wb_inp_ban` — `UShRound.Wcf_inp` /
+`Wbf_inp` are the file era's own).  Then `pipe_cc` + `pipe_cc_holds` and
+the ~300-line assembly.  Everything the pipe CLAIM itself owes is landed
+and was checked: `AppPipeCons.pipe_sup_of_taint`, `pipe_fs_pure_acc`,
+`pipe_echo_fs_pure_acc`, `pipe_cat_pins_acc`, and `UInitConsPipe`'s twelve
+console-dance lemmas.  So STOP rule 2's answer is: **no** — `al_programs`
+needs no fact of /init the pipe claim's laws fail to give; it needs five
+small generalisations in `UShLine.v` and the era's own `cons_cred`
+instance.  `UPipeBootAdequacy.pipe_adequacy_pipeΣ` is therefore UNCHANGED,
+still carrying its one premise `Hprog : pipe_prog_law`, and the audits are
+unmoved and TEXTUALLY IDENTICAL to each other: **`audit-pipe-only` =
+FOURTEEN**, **`audit-echo-only` = FOURTEEN** — 1
+`functional_extensionality_dep` + the 2 `xv6iris_extras` reservation
+`Parameter`s + 11 PrimString/PrimInt63, and no `Spec*`/`Link*` module
+`Parameter`.
+
+**WHAT THE DESIGN GOT WRONG.**
+
+1. **§4.3c's "the exit at the prompt filing the alternative ... and the
+   round's lend" leaves out WHO writes the prompt.**  The exit is right
+   about the byte and wrong about the holder: the round's lend is redeemed
+   by a process the round has already exited into.  Every other word of
+   §4.3c stands.
+2. **PIPE-2W's `pipe_round_lend` is not the round's shape.**  It is the
+   SEQUENTIAL summary — one holder writes the whole block and the prompt's
+   first byte — and the round has two writers and neither of them writes
+   the prompt.  The round's real interface is the pair
+   (`blk2_inv`, `wcur` halves), and `pipe_round_lend`'s value is as the
+   consumer-facing statement of what the console shows, not as the lend.
+3. **The brief's item 2 word "yield the prompt credential
+   `sh_round_holds_pipe` wants" is the whole gap in six words** — the
+   credential `sh_round_holds_pipe` wants is `UkShFork.ushf_wq`, which is
+   `Wc I 3 ∨ Wc I 0`, and neither is a state an open round can be in.
+
+**AN OPERATIONAL FINDING, and it cost three builds.**  The landed idiom
+for combining two `mono_nat` halves — `iEval (rewrite -Qp.half_half)` then
+`iSplitL` (`EchoOut.turn_update`, `UShPipeRound.pipe_turn_one_writer`) —
+does NOT fire in a stage-tier file whose only scope is `list_scope`: the
+rewrite goes through and the split leaves a first goal the half does not
+match (`iExact: "H1" : (mono_nat_auth_own (ep_go v) (1 / 2) P1) does not
+match goal`).  `iCombine "H1 H2" as "H"` followed by
+`rewrite ?Qp.half_half in Hq` is scope-free and works.  Worth knowing
+before the next lane restates a `turn` lemma outside `EchoOut.v`.
+
+**THE ONE THING THE NEXT LANE NEEDS FIRST.**  The owner's ruling on (R1),
+(R2) and (R3) — they are one ruling, and none of them is a new proof
+obligation about the machine.  With `pwc_line` carrying the complete
+unfiled block, the family recoverable and cat's cursor a parameter,
+`sh_pipe_child_law` is this lane's `wp_kshm_child_pipe_paid_line` at
+`RcL`/`RcR` := a cursor half + `blk2_inv` + the child's entry payment,
+`Qc := pipe_Qc` widened by the two halves, and the exit is `pwc_line`'s new
+arm — no new walk anywhere, and the three paid diagnostics are already
+parameters.  What this lane did NOT exercise and the round still has to
+assemble: the registrar (`PipeProto.pipe_proto_alloc` at the arm's
+`UkShPipe.ush_pipe_call` premise, through `UkReadPipe.wp_uk_pipe_read_end`)
+and the end-of-round reading (`pipe_Qc_two` + `pipe_round_reading` at the
+widened payloads).  Item 3 is a SEPARATE lane and it is upstream's
+`cons_cred_holds_at` gap, shared with the file application.

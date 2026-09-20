@@ -762,6 +762,87 @@ The /init half of `pipe_prog_law` (the era's `cons_cred` instance, five
 it discharges `pipe_prog_law` MODULO `sh_pipe_child_law`, so the final
 theorem's one premise becomes the child law, which ROUND-4 then removes.
 
+### 4.3g FOUND (2026-09-20, SH-PIPE-ROUND-4): the theorem as designed is FALSE at one reachable interleaving — the model has no alternative for a fork-2 panic beside a live left child; and the three exec discharges §4.3f left out
+
+R1–R3 are landed (with two corrections the lane measured: the filing
+step is the seventh leaf of `pipe_links` stated at `pecl_blk2_file`'s own
+premises, nothing moves down; DONE parks both cursors whole, no third
+ghost; the children's exclusion `XL`/`YR` + `□ (XL -∗ YR ={Eex}=∗ False)`
+enters the byte steps, because at `R = L` a mixed selector has no
+alternative — `PipeForkGap.gap_mixed_no_wit`).  The round proper stopped
+before its first instruction on four holes.
+
+**H4, the model gap (mechanised, `PipeForkGap.pfork_execL_gap`).**
+`runcmd`'s PIPE arm forks twice and does not wait between the forks.  If
+`fork1` #2 fails after #1 succeeded, the runcmd child prints `fork\n` and
+exits while child 1 is alive; if child 1's `exec /echo` fails (the model
+admits `PExecL`; the kernel's `exec_post_fail` arm (iii) is
+`EfNoMem`, not refutable by the pin), it prints `exec echo failed\n`
+concurrently — and since the runcmd child exits WITHOUT waiting for it,
+sh's main loop prints the next `$ ` and the stray child may still be
+printing, at any later time, byte-interleaved with anything (`fprintf`
+is one `write` per byte).  §1's sentence "`PFork` covers both forks …
+nothing reaches the console" is this assumption stated as a fact.
+`palt_ok (LPipe ws)` has no alternative with that continuation, so
+`pipe_phi` is false at that trace.  Three repairs were examined:
+(b) refute a failing `exec /echo` under the pin — impossible, arm (iii)
+is memory exhaustion; (c) show the runcmd child never reaches fork #2
+with a live child — false, it does not wait; any "wild after a fork
+failure" arm — VACUOUS, because a fork failure is not in the observation
+trace, so a wild arm would admit every pipeline round; any Iris-level
+"fork never fails" hypothesis — the `Hktaint` trap again (a refutable
+premise).  What remains is the truth:
+
+**RULED (pending the owner's word — this changes the model, §1): STRAYS.**
+A pipeline round whose `fork1` #2 failed leaves at most ONE stray writer
+whose console bytes are a PREFIX of `dg_execL`, interleaved byte-wise
+with everything the session prints from the panic on (including later
+rounds); a session accumulates at most one stray per `PFork` round.  The
+pure model gains: `good_out_p` admits `h = merge of (the session stream
+`sessp ps cs I`, as now — `PFork`'s block stays `alt_forkc`) with a
+multiset of stray streams, each a prefix of `dg_execL`, each born at a
+`PFork` round at an `LPipe` line`; `disc_p` (the input side) reads the
+prompts through the same decomposition; `pipe_phi` is stated with ONE
+decomposition for both (`∃ dec, decomposes h dec ∧ (disc_p' dec →
+good_out' dec)`).  `disc_p_dec`, `sessp_prefix_det`, `D_p`,
+`pending_at_p`, `D2_next_input_p` gain the stray case — determinism of
+the SESSION is unchanged; what a stray byte is, is decided by the
+stage's GHOST, not by the history.  The stage: the claim `pecl` gains a
+stray ledger (`pe_strays : list (gname * nat)` — the left cursor of a
+round the main loop filed as `PFork` while the family's left half was
+outstanding — ghost `wcur gL` reused as the stray cursor); a stray write
+link (`pipe_link_stray`: a byte `dg_execL !!! c` from a stray at cursor
+`c` is admitted anywhere, moving that stray's cursor); the main loop's
+`$` step at `pwc_line2`'s third arm with the left half missing FILES
+`PFork` and MOVES the left cursor to the stray ledger (the block so far
+`pend2 R sel` is read as stray bytes merged before/within `alt_forkc`).
+The two-writer machinery (R1–R3) is unchanged; the stray is the SAME
+left cursor after the round has ended.  Lanes: PIPE-MODEL-3 (pure:
+`PipeDisc`, `PipeDiscDec`, `PipeOutPure`), PIPE-STAGE-3 (`PipeOut`'s
+ledger + the stray link + the `$` step), then SH-PIPE-ROUND-5 (the
+assembly).  The alternative the owner may prefer instead — restrict the
+session so a pipeline line is the LAST line the discipline admits (then
+the stray's remainder is the final round's tail and one `PForkL sel`
+alternative suffices, no session-level merge) — is a weaker theorem
+about a narrower user; it is the cheaper route by roughly two lanes.
+
+**H1–H3, three exec discharges the design never costed, needed under
+either route** (lanes launched 2026-09-20): H1 `UkShPipe.ush_pipe_call`
+at a REAL registrar (the landed discharge is at `R := emp` under
+`app_taint`; the paid one is the same three-instruction stub through
+`wp_uk_pipe_read_end` at `ep_pay_of_alloc`'s quintuple and the registry's
+`udepw_law 21`); H3 the left child's exec of `/echo` at fd 1 = the
+pipe's write end (`UShEchoPay.sh_exec_sup_echo_wq_holds_at`'s 300-line
+shape at `UEchoPipe.ep_image_entry`/`ep_uexec_slot_at` instead of the
+console slot); H2 the right child's exec of `/cat` from sh's EXEC arm
+(no `wp_kshr_exec_cat`/`sh_exec_sup_cat` exists; `UShCat.v` has cat's
+image geometry and `UCatPipe.pcat_image_entry` is the (E) half; mould
+`UkShEcho.v` + `UShEchoPay.v`; the line is `cat`, argc 1, fd 0 = the
+pipe's read end).  Also owed to the round, small: a READER-side lower
+bound in `PipeProto` (`rcur pn c`, `c > 0`, `pipe_inv` ⊢ `pws_lb pn
+(take c L)`), which discharges the exclusion premise at `XL := wcur pn
+0`, `YR := pws_lb pn (take 1 L)`.
+
 ## 5. Programs
 
 ### 5.1 sh: the PIPE arm (lanes SH-PARSE-PIPE, SH-PIPE)

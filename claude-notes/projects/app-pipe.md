@@ -250,6 +250,16 @@ arm is the theorem's one named premise (`pipe_both_law`).
   proved — the round stops at four measured holes, of which H4 is a
   RULING about the model (`PFork` at the second fork has no alternative
   for the interleaving the machine can print).  See the Findings block.
+- [~] **SH-PIPE-ROUND-4** LANDED R1–R3 (merged ae1a7161c); the round
+  STOPPED on H1–H4; H4 = the MODEL GAP (design §4.3g: fork #2's panic
+  beside a live left child whose exec fails → a STRAY writer; ruling
+  STRAYS pending the owner's word).
+- [ ] **PIPE-EXEC-ECHO** (H1 + H3 + the reader-side lower bound; needed on
+  every route).  Brief `brief-pipe-exec-echo.md`.
+- [ ] **EXEC-CAT** (H2: `UkShCat.v` + `UShCatPay.v`, the exec of `/cat`
+  from sh's EXEC arm).  Brief `brief-exec-cat.md`.
+- [ ] **PIPE-MODEL-3 / PIPE-STAGE-3 / SH-PIPE-ROUND-5** (the strays, design
+  §4.3g) — NOT launched; awaiting the owner's ruling.
 - [ ] **PIPE-CC** (in parallel with ROUND-4; ROUND-3's item 3): the pipe
   era's `cons_cred` instance (`UInitPipe.v`, five `UShLine` `_at` twins),
   `pipe_prog_law` discharged modulo `sh_pipe_child_law`;

@@ -641,12 +641,17 @@ Qed.
    [pline_ok]) can spend it.  [PipeLinksLine.pcont_prompt] is the same
    lemma one file up; the claim's steps are BELOW that file and need it
    here. *)
+(* ...EXCEPT THE TERMINAL FORK-FAILURE ROUND, whose block is a shuffle
+   that may stop anywhere -- and may carry the stray's bytes AFTER the
+   prompt.  [palt_isforkS a = false] is the premise every consumer of
+   this lemma now carries, and at the claim it is [PipeOut.pblk_open]'s
+   own disjunction that supplies it. *)
 Lemma pcont_prompt_p (l : pline) (a : palt) :
-  palt_ok l a -> palt_panic a = false ->
+  palt_ok l a -> palt_panic a = false -> palt_isforkS a = false ->
   exists u : list (bv 8), pcont l a = u ++ u_prompt.
 Proof using.
-  intros Hok Hp.
-  destruct a as [k | | | | sel | | |]; rewrite /pcont.
+  intros Hok Hp Hf.
+  destruct a as [k | | | | sel | | sel |]; rewrite /pcont; [| | | | | | done |].
   - assert (Hk : (k < 3)%nat).
     { rewrite /palt_panic in Hp. apply bool_decide_eq_false in Hp.
       destruct l as [ws | ws]; cbn [palt_ok] in Hok; lia. }
@@ -660,7 +665,6 @@ Proof using.
   - exists dg_execR. reflexivity.
   - exists (pmerge sel dg_execL dg_execR). reflexivity.
   - exists (wl_line dg_pipe). reflexivity.
-  - exists (wl_line dg_fork). reflexivity.
   - exists []. by rewrite app_nil_l.
 Qed.
 
@@ -669,11 +673,12 @@ Qed.
    round's block, prompt included, on the wire before the next input
    byte). *)
 Lemma pcont_not_prefix_nodollar (l : pline) (a : palt) (u : list (bv 8)) :
-  palt_ok l a -> palt_panic a = false -> Forall nodollar u ->
+  palt_ok l a -> palt_panic a = false -> palt_isforkS a = false ->
+  Forall nodollar u ->
   ~ (pcont l a `prefix_of` u).
 Proof using.
-  intros Hok Hp Hnd Hpre.
-  destruct (pcont_prompt_p l a Hok Hp) as (z & Hz).
+  intros Hok Hp Hf Hnd Hpre.
+  destruct (pcont_prompt_p l a Hok Hp Hf) as (z & Hz).
   assert (Hlk : pcont l a !! length z = Some (Z_to_bv 8 36%Z)).
   { rewrite Hz lookup_app_r; [| lia].
     rewrite Nat.sub_diag. exact u_prompt_head. }
@@ -682,20 +687,22 @@ Proof using.
 Qed.
 
 Lemma pcont_ne_nodollar (l : pline) (a : palt) (u : list (bv 8)) :
-  palt_ok l a -> palt_panic a = false -> Forall nodollar u ->
+  palt_ok l a -> palt_panic a = false -> palt_isforkS a = false ->
+  Forall nodollar u ->
   u <> pcont l a.
 Proof using.
-  intros Hok Hp Hnd Heq.
-  apply (pcont_not_prefix_nodollar l a u Hok Hp Hnd).
+  intros Hok Hp Hf Hnd Heq.
+  apply (pcont_not_prefix_nodollar l a u Hok Hp Hf Hnd).
   rewrite Heq. reflexivity.
 Qed.
 
 Lemma pcont_not_prefix_pend_both (l : pline) (a : palt) (sel : list bool) :
   pline_ok l -> palt_ok l a -> palt_panic a = false ->
+  palt_isforkS a = false ->
   ~ (pcont l a `prefix_of` pend_both sel).
 Proof using.
-  intros Hl Ha Hp Hpre.
-  destruct (pcont_shape l a Hl Ha Hp) as (u & Hu & _).
+  intros Hl Ha Hp Hf Hpre.
+  destruct (pcont_shape l a Hl Ha Hp Hf) as (u & Hu & _).
   assert (Hlk : pcont l a !! length u = Some (Z_to_bv 8 36%Z)).
   { rewrite Hu lookup_app_r; [| lia].
     rewrite Nat.sub_diag. exact u_prompt_head. }
@@ -710,10 +717,11 @@ Qed.
    unaffected by the both arm. *)
 Lemma pend_both_ne_pcont (l : pline) (a : palt) (sel : list bool) :
   pline_ok l -> palt_ok l a -> palt_panic a = false ->
+  palt_isforkS a = false ->
   pend_both sel <> pcont l a.
 Proof using.
-  intros Hl Ha Hp Heq.
-  apply (pcont_not_prefix_pend_both l a sel Hl Ha Hp).
+  intros Hl Ha Hp Hf Heq.
+  apply (pcont_not_prefix_pend_both l a sel Hl Ha Hp Hf).
   rewrite Heq. reflexivity.
 Qed.
 

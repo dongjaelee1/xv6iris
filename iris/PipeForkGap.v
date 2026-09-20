@@ -12,11 +12,20 @@
 (*  so the wire that carries bytes of BOTH has to be some admissible      *)
 (*  alternative's continuation.                                          *)
 (*                                                                       *)
-(*  IT IS NOT.  The theorem below takes the SHORTEST witness -- the       *)
+(*  IT WAS NOT, AND NOW IT IS (lane PIPE-MODEL-3, design section 4.3h).   *)
+(*  [pfork_execL_gap] used to refute the SHORTEST witness -- the          *)
 (*  interleaving whose first byte is the PANIC's and whose second is the  *)
-(*  left child's -- and refutes it against EVERY alternative an           *)
-(*  [LPipe] line admits, [PBoth] included (whose merge is of [dg_execL]   *)
-(*  with [dg_execR] and never with [alt_panic]).                          *)
+(*  left child's -- against EVERY alternative an [LPipe] line admitted.   *)
+(*  The model now HAS that alternative, [PForkS], so the old theorem is   *)
+(*  FALSE BY DESIGN and is replaced by two: [pfork_execL_admitted] (the   *)
+(*  two-byte wire IS a prefix of [pcont (LPipe gap_ws) (PForkS            *)
+(*  [false; true])]) and [pfork_execL_only_forkS] (NO OTHER alternative   *)
+(*  admits it -- the seven refutations below are kept verbatim and are    *)
+(*  what says the new arm is not slack).  The selector is [false; true]   *)
+(*  and not the design's [true; false]: [true] takes the STRAY's byte     *)
+(*  ([dg_execL]) and [false] takes [alt_forkc]'s, the way the stage's     *)
+(*  landed [PipeBothPure.pend2 R sel = pmerge sel dg_execL R] reads them, *)
+(*  and the panic's byte is on the wire first.                            *)
 (*                                                                       *)
 (*  AT ONE LINE, not at every line, and deliberately: at a line whose     *)
 (*  own text begins with `ef' the [PRan] arm would carry those two bytes  *)
@@ -24,11 +33,7 @@
 (*  finding is that the model admits a round the machine can contradict,  *)
 (*  and one line is enough to have it.                                    *)
 (*                                                                       *)
-(*  WHAT IT DOES NOT SAY.  It does not say the pipeline theorem is false: *)
-(*  that depends on whether a failing [exec] of /echo is reachable under  *)
-(*  the claim's pin (the echo application treats it as reachable, which   *)
-(*  is why [PExecL] exists at all).  The three ways out are in the lane   *)
-(*  report; NOTHING in the tree imports this file.                       *)
+(*  NOTHING IN THE TREE IMPORTS THIS FILE.                                *)
 (* ===================================================================== *)
 From Stdlib Require Import ZArith Lia List.
 From stdpp Require Import gmap list bitvector.definitions.
@@ -71,9 +76,6 @@ Lemma gap_not_pipe :
   ~ ([gap_b0; gap_b1] `prefix_of` pcont (LPipe gap_ws) PPipe).
 Proof using. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
 
-Lemma gap_not_fork :
-  ~ ([gap_b0; gap_b1] `prefix_of` pcont (LPipe gap_ws) PFork).
-Proof using. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
 
 Lemma gap_not_silent :
   ~ ([gap_b0; gap_b1] `prefix_of` pcont (LPipe gap_ws) PSilent).
@@ -113,19 +115,38 @@ Qed.
 (* ===================================================================== *)
 (*  THE REFUTATION                                                        *)
 (* ===================================================================== *)
-Theorem pfork_execL_gap (a : palt) :
-  palt_ok (LPipe gap_ws) a ->
-  ~ ([gap_b0; gap_b1] `prefix_of` pcont (LPipe gap_ws) a).
+(* THE WITNESS, WHICH IS WHAT THE MODEL CHANGE IS FOR: the two-byte wire
+   the machine can produce at that round IS a prefix of the terminal
+   round's continuation -- one [false] (the runcmd child's `f') and one
+   [true] (the stray's `e'). *)
+Theorem pfork_execL_admitted :
+  palt_ok (LPipe gap_ws) (PForkS [false; true])
+  /\ [gap_b0; gap_b1] `prefix_of` pcont (LPipe gap_ws) (PForkS [false; true]).
 Proof using.
-  destruct a as [k | | | | sel | | | ].
-  - intros Hk. cbn [palt_ok] in Hk. subst k. exact gap_not_echo3.
-  - intros _. exact gap_not_ran.
-  - intros _. exact gap_not_execL.
-  - intros _. exact gap_not_execR.
-  - exact (gap_not_both sel).
-  - intros _. exact gap_not_pipe.
-  - intros _. exact gap_not_fork.
-  - intros _. exact gap_not_silent.
+  split.
+  - cbn [palt_ok]. split_and!;
+      [discriminate | vm_compute; lia | vm_compute; lia].
+  - apply (bool_decide_unpack _). vm_compute. exact I.
+Qed.
+
+(* ...AND NOTHING ELSE ADMITS IT, which is the old [pfork_execL_gap]
+   restated: the arm the model gained is exactly the arm the machine
+   needs, and not one alternative more. *)
+Theorem pfork_execL_only_forkS (a : palt) :
+  palt_ok (LPipe gap_ws) a ->
+  [gap_b0; gap_b1] `prefix_of` pcont (LPipe gap_ws) a ->
+  palt_isforkS a = true.
+Proof using.
+  destruct a as [k | | | | sel | | sel | ].
+  - intros Hk. cbn [palt_ok] in Hk. subst k.
+    intro H. by destruct (gap_not_echo3 H).
+  - intros _ H. by destruct (gap_not_ran H).
+  - intros _ H. by destruct (gap_not_execL H).
+  - intros _ H. by destruct (gap_not_execR H).
+  - intros Hok H. by destruct (gap_not_both sel Hok H).
+  - intros _ H. by destruct (gap_not_pipe H).
+  - intros _ _. reflexivity.
+  - intros _ H. by destruct (gap_not_silent H).
 Qed.
 
 (* ===================================================================== *)
@@ -163,7 +184,7 @@ Lemma mix_not_execR : ~ (mixp `prefix_of` pcont (LPipe gap_ws) PExecR).
 Proof using. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
 Lemma mix_not_pipe : ~ (mixp `prefix_of` pcont (LPipe gap_ws) PPipe).
 Proof using. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
-Lemma mix_not_fork : ~ (mixp `prefix_of` pcont (LPipe gap_ws) PFork).
+Lemma mix_not_forkc : ~ (mixp `prefix_of` alt_forkc).
 Proof using. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
 Lemma mix_not_silent : ~ (mixp `prefix_of` pcont (LPipe gap_ws) PSilent).
 Proof using. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
@@ -183,6 +204,39 @@ Proof using. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
 
 Lemma gap_both_len2 : (2 <= length dg_execL + length dg_execR)%nat.
 Proof using. vm_compute. lia. Qed.
+
+Lemma fc_cons2 : exists dz : list (bv 8),
+    alt_forkc = alt_forkc !!! 0%nat :: alt_forkc !!! 1%nat :: dz.
+Proof using. exists (drop 2 alt_forkc). vm_compute. reflexivity. Qed.
+
+Lemma gapL0_ne_f0 : gap_L !!! 0%nat <> alt_forkc !!! 0%nat.
+Proof using. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
+Lemma gapL0_ne_f1 : gap_L !!! 0%nat <> alt_forkc !!! 1%nat.
+Proof using. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
+
+(* the terminal round's arm: its two sources are [dg_execL] and
+   [alt_forkc], so the LINE's first byte is never its second one *)
+Lemma mix_not_forkS (sel : list bool) :
+  palt_ok (LPipe gap_ws) (PForkS sel) ->
+  ~ (mixp `prefix_of` pcont (LPipe gap_ws) (PForkS sel)).
+Proof using.
+  intros (Hne & H1 & H2) Hpre.
+  destruct dgL_cons2 as [dl HL]. destruct fc_cons2 as [dz HF].
+  destruct sel as [| u [| w s]].
+  - by destruct (Hne eq_refl).
+  - exfalso. apply prefix_length in Hpre.
+    cbn [pcont] in Hpre.
+    rewrite (pmerge_length [u] dg_execL alt_forkc H1 H2) in Hpre.
+    cbn [length] in Hpre. lia.
+  - cbn [pcont] in Hpre. rewrite HL in Hpre. rewrite HF in Hpre.
+    destruct u; destruct w;
+      rewrite ?pmerge_true_cons, ?pmerge_false_cons in Hpre;
+      cbn [app] in Hpre;
+      apply prefix_cons_inv_2 in Hpre;
+      apply prefix_cons_inv_1 in Hpre;
+      first [ exact (gapL0_ne_0 Hpre) | exact (gapL0_ne_1 Hpre)
+            | exact (gapL0_ne_f0 Hpre) | exact (gapL0_ne_f1 Hpre) ].
+Qed.
 
 Lemma mix_not_both (sel : list bool) :
   palt_ok (LPipe gap_ws) (PBoth sel) ->
@@ -215,13 +269,13 @@ Proof using.
   intros [a (Hok & Hpan & Hpre)].
   rewrite gap_pend2_mixed in Hpre.
   revert Hok Hpan Hpre. generalize (palt_of a). intros al Hok Hpan Hpre.
-  destruct al as [k | | | | sel | | | ].
+  destruct al as [k | | | | sel | | sel | ].
   - cbn [palt_ok] in Hok. subst k. vm_compute in Hpan. discriminate Hpan.
   - exact (mix_not_ran Hpre).
   - exact (mix_not_execL Hpre).
   - exact (mix_not_execR Hpre).
   - exact (mix_not_both sel Hok Hpre).
   - exact (mix_not_pipe Hpre).
-  - exact (mix_not_fork Hpre).
+  - exact (mix_not_forkS sel Hok Hpre).
   - exact (mix_not_silent Hpre).
 Qed.

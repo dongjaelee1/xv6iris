@@ -126,19 +126,20 @@ Definition pblk2_code (I : list (bv 8)) (R : list (bv 8))
     (sel : list bool) (a : nat) : Prop :=
   palt_ok (pline_at I) (palt_of a)
   /\ palt_panic (palt_of a) = false
+  /\ palt_isforkS (palt_of a) = false
   /\ pcont (pline_at I) (palt_of a) = pend2 R sel ++ u_prompt.
 
 Lemma pblk2_code_pab (I : list (bv 8)) (R : list (bv 8)) (sel : list bool)
     (a : nat) :
   pblk2_code I R sel a -> pab I a = pend2 R sel ++ u_prompt.
 Proof using.
-  intros (Hok & _ & Hc). by rewrite (pab_is I a Hok).
+  intros (Hok & _ & Hfk & Hc). by rewrite (pab_is I a (conj Hok Hfk)).
 Qed.
 
 Lemma pblk2_code_papr (I : list (bv 8)) (R : list (bv 8)) (sel : list bool)
     (a : nat) :
   pblk2_code I R sel a -> papr I a.
-Proof using. intros (Hok & Hpan & _). by split. Qed.
+Proof using. intros (Hok & Hpan & Hfk & _). by split_and!. Qed.
 
 Lemma pblk2_code_len (I : list (bv 8)) (R : list (bv 8)) (sel : list bool)
     (a : nat) (c1 c2 : nat) :
@@ -162,7 +163,8 @@ Lemma pblk2_code_ran (I : list (bv 8)) (ws : list (list (bv 8)))
   pblk2_code I (wl_line (drop 1 ws)) sel (palt_code PRan).
 Proof using.
   intros Hl Hc Hlen. rewrite /pblk2_code (palt_of_code PRan) Hl.
-  split_and!; [by apply palt_ok_LPipe_ran | exact palt_panic_ran |].
+  split_and!; [by apply palt_ok_LPipe_ran | exact palt_panic_ran
+              | reflexivity |].
   rewrite (pcont_ran ws).
   by rewrite (pend2_right_only (wl_line (drop 1 ws)) sel Hc Hlen).
 Qed.
@@ -174,7 +176,8 @@ Lemma pblk2_code_execL (I : list (bv 8)) (ws : list (list (bv 8)))
   pblk2_code I R sel (palt_code PExecL).
 Proof using.
   intros Hl Hc Hlen. rewrite /pblk2_code (palt_of_code PExecL) Hl.
-  split_and!; [by apply palt_ok_LPipe_execL | exact palt_panic_execL |].
+  split_and!; [by apply palt_ok_LPipe_execL | exact palt_panic_execL
+              | reflexivity |].
   rewrite (pcont_execL ws). by rewrite (pend2_left_only R sel Hc Hlen).
 Qed.
 
@@ -185,7 +188,8 @@ Lemma pblk2_code_execR (I : list (bv 8)) (ws : list (list (bv 8)))
   pblk2_code I dg_execR sel (palt_code PExecR).
 Proof using.
   intros Hl Hc Hlen. rewrite /pblk2_code (palt_of_code PExecR) Hl.
-  split_and!; [by apply palt_ok_LPipe_execR | exact palt_panic_execR |].
+  split_and!; [by apply palt_ok_LPipe_execR | exact palt_panic_execR
+              | reflexivity |].
   rewrite (pcont_execR ws).
   by rewrite (pend2_right_only dg_execR sel Hc Hlen).
 Qed.
@@ -202,7 +206,8 @@ Lemma pblk2_code_both (I : list (bv 8)) (ws : list (list (bv 8)))
 Proof using.
   intros Hl Hc Hlen. rewrite /pblk2_code (palt_of_code (PBoth sel)) Hl.
   destruct (pend2_both_full ws sel Hc Hlen) as [Hok Hcont].
-  split_and!; [exact Hok | exact (palt_panic_both sel) | exact Hcont].
+  split_and!; [exact Hok | exact (palt_panic_both sel) | reflexivity
+              | exact Hcont].
 Qed.
 
 (* THE WITNESS A BYTE IS WRITTEN AGAINST.  The claim reads an UNFILED
@@ -216,13 +221,14 @@ Definition pblk2_wit (I R : list (bv 8)) (sel : list bool) : Prop :=
   exists a : nat,
     palt_ok (pline_at I) (palt_of a)
     /\ palt_panic (palt_of a) = false
+    /\ palt_isforkS (palt_of a) = false
     /\ pend2 R sel `prefix_of` pcont (pline_at I) (palt_of a).
 
 Lemma pblk2_wit_of_code (I R : list (bv 8)) (sel : list bool) (a : nat) :
   pblk2_code I R sel a -> pblk2_wit I R sel.
 Proof using.
-  intros (Hok & Hpan & Hc). exists a.
-  split_and!; [exact Hok | exact Hpan |].
+  intros (Hok & Hpan & Hfk & Hc). exists a.
+  split_and!; [exact Hok | exact Hpan | exact Hfk |].
   rewrite Hc. apply prefix_app_r. reflexivity.
 Qed.
 
@@ -260,8 +266,8 @@ Lemma pblk2_wit_mono (I R : list (bv 8)) (sel sel' : list bool) :
   sel `prefix_of` sel' -> sel_wf2 R sel' ->
   pblk2_wit I R sel' -> pblk2_wit I R sel.
 Proof using.
-  intros Hp Hwf (a & Hok & Hpan & Hpref). exists a.
-  split_and!; [exact Hok | exact Hpan |].
+  intros Hp Hwf (a & Hok & Hpan & Hfk & Hpref). exists a.
+  split_and!; [exact Hok | exact Hpan | exact Hfk |].
   etrans; [exact (pend2_prefix R sel sel' Hp Hwf) | exact Hpref].
 Qed.
 
@@ -449,7 +455,8 @@ Section pipe_both.
          (H : LogEntryDefs.cons_hist) (I R : list (bv 8)) (ps cs : list nat)
          (P : nat) (sel : list bool) (c1 c2 : nat) (b : bv 8),
         ⌜wr_blk2_p ps cs I P R sel c1 c2⌝ -∗ ⌜wr_tail_p ps cs⌝ -∗
-        ⌜dg_execL !! c1 = Some b⌝ -∗ ⌜pblk2_wit I R (sel ++ [true])⌝ -∗
+        ⌜dg_execL !! c1 = Some b⌝ -∗ ⌜Forall nodollar (pend2 R sel)⌝ -∗
+        ⌜pblk2_wit I R (sel ++ [true])⌝ -∗
         era_pin γ k v -∗ turn v (P + c1 + c2)%nat -∗ ps_lb v ps -∗
         cs_lb v cs -∗ pblk_led k I R sel -∗ inp_lb v I -∗
         pecl g k ho H ==∗
@@ -522,14 +529,14 @@ Section pipe_both.
   Proof using .
     rewrite /pblk2_ecl_L. iModIntro.
     iIntros (k v ho H I R ps cs P sel c1 c2 b).
-    iIntros "%Hw %Htl %Hb %Hwit #Hpin Htn #Hps #Hcs Hled #HE Hcl".
+    iIntros "%Hw %Htl %Hb %HndR %Hwit #Hpin Htn #Hps #Hcs Hled #HE Hcl".
     pose proof Hw as (Hne & Hr & Hq & Hline & Hpp & HP & Hlen & Hcnt & _ & _).
     pose proof (nlines_pos_of_rest_nil I Hne Hr) as Hpos.
     pose proof (wr_blk2_p_sel_wf ps cs I P R sel c1 c2 Hw) as Hwf.
     destruct (wr_blk2_step_L ps cs I P R sel c1 c2 b Hw Hb) as (_ & Hstep).
     assert (Hnd : nodollar b)
       by exact (Forall_lookup_1 _ _ _ _ dg_execL_nodollar Hb).
-    destruct Hwit as (a & Hok & Hpan & Hpref).
+    destruct Hwit as (a & Hok & Hpan & Hfk & Hpref).
     rewrite /pline_at in Hok, Hpan, Hpref. rewrite Hstep in Hpref.
     assert (Hlb : length (pend2 R sel) = (c1 + c2)%nat)
       by (rewrite (pend2_length R sel Hwf); exact Hlen).
@@ -545,7 +552,7 @@ Section pipe_both.
       { destruct Hpref as [z Hz]. rewrite Hz. reflexivity. }
       assert (Hle : (nlines I <= S (length cs))%nat) by lia.
       iMod (pecl_blk2_open g k v P a b ps cs I ho H Hne Hr Hle Hpp HP
-              Hok Hpan Hb0 Hnd with "Hpin [Htn] Hps Hcs HE Hcl")
+              Hok Hpan Hfk Hb0 Hnd with "Hpin [Htn] Hps Hcs HE Hcl")
         as "(Hcl & Hret)".
       (* [replace P with ...] would rewrite P inside [Htn] too -- the
          Iris context is part of the Coq goal.  Convert the INDEX. *)
@@ -560,7 +567,7 @@ Section pipe_both.
       iDestruct "Hled" as (w gb) "(#Hpera & Hcur & #Hrlb)".
       iMod (pecl_blk2_byte g k v w gb P (nlines I - 1)%nat a b
               (pend2 R sel) ps cs I ho H Hne Hr eq_refl Hq Hpp HP
-              Hok Hpan Hpref Hnd
+              Hok Hpan Hfk Hpref HndR Hnd
               with "Hpin Hpera [Htn] Hcur Hrlb Hps Hcs HE Hcl")
         as "(Hcl & Hret)".
       { replace (P + length (pend2 R sel))%nat with (P + c1 + c2)%nat
@@ -585,7 +592,7 @@ Section pipe_both.
     destruct (wr_blk2_step_R ps cs I P R sel c1 c2 b Hw Hb) as (_ & Hstep).
     assert (Hnd : nodollar b)
       by exact (Forall_lookup_1 _ _ _ _ HndR Hb).
-    destruct Hwit as (a & Hok & Hpan & Hpref).
+    destruct Hwit as (a & Hok & Hpan & Hfk & Hpref).
     rewrite /pline_at in Hok, Hpan, Hpref. rewrite Hstep in Hpref.
     assert (Hlb : length (pend2 R sel) = (c1 + c2)%nat)
       by (rewrite (pend2_length R sel Hwf); exact Hlen).
@@ -600,7 +607,7 @@ Section pipe_both.
       { destruct Hpref as [z Hz]. rewrite Hz. reflexivity. }
       assert (Hle : (nlines I <= S (length cs))%nat) by lia.
       iMod (pecl_blk2_open g k v P a b ps cs I ho H Hne Hr Hle Hpp HP
-              Hok Hpan Hb0 Hnd with "Hpin [Htn] Hps Hcs HE Hcl")
+              Hok Hpan Hfk Hb0 Hnd with "Hpin [Htn] Hps Hcs HE Hcl")
         as "(Hcl & Hret)".
       { cbn [count_true]. rewrite ?Nat.add_0_r. iExact "Htn". }
       iModIntro. iFrame "Hcl".
@@ -612,7 +619,8 @@ Section pipe_both.
     - iDestruct "Hled" as (w gb) "(#Hpera & Hcur & #Hrlb)".
       iMod (pecl_blk2_byte g k v w gb P (nlines I - 1)%nat a b
               (pend2 R sel) ps cs I ho H Hne Hr eq_refl Hq Hpp HP
-              Hok Hpan Hpref Hnd
+              Hok Hpan Hfk Hpref
+              (pmerge_nodollar sel dg_execL R dg_execL_nodollar HndR) Hnd
               with "Hpin Hpera [Htn] Hcur Hrlb Hps Hcs HE Hcl")
         as "(Hcl & Hret)".
       { replace (P + length (pend2 R sel))%nat with (P + c1 + c2)%nat
@@ -633,7 +641,7 @@ Section pipe_both.
     iIntros "%Hw %Htl %Hcode %Hnn %Hbv #Hpin Htn #Hps #Hcs Hled #HE Hcl".
     pose proof Hw as (Hne & Hr & Hq & Hline & Hpp & HP & Hlen & Hcnt & _ & _).
     pose proof (wr_blk2_p_sel_wf ps cs I P R sel c1 c2 Hw) as Hwf.
-    pose proof Hcode as (Hok & Hpan & Hcont).
+    pose proof Hcode as (Hok & Hpan & Hfk & Hcont).
     rewrite /pline_at in Hok, Hpan, Hcont.
     assert (Hlb : length (pend2 R sel) = (c1 + c2)%nat)
       by (rewrite (pend2_length R sel Hwf); exact Hlen).
@@ -641,7 +649,7 @@ Section pipe_both.
     iDestruct "Hled" as (w gb) "(#Hpera & Hcur & #Hrlb)".
     iMod (pecl_blk2_file g k v w gb P (nlines I - 1)%nat a b
             (pend2 R sel) ps cs I ho H Hne Hr eq_refl Hq Hpp HP
-            Hok Hpan Hcont Hbv
+            Hok Hpan Hfk Hcont Hbv
             with "Hpin Hpera [Htn] Hcur Hrlb Hps Hcs HE Hcl")
       as "(Hcl & Hret)".
     { replace (P + length (pend2 R sel))%nat with (P + c1 + c2)%nat
@@ -679,13 +687,14 @@ Section pipe_both.
   Lemma pblk2_step_L (k : nat) (v : era_pins) (I R : list (bv 8))
       (sel : list bool) (c1 c2 : nat) (b : bv 8) (Φ : iProp Σ) :
     dg_execL !! c1 = Some b ->
+    Forall nodollar (pend2 R sel) ->
     pblk2_wit I R (sel ++ [true]) ->
     pblk2_ecl_L -∗ pipe_link_taint g -∗ era_pin γ k v -∗
     pwc_blk2 k v I R sel c1 c2 -∗
     (pwc_blk2 k v I R (sel ++ [true]) (S c1) c2 -∗ Φ) -∗
     out_link Uart0 k b Φ.
   Proof using Hcons.
-    intros Hb Hwit. iIntros "#HL #Ht #Hpin Hc HΦ".
+    intros Hb HndR Hwit. iIntros "#HL #Ht #Hpin Hc HΦ".
     rewrite {1}/pwc_blk2. iDestruct "Hc" as "[Hx | #HT]"; last first.
     { iApply ("Ht" $! k b Φ with "HT [HΦ]").
       iIntros "#HT'". iApply "HΦ". by iApply pwc_blk2_taint. }
@@ -694,7 +703,7 @@ Section pipe_both.
     destruct (wr_blk2_step_L ps cs I P R sel c1 c2 b Hw Hb) as (Hw' & _).
     rewrite /out_link. iIntros (o H) "#Hlb Hres". rewrite !pbchist_at0.
     iMod ("HL" $! k v (default [] o) H I R ps cs P sel c1 c2 b
-            with "[//] [//] [//] [//] Hpin Htn Hps Hcs Hled HE Hres")
+            with "[//] [//] [//] [//] [//] Hpin Htn Hps Hcs Hled HE Hres")
       as "(Hres & Hret)".
     iModIntro. iExists o. rewrite pbchist_at0. iFrame "Hlb Hres".
     iApply "HΦ". rewrite /pwc_blk2.
@@ -849,8 +858,8 @@ Section pipe_both.
     pend2 R sel = pend2 R' sel ->
     pblk2_wit I R' sel -> pblk2_wit I R sel.
   Proof using .
-    intros Heq (a & Hok & Hpan & Hpref). exists a.
-    split_and!; [exact Hok | exact Hpan |]. by rewrite Heq.
+    intros Heq (a & Hok & Hpan & Hfk & Hpref). exists a.
+    split_and!; [exact Hok | exact Hpan | exact Hfk |]. by rewrite Heq.
   Qed.
 
   Lemma pwc_blk2_R_indep (k : nat) (v : era_pins) (I : list (bv 8))
@@ -1097,8 +1106,9 @@ Section pipe_both.
     rewrite {1}/rmode. iDestruct "Hrm" as (n) "[HgM Harm]".
     iAssert (|={⊤ ∖ ↑uartN Uart0 ∖ ↑N}=>
                ⌜pblk2_wit I R (sel ++ [true])⌝
+               ∗ ⌜Forall nodollar (pend2 R sel)⌝
                ∗ rmode gM L R c2 YR ∗ XL)%I
-      with "[Harm HgM HXL]" as ">(%Hwit1 & Hrm & HXL)".
+      with "[Harm HgM HXL]" as ">(%Hwit1 & %HndR & Hrm & HXL)".
     { iDestruct "Harm" as "[%Ha | [[%Ha HYR] | %Ha]]".
       - (* the mode is UNSET: [c2 = 0], so the block so far is all-left
            and [R] is not read at all *)
@@ -1113,6 +1123,12 @@ Section pipe_both.
               | lia ].
           - apply Hwit. rewrite /sel_wf2 count_true_app length_app.
             cbn [count_true length]. lia. }
+        iSplitR.
+        { iPureIntro. rewrite /pend2 (pmerge_all_true sel dg_execL R);
+            [| lia | lia].
+          apply Forall_lookup. intros i x Hx.
+          apply lookup_take_Some in Hx as [Hx _].
+          exact (Forall_lookup_1 _ _ _ _ dg_execL_nodollar Hx). }
         rewrite /rmode. iExists n. iFrame "HgM". iLeft. by iPureIntro.
       - (* [R = L]: cat is printing the line, so the left child never
            wrote -- and it is holding the very permit that says so *)
@@ -1123,11 +1139,14 @@ Section pipe_both.
         { iPureIntro. apply Hwit.
           rewrite /sel_wf2 count_true_app length_app.
           cbn [count_true length]. lia. }
+        iSplitR.
+        { iPureIntro. rewrite /pend2. apply pmerge_nodollar;
+            [exact dg_execL_nodollar | exact dg_execR_nodollar]. }
         rewrite /rmode. iExists n. iFrame "HgM". iRight. iRight.
         by iPureIntro. }
     destruct (wr_blk2_step_L ps cs I P R sel c1 c2 b Hw Hb) as (Hw' & _).
     iMod ("HL" $! k v (default [] o) H I R ps cs P sel c1 c2 b
-            with "[//] [//] [//] [//] Hpin Htn Hps Hcs Hled HE Hres")
+            with "[//] [//] [//] [//] [//] Hpin Htn Hps Hcs Hled HE Hres")
       as "(Hres & Hret)".
     iMod (wcur_update gL c1 c1 (S c1) with "HcL HgL") as "[HcL HgL]".
     iMod ("Hclose" with "[Hret HgL HgR HXL Hrm]") as "_".
@@ -1364,7 +1383,8 @@ Section pipe_both.
       assert (HW1 : pblk2_wit I R (sel ++ [true])).
       { apply (pblk2_wit_mono I R (sel ++ [true]) (sel ++ true :: t));
           [exists t; by rewrite -app_assoc | exact Hwf' | exact Hwit]. }
-      iApply (pblk2_step_L k v I R sel c1 c2 b _ Hb HW1
+      iApply (pblk2_step_L k v I R sel c1 c2 b _ Hb
+               (pmerge_nodollar sel dg_execL R dg_execL_nodollar HndR) HW1
                with "HL Ht Hpin Hc").
       iIntros "Hc".
       (* the four premises are HOISTED, never spliced as [ltac:] into an
@@ -1520,7 +1540,7 @@ Section pipe_both.
       as (ps cs P) "(%Hw & %Htl & Htn & #Hps & #Hcs & Hled & #HE)".
     pose proof (wr_blk2_p_sel_wf ps cs I P R sel c1 c2 Hw) as Hwf.
     pose proof Hw as (Hne & Hr & Hq & Hline & Hpp & HP & Hlen & _).
-    pose proof Hcode as (Hok & Hpan & Hcont).
+    pose proof Hcode as (Hok & Hpan & Hfk & Hcont).
     rewrite /pline_at in Hok, Hpan, Hcont.
     assert (Hpapr : papr I a) by exact (pblk2_code_papr I R sel a Hcode).
     assert (Hab : length (pab I a) = S (S (c1 + c2))%nat)
@@ -1532,7 +1552,7 @@ Section pipe_both.
     iDestruct "Hled" as (w gb) "(#Hpera & Hcur & #Hrlb)".
     iApply ("HF" $! k v w gb P (nlines I - 1)%nat a b (pend2 R sel)
               ps cs I Φ
-              with "[//] [//] [//] [//] [//] [//] [//] [//] [//] [//]
+              with "[//] [//] [//] [//] [//] [//] [//] [//] [//] [//] [//]
                     Hpin Hpera [Htn] Hcur Hrlb Hps Hcs HE [HΦ]").
     { replace (P + length (pend2 R sel))%nat with (P + c1 + c2)%nat
         by (rewrite Hlb; lia). iExact "Htn". }

@@ -138,10 +138,15 @@ Proof using. intro Hl. rewrite Hl pipe_palt0. cbn [palt_ok]. lia. Qed.
 Lemma pipe_palt0_nopanic : palt_panic (palt_of 0%nat) = false.
 Proof using. rewrite pipe_palt0. by vm_compute. Qed.
 
+Lemma pipe_palt0_nofork : palt_isforkS (palt_of 0%nat) = false.
+Proof using. rewrite pipe_palt0. reflexivity. Qed.
+
 Lemma pipe_pab0 (I : list (bv 8)) :
   pipe_lineok I -> pab I 0%nat = line_alts_of (last_ws I) !!! 0%nat.
 Proof using.
-  intro Hl. rewrite (pab_is I 0%nat (pipe_palt0_ok I Hl)) Hl pipe_palt0.
+  intro Hl.
+  rewrite (pab_is I 0%nat (conj (pipe_palt0_ok I Hl) pipe_palt0_nofork))
+          Hl pipe_palt0.
   reflexivity.
 Qed.
 
@@ -231,7 +236,8 @@ Section pipe_stage_inst.
     pipe_lineok I -> lk_apr PI I 0%nat.
   Proof using .
     intro Hl. cbn [lk_apr pipe_link_inst_at]. rewrite /papr.
-    split; [ exact (pipe_palt0_ok I Hl) | exact pipe_palt0_nopanic ].
+    split_and!; [ exact (pipe_palt0_ok I Hl) | exact pipe_palt0_nopanic
+                | exact pipe_palt0_nofork ].
   Qed.
 
   Definition pipe_stage_inst_at : StageRec PI :=

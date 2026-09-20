@@ -557,6 +557,9 @@ Proof using. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
 Lemma alt_forkc_panic : alt_forkc = alt_panic ++ u_prompt.
 Proof using. reflexivity. Qed.
 
+Lemma alt_forkc_len : length alt_forkc = 7%nat.
+Proof using. by vm_compute. Qed.
+
 Lemma alt_forkc_string :
   alt_forkc = sb "fork"%string ++ nlb ++ sb "$ "%string.
 Proof using. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
@@ -791,6 +794,107 @@ Proof using.
     rewrite pmerge_false_cons. cbn. intros [= <-]. by right.
 Qed.
 
+(* THE ALL-[false] SELECTOR reads the RIGHT source alone, which is the
+   terminal round that got no stray byte ([pcont_forkS_old]). *)
+Lemma pmerge_all_false_gen (n : nat) (d1 d2 : list (bv 8)) :
+  pmerge (replicate n false) d1 d2 = take n d2.
+Proof using.
+  revert d1 d2. induction n as [| n IH]; intros d1 d2; [reflexivity |].
+  cbn [replicate]. destruct d2 as [| b d2'].
+  - by rewrite pmerge_false_nil take_nil.
+  - rewrite pmerge_false_cons. cbn [take]. by rewrite IH.
+Qed.
+
+(* ---- IS THIS RUN A SHUFFLE OF THE TWO FORK-ROUND SOURCES? ------------ *)
+
+(* THE TEST THE TERMINAL ROUND IS READ BY (lane PIPE-MODEL-3, design
+   section 4.3h).  A pipeline round whose [fork1] failed has TWO live
+   writers -- the runcmd child and sh's main loop between them write
+   [alt_forkc] ("fork\n$ "), and the STRAY left child, whose own exec
+   failed, writes a prefix of [dg_execL] at any time, including after the
+   prompt.  So the round's bytes are a shuffle of the two lists, and
+   [shufb] is that test, by recursion on the run: at each byte, take it
+   from the left source or from the right one.  It PRUNES at the first
+   byte that matches neither, which is why it evaluates in milliseconds
+   on the demos below even though its worst case is exponential.
+
+   [pmergeable] is the test and not the existential [exists sel, ...] on
+   purpose: it is decidable and [vm_compute]-able BY CONSTRUCTION, which
+   is what discipline rule D4 and the decision procedure of
+   [PipeDiscDec] both need, and what no statement about [sel] can be --
+   an admitted [sel] here has length up to 24. *)
+Fixpoint shufb (u d1 d2 : list (bv 8)) : bool :=
+  match u with
+  | [] => true
+  | x :: u' =>
+      (match d1 with
+       | y :: d1' => bool_decide (y = x) && shufb u' d1' d2
+       | [] => false
+       end)
+      || (match d2 with
+          | y :: d2' => bool_decide (y = x) && shufb u' d1 d2'
+          | [] => false
+          end)
+  end.
+
+Definition pmergeable (u : list (bv 8)) : Prop :=
+  shufb u dg_execL alt_forkc = true.
+
+Global Instance pmergeable_dec u : Decision (pmergeable u).
+Proof using. rewrite /pmergeable. apply _. Defined.
+
+Lemma pmergeable_nil : pmergeable [].
+Proof using. reflexivity. Qed.
+
+(* A PREFIX OF A SHUFFLE IS A SHUFFLE -- take the same choices.  This is
+   the one closure law [pcont_pair_det] spends: the claim's terminal block
+   is a shuffle, so anything the discipline reads BELOW it is one too. *)
+Lemma shufb_prefix (u' u d1 d2 : list (bv 8)) :
+  u' `prefix_of` u -> shufb u d1 d2 = true -> shufb u' d1 d2 = true.
+Proof using.
+  revert u d1 d2. induction u' as [| x u' IH]; intros u d1 d2 Hp Hs;
+    [reflexivity |].
+  destruct u as [| y u]; [by apply prefix_nil_not in Hp |].
+  apply prefix_cons_inv_1 in Hp as Hxy.
+  apply prefix_cons_inv_2 in Hp as Hpr.
+  subst y. cbn [shufb] in Hs |- *.
+  apply orb_prop in Hs as [Hs | Hs].
+  - destruct d1 as [| z d1']; [discriminate |].
+    apply andb_prop in Hs as [Hz Hs].
+    rewrite Hz (IH u d1' d2 Hpr Hs). reflexivity.
+  - destruct d2 as [| z d2']; [discriminate |].
+    apply andb_prop in Hs as [Hz Hs].
+    rewrite Hz (IH u d1 d2' Hpr Hs) orb_true_r. reflexivity.
+Qed.
+
+Lemma pmergeable_prefix (u' u : list (bv 8)) :
+  u' `prefix_of` u -> pmergeable u -> pmergeable u'.
+Proof using. rewrite /pmergeable. apply shufb_prefix. Qed.
+
+(* ...AND A MERGE IS ONE, which is what makes the test COMPLETE for the
+   blocks the terminal round can write. *)
+Lemma shufb_pmerge (sel : list bool) (d1 d2 : list (bv 8)) :
+  (count_true sel <= length d1)%nat ->
+  (length sel - count_true sel <= length d2)%nat ->
+  shufb (pmerge sel d1 d2) d1 d2 = true.
+Proof using.
+  revert d1 d2. induction sel as [| [|] s IH]; intros d1 d2 H1 H2;
+    [reflexivity | |].
+  - cbn [count_true length] in H1, H2.
+    destruct d1 as [| y d1']; [cbn [length] in H1; lia |].
+    rewrite pmerge_true_cons. cbn [shufb].
+    rewrite bool_decide_eq_true_2; [| reflexivity].
+    rewrite (IH d1' d2 ltac:(cbn [length] in H1; lia) ltac:(lia)).
+    reflexivity.
+  - cbn [count_true length] in H1, H2.
+    pose proof (count_true_le s) as Hle.
+    destruct d2 as [| y d2']; [cbn [length] in H2; lia |].
+    rewrite pmerge_false_cons. cbn [shufb].
+    rewrite bool_decide_eq_true_2; [| reflexivity].
+    rewrite (IH d1 d2' ltac:(lia) ltac:(cbn [length] in H2; lia)).
+    by rewrite orb_true_r.
+Qed.
+
 (* ====================================================================== *)
 (*  3.  THE ROUND'S ALTERNATIVES                                           *)
 (* ====================================================================== *)
@@ -812,12 +916,31 @@ Qed.
                                                    byte-wise interleaving
      PPipe       "pipe\n$ "                        pipe(2) failed; sh's panic
                                                    in the runcmd CHILD
-     PFork       "fork\n$ "                        a fork1 failed in the
-                                                   runcmd child (either one)
+     PForkS sel  pmerge sel dg_execL alt_forkc     a fork1 failed in the
+                                                   runcmd child; [sel] is
+                                                   the byte-wise
+                                                   interleaving of the
+                                                   STRAY left child's
+                                                   diagnostic (true) with
+                                                   "fork\n$ " (false)
      PSilent     "$ "                              a child died before
                                                    printing
 
-   [PPipe] AND [PFork] END IN THE PROMPT, not in a fresh prologue: [runcmd]
+   [PForkS] IS THE TERMINAL ROUND (lane PIPE-MODEL-3, design section
+   4.3h, owner's ruling "strays" of 2026-09-21).  [runcmd]'s PIPE arm
+   forks TWICE and does not wait between the forks: if [fork1] #2 fails
+   after #1 succeeded, the runcmd child prints "fork\n" and exits while
+   child 1 is ALIVE, and child 1's own [exec /echo] may fail -- so a
+   STRAY writer prints a prefix of [dg_execL] at any later time,
+   byte-interleaved with the panic, with sh's prompt and with anything
+   after it.  The old constant [PFork] is the interleaving that got no
+   stray byte, [PForkS (replicate (length alt_forkc) false)]
+   ([pcont_forkS_old]).  What stops the interleaving from spreading into
+   the NEXT round is discipline rule D4 ([d4_p]): a round whose block is
+   a shuffle of the two sources is the LAST round of the covered
+   session.
+
+   [PPipe] AND [PForkS] END IN THE PROMPT, not in a fresh prologue: [runcmd]
    runs in the shell's forked child, so [panic] there exits the CHILD, the
    parent's [wait(0)] returns and it prints the next prompt.  The MAIN
    loop's own [fork1] panic -- which does kill the shell and re-enter
@@ -829,7 +952,7 @@ Inductive palt :=
   | PExecR
   | PBoth (sel : list bool)
   | PPipe
-  | PFork
+  | PForkS (sel : list bool)
   | PSilent.
 
 Global Instance palt_eq_dec : EqDecision palt.
@@ -937,8 +1060,9 @@ Definition palt_code (a : palt) : nat :=
   match a with
   | PEcho k => if decide (k < 4)%nat then k else (10 + 16 * (k - 4))%nat
   | PRan => 4%nat | PExecL => 5%nat | PExecR => 6%nat
-  | PPipe => 7%nat | PFork => 8%nat | PSilent => 9%nat
+  | PPipe => 7%nat | PSilent => 9%nat
   | PBoth sel => (11 + 16 * bnum sel)%nat
+  | PForkS sel => (12 + 16 * bnum sel)%nat
   end.
 
 Definition palt_of (n : nat) : palt :=
@@ -947,10 +1071,12 @@ Definition palt_of (n : nat) : palt :=
   else if decide (n = 5%nat) then PExecL
   else if decide (n = 6%nat) then PExecR
   else if decide (n = 7%nat) then PPipe
-  else if decide (n = 8%nat) then PFork
+  else if decide (n = 8%nat) then PSilent
   else if decide (n = 9%nat) then PSilent
   else if decide (Nat.modulo n 16 = 11%nat)
        then PBoth (bdec (Nat.div n 16))
+       else if decide (Nat.modulo n 16 = 12%nat)
+       then PForkS (bdec (Nat.div n 16))
        else PEcho (4 + Nat.div n 16)%nat.
 
 Lemma pd_mod16_add (a m : nat) : Nat.modulo (a + 16 * m) 16 = Nat.modulo a 16.
@@ -968,7 +1094,7 @@ Qed.
 
 Lemma palt_of_code a : palt_of (palt_code a) = a.
 Proof using.
-  destruct a as [k | | | | sel | | |]; try (by vm_compute).
+  destruct a as [k | | | | sel | | sel |]; try (by vm_compute).
   - (* PEcho: its own index below 4, and out of every other code's way
        above it *)
     rewrite /palt_code. case_decide as Hk.
@@ -977,6 +1103,7 @@ Proof using.
         by (rewrite pd_mod16_add; by vm_compute).
       rewrite /palt_of.
       do 7 (case_decide; [exfalso; lia |]).
+      case_decide; [exfalso; congruence |].
       case_decide; [exfalso; congruence |].
       rewrite (pd_div16_add 10 (k - 4)%nat ltac:(lia)). f_equal. lia.
   - (* PBoth: the interleaving through its binary numeral *)
@@ -987,6 +1114,16 @@ Proof using.
     do 7 (case_decide; [exfalso; lia |]).
     case_decide; [| exfalso; congruence].
     rewrite (pd_div16_add 11 (bnum sel) ltac:(lia)).
+    by rewrite bdec_bnum.
+  - (* PForkS: the terminal round's interleaving, at the next tag *)
+    pose proof (bnum_pos sel) as Hp.
+    assert (Hm : Nat.modulo (12 + 16 * bnum sel) 16 = 12%nat)
+      by (rewrite pd_mod16_add; by vm_compute).
+    rewrite /palt_code /palt_of.
+    do 7 (case_decide; [exfalso; lia |]).
+    case_decide; [exfalso; congruence |].
+    case_decide; [| exfalso; congruence].
+    rewrite (pd_div16_add 12 (bnum sel) ltac:(lia)).
     by rewrite bdec_bnum.
 Qed.
 
@@ -1006,7 +1143,7 @@ Qed.
 
 (* THE PROLOGUE-RE-ENTERING ALTERNATIVE: the MAIN loop's [fork1] panicked,
    init reaped the SHELL and its outer loop opened a NEW prologue round.
-   [PPipe] and [PFork] are NOT of this kind -- they panic in the runcmd
+   [PPipe] and [PForkS] are NOT of this kind -- they panic in the runcmd
    child and the shell lives. *)
 Definition palt_panic (a : palt) : bool :=
   match a with PEcho k => bool_decide (k = 3%nat) | _ => false end.
@@ -1022,7 +1159,11 @@ Definition palt_ok (l : pline) (a : palt) : Prop :=
       | PBoth sel =>
           length sel = (length dg_execL + length dg_execR)%nat
           /\ count_true sel = length dg_execL
-      | PRan | PExecL | PExecR | PPipe | PFork | PSilent => True
+      | PForkS sel =>
+          sel <> []
+          /\ (count_true sel <= length dg_execL)%nat
+          /\ (length sel - count_true sel <= length alt_forkc)%nat
+      | PRan | PExecL | PExecR | PPipe | PSilent => True
       | PEcho k => k = 3%nat
       end
   end.
@@ -1040,7 +1181,8 @@ Proof using. destruct l, a; rewrite /palt_ok; apply _. Defined.
    is decided before the line is parsed)".  The lane reported the
    contradiction (the machine CAN put [alt_panic] and then a FRESH
    PROLOGUE on the wire in a pipeline round, and no other [LPipe]
-   alternative prints that: [PFork] prints [alt_panic ++ u_prompt], which
+   alternative prints that: [PForkS] prints a shuffle of [alt_panic ++
+   u_prompt] with the stray's diagnostic, which
    parts from it at byte 5 whenever the re-entered prologue carries the
    banner -- so the theorem at the old table would have been FALSE, not
    vacuous), and the coordinator RULED for the prose (2026-09-18): exactly
@@ -1080,7 +1222,7 @@ Qed.
 Lemma palt_panic_3 (l : pline) (a : palt) :
   palt_ok l a -> palt_panic a = true -> a = PEcho 3%nat.
 Proof using.
-  destruct a as [k | | | | sel | | |]; intros Ha Hp; try discriminate.
+  destruct a as [k | | | | sel | | sel |]; intros Ha Hp; try discriminate.
   rewrite /palt_panic in Hp. apply bool_decide_eq_true in Hp as ->.
   reflexivity.
 Qed.
@@ -1089,8 +1231,48 @@ Lemma palt_ok_echo_lt4 ws c : palt_ok (LEcho ws) (palt_of c) -> (c < 4)%nat.
 Proof using.
   rewrite /palt_of. case_decide as H4; [by intros _ |].
   do 6 (case_decide; [by intros [] |]).
+  case_decide; [by intros [] |].
   case_decide; [by intros [] | rewrite /palt_ok; lia].
 Qed.
+
+(* ---- THE TERMINAL ROUND'S ALTERNATIVE, AND THE OLD [PFork] ---------- *)
+
+(* the one-bit reading every consumer takes: IS this round the terminal
+   fork-failure one? *)
+Definition palt_isforkS (a : palt) : bool :=
+  match a with PForkS _ => true | _ => false end.
+
+Lemma palt_isforkS_code (sel : list bool) :
+  palt_isforkS (palt_of (palt_code (PForkS sel))) = true.
+Proof using. by rewrite palt_of_code. Qed.
+
+Lemma palt_isforkS_inv (a : palt) :
+  palt_isforkS a = true -> exists sel, a = PForkS sel.
+Proof using. destruct a; try discriminate. intros _. by eexists. Qed.
+
+Lemma palt_panic_forkS (sel : list bool) : palt_panic (PForkS sel) = false.
+Proof using. reflexivity. Qed.
+
+(* THE OLD [PFork] IS [PForkS] AT THE SELECTOR THAT TOOK NO STRAY BYTE.
+   Design section 4.3h says "[PForkS []] is the old [PFork]"; it is NOT
+   ([pcont] at the empty selector is the EMPTY block, and [palt_ok]
+   refuses it).  [false] is the RIGHT source ([alt_forkc]) because the
+   stage's [PipeBothPure.pend2 R sel] is [pmerge sel dg_execL R] and the
+   runcmd child holds the RIGHT cursor (design section 4.3h's own stage
+   paragraph: "the right source gains a third mode [alt_forkc]"), so the
+   design's [pmerge sel alt_forkc (... dg_execL)] has its two sources
+   the wrong way round. *)
+Definition sel_forkc : list bool := replicate (length alt_forkc) false.
+
+Lemma palt_ok_forkS_old (ws : list (list (bv 8))) :
+  palt_ok (LPipe ws) (PForkS sel_forkc).
+Proof using.
+  rewrite /palt_ok /sel_forkc. split.
+  { intro Hq. apply (f_equal length) in Hq.
+    rewrite length_replicate alt_forkc_len in Hq. cbn [length] in Hq. lia. }
+  rewrite count_true_replicate_false length_replicate. lia.
+Qed.
+
 
 Lemma palt_panic_echo c :
   (c < 4)%nat -> palt_panic (palt_of c) = bool_decide (c = 3%nat).
@@ -1108,7 +1290,7 @@ Definition pcont (l : pline) (a : palt) : list (bv 8) :=
   | PExecR => alt_execR
   | PBoth sel => pmerge sel dg_execL dg_execR ++ u_prompt
   | PPipe => alt_pipe
-  | PFork => alt_forkc
+  | PForkS sel => pmerge sel dg_execL alt_forkc
   | PSilent => u_prompt
   end.
 
@@ -1116,6 +1298,31 @@ Definition pcont (l : pline) (a : palt) : list (bv 8) :=
    prints exactly what the echo line prints. *)
 Lemma pcont_PRan_alt0 l : pcont l PRan = line_alts_of (pline_ws l) !!! 0%nat.
 Proof using. reflexivity. Qed.
+
+Lemma pcont_forkS_old (ws : list (list (bv 8))) :
+  pcont (LPipe ws) (PForkS sel_forkc) = alt_forkc.
+Proof using.
+  rewrite /pcont /sel_forkc.
+  rewrite (pmerge_all_false_gen (length alt_forkc) dg_execL alt_forkc).
+  by rewrite take_ge.
+Qed.
+
+(* EVERY ADMITTED TERMINAL BLOCK PASSES THE SHUFFLE TEST -- the
+   completeness half of [pmergeable], and the reason [pcont_pair_det]'s
+   new premise is discharged by discipline rule D4 and by nothing else. *)
+Lemma pmergeable_forkS (l : pline) (sel : list bool) :
+  palt_ok l (PForkS sel) -> pmergeable (pcont l (PForkS sel)).
+Proof using.
+  destruct l as [ws | ws]; [by intros [] |]. intros (_ & H1 & H2).
+  rewrite /pmergeable /pcont. by apply shufb_pmerge.
+Qed.
+
+Lemma pmergeable_isforkS (l : pline) (a : palt) :
+  palt_ok l a -> palt_isforkS a = true -> pmergeable (pcont l a).
+Proof using.
+  intros Ha Hf. destruct (palt_isforkS_inv a Hf) as [sel ->].
+  exact (pmergeable_forkS l sel Ha).
+Qed.
 
 Lemma pcont_panic l a : palt_panic a = true -> pcont l a = alt_panic.
 Proof using.
@@ -1128,7 +1335,7 @@ Qed.
    a '$'-free run and then sh's prompt.  There is no third shape, at
    either line.  (Design section 1 asked whether EVERY continuation
    satisfies the shape: every one but [PEcho 3] does -- [PPipe] and
-   [PFork] end in the prompt too -- and [PEcho 3] is the one the prologue
+   [PForkS] ends in the prompt too -- and [PEcho 3] is the one the prologue
    follows.) *)
 (* AN ADMITTED INTERLEAVING IS NONEMPTY AND OPENS ON 'e'.  Both exec
    diagnostics start with "exec", so whichever child got the wire first,
@@ -1157,9 +1364,10 @@ Qed.
 
 Lemma pcont_shape (l : pline) (a : palt) :
   pline_ok l -> palt_ok l a -> palt_panic a = false ->
+  palt_isforkS a = false ->
   exists u, pcont l a = u ++ u_prompt /\ Forall nodollar u.
 Proof using.
-  intros Hl Ha Hp.
+  intros Hl Ha Hp Hf.
   assert (Hex : wl_wf dg_exec)
     by (apply (bool_decide_unpack _); vm_compute; exact I).
   assert (Hec : wl_wf dg_exec_cat)
@@ -1171,7 +1379,7 @@ Proof using.
   assert (Hpr : exists u : list (bv 8), u_prompt = u ++ u_prompt
                   /\ Forall nodollar u).
   { exists []. split; [reflexivity | constructor]. }
-  destruct a; rewrite /pcont.
+  destruct a; rewrite /pcont; [| | | | | | discriminate |].
   - (* PEcho: the echo application's four, minus the panic one.  At a
        PIPELINE line the only [PEcho] admitted IS the panic one, so the
        hypothesis refutes the case outright. *)
@@ -1197,8 +1405,6 @@ Proof using.
     exact (pmerge_no_dollar sel).
   - exists (wl_line dg_pipe). rewrite /alt_pipe. split; [reflexivity |].
     apply (pd_wl_line_shape dg_pipe Hpi).
-  - exists (wl_line dg_fork). rewrite /alt_forkc. split; [reflexivity |].
-    apply (pd_wl_line_shape dg_fork Hfk).
   - exact Hpr.
 Qed.
 
@@ -1212,12 +1418,13 @@ Qed.
    this lemma puts sh's panic line on the other side. *)
 Lemma pcont_shape_nl (l : pline) (a : palt) :
   pline_ok l -> palt_ok l a -> palt_panic a = false ->
+  palt_isforkS a = false ->
   exists u, pcont l a = u ++ u_prompt
             /\ Forall nodollar u
             /\ ((wl_nl ∉ u \/ exists v, wl_nl ∉ v /\ u = v ++ [wl_nl])
                 \/ u !! 0%nat = Some (Z_to_bv 8 101%Z)).
 Proof using.
-  intros Hl Ha Hp.
+  intros Hl Ha Hp Hf.
   assert (Hex : wl_wf dg_exec)
     by (apply (bool_decide_unpack _); vm_compute; exact I).
   assert (Hec : wl_wf dg_exec_cat)
@@ -1232,7 +1439,8 @@ Proof using.
                       \/ u !! 0%nat = Some (Z_to_bv 8 101%Z))).
   { exists []. split; [reflexivity |]. split; [constructor |].
     left. left. apply not_elem_of_nil. }
-  destruct a as [k | | | | sel | | |]; rewrite /pcont.
+  destruct a as [k | | | | sel | | sel |]; rewrite /pcont;
+    [| | | | | | discriminate |].
   - (* PEcho: at a PIPELINE line the only one admitted panics *)
     rewrite /palt_panic in Hp. apply bool_decide_eq_false in Hp.
     rewrite /palt_ok in Ha. destruct l as [ws | ws]; [| by destruct (Hp Ha)].
@@ -1266,9 +1474,6 @@ Proof using.
     exact (pcont_both_head_e l sel Ha).
   - exists (wl_line dg_pipe). rewrite /alt_pipe. split; [reflexivity |].
     destruct (pd_wl_line_shape' dg_pipe Hpi) as [H1 H2].
-    split; [exact H1 | by left].
-  - exists (wl_line dg_fork). rewrite /alt_forkc. split; [reflexivity |].
-    destruct (pd_wl_line_shape' dg_fork Hfk) as [H1 H2].
     split; [exact H1 | by left].
   - exact Hpr.
 Qed.
@@ -1729,11 +1934,84 @@ Proof using.
   by rewrite (list_lookup_total_correct _ _ _ Hb).
 Qed.
 
-(* THE PER-CYCLE DISCIPLINE, at [EchoDisc.disc_seg']'s shape *)
+(* ---- D4: THE COVERED SESSION ENDS AT A FORK-FAILURE ROUND ----------- *)
+
+(* DISCIPLINE RULE D4 (design section 4.3h, owner's ruling "strays" of
+   2026-09-21, as REPAIRED by this lane).  A pipeline round whose [fork1]
+   failed leaves a STRAY writer alive: it prints a prefix of [dg_execL] at
+   any later time, so nothing the session prints after such a round is a
+   function of the input any more.  D4 is the premise that stops there:
+   A ROUND WHOSE BLOCK IS A SHUFFLE OF THE TWO SOURCES IS THE LAST ROUND
+   OF THE COVERED SESSION -- no further line, and no further byte typed.
+
+   IT IS STATED ON THE BYTES ([pmergeable]) AND NOT ON THE ALTERNATIVE,
+   and that is the lane's one correction to the ruling.  "The resolution
+   has [PForkS] at line [i]" is NOT enough, because the wire does not
+   say which alternative ran: at [echo fork | cat] the GOOD run [PRan]
+   prints [wl_line ["fork"] ++ u_prompt], which is [alt_forkc] byte for
+   byte -- so a user who typed that line, had its [fork1] fail, and
+   typed on would be inside a [PRan]-resolved discipline while a stray
+   child was still writing, and [pipe_phi] would be FALSE at that trace
+   ([d4_ambiguous] in section 8 is the witness).  Reading D4 off the
+   BYTES closes that: the [PRan] resolution of such a round is a shuffle
+   too, so it ends the covered session as well.  The price is exactly
+   the confusable lines, and it is a fact about the WIRE, which is what
+   design section 4.3h asks a stray premise to be.
+
+   THE PRICE, MEASURED AND REPORTED: the test is on [pcont] and not on
+   the whole block, so it does not read the prologue a PANIC round
+   re-enters -- and [alt_panic] ("fork\n") is ITSELF a shuffle prefix.
+   So D4 as landed ALSO ends the covered session at sh's main-loop fork
+   panic, at either line shape.  That is sound and it is honest ("fork\n"
+   on the wire does not say which process wrote it), but it is wider
+   than the ruling asks for.  Narrowing it to "the block is a COMPLETE
+   fork block" needs the test to read [alt_cont_p] -- the prologue
+   included, because a panic followed by a BARE-PROMPT prologue is
+   [alt_forkc] byte for byte and the model admits that prologue
+   ([pro_alts !!! 0]) -- and then [d4_p] depends on [ps], which
+   [PipeDiscDec]'s prologue canonicalisation does not preserve.  A
+   ruling is asked for.
+
+   [d4_p] is a [Forall] over [seq] rather than a bounded quantifier so
+   that it is decidable and [vm_compute]-able, which is what
+   [PipeDiscDec] and the demos of section 8 need. *)
+Definition d4_p (cs : list nat) (I : list (bv 8)) : Prop :=
+  Forall (fun i => pmergeable (pcont (pline_of (bodies_of I !!! i))
+                                 (palt_at cs i)) ->
+                   nlines I = S i /\ rest_of I = [])
+    (seq 0 (nlines I)).
+
+Global Instance d4_p_dec cs I : Decision (d4_p cs I).
+Proof using. rewrite /d4_p. apply _. Defined.
+
+Lemma pd_nlines_nil : nlines [] = 0%nat.
+Proof using. by vm_compute. Qed.
+
+Lemma d4_p_at (cs : list nat) (I : list (bv 8)) (i : nat) :
+  d4_p cs I -> (i < nlines I)%nat ->
+  pmergeable (pcont (pline_of (bodies_of I !!! i)) (palt_at cs i)) ->
+  nlines I = S i /\ rest_of I = [].
+Proof using.
+  intros Hd Hi. apply (proj1 (Forall_forall _ _) Hd i).
+  apply elem_of_seq. lia.
+Qed.
+
+Lemma d4_p_intro (cs : list nat) (I : list (bv 8)) :
+  (forall i, (i < nlines I)%nat ->
+     pmergeable (pcont (pline_of (bodies_of I !!! i)) (palt_at cs i)) ->
+     nlines I = S i /\ rest_of I = []) ->
+  d4_p cs I.
+Proof using.
+  intro H. apply Forall_forall. intros i Hi.
+  apply elem_of_seq in Hi. apply H. lia.
+Qed.
+
+(* THE PER-CYCLE DISCIPLINE, at [EchoDisc.disc_seg']'s shape, with D4 *)
 Definition disc_seg_p' (seg : list mobs) : Prop :=
   disc_seg_p seg
   /\ exists ps cs : list nat,
        alts_ok_p (ins seg) cs
+       /\ d4_p cs (ins seg)
        /\ forall p : list mobs, p ∈ in_pres seg ->
             pro_ok_p ps cs (nlines (ins p)) /\ disc_pt_p ps cs p.
 
@@ -1749,11 +2027,12 @@ Global Instance disc_pt_all_p_dec ps cs seg : Decision (disc_pt_all_p ps cs seg)
 Proof using. rewrite /disc_pt_all_p. apply _. Defined.
 
 Lemma disc_seg_p'_intro (seg : list mobs) (ps cs : list nat) :
-  disc_seg_p seg -> alts_ok_p (ins seg) cs -> disc_pt_all_p ps cs seg ->
+  disc_seg_p seg -> alts_ok_p (ins seg) cs -> d4_p cs (ins seg) ->
+  disc_pt_all_p ps cs seg ->
   disc_seg_p' seg.
 Proof using.
-  intros Hd Hl Hall. split; [exact Hd |]. exists ps, cs.
-  split; [exact Hl |].
+  intros Hd Hl Hd4 Hall. split; [exact Hd |]. exists ps, cs.
+  split; [exact Hl |]. split; [exact Hd4 |].
   intros p Hp. exact (proj1 (Forall_forall _ _) Hall p Hp).
 Qed.
 
@@ -1761,6 +2040,8 @@ Lemma disc_seg_p'_nil : disc_seg_p' [].
 Proof using.
   split; [exact disc_seg_p_nil |]. exists [], [].
   split; [rewrite /alts_ok_p; constructor |].
+  split; [apply d4_p_intro; intros i Hi; rewrite /ins /= /nlines in Hi;
+          cbn in Hi; lia |].
   intros p Hp. by apply elem_of_nil in Hp.
 Qed.
 
@@ -1930,7 +2211,7 @@ Proof using.
     assert (Hds : disc_seg seg) by (exact (Forall_lookup_1 _ _ _ _ HD Hi)).
     assert (He : echo_only (ins seg)) by (by destruct Hds as (? & _ & _)).
     destruct (Forall_lookup_1 _ _ _ _ Hf Hi)
-      as (_ & (ps & cs & Hao & Hall)).
+      as (_ & (ps & cs & Hao & _ & Hall)).
     assert (Hlt4 : Forall (fun c => (c < 4)%nat) cs)
       by (exact (alts_ok_p_lt4 _ _ He Hao)).
     pose proof (alts_ok_p_length _ _ Hao) as Hlen.
@@ -2170,12 +2451,38 @@ Lemma pcont_pair_det (ps ps' : list nat) (l : pline)
   pline_ok l -> palt_ok l a -> palt_ok l a' ->
   (palt_panic a' = true -> (1 < pro_rounds ps')%nat) ->
   (palt_panic a = true -> X <> [] -> (1 < pro_rounds ps)%nat) ->
+  (palt_isforkS a = true -> X = []) ->
+  ~ pmergeable (pcont l a') ->
   (pcont_all ps' l a' ++ X') `prefix_of` (pcont_all ps l a ++ X) ->
   (palt_panic a = true -> (1 < pro_rounds ps)%nat)
   /\ pcont_all ps' l a' = pcont_all ps l a
   /\ X' `prefix_of` X.
 Proof using.
-  intros Hps Hps' Hl Ha Ha' Hset' Hset Hp.
+  intros Hps Hps' Hl Ha Ha' Hset' Hset Hd4 Hnm Hp.
+  (* NEITHER SIDE IS THE TERMINAL FORK-FAILURE ROUND, and the two
+     premises are exactly what says so.  The primed side is refuted
+     outright ([pmergeable_isforkS]); the unprimed side is refuted
+     because its block would then be a SHUFFLE with nothing after it
+     (D4), so the primed block sits INSIDE it -- and a prefix of a
+     shuffle is a shuffle ([pmergeable_prefix]).  That is the whole of
+     what discipline rule D4 buys the determinacy argument, and there is
+     no other route: at [echo fork | cat] the good run [PRan] prints
+     exactly [alt_forkc], so a PARTIAL fork block is a proper prefix of
+     an admitted alternative's continuation and the '$'-split below
+     cannot separate them. *)
+  assert (Hfa' : palt_isforkS a' = false).
+  { destruct (palt_isforkS a') eqn:Hf; [exfalso | reflexivity].
+    destruct (palt_isforkS_inv a' Hf) as [sl ->].
+    exact (Hnm (pmergeable_forkS l sl Ha')). }
+  assert (Hfa : palt_isforkS a = false).
+  { destruct (palt_isforkS a) eqn:Hf; [exfalso | reflexivity].
+    destruct (palt_isforkS_inv a Hf) as [sl ->].
+    rewrite (Hd4 eq_refl) app_nil_r in Hp.
+    apply Hnm. apply (pmergeable_prefix _ (pcont_all ps l (PForkS sl))).
+    - etrans; [| etrans; [apply prefix_app_r; reflexivity | exact Hp]].
+      rewrite /pcont_all. apply prefix_app_r. reflexivity.
+    - rewrite /pcont_all palt_panic_forkS app_nil_r.
+      exact (pmergeable_forkS l sl Ha). }
   destruct (palt_panic a) eqn:Hpa; destruct (palt_panic a') eqn:Hpa'.
   - (* BOTH RE-ENTERED THE PROLOGUE: two prologues below one wire *)
     rewrite (pcont_all_panic ps l a Hpa) (pcont_all_panic ps' l a' Hpa')
@@ -2210,7 +2517,7 @@ Proof using.
   - (* THE UNPRIMED SIDE RE-ENTERED; the primed side printed a prompt *)
     rewrite (pcont_all_panic ps _ a Hpa) (pcont_all_out ps' _ a' Hpa')
       in Hp |- *.
-    destruct (pcont_shape_nl l a' Hl Ha' Hpa') as (u & Hu & Hnd & Hnl).
+    destruct (pcont_shape_nl l a' Hl Ha' Hpa' Hfa') as (u & Hu & Hnd & Hnl).
     rewrite Hu in Hp |- *.
     rewrite -(app_assoc u u_prompt X')
             -(app_assoc alt_panic (pro_of (pro_from 1%nat ps)) X) in Hp.
@@ -2245,7 +2552,7 @@ Proof using.
   - (* THE PRIMED SIDE RE-ENTERED; the unprimed printed a prompt *)
     rewrite (pcont_all_out ps _ a Hpa) (pcont_all_panic ps' _ a' Hpa')
       in Hp |- *.
-    destruct (pcont_shape_nl l a Hl Ha Hpa) as (u & Hu & Hnd & Hnl).
+    destruct (pcont_shape_nl l a Hl Ha Hpa Hfa) as (u & Hu & Hnd & Hnl).
     rewrite Hu in Hp |- *.
     rewrite -(app_assoc alt_panic (pro_of (pro_from 1%nat ps')) X')
             -(app_assoc u u_prompt X) in Hp.
@@ -2268,8 +2575,8 @@ Proof using.
   - (* NEITHER: the '$'-split settles it, whatever they were *)
     rewrite (pcont_all_out ps l a Hpa) (pcont_all_out ps' l a' Hpa')
       in Hp |- *.
-    destruct (pcont_shape l a Hl Ha Hpa) as (u & Hu & Hnd).
-    destruct (pcont_shape l a' Hl Ha' Hpa') as (u' & Hu' & Hnd').
+    destruct (pcont_shape l a Hl Ha Hpa Hfa) as (u & Hu & Hnd).
+    destruct (pcont_shape l a' Hl Ha' Hpa' Hfa') as (u' & Hu' & Hnd').
     rewrite Hu Hu' in Hp |- *.
     rewrite -(app_assoc u' u_prompt X') -(app_assoc u u_prompt X) in Hp.
     destruct (pd_dollar_split u u' X X' Hnd Hnd' Hp) as [-> HX].
@@ -2306,6 +2613,10 @@ Lemma alt_seq_p_prefix_det (q' : nat) :
     (forall i, (i < q)%nat -> pline_ok (pline_of (bs !!! i))) ->
     (forall i, (i < q)%nat -> palt_ok (pline_of (bs !!! i)) (palt_at cs i)) ->
     (forall i, (i < q')%nat -> palt_ok (pline_of (bs' !!! i)) (palt_at cs' i)) ->
+    (forall i, (i < q')%nat -> palt_isforkS (palt_at cs i) = true ->
+       (S i = q /\ t = [])) ->
+    (forall i, (i < q')%nat ->
+       ~ pmergeable (pcont (pline_of (bs' !!! i)) (palt_at cs' i))) ->
     Forall (fun l => wl_nl ∉ l) bs -> Forall (fun l => wl_nl ∉ l) bs' ->
     wl_nl ∉ t' -> wl_nl ∉ t ->
     (alt_seq_p ps' cs' bs' q' ++ t')
@@ -2314,15 +2625,17 @@ Lemma alt_seq_p_prefix_det (q' : nat) :
     /\ (pro_idx_p cs q' < pro_rounds ps)%nat
     /\ alt_seq_p ps' cs' bs' q' = alt_seq_p ps cs bs q'
     /\ (q' = q -> t' `prefix_of` t)
-    /\ (q' < q -> t' `prefix_of` bs !!! q').
+    /\ (q' < q -> t' `prefix_of` bs !!! q')
+    /\ (forall i, (i < q')%nat ->
+          alt_cont_p ps' cs' bs' i = alt_cont_p ps cs bs i).
 Proof using.
   induction q' as [| n IH];
     intros ps ps' cs cs' bs bs' q t' t Hps Hps' Hlt' Hpos Hbelow Htlast
-      Hlb' Hlb Hline Hokc Hokc' Hnb Hnb' Hnt' Hnt Hpre.
+      Hlb' Hlb Hline Hokc Hokc' Hd4u Hnmp Hnb Hnb' Hnt' Hnt Hpre.
   { rewrite alt_seq_p_0 app_nil_l in Hpre.
     split; [lia |]. split; [by rewrite !take_0 |].
     split; [cbn [pro_idx_p]; lia |]. split; [reflexivity |].
-    split.
+    split; [| split; [| intros i Hi; lia]].
     - intros Hq. rewrite -Hq alt_seq_p_0 app_nil_l in Hpre. exact Hpre.
     - intros Hq. destruct q as [| p]; [lia |].
       rewrite alt_seq_p_cons_assoc in Hpre.
@@ -2359,10 +2672,24 @@ Proof using.
       rewrite (pro_idx_p_Sp cs 0%nat H3) in Hb1. cbn [pro_idx_p] in Hb1. lia.
     - pose proof (Hbelow 1%nat ltac:(lia)) as Hb1.
       rewrite (pro_idx_p_Sp cs 0%nat H3) in Hb1. cbn [pro_idx_p] in Hb1. lia. }
+  (* D4 AT THE HEAD ROUND, the two sides.  If the unprimed head round is
+     the terminal one, D4 says it is the LAST block and the tail is
+     empty, so nothing at all follows it on the unprimed side; and the
+     primed head block is not a shuffle, which is what the discipline's
+     own D4 gives wherever the input went on. *)
+  assert (Hd4h : palt_isforkS (palt_at cs 0%nat) = true ->
+            (alt_seq_p (pro_from (pro_idx_p cs 1%nat) ps) (drop 1 cs)
+               (drop 1 bs) p ++ t) = []).
+  { intros Hf. destruct (Hd4u 0%nat ltac:(lia) Hf) as [Hq Ht].
+    assert (Hp0 : p = 0%nat) by lia.
+    by rewrite Hp0 alt_seq_p_0 Ht. }
+  assert (Hnmh : ~ pmergeable
+                   (pcont (pline_of (bs !!! 0%nat)) (palt_at cs' 0%nat))).
+  { rewrite -Hhd. exact (Hnmp 0%nat ltac:(lia)). }
   rewrite !alt_cont_p_0 in Hrest.
   destruct (pcont_pair_det ps ps' (pline_of (bs !!! 0%nat))
               (palt_at cs 0%nat) (palt_at cs' 0%nat) _ _
-              Hps Hps' Hl0 Ha0 Ha0' Hset' Hsetu Hrest)
+              Hps Hps' Hl0 Ha0 Ha0' Hset' Hsetu Hd4h Hnmh Hrest)
     as (Hround1 & Hcont & Hrest2).
   assert (Hlt1 : (pro_idx_p cs 1%nat < pro_rounds ps)%nat).
   { destruct (palt_panic (palt_at cs 0%nat)) eqn:H3.
@@ -2374,7 +2701,7 @@ Proof using.
               (drop 1 cs) (drop 1 cs')
               (drop 1 bs) (drop 1 bs') p t' t
               (pro_from_Forall _ _ ps Hps) (pro_from_Forall _ _ ps' Hps'))
-    as (Hle & Htk & Hrd & Heq & Hteq & Htlt).
+    as (Hle & Htk & Hrd & Heq & Hteq & Htlt & Hcnt).
   { rewrite pro_rounds_from.
     pose proof (pro_idx_p_add cs' 1%nat n) as Hadd.
     replace (1 + n)%nat with (S n) in Hadd by lia. lia. }
@@ -2392,6 +2719,12 @@ Proof using.
   { intros i Hi. rewrite pd_lookup_total_drop. apply Hline. lia. }
   { intros i Hi. rewrite /palt_at !pd_lookup_total_drop. apply Hokc. lia. }
   { intros i Hi. rewrite /palt_at !pd_lookup_total_drop. apply Hokc'. lia. }
+  { intros i Hi Hf. rewrite /palt_at pd_lookup_total_drop in Hf.
+    replace (1 + i)%nat with (S i) in Hf by lia.
+    destruct (Hd4u (S i) ltac:(lia) Hf) as [Hq Ht].
+    split; [lia | exact Ht]. }
+  { intros i Hi. rewrite /palt_at !pd_lookup_total_drop.
+    replace (1 + i)%nat with (S i) by lia. apply Hnmp. lia. }
   { by apply pd_Forall_drop. }
   { by apply pd_Forall_drop. }
   { exact Hnt'. }
@@ -2410,11 +2743,23 @@ Proof using.
     rewrite (alt_cont_p_bs0 ps' cs' bs' bs ltac:(by rewrite Hhd)).
     by rewrite !alt_cont_p_0 Hcont. }
   split.
-  - intros Hqe. apply Hteq. lia.
-  - intros Hqlt.
+  { intros Hqe. apply Hteq. lia. }
+  split.
+  { intros Hqlt.
     pose proof (Htlt ltac:(lia)) as H.
     rewrite pd_lookup_total_drop in H.
-    replace (1 + n)%nat with (S n) in H by lia. exact H.
+    replace (1 + n)%nat with (S n) in H by lia. exact H. }
+  (* ...AND THE BLOCKS THEMSELVES, round by round.  [pcont_pair_det]
+     settles one round's BYTES, and the recursion carries them: this is
+     what the claim's terminal round spends, because what it has to know
+     of the DISCIPLINE's resolution is that the discipline read the same
+     bytes there. *)
+  intros i Hi. destruct i as [| j].
+  { rewrite (alt_cont_p_bs0 ps' cs' bs' bs ltac:(by rewrite Hhd)).
+    rewrite !alt_cont_p_0. exact Hcont. }
+  pose proof (Hcnt j ltac:(lia)) as H.
+  rewrite !alt_cont_p_drop in H.
+  by replace (1 + j)%nat with (S j) in H by lia.
 Qed.
 
 (* ...AND THE SESSION TRANSCRIPTS THEMSELVES.  This is what the stage
@@ -2425,11 +2770,17 @@ Lemma sessp_prefix_det (ps ps' cs cs' : list nat) (I' I : list (bv 8)) :
   pro_ok_p ps' cs' (nlines I') ->
   alts_ok_p I cs -> alts_ok_p I' cs' ->
   pro_pin_p ps cs I -> disc_input_p I -> disc_input_p I' ->
+  (forall i, (i < nlines I')%nat -> palt_isforkS (palt_at cs i) = true ->
+     (S i = nlines I /\ rest_of I = [])) ->
+  (forall i, (i < nlines I')%nat ->
+     ~ pmergeable (pcont (pline_of (bodies_of I' !!! i)) (palt_at cs' i))) ->
   sessp ps' cs' I' `prefix_of` sessp ps cs I ->
   I' `prefix_of` I /\ pro_ok_p ps cs (nlines I')
-  /\ sessp ps' cs' I' = sessp ps cs I'.
+  /\ sessp ps' cs' I' = sessp ps cs I'
+  /\ (forall i, (i < nlines I')%nat ->
+        alt_cont_p ps' cs' (bodies_of I') i = alt_cont_p ps cs (bodies_of I) i).
 Proof using.
-  intros Hps [Hps' Hlt'] Hcs Hcs' Hpin Hd Hd' Hpre.
+  intros Hps [Hps' Hlt'] Hcs Hcs' Hpin Hd Hd' Hd4 Hnm Hpre.
   assert (Hdone' : pro_done ps') by (apply pro_done_rounds; lia).
   (* the PROLOGUES: below one wire, and the primed one is settled *)
   assert (Hpre0 : pro_of ps' `prefix_of` pro_of ps).
@@ -2473,10 +2824,10 @@ Proof using.
   destruct (alt_seq_p_prefix_det (nlines I') ps ps' cs cs'
               (bodies_of I) (bodies_of I') (nlines I) (rest_of I') (rest_of I)
               Hps Hps' Hlt' Hpos Hbelow Htlast Hlb' Hlb
-              Hline Hokc Hokc'
+              Hline Hokc Hokc' Hd4 Hnm
               (wl_cut_bodies_nonl I) (wl_cut_bodies_nonl I')
               (wl_cut_rest_nonl I') (wl_cut_rest_nonl I) Hpre)
-    as (Hqle & Htk & Hround & Hseq & Hteq & Htlt).
+    as (Hqle & Htk & Hround & Hseq & Hteq & Htlt & Hcnt).
   assert (HI' : I' `prefix_of` I).
   { apply wl_cut_prefix_of.
     - assert (Hb' : bodies_of I' = take (nlines I') (bodies_of I))
@@ -2485,6 +2836,7 @@ Proof using.
     - exact Hteq.
     - exact Htlt. }
   split; [exact HI' |]. split; [split; [exact Hps | exact Hround] |].
+  split; [| exact Hcnt].
   rewrite /sessp Heq0. do 2 f_equal. rewrite Hseq.
   apply alt_seq_p_bs_ext. intros j Hj. symmetry.
   exact (pd_lta_take_eq (bodies_of I) (bodies_of I') (nlines I') j Htk Hj).
@@ -2720,6 +3072,80 @@ Lemma demo_p_panic_ne_forkc :
   <> alt_forkc.
 Proof using. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
 
+(* ---- (2c) THE TERMINAL FORK-FAILURE ROUND, WITH A STRAY BYTE --------- *)
+
+(* THE ROUND THE MODEL WAS CHANGED FOR (lane PIPE-MODEL-3).  [runcmd]'s
+   second [fork1] fails while the left child is alive; the left child's
+   own [exec /echo] fails too, so it is a STRAY writer.  On the wire: the
+   stray's first byte 'e', then the runcmd child's "fork\n" and sh's
+   prompt.  No alternative of the OLD model admitted this
+   ([PipeForkGap.pfork_execL_gap], now retired); [PForkS] does, at the
+   selector that takes one byte from the left source and the rest from
+   [alt_forkc]. *)
+Definition sel_stray1 : list bool := true :: sel_forkc.
+
+Definition pd_wsf : list (list (bv 8)) :=
+  [sb "echo"%string; sb "hello"%string].
+Definition pd_lf : pline := LPipe pd_wsf.
+
+Definition pd_fork_blk : list (bv 8) := pcont pd_lf (PForkS sel_stray1).
+
+Lemma pd_fork_blk_val :
+  pd_fork_blk = sb "e"%string ++ sb "fork"%string ++ nlb ++ sb "$ "%string.
+Proof using. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
+
+Definition pd_seg_fork : list mobs :=
+  demo_out u_prologue
+  ++ demo_typed (line_bytes pd_lf)
+  ++ demo_out pd_fork_blk.
+
+Lemma demo_p_fork : good_out_p pd_seg_fork.
+Proof using.
+  exists [3%nat; 0%nat], [palt_code (PForkS sel_stray1)].
+  apply (bool_decide_unpack _). vm_compute. exact I.
+Qed.
+
+(* ...and the user was disciplined up to it: D4 holds because the round
+   IS the last one of the segment. *)
+Lemma demo_p_fork_disc : disc_seg_p' pd_seg_fork.
+Proof using.
+  eapply (disc_seg_p'_intro pd_seg_fork [3%nat; 0%nat]
+            [palt_code (PForkS sel_stray1)]);
+    apply (bool_decide_unpack _); vm_compute; exact I.
+Qed.
+
+(* ---- (2d) WHY D4 IS READ OFF THE BYTES AND NOT OFF THE ALTERNATIVE --- *)
+
+(* THE REFUTATION OF THE RULING AS WRITTEN (design section 4.3h: "a
+   resolution with [PForkS _] at line [i] has [nlines I = S i]").  At
+   this line the GOOD run and the fork failure that took no stray byte
+   print THE SAME BYTES, so a resolution that reads the round as [PRan]
+   carries no [PForkS] at all, satisfies the alternative-shaped D4
+   vacuously, and lets the session go on -- while a stray child is still
+   alive and will interleave its diagnostic into a LATER round, which no
+   alternative of any later line admits.  [pmergeable] is what both
+   readings have in common, and reading D4 off it closes the hole. *)
+Definition pd_ws3 : list (list (bv 8)) :=
+  [sb "echo"%string; sb "fork"%string].
+
+Lemma d4_ambiguous_bytes :
+  pcont (LPipe pd_ws3) PRan = pcont (LPipe pd_ws3) (PForkS sel_forkc).
+Proof using.
+  rewrite (pcont_forkS_old pd_ws3).
+  apply (bool_decide_unpack _). vm_compute. exact I.
+Qed.
+
+Lemma d4_ambiguous :
+  palt_ok (LPipe pd_ws3) PRan
+  /\ palt_isforkS PRan = false
+  /\ pmergeable (pcont (LPipe pd_ws3) PRan).
+Proof using.
+  split; [exact I |]. split; [reflexivity |].
+  rewrite d4_ambiguous_bytes.
+  exact (pmergeable_forkS (LPipe pd_ws3) sel_forkc
+           (palt_ok_forkS_old pd_ws3)).
+Qed.
+
 (* ---- (3) AN ECHO ROUND, THEN A PIPELINE ROUND ------------------------ *)
 
 Definition pd_seg_mix : list mobs :=
@@ -2872,7 +3298,7 @@ Proof using.
     by (apply (bool_decide_unpack _); vm_compute; exact I).
   assert (Hfk : alt_forkc !! 0%nat = Some (Z_to_bv 8 102%Z))
     by (apply (bool_decide_unpack _); vm_compute; exact I).
-  destruct a as [k | | | | sel | | |]; rewrite /pcont in Hb.
+  destruct a as [k | | | | sel | | sel |]; rewrite /pcont in Hb.
   - (* the MAIN loop's own fork panic, which a pipeline line now admits *)
     assert (Hk : k = 3%nat) by (exact Ha).
     rewrite Hk (line_alts_of_3 (pline_ws pd_l2)) in Hb.
@@ -2894,7 +3320,22 @@ Proof using.
       * rewrite HeL in H. injection H as Hx. rewrite -Hx. by vm_compute.
       * rewrite HeR in H. injection H as Hx. rewrite -Hx. by vm_compute.
   - rewrite (pd_head_app _ _ _ _ Hpi Hb). by vm_compute.
-  - rewrite (pd_head_app _ _ _ _ Hfk Hb). by vm_compute.
+  - (* the terminal fork-failure round: the block's first byte comes from
+       the stray's diagnostic ('e') or from sh's panic line ('f') *)
+    destruct Ha as (Hne & H1 & H2).
+    assert (Hml : length (pmerge sel dg_execL alt_forkc) = length sel)
+      by (by apply pmerge_length).
+    destruct (pmerge sel dg_execL alt_forkc) as [| x r] eqn:Hm.
+    { exfalso. cbn [length] in Hml.
+      destruct sel as [| z sel']; [by destruct (Hne eq_refl) |].
+      cbn [length] in Hml. lia. }
+    assert (Hc : (x :: r) !! 0%nat = Some x) by reflexivity.
+    rewrite (pd_head_app _ _ _ _ Hc Hb).
+    assert (Hmx : pmerge sel dg_execL alt_forkc !! 0%nat = Some x)
+      by (rewrite Hm; reflexivity).
+    destruct (pmerge_head sel dg_execL alt_forkc x Hmx) as [H | H].
+    + rewrite HeL in H. injection H as Hx. rewrite -Hx. by vm_compute.
+    + rewrite Hfk in H. injection H as Hx. rewrite -Hx. by vm_compute.
   - rewrite (pd_head_app _ _ _ _ u_prompt_head Hb). by vm_compute.
 Qed.
 
@@ -2939,8 +3380,11 @@ Proof using.
               (pro_pin_p_of_ok ps cs (ins pd_seg_bad) Hok)
               ltac:(rewrite Hins; apply (bool_decide_unpack _);
                     vm_compute; exact I)
-              disc_input_p_nil HT)
-    as (_ & _ & Heq).
+              disc_input_p_nil
+              ltac:(intros i Hi; rewrite pd_nlines_nil in Hi; lia)
+              ltac:(intros i Hi; rewrite pd_nlines_nil in Hi; lia)
+              HT)
+    as (_ & _ & Heq & _).
   rewrite !sessp_nil pro_of_good in Heq.
   (* so the adversary's prologue IS init's banner and sh's first prompt *)
   rewrite Hw Hins in Hpre.

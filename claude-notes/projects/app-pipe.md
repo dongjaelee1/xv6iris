@@ -266,9 +266,17 @@ arm is the theorem's one named premise (`pipe_both_law`).
   `length ws = 1` are jointly unsatisfiable); repaired additively as
   `UShCatPay.cat_image_entry_1w`, and `UCatPipe.v` owes the restatement.
   See the Findings block.
-- [ ] **PIPE-MODEL-3** (design §4.3h, owner ruled "strays" 2026-09-21; the
+- [x] **PIPE-MODEL-3** (design §4.3h, owner ruled "strays" 2026-09-21; the
   sound form: the covered session ENDS at a pipeline fork failure):
   `PForkS sel`, D4, the terminal open block.  Brief `brief-pipe-model-3.md`.
+  LANDED (tree RC=0): `PForkS`, the shuffle test `pmergeable`, D4 in
+  `disc_seg_p'`, `sessp_prefix_det` kept at two new premises and one
+  more conclusion, `pblk_open`'s terminal arm and `pecl_step_echo`'s D4
+  refutation, `PipeForkGap` retired and replaced.  **REFUTED: D4 as
+  ruled (on the ALTERNATIVE) does not make the theorem true** -- at
+  `echo fork | cat` the good run prints `alt_forkc` byte for byte, so
+  the ambiguity has to be read off the BYTES.  One ruling asked for (D4
+  also ends the session at a main-loop panic).  See the Findings block.
 - [ ] **PIPE-STAGE-3** (after MODEL-3): mode `alt_forkc` pinned by the
   runcmd child; `pwc_line2`'s third arm's second shape; the main loop's
   `$ ` as two right steps; the stray's steps.
@@ -6416,3 +6424,249 @@ step takes its bound off `Hdll`, not off `HE`; (ii) the pipeline is now
 the STRICTER of the two console disciplines, so a witness or a claim can
 be carried pipe → echo (`disc_p_disc`, `disc_pt_of_strict`) and never the
 other way.
+
+### PIPE-MODEL-3 (2026-09-21) — the terminal round LANDS, and D4 AS RULED IS UNSOUND: the wire does not say which process wrote `fork\n$ `, so D4 has to be read off the BYTES
+
+Branch `app-pipe/pipe-model-3`, six code commits (`58b37f35d`,
+`fda55f34c`, `ac966dafd`, `55e726f73`, `73c00bcc3`, `f4bd3b27e`) beside
+the notes.  Whole-tree
+`ec2-lane.sh model3 build` **RC=0**; no `Admitted`; `Proof using` on
+every new result.  `Print Assumptions` on EIGHTEEN headline results
+(`iris/PipeModel3Assumptions.v`, a report file, not a `_CoqProject`
+row): **all eighteen Closed under the global context** — `palt_of_code`,
+`pcont_forkS_old`, `pmergeable_forkS`, `pmergeable_prefix`,
+`d4_ambiguous`, `pcont_pair_det`, `sessp_prefix_det`,
+`elem_of_forkS_sels`, `disc_p_dec`, `d4_p_nomerge_snoc`,
+`good_out_p_of_stage`, `D2_next_input_p`, `demo_p_fork`,
+`demo_p_fork_disc`, `demo_p_bad`, `pfork_execL_admitted`,
+`pfork_execL_only_forkS`, `gap_mixed_no_wit`.  **All four audits at
+their baselines**, measured on the mirror after the changes:
+`audit-pipe-only` **14**, `audit-echo-only` **14**, `audit-tree-only`
+**13**, `audit-only` **13**.
+
+**THE ALTERNATIVE, VERBATIM.**
+
+```coq
+  | PForkS (sel : list bool)
+
+  palt_ok (LPipe _) (PForkS sel) :=
+      sel <> []
+      /\ (count_true sel <= length dg_execL)%nat
+      /\ (length sel - count_true sel <= length alt_forkc)%nat
+
+  pcont l (PForkS sel) := pmerge sel dg_execL alt_forkc
+
+  palt_code (PForkS sel) := (12 + 16 * bnum sel)%nat     (* the third
+      progression mod 16, beside PBoth's 11; palt_of divides *)
+```
+
+TWO CORRECTIONS TO SECTION 4.3h AT THE STATEMENT.  (i) **The two sources
+are the other way round.**  The design writes `pmerge sel alt_forkc
+(take (length sel - count_true sel) dg_execL)`, but the stage's LANDED
+`PipeBothPure.pend2 R sel` is `pmerge sel dg_execL R` and section 4.3h's
+own stage paragraph says the RIGHT source gains the `alt_forkc` mode.
+Landed in the stage's convention: `true` takes the STRAY's byte, `false`
+takes `alt_forkc`'s.  Everything in `PipeBoth` (`pend2_true/_false/
+_prefix/_mono`, `pblk2_at`, `pblk2_wit`, the two cursors) therefore
+applies at `R := alt_forkc` verbatim, which is the whole reason to
+prefer it.  (ii) **`PForkS []` is NOT the old `PFork`** — its
+continuation is the EMPTY block and `PipeOutPure.pcont_nonnil` would be
+false at it.  `palt_ok` refuses the empty selector and the old constant
+is `PForkS sel_forkc`, `sel_forkc := replicate (length alt_forkc) false`
+(`pcont_forkS_old`, `palt_ok_forkS_old`).  The `take` in the design's
+`pcont` is redundant either way (`pmerge` truncates at the same place).
+
+**D4, VERBATIM — AND IT IS NOT THE RULING'S D4.**
+
+```coq
+  Definition pmergeable (u : list (bv 8)) : Prop :=
+    shufb u dg_execL alt_forkc = true.          (* is u a SHUFFLE of the
+                                                   two sources? *)
+
+  Definition d4_p (cs : list nat) (I : list (bv 8)) : Prop :=
+    Forall (fun i => pmergeable (pcont (pline_of (bodies_of I !!! i))
+                                   (palt_at cs i)) ->
+                     nlines I = S i /\ rest_of I = [])
+      (seq 0 (nlines I)).
+
+  (* and [disc_seg_p'] gains it, and NOTHING ELSE DOES *)
+  disc_seg_p' seg := disc_seg_p seg
+    /\ exists ps cs, alts_ok_p (ins seg) cs /\ d4_p cs (ins seg)
+                     /\ (forall p ∈ in_pres seg, ...).
+```
+
+**THE REFUTATION (the lane's most important output).**  The ruling's D4
+— "a resolution with `PForkS _` at line `i` has `nlines I = S i` and
+`rest_of I = []`" — **does not make the theorem true**, and the witness
+is mechanised (`PipeDisc.d4_ambiguous`, section 8 (2d)).  At the line
+`echo fork | cat` the GOOD run prints `wl_line ["fork"] ++ u_prompt`,
+which IS `alt_forkc` byte for byte.  So a session in which that line's
+`fork1` #2 failed, the runcmd child printed `fork\n`, the main loop
+printed `$ ` and the stray has not been scheduled yet is explained by a
+resolution that reads the round as `PRan` — a resolution with no
+`PForkS` in it, which satisfies the alternative-shaped D4 VACUOUSLY.
+The user is then inside the discipline, types on, and the stray
+interleaves its diagnostic into a LATER round, which no alternative of
+any later line admits: `pipe_phi` is FALSE at that trace.  Reading D4
+off the BYTES closes it, because the `PRan` reading of such a round is a
+shuffle too and ends the covered session as well.  **This is the only
+change of substance the lane made to the ruling, and section 4.3h
+should be amended.**
+
+**D4 IS IN THE DISCIPLINE AND IN NOTHING ELSE, against the brief.**  The
+brief asks for it "placed where `alts_ok_p` lives so that `disc_seg_p'`
+and `good_out_p` both carry it".  It must NOT go in `alts_ok_p`:
+`good_out_p` is the CONCLUSION, so a conjunct there is an obligation the
+claim owes at every step -- and at a round whose block is merge-shaped
+but whose fork did NOT fail (the `echo fork | cat` line again, resolved
+as `PRan`) the claim cannot discharge it, because "no filed round's
+block is a shuffle" is a fact about the USER's input and reaches the
+claim only through the discipline.  `alts_ok_p`, `expected_rel_p`,
+`good_out_p`, `alts_pad_p_ok`, `good_out_p_of_stage` and
+`good_out_p_of_stage_blk2` are therefore UNCHANGED, which is also why
+the terminal round's `good_out_p` costs nothing: the resolution it
+exhibits is `cs ++ [palt_code (PForkS sel)]` and `palt_ok` is all it has
+to check.
+
+**THE PRICE, AND ONE RULING ASKED FOR.**  `pmergeable` is tested on
+`pcont` and not on the whole block, so it does not read the prologue a
+PANIC round re-enters — and `alt_panic` ("fork\n") is itself a shuffle
+prefix.  So D4 as landed ALSO ends the covered session at sh's
+MAIN-LOOP fork panic, at either line shape.  That is sound and it is
+honest (`fork\n` on the wire does not say which process wrote it), but
+it is wider than section 4.3h asks for.  Narrowing it to "the block is a
+COMPLETE fork block" needs the test to read `alt_cont_p` — the prologue
+included, because a panic followed by a BARE-PROMPT prologue is
+`alt_forkc` byte for byte and the model admits that prologue
+(`pro_alts !!! 0`) — and then `d4_p` depends on `ps`, which
+`PipeDiscDec`'s prologue canonicalisation (`pro_canon`, bounded by
+`nlines_max (in_pres seg)`) does not preserve.  Cost: the decision
+procedure's completeness half.  **A ruling is asked for; the lane took
+the cheap, sound side.**
+
+**DETERMINACY: KEPT, WITH TWO PREMISES AND ONE MORE CONCLUSION.**
+`sessp_prefix_det`'s statement is unchanged except for
+
+```coq
+  (forall i, (i < nlines I')%nat -> palt_isforkS (palt_at cs i) = true ->
+     (S i = nlines I /\ rest_of I = [])) ->          (* the claim's D4 *)
+  (forall i, (i < nlines I')%nat ->
+     ~ pmergeable (pcont (pline_of (bodies_of I' !!! i))
+                     (palt_at cs' i))) ->            (* the discipline's *)
+```
+
+and a FOURTH conclusion, `forall i < nlines I', alt_cont_p ps' cs'
+(bodies_of I') i = alt_cont_p ps cs (bodies_of I) i` — the blocks
+themselves, round by round, which `pcont_pair_det` proves anyway and
+which the terminal round's refutation spends.  `pcont_pair_det` takes
+the same two premises and its FIRST move is now: if the unprimed
+alternative is a `PForkS`, D4 says nothing follows it, so the primed
+block sits INSIDE a shuffle — and a prefix of a shuffle is a shuffle
+(`pmergeable_prefix`), which the primed premise refutes.  Everything
+after that is the landed `$`-split, unchanged.  **There is no route
+without those premises**: at `echo fork | cat` a PARTIAL fork block is a
+proper prefix of an admitted alternative's continuation and the
+`$`-split cannot separate them.  `pcont_shape`/`pcont_shape_nl` gain
+`palt_isforkS a = false` (a terminal block does NOT end with the
+prompt); so do `PipeBothPure.pcont_prompt_p` + its three consumers and
+`PipeLinksLine.pcont_prompt`.
+
+**`pblk_open`'S TERMINAL ARM, VERBATIM.**
+
+```coq
+  Definition pblk_open (so : postage) (r : nat) (pre : list (bv 8)) : Prop :=
+    r = (nlines (snd <$> o_E so) - 1)%nat
+    /\ o_w so = pre
+    /\ pre <> []
+    /\ exists a : nat,
+         pblk2_at (o_cs so) (snd <$> o_E so) pre a
+         /\ ((palt_isforkS (palt_of a) = false /\ Forall nodollar pre)
+             \/ palt_isforkS (palt_of a) = true).
+```
+
+and `pecl_step_echo`'s open case now splits on it: the non-terminal arm
+is the landed `$`-freeness refutation (`pcont_ne_nodollar`), the
+terminal arm is D4 — D2 gives `o_w so = pcont (line) (palt_of ao)`, that
+is a SHUFFLE (`pmergeable_isforkS`), the discipline's own resolution
+read the same bytes there (the new block-by-block conclusion), and D4
+forbids a shuffle at any round but the input's last, which this one is
+not because `c` was typed.  **That is design section 4.3h's "the next
+input is REFUTED by D4, not by `$`-freeness", mechanised.**
+
+**THE INVARIANT THE CLAIM HAD TO GAIN, and the one ripple it caused.**
+D4's unprimed reading needs the claim's FILED rounds to be non-terminal
+(a fork-failure round never files — the stray never signals
+completion), so `pout_pure`/`pout_pure_o` gain
+`cs_nofork so := Forall (fun c => palt_isforkS (palt_of c) = false)
+(o_cs so)`.  The two filing steps therefore need
+`palt_isforkS (palt_of a) = false`, and `lk_blk_step`'s type cannot move
+(it is an upstream record field).  **The fix is in `pab`'s GUARD**:
+`pab_gd I a := palt_ok (pline_at I) (palt_of a) /\ palt_isforkS
+(palt_of a) = false`, so `pab_nofork` carries the flag out of the same
+lookup `pab_ok` reads and `pblk_step` needs no new premise.  `papr`
+gains the same conjunct; `pblk2_code` and `pblk2_wit` gain it too (all
+four alternatives a round can file discharge it by `reflexivity`).
+
+**WHICH DOWNSTREAM FILES NEEDED A CASE, AND WHAT IT WAS.**
+- `PipeDiscDec.v`: `palt_cands` gains the `PForkS` branch — `all_sels 24`
+  (every selector up to `|dg_execL| + |alt_forkc|` entries) filtered by
+  `palt_ok`, with `elem_of_all_sels`/`elem_of_forkS_sels`; a THEOREM's
+  enumerator, like the `PBoth` one, never evaluated.  `disc_seg_p'_dec`
+  decides D4 too (`d4_p_canon`: D4 reads `cs` only through `palt_at`).
+- `PipeOutPure.v`: `d4_p_snoc_vacuous` / `d4_p_nomerge_snoc` /
+  `d4_p_take_snoc` — **D4 at a strictly shorter input is VACUOUS** (one
+  more byte either opened a partial line or closed one, so the round D4
+  fired at is not the input's last).  That one law is both the
+  prefix-closure of the discipline (`disc_seg_p'_in`) and the premise
+  `sessp_prefix_det` asks of the discipline's side, handed back by
+  `disc_seg_p'_pt_last`'s new conjunct.  `pcont_nonnil` gains the
+  `PForkS` arm (where `palt_ok`'s `sel <> []` is spent);
+  `alts_pad_p_isforkS`, `alts_pad_p_full`, `palt_isforkS_def` are the
+  padding's side.
+- `PipeBothPure.v`: `pcont_prompt_p` + `pcont_not_prefix_nodollar` +
+  `pcont_ne_nodollar` + `pcont_not_prefix_pend_both` +
+  `pend_both_ne_pcont` gain `palt_isforkS a = false`.
+- `PipeBoth.v`: `pblk2_code`/`pblk2_wit` gain the flag; `pblk2_ecl_L`
+  gains `⌜Forall nodollar (pend2 R sel)⌝` (its three branches supply it:
+  all-left at an unset mode, `dg_execR` at mode 2, and the `R = L`
+  branch is the one the children's exclusion already refutes).
+- `PipeLinks.v`: `pipe_link_blk`/`pipe_link_file` and their two lemmas
+  thread the flag.
+- `PipeStageInst.v`: `pi_apr0` gains `papr`'s third conjunct.
+- `UShPipeExit.v`: ONE intro pattern (`pblk_open` lost its nodollar slot
+  and gained the arm).
+- `UCatPipe.v`: `pcch_step` gains the premise it passes on.
+- `PipeForkGap.v`: `pfork_execL_gap` is RETIRED (false by design) and
+  replaced by TWO theorems — `pfork_execL_admitted` (the two-byte wire
+  IS a prefix of `pcont (LPipe gap_ws) (PForkS [false; true])`) and
+  `pfork_execL_only_forkS` (**no other alternative admits it**, the old
+  seven refutations kept verbatim, which is what says the new arm is not
+  slack).  The selector is `[false; true]` and not the design's
+  `[true; false]`, for correction (i) above.  `gap_mixed_no_wit` keeps
+  its statement with a `mix_not_forkS` arm.
+
+**ANTI-VACUITY.**  `demo_p_fork` / `demo_p_fork_disc`: the wire
+`e` `fork\n$ ` — the stray's first byte, then the runcmd child's panic
+and sh's prompt — at `echo hello | cat`, `good_out_p` AND `disc_seg_p'`,
+both by `vm_compute` (the terminal round's code is small: `bnum` of an
+8-entry selector).  `demo_p_bad` (the `goodbye` refutation) is unmoved.
+`d4_ambiguous` is the refutation above.
+
+**STOP RULES.**  Neither fired.  Rule 1 (`sessp_prefix_det`'s weakening
+breaking a consumer that needs code agreement): the lemma is KEPT, with
+premises rather than a weaker conclusion, and both consumers
+(`pecl_step_echo`'s two cases) discharge them.  Rule 2
+(`pblk_open`'s terminal arm against `pecl_step_write_blk`'s "by the
+turn's position" refutation): the arm coexists — the refutation is by
+the WRITER's position and never reads the nodollar conjunct.
+
+**WHAT THE NEXT LANE (PIPE-STAGE-3) NEEDS FIRST.**  The terminal round's
+BYTE steps.  `pecl_blk2_byte`/`pecl_blk2_open` carry
+`palt_isforkS (palt_of a) = false` and `nodollar b`, which the stray's
+bytes and the prompt's two cannot satisfy; their terminal twins (same
+proofs, reconstructing `pblk_open`'s RIGHT arm instead of its left) are
+STAGE-3's first item, and everything they need is landed:
+`pblk_open`'s arm, `pmergeable_forkS`, `pend2` at `R := alt_forkc`
+(`palt_ok_forkS_old`, `pcont_forkS_old`), and `pecl_step_echo`'s
+terminal case as the worked example of how D4 is spent.  Note that the
+family's `R = L` branch must NOT be reachable at mode `fork`.

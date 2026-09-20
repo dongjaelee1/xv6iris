@@ -1,14 +1,14 @@
 # Lane UPSTREAM-MERGE-6 — merge the nine upstream commits (mWP, relax-d2, the import and Proof-using sweeps) under the pipe campaign
 
 Worktree: `/shared/xv6iris-pipe-merge`, branch `app-pipe/upstream-merge-6`
-(= main 9530208af with `git merge --no-commit origin/main` ALREADY RUN
+(= main e5e556929 -- EXEC-CAT, PIPE-CC and PIPE-EXEC-ECHO merged -- with `git merge --no-commit origin/main` ALREADY RUN
 and left CONFLICTED for you — `git status` shows it; do not redo the
 merge, resolve it).  Helper lane name `merge` (the remote clone is main's
-fully built tree at 9530208af; after your first `sync` most of the tree
+fully built tree at e5e556929; after your first `sync` most of the tree
 rebuilds — that is expected, upstream touched 688 files).  Read
 `brief-common.md` first.  NEVER run rocq/coqc/make locally.
 
-## What upstream landed (`git log --oneline 9530208af..origin/main`, 9 commits)
+## What upstream landed (`git log --oneline main..origin/main`, 9 commits)
 
 - `88a19357e` **the riscv_lang WP shorthand is spelled `mWP`**, and
   `notation-incompatible-prefix` is now an ERROR (the build fails at the
@@ -17,7 +17,7 @@ rebuilds — that is expected, upstream touched 688 files).  Read
   notations are in scope.  OUR files (everything the pipe campaign added
   since 2026-09-17 — `Pipe*.v`, `UkShPipe*.v`, `UShPipe*.v`, `UkReadPipe.v`,
   `UkWritePipe.v`, `UEchoPipe.v`, `UCatPipe.v`, `AppPipe*.v`,
-  `UInitConsPipe.v`, `UPipeBootAdequacy.v`, `UkShCat.v`, `UShCatPay.v`,
+  `UInitConsPipe.v`, `UPipeBootAdequacy.v`, `UkShCat.v`, `UShCatPay.v`, `UShPipeCall.v`, `UShEchoPipePay.v`, `PipeReadInst.v`, `UInitPipe*.v`,
   `PipeForkGap.v`, `PipeRound4Assumptions.v`, …) were NOT in upstream's
   tree at that commit and still say `WP (… : expr riscv_lang)`: apply the
   SAME rename to them (`WP (` → `mWP (` for the riscv_lang shorthand

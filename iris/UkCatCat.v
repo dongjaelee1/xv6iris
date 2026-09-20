@@ -147,8 +147,8 @@ Section UkCatCat.
            Regidx r <> Regidx s1_idx -> Regidx r <> Regidx ra_idx ->
            m' !!! Regidx r = m !!! Regidx r ⌝ -∗
        urun N h' m' (ret_pc vra) (12 + n) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hsp Hal8 Hlo. iIntros "#Hcode Hwra Hws0 Hws1 Hw4 Hw5 Hw6 Hw7 Hw8 Hw9 Hw10 Hw11 Hw12 Hrun Hcont".
     assert (Hbsp : bv_unsigned (add_vec_int sp0 (- (8 * Z.of_nat 12)))
@@ -545,7 +545,7 @@ Section UkCatCat.
     kcat_dg_cw -∗
     cat_code γt -∗ cat_rodata γt -∗
     urun N hcw mcw0 (mword_of_int 0x40) (10 + (12 + (4 + n))) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using Hpay.
     iIntros "Hdg #Hcode #Hro Hrun".
     destruct cat_syms_pins
@@ -680,7 +680,7 @@ Section UkCatCat.
     kcat_dg_cr -∗
     cat_code γt -∗ cat_rodata γt -∗
     urun N hcr mcr0 (mword_of_int 0x6a) (10 + (12 + (4 + n))) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using Hpay.
     iIntros "Hdg #Hcode #Hro Hrun".
     destruct cat_syms_pins
@@ -839,8 +839,8 @@ Section UkCatCat.
     (∀ (h' : CpuId) (m' : regfile),
        ⌜ ucallee_saved m0 m' ⌝ -∗
        urun N h' m' (ret_pc (m0 !!! Regidx ra_idx)) (8 + (10 + (12 + (4 + n)))) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hsp Hsp0 Hal8 Hlo Hfree.
     iIntros "#Hcode Hw1 Hw2 Hw3 Hw4 Hw5 Hw6 Hw7 Hw8 Hrun Hcont".
@@ -1222,8 +1222,8 @@ Section UkCatCat.
           ubytes γd CatSyms.buf 512 g -∗
           urun N h' m' (ret_pc (m0 !!! Regidx ra_idx))
             (8 + (10 + (12 + (4 + n)))) -∗
-          WP (Loop : expr riscv_lang)) -∗
-       WP (Loop : expr riscv_lang)).
+          mWP (Loop : expr riscv_lang)) -∗
+       mWP (Loop : expr riscv_lang)).
   Proof using Hpay.
     intros Hsp0 Hal8 Hlo. iIntros "#Hround #Hcode #Hro".
     destruct cat_syms_pins
@@ -1648,8 +1648,8 @@ Section UkCatCat.
        Cend -∗
        ubytes γd CatSyms.buf 512 g -∗
        urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (8 + (10 + (12 + (4 + n)))) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using Hpay.
     intros Ha0.
     iIntros "#Hround #Hcode #Hro HI Hbuf Hrun Hcont".

@@ -36,10 +36,8 @@ From Stdlib Require Import ZArith Bool Lia List String.
 From stdpp Require Import gmap list bitvector.definitions.
 Require Import RiscvModelBytes.
 Require Import UmodeAbi.
-Require Import UCodeShP.
 Require Import LineWords.
 Require Import EchoDisc.
-Require Import UkSh.
 Require Import UkShParse.
 Require Import UkShParseSym.
 Require Import UkShWords.

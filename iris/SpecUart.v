@@ -96,8 +96,8 @@ wp_next b p (fun (CID : CpuId) =>
   sie_cap_gpr kt (<[Regidx rd := regval_into_reg (ldval bt)]> m) n b p -∗
   pc_is (add_vec_int pc (if is_rvc then 2 else 4)) -∗
   S bt -∗
-  WP (Loop : expr riscv_lang)) -∗
-WP (Loop : expr riscv_lang).
+  mWP (Loop : expr riscv_lang)) -∗
+mWP (Loop : expr riscv_lang).
 
 Definition wp_sb_uart_uinv_s_sconf_at_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx}
     (kt : ktier) (i : uart_id) (γd : uart_names) (off : Z) (pc : mword 64) (is_rvc : bool) (rs2 rs1 : mword 5) `{!SrcOk rs1} `{!SrcOk rs2} (imm : mword 12) (m : regfile) (n : nat) (R S : iProp Σ) (b : bool) (p : mword 64) :=
@@ -139,8 +139,8 @@ wp_next b p (fun (CID : CpuId) =>
   sie_cap_gpr kt m n b p -∗
   pc_is (add_vec_int pc (if is_rvc then 2 else 4)) -∗
   S -∗
-  WP (Loop : expr riscv_lang)) -∗
-WP (Loop : expr riscv_lang).
+  mWP (Loop : expr riscv_lang)) -∗
+mWP (Loop : expr riscv_lang).
 
 (* ===================================================================== *)
 (*  §2  THE [Uart0] COROLLARIES, statements verbatim.                     *)
@@ -183,8 +183,8 @@ wp_next b p (fun (CID : CpuId) =>
   sie_cap_gpr kt (<[Regidx rd := regval_into_reg (ldval bt)]> m) n b p -∗
   pc_is (add_vec_int pc (if is_rvc then 2 else 4)) -∗
   S bt -∗
-  WP (Loop : expr riscv_lang)) -∗
-WP (Loop : expr riscv_lang).
+  mWP (Loop : expr riscv_lang)) -∗
+mWP (Loop : expr riscv_lang).
 
 Definition wp_sb_uart_s_sconf_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx}
     (kt : ktier) (γd : uart_names) (γv : disk_names) (off : Z) (pc : mword 64) (is_rvc : bool) (rs2 rs1 : mword 5) `{!SrcOk rs1} `{!SrcOk rs2} (imm : mword 12) (m : regfile) (n : nat) (R S : iProp Σ) (b : bool) (p : mword 64) :=
@@ -215,8 +215,8 @@ wp_next b p (fun (CID : CpuId) =>
   sie_cap_gpr kt m n b p -∗
   pc_is (add_vec_int pc (if is_rvc then 2 else 4)) -∗
   S -∗
-  WP (Loop : expr riscv_lang)) -∗
-WP (Loop : expr riscv_lang).
+  mWP (Loop : expr riscv_lang)) -∗
+mWP (Loop : expr riscv_lang).
 
 (* The SAME accessor-form store leaf, taking the BARE [uart_inv Uart0] rather than
    the [dev_inv] bundle.  This is the general form -- the store touches no PLIC
@@ -254,8 +254,8 @@ wp_next b p (fun (CID : CpuId) =>
   sie_cap_gpr kt m n b p -∗
   pc_is (add_vec_int pc (if is_rvc then 2 else 4)) -∗
   S -∗
-  WP (Loop : expr riscv_lang)) -∗
-WP (Loop : expr riscv_lang).
+  mWP (Loop : expr riscv_lang)) -∗
+mWP (Loop : expr riscv_lang).
 
 Module Type UART.
   (* --- the port-generic primitives, over the bare per-port invariant --- *)

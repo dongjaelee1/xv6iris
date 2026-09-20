@@ -516,7 +516,7 @@ Section IallocDefs.
               iref_slot ∗
               t ↪[ln_tx icfg_log]{#qt} tt ∗
               log_opS icfg_log (S u) Sb) -∗
-        WP (Loop : expr riscv_lang))%I.
+        mWP (Loop : expr riscv_lang))%I.
 
 End IallocDefs.
 
@@ -575,7 +575,7 @@ Section IallocEpilogue.
             (M !!! Regidx Ra0 : mword 64) -∗
     ia_cont (CID0 := CID0) ty u Sb
             pidv dq dqs dqn j m K b lks Upr t qt -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK Hty Htyk Hsp Hthr.
     pose proof HK as HK'. 
@@ -802,7 +802,7 @@ Section IallocOut.
     t ↪[ln_tx icfg_log]{#qt} tt -∗
     ia_cont (CID0 := CID0) ty u Sb
             pidv dq dqs dqn j m K b lks Upr t qt -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK Hty Htyk Hsp Hthr.
     pose proof HK as HK'. 
@@ -1181,7 +1181,7 @@ Section IallocClaim.
        (diblk_bytes ds) (diblk_bytes ds) bsd d0 -∗
     ia_cont (CID0 := CID0) ty u Sb
             pidv dq dqs dqn j m K b lks Upr t qt -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK Hgeom Hsp Hthr Hs1 Hs3 Hs5 Hs6 Hs2 Hkk Hbno Hcov Hlog
            Hnib Hdswf Ht0 Hty Htyk Hinum Halign Hbelow.
@@ -2051,7 +2051,7 @@ Section IallocScan.
          t ↪[ln_tx icfg_log]{#qt} tt -∗
          ia_cont (CID0 := CIDc) ty u Sb
                  pidv dq dqs dqn j m K b lks Upr t qt -∗
-         WP (Loop : expr riscv_lang))).
+         mWP (Loop : expr riscv_lang))).
   Proof using .
     intros HK Hgeom Hst Hblk Hn1 Hnnib Hn31 Hty Htyk Hj Hgl Hbelow.
     (* THE BOUND AS A NAMED HYPOTHESIS, not an inline [ltac:] argument, and

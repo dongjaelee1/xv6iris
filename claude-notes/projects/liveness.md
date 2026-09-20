@@ -38,7 +38,7 @@ needed.
 
 Facts about the current architecture that shape every option below.
 
-- **The WP is a safety judgment.** `WP Loop` is Iris's sealed `wp` over
+- **The WP is a safety judgment.** `mWP Loop` is Iris's sealed `wp` over
   `riscv_lang` with `num_laters_per_step := 0` (RiscvPtsto.v:2301). There are
   no values (`mval := Empty_set`), every thread is an infinite loop, and the
   tree relies on `▷` and `iLöb` for things that are *legitimately*
@@ -271,7 +271,7 @@ proof, which never unfolds it, re-checks unchanged once the base rules are
 re-proved.
 
 **The base rules.** The restart rule (`swp_wp_loop`/the `wp_exec_step`
-tower roots — the one place every instruction closes back into `WP Loop`)
+tower roots — the one place every instruction closes back into `mWP Loop`)
 opens `obs_inv` (as `wp_uart_step` already does), and:
 
 - with `fuel_frag c Any`: records an *uncounted* cycle of `c` in the ledger

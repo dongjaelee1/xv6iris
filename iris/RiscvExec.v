@@ -215,7 +215,7 @@ Section WPDead.
      reason abandoning a generation's resources is sound. *)
   Lemma wp_dead (e : mexpr) (gen : nat) :
     thread_gen e = Some gen ->
-    gen_dead gen ⊢ WP (e : expr riscv_lang).
+    gen_dead gen ⊢ mWP (e : expr riscv_lang).
   Proof using .
     intros Hg.
     iIntros "#Hdead". iLöb as "IH".
@@ -772,8 +772,8 @@ Section WPExec.
                hart_rview_auth cpu_id (hr_rv hr') ∗
                tso_interp_of riscv_eraGS img σ'.(mem) log'
                  (vstep (hart_agent cpu_id) tv' log' V) ∗
-               WP (HartE gen_id cpu_id m' : expr riscv_lang))) -∗
-    WP (HartE gen_id cpu_id m : expr riscv_lang).
+               mWP (HartE gen_id cpu_id m' : expr riscv_lang))) -∗
+    mWP (HartE gen_id cpu_id m : expr riscv_lang).
   Proof using .
     intros Hpres.
     iIntros "#(Hborn & Hstarted & Hrege) H".
@@ -924,8 +924,8 @@ Section WPExec.
                tso_interp_of riscv_eraGS img σ'.(mem) log'
                  (vstep (hart_agent cpu_id) tv' log' V) ∗
                (resv_fragb cpu_id r' (hr_acq hr') -∗
-                WP (HartE gen_id cpu_id m' : expr riscv_lang)))) -∗
-    WP (HartE gen_id cpu_id m : expr riscv_lang).
+                mWP (HartE gen_id cpu_id m' : expr riscv_lang)))) -∗
+    mWP (HartE gen_id cpu_id m : expr riscv_lang).
   Proof using .
     iIntros "#(Hborn & Hstarted & Hrege) Hfrag H".
     iApply wp_lift_step; first done.
@@ -1057,8 +1057,8 @@ Section WPExec.
     resv_frag cpu_id rr -∗
     ▷ (∀ tick : bool,
          resv_frag cpu_id None -∗
-         WP (HartE gen_id cpu_id (riscv_step tick) : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+         mWP (HartE gen_id cpu_id (riscv_step tick) : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros "#Hcert Hfrag H". rewrite /LoopE.
     iDestruct "Hfrag" as (b) "Hfrag".
@@ -1114,13 +1114,18 @@ Section WPDev.
     gen_cert -∗
     (∀ gr m d (h : list mobs),
        ⌜trace_shape h true⌝ -∗ ⌜obs_wire i (open_seg h) = u_wire (duart d i)⌝ -∗
+       (* ...AND THE INPUT TIE beside it (relax-d2, lane K1): the era-so-far
+          [ObsUartIn] events at this port ARE what its receiver accepted, so
+          the rx arm can say WHICH input the byte it is about to queue is.
+          The receive FIFO is consumed, so the count exists nowhere else. *)
+       ⌜obs_ins i (open_seg h) = u_recv (duart d i)⌝ -∗
        ⌜obs_boots h = S gen_id⌝ -∗
        gregs_interp gr ∗ gen_heap_interp m ∗ dev_interp d ∗ obs_auth h ={⊤,∅}=∗
        ▷ (∀ κ d', ⌜uart_step i d κ d'⌝ ={∅,⊤}=∗
             gregs_interp gr ∗ gen_heap_interp m ∗ dev_interp d' ∗
             obs_auth (h ++ κ)%list ∗
-            WP (UartLoop i : expr riscv_lang))) -∗
-    WP (UartLoop i : expr riscv_lang).
+            mWP (UartLoop i : expr riscv_lang))) -∗
+    mWP (UartLoop i : expr riscv_lang).
   Proof using .
     iIntros "#(Hborn & Hstarted & Hrege) H".
     iApply wp_lift_step; first done.
@@ -1159,12 +1164,12 @@ Section WPDev.
     iDestruct "Hdur" as (dmap) "[Hdauth %Hdview]".
     (* the history so far, and what the callback may know about it *)
     iDestruct "Hobs" as (h) "(%Htot & %Hwf & Hoauth)".
-    pose proof Hwf as (Hsh & Hbt & Hwire). rewrite Hpw in Hsh Hwire Hbt.
-    specialize (Hwire eq_refl i).
+    pose proof Hwf as (Hsh & Hbt & Hwire & Hrecv). rewrite Hpw in Hsh Hwire Hrecv Hbt.
+    specialize (Hwire eq_refl i). specialize (Hrecv eq_refl i).
     (* the era stamp: [obs_wf]'s boot count at a live thread *)
     assert (Hstamp : obs_boots h = S gen_id) by (rewrite Hbt Heq; lia).
     iMod ("H" $! g.(gregs) g.(gmem) g.(gdev) h
-            with "[//] [//] [//] [$Hgr $Hmem $Hdev $Hoauth]") as "Hk".
+            with "[//] [//] [//] [//] [$Hgr $Hmem $Hdev $Hoauth]") as "Hk".
     iModIntro. iSplitR.
     { iPureIntro. exists [], (UartLoopE gen_id i),
         (GState g.(gregs) g.(gmem) g.(gdev) g.(ggen) g.(gpow) g.(gresv)
@@ -1262,8 +1267,8 @@ Section WPDev.
             disk_fixed_auth (v_disk (dvirtio d')) ∗ start_auth n ∗
             tso_interp_of riscv_eraGS img (W ∪ m) log'
               (vstep disk_agent (length log') log' V) ∗
-            WP (DiskLoop : expr riscv_lang))) -∗
-    WP (DiskLoop : expr riscv_lang).
+            mWP (DiskLoop : expr riscv_lang))) -∗
+    mWP (DiskLoop : expr riscv_lang).
   Proof using .
     iIntros "#(Hborn & Hstarted & Hrege) H".
     iApply wp_lift_step; first done.
@@ -1356,8 +1361,8 @@ Section WPDev.
     (∀ gr m d, gregs_interp gr ∗ gen_heap_interp m ∗ dev_interp d ={⊤,∅}=∗
        ▷ (∀ gr', ⌜plic_step d gr gr'⌝ ={∅,⊤}=∗
             gregs_interp gr' ∗ gen_heap_interp m ∗ dev_interp d ∗
-            WP (PlicLoop : expr riscv_lang))) -∗
-    WP (PlicLoop : expr riscv_lang).
+            mWP (PlicLoop : expr riscv_lang))) -∗
+    mWP (PlicLoop : expr riscv_lang).
   Proof using .
     iIntros "#(Hborn & Hstarted & Hrege) H".
     iApply wp_lift_step; first done.

@@ -262,8 +262,8 @@ Definition wp_sys_fstat_sconf_body
          caller only by keeping the persistent half in hand -- which is why
          what comes back here is [filestat_fs_out], not [filestat_fs_env]. *)
       filestat_fs_out fn -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type SYSFSTAT.
   Parameter wp_sys_fstat_sconf :

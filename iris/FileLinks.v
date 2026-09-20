@@ -28,7 +28,6 @@ Require Import EchoOutPure.
 Require Import FileDisc.
 Require Import FileOutPure.
 Require Import EchoOut.
-Require Import AppEcho.
 Require Import AppFile.
 Require Import FileOut.
 Require Import RiscvPtsto.

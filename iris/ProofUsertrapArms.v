@@ -304,7 +304,7 @@ Section Ut56.
     wp_next true (un_pj N)
       (fun CID' => usertrap_post (CID := CID') (ut_res (CID := CID') Rsys) pt ksp m0
                      mie_v menvcfg0 U0 sts gn cs pid epv scv fdep Wk) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hfdk Hwf Hgenr Hav Hnx Htfpe Hksp Hm0sp Hmsp Hms1 Hcs Hmiev Hmenvv Hrd Hnec.
     pose proof (ut_nx_bound false av nx Hav Hnx) as Hks.
@@ -893,7 +893,7 @@ Section UtD0.
     wp_next true (un_pj N)
       (fun CID' => usertrap_post (CID := CID') (ut_res (CID := CID') Rsys) pt ksp m0
                      mie_v menvcfg0 U0 sts gn cs pid epv scv fdep Wk) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hfdk Hwf Hgenr Hav Hnx Htfpe Hksp Hm0sp Hmsp Hms1 Hcs Hmiev Hmenvv Hrd Hnec.
     pose proof (ut_nx_bound false av nx Hav Hnx) as Hks.
@@ -1359,7 +1359,7 @@ Section UtE8.
     wp_next true (un_pj N)
       (fun CID' => usertrap_post (CID := CID') (ut_res (CID := CID') Rsys) pt ksp m0
                      mie_v menvcfg0 U0 sts gn cs pid epv scv fdep Wk) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hwf Hgenr Hav Hnx Htfpe Hksp Hm0sp Hmsp Hms1 Hcs Hmiev Hmenvv Hrd Hnec.
     pose proof (ut_nx_bound false av nx Hav Hnx) as Hks.

@@ -90,8 +90,8 @@ Section UkRunLeaf.
        urun N h'
          (<[Regidx rd := regval_into_reg (sign_extend' 64 imm : mword 64)]> m)
          (add_vec_int pc 2) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hns Hrd. iIntros "#Hi Hrun Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
@@ -113,8 +113,8 @@ Section UkRunLeaf.
     (∀ h' : CpuId,
        urun N h' (<[Regidx rd := regval_into_reg wval]> m)
          (add_vec_int pc 2) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hns H1 H2. iIntros "#Hi Hrun Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
@@ -137,8 +137,8 @@ Section UkRunLeaf.
     (∀ h' : CpuId,
        urun N h' (<[Regidx rd := regval_into_reg wval]> m)
          (add_vec_int pc 2) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hns H1 H2 H3. iIntros "#Hi Hrun Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
@@ -162,8 +162,8 @@ Section UkRunLeaf.
     (∀ h' : CpuId,
        urun N h' (<[Regidx rd := regval_into_reg wval]> m)
          tgt avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hns H1 H2 H3 H4. iIntros "#Hi Hrun Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
@@ -184,8 +184,8 @@ Section UkRunLeaf.
     (∀ h' : CpuId,
        urun N h' m
          tgt avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros H1 H2. iIntros "#Hi Hrun Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
@@ -206,8 +206,8 @@ Section UkRunLeaf.
     (∀ h' : CpuId,
        urun N h' (<[Regidx rd := regval_into_reg wval]> m)
          (add_vec_int pc 2) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hns H1 H2. iIntros "#Hi Hrun Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
@@ -229,8 +229,8 @@ Section UkRunLeaf.
     (∀ h' : CpuId,
        urun N h' (<[Regidx rd := regval_into_reg wval]> m)
          (add_vec_int pc 2) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hns H1 H2. iIntros "#Hi Hrun Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
@@ -251,8 +251,8 @@ Section UkRunLeaf.
     (∀ h' : CpuId,
        urun N h' m
          tgt avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros H1 H2. iIntros "#Hi Hrun Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
@@ -273,8 +273,8 @@ Section UkRunLeaf.
     (∀ h' : CpuId,
        urun N h' (<[Regidx rd := regval_into_reg wval]> m)
          (add_vec_int pc 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hns H1 H2. iIntros "#Hi Hrun Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
@@ -296,8 +296,8 @@ Section UkRunLeaf.
     (∀ h' : CpuId,
        urun N h' (<[Regidx rd := regval_into_reg wval]> m)
          (add_vec_int pc 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hns H1 H2. iIntros "#Hi Hrun Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
@@ -319,8 +319,8 @@ Section UkRunLeaf.
     (∀ h' : CpuId,
        urun N h' (<[Regidx rd := regval_into_reg wval]> m)
          (add_vec_int pc 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hns H1 H2. iIntros "#Hi Hrun Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
@@ -342,8 +342,8 @@ Section UkRunLeaf.
     (∀ h' : CpuId,
        urun N h' (<[Regidx rd := regval_into_reg wval]> m)
          (add_vec_int pc 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hns H1 H2. iIntros "#Hi Hrun Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
@@ -365,8 +365,8 @@ Section UkRunLeaf.
     (∀ h' : CpuId,
        urun N h' (<[Regidx rd := regval_into_reg wval]> m)
          (add_vec_int pc 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hns H1 H2. iIntros "#Hi Hrun Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
@@ -388,8 +388,8 @@ Section UkRunLeaf.
     (∀ h' : CpuId,
        urun N h' (<[Regidx rd := regval_into_reg wval]> m)
          (add_vec_int pc 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hns H1 H2. iIntros "#Hi Hrun Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
@@ -411,8 +411,8 @@ Section UkRunLeaf.
     (∀ h' : CpuId,
        urun N h' (<[Regidx rd := regval_into_reg wval]> m)
          (add_vec_int pc 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hns H1 H2. iIntros "#Hi Hrun Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
@@ -434,8 +434,8 @@ Section UkRunLeaf.
     (∀ h' : CpuId,
        urun N h' (<[Regidx rd := regval_into_reg wval]> m)
          (add_vec_int pc 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hns H1 H2. iIntros "#Hi Hrun Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
@@ -457,8 +457,8 @@ Section UkRunLeaf.
     (∀ h' : CpuId,
        urun N h' (<[Regidx rd := regval_into_reg wval]> m)
          (add_vec_int pc 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hns H1 H2. iIntros "#Hi Hrun Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
@@ -480,8 +480,8 @@ Section UkRunLeaf.
     (∀ h' : CpuId,
        urun N h' (<[Regidx rd := regval_into_reg wval]> m)
          (add_vec_int pc 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hns H1 H2. iIntros "#Hi Hrun Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
@@ -503,8 +503,8 @@ Section UkRunLeaf.
     (∀ h' : CpuId,
        urun N h' (<[Regidx rd := regval_into_reg wval]> m)
          (add_vec_int pc 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hns H1 H2. iIntros "#Hi Hrun Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
@@ -526,8 +526,8 @@ Section UkRunLeaf.
     (∀ h' : CpuId,
        urun N h' (<[Regidx rd := regval_into_reg wval]> m)
          (add_vec_int pc 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hns H1 H2. iIntros "#Hi Hrun Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
@@ -549,8 +549,8 @@ Section UkRunLeaf.
     (∀ h' : CpuId,
        urun N h' (<[Regidx rd := regval_into_reg wval]> m)
          (add_vec_int pc 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hns H1 H2. iIntros "#Hi Hrun Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
@@ -572,8 +572,8 @@ Section UkRunLeaf.
     (∀ h' : CpuId,
        urun N h' (<[Regidx rd := regval_into_reg wval]> m)
          (add_vec_int pc 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hns H1 H2. iIntros "#Hi Hrun Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
@@ -595,8 +595,8 @@ Section UkRunLeaf.
     (∀ h' : CpuId,
        urun N h' (<[Regidx rd := regval_into_reg wval]> m)
          (add_vec_int pc 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hns H1 H2. iIntros "#Hi Hrun Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
@@ -618,8 +618,8 @@ Section UkRunLeaf.
     (∀ h' : CpuId,
        urun N h' (<[Regidx rd := regval_into_reg wval]> m)
          (add_vec_int pc 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hns H1 H2. iIntros "#Hi Hrun Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
@@ -641,8 +641,8 @@ Section UkRunLeaf.
     (∀ h' : CpuId,
        urun N h' (<[Regidx rd := regval_into_reg wval]> m)
          (add_vec_int pc 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hns H1 H2. iIntros "#Hi Hrun Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
@@ -664,8 +664,8 @@ Section UkRunLeaf.
     (∀ h' : CpuId,
        urun N h' (<[Regidx rd := regval_into_reg wval]> m)
          (add_vec_int pc 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hns H1 H2. iIntros "#Hi Hrun Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
@@ -688,8 +688,8 @@ Section UkRunLeaf.
     (∀ h' : CpuId,
        urun N h' (uv_upd m wr)
          tgt avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hns H1 H2 H3. iIntros "#Hi Hrun Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
@@ -711,8 +711,8 @@ Section UkRunLeaf.
     (∀ h' : CpuId,
        urun N h' m
          tgt avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros H1 H2 H3. iIntros "#Hi Hrun Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
@@ -733,8 +733,8 @@ Section UkRunLeaf.
     (∀ h' : CpuId,
        urun N h' (<[Regidx rd := regval_into_reg wval]> m)
          (add_vec_int pc 2) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hns H1 H2. iIntros "#Hi Hrun Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
@@ -758,8 +758,8 @@ Section UkRunLeaf.
     (∀ h' : CpuId,
        urun N h' (<[Regidx rd := regval_into_reg wval]> m)
          (add_vec_int pc 2) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hns H1 H2 H3 H4. iIntros "#Hi Hrun Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
@@ -783,8 +783,8 @@ Section UkRunLeaf.
     (∀ h' : CpuId,
        urun N h' (<[Regidx rd := regval_into_reg wval]> m)
          (add_vec_int pc 2) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hns H1 H2 H3 H4. iIntros "#Hi Hrun Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
@@ -806,8 +806,8 @@ Section UkRunLeaf.
     (∀ h' : CpuId,
        urun N h' (<[Regidx rd := regval_into_reg wval]> m)
          (add_vec_int pc 2) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hns H1 H2. iIntros "#Hi Hrun Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
@@ -829,8 +829,8 @@ Section UkRunLeaf.
     (∀ h' : CpuId,
        urun N h' (<[Regidx rd := regval_into_reg wval]> m)
          (add_vec_int pc 2) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hns H1 H2. iIntros "#Hi Hrun Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
@@ -853,8 +853,8 @@ Section UkRunLeaf.
     (∀ h' : CpuId,
        urun N h' (<[Regidx rd := regval_into_reg wval]> m)
          (add_vec_int pc 2) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hns H1 H2 H3. iIntros "#Hi Hrun Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
@@ -877,8 +877,8 @@ Section UkRunLeaf.
     (∀ h' : CpuId,
        urun N h' (<[Regidx rd := regval_into_reg wval]> m)
          (add_vec_int pc 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hns H1 H2. iIntros "#Hi Hrun Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
@@ -908,8 +908,8 @@ Section UkRunLeaf.
     (∀ h' : CpuId,
        urun N h' m
          (if taken then tgt else add_vec_int pc 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros H1 H2 H3. iIntros "#Hi Hrun Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
@@ -941,8 +941,8 @@ Section UkRunLeaf.
     ▷ (∀ h' : CpuId,
          urun N h' m
            (if taken then tgt else add_vec_int pc 4) avail -∗
-         WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+         mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros H1 H2 H3. iIntros "#Hi Hrun Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
@@ -965,8 +965,8 @@ Section UkRunLeaf.
     (∀ h' : CpuId,
        urun N h' m
          (if taken then tgt else add_vec_int pc 2) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros H1 H2 H3 H4. iIntros "#Hi Hrun Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
@@ -988,8 +988,8 @@ Section UkRunLeaf.
     (∀ h' : CpuId,
        urun N h' m
          (if taken then tgt else add_vec_int pc 2) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros H1 H2 H3 H4. iIntros "#Hi Hrun Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
@@ -1052,8 +1052,8 @@ Section UkRunLeaf.
               := regval_into_reg
                    (add_vec_int (m !!! Regidx csp_rs1) (- (8 * Z.of_nat k)))]> m)
            (add_vec_int pc 2) n -∗
-         WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+         mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Himm. iIntros "#Hi Hrun Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
@@ -1094,8 +1094,8 @@ Section UkRunLeaf.
             := regval_into_reg
                  (add_vec_int (m !!! Regidx csp_rs1) (8 * Z.of_nat k))]> m)
          (add_vec_int pc 2) (k + n) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Himm. iIntros "#Hi Hframe Hrun Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
@@ -1137,8 +1137,8 @@ Section UkRunLeaf.
               := regval_into_reg
                    (add_vec_int (m !!! Regidx csp_rs1) (- (8 * Z.of_nat k)))]> m)
            (add_vec_int pc 2) n -∗
-         WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+         mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Himm. iIntros "#Hi Hrun Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
@@ -1179,8 +1179,8 @@ Section UkRunLeaf.
             := regval_into_reg
                  (add_vec_int (m !!! Regidx csp_rs1) (8 * Z.of_nat k))]> m)
          (add_vec_int pc 2) (k + n) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Himm. iIntros "#Hi Hframe Hrun Hcont".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".

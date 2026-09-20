@@ -150,8 +150,8 @@ Section ProofReparentEnds.
         rp_frame spF (m !!! Regidx (mword_of_int 1)) (m !!! Regidx (mword_of_int 8))
                      (m !!! Regidx (mword_of_int 9)) (m !!! Regidx (mword_of_int 18))
                      (m !!! Regidx (mword_of_int 19)) (m !!! Regidx (mword_of_int 20)) -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros sp0 spF HK6 Hdom.
     iIntros "Hcg #Htext Hpc Hcont".
@@ -450,8 +450,8 @@ Section ProofReparentEnds.
         /\ (forall r : regidx, r ∈ dom (rf_to_gmap Mf)) ⌝ -∗
         sie_cap_gpr KT1 Mf K b pme -∗
         pc_is (ret_pc vra) -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros spF sp0 HK6 Hdom.
     iIntros "Hcg #Htext Hpc Hframe Hcont".
@@ -627,7 +627,7 @@ Section ProofReparentLoop.
         rp_frame spF vra vs0 vs1 vs2 vs3 vs4 -∗
         (mword_of_int KernelSyms.initproc : mword 64) ↦₈{dqi} ip -∗
         parents_own (rp_map pv ip ps) -∗
-        WP (Loop : expr riscv_lang)) -∗
+        mWP (Loop : expr riscv_lang)) -∗
     ∀ (k : nat) (M : regfile),
       ⌜(k < NPROC)%nat⌝ -∗ ⌜rpl_regs M spF pv vs5 vs6 vs7 vs8 vs9 vs10 vs11 k⌝ -∗
       sie_cap_gpr KT1 M av b pme -∗
@@ -636,7 +636,7 @@ Section ProofReparentLoop.
       rp_frame spF vra vs0 vs1 vs2 vs3 vs4 -∗
       (mword_of_int KernelSyms.initproc : mword 64) ↦₈{dqi} ip -∗
       parents_own (rp_upto pv ip k ps) -∗
-      WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hlen Hpslen Hlvl Hav Hno.
     iIntros "#Hpinv Hqexit".
@@ -654,14 +654,14 @@ Section ProofReparentLoop.
                        rp_frame spF vra vs0 vs1 vs2 vs3 vs4 -∗
                        (mword_of_int KernelSyms.initproc : mword 64) ↦₈{dqi} ip -∗
                        parents_own (rp_map pv ip ps) -∗
-                       WP (Loop : expr riscv_lang)) -∗
+                       mWP (Loop : expr riscv_lang)) -∗
                    sie_cap_gpr KT1 M av b pme -∗
                    cpu_own lvl eb pme b lks -∗
                    kernel_text -∗ pc_is (mword_of_int (KernelSyms.reparent + 0x34)) -∗
                    rp_frame spF vra vs0 vs1 vs2 vs3 vs4 -∗
                    (mword_of_int KernelSyms.initproc : mword 64) ↦₈{dqi} ip -∗
                    parents_own (rp_upto pv ip k ps) -∗
-                   WP (Loop : expr riscv_lang)))%I with "[]" as "Hloop".
+                   mWP (Loop : expr riscv_lang)))%I with "[]" as "Hloop".
     { iIntros (fuel). iInduction fuel as [|fuel IHf] "IHf".
       { iIntros (CIDk Hsk k M) "%Hfuel %Hk %Hregs Hqx Hcg Hown Htext Hpc Hframe Hinit Hpar".
         exfalso. lia. }
@@ -679,7 +679,7 @@ Section ProofReparentLoop.
                    rp_frame spF vra vs0 vs1 vs2 vs3 vs4 -∗
                    (mword_of_int KernelSyms.initproc : mword 64) ↦₈{dqi} ip -∗
                    parents_own (rp_upto pv ip (S k) ps) -∗
-                   WP (Loop : expr riscv_lang)))%I
+                   mWP (Loop : expr riscv_lang)))%I
         with "[Hqx]" as "Htail".
       { iIntros (CIDt Hst Mt) "%Hmt Hcg Hown Hpc Hframe Hinit Hpar".
         destruct Hmt as (Ht9 & Htsp & Ht18 & Ht19 & Ht20 & Ht21 & Ht22 & Ht23 & Ht24 & Ht25 & Ht26 & Ht27 & Htdom).

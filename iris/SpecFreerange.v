@@ -70,8 +70,8 @@ Definition wp_freerange_sconf_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{CID
     pc_is ret_tgt -∗
     ⌜ callee_saved m mr ⌝ -∗
     kalloc_avail γk (Some (length ps)) -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type FREERANGE.
   Parameter wp_freerange_sconf :

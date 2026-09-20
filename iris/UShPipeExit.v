@@ -127,7 +127,7 @@ Section pipe_exit.
     iDestruct "Hc"
       as (v2 w2 so r2 gb2 pre opn)
          "(#Hpin2 & #Hpera2 & Hblk & Hcur & Hrb & Hta & Hcsa & Hpsa & HEa
-           & Hdl & %Hall)".
+           & Hdl & Hdll & %Hall)".
     iDestruct (pera_pin_agree with "Hpera Hpera2") as %->.
     destruct Hall as [(Hfls & _) | (Htrue & Hopen)].
     { rewrite Hfls. cbn [cur_frac].

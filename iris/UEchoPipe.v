@@ -72,21 +72,16 @@ Require Import ProcAvail.
 Require Import FileInvDefs.
 Require Import UserFd.
 Require Import UserPerm.
-Require Import ProcPtOwn.
 Require Import UserPtTree.
-Require Import UmodeArith UmodeAbi.
+Require Import UmodeArith.
 Require Import ProcGeom.
-Require Import VcGen.
 Require Import ChildTok.
 Require Import UexecSlot UexecRet UexecSG.
 Require Import ExecEntry.               (* [image_entry] -- the exec channel *)
 Require Import SpecKexec.               (* [kexec_image_ok] *)
-Require Import SpecSysExec.             (* [exec_args_of] *)
 Require Import UkRun UkRunSys.
 Require Import UexecExecInst.           (* THE INSTANCES: [uexecSG_xv6] etc. *)
 Require Import SpecSysRead.             (* [sys_rw_count] *)
-Require Import SpecFilewrite.           (* [filewrite_extra] *)
-Require Import PipeInvDefs.
 Require Import PipeQueue.               (* [pipe_wpay], [pipe_wpost], ... *)
 Require Import PipeReg.                 (* [pipe_reg] *)
 Require Import PipeProto.               (* THE PROTOCOL *)

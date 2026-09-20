@@ -487,8 +487,8 @@ Section WpSconfMem.
         sie_cap_gpr kt (<[Regidx rd := regval_into_reg (ext v)]> m) n b p -∗
         pc_is (add_vec_int pc (if c then 2 else 4)) -∗
         Ψ v -∗
-        WP (Loop : expr riscv_lang))) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang))) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hw0 Hw8 Hvw Hwdvd Huintw Hread_plain Hext ea Hrd Hrdok HkptEm Hload.
     rdok_split Hrdok.
@@ -810,8 +810,8 @@ Section WpSconfMem.
         sie_cap_gpr kt (<[Regidx rd := regval_into_reg (ext v)]> m) n b p -∗
         pc_is (add_vec_int pc (if c then 2 else 4)) -∗
         Ψ v -∗
-        WP (Loop : expr riscv_lang))) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang))) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hw0 Hw8 Hvw Hwdvd Huintw Hread_plain Hext ea Hrd Hrdok HkptEm.
     exact (wp_load_s_sconf_au_dat (ktd := ktd) width c uns pc rd rs1 imm m n ext Ψ Em b
@@ -925,8 +925,8 @@ Section WpSconfMem.
         sie_cap_gpr kt (<[Regidx rd := regval_into_reg (ext v)]> m) n b p -∗
         pc_is (add_vec_int pc (if c then 2 else 4)) -∗
         ⌜P v⌝ -∗ T -∗
-        WP (Loop : expr riscv_lang))) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang))) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hw0 Hw8 Hvw Hwdvd Huintw Hread_plain Hext ea Hrd Hrdok HkptEm Hload.
     rdok_split Hrdok.
@@ -1276,8 +1276,8 @@ Section WpSconfMem.
         sie_cap_gpr kt (<[Regidx rd := regval_into_reg (ext v)]> m) n b p -∗
         pc_is (add_vec_int pc (if c then 2 else 4)) -∗
         (∃ V0 : nat, hart_rview_lb_at (@cpu_id CID) V0 ∗ ⌜Q v V0⌝) -∗ T -∗
-        WP (Loop : expr riscv_lang))) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang))) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hw0 Hw8 Hvw Hwdvd Huintw Hread_plain Hext ea Hrd Hrdok HkptEm Hload.
     rdok_split Hrdok.
@@ -1643,8 +1643,8 @@ Section WpSconfMem.
         sie_cap_gpr kt (<[Regidx rd := regval_into_reg (ext v)]> m) n b p -∗
         pc_is (add_vec_int pc (if c then 2 else 4)) -∗
         (∃ V0 : nat, hart_rview_lb_at (@cpu_id CID) V0 ∗ W v V0) -∗ T -∗
-        WP (Loop : expr riscv_lang))) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang))) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hw0 Hw8 Hvw Hwdvd Huintw Hread_plain Hext ea Hrd Hrdok HkptEm Hload.
     rdok_split Hrdok.
@@ -1988,8 +1988,8 @@ Section WpSconfMem.
         sie_cap_gpr kt (<[Regidx rd := regval_into_reg (ext v)]> m) n b p -∗
         pc_is (add_vec_int pc (if c then 2 else 4)) -∗
         (∃ V0 : nat, hart_rview_lb_at (@cpu_id CID) V0 ∗ Q v V0) -∗ T -∗
-        WP (Loop : expr riscv_lang))) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang))) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hw0 Hw8 Hvw Hwdvd Huintw Hread_plain Hext ea Hrd Hrdok HkptEm Hload.
     rdok_split Hrdok.
@@ -2300,8 +2300,8 @@ Section WpSconfMem.
       sie_cap_gpr kt (<[Regidx rd := regval_into_reg lv]> m) n b p -∗
       pc_is (add_vec_int pc (if c then 2 else 4)) -∗
       wordw_pointsto (KTR := ktd) width pa dqm v -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hw0 Hw8 Hvw Hwdvd Huintw Hread_plain Hlv pa Hrd Hrdok.
     (* the class, consumed at [rs1]: the wiring check for an [iApply]-shaped
@@ -2359,8 +2359,8 @@ Section WpSconfMem.
       sie_cap_gpr kt (<[Regidx rd := regval_into_reg lv]> m) n b p -∗
       pc_is (add_vec_int pc (if c then 2 else 4)) -∗
       wordw_pointsto (KTR := ktd) width pa dqm v -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     exact (wp_load_s_sconf_gen_u (ktd := ktd) width c false pc rd rs1 imm m n v lv b (dqm := dqm)).
   Qed.
@@ -2397,8 +2397,8 @@ Section WpSconfMem.
       sie_cap_gpr kt (<[Regidx rd := regval_into_reg lv]> m) n b p -∗
       pc_is (add_vec_int pc (if c then 2 else 4)) -∗
       wordw_pointsto (KTR := ktd) width pa dqm v -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     exact (wp_load_s_sconf_gen_u (ktd := ktd) width c true pc rd rs1 imm m n v lv b (dqm := dqm)).
   Qed.
@@ -2460,8 +2460,8 @@ Section WpSconfMem.
       sie_cap_gpr kt (<[Regidx rd := regval_into_reg (zero_extend' 64 v)]> m) n b p -∗
       pc_is (add_vec_int pc 4) -∗
       pa ↦ₘ[ktd]{ dqm } v -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros pa Hrd Hrdok.
     (* the class, consumed at [rs1] -- the wiring check; see the family note. *)
@@ -2520,8 +2520,8 @@ Section WpSconfMem.
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt (<[Regidx rd := regval_into_reg (zero_extend' 64 v)]> m) n b p -∗
       pc_is (add_vec_int pc 4) -∗ pa ↦₄[ktd]{ dqm } v -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros pa Hrd Hrdok.
     (* the class, consumed at [rs1] -- the wiring check; see the family note. *)
@@ -2547,8 +2547,8 @@ Section WpSconfMem.
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt (<[Regidx rd := regval_into_reg v]> m) n b p -∗
       pc_is (add_vec_int pc 2) -∗ pa ↦₈[ktd]{ dqm } v -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros pa Hrd Hrdok.
     (* the class, consumed at [rs1] -- the wiring check; see the family note. *)
@@ -2579,8 +2579,8 @@ Section WpSconfMem.
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt (<[Regidx rd := regval_into_reg v]> m) n b p -∗
       pc_is (add_vec_int pc 4) -∗ pa ↦₈[ktd]{ dqm } v -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros pa Hrd Hrdok.
     (* the class, consumed at [rs1] -- the wiring check; see the family note. *)
@@ -2611,8 +2611,8 @@ Section WpSconfMem.
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt (<[Regidx rd := regval_into_reg (sign_extend' 64 v)]> m) n b p -∗
       pc_is (add_vec_int pc 2) -∗ pa ↦₄[ktd]{ dqm } v -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros pa Hrd Hrdok.
     (* the class, consumed at [rs1] -- the wiring check; see the family note. *)
@@ -2638,8 +2638,8 @@ Section WpSconfMem.
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt (<[Regidx rd := regval_into_reg (sign_extend' 64 v)]> m) n b p -∗
       pc_is (add_vec_int pc 4) -∗ pa ↦₄[ktd]{ dqm } v -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros pa Hrd Hrdok.
     (* the class, consumed at [rs1] -- the wiring check; see the family note. *)
@@ -2760,8 +2760,8 @@ Section WpSconfMem.
       sie_cap_gpr kt m n b p -∗
       pc_is (add_vec_int pc (if c then 2 else 4)) -∗
       Ψ -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hw0 Hw8 Hvw Hwdvd Huintw Hwrite_plain Hsv HkptEm ea Hwrite.
     iIntros "Hcg Hpc #Hinstr #Hclaim HAU Hcont".
@@ -2994,8 +2994,8 @@ Section WpSconfMem.
       sie_cap_gpr kt m n b p -∗
       pc_is (add_vec_int pc (if c then 2 else 4)) -∗
       Ψ -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hw0 Hw8 Hvw Hwdvd Huintw Hwrite_plain Hsv HkptEm ea.
     iIntros "Hcg Hpc #Hinstr #Hclaim HAU Hcont".
@@ -3037,8 +3037,8 @@ Section WpSconfMem.
       sie_cap_gpr kt m n b p -∗
       pc_is (add_vec_int pc (if c then 2 else 4)) -∗
       wordw_pointsto (KTR := ktd) width pa (DfracOwn 1) sv -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hw0 Hw8 Hvw Hwdvd Huintw Hwrite_plain Hsv pa.
     (* the class, consumed at [rs1] -- the wiring check; see the family note. *)
@@ -3092,8 +3092,8 @@ Section WpSconfMem.
       sie_cap_gpr kt m n b p -∗
       pc_is (add_vec_int pc (if c then 2 else 4)) -∗
       wordw_pointsto (KTR := ktd) width pa (DfracOwn 1) sv -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hw0 Hw8 Hvw Hwdvd Huintw Hwrite_plain Hsv pa.
     assert (Hpa_all : forall hh : CpuId,
@@ -3155,8 +3155,8 @@ Section WpSconfMem.
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt m n b p -∗
       pc_is (add_vec_int pc 2) -∗ pa ↦₈[ktd] storeval -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros pa storeval.
     (* the class, consumed at [rs1] -- the wiring check; see the family note. *)
@@ -3194,8 +3194,8 @@ Section WpSconfMem.
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt m n b p -∗
       pc_is (add_vec_int pc 4) -∗ pa ↦₈[ktd] storeval -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros pa storeval.
     (* the class, consumed at [rs1] -- the wiring check; see the family note. *)
@@ -3232,8 +3232,8 @@ Section WpSconfMem.
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt m n b p -∗
       pc_is (add_vec_int pc 2) -∗ pa ↦₄[ktd] storeval -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros pa storeval.
     (* the class, consumed at [rs1] -- the wiring check; see the family note. *)
@@ -3265,8 +3265,8 @@ Section WpSconfMem.
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt m n b p -∗
       pc_is (add_vec_int pc 4) -∗ pa ↦₄[ktd] storeval -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros pa storeval.
     (* the class, consumed at [rs1] -- the wiring check; see the family note. *)
@@ -3408,8 +3408,8 @@ Section WpSconfMem.
       sie_cap_gpr kt m n b p -∗
       pc_is (add_vec_int pc 4) -∗
       ea ↦ₘ[ktd] storeval -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros ea storeval.
     (* the class, consumed at [rs1] -- the wiring check; see the family note. *)
@@ -3449,8 +3449,8 @@ Section WpSconfMem.
       sie_cap_gpr kt m n b p -∗
       pc_is (add_vec_int pc 4) -∗
       ea ↦ₘ[ktd] storeval -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros ea storeval.
     assert (Hpa_all : forall hh : CpuId,
@@ -3491,8 +3491,8 @@ Section WpSconfMem.
       sie_cap_gpr kt (<[Regidx rd := regval_into_reg v]> m) n b p -∗
       pc_is (add_vec_int pc 2) -∗
       pa ↦₈[ktd]{ dqm } v -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros imm pa Hrd Hrdok.
     unfold pa.
@@ -3542,8 +3542,8 @@ Section WpSconfMem.
       sie_cap_gpr kt m n b p -∗
       pc_is (add_vec_int pc 2) -∗
       pa ↦₈[ktd] storeval -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros imm pa storeval.
     (* WHAT THE CLASS WILL DO HERE, recorded as a proved fact rather than a
@@ -3608,8 +3608,8 @@ Section WpSconfMem.
       sie_cap_gpr kt m n b p -∗
       pc_is (add_vec_int pc 4) -∗
       ea ↦₈[ktd] storeval -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros ea storeval.
     (* the class, consumed at [rs1] -- the wiring check; see the family note. *)
@@ -3867,8 +3867,8 @@ Section WpSconfMem.
          [∗ list] j ∈ seq 0 8, ∃ t : nat,
            TsoCtx.phys_ledger_wpay (pa_add ea j) (DfracOwn 1) (z j) t
              (TsoMemPa.TsWin ea 8 j z cp own' lo)) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros ea Hz Hown.
     assert (Hpa_all : forall hh : CpuId,
@@ -3958,8 +3958,8 @@ Section WpSconfMem.
          [∗ list] j ∈ seq 0 8,
          TsoCtx.phys_ledger_wpay (pa_add ea j) (DfracOwn 1) (z8 j) lo
            (TsoMemPa.TsWin ea 8 j z8 cp (fun _ => Some lo) lo)) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros ea z8.
     (* the class, consumed at [rs1] -- the wiring check; see the family note. *)
@@ -4083,8 +4083,8 @@ Section WpSconfMem.
       sie_cap_gpr kt m n b p -∗
       pc_is (add_vec_int pc 4) -∗
       ea ↦₄[ktd] storeval -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros ea storeval.
     (* the class, consumed at [rs1] -- the wiring check; see the family note. *)
@@ -4131,8 +4131,8 @@ Section WpSconfMem.
       sie_cap_gpr kt m n b p -∗
       pc_is (add_vec_int pc 4) -∗
       wordw_pointsto (KTR := ktd) 4 ea (DfracOwn 1) storeval -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros ea storeval.
     iIntros "Hcg Hpc Hinstr Hbytes Hcont".

@@ -414,6 +414,21 @@ Section CtBodies.
     rewrite ct_arg_trunc8 in H. exact H.
   Qed.
 
+  (* ...AND THE NUL ARM'S OWN READING (relax-d2, lane K2): the [c.beqz]
+     at +0x02c decides [c = 0], which is the first disjunct of
+     [ConsLog.cons_drop_ok]. *)
+  Lemma ct_arg_nul (c : bv 8) :
+    eq_vec (extend_value (n := 8) true (c : mword 8) : mword 64)
+           (zero_reg : mword 64) = true ->
+    bv_unsigned c = 0%Z.
+  Proof using .
+    intro H.
+    assert (Hz : (zero_reg : mword 64) = (mword_of_int 0 : mword 64))
+      by (apply bv_eq; vm_compute; reflexivity).
+    rewrite Hz in H. rewrite (ct_arg_eq_byte c 0 H).
+    vm_compute; reflexivity.
+  Qed.
+
   (* the byte the '\r' arm stores, at the translation's own spelling *)
   Lemma ct_trunc8_10 :
     trunc8 (mword_of_int 10 : mword 64) = (mword_of_int 10 : mword 8).
@@ -522,6 +537,37 @@ Section CtBodies.
     rewrite <- Hw. lia.
   Qed.
 
+  (* ...AND THE GUARD'S OTHER ARM, which the DROP needs (relax-d2, lane
+     K2): [bltu 127, e-r] TAKEN is [cons.e - cons.r >= 128], and with
+     [cons_ok]'s [<= 128] that pins the live range at exactly the whole
+     ring.  The difference is below 2^31 either way, so the sign extension
+     the comparison runs on is the identity and the 64-bit test IS the test
+     on the difference. *)
+  Lemma ct_nofit (x : mword 32) :
+    (bv_unsigned x <= Z.of_nat INPUT_BUF_SIZE)%Z ->
+    zopz0zI_u (mword_of_int 127 : mword 64) (sign_extend' 64 x : mword 64) = true ->
+    (Z.of_nat INPUT_BUF_SIZE <= bv_unsigned x)%Z.
+  Proof using .
+    intros Hle H. rewrite cons_bufz in Hle. rewrite cons_bufz.
+    pose proof (bv_unsigned_in_range _ x) as [Hx0 _].
+    assert (Hsg : bv_signed x = bv_unsigned x).
+    { unfold bv_signed, bv_swrap.
+      change (bv_half_modulus (MachineWord.MachineWord.Z_idx 32))
+        with 2147483648%Z.
+      unfold bv_wrap.
+      change (bv_modulus (MachineWord.MachineWord.Z_idx 32))
+        with 4294967296%Z.
+      rewrite (Z.mod_small (bv_unsigned x + 2147483648) 4294967296
+                 ltac:(lia)). lia. }
+    assert (Hsx : bv_unsigned (sign_extend' 64 x : mword 64) = bv_unsigned x).
+    { rewrite sext32_64_moi moi64_unsigned Hsg. apply bvw64_small.
+      change (2 ^ 64)%Z with 18446744073709551616%Z. lia. }
+    unfold zopz0zI_u in H. apply Z.ltb_lt in H. rewrite !uint_unsigned in H.
+    assert (H127 : bv_unsigned (mword_of_int 127 : mword 64) = 127%Z)
+      by (vm_compute; reflexivity).
+    rewrite H127 Hsx in H. lia.
+  Qed.
+
   (* =================================================================== *)
   (*  THE RING'S GHOST HALF, as one proposition (app-echo.md, lane         *)
   (*  CONS-CURSOR, C2).                                                    *)
@@ -545,7 +591,7 @@ Section CtBodies.
   Definition ct_gh `{XI : CurCtx} (cn : cons_names)
       (pe : option (list mobs * bv 8)) (rr ww ee : mword 32)
       (bs : list (bv 8)) (ts : list (option (list mobs))) : iProp Σ :=
-    (∃ (cur nrd : nat) (st pd : list (list mobs * bv 8))
+    (∃ (cur nrd ndl : nat) (st pd : list (list mobs * bv 8))
        (hh : option (list mobs)) (L0 : list LogEntryDefs.log_entry) (gp : bool),
        ⌜ cons_stored rr ww cur st bs ts ⌝ ∗
        ⌜ cons_pend rr ww ee pd bs ts ⌝ ∗
@@ -553,6 +599,11 @@ Section CtBodies.
        ⌜ cons_below (st ++ pd) hh ⌝ ∗
        cons_stored_auth cn st ∗ cons_cursor cn nrd ∗ cons_hi cn hh ∗
        cons_logm cn L0 ∗ ⌜ cons_owed L0 pe (st ++ pd) gp ⌝ ∗
+       (* THE DELIVERED-COUNT BOUND (relax-d2, lane K2), exactly
+          [ConsoleInv.cons_res]'s: nothing in this function moves either
+          number, and the full-ring drop arm is the one place that spends
+          them. *)
+       cons_dlcnt cn ndl ∗ ⌜ (nrd <= cur)%nat ⌝ ∗ ⌜ (ndl <= nrd)%nat ⌝ ∗
        (⌜ cur = nrd ⌝ ∨ cons_dirty_lb cn))%I.
 
   (* the ring, assembled and taken apart, at the one shape every block of
@@ -566,14 +617,15 @@ Section CtBodies.
   Proof using .
     intros Hlb Hlt Hok Hrow.
     iIntros "Hrc Hwc Hec Hdat Hts Hgh".
-    iDestruct "Hgh" as (cur nrd st pd hh L0 gp)
-      "(%Hst & %Hpd & %Hch & %Hbl & Ha & Hcur & Hhi & Hlm & %Hlog & Hmk)".
+    iDestruct "Hgh" as (cur nrd ndl st pd hh L0 gp)
+      "(%Hst & %Hpd & %Hch & %Hbl & Ha & Hcur & Hhi & Hlm & %Hlog & Hdc &
+        %Hnc & %Hdn & Hmk)".
     rewrite /cons_res.
-    iExists rr, ww, ee, bs, ts, cur, nrd, st, pd, hh, L0, gp.
-    iFrame "Hrc Hwc Hec Hdat Hts Ha Hcur Hhi Hlm Hmk".
+    iExists rr, ww, ee, bs, ts, cur, nrd, ndl, st, pd, hh, L0, gp.
+    iFrame "Hrc Hwc Hec Hdat Hts Ha Hcur Hhi Hlm Hdc Hmk".
     iPureIntro. split_and!;
       [ exact Hlb | exact Hlt | exact Hok | exact Hrow | exact Hst | exact Hpd
-      | exact Hch | exact Hbl | exact Hlog ].
+      | exact Hch | exact Hbl | exact Hlog | exact Hnc | exact Hdn ].
   Qed.
 
   Lemma ct_res_gh `{XI : CurCtx} (cn : cons_names) :
@@ -586,16 +638,65 @@ Section CtBodies.
       cons_data bs ∗ cons_tags ts ∗ ct_gh cn None rr ww ee bs ts.
   Proof using .
     iIntros "H". rewrite /cons_res.
-    iDestruct "H" as (rr ww ee bs ts cur nrd st pd hh L0 gp)
+    iDestruct "H" as (rr ww ee bs ts cur nrd ndl st pd hh L0 gp)
       "(Hrc & Hwc & Hec & %Hlb & %Hlt & %Hok & %Hrow & %Hst & %Hpd & %Hch &
-        %Hbl & Hdat & Hts & Ha & Hcur & Hhi & Hlm & %Hlog & Hmk)".
+        %Hbl & Hdat & Hts & Ha & Hcur & Hhi & Hlm & %Hlog & Hdc & %Hnc &
+        %Hdn & Hmk)".
     iExists rr, ww, ee, bs, ts.
     iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
     iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
     iFrame "Hrc Hwc Hec Hdat Hts".
-    rewrite /ct_gh. iExists cur, nrd, st, pd, hh, L0, gp.
-    iFrame "Ha Hcur Hhi Hlm Hmk". iPureIntro. split_and!;
-      [ exact Hst | exact Hpd | exact Hch | exact Hbl | exact Hlog ].
+    rewrite /ct_gh. iExists cur, nrd, ndl, st, pd, hh, L0, gp.
+    iFrame "Ha Hcur Hhi Hlm Hdc Hmk". iPureIntro. split_and!;
+      [ exact Hst | exact Hpd | exact Hch | exact Hbl | exact Hlog
+      | exact Hnc | exact Hdn ].
+  Qed.
+
+  (* =================================================================== *)
+  (*  K2 (relax-d2): WHAT A FULL RING PAYS THE BOUNDARY.                  *)
+  (*                                                                      *)
+  (*  A drop arm owes [ConsLog.cons_drop_ok], and the FULL-RING disjunct   *)
+  (*  is the only one the switch's guard cannot hand over: it is a fact    *)
+  (*  about the LOG and the DELIVERED COUNT.  The ring has both.  Its      *)
+  (*  [128] live entries are [cur + 128] entries of the committed-plus-    *)
+  (*  pending sequence ([cons_stored_commit]), every one of them an ECHOED *)
+  (*  log entry ([cons_logged]) at a history no other entry has            *)
+  (*  ([cons_chain]) -- so the log holds at least [cur + 128] echoed       *)
+  (*  entries -- and the delivered count is at or below [cur].  The two    *)
+  (*  ghost halves come OUT so the open can agree them with the port       *)
+  (*  invariant's, and go back unchanged: an open moves neither.           *)
+  (* =================================================================== *)
+  Lemma ct_gh_full_log `{XI : CurCtx} (cn : cons_names) (rr ww ee : mword 32)
+      (bs : list (bv 8)) (ts : list (option (list mobs))) :
+    cons_ok rr ww ee ->
+    (Z.of_nat INPUT_BUF_SIZE <= bv_unsigned (sub_vec ee rr))%Z ->
+    ct_gh cn None rr ww ee bs ts -∗
+    ∃ (L0 : list LogEntryDefs.log_entry) (ndl : nat),
+      ⌜ (128 + ndl <= ConsLog.echoed_count L0)%nat ⌝ ∗
+      cons_logm cn L0 ∗ cons_dlcnt cn ndl ∗
+      (cons_logm cn L0 -∗ cons_dlcnt cn ndl -∗
+         ct_gh cn None rr ww ee bs ts).
+  Proof using .
+    intros Hok Hfull. iIntros "Hgh".
+    iDestruct "Hgh" as (cur nrd ndl st pd hh L0 gp)
+      "(%Hst & %Hpd & %Hch & %Hbl & Ha & Hcur & Hhi & Hlm & %Hlog & Hdc &
+        %Hnc & %Hdn & Hmk)".
+    iExists L0, ndl.
+    iSplitR.
+    { iPureIntro.
+      pose proof (cons_stored_commit rr ww ee cur st pd bs ts Hok Hst Hpd)
+        as [Hlen _].
+      pose proof (proj2 Hok) as Hle128.
+      assert (He128 : bv_unsigned (sub_vec ee rr) = Z.of_nat INPUT_BUF_SIZE)
+        by lia.
+      rewrite He128 in Hlen.
+      pose proof (cons_logged_count L0 (st ++ pd) (proj1 Hlog) Hch) as Hcnt.
+      rewrite Hlen in Hcnt. rewrite /INPUT_BUF_SIZE in Hcnt. lia. }
+    iFrame "Hlm Hdc". iIntros "Hlm Hdc".
+    iExists cur, nrd, ndl, st, pd, hh, L0, gp.
+    iFrame "Ha Hcur Hhi Hlm Hdc Hmk". iPureIntro. split_and!;
+      [ exact Hst | exact Hpd | exact Hch | exact Hbl | exact Hlog
+      | exact Hnc | exact Hdn ].
   Qed.
 
   (* THE EDIT ([cons.e--], backspace and C('U')): the editable window loses
@@ -618,8 +719,9 @@ Section CtBodies.
       (add_vec ee (mword_of_int (-1) : mword 32)) bs ts.
   Proof using .
     intro Hne. iIntros "Hgh".
-    iDestruct "Hgh" as (cur nrd st pd hh L0 gp)
-      "(%Hst & %Hpd & %Hch & %Hbl & Ha & Hcur & Hhi & Hlm & %Hlog & Hmk)".
+    iDestruct "Hgh" as (cur nrd ndl st pd hh L0 gp)
+      "(%Hst & %Hpd & %Hch & %Hbl & Ha & Hcur & Hhi & Hlm & %Hlog & Hdc &
+        %Hnc & %Hdn & Hmk)".
     pose proof (cons_sub_ne ee ww Hne) as Hge.
     pose proof (proj1 Hpd) as Hlpd.
     assert (Hpdne : pd <> []).
@@ -633,8 +735,8 @@ Section CtBodies.
                     = ((st ++ removelast pd) ++ [last pd dflt])%list).
     { rewrite <- app_assoc. by rewrite <- Hsplit. }
     rewrite /ct_gh.
-    iExists cur, nrd, st, (removelast pd), hh, L0, gp.
-    iFrame "Ha Hcur Hhi Hlm Hmk". iPureIntro. split_and!.
+    iExists cur, nrd, ndl, st, (removelast pd), hh, L0, gp.
+    iFrame "Ha Hcur Hhi Hlm Hdc Hmk". iPureIntro. split_and!.
     - exact Hst.
     - apply (cons_pend_pop rr ww ee (removelast pd) (last pd dflt) bs ts Hge).
       rewrite <- Hsplit. exact Hpd.
@@ -645,6 +747,8 @@ Section CtBodies.
     - destruct Hlog as [-> Hall]. split; [reflexivity |].
       intro cs. apply (cons_log_ok_pop _ _ (last pd dflt));
         [ rewrite <- Hsnoc; exact Hch | rewrite <- Hsnoc; exact (Hall cs) ].
+    - exact Hnc.
+    - exact Hdn.
   Qed.
 
   (* THE COMMIT ([cons.w = cons.e]): the editable window becomes part of
@@ -658,18 +762,20 @@ Section CtBodies.
     ct_gh cn pe rr ww ee bs ts ==∗ ct_gh cn pe rr ee ee bs ts.
   Proof using .
     intro Hok. iIntros "Hgh".
-    iDestruct "Hgh" as (cur nrd st pd hh L0 gp)
-      "(%Hst & %Hpd & %Hch & %Hbl & Ha & Hcur & Hhi & Hlm & %Hlog & Hmk)".
+    iDestruct "Hgh" as (cur nrd ndl st pd hh L0 gp)
+      "(%Hst & %Hpd & %Hch & %Hbl & Ha & Hcur & Hhi & Hlm & %Hlog & Hdc &
+        %Hnc & %Hdn & Hmk)".
     iMod (cons_stored_append cn st pd with "Ha") as "Ha".
     iModIntro. rewrite /ct_gh.
-    iExists cur, nrd, ((st ++ pd)%list), (@nil (list mobs * bv 8)), hh, L0, gp.
-    iFrame "Ha Hcur Hhi Hlm Hmk". iPureIntro. rewrite app_nil_r.
+    iExists cur, nrd, ndl, ((st ++ pd)%list), (@nil (list mobs * bv 8)), hh,
+            L0, gp.
+    iFrame "Ha Hcur Hhi Hlm Hdc Hmk". iPureIntro. rewrite app_nil_r.
     split_and!;
       [ exact (cons_stored_commit rr ww ee cur st pd bs ts Hok Hst Hpd)
       | exact (cons_pend_commit rr ee bs ts) | exact Hch | exact Hbl
       (* THE SEQUENCE DOES NOT MOVE: a commit only re-labels which of its
          entries are committed, so every input-log clause is unchanged. *)
-      | exact Hlog ].
+      | exact Hlog | exact Hnc | exact Hdn ].
   Qed.
 
   (* THE STORE at [cons.e]: the byte joins the editable window, its tag
@@ -694,9 +800,28 @@ Section CtBodies.
   (*  needs no second shape, and why the window token is gone: holding     *)
   (*  the arm's half IS the exclusion it stood for.                        *)
   (* =================================================================== *)
+  (* THE ERASE RUN IS NEVER ONE BYTE (relax-d2, K3): [consputc_bs] is three
+     bytes, so no join of copies of it is a single-glyph echo.  It is what
+     makes K3 -- "a store arm sends its byte" -- vacuous on the erase arms,
+     which are the ones that may stop short of their plan. *)
+  Lemma ct_erase_run_ne_one (i n : nat) (cb : bv 8) :
+    ((mjoin (replicate i consputc_bs) ++ mjoin (replicate n consputc_bs))%list
+     = [ConsLog.echo_of cb]) -> False.
+  Proof using .
+    destruct i as [|i']; cbn [replicate mjoin].
+    - destruct n as [|n']; cbn [replicate mjoin]; [discriminate|].
+      rewrite /consputc_bs. cbn [app]. discriminate.
+    - rewrite /consputc_bs. cbn [app]. discriminate.
+  Qed.
+
   Definition ct_append `{XI : CurCtx} (γu : uart_names) (hb : list mobs)
       (cb : bv 8) (cs : list (bv 8)) (j : nat) (Φ : iProp Σ) : iProp Σ :=
-    (uart_arm γu (1/2) (Some (hb, cb, cs, j)) ∗
+    ((* THE BYTE'S TWO ERA FACTS (relax-d2, lane K1): the machine was ON at
+        its arrival and the arrival is THIS era's.  They ride the owed
+        append because that is what reaches the CLOSE, where K1 places
+        uartinit's flush witness at this byte. *)
+     ⌜trace_shape hb true⌝ ∗ ⌜obs_boots hb = S gen_id⌝ ∗
+     uart_arm γu (1/2) (Some (hb, cb, cs, j)) ∗
      cons_link Uart0 (S gen_id) ConsLog.EvClose Φ)%I.
 
   Lemma ct_gh_push `{XI : CurCtx} (cn : cons_names) (γu : uart_names)
@@ -718,6 +843,13 @@ Section CtBodies.
     ohist_ext hg h ->
     (* WHAT ACTUALLY WENT OUT is one glyph: the arm ran its plan to the end *)
     take j cs = [ConsLog.echo_of c] ->
+    (* ---- K3 (relax-d2): ...AND THE PLAN WAS THAT GLYPH, so the arm is at
+       position 1 when it closes.  The store arms pass [j = length cs]. ---- *)
+    (cs = [ConsLog.echo_of c] -> j = 1%nat) ->
+    (* ---- K1 (relax-d2): which keystroke this arm is filing.  The byte's
+       trace shape and era stamp come off [ct_pay], which every arm already
+       carries; together they place uartinit's flush witness at [h]. ---- *)
+    k1_next hg h ->
     uart_inv Uart0 γu -∗
     uart_rx_hi γu (1/2) hh -∗
     uart_log_hi γu (1/2) hg -∗
@@ -731,10 +863,11 @@ Section CtBodies.
       ct_gh cn None rr ww (add_vec ee (mword_of_int 1 : mword 32))
         (<[i := cons_xlate c]> bs) (<[i := Some h]> ts).
   Proof using .
-    intros <- Hlb Hlt Hok Hroom Hi Hends Hx Hxg Hes.
-    iIntros "#Hinv Hhi0 Hlgh [Harm Hap] Hgh".
-    iDestruct "Hgh" as (cur nrd st pd hh1 L0 gp)
-      "(%Hst & %Hpd & %Hch & %Hbl & Ha & Hcur & Hhi & Hlm & %Hlog & Hmk)".
+    intros <- Hlb Hlt Hok Hroom Hi Hends Hx Hxg Hes Hk3 Hk1.
+    iIntros "#Hinv Hhi0 Hlgh (%Hsh & %Hbh & Harm & Hap) Hgh".
+    iDestruct "Hgh" as (cur nrd ndl st pd hh1 L0 gp)
+      "(%Hst & %Hpd & %Hch & %Hbl & Ha & Hcur & Hhi & Hlm & %Hlog & Hdc &
+        %Hnc & %Hdn & Hmk)".
     (* the two halves of the mark agree, which is what makes the ambient
        [ohist_ext hh h] a statement about the RING's own picture *)
     rewrite /cons_hi /uart_rx_hi.
@@ -743,15 +876,16 @@ Section CtBodies.
        it: the two halves agree, so [L0] IS the log. *)
     rewrite /cons_logm.
     iMod (uart_inv_cons_close (cn_uart cn) h c cs j hg L0 Φ
-            ltac:(rewrite Hes; right; by left) with "Hinv Hlgh [Hlm] Harm Hap")
+            ltac:(rewrite Hes; right; by left) Hk3
+            Hsh Hbh Hk1 with "Hinv Hlgh [Hlm] Harm Hap")
       as "(Hlgh & Hlm & %Hbelow & Harm & HΦ)"; [ rewrite /uart_logm; iExact "Hlm" |].
     iEval (rewrite Hes) in "Hlm".
     iMod (ghost_var_update_halves (Some h) with "Hhi0 Hhi") as "[Hhi0 Hhi]".
     iModIntro. iFrame "Hhi0 Hlgh Harm HΦ". rewrite /ct_gh.
-    iExists cur, nrd, st, ((pd ++ [(h, c)])%list), (Some h),
+    iExists cur, nrd, ndl, st, ((pd ++ [(h, c)])%list), (Some h),
             ((L0 ++ [(h, c, [ConsLog.echo_of c])])%list), false.
     iFrame "Ha Hcur Hhi". rewrite /cons_logm /uart_logm. iFrame "Hlm".
-    iFrame "Hmk". iPureIntro. rewrite app_assoc.
+    iFrame "Hdc Hmk". iPureIntro. rewrite app_assoc.
     split_and!.
     - exact (cons_stored_ins rr ww cur st bs ts i h c ee Hok Hroom Hi Hst).
     - exact (cons_pend_push rr ww ee pd bs ts i h c Hlb Hlt Hok Hroom Hi
@@ -760,6 +894,8 @@ Section CtBodies.
     - exact (cons_below_snoc ((st ++ pd)%list) hh h c Hbl Hx).
     - exact (cons_log_ok_push L0 ((st ++ pd)%list) gp h c Hch Hbelow
                (cons_gtop_of_below _ hh h Hbl Hx) Hlog).
+    - exact Hnc.
+    - exact Hdn.
   Qed.
 
   (* A DROP -- a NUL byte, a full ring, an erase with nothing to erase.
@@ -776,6 +912,12 @@ Section CtBodies.
     ohist_ext hg h ->
     (* NOTHING went out: the arm closes where it opened *)
     take j cs = [] ->
+    (* ---- K3 (relax-d2): vacuous on every drop, whose plan is [[]] ---- *)
+    (cs = [ConsLog.echo_of c] -> j = 1%nat) ->
+    (* ---- K1 (relax-d2): which keystroke this arm is filing.  The byte's
+       trace shape and era stamp come off [ct_pay], which every arm already
+       carries; together they place uartinit's flush witness at [h]. ---- *)
+    k1_next hg h ->
     uart_inv Uart0 γu -∗
     uart_log_hi γu (1/2) hg -∗
     ct_append γu h c cs j Φ -∗
@@ -783,21 +925,25 @@ Section CtBodies.
       uart_log_hi γu (1/2) (Some h) ∗ uart_arm γu (1/2) None ∗ Φ ∗
       ct_gh cn None rr ww ee bs ts.
   Proof using .
-    intros <- Hends Hxg Hes. iIntros "#Hinv Hlgh [Harm Hap] Hgh".
-    iDestruct "Hgh" as (cur nrd st pd hh L0 gp)
-      "(%Hst & %Hpd & %Hch & %Hbl & Ha & Hcur & Hhi & Hlm & %Hlog & Hmk)".
+    intros <- Hends Hxg Hes Hk3 Hk1.
+    iIntros "#Hinv Hlgh (%Hsh & %Hbh & Harm & Hap) Hgh".
+    iDestruct "Hgh" as (cur nrd ndl st pd hh L0 gp)
+      "(%Hst & %Hpd & %Hch & %Hbl & Ha & Hcur & Hhi & Hlm & %Hlog & Hdc &
+        %Hnc & %Hdn & Hmk)".
     rewrite /cons_logm.
     iMod (uart_inv_cons_close (cn_uart cn) h c cs j hg L0 Φ
-            ltac:(rewrite Hes; by left) with "Hinv Hlgh [Hlm] Harm Hap")
+            ltac:(rewrite Hes; by left) Hk3
+            Hsh Hbh Hk1 with "Hinv Hlgh [Hlm] Harm Hap")
       as "(Hlgh & Hlm & %Hbelow & Harm & HΦ)"; [ rewrite /uart_logm; iExact "Hlm" |].
     iEval (rewrite Hes) in "Hlm".
     iModIntro. iFrame "Hlgh Harm HΦ". rewrite /ct_gh.
-    iExists cur, nrd, st, pd, hh, ((L0 ++ [(h, c, [])])%list), gp.
+    iExists cur, nrd, ndl, st, pd, hh, ((L0 ++ [(h, c, [])])%list), gp.
     iFrame "Ha Hcur Hhi". rewrite /cons_logm /uart_logm. iFrame "Hlm".
-    iFrame "Hmk". iPureIntro. split_and!;
+    iFrame "Hdc Hmk". iPureIntro. split_and!;
       [ exact Hst | exact Hpd | exact Hch | exact Hbl
       | exact (cons_log_ok_snoc_nil L0 ((st ++ pd)%list) gp (h, c, [])
-                 eq_refl Hlog) ].
+                 eq_refl Hlog)
+      | exact Hnc | exact Hdn ].
   Qed.
 
   (* ...AND THE SAME AT THE SEALED RING, which is the shape the two arms
@@ -810,6 +956,12 @@ Section CtBodies.
     obs_ends_in Uart0 h c ->
     ohist_ext hg h ->
     take j cs = [] ->
+    (* ---- K3 (relax-d2) ---- *)
+    (cs = [ConsLog.echo_of c] -> j = 1%nat) ->
+    (* ---- K1 (relax-d2): which keystroke this arm is filing.  The byte's
+       trace shape and era stamp come off [ct_pay], which every arm already
+       carries; together they place uartinit's flush witness at [h]. ---- *)
+    k1_next hg h ->
     uart_inv Uart0 γu -∗
     uart_log_hi γu (1/2) hg -∗
     ct_append γu h c cs j Φ -∗
@@ -817,11 +969,11 @@ Section CtBodies.
       uart_log_hi γu (1/2) (Some h) ∗ uart_arm γu (1/2) None ∗ Φ ∗
       cons_res cn.
   Proof using .
-    intros <- Hends Hxg Hes. iIntros "#Hinv Hlgh Hap Hres".
+    intros <- Hends Hxg Hes Hk3 Hk1. iIntros "#Hinv Hlgh Hap Hres".
     iDestruct (ct_res_gh cn with "Hres") as (rr ww ee bs ts)
       "(%Hlb & %Hlt & %Hok & %Hrow & Hrc & Hwc & Hec & Hdat & Hts & Hgh)".
     iMod (ct_gh_drop cn (cn_uart cn) rr ww ee bs ts h c hg cs j Φ
-            eq_refl Hends Hxg Hes
+            eq_refl Hends Hxg Hes Hk3 Hk1
             with "Hinv Hlgh Hap Hgh") as "(Hlgh & Harm & HΦ & Hgh)".
     iModIntro. iFrame "Hlgh Harm HΦ".
     iApply (ct_gh_res cn rr ww ee bs ts Hlb Hlt Hok Hrow
@@ -847,14 +999,16 @@ Section CtBodies.
     uart_rx_hi γu (1/2) hh ∗ ct_gh cn (Some (h, c)) rr ww ee bs ts.
   Proof using .
     intros <- Her Hends Hx. iIntros "Hhi0 Hgh".
-    iDestruct "Hgh" as (cur nrd st pd hh1 L0 gp)
-      "(%Hst & %Hpd & %Hch & %Hbl & Ha & Hcur & Hhi & Hlm & %Hlog & Hmk)".
+    iDestruct "Hgh" as (cur nrd ndl st pd hh1 L0 gp)
+      "(%Hst & %Hpd & %Hch & %Hbl & Ha & Hcur & Hhi & Hlm & %Hlog & Hdc &
+        %Hnc & %Hdn & Hmk)".
     rewrite /cons_hi /uart_rx_hi.
     iDestruct (ghost_var_agree with "Hhi0 Hhi") as %<-.
     iFrame "Hhi0". rewrite /ct_gh.
-    iExists cur, nrd, st, pd, hh, L0, true.
-    iFrame "Ha Hcur Hhi Hlm Hmk". iPureIntro. split_and!;
-      [ exact Hst | exact Hpd | exact Hch | exact Hbl |].
+    iExists cur, nrd, ndl, st, pd, hh, L0, true.
+    iFrame "Ha Hcur Hhi Hlm Hdc Hmk". iPureIntro. split_and!;
+      [ exact Hst | exact Hpd | exact Hch | exact Hbl | | exact Hnc
+      | exact Hdn ].
     split; [reflexivity |]. intro cs.
     exact (cons_log_ok_owe L0 ((st ++ pd)%list) gp h c cs Hch
              (cons_gtop_of_below _ hh h Hbl Hx)
@@ -874,6 +1028,13 @@ Section CtBodies.
     ohist_ext hg h ->
     ConsLog.cons_echo c es ->
     take j cs = es ->
+    (* ---- K3 (relax-d2): the erase arms' plans are never one glyph
+       ([ConsLog.cons_bs_join_app_not_single]), so this is vacuous ---- *)
+    (cs = [ConsLog.echo_of c] -> j = 1%nat) ->
+    (* ---- K1 (relax-d2): which keystroke this arm is filing.  The byte's
+       trace shape and era stamp come off [ct_pay], which every arm already
+       carries; together they place uartinit's flush witness at [h]. ---- *)
+    k1_next hg h ->
     uart_inv Uart0 γu -∗
     uart_log_hi γu (1/2) hg -∗
     ct_append γu h c cs j Φ -∗
@@ -881,20 +1042,23 @@ Section CtBodies.
       uart_log_hi γu (1/2) (Some h) ∗ uart_arm γu (1/2) None ∗ Φ ∗
       ct_gh cn None rr ww ee bs ts.
   Proof using .
-    intros <- Hends Hxg Hecho Hes. iIntros "#Hinv Hlgh [Harm Hap] Hgh".
-    iDestruct "Hgh" as (cur nrd st pd hh L0 gp)
-      "(%Hst & %Hpd & %Hch & %Hbl & Ha & Hcur & Hhi & Hlm & %Hlog & Hmk)".
+    intros <- Hends Hxg Hecho Hes Hk3 Hk1.
+    iIntros "#Hinv Hlgh (%Hsh & %Hbh & Harm & Hap) Hgh".
+    iDestruct "Hgh" as (cur nrd ndl st pd hh L0 gp)
+      "(%Hst & %Hpd & %Hch & %Hbl & Ha & Hcur & Hhi & Hlm & %Hlog & Hdc &
+        %Hnc & %Hdn & Hmk)".
     rewrite /cons_logm.
     iMod (uart_inv_cons_close (cn_uart cn) h c cs j hg L0 Φ
-            ltac:(rewrite Hes; exact Hecho) with "Hinv Hlgh [Hlm] Harm Hap")
+            ltac:(rewrite Hes; exact Hecho) Hk3
+            Hsh Hbh Hk1 with "Hinv Hlgh [Hlm] Harm Hap")
       as "(Hlgh & Hlm & %Hbelow & Harm & HΦ)"; [ rewrite /uart_logm; iExact "Hlm" |].
     iEval (rewrite Hes) in "Hlm".
     iModIntro. iFrame "Hlgh Harm HΦ". rewrite /ct_gh.
-    iExists cur, nrd, st, pd, hh, ((L0 ++ [(h, c, es)])%list), true.
+    iExists cur, nrd, ndl, st, pd, hh, ((L0 ++ [(h, c, es)])%list), true.
     iFrame "Ha Hcur Hhi". rewrite /cons_logm /uart_logm. iFrame "Hlm".
-    iFrame "Hmk". iPureIntro. split_and!;
+    iFrame "Hdc Hmk". iPureIntro. split_and!;
       [ exact Hst | exact Hpd | exact Hch | exact Hbl
-      | exact (proj2 Hlog es) ].
+      | exact (proj2 Hlog es) | exact Hnc | exact Hdn ].
   Qed.
 
   (* WHAT THE CALLER GETS BACK: the high-water half, at whatever history the
@@ -949,7 +1113,7 @@ Section CtBodies.
             at the open and repaid by the arm's own close, so it leaves
             with the mark. *)
          uart_arm γu (1/2) None -∗
-         WP (Loop : expr riscv_lang)))%I.
+         mWP (Loop : expr riscv_lang)))%I.
 
   (* =================================================================== *)
   (*  +0x110 .. +0x118 -- THE EPILOGUE.                                   *)
@@ -970,7 +1134,7 @@ Section CtBodies.
     ct_saved sp0 m0 -∗ ct_rest sp0 -∗ ct_hi_out γu hb cb -∗
     uart_log_hi γu (1/2) (Some hb) -∗ uart_arm γu (1/2) None -∗
     ct_ret (CID0 := CID0) γu hb cb pme m0 K lvl eb b lks -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hm0sp HMsp HMcs HK Hcr.
     iIntros "#Ht Hcg Hcnt Hpc (K1 & K2 & K3) Hrest Hhiout Hlgh Hwin Hcont".
@@ -1122,7 +1286,13 @@ Section ProofConsoleintr.
   (*  proposition where they used to carry a trace baseline.                *)
   (* =================================================================== *)
   Definition ct_pay (γu : uart_names) (hb : list mobs) (cb : bv 8) : iProp Σ :=
-    ((* the byte's WIRE RIDER, relayed from the receive column (lane
+    ((* ...AND THE BYTE'S TWO ERA FACTS (relax-d2, lane K1): the machine was
+        ON at its arrival, and the arrival belongs to THIS era.  They ride
+        here rather than in every arm's premise list because that is what
+        [ct_pay] is for -- one persistent bundle the arms already carry --
+        and K1's transport of uartinit's flush witness needs both. *)
+     ⌜trace_shape hb true⌝ ∗ ⌜obs_boots hb = S gen_id⌝ ∗
+     (* the byte's WIRE RIDER, relayed from the receive column (lane
         CONS-IO): the echo's link asks for it at every store, and it is
         persistent, so it travels with the builder. *)
      uart_out_lb γu (obs_wire Uart0 (open_seg hb)) ∗
@@ -1138,6 +1308,12 @@ Section ProofConsoleintr.
   Global Instance ct_pay_persistent γu hb cb : Persistent (ct_pay γu hb cb).
   Proof using . rewrite /ct_pay. apply _. Qed.
 
+  (* the two era facts, read back off the bundle *)
+  Lemma ct_pay_facts (γu : uart_names) (hb : list mobs) (cb : bv 8) :
+    ct_pay γu hb cb -∗
+    ⌜trace_shape hb true /\ obs_boots hb = S gen_id⌝.
+  Proof using . iIntros "(%A & %B & _ & _)". by iPureIntro. Qed.
+
   (* ...AND THE ERA STAMP IS SPENT HERE, ONCE (lane CONS-IO milestone C).
      [cons_echo_shift] is era-indexed and asks for [obs_boots hb = S gen_id];
      the contract carries that fact as a pure premise (relayed from the
@@ -1146,10 +1322,12 @@ Section ProofConsoleintr.
   Lemma ct_mk_pay (γu : uart_names) (hb : list mobs) (cb : bv 8) :
     obs_ends_in Uart0 hb cb ->
     obs_boots hb = S gen_id ->
+    trace_shape hb true ->
     cons_echo_shift -∗ riscv_rx_tag hb -∗ obs_hist_lb hb -∗
     uart_out_lb γu (obs_wire Uart0 (open_seg hb)) -∗ ct_pay γu hb cb.
   Proof using .
-    intros Hends Hbts. iIntros "#Hsh #Htg #Hlb #Hwlb".
+    intros Hends Hbts Hshb. iIntros "#Hsh #Htg #Hlb #Hwlb".
+    iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
     iSplitR; [iExact "Hwlb" |].
     iIntros "!>" (cs Φ) "%Hcs HΦ".
     iApply ("Hsh" $! hb cb cs Φ with "[%] [%] [%] Htg Hlb HΦ");
@@ -1172,9 +1350,13 @@ Section ProofConsoleintr.
      than merely that one may be, so a second open is refuted by the ghost
      rather than by a counting argument.  Putting it here rather than in
      every arm's premise list keeps the arms' statements unchanged. *)
+  (* ...AND K1's ONE FACT (relax-d2): this byte is the input right after
+     the one the mark names.  It rides the mark because it is a statement
+     about the mark, and every arm spends it at its own open and close. *)
   Definition ct_mark (γu : uart_names) (hb : list mobs) : iProp Σ :=
     (∃ hg : option (list mobs),
-       ⌜ ohist_ext hg hb ⌝ ∗ uart_log_hi γu (1/2) hg ∗
+       ⌜ ohist_ext hg hb ⌝ ∗ ⌜ k1_next hg hb ⌝ ∗
+       uart_log_hi γu (1/2) hg ∗
        uart_arm γu (1/2) None)%I.
 
   (* [es] is what WENT OUT and [cs] is what the arm PLANNED; the two differ
@@ -1182,6 +1364,12 @@ Section ProofConsoleintr.
   Definition ct_owed (γu : uart_names) (hb : list mobs) (cb : bv 8) : iProp Σ :=
     (∃ (es cs : list (bv 8)) (j : nat) (hg : option (list mobs)),
        ⌜ cons_echo cb es ⌝ ∗ ⌜ take j cs = es ⌝ ∗ ⌜ ohist_ext hg hb ⌝ ∗
+       (* ---- K3 (relax-d2): what the arm PLANNED is never the store arm's
+          one glyph -- the two arms that own this bundle plan [[]] and a run
+          of erase triples ---- *)
+       ⌜ cs = [ConsLog.echo_of cb] -> j = 1%nat ⌝ ∗
+       (* ---- K1 (relax-d2): which keystroke this arm is filing ---- *)
+       ⌜ k1_next hg hb ⌝ ∗
        uart_log_hi γu (1/2) hg ∗ ct_append γu hb cb cs j True)%I.
 
   (* the arms that echo NOTHING -- a NUL byte, a full ring, an erase that
@@ -1189,20 +1377,33 @@ Section ProofConsoleintr.
      to them: a dropped byte is an ACCEPTED byte, logged at [cs = []]. *)
   (* the currency an arm that echoes NOTHING spends: a dropped byte is an
      ACCEPTED byte, logged at [cs = []] (lane CONS-IO). *)
+  (* ...AND IT IS THE ONE ARM THAT PAYS K2 (relax-d2): what it files is
+     [cs = []], so the boundary asks WHY, and the answer travels in as
+     [WpUart.cons_drop_pay] and back out unchanged -- the full-ring caller
+     lends the ring's two ghost halves and re-seals with them. *)
   Lemma ct_append_nil (γu : uart_names) (hb : list mobs) (cb : bv 8)
-      (hg : option (list mobs)) :
+      (hg : option (list mobs)) (Q : iProp Σ) :
     ohist_ext hg hb ->
     obs_ends_in Uart0 hb cb ->
+    (* K1 (relax-d2) -- the era facts come off [ct_pay] *)
+    k1_next hg hb ->
     uart_inv Uart0 γu -∗ ct_pay γu hb cb -∗
-    uart_log_hi γu (1/2) hg -∗ uart_arm γu (1/2) None
-    ={⊤}=∗ uart_log_hi γu (1/2) hg ∗ ct_append γu hb cb [] 0%nat True.
+    uart_log_hi γu (1/2) hg -∗ uart_arm γu (1/2) None -∗
+    (* ---- K2 ---- *) cons_drop_pay γu cb [] Q
+    ={⊤}=∗ uart_log_hi γu (1/2) hg ∗ (* ---- K2 ---- *) Q ∗
+           ct_append γu hb cb [] 0%nat True.
   Proof using .
-    intros Hx Hends. iIntros "#Hinv [#Hwlb #Hp] Hlgh Harm".
-    iMod (uart_inv_cons_open γu hb cb [] hg
+    intros Hx Hends Hk1. iIntros "#Hinv #Hpyc Hlgh Harm Hk2".
+    iDestruct (ct_pay_facts with "Hpyc") as %[Hsh Hbh].
+    iDestruct "Hpyc" as "(_ & _ & #Hwlb & #Hp)".
+    iMod (uart_inv_cons_open γu hb cb [] hg Q
             (cons_run (S gen_id) [] True%I) Hx Hends ltac:(by left)
-            with "Hinv Hwlb Hlgh Harm [] ") as "(Hlgh & Harm & Hrun)".
+            Hsh Hbh Hk1
+            with "Hinv Hwlb Hlgh Harm Hk2 [] ")
+      as "(Hlgh & Harm & HQ & Hrun)".
     { iApply ("Hp" $! [] True%I with "[%] [//]"). by left. }
-    iModIntro. iFrame "Hlgh". rewrite /ct_append. iFrame "Harm".
+    iModIntro. iFrame "Hlgh HQ". rewrite /ct_append.
+    iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |]. iFrame "Harm".
     by cbn [cons_run].
   Qed.
 
@@ -1223,26 +1424,33 @@ Section ProofConsoleintr.
              ct_gh cn None rr ww ee bs ts.
   Proof using .
     intros <- Hends. iIntros "#Hinv Howed Hgh".
-    iDestruct "Howed" as (es cs j hg) "(%Hecho & %Hes & %Hxg & Hlgh & Hap)".
+    iDestruct "Howed" as (es cs j hg)
+      "(%Hecho & %Hes & %Hxg & %Hk3 & %Hk1 & Hlgh & Hap)".
     iMod (ct_gh_pay cn (cn_uart cn) rr ww ee bs ts hb cb es cs j hg True%I
-            eq_refl Hends Hxg Hecho Hes
+            eq_refl Hends Hxg Hecho Hes Hk3 Hk1
             with "Hinv Hlgh Hap Hgh") as "(Hlgh & Harm & _ & Hgh)".
     iModIntro. iFrame "Hlgh Harm Hgh".
   Qed.
 
   Lemma ct_owed_nil (γu : uart_names) (hb : list mobs) (cb : bv 8) :
     obs_ends_in Uart0 hb cb ->
+    (* ---- K2 (relax-d2): this arm files a DROP, so it owes the reason ---- *)
+    (bv_unsigned cb = 0%Z \/ bv_unsigned cb = 16%Z
+     \/ ConsLog.cons_erase cb = true) ->
     uart_inv Uart0 γu -∗ ct_pay γu hb cb -∗ ct_mark γu hb
     ={⊤}=∗ ct_owed γu hb cb.
   Proof using .
-    intros Hends. iIntros "#Hinv #Hpy Hm".
-    iDestruct "Hm" as (hg) "(%Hx & Hlgh & Harm)".
-    iMod (ct_append_nil γu hb cb hg Hx Hends with "Hinv Hpy Hlgh Harm")
-      as "(Hlgh & Hap)".
+    intros Hends Hk2. iIntros "#Hinv #Hpy Hm".
+    iDestruct "Hm" as (hg) "(%Hx & %Hk1 & Hlgh & Harm)".
+    iMod (ct_append_nil γu hb cb hg emp%I Hx Hends Hk1
+            with "Hinv Hpy Hlgh Harm []") as "(Hlgh & _ & Hap)".
+    { iLeft. iSplitR; [by iPureIntro | done]. }
     iModIntro. iExists [], [], 0%nat, hg.
     iSplit; [iPureIntro; by left |].
     iSplit; [by iPureIntro |].
     iSplit; [iPureIntro; exact Hx |].
+    iSplit; [iPureIntro; intro Hc; discriminate |].
+    iSplit; [iPureIntro; exact Hk1 |].
     iFrame "Hlgh Hap".
   Qed.
 
@@ -1252,27 +1460,44 @@ Section ProofConsoleintr.
   (* ...AND IT IS A FUPD NOW (redesign R2): the arm is OPENED here, with
      the port invariant opened around [EvOpen], where it used to be a
      purely local handoff of a token. *)
+  (* ...AND IT TAKES K1 AND [cs <> []] (relax-d2).  The second is what
+     discharges K2 here: an arm that echoes something is not a drop, so the
+     drop clause is vacuous and this lane owes lane K2 nothing on the two
+     echoing arms. *)
   Lemma ct_ch_full (γu : uart_names) (hb : list mobs) (cb : bv 8)
       (hg : option (list mobs)) (cs : list (bv 8)) (Φ : iProp Σ) :
     ohist_ext hg hb ->
     obs_ends_in Uart0 hb cb ->
     ConsLog.cons_echo cb cs ->
+    (* ---- K1 (relax-d2) ---- *)
+    k1_next hg hb ->
+    (* ---- K2 (relax-d2): every caller of this one plans a NON-EMPTY run,
+       so the premise is discharged by [discriminate]; it is here rather
+       than as a [cs <> []] side condition because that is the shape
+       [WpUart.cons_drop_pay] takes. ---- *)
+    (cs = [] -> bv_unsigned cb = 0%Z \/ bv_unsigned cb = 16%Z
+                \/ ConsLog.cons_erase cb = true) ->
     uart_inv Uart0 γu -∗ ct_pay γu hb cb -∗
     uart_log_hi γu (1/2) hg -∗ uart_arm γu (1/2) None -∗ Φ
     ={⊤}=∗ store_chain Uart0 γu cs
       (uart_log_hi γu (1/2) hg ∗ ct_append γu hb cb cs (length cs) Φ).
   Proof using .
-    intros Hx Hends Hecho. iIntros "#Hinv [#Hwlb #Hp] Hlgh Harm HΦ".
-    iMod (uart_inv_cons_open γu hb cb cs hg
-            (cons_run (S gen_id) cs Φ) Hx Hends Hecho
-            with "Hinv Hwlb Hlgh Harm [HΦ]") as "(Hlgh & Harm & Hrun)".
+    intros Hx Hends Hecho Hk1 Hk2. iIntros "#Hinv #Hpyc Hlgh Harm HΦ".
+    iDestruct (ct_pay_facts with "Hpyc") as %[Hsh Hbh].
+    iDestruct "Hpyc" as "(_ & _ & #Hwlb & #Hp)".
+    iMod (uart_inv_cons_open γu hb cb cs hg emp%I
+            (cons_run (S gen_id) cs Φ) Hx Hends Hecho Hsh Hbh Hk1
+            with "Hinv Hwlb Hlgh Harm [] [HΦ]")
+      as "(Hlgh & Harm & _ & Hrun)".
+    { (* K2 *) iLeft. iSplitR; [by iPureIntro | done]. }
     { iApply ("Hp" $! cs Φ with "[%] HΦ"). exact Hecho. }
     iDestruct (cons_run_full cs Φ with "Hrun") as "Hch".
     iDestruct (store_chain_of_echo_chain γu hb cb cs 0%nat cs
                  (cons_link Uart0 (S gen_id) ConsLog.EvClose Φ)
                  ltac:(intros n b Hn; exact Hn) with "Harm Hch") as "H".
     iModIntro. iApply (store_chain_mono with "[Hlgh] H").
-    iIntros "[Harm Hcl]". iFrame "Hlgh". rewrite /ct_append. iFrame "Hcl".
+    iIntros "[Harm Hcl]". iFrame "Hlgh". rewrite /ct_append.
+    iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |]. iFrame "Hcl".
     by rewrite Nat.add_0_l.
   Qed.
 
@@ -1343,7 +1568,10 @@ Section ProofConsoleintr.
   Definition ct_kill_run (γu : uart_names) (hb : list mobs) (cb : bv 8)
       (nrem : Z) : iProp Σ :=
     (∃ (hg : option (list mobs)) (i n : nat),
-       ⌜ ohist_ext hg hb ⌝ ∗ ⌜ (nrem <= Z.of_nat n)%Z ⌝ ∗
+       ⌜ ohist_ext hg hb ⌝ ∗ ⌜ k1_next hg hb ⌝ ∗
+       (* the byte's two era facts, as [ct_append] will want them *)
+       ⌜ trace_shape hb true ⌝ ∗ ⌜ obs_boots hb = S gen_id ⌝ ∗
+       ⌜ (nrem <= Z.of_nat n)%Z ⌝ ∗
        uart_log_hi γu (1/2) hg ∗
        uart_arm γu (1/2)
          (Some (hb, cb, (mjoin (replicate i consputc_bs)
@@ -1359,17 +1587,24 @@ Section ProofConsoleintr.
     ct_pay_erase γu hb cb -∗ ct_mark γu hb ={⊤}=∗ ct_kill_run γu hb cb nrem.
   Proof using .
     intros Hn Hends. iIntros "#Hinv [%Her #Hpy] Hm".
-    iDestruct "Hm" as (hg) "(%Hx & Hlgh & Harm)".
-    iDestruct "Hpy" as "[#Hwlb #Hp]".
+    iDestruct (ct_pay_facts with "Hpy") as %[Hsh Hbh].
+    iDestruct "Hm" as (hg) "(%Hx & %Hk1 & Hlgh & Harm)".
+    iDestruct "Hpy" as "(_ & _ & #Hwlb & #Hp)".
     set (cs := mjoin (replicate (Z.to_nat nrem) consputc_bs)).
     assert (Hecho : ConsLog.cons_echo cb cs).
     { right; right. split; [exact Her |]. by eexists. }
-    iMod (uart_inv_cons_open γu hb cb cs hg
-            (cons_run (S gen_id) cs True%I) Hx Hends Hecho
-            with "Hinv Hwlb Hlgh Harm []") as "(Hlgh & Harm & Hrun)".
+    iMod (uart_inv_cons_open γu hb cb cs hg emp%I
+            (cons_run (S gen_id) cs True%I) Hx Hends Hecho Hsh Hbh Hk1
+            with "Hinv Hwlb Hlgh Harm [] []")
+      as "(Hlgh & Harm & _ & Hrun)".
+    { (* K2: an erase byte is its own reason to drop *)
+      iLeft. iSplitR; [| done]. iPureIntro. intros _. right; right. exact Her. }
     { iApply ("Hp" $! cs True%I with "[%] [//]"). exact Hecho. }
     iModIntro. iExists hg, 0%nat, (Z.to_nat nrem).
     iSplit; [iPureIntro; exact Hx |].
+    iSplit; [iPureIntro; exact Hk1 |].
+    iSplit; [iPureIntro; exact Hsh |].
+    iSplit; [iPureIntro; exact Hbh |].
     iSplit; [iPureIntro; lia |].
     iFrame "Hlgh Hrun".
     by cbn [replicate mjoin length].
@@ -1381,7 +1616,8 @@ Section ProofConsoleintr.
     ct_kill_run γu hb cb nrem -∗ ct_owed γu hb cb.
   Proof using .
     intros Her. iIntros "H".
-    iDestruct "H" as (hg i n) "(%Hx & %Hle & Hlgh & Harm & Hrun)".
+    iDestruct "H" as (hg i n)
+      "(%Hx & %Hk1 & %Hsh & %Hbh & %Hle & Hlgh & Harm & Hrun)".
     iDestruct (cons_run_stop with "Hrun") as "Hcl".
     iExists (mjoin (replicate i consputc_bs)),
             ((mjoin (replicate i consputc_bs)
@@ -1390,7 +1626,13 @@ Section ProofConsoleintr.
     iSplit; [iPureIntro; right; right; split; [exact Her | by exists i] |].
     iSplit; [iPureIntro; by rewrite take_app_length |].
     iSplit; [iPureIntro; exact Hx |].
+    iSplit; [iPureIntro;
+             exact (fun Hc => False_ind _
+                      (ConsLog.cons_bs_join_app_not_single i n
+                         (ConsLog.echo_of cb) Hc)) |].
+    iSplit; [iPureIntro; exact Hk1 |].
     rewrite /ct_append. iFrame "Hlgh Harm Hcl".
+    iSplitR; [by iPureIntro | by iPureIntro].
   Qed.
 
   (* =================================================================== *)
@@ -1429,7 +1671,7 @@ Section ProofConsoleintr.
             at the open and repaid by the arm's own close, so it leaves
             with the mark. *)
          uart_arm γu (1/2) None -∗
-         WP (Loop : expr riscv_lang)))%I.
+         mWP (Loop : expr riscv_lang)))%I.
 
   Lemma ct_mk_exit (γu : uart_names) (hb : list mobs) (cb : bv 8) (cn : cons_names)
       (γc : gname) (pme : mword 64) (m0 : regfile) (K lvl : nat)
@@ -1576,7 +1818,7 @@ Section ProofConsoleintr.
             with the mark. *)
          uart_arm γu (1/2) None -∗
          ct_exit_prop (CID0 := CID0) γu hb cb cn γc pme m0 K lvl eb b sp0 lks -∗
-         WP (Loop : expr riscv_lang)))%I.
+         mWP (Loop : expr riscv_lang)))%I.
 
   Lemma ct_mk_wake (γu : uart_names) (hb : list mobs) (cb : bv 8) (cn : cons_names)
       (γc : gname) (γs : list gname) (pme : mword 64) (m0 : regfile)
@@ -1753,7 +1995,7 @@ Section ProofConsoleintr.
     pa_stk sp0 5 ↦₈[KT1] (m0 !!! Regidx Rs3) -∗
     (∃ w : mword 64, pa_stk sp0 6 ↦₈[KT1] w) -∗
     ct_exit_prop (CID0 := CID) γu hb cb cn γc pme m0 K lvl eb b sp0 lks -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hsp Hthr Hq1 Hq2 Hjt Hal Hchain Hbelow.
     destruct Hthr as (T4 & T5 & T6 & T7 & T8 & T9 & T10 & T11).
@@ -1863,7 +2105,7 @@ Section ProofConsoleintr.
          pa_stk sp0 4 ↦₈[KT1] (m0 !!! Regidx Rs2) -∗
          pa_stk sp0 5 ↦₈[KT1] (m0 !!! Regidx Rs3) -∗
          (∃ w : mword 64, pa_stk sp0 6 ↦₈[KT1] w) -∗
-         WP (Loop : expr riscv_lang)))%I.
+         mWP (Loop : expr riscv_lang)))%I.
 
   Lemma ct_mk_kill (γu : uart_names) (hb : list mobs) (cb : bv 8) (cn : cons_names)
       (γtx γc : gname) (γv : disk_names)
@@ -1894,7 +2136,7 @@ Section ProofConsoleintr.
     iIntros "#Ht #Hdev #Hbw #Htxl #Hep".
     iPoseProof (dev_inv_uart with "Hdev") as "#Huinv".
     iDestruct "Hep" as "[%Her #Hpy]".
-    iDestruct "Hpy" as "[#Hwlb #Hp]".
+    iDestruct "Hpy" as "(_ & _ & #Hwlb & #Hp)".
     rewrite /ct_kill_prop.
     iLöb as "IH".
     iIntros (CIDk Hsk M rr ww ee bs ts)
@@ -2121,7 +2363,8 @@ Section ProofConsoleintr.
        back with the run one triple shorter. *)
     assert (Hnpos : (1 <= bv_unsigned (sub_vec ee ww))%Z)
       by (apply cons_sub_ne; exact Hne).
-    iDestruct "Hrun" as (hg ii nn) "(%Hxg & %Hlen0 & Hlgh & Harm & Hru)".
+    iDestruct "Hrun" as (hg ii nn)
+      "(%Hxg & %Hk1 & %Hsh & %Hbh & %Hlen0 & Hlgh & Harm & Hru)".
     destruct nn as [| nn]; [exfalso; lia |].
     iEval (rewrite (ct_bs_cons nn)) in "Hru".
     iEval (rewrite (ct_bs_cons nn)) in "Harm".
@@ -2164,6 +2407,9 @@ Section ProofConsoleintr.
       with "[Hlgh Harm Hru]" as "Hrun".
     { iExists hg, (S ii), nn.
       iSplit; [iPureIntro; exact Hxg |].
+      iSplit; [iPureIntro; exact Hk1 |].
+      iSplit; [iPureIntro; exact Hsh |].
+      iSplit; [iPureIntro; exact Hbh |].
       iSplit; [iPureIntro;
                rewrite /ee' (cons_sub_dec ee ww Hnpos); lia |].
       iFrame "Hlgh Hru".
@@ -2351,7 +2597,7 @@ Section ProofConsoleintr.
     ct_rest sp0 -∗
     ct_wake_prop (CID0 := CID) γu h c cn γc pme m0 K lvl eb b sp0 lks -∗
     ct_exit_prop (CID0 := CID) γu h c cn γc pme m0 K lvl eb b sp0 lks -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hcnu Hx Hsp Hcs HK Hlvl Hchain Hbelow Hlenb Hlent Hok Hrow Hroom
            Hends Hc13.
@@ -2398,10 +2644,11 @@ Section ProofConsoleintr.
       assert (Ecp : cp_byte (mword_of_int 10 : mword 64) = (mword_of_int 10 : mword 8))
         by (apply bv_eq; vm_compute; reflexivity).
       by rewrite Ecp. }
-    iDestruct "Hmark" as (hg) "(%Hxg & Hlgh & Harm)".
+    iDestruct "Hmark" as (hg) "(%Hxg & %Hk1 & Hlgh & Harm)".
     iApply fupd_wp.
     iMod (ct_ch_full (cn_uart cn) h c hg [echo_of c] True%I
-            Hxg Hends ltac:(right; left; reflexivity)
+            Hxg Hends ltac:(right; left; reflexivity) Hk1
+            ltac:(intros Hnil; discriminate)
             with "Huinv Hp1 Hlgh Harm [//]") as "Hch0".
     iAssert (store_chain Uart0 (cn_uart cn) (consputc_cs (D2 !!! Regidx Ra0))
                (uart_log_hi (cn_uart cn) (1/2) hg ∗
@@ -2605,6 +2852,8 @@ Section ProofConsoleintr.
     iMod (ct_gh_push cn (cn_uart cn) rr ww ee bs ts idx h c hh hg
             [echo_of c] (length [echo_of c]) True%I
             eq_refl Hlenb Hlent Hok Hroom Hidx Hends Hx Hxg eq_refl
+            (* K3: the store arm's plan IS its one glyph, so it closes at 1 *)
+            ltac:(intros _; reflexivity) Hk1
             with "Huinv Hhi Hlgh Hap Hgh") as "(Hhi & Hlgh & Hwin & _ & Hgh)".
     iModIntro.
     iSpecialize ("WAKE" $! CIDq with "[%]"); [exact Hchain|].
@@ -2670,7 +2919,7 @@ Section ProofConsoleintr.
        and at the one erase triple on the other. *)
     ct_mark γu hb -∗
     ct_exit_prop (CID0 := CID) γu hb cb cn γc pme m0 K lvl eb b sp0 lks -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hcnu Hends Hsp Hcs HK Hlvl Hchain Hbelow.
     iIntros "#Ht #Hdev #Hbw #Htxl #Hep Hcg Hpc Hcnt Hpay Hlocked Hres Hrest
@@ -2763,11 +3012,14 @@ Section ProofConsoleintr.
          milestone B): the ring does not move and nothing goes out, so the
          arm files [cs = []] itself and owes the ring nothing. *)
       iApply fupd_wp.
-      iDestruct "Hmark" as (hg) "(%Hxg & Hlgh & Harm)".
-      iMod (ct_append_nil γu hb cb hg Hxg Hends
-              with "Huinv Hpy Hlgh Harm") as "(Hlgh & Hap)".
+      iDestruct "Hmark" as (hg) "(%Hxg & %Hk1 & Hlgh & Harm)".
+      iMod (ct_append_nil γu hb cb hg emp%I Hxg Hends Hk1
+              with "Huinv Hpy Hlgh Harm []") as "(Hlgh & _ & Hap)".
+      { (* K2: an erase byte is its own reason to drop *)
+        iLeft. iSplitR; [| done].
+        iPureIntro. intros _. right; right. exact Her. }
       iMod (ct_gh_drop cn γu rr ww ee bs ts hb cb hg [] 0%nat True%I
-              Hcnu Hends Hxg eq_refl
+              Hcnu Hends Hxg eq_refl ltac:(intros Hnil; discriminate) Hk1
               with "Huinv Hlgh Hap Hgh") as "(Hlgh & Hwin & _ & Hgh)".
       iModIntro.
       iApply ("EXIT" $! B4 with "[%] [%] Hcg Hpc Hcnt Hpay Hlocked
@@ -2885,9 +3137,10 @@ Section ProofConsoleintr.
     assert (Hechobs : cons_echo cb consputc_bs).
     { right; right. split; [exact Her |]. exists 1%nat.
       by rewrite /= ?app_nil_r. }
-    iDestruct "Hmark" as (hg) "(%Hxg & Hlgh & Harm)".
+    iDestruct "Hmark" as (hg) "(%Hxg & %Hk1 & Hlgh & Harm)".
     iApply fupd_wp.
-    iMod (ct_ch_full γu hb cb hg consputc_bs True%I Hxg Hends Hechobs
+    iMod (ct_ch_full γu hb cb hg consputc_bs True%I Hxg Hends Hechobs Hk1
+            ltac:(intros Hnil; unfold consputc_bs in Hnil; discriminate)
             with "Huinv Hpy Hlgh Harm [//]") as "Hch0".
     iAssert (store_chain Uart0 γu (consputc_cs (B8 !!! Regidx Ra0))
                (uart_log_hi γu (1/2) hg ∗
@@ -2912,7 +3165,11 @@ Section ProofConsoleintr.
     { iExists consputc_bs, consputc_bs, (length consputc_bs), hg.
       iSplit; [iPureIntro; exact Hechobs |].
       iSplit; [iPureIntro; apply take_ge; lia |].
-      iSplit; [iPureIntro; exact Hxg |]. iFrame "Hlgh Hap". }
+      iSplit; [iPureIntro; exact Hxg |].
+      (* K3: the backspace arm's plan is one erase TRIPLE, never one glyph *)
+      iSplit; [iPureIntro; intros Hc; unfold consputc_bs in Hc; discriminate |].
+      iSplit; [iPureIntro; exact Hk1 |].
+      iFrame "Hlgh Hap". }
     iEval (rewrite HB8ra) in "Hpc".
     assert (Hp12c : ret_pc (add_vec_int (mword_of_int (CT + 0x128) : mword 64) 4)
                     = (mword_of_int (CT + 0x12c) : mword 64)) by pcw.
@@ -2990,7 +3247,7 @@ Section ProofConsoleintr.
     ct_mark γu hb -∗
     ct_kill_prop (CID0 := CID) γu hb cb cn γc pme m0 K lvl eb b sp0 lks -∗
     ct_exit_prop (CID0 := CID) γu hb cb cn γc pme m0 K lvl eb b sp0 lks -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hcnu Hends Hsp Hcs Hchain Hbelow.
     pose proof (ct_cs_hi_top M m0 Hcs) as Htop.
@@ -3165,11 +3422,14 @@ Section ProofConsoleintr.
          ring does not move and no glyph goes out, so the byte is logged at
          [cs = []] right here. *)
       iApply fupd_wp.
-      iDestruct "Hmark" as (hg) "(%Hxg & Hlgh & Harm)".
-      iMod (ct_append_nil γu hb cb hg Hxg Hends
-              with "Huinv Hpy Hlgh Harm") as "(Hlgh & Hap)".
+      iDestruct "Hmark" as (hg) "(%Hxg & %Hk1 & Hlgh & Harm)".
+      iMod (ct_append_nil γu hb cb hg emp%I Hxg Hends Hk1
+              with "Huinv Hpy Hlgh Harm []") as "(Hlgh & _ & Hap)".
+      { (* K2: an erase byte is its own reason to drop *)
+        iLeft. iSplitR; [| done].
+        iPureIntro. intros _. right; right. exact Her. }
       iMod (ct_gh_drop cn γu rr ww ee bs ts hb cb hg [] 0%nat True%I
-              Hcnu Hends Hxg eq_refl
+              Hcnu Hends Hxg eq_refl ltac:(intros Hnil; discriminate) Hk1
               with "Huinv Hlgh Hap Hgh") as "(Hlgh & Hwin & _ & Hgh)".
       iModIntro.
       iApply (ct_restore23 (CIDq := CIDq) γu hb cb cn γc pme m0 E8 K lvl eb _ sp0
@@ -3281,7 +3541,7 @@ Section ProofConsoleintr.
     ct_rest sp0 -∗
     ct_wake_prop (CID0 := CID) γu h c cn γc pme m0 K lvl eb b sp0 lks -∗
     ct_exit_prop (CID0 := CID) γu h c cn γc pme m0 K lvl eb b sp0 lks -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hcnu Hx Hsp Hs1 Hcs HK Hlvl Hchain Hbelow Hlenb Hlent Hok Hrow Hroom
            Hends Hcv Hc13.
@@ -3327,10 +3587,11 @@ Section ProofConsoleintr.
       rewrite /cp_backspace (ct_arg_ne256 c).
       rewrite (ct_echo_of_ne c Hc13) ct_cp_trunc ct_arg_trunc8.
       reflexivity. }
-    iDestruct "Hmark" as (hg) "(%Hxg & Hlgh & Harm)".
+    iDestruct "Hmark" as (hg) "(%Hxg & %Hk1 & Hlgh & Harm)".
     iApply fupd_wp.
     iMod (ct_ch_full (cn_uart cn) h c hg [echo_of c] True%I
-            Hxg Hends ltac:(right; left; reflexivity)
+            Hxg Hends ltac:(right; left; reflexivity) Hk1
+            ltac:(intros Hnil; discriminate)
             with "Huinv Hp1 Hlgh Harm [//]") as "Hch0".
     iAssert (store_chain Uart0 (cn_uart cn) (consputc_cs (F2 !!! Regidx Ra0))
                (uart_log_hi (cn_uart cn) (1/2) hg ∗
@@ -3520,6 +3781,8 @@ Section ProofConsoleintr.
     iMod (ct_gh_push cn (cn_uart cn) rr ww ee bs ts idx h c hh hg
             [echo_of c] (length [echo_of c]) True%I
             eq_refl Hlenb Hlent Hok Hroom Hidx Hends Hx Hxg eq_refl
+            (* K3: the store arm's plan IS its one glyph, so it closes at 1 *)
+            ltac:(intros _; reflexivity) Hk1
             with "Huinv Hhi Hlgh Hap Hgh") as "(Hhi & Hlgh & Hwin & _ & Hgh)".
     iModIntro.
     (* [ee1] is [add_vec ee 1] by [set], so the window's new end needs no
@@ -3837,7 +4100,7 @@ Section ProofConsoleintr.
     ct_rest sp0 -∗
     ct_wake_prop (CID0 := CID) γu h c cn γc pme m0 K lvl eb b sp0 lks -∗
     ct_exit_prop (CID0 := CID) γu h c cn γc pme m0 K lvl eb b sp0 lks -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hcnu Hx Hsp Hs1 Hcs HK Hlvl Hchain Hbelow Hends Hcv.
     iIntros "#Ht #Hdev #Hbw #Htxl #Hp1 #Htg Hcg Hpc Hcnt Hpay Hlocked
@@ -3869,10 +4132,14 @@ Section ProofConsoleintr.
          milestone B): [cs = []], the ring does not move, and the arm files
          the entry itself -- EXIT no longer fires anything. *)
       iApply fupd_wp.
-      iDestruct "Hmark" as (hg) "(%Hxg & Hlgh & Harm)".
-      iMod (ct_append_nil γu h c hg Hxg Hends
-              with "Huinv Hp1 Hlgh Harm") as "(Hlgh & Hap)".
+      iDestruct "Hmark" as (hg) "(%Hxg & %Hk1 & Hlgh & Harm)".
+      iMod (ct_append_nil γu h c hg emp%I Hxg Hends Hk1
+              with "Huinv Hp1 Hlgh Harm []") as "(Hlgh & _ & Hap)".
+      { (* K2: the switch's [c.beqz] decided the byte is NUL *)
+        iLeft. iSplitR; [| done]. iPureIntro. intros _. left.
+        exact (ct_arg_nul c ltac:(rewrite <- Hcv; exact Hnul)). }
       iMod (ct_res_drop cn γu h c hg [] 0%nat True%I Hcnu Hends Hxg eq_refl
+              ltac:(intros Hnil; discriminate) Hk1
               with "Huinv Hlgh Hap Hres") as "(Hlgh & Hwin & _ & Hres)".
       iModIntro.
       iApply ("EXIT" $! M with "[%] [%] Hcg Hpc Hcnt Hpay Hlocked Hres Hrest
@@ -3998,11 +4265,29 @@ Section ProofConsoleintr.
          milestone B): this is the arm that fired nothing at all before
          milestone A, and it now files [cs = []] itself. *)
       iApply fupd_wp.
-      iDestruct "Hmark" as (hg) "(%Hxg & Hlgh & Harm)".
-      iMod (ct_append_nil γu h c hg Hxg Hends
-              with "Huinv Hp1 Hlgh Harm") as "(Hlgh & Hap)".
+      iDestruct "Hmark" as (hg) "(%Hxg & %Hk1 & Hlgh & Harm)".
+      (* K2 (relax-d2): THE RING IS FULL, and that is the one drop reason
+         the switch's guard cannot hand over.  The ring's log mirror and its
+         delivered count go out as the payment and the wand brings the ring
+         straight back -- an open moves neither. *)
+      assert (Hfull : (Z.of_nat INPUT_BUF_SIZE
+                       <= bv_unsigned (sub_vec ee rr))%Z)
+        by (exact (ct_nofit (sub_vec ee rr) (proj2 Hok) Hgd)).
+      iDestruct (ct_gh_full_log cn rr ww ee bs ts Hok Hfull with "Hgh")
+        as (L0k ndlk) "(%Hcntk & Hlmk & Hdck & Hback)".
+      iMod (ct_append_nil γu h c hg
+              (ct_gh cn None rr ww ee bs ts) Hxg Hends Hk1
+              with "Huinv Hp1 Hlgh Harm [Hlmk Hdck Hback]")
+        as "(Hlgh & Hgh & Hap)".
+      { rewrite <- Hcnu. iRight. iExists L0k, ndlk.
+        iSplitR; [by iPureIntro |].
+        iSplitL "Hlmk"; [rewrite /uart_logm; iExact "Hlmk" |].
+        iSplitL "Hdck"; [rewrite /uart_dlcnt; iExact "Hdck" |].
+        iIntros "Hlm Hdc". iApply ("Hback" with "[Hlm] [Hdc]");
+          [ rewrite /cons_logm; iExact "Hlm"
+          | rewrite /cons_dlcnt; iExact "Hdc" ]. }
       iMod (ct_gh_drop cn γu rr ww ee bs ts h c hg [] 0%nat True%I
-              Hcnu Hends Hxg eq_refl
+              Hcnu Hends Hxg eq_refl ltac:(intros Hnil; discriminate) Hk1
               with "Huinv Hlgh Hap Hgh") as "(Hlgh & Hwin & _ & Hgh)".
       iModIntro.
       iApply ("EXIT" $! G6 with "[%] [%] Hcg Hpc Hcnt Hpay Hlocked
@@ -4098,7 +4383,7 @@ Section ProofConsoleintr.
     : wp_consoleintr_sconf_body γu γv m γs pme lvl K eb b lks hb cb hh hg.
   Proof using .
     cbv beta delta [wp_consoleintr_sconf_body].
-    intros rettgt HK Hcva Hends Hbts Hx Hxg Hlen Hlvl Hbelow.
+    intros rettgt HK Hcva Hends Hbts Hx Hxg Hshb Hnext Hlen Hlvl Hbelow.
     iIntros "Hcg Hcnt #Ht Hpc #Hpinv #Hdev #Hcaps #Htg #Hlbh #Hwlb Hhi Hlgh
              Hwin Hcont".
     iDestruct "Hcaps" as (γtx γc cn)
@@ -4108,12 +4393,14 @@ Section ProofConsoleintr.
        WINDOW TOKEN beside it (milestone F): the arms spend it at the shift
        and their own append hands it back, so it rides the same bundle. *)
     iAssert (ct_mark γu hb) with "[Hlgh Hwin]" as "Hmark".
-    { iExists hg. iFrame "Hlgh Hwin". iPureIntro; exact Hxg. }
+    { iExists hg. iFrame "Hlgh Hwin". iPureIntro; split;
+        [exact Hxg | exact Hnext]. }
     (* THE ECHO'S JUSTIFICATION FOR THIS CALL'S BYTE (lane OUT-FUPD): the
        application's boot-fixed shift with this call's three facts -- the
        byte's arrival history, its tag and the monotone bound on it --
        already discharged.  Every arm below spends it. *)
-    iPoseProof (ct_mk_pay γu hb cb Hends Hbts with "Hsh Htg Hlbh Hwlb") as "#Hpy".
+    iPoseProof (ct_mk_pay γu hb cb Hends Hbts Hshb
+                  with "Hsh Htg Hlbh Hwlb") as "#Hpy".
     (* the console's own `.data` base word, out of the array's row: the
        bundle carries all four words as one ([SpecUartPutc.uarts_words]) and
        every arm below wants just this one. *)

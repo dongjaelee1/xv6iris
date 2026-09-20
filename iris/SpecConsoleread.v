@@ -365,8 +365,8 @@ Definition wp_consoleread_sconf_body
       pc_is ret_tgt -∗
       proc_priv_core pj pid
         (upd_usM (us_upt U P') (umem_wr (us_M U) dst d bs)) -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type CONSOLEREAD.
   Parameter wp_consoleread_sconf :

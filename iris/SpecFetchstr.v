@@ -164,8 +164,8 @@ Definition wp_fetchstr_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslot
       ⌜fetchstr_ret maxn buf_new (mf !!! Regidx (mword_of_int 10 : mword 5))⌝ -∗
       ⌜fetchstr_got (us_M U) addr maxn buf_new
          (mf !!! Regidx (mword_of_int 10 : mword 5))⌝ -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type FETCHSTR.
   Parameter wp_fetchstr_sconf :

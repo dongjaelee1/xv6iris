@@ -111,8 +111,8 @@ Definition wp_kkill_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG �
       sie_cap_gpr KT1 mf av b p -∗
       cpu_own n eb p b lks -∗
       pc_is ret_tgt -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type KKILL.
   Parameter wp_kkill_sconf :

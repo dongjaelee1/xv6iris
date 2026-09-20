@@ -63,7 +63,7 @@ From iris.proofmode Require Import proofmode.
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.MachineWord.
 Require Import Riscv.rv64d_types Riscv.rv64d.
 Require Import RiscvLang RiscvPtsto.
-Require Import WpUart.             (* [cons_licence] / [cons_licence_triv] *)
+Require Import UartNames.             (* [cons_licence] / [cons_licence_triv] *)
 Require Import Xv6Cameras.
 Require Import Xv6G.
 Require Import FdSlots.
@@ -74,14 +74,13 @@ Require Import UserFd.
 Require Import UserHeap.           (* [uheap_text] *)
 Require Import UmodeAbi.           (* [uimg_sub] *)
 Require Import UserConsole.        (* [ucons_pay] / [upos] and the record *)
-Require Import UexecSlot UexecRet UexecSG.
+Require Import UexecSlot UexecRet.
 Require Import UexecExecInst.      (* THE INSTANCE: [uexecSG_xv6] *)
 Require Import UexecExecMint.      (* [uslot_mint_all] *)
 Require Import ExecEntry.          (* [image_entry_taint] *)
 Require Import ExecRun.            (* the deposit out of the supply *)
 Require Import ElfLoadable.        (* [sh_elf_loadable] *)
 Require Import UkRun.
-Require Import UkRunExecRef.       (* [udepw_at_refR_ids] *)
 Require Import UCodeInit.          (* [init_rodata] / [init_ro] *)
 Require Import UkInit.
 Require Import UInitSh.            (* [init_sh_pl] / [init_sh_path_of] *)

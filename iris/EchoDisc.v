@@ -28,23 +28,29 @@
    unconsumed bytes and [consoleintr] DROPS the next one silently, so an
    adversary who types a screenful before sh's first read breaks the
    correspondence between the stored sequence and the input sequence, and
-   nothing downstream can repair it.  The owner's ruling (app-echo.md, O3)
-   is a rate bound stated on the raw wire:
+   nothing downstream can repair it.  The rate bound is stated on the raw
+   wire, and it is PER LINE:
 
      D1  a line's first byte only after the "$ " prompt has appeared.
-     D2  every later byte of a line only after the previous byte's echo.
      D3  the input PARSES as a sequence of admissible lines, plus a line
          the user has only started -- [disc_input] below.
 
-   D1 AND D2 ARE ONE CONDITION, POSITIONAL.  Section 4 states, at every
-   input position, that the expected transcript for the input typed so far
-   is already a prefix of the wire ([disc_pt]).  That transcript ENDS in
-   exactly the byte D2 asks for mid-line, and in exactly the "$ " D1 asks
-   for at a line boundary (at the empty input it is init's banner and sh's
-   first prompt), so the one condition implies both.  It is also the
-   SIMULATION INVARIANT the output proof wants: [good_out] bounds the wire
-   from the other side, and at an input point the two bounds meet and the
-   wire is pinned exactly.
+   THE USER TYPES A WHOLE LINE AS A BURST.  Within a line nothing is asked:
+   once the prompt is there, every byte of that line may arrive before any
+   of its echoes.  Section 4 states, at every input position, that the
+   expected transcript for the input's COMPLETE LINES ([LineWords.done_of])
+   is already a prefix of the wire ([disc_pt]).  That transcript ends in
+   exactly the "$ " D1 asks for at a line boundary (at the empty input it
+   is init's banner and sh's first prompt), and mid-line it is the same
+   transcript the line's first byte demanded, so the one condition is D1.
+
+   WHAT BOUNDS THE RING is therefore not the wire but the CLAIM: at most
+   one line is outstanding because the user waits for the previous line's
+   block to end in "$ ", and [line_max] keeps a line under the ring's 128.
+   The claim states that as a delivered-count clause and refutes
+   [ConsLog.cons_drop_ok]'s full-ring arm from it
+   ([EchoOutPure.drop_refuted]); the discipline itself does not pin the
+   wire at an input point.
 
    EACH ROUND TYPES ITS OWN LINE.  The session is a function of the era's
    INPUT, not of its length: [sess ps cs I] reads [I] through the parser of
@@ -381,17 +387,23 @@ Proof.
 Qed.
 
 (* the INPUT bytes of an observation list, in order -- the CONSOLE's; an
-   input on the other port is not the user's and is invisible here *)
-Definition ins (h : list mobs) : list (bv 8) :=
-  omap (fun e => match e with ObsUartIn Uart0 b => Some b | _ => None end) h.
+   input on the other port is not the user's and is invisible here.  It IS
+   [ObsTrace.obs_ins] at [Uart0], which is the name the KERNEL's boundary
+   contract counts inputs by ([ConsLog.cons_ev_ok]'s log-completeness
+   clause), so the two sides of that contract are the same function and
+   [ins_obs_ins] is the identity. *)
+Definition ins (h : list mobs) : list (bv 8) := obs_ins Uart0 h.
+
+Lemma ins_obs_ins (h : list mobs) : ins h = obs_ins Uart0 h.
+Proof. reflexivity. Qed.
 
 Lemma ins_app (h k : list mobs) : ins (h ++ k) = ins h ++ ins k.
-Proof. by rewrite /ins omap_app. Qed.
+Proof. exact (obs_ins_app Uart0 h k). Qed.
 
 Lemma ins_in (b : bv 8) : ins [ObsUartIn Uart0 b] = [b].
-Proof. reflexivity. Qed.
+Proof. exact (obs_ins_in Uart0 b). Qed.
 Lemma ins_out (b : bv 8) : ins [ObsUartOut Uart0 b] = [].
-Proof. reflexivity. Qed.
+Proof. exact (obs_ins_out Uart0 Uart0 b). Qed.
 
 Lemma ins_prefix (s1 s2 : list mobs) :
   s1 `prefix_of` s2 -> ins s1 `prefix_of` ins s2.
@@ -1993,27 +2005,38 @@ Qed.
 (*  4.  THE DISCIPLINE (R4)                                               *)
 (* ====================================================================== *)
 
-(* D1/D2 AT ONE INPUT POSITION.  [p] is the wire before an input byte: the
-   expected transcript for the input typed so far is already there.
-   Mid-line that transcript ends in the echo of the previous byte (D2); at
-   a line boundary it ends in the "$ " of the previous line's continuation,
-   and at the empty input it is init's banner and sh's first prompt (D1).
+(* D1 AT ONE INPUT POSITION.  [p] is the wire before an input byte: the
+   expected transcript for the input's COMPLETE LINES is already there.  At
+   a line boundary that transcript ends in the "$ " of the previous line's
+   continuation, and at the empty input it is init's banner and sh's first
+   prompt; MID-LINE it is the very same transcript, because [done_of] drops
+   the line in progress -- which is what lets the whole line be typed as a
+   burst.
 
    The wire is the CONSOLE's, and nothing but the session writes it, so the
    transcript is measured from the start of the wire: there is no kernel
    prefix to skip and no partial prologue to name.  WHAT THIS DOES AND DOES
-   NOT CLAIM, as fact: a user who types before the prompt -- or before the
-   previous byte's echo -- is outside the discipline, and the theorem says
-   nothing about that cycle beyond safety.  Under the discipline at most
-   one line is ever outstanding in the console ring, and [line_max] keeps a
-   line under the ring's 128, so [consoleintr] drops nothing. *)
+   NOT CLAIM, as fact: a user who types the first byte of a line before the
+   previous line's block has ended in "$ " is outside the discipline, and
+   the theorem says nothing about that cycle beyond safety. *)
 Definition disc_pt (ps cs : list nat) (p : list mobs) : Prop :=
-  sess ps cs (ins p) `prefix_of` obs_wire Uart0 p.
+  sess ps cs (done_of (ins p)) `prefix_of` obs_wire Uart0 p.
 
 Global Instance disc_pt_dec ps cs p : Decision (disc_pt ps cs p).
 Proof. rewrite /disc_pt. apply _. Defined.
 
-(* THE PER-CYCLE DISCIPLINE: D3, and at every input byte D1/D2 under ONE
+(* THE STRICT RULE IMPLIES THE RELAXED ONE.  A session that waited for
+   every byte's echo is disciplined here too ([sess_mono] at
+   [LineWords.done_of_prefix]) -- which is what carries a witness, or a
+   sibling application's stricter per-position rule, into this one. *)
+Lemma disc_pt_of_strict (ps cs : list nat) (p : list mobs) :
+  sess ps cs (ins p) `prefix_of` obs_wire Uart0 p -> disc_pt ps cs p.
+Proof.
+  intro H. rewrite /disc_pt. etrans; [| exact H].
+  apply sess_mono, done_of_prefix.
+Qed.
+
+(* THE PER-CYCLE DISCIPLINE: D3, and at every input byte D1 under ONE
    resolution of the prologue's and the per-line alternatives.  [pro_ok] is
    stated AT THE INPUT and not once for the segment, because that is where
    it is true: it says every prologue the transcript for THAT input enters
@@ -2409,7 +2432,8 @@ Proof.
     destruct (pro_canon (S (pro_idx cs (nlines_max (in_pres seg))))
                 (length seg) ps HFps) as (ps0 & Hin0 & Hrd0 & Hag0).
     { intros r Hr. rewrite -Hpleq in Hr. split; [lia |].
-      etrans; [apply (sess_pro_len ps cs (ins pl) r); lia |].
+      etrans; [apply (sess_pro_len ps cs (done_of (ins pl)) r);
+               rewrite nlines_done; lia |].
       etrans; [apply prefix_length, Hptl |].
       etrans; [apply obs_wire_length |].
       exact (prefix_length _ _ Hplp). }
@@ -2419,8 +2443,9 @@ Proof.
     assert (Hidxle : (pro_idx cs (nlines (ins p))
                       <= pro_idx cs (nlines_max (in_pres seg)))%nat)
       by (apply pro_idx_mono, nlines_max_ge, Hp).
-    assert (Hsame : sess ps0 cs (ins p) = sess ps cs (ins p)).
-    { apply sess_ps_ext. intros r Hr. apply Hag0. lia. }
+    assert (Hsame : sess ps0 cs (done_of (ins p)) = sess ps cs (done_of (ins p))).
+    { apply sess_ps_ext. intros r Hr. rewrite nlines_done in Hr.
+      apply Hag0. lia. }
     split.
     + rewrite /pro_ok. split; [by eapply pro_cands_Forall | lia].
     + rewrite /disc_pt Hsame. exact Hptp.
@@ -2444,7 +2469,7 @@ Proof. by intros [? _]. Qed.
    answered by [bye now].  A one-line witness would leave the whole point
    of the model untested, because one line is also what a session with the
    line hard-coded does.  Everything in it is closed, so [vm_compute]
-   answers it through the parser, and it is the check that says D1/D2 and
+   answers it through the parser, and it is the check that says D1 and
    the per-round parse did not make the discipline unsatisfiable. *)
 Definition demo_ws1 : list (list (bv 8)) := [sb "echo"%string; sb "hi"%string].
 Definition demo_ws2 : list (list (bv 8)) :=
@@ -2455,6 +2480,9 @@ Definition demo_out (l : list (bv 8)) : list mobs :=
 
 Definition demo_typed (l : list (bv 8)) : list mobs :=
   mjoin ((fun b => [ObsUartIn Uart0 b; ObsUartOut Uart0 b]) <$> l).
+
+Definition demo_in (l : list (bv 8)) : list mobs :=
+  (fun b => ObsUartIn Uart0 b) <$> l.
 
 Definition demo_seg2 : list mobs :=
   demo_out u_prologue
@@ -2516,6 +2544,25 @@ Definition demo_seg_noban : list mobs :=
 Lemma demo_disc_seg'_noban : disc_seg' demo_seg_noban.
 Proof.
   eapply (disc_seg'_intro _ [0%nat] []);
+    apply (bool_decide_unpack _); vm_compute; exact I.
+Qed.
+
+(* THE BURST: the whole command line typed before any of it is echoed.
+   After init's banner and sh's prompt, all eight bytes of [echo hi] and
+   its newline arrive as inputs with NOTHING on the wire between them; only
+   then do the eight echoes go out, and then [hi], the newline and the next
+   prompt.  This is the anti-vacuity check for the per-line rate bound: a
+   whole line typed with none of it echoed yet is disciplined, and that is
+   the one shape a per-BYTE bound would reject. *)
+Definition demo_seg_burst : list mobs :=
+  demo_out u_prologue
+  ++ demo_in (wl_line demo_ws1)
+  ++ demo_out (wl_line demo_ws1)
+  ++ demo_out (line_alts_of demo_ws1 !!! 0%nat).
+
+Lemma demo_disc_seg'_burst : disc_seg' demo_seg_burst.
+Proof.
+  eapply (disc_seg'_intro _ [3%nat; 0%nat] [0%nat]);
     apply (bool_decide_unpack _); vm_compute; exact I.
 Qed.
 
@@ -2603,7 +2650,10 @@ Proof.
   split.
   - rewrite /pro_ok. split; [exact HF |].
     by rewrite (pro_idx_take cs _ (nlines (ins p)) Hplt).
-  - rewrite /disc_pt (sess_take ps cs (ins p) _ Hplt). exact Hpt.
+  - rewrite /disc_pt.
+    assert (Hdn : (nlines (done_of (ins p)) <= nlines (ins seg))%nat)
+      by (rewrite nlines_done; exact Hplt).
+    rewrite (sess_take ps cs (done_of (ins p)) _ Hdn). exact Hpt.
 Qed.
 
 Lemma disc_in (h : list mobs) (b : bv 8) :
@@ -2671,10 +2721,10 @@ Proof.
   exists [0%nat], []. apply (bool_decide_unpack _). vm_compute. exact I.
 Qed.
 
-(* ...and it is not vacuous either: the five schedules the section above
+(* ...and it is not vacuous either: the six schedules the section above
    exhibits -- the two-line session, one exec failure, the fork failure,
-   the shell that died on its own fork panic and was restarted, and the
-   banner-less opening -- satisfy it. *)
+   the shell that died on its own fork panic and was restarted, the
+   banner-less opening, and the line typed as a burst -- satisfy it. *)
 Lemma demo_good_out2 : good_out demo_seg2.
 Proof.
   exists [3%nat; 0%nat], [0%nat; 0%nat].
@@ -2703,14 +2753,8 @@ Proof.
   exists [0%nat], []. apply (bool_decide_unpack _). vm_compute. exact I.
 Qed.
 
-(* AT AN INPUT POINT THE TWO BOUNDS MEET.  The discipline says the expected
-   transcript for the input typed so far is a prefix of the wire; the claim
-   says the wire is a prefix of the transcript for the same input.  So at
-   the moment a disciplined byte is typed the wire IS the transcript --
-   which is the simulation invariant E5's proof of [Hphi] carries: sh has
-   consumed every previous line, the ring holds at most the line in
-   progress, and [consoleintr] drops nothing. *)
-Lemma disc_pt_good_out_pin (ps cs : list nat) (p : list mobs) :
-  disc_pt ps cs p -> obs_wire Uart0 p `prefix_of` sess ps cs (ins p) ->
-  obs_wire Uart0 p = sess ps cs (ins p).
-Proof. intros Hd Hg. by apply (anti_symm prefix). Qed.
+Lemma demo_good_out_burst : good_out demo_seg_burst.
+Proof.
+  exists [3%nat; 0%nat], [0%nat].
+  apply (bool_decide_unpack _). vm_compute. exact I.
+Qed.

@@ -191,8 +191,8 @@ Definition wp_uartintr_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslot
       cpu_own lvl eb pme b lks -∗
       pc_is ret_tgt -∗
       (∃ (k' : nat) (hl' : option (list mobs)), uart_rx_writer i gu k' hl') -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type UARTINTR.
   Parameter wp_uartintr_sconf :

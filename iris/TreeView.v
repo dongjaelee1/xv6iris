@@ -3020,7 +3020,7 @@ Section OwnPresEnt.
     aview_no_edge_to av i ->
     (forall g r t, own !! g = Some (r, t) -> r <> i) ->
     own_wf av own -> own_wf (delta_ent d nm i av) own.
-  Proof.
+  Proof using .
     intros Hnm Hd Hi Hleaf Hno Hnotroot (Hwf & Hroots & Hnn).
     destruct Hwf as [Hu Hcl].
     assert (Htd : tview av !! d = Some (ADir (hide_dots e)))
@@ -3064,7 +3064,7 @@ Section OwnPresEnt.
     ~ adir_at av i ->
     aview_no_edge_to av i ->
     own_wf av own -> own_wf (delta_ent d nm i av) own.
-  Proof.
+  Proof using .
     intros Hnm Hd Hi Hleaf Hnd Hno Hwf.
     apply (own_wf_ent av own d nm i a e nl Hnm Hd Hi Hleaf Hno); [| exact Hwf].
     intros g r t Hg Heq. subst r. destruct Hwf as (_ & Hroots & _).
@@ -3084,7 +3084,7 @@ Section OwnPresEnt.
     av !! tg = Some a -> an_nlink a = 1%nat -> aview_no_edge_to av tg ->
     ~ adir_at av tg ->
     own_wf av own -> own_wf (delta_unl_tgt tg av) own.
-  Proof.
+  Proof using .
     intros Ha Hnl Hno Hnd Hwf.
     apply (own_wf_unl_tgt av own tg a Ha Hnl Hno); [| exact Hwf].
     intros g r t Hg Heq. subst r. destruct Hwf as (_ & Hroots & _).
@@ -3529,29 +3529,29 @@ Section OwnRootedPres.
     (forall (x : Z) (s : fname), fs_pname s ->
        nstep (tview av') x s = nstep (tview av) x s) ->
     own_rooted av own -> own_rooted av' own.
-  Proof.
+  Proof using .
     intros Hag Hro g root t Hg.
     exact (nreach_step_cong av av' FsImg.ROOTINO root Hag (Hro g root t Hg)).
   Qed.
 
   Lemma own_rooted_cong (av av' : aview) (own : gmap K (Z * ttree)) :
     tview av' = tview av -> own_rooted av own -> own_rooted av' own.
-  Proof.
+  Proof using .
     intros Hv. apply own_rooted_step_cong. intros x s _. rewrite Hv //.
   Qed.
 
   Lemma own_rooted_dots (av : aview) (own : gmap K (Z * ttree)) (i d : Z) :
     own_rooted av own -> own_rooted (delta_dots i d av) own.
-  Proof. exact (own_rooted_cong av _ own (tview_delta_dots av i d)). Qed.
+  Proof using . exact (own_rooted_cong av _ own (tview_delta_dots av i d)). Qed.
 
   Lemma own_rooted_dot (av : aview) (own : gmap K (Z * ttree)) (i : Z) :
     own_rooted av own -> own_rooted (delta_dot i av) own.
-  Proof. exact (own_rooted_cong av _ own (tview_delta_dot av i)). Qed.
+  Proof using . exact (own_rooted_cong av _ own (tview_delta_dot av i)). Qed.
 
   Lemma own_rooted_link_tgt (av : aview) (own : gmap K (Z * ttree))
       (t : Z) (a : anode) :
     av !! t = Some a -> own_rooted av own -> own_rooted (delta_link_tgt t a av) own.
-  Proof.
+  Proof using .
     intros Ha. exact (own_rooted_cong av _ own (tview_delta_link_tgt av t a Ha)).
   Qed.
 
@@ -3559,7 +3559,7 @@ Section OwnRootedPres.
       (t : Z) (a : anode) :
     av !! t = Some a -> (2 <= an_nlink a)%nat ->
     own_rooted av own -> own_rooted (delta_unl_tgt t av) own.
-  Proof.
+  Proof using .
     intros Ha Hnl.
     exact (own_rooted_cong av _ own (tview_delta_unl_tgt_live av t a Ha Hnl)).
   Qed.
@@ -3568,7 +3568,7 @@ Section OwnRootedPres.
       (off : nat) (new bs0 : list (bv 8)) (nl : nat) :
     av !! i = Some (MkAnode (AFile bs0) nl) ->
     own_rooted av own -> own_rooted (delta_write i off new av) own.
-  Proof.
+  Proof using .
     intros Hi. apply own_rooted_step_cong. intros x s Hs.
     assert (Hti : tview av !! i = Some (AFile bs0))
       by (rewrite (tview_lookup_Some av i _ Hi) //).
@@ -3581,7 +3581,7 @@ Section OwnRootedPres.
       (bs0 : list (bv 8)) (nl : nat) :
     av !! i = Some (MkAnode (AFile bs0) nl) ->
     own_rooted av own -> own_rooted (delta_trunc i av) own.
-  Proof.
+  Proof using .
     intros Hi. apply own_rooted_step_cong. intros x s Hs.
     assert (Hti : tview av !! i = Some (AFile bs0))
       by (rewrite (tview_lookup_Some av i _ Hi) //).
@@ -3593,7 +3593,7 @@ Section OwnRootedPres.
       (c : absnode) :
     av !! i = None -> tabs_leaf (tabs_of c) ->
     own_rooted av own -> own_rooted (delta_arm i c av) own.
-  Proof.
+  Proof using .
     intros Hi Hleaf. apply own_rooted_step_cong. intros x s Hs.
     assert (Hti : tview av !! i = None) by (rewrite tview_lookup Hi //).
     rewrite (tview_delta_arm av i c).
@@ -3607,7 +3607,7 @@ Section OwnRootedPres.
     av !! d = Some (MkAnode (ADir e) nl) -> e !! nm = None ->
     av !! i = Some a ->
     own_rooted av own -> own_rooted (delta_ent d nm i av) own.
-  Proof.
+  Proof using .
     intros Hnm Hd Hnone Hi Hro g root t Hg.
     assert (Htd : tview av !! d = Some (ADir (hide_dots e)))
       by (rewrite (tview_lookup_Some av d _ Hd) //).
@@ -3624,7 +3624,7 @@ Section OwnRootedPres.
     av !! d = Some (MkAnode (ADir e) nl) -> e !! nm = None ->
     av !! i = None -> tabs_leaf (tabs_of c) ->
     own_rooted av own -> own_rooted (delta_create d nm i c av) own.
-  Proof.
+  Proof using .
     intros Hnm Hd Hnone Hi Hleaf Hro.
     assert (Hne : d <> i) by (intros ->; rewrite Hd in Hi; discriminate).
     rewrite (delta_create_split av d nm i c e nl Hd Hi).
@@ -3648,7 +3648,7 @@ Section OwnRootedPres.
     (forall (g : K) (root : Z) (t : ttree),
        own !! g = Some (root, t) -> root <> tg) ->
     own_rooted av own -> own_rooted (delta_unl_ent d nm dec av) own.
-  Proof.
+  Proof using .
     intros Hnm Hd He Hlf Hnotroot Hro g root t Hg.
     assert (Htd : tview av !! d = Some (ADir (hide_dots e)))
       by (rewrite (tview_lookup_Some av d _ Hd) //).
@@ -3671,7 +3671,7 @@ Section OwnRootedPres.
     av !! tg = Some a -> an_nlink a = 1%nat ->
     aview_no_edge_to av tg -> tg <> FsImg.ROOTINO ->
     own_rooted av own -> own_rooted (delta_unl_tgt tg av) own.
-  Proof.
+  Proof using .
     intros Ha Hnl Hno Hrt Hro g root t Hg.
     assert (Hnon : forall (x : Z) (s : fname), fs_pname s ->
               nstep (tview av) x s <> Some tg).
@@ -3685,7 +3685,7 @@ Section OwnRootedPres.
   Lemma own_rooted_unarm (av : aview) (own : gmap K (Z * ttree)) (i : Z) :
     aview_no_edge_to av i -> i <> FsImg.ROOTINO ->
     own_rooted av own -> own_rooted (delta_unarm i av) own.
-  Proof.
+  Proof using .
     intros Hno Hri Hro g root t Hg.
     assert (Hnon : forall (x : Z) (s : fname), fs_pname s ->
               nstep (tview av) x s <> Some i).
@@ -3702,7 +3702,7 @@ Section OwnRootedPres.
       (g : K) (root : Z) (t t' : ttree) :
     own !! g = Some (root, t) ->
     own_rooted av own -> own_rooted av (<[g := (root, t')]> own).
-  Proof.
+  Proof using .
     intros Hg Hro g0 r0 t0 H0.
     destruct (decide (g0 = g)) as [-> | Hne].
     - rewrite lookup_insert in H0. injection H0 as <- _. exact (Hro g root t Hg).
@@ -3718,7 +3718,7 @@ Section OwnRootedPres.
     root' ∈ dom (tv_nodes t) ->
     own_rooted av own ->
     own_rooted av (<[g' := (root', t')]> (delete g own)).
-  Proof.
+  Proof using .
     intros Hg Ht Hd Hro g0 r0 t0 H0.
     destruct (decide (g0 = g')) as [-> | Hne].
     - rewrite lookup_insert in H0. injection H0 as <- _.

@@ -103,7 +103,6 @@ Require Import UserPtTree.         (* [uptd]: the partial arm's table *)
 Require Import AppInv.             (* [appE] / [app_sup] *)
 Require Import FsBytesGamma.       (* [fs_gamma_L] *)
 Require Import FsAbsWriteFire.     (* [awrite_chain] and its cursor *)
-Require Import UserOff.            (* [uoff]: the held slot's link (OFF-LINK-4) *)
 Require Import FsAbsInvFire.       (* [fsabs_awrite_chain] *)
 Require Import FsCfg.
 Require Import CtxIdDefs.
@@ -199,8 +198,8 @@ Section UkWriteFile.
        S -∗
        spost_at uslot 16 fdep W r (uvis_M W) (uvis_fd W) cw' cs' -∗
        urun N h' (<[Regidx a0_idx := r]> m) (add_vec_int pc 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hn Hfdv Hfdlt Hal4 Hsrc.
     iIntros "#Hi Hrun Hsb Hufdh Hbuf Hcont".
@@ -331,8 +330,8 @@ Section UkWriteFile.
            ⌜∃ bs : list (bv 8), (length bs < nb)%nat /\
               forall j : nat, (j < length bs)%nat -> bs !!! j = f j⌝)) -∗
        urun N h' (<[Regidx a0_idx := r]> m) (add_vec_int pc 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hn Hfdv Hfdlt Hcnt Hal4.
     iIntros "#Hi Hrun Hufdh Hbuf #Hsup Hcont".
@@ -521,8 +520,8 @@ Section UkWriteFile.
        S -∗
        spost_at uslot 16 fdep W rv (uvis_M W) (uvis_fd W) cw' cs' -∗
        urun N h' (<[Regidx a0_idx := rv]> m) (add_vec_int pc 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hn H0 Hal4 Hsrc.
     iIntros "#Hi Hrun Hsb Hstd Hbuf Hcont".

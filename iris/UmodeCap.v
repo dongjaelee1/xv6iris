@@ -148,8 +148,8 @@ Section UmodeCap.
           [uv_run]'s [uv_lin], at the RESUMING hart-and-context *)
        TsoCtx.own_context XI -∗
        (∀ (CID : CpuId) (XI : CtxIdDefs.CurCtx), uv_run C pt M g va -∗
-          WP (Loop : expr riscv_lang)) -∗
-       WP (Loop : expr riscv_lang))%I.
+          mWP (Loop : expr riscv_lang)) -∗
+       mWP (Loop : expr riscv_lang))%I.
 
   (* ------------------------------------------------------------------- *)
   (* The kernel's SYSCALL service: an [ecall] from User (cause             *)
@@ -166,7 +166,7 @@ Section UmodeCap.
           protocol's business (an exit never resumes) *)
        TsoCtx.own_context XI -∗
        Ψ (uint (g !!! Regidx a7_idx)) g va M -∗
-       WP (Loop : expr riscv_lang))%I.
+       mWP (Loop : expr riscv_lang))%I.
 
   (* THE CAPABILITY: both services, persistent, hart-free. *)
   Definition uv_cap (Ψ : usys_protocol Σ) : iProp Σ :=

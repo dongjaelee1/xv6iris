@@ -709,8 +709,8 @@ Definition wp_fileclose_sconf_body
        back, or fired anyway if this close happened to be the last *)
     fileclose_cpost q st Φc -∗
     proc_priv_bare p pidv Upr -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type FILECLOSE.
   Parameter wp_fileclose_sconf :

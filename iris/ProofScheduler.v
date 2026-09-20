@@ -418,7 +418,7 @@ Section ProofScheduler.
               cpu_own 0 ebx zero_reg ebx ∅ -∗
               (if ebx then emp else trap_csrs KT1) -∗
               own_ctx (a_cpu_ctx cid_word) -∗
-              WP (Loop : expr riscv_lang) )
+              mWP (Loop : expr riscv_lang) )
           ∧ ( ∀ (Me : regfile),
               ⌜ add_vec (Me !!! Regidx Rs4) (sign_extend' 64 (mword_of_int 48 : mword 12)) = a_cpu_proc cid_word
                 /\ Me !!! Regidx Rs5 = a_cpu_ctx cid_word
@@ -432,8 +432,8 @@ Section ProofScheduler.
               cpu_own 0 ebx zero_reg ebx ∅ -∗
               (if ebx then emp else trap_csrs KT1) -∗
               own_ctx (a_cpu_ctx cid_word) -∗
-              WP (Loop : expr riscv_lang) ) ) -∗
-        WP (Loop : expr riscv_lang))%I.
+              mWP (Loop : expr riscv_lang) ) ) -∗
+        mWP (Loop : expr riscv_lang))%I.
 
   (* fuel-indexed: [av]/[γs] as above; [fuel] is the recursion measure --
      kept as an explicit trailing parameter so the CALL site can keep
@@ -477,8 +477,8 @@ Section ProofScheduler.
             cpu_own 0 eb2 zero_reg eb2 ∅ -∗
             (if eb2 then emp else trap_csrs KT1) -∗
             own_ctx (a_cpu_ctx cid_word) -∗
-            WP (Loop : expr riscv_lang) ) -∗
-        WP (Loop : expr riscv_lang))%I.
+            mWP (Loop : expr riscv_lang) ) -∗
+        mWP (Loop : expr riscv_lang))%I.
 
   Definition sc_outer_body (av : nat) : iProp Σ :=
     (∀ (M : regfile) (eb : bool) (n : nat),
@@ -495,7 +495,7 @@ Section ProofScheduler.
         cpu_own 0 eb zero_reg eb ∅ -∗
         (if eb then emp else trap_csrs KT1) -∗
         own_ctx (a_cpu_ctx cid_word) -∗
-        WP (Loop : expr riscv_lang))%I.
+        mWP (Loop : expr riscv_lang))%I.
 
   Lemma wp_scheduler_sconf
       (γs : list gname) (m : regfile) (av : nat) (p0 : mword 64)
@@ -1973,8 +1973,8 @@ Section ProofScheduler.
         pc_is (mword_of_int (KernelSyms.scheduler + 0x96)) -∗
         ( sie_cap_gpr KT1 M (av - 12 - kv_frame_slots)%nat true zero_reg -∗
           pc_is (mword_of_int (KernelSyms.scheduler + 0x9a)) -∗
-          WP (Loop : expr riscv_lang) ) -∗
-        WP (Loop : expr riscv_lang) ))%I
+          mWP (Loop : expr riscv_lang) ) -∗
+        mWP (Loop : expr riscv_lang) ))%I
       with "[]" as "#IntrOn".
     { iModIntro. iIntros (M eb nx) "%Hnx Hcg Hcpu Hcsrs Hpc Hk".
       assert (Ho8a' : add_vec_int (mword_of_int (KernelSyms.scheduler + 0x96) : mword 64) 4

@@ -238,7 +238,7 @@ Section IreclaimDefs.
         bslots 3 -∗
         iref_slot -∗
         ireg_boot -∗
-        WP (Loop : expr riscv_lang))%I.
+        mWP (Loop : expr riscv_lang))%I.
 
   (* ONE TURN OF THE LOOP, AT ITS BODY (+0x7c).  This is the wand the
      induction produces and the step block consumes; it is a plain ∀ (its
@@ -272,7 +272,7 @@ Section IreclaimDefs.
        ireg_boot -∗
        irc_cont (CID0 := CIDn)
  pidv dq dqb dqs dqn j m K eb b lks Upr -∗
-       WP (Loop : expr riscv_lang))%I.
+       mWP (Loop : expr riscv_lang))%I.
 
   (* the escrow family's projection -- ProofDirlink's [dl_esc_acc] restated,
      because a Proof file may not require another Proof file *)
@@ -318,7 +318,7 @@ Section IreclaimEpilogue.
     ireg_boot -∗
     irc_cont (CID0 := CID0)
              pidv dq dqb dqs dqn j m K eb b lks Upr -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK Hsp Hthr.
     pose proof HK as HK'. 
@@ -707,7 +707,7 @@ Section IreclaimStep.
              pidv dq dqb dqs dqn j m K eb b lks Upr fuel -∗
     irc_cont (CID0 := CID0)
              pidv dq dqb dqs dqn j m K eb b lks Upr -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK Hn31 Hfuel Hinum Hsp Hthr Hs1 Hs4 Hs5 Hs6.
     (* THE BOUND AS A NAMED HYPOTHESIS, not an inline [ltac:] argument, and
@@ -1014,7 +1014,7 @@ Section IreclaimOrphan.
              pidv dq dqb dqs dqn j m K eb b lks Upr fuel -∗
     irc_cont (CID0 := CID0)
              pidv dq dqb dqs dqn j m K eb b lks Upr -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK Hgeom Hst Hblk Hsize Hbm0 Hbmcov Hbmlog Hcovb Hnnib Hn31
            Hj Hgl Hfuel Hinum Hkk Hbseq Hdswf Htnz Hbnoeq
@@ -2135,7 +2135,7 @@ Section IreclaimRelease.
              pidv dq dqb dqs dqn j m K eb b lks Upr fuel -∗
     irc_cont (CID0 := CID0)
              pidv dq dqb dqs dqn j m K eb b lks Upr -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK Hn31 Hfuel Hinum Hkk Hsp Hthr Hs1 Hs2 Hs4 Hs5 Hs6 Hbelow.
     pose proof HK as HK'. 

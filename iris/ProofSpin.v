@@ -117,7 +117,7 @@ Qed.
   (*  THE THEOREM: the spin loop runs forever (proved by iLöb).        *)
   (*                                                                   *)
   (*  There is NO postcondition continuation: [spin] never leaves the  *)
-  (*  self-jump, so the only way to discharge [WP Loop] is coinductive *)
+  (*  self-jump, so the only way to discharge [mWP Loop] is coinductive *)
   (*  -- a Löb-induction hypothesis [IH : ▷ (resources -∗ WP Loop)].   *)
   (*  We take ONE fetch/decode/execute step of [c.j spin] with the     *)
   (*  ordinary leaf engine [wp_instr]; because [wp_instr]'s continuation *)

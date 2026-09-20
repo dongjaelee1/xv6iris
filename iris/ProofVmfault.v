@@ -368,7 +368,7 @@ Section ProofVmfault.
         (∃ w3 w4 w5 : mword 64,
            pa_stk sp0 3 ↦₈[KT1] w3 ∗ pa_stk sp0 4 ↦₈[KT1] w4 ∗ pa_stk sp0 5 ↦₈[KT1] w5) -∗
         PAY res -∗
-        WP (Loop : expr riscv_lang)))%I).
+        mWP (Loop : expr riscv_lang)))%I).
     iAssert EPI with "[Hcont Hk1 Hk2 Hk6]" as "Hepi".
     { rewrite /EPI.
       iIntros (CIDe Hbe mj res) "(%Hjsp & %Hjs4 & %Hjthr) Hcg Hcnt Hpc Hjunk Hpost".

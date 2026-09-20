@@ -284,8 +284,8 @@ Section SfenceLeaf.
       (∃ tv : type_of_register tlb,
          ⌜forall i, 0 <= i < 64 -> vec_access_dec tv i = None⌝ ∗ tlb ↦ᵣ tv) -∗
       pc_is (add_vec_int pc 4) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros "Hcg Htlb Hpc Hinstr Hcont".
     iApply (wp_instr_s_sconf m n false false pc false
@@ -376,8 +376,8 @@ Section SfenceLeaf.
       sie_cap_gpr kt m n false p -∗
       kpt_on cpu_id -∗
       pc_is (add_vec_int pc 4) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros "Hcg #Hkptr Hpc Hinstr Hcont".
     iApply (wp_instr_s_sconf m n false false pc false

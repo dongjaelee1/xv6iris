@@ -110,8 +110,8 @@ Definition wp_uvmfree_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ} `{GEN : 
     cpu_own ilvl eb p b lks -∗
     pc_is ret_tgt -∗
     ⌜callee_saved mm mr⌝ -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type UVMFREE.
   Parameter wp_uvmfree_sconf :

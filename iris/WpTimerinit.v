@@ -289,8 +289,8 @@ Section WpTimerinitThm.
       stimecmp ↦ᵣ stimecmp_legalized stimecmp0 (ti_deadline tv) -∗
       stack_own_phys sp0 n -∗
       own_context cur_ctx -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hn2 Hpmp Htor_ra Htor_s0 Hsp Hra Hs0.
     iIntros "Hmm Hpmpc Hpaddr Hpc Hfile Hmenv Hmcen Hstc Hstk Hctx #Htext Hcont".

@@ -61,7 +61,7 @@ Require Import RegFile.
 Require Import WpMmodeLeafBase.
 Require Import UmodeArith UmodeAbi.
 Require Import UserHeap UkRun UkRunLeaf UkRunMem.
-Require Import UCodeShK UCodeShP.
+Require Import UCodeShP.
 Require Import CtxIdDefs.
 Require User.ShSyms User.ShInstrs.
 Require Import ChildTok.
@@ -69,7 +69,6 @@ Local Open Scope Z_scope.
 Require Import UserFd.
 Require Import UkSh.
 Require Import UkShParse.
-Require Import UkShParseSym.
 Require Import UkShParseLex.
 Require Import UkShPipeParse.
 Require Import UexecSG.
@@ -138,8 +137,8 @@ Section UkShPipeCmd.
        UMalloc' -∗
        Pex -∗
        urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (6 + (10 + nn)) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using ushp_malloc_ok.
     intros Ha0 Ha1.
     iIntros "#Hcode HM #Hpx Hpay Hsub Hrun Hcont".

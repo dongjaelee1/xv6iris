@@ -42,9 +42,7 @@ Require Import Riscv.rv64d_types Riscv.rv64d Riscv.riscv_extras.
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.MachineWord.
 Require Import RiscvLang RiscvPtsto RiscvExtras RiscvModelBytes.
 Require Import RegFile.
-Require Import UserPtTree.
 Require Import UmodeArith UmodeAbi.
-Require Import UserPerm.
 Require Import UserHeap UkRun UkRunLeaf.
 Require Import FdSlots UserFd.
 Require Import PipeNames.
@@ -56,17 +54,14 @@ Require Import UkSh.
 Require Import UkShParse.
 Require Import UkShParseSym.
 Require Import UkShParseCmd.
-Require Import UkShLoop.
 Require Import UkShMain.
 Require Import UkShRun.
 Require Import UkShDiag.
-Require Import UkShMalloc.
 Require Import UkShRedirSeam.   (* [ushs_toks_below] -- the truncation *)
 Require Import UkShPipe.        (* the runcmd arm *)
 Require Import LineWords.
 Require Import PipeDisc.
 Require Import UkShPipeLex.
-Require Import UkShPipeParse.
 Require Import UkShPipeSeam.
 Require Import UkShPipeCm.
 Require Import CtxIdDefs.
@@ -317,7 +312,7 @@ Section UkShPipeRound.
        RcL γp -∗
        urun N' h' m' (mword_of_int ShSyms.runcmd)
          (2 + (UkShDiag.ush_Dg + (68 + n))) -∗
-       WP (Loop : expr riscv_lang)) -∗
+       mWP (Loop : expr riscv_lang)) -∗
     (* ---- THE RIGHT CHILD: fd 0 is the pipe's READ end ---- *)
     (∀ (N' : uk_names Σ) (h' : CpuId) (m' : regfile) (γ' : gname)
        (γp : pipe_names) (q : Z),
@@ -338,7 +333,7 @@ Section UkShPipeRound.
        RcR γp -∗
        urun N' h' m' (mword_of_int ShSyms.runcmd)
          (2 + (UkShDiag.ush_Dg + (68 + n))) -∗
-       WP (Loop : expr riscv_lang)) -∗
+       mWP (Loop : expr riscv_lang)) -∗
     (* ---- THE PARENT, at 0xea ---- *)
     (∀ (h' : CpuId) (m' : regfile) (γp : pipe_names)
        (r1 r2 rw1 rw2 : mword 64) (S1 S2 S3 S4 : gset gname),
@@ -354,8 +349,8 @@ Section UkShPipeRound.
        Rk γp -∗
        urun N h' m' (mword_of_int 0xea)
          (2 + (UkShDiag.ush_Dg + (68 + n))) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using Hpay Hpsok_free ushq_malloc_ok12.
     intros Hm01 Hm23 Hs1 Hpq Htoks Hpos Htlen Hs0 Hs64 Hs38
            HQc Hpx Hl0 Hl1 Hne0 Hne1 Hnp0 Hnp1.
@@ -622,7 +617,7 @@ Section UkShPipeRound.
        RcL γp -∗
        urun N' h' m' (mword_of_int ShSyms.runcmd)
          (2 + (UkShDiag.ush_Dg + (68 + n))) -∗
-       WP (Loop : expr riscv_lang)) -∗
+       mWP (Loop : expr riscv_lang)) -∗
     (* ---- THE RIGHT CHILD: fd 0 is the pipe's READ end ---- *)
     (∀ (N' : uk_names Σ) (h' : CpuId) (m' : regfile) (γ' : gname)
        (γp : pipe_names) (q : Z),
@@ -644,7 +639,7 @@ Section UkShPipeRound.
        RcR γp -∗
        urun N' h' m' (mword_of_int ShSyms.runcmd)
          (2 + (UkShDiag.ush_Dg + (68 + n))) -∗
-       WP (Loop : expr riscv_lang)) -∗
+       mWP (Loop : expr riscv_lang)) -∗
     (* ---- THE PARENT, at 0xea ---- *)
     (∀ (h' : CpuId) (m' : regfile) (γp : pipe_names)
        (r1 r2 rw1 rw2 : mword 64) (S1 S2 S3 S4 : gset gname),
@@ -660,8 +655,8 @@ Section UkShPipeRound.
        Rk γp -∗
        urun N h' m' (mword_of_int 0xea)
          (2 + (UkShDiag.ush_Dg + (68 + n))) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using Hpay Hpsok_free ushq_malloc_ok12.
     intros Hm01 Hm23 Hs1 Hline Hs0 Hs64 Hs38 HQc Hpx Hl0 Hl1 Hne0 Hne1 Hnp0 Hnp1.
     pose proof (ushq_line_is_of_at ws f 0%nat len Hline) as Hli.

@@ -294,8 +294,8 @@ Section ProofProcinit.
       ∀ mr,
       sie_cap_gpr KT1 mr K b p -∗
       pc_is ret_tgt -∗ ⌜ callee_saved m mr ⌝ -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros sp0 spr ret_tgt HK8 HMesp HMecs.
     assert (Hspr8 : spr = pa_stk sp0 8).
@@ -573,8 +573,8 @@ Section ProofProcinit.
     wp_next b p (fun (CID : CpuId) =>
       ∀ mr, sie_cap_gpr KT1 mr K b p -∗ pc_is ret_tgt -∗ ⌜ callee_saved m mr ⌝ -∗
         ([∗ list] i ∈ seq 0 NPROC, proc_ready i) -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros sp0 spr ret_tgt name_proc.
     revert CID.
@@ -1545,7 +1545,7 @@ Section ProofProcinit.
     iAssert (wp_next (CID0 := CID) b p (fun (CID' : CpuId) =>
               ∀ mr, sie_cap_gpr KT1 mr K b p -∗ pc_is ret_tgt -∗ ⌜ callee_saved m mr ⌝ -∗
               ([∗ list] i ∈ seq 0 NPROC, proc_ready i) -∗
-              WP (Loop : expr riscv_lang)))%I
+              mWP (Loop : expr riscv_lang)))%I
       with "[Hcont Hpidfresh Hwaitfresh]" as "Hpost".
     { iIntros (CID' Hs' mr) "Hcg Hpc %Hcs Hready".
       iSpecialize ("Hcont" $! CID' with "[%]"); [exact Hs'|].

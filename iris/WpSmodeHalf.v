@@ -163,8 +163,8 @@ Section WpSmodeHalf.
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt (<[Regidx rd := regval_into_reg (zero_extend' 64 v)]> m) n b p -∗
       pc_is (add_vec_int pc 4) -∗ pa ↦₂[ktd]{ dqm } v -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros pa Hrd Hrdok.
     (* the class, consumed at [rs1] -- the one line the funnel change needs,
@@ -193,8 +193,8 @@ Section WpSmodeHalf.
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt (<[Regidx rd := regval_into_reg (sign_extend' 64 v)]> m) n b p -∗
       pc_is (add_vec_int pc 4) -∗ pa ↦₂[ktd]{ dqm } v -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros pa Hrd Hrdok.
     (* the class, consumed at [rs1] -- the one line the funnel change needs,
@@ -225,8 +225,8 @@ Section WpSmodeHalf.
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt m n b p -∗
       pc_is (add_vec_int pc 4) -∗ pa ↦₂[ktd] storeval -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros pa storeval.
     (* the class, consumed at [rs1 / rs2] -- the one line the funnel change needs,

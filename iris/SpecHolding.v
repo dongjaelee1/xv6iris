@@ -90,8 +90,8 @@ Definition wp_holding_lockinv_s_sconf_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenI
     pc_is ret_tgt -∗
     ⌜ callee_saved m mh /\
       mh !!! Regidx (mword_of_int 10 : mword 5) = (mword_of_int 0 : mword 64) ⌝ -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 (* INTERRUPTS MUST BE DISABLED -- see the note above [wp_holding_lockinv_s_sconf_body];
    the same [jal mycpu] at +0x16 forces this contract to [b = false] too, with
@@ -122,8 +122,8 @@ Definition wp_holding_lockinv_locked_s_sconf_body `{!riscvGS Σ, !xv6G Σ} `{GEN
     ⌜ callee_saved m mh /\
       mh !!! Regidx (mword_of_int 10 : mword 5) = (mword_of_int 1 : mword 64) ⌝ -∗
     locked γl held_cpu -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type HOLDING.
   Parameter wp_holding_lockinv_s_sconf :

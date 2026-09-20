@@ -38,7 +38,7 @@ Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.Mac
 Require Import RiscvLang RiscvPtsto RiscvExtras RiscvModelBytes.
 Require Import RegFile.
 Require Import UmodeArith UmodeAbi.
-Require Import UserHeap UkRun UkRunLeaf UkRunSys.
+Require Import UserHeap UkRun UkRunSys.
 Require Import VcGen.              (* [trunc32_subrange] -- a2 read as a C [int] *)
 Require Import SpecConsolewrite.   (* [cons_out_chain] *)
 Require Import SpecSysRead.        (* [sys_rw_count] *)
@@ -46,10 +46,8 @@ Require Import WpUart.             (* [out_link] *)
 Require Import UkWriteLeaf.        (* the supply and the post, at row 16 *)
 Require Import UCodeCat.
 Require User.CatSyms User.CatInstrs.
-Require Import ChildTok.
-Require Import FdSlots PipeNames ProcGeom UserFd UserCwd.
-Require Import UexecSG UexecSlot UexecRet UsysMemOk.
-Require Import UexecExecInst.  (* THE INSTANCES: [uexecSG_xv6], [uprogSG_gen] *)
+Require Import FdSlots ProcGeom UserFd UserCwd.
+Require Import UexecSG UexecSlot UexecRet.
 Require Import UkCat.
 Require Import UkCatCat.
 Require Import UkFileOpen.
@@ -57,9 +55,9 @@ Require Import UkCatDeed.
 Require Import AppCfg AppInv AppFile FileOpen FsCfg FsImgCheck.
 Require Import ConsoleInv.
 Require Import SysReadDefs.     (* [ard_count] *)
-Require Import Xv6Cameras Xv6G IrefSlots ProcAvail FileInvDefs BioDefs.
-Require Import LineWords EchoDisc ConsLog EchoOutPure.
-Require Import FileState FileDisc FileOutPure FileOut FileLinks.
+Require Import Xv6Cameras Xv6G IrefSlots ProcAvail FileInvDefs.
+Require Import LineWords EchoDisc.
+Require Import FileState FileDisc FileOut.
 Require Import EchoOut AppEcho.
 Require Import UCatOut.
 Require Import UkCatMain.    (* [cm_lit] / [cm_msg_q] / [kcat_dg_open] *)

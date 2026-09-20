@@ -26,7 +26,7 @@
      payload's ▷ scheduler    -> [run_slot], inside [Rlk]
      [procs_inv]              -> the [is_lock] that [Rlk] is the resource of
 
-   and the conclusion of forkret's contract, [WP Loop] at the resuming hart,
+   and the conclusion of forkret's contract, [mWP Loop] at the resuming hart,
    is the fixpoint's obligation verbatim.
 
    TWO THINGS THIS FILE IS NOT.
@@ -457,11 +457,21 @@ Proof.
   iEval (rewrite /park_pkg) in "Hpkg". iEval (rewrite /forkret_park_pkg).
   iDestruct "Hpkg" as "(#Htext & #Hwire & #Hkmap & #Hpinv & #Hglobp & #Hmk & Hstk
                        & Hmode & Hclose)".
-  iFrame "Htext Hwire Hkmap Hmk Hstk".
-  (* [procs_inv] and the globals by [iExact]: the persistent [Hpinv] would
-     otherwise be framed INTO the transparent globals bundle's first row *)
+  (* THE PACKAGE IS REBUILT ROW BY ROW, in the goal's own conjunct order, and
+     never framed: a named [iFrame] pays one [Frame] instance search per name
+     over the whole unfolded body -- and this body ends in the closer, a [▷ ∀]
+     wand tower.  An [iSplitR]/[iExact] chain uses no [Frame] instance at all.
+     (claude-notes/optimization.md, "Framing: name the context side, construct
+     the goal side".)  It is also what [procs_inv] and the globals needed
+     anyway: framed, the persistent [Hpinv] lands INSIDE the transparent
+     globals bundle's own first row and leaves the bundle half-built. *)
+  iSplitR; [iExact "Htext"|].
+  iSplitR; [iExact "Hwire"|].
+  iSplitR; [iExact "Hkmap"|].
   iSplitR; [iExact "Hpinv"|].
   iSplitR; [iExact "Hglobp"|].
+  iSplitR; [iExact "Hmk"|].
+  iSplitL "Hstk"; [iExact "Hstk"|].
   (* the mode row: the two packages are the same proposition, so this is the
      one hypothesis, on either arm *)
   iSplitL "Hmode"; [iExact "Hmode"|].

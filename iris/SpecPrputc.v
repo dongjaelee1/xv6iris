@@ -150,8 +150,8 @@ Definition wp_prputc_sconf_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{CID : 
     pc_is ret_tgt -∗
     ⌜ callee_saved m0 mf /\ mf !!! Regidx ra_idx = ra0 ⌝ -∗
     (* AND NOTHING ELSE.  No byte claim: see the header. *)
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type PRPUTC.
   Parameter wp_prputc_sconf :

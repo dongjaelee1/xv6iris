@@ -825,7 +825,7 @@ Section ProofIget.
            +0x44 and produced at +0x9c.  Each arm hands back what the mover
            returned, at the SAME [l], and this tail relays it to [Hcont]. *)
         iname fsc_ireg fsc_fs icfg_ist inum l -∗
-        WP (Loop : expr riscv_lang)))%I).
+        mWP (Loop : expr riscv_lang)))%I).
     iAssert TAILC
       with "[Hcont Hf1 Hf2 Hf3 Hf4 Hf5 Hf6]" as "Hcont2".
     { rewrite /TAILC. iIntros (CIDt Hst).
@@ -1048,7 +1048,7 @@ Section ProofIget.
          exit the scan takes, so it can no longer sit inside [TAILC]. *)
       iname fsc_ireg fsc_fs icfg_ist inum l -∗
       TAILC -∗
-      WP (Loop : expr riscv_lang))%I with "[]" as "Hloop".
+      mWP (Loop : expr riscv_lang))%I with "[]" as "Hloop".
     { iIntros (fuel). iInduction fuel as [|fuel IHf] "IHf".
       { iIntros (j Mr) "%Hfuel %Hj %Hreg %Hscan %Hemp Hcg Hpc Hcnt Hpay Htok Hhalf Hstamps Hiauth Hipool Hslots Hpool Hislot Hlic Hcont2".
         exfalso. unfold NINODE in Hj, Hfuel. lia. }
@@ -1086,7 +1086,7 @@ Section ProofIget.
         iref_slot -∗
         iname fsc_ireg fsc_fs icfg_ist inum l -∗
         TAILC -∗
-        WP (Loop : expr riscv_lang))%I with "[]" as "Hstep".
+        mWP (Loop : expr riscv_lang))%I with "[]" as "Hstep".
       { iIntros (Ms) "%Hsreg %Hscan' %Hemp' Hcg Hpc Hcnt Hpay Htok Hhalf Hstamps Hiauth Hipool Hslots Hpool Hislot Hlic Hcont2".
         destruct Hsreg as (HSs1 & HSa3 & HSs2 & HSs4 & HSsp & HSra & HScs).
         (* +0x3c addi s1,s1,136 -- [IcacheRefDefs.ientry_step] *)

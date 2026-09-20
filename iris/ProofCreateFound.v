@@ -311,7 +311,7 @@ Section ProofCreateFound.
                    ty major minor U u Sb ns pidv dqb dqs dqbs dqn m K eb b lks j
                    (ret_pc (m !!! Regidx Rra : mword 64)) CIDc
                    Nm Nd P Pmiss Farm Fdots Fun Fok Fex) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK Hroot Hnib0 Hlg Hsize Hbms0 Hbmsc Hbmsl
            Hist0 Hcovb Hbmgeo Hiregb Hcstr Hplen31 Hni1 Hni2 Hni3 Htynz Htyk
@@ -1061,14 +1061,14 @@ Section ProofCreateFound.
                        di_nlink dnl <> (mword_of_int 32767 : mword 16)⌝ -∗
                     sie_cap_gpr KT1 (CID := CIDj) Mj (K - 10)%nat b (proc_addr j) -∗
                     pc_is (CID := CIDj) (mword_of_int (CK + 0x3e)) -∗
-                    WP (Loop : expr riscv_lang)))
+                    mWP (Loop : expr riscv_lang)))
                  ∧ (wp_next (CID0 := CID19) b (proc_addr j) (fun CIDg : CpuId =>
                     ∀ Mg : regfile,
                     ⌜cr_regs m sp0 ipv (m !!! Regidx Rs2 : mword 64)
                        ty major minor Mg⌝ -∗
                     sie_cap_gpr KT1 (CID := CIDg) Mg (K - 10)%nat b (proc_addr j) -∗
                     pc_is (CID := CIDg) (mword_of_int (CK + 0x8e)) -∗
-                    WP (Loop : expr riscv_lang))))%I
+                    mWP (Loop : expr riscv_lang))))%I
           with "[-Hcg Hpc]" as "Hgate".
         { iSplit.
           - (* ===== THE JOIN AT +0x3e: dirlookup and everything after === *)
@@ -1588,7 +1588,7 @@ Section ProofCreateFound.
                               (m !!! Regidx Ra0 : mword 64) ty major minor U u Sb
                               ns pidv dqb dqs dqbs dqn m K eb b lks j ret_tgt
                               CIDc Nm Nd P Pmiss Farm Fdots Fun Fok Fex) -∗
-                       WP (Loop : expr riscv_lang)))%I
+                       mWP (Loop : expr riscv_lang)))%I
             with "[]" as "#Hfbad".
           { iModIntro.
             iIntros (CIDb Hsb Mb)

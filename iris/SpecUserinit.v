@@ -313,8 +313,8 @@ Definition wp_userinit_sconf_body
          non-vacuous. *)
       (∃ v : mword 64, (mword_of_int KernelSyms.initproc : mword 64) ↦₈□ v ∗
          WaitInv.init_gen v (mword_of_int 1 : mword 32)) -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Require Import UserFd.   (* [ufdG] -- the class a minted user slot needs *)
 Module Type USERINIT.

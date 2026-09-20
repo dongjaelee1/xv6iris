@@ -142,8 +142,8 @@ Section ProofSysSbrk.
         ⌜callee_saved m mf /\ mf !!! Regidx Ra0 = rv⌝ -∗
         sie_cap_gpr KT1 mf av b p -∗
         pc_is (ret_pc ra0) -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hav Hsp0 Hra0 Hs00 Hs10 Hmtsp Hmts1 Hthr.
     iIntros "Hcg #Htext Hpc Hb1 Hb2 Hb3 Hb4 Hb5 Hb6 Hcont".
@@ -347,8 +347,8 @@ Section ProofSysSbrk.
         pc_is (mword_of_int (KernelSyms.sys_sbrk + 0x64) : mword 64) -∗
         proc_priv γf p pid (upd_usM (upd_usV U (upd_sz (upd_upt (us_V U) P') szv')) M') -∗
         ctx_word4_pointsto (KTR := KT1) cur_ctx (pa_stk sp0 5) (DfracOwn 1) nw -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hav Hesp Hes0 Hes1 Hethr.
     iIntros "Hcg Hcpu #Htext Hpc Hpriv #Henv Hnw Hcont".
@@ -949,7 +949,7 @@ Section ProofSysSbrk.
           (upd_usM (upd_usV U
                       (upd_lazy (upd_sz (upd_upt (us_V U) P') szv') lz')) M') -∗
         (∃ w5 : mword 64, ctx_word_pointsto (KTR := KT1) cur_ctx (pa_stk sp0 5) (DfracOwn 1) w5) -∗
-        WP (Loop : expr riscv_lang))%I
+        mWP (Loop : expr riscv_lang))%I
       with "[Hcont Hs1 Hs2 Hs3 Hs4 Hs6]" as "EXIT".
     { iIntros (CIDx Mf P' M' szv' rv lz') "%Hsx %Hfsp %Hfs1 %Hfthr %Hok Hcg Hcpu Hpc Hpriv Hw5".
       iDestruct "Hw5" as (w5) "Hs5".

@@ -115,7 +115,7 @@ each quiet/window arm's `P' = P`, `sz' = sz` to show at J.
   non-retiring trap can return the current key's slot).  Loads get the
   same second arm when they port (`perm_of_unmapped_lt` /
   `uk_fault_pair` at `Load Data` are already the pieces).
-- `uslot W := ∀ h C pt Rut sz, ⌜loop_ok C pt⌝ -∗ ⌜perm_of (ud_um pt) sz = uvis_perm W⌝ -∗ uvb … -∗ WP`.
+- `uslot W := ∀ h C pt Rut sz, ⌜loop_ok C pt⌝ -∗ ⌜perm_of (ud_um pt) sz = uvis_perm W⌝ -∗ uvb … -∗ mWP`.
 - `ukc π M sz fdv m pc` — THE U-MODE CONTINUATION at a natural state, the
   same ∀ over the bundle at `(π, M, sz, fdv, m, pc)`; `uslot_ukc` says the
   slot is the continuation at the key's state, `uslot_run` that the slot at
@@ -167,7 +167,7 @@ capability.  New:
   continuation as `ukc`; the section carries the ambient guard
   (`Hlo`, `Hpm`), which is what lets the retiring arm hand `uvb` at THIS
   table to a continuation that accepts any.
-- `wp_uk_ecall` — the ecall driver: `uvb -∗ uexec_ret uecall_scause (uvis_of_run m pc M π) -∗ WP`
+- `wp_uk_ecall` — the ecall driver: `uvb -∗ uexec_ret uecall_scause (uvis_of_run m pc M π) -∗ mWP`
   (`utrap_scause_ecall`, via `RiscvExtras.scause_tower`).
 
 `UkLeaf.v` is `WpUmodeLeaf.v` under a mechanical rewrite (39 leaves; the

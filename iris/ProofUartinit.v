@@ -77,7 +77,7 @@ Section ProofUartinit.
     : wp_uartinit_sconf_body γ0 γ1 m K l0 l1 d0 d1 k0 k1 hl0 hl1 p.
   Proof using .
     cbv beta delta [wp_uartinit_sconf_body].
-    intros pcE ret_tgt HK.
+    intros pcE ret_tgt HK Hl0 Hl1.
     set (sp0 := m !!! Regidx csp_rs1).
     set (spr := add_vec sp0 (sign_extend' 64 (sign_extend' 12 (mword_of_int 48 : mword 6)))).
     iIntros "Hcg #Htext #Hkdata Hpc #Hb0 #Hr0 #Hb1 #Hr1
@@ -248,7 +248,7 @@ Section ProofUartinit.
       by (rewrite /A5 upd_eq; apply bv_eq; vm_compute; reflexivity).
     iApply (Uartinitone.wp_uartinitone_sconf Uart0 γ0 (uart_name Uart0)
               (mword_of_int uart0_name_str) A5 (K - 2)%nat l0 d0 k0 hl0 p
-              ltac:(lia) HA5a0 HA5a1
+              ltac:(lia) HA5a0 HA5a1 Hl0
               with "Hcg Htext Hpc Hb0 Hr0 Hnm0 Huinv0 Htx0 Hlb0 Hsent0 Htok0 Hdlab0 Hraw0").
     iIntros (M1) "Hcg Hpc %Hcs1 Htx0 _ Htok0' #Hdoff0 Hfresh0".
     assert (Hpcr1 : ret_pc (A5 !!! Regidx (mword_of_int 1 : mword 5)) = mword_of_int (KernelSyms.uartinit + 0x1c)).
@@ -335,7 +335,7 @@ Section ProofUartinit.
       by (rewrite /B5 upd_eq; apply bv_eq; vm_compute; reflexivity).
     iApply (Uartinitone.wp_uartinitone_sconf Uart1 γ1 (uart_name Uart1)
               (mword_of_int uart1_name_str) B5 (K - 2)%nat l1 d1 k1 hl1 p
-              ltac:(lia) HB5a0 HB5a1
+              ltac:(lia) HB5a0 HB5a1 Hl1
               with "Hcg Htext Hpc Hb1 Hr1 Hnm1 Huinv1 Htx1 Hlb1 Hsent1 Htok1 Hdlab1 Hraw1").
     iIntros (M2) "Hcg Hpc %Hcs2 Htx1 _ Htok1' #Hdoff1 Hfresh1".
     assert (Hpcr2 : ret_pc (B5 !!! Regidx (mword_of_int 1 : mword 5)) = mword_of_int (KernelSyms.uartinit + 0x30)).

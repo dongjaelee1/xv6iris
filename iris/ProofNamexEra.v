@@ -392,8 +392,8 @@ Section ProofNamexTrMain.
          trap_csrs_ext KT1 eb -∗
          cpu_claim_ext eb (proc_addr j) -∗
          pc_is ret_tgt -∗
-         WP (Loop : expr riscv_lang)) -∗
-     WP (Loop : expr riscv_lang))%I.
+         mWP (Loop : expr riscv_lang)) -∗
+     mWP (Loop : expr riscv_lang))%I.
   (* the exit continuation of [nx_skip_body], named: inline it was
      718 B, a third to a half of that block Delta at every
      step of the walk (optimization.md, fold block continuations). *)
@@ -413,7 +413,7 @@ Section ProofNamexTrMain.
          pc_is (mword_of_int (NX + 0x106)) -∗
          ([∗ list] i ∈ seq 0 (S plen),
             pa_add pv i ↦ₘ[KT1]{dqpv} pfun i) -∗
-         WP (Loop : expr riscv_lang))%I.
+         mWP (Loop : expr riscv_lang))%I.
 
 
   Definition nx_skip_body
@@ -429,7 +429,7 @@ Section ProofNamexTrMain.
      pc_is (mword_of_int (NX + 0xfc)) -∗
      ([∗ list] i ∈ seq 0 (S plen), pa_add pv i ↦ₘ[KT1]{dqpv} pfun i) -∗
      wp_next (CID0 := CIDs) b (proc_addr j) (fun CIDe : CpuId => nx_skip_exit j b K plen pfun pv dqpv off Ms CIDe) -∗
-     WP (Loop : expr riscv_lang))%I.
+     mWP (Loop : expr riscv_lang))%I.
   (* the exit continuation of [nx_skip2_body], named: inline it was
      717 B, a third to a half of that block Delta at every
      step of the walk (optimization.md, fold block continuations). *)
@@ -449,7 +449,7 @@ Section ProofNamexTrMain.
          pc_is (mword_of_int (NX + 0xc0)) -∗
          ([∗ list] i ∈ seq 0 (S plen),
             pa_add pv i ↦ₘ[KT1]{dqpv} pfun i) -∗
-         WP (Loop : expr riscv_lang))%I.
+         mWP (Loop : expr riscv_lang))%I.
 
 
   Definition nx_skip2_body
@@ -465,7 +465,7 @@ Section ProofNamexTrMain.
      pc_is (mword_of_int (NX + 0xb6)) -∗
      ([∗ list] i ∈ seq 0 (S plen), pa_add pv i ↦ₘ[KT1]{dqpv} pfun i) -∗
      wp_next (CID0 := CIDs) b (proc_addr j) (fun CIDe : CpuId => nx_skip2_exit j b K plen pfun pv dqpv off Ms CIDe) -∗
-     WP (Loop : expr riscv_lang))%I.
+     mWP (Loop : expr riscv_lang))%I.
   (* the exit continuation of [nx_scan_body], named: inline it was
      626 B, a third to a half of that block Delta at every
      step of the walk (optimization.md, fold block continuations). *)
@@ -483,7 +483,7 @@ Section ProofNamexTrMain.
          pc_is (mword_of_int (NX + 0x96)) -∗
          ([∗ list] i ∈ seq 0 (S plen),
             pa_add pv i ↦ₘ[KT1]{dqpv} pfun i) -∗
-         WP (Loop : expr riscv_lang))%I.
+         mWP (Loop : expr riscv_lang))%I.
 
 
   Definition nx_scan_body
@@ -497,7 +497,7 @@ Section ProofNamexTrMain.
      pc_is (mword_of_int (NX + 0x116)) -∗
      ([∗ list] i ∈ seq 0 (S plen), pa_add pv i ↦ₘ[KT1]{dqpv} pfun i) -∗
      wp_next (CID0 := CIDs) b (proc_addr j) (fun CIDe : CpuId => nx_scan_exit j b K plen pfun pv dqpv ii Ms CIDe) -∗
-     WP (Loop : expr riscv_lang))%I.
+     mWP (Loop : expr riscv_lang))%I.
   (* the exit continuation of [nx_mid_body], named: inline it was
      238 B, a third to a half of that block Delta at every
      step of the walk (optimization.md, fold block continuations). *)
@@ -507,7 +507,7 @@ Section ProofNamexTrMain.
        sie_cap_gpr KT1 Ms (K - 12)%nat b (proc_addr j) -∗
        pc_is (mword_of_int (NX + 0x140)) -∗
        ([∗ list] i ∈ seq 0 (S plen), pa_add pv i ↦ₘ[KT1]{dqpv} pfun i) -∗
-       WP (Loop : expr riscv_lang))%I.
+       mWP (Loop : expr riscv_lang))%I.
 
 
   Definition nx_mid_body
@@ -537,8 +537,8 @@ Section ProofNamexTrMain.
          pc_is (mword_of_int (NX + 0x116)) -∗
          ([∗ list] i ∈ seq 0 (S plen),
             pa_add pv i ↦ₘ[KT1]{dqpv} pfun i) -∗
-         WP (Loop : expr riscv_lang)) -∗
-     WP (Loop : expr riscv_lang))%I.
+         mWP (Loop : expr riscv_lang)) -∗
+     mWP (Loop : expr riscv_lang))%I.
   (* the exit continuation of [nx_head_body], named: inline it was
      517 B, a third to a half of that block Delta at every
      step of the walk (optimization.md, fold block continuations). *)
@@ -554,7 +554,7 @@ Section ProofNamexTrMain.
          pc_is (mword_of_int (NX + 0x140)) -∗
          ([∗ list] i ∈ seq 0 (S plen),
             pa_add pv i ↦ₘ[KT1]{dqpv} pfun i) -∗
-         WP (Loop : expr riscv_lang))%I.
+         mWP (Loop : expr riscv_lang))%I.
 
 
   Definition nx_head_body
@@ -585,8 +585,8 @@ Section ProofNamexTrMain.
          pc_is (mword_of_int (NX + 0x116)) -∗
          ([∗ list] i ∈ seq 0 (S plen),
             pa_add pv i ↦ₘ[KT1]{dqpv} pfun i) -∗
-         WP (Loop : expr riscv_lang)) -∗
-     WP (Loop : expr riscv_lang))%I.
+         mWP (Loop : expr riscv_lang)) -∗
+     mWP (Loop : expr riscv_lang))%I.
   (* the exit continuation of [nx_trail_body], named: inline it was
      620 B, a third to a half of that block Delta at every
      step of the walk (optimization.md, fold block continuations). *)
@@ -604,7 +604,7 @@ Section ProofNamexTrMain.
          pc_is (mword_of_int (NX + 0xc0)) -∗
          ([∗ list] i ∈ seq 0 (S plen),
             pa_add pv i ↦ₘ[KT1]{dqpv} pfun i) -∗
-         WP (Loop : expr riscv_lang))%I.
+         mWP (Loop : expr riscv_lang))%I.
 
 
   Definition nx_trail_body
@@ -618,7 +618,7 @@ Section ProofNamexTrMain.
      pc_is (mword_of_int (NX + 0xae)) -∗
      ([∗ list] i ∈ seq 0 (S plen), pa_add pv i ↦ₘ[KT1]{dqpv} pfun i) -∗
      wp_next (CID0 := CIDs) b (proc_addr j) (fun CIDe : CpuId => nx_trail_exit j b K plen pfun pv dqpv off Ms CIDe) -∗
-     WP (Loop : expr riscv_lang))%I.
+     mWP (Loop : expr riscv_lang))%I.
 
   Definition nx_loop_body
       (j : nat) (b : bool) (K : nat) (m : regfile)
@@ -704,7 +704,7 @@ Section ProofNamexTrMain.
        namex_era_post (CID := CIDc) (proc_addr j) pv nb ret_tgt pl m K b eb lks
 
                      plen pfun n Sb P Pmiss pidv dq dqb dqs dqpv Upr) -∗
-     WP (Loop : expr riscv_lang))%I.
+     mWP (Loop : expr riscv_lang))%I.
 
   Definition nx_rest_body
       (j : nat) (b : bool) (K : nat) (m : regfile) (sp0 pv nb : mword 64)
@@ -750,7 +750,7 @@ Section ProofNamexTrMain.
      log_opSt icfg_log ncur Scur -∗
      P kk dcur -∗
      ex_hops_from fsc_fs P Pmiss pl kk -∗
-     WP (Loop : expr riscv_lang))%I.
+     mWP (Loop : expr riscv_lang))%I.
 
   (* THE WALK, AT THE TRACE CONTRACT.  Instruction for instruction the
      landed [ProofNamex.wp_namex_gen]; what moves is the loop invariant's
@@ -3056,7 +3056,7 @@ Section ProofNamexTrMain.
                             pc_is (mword_of_int (NX + 0xde)) -∗
                             ([∗ list] i ∈ seq 0 (S plen),
                                pa_add pv i ↦ₘ[KT1]{dqpv} pfun i) -∗
-                            WP (Loop : expr riscv_lang)))%I
+                            mWP (Loop : expr riscv_lang)))%I
                          with "[IHl Hcont Hb1 Hb2 Hb3 Hb4 Hb5 Hb6 Hb7 Hb8 Hb9
                                 Hb10 Hb11 Hb12 Hisl Hbmap Hinos Hppid
                                 Hcwdr Hname Hbs1 Hbs2 Hlog Hkeep Hru Hslkd

@@ -333,8 +333,8 @@ Section UkTreeRead.
         ∨ (ustd_any (ukn_fd N) ∗ tree_taint c)) -∗
        UserCwd.ucwd (ukn_cwd N) cw -∗
        urun N h' (<[Regidx a0_idx := rv]> m) (add_vec_int pc 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Heq Hn Hal4 Hpath Ha0 Hcr Htr Hp Hstart Hd Hres.
     iIntros "#Hi #Hro Hrun Hcwd Hstd #Hpin #Hinv Hcont".
@@ -540,8 +540,8 @@ Section UkTreeRead.
         ∨ tree_taint c) -∗
        urun N h' (<[Regidx a0_idx := rv]> m) (add_vec_int pc 4) avail -∗
        ubytes (ukn_d N) (uint (m !!! Regidx a1_idx)) k gb -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Heq Hn Hcnt Hcapk Hfdv Hfdlt Hal4 Hp Hstart Hd Hres.
     iIntros "#Hi Hrun Hufdh #Hpin #Hinv Hbuf Hcont".

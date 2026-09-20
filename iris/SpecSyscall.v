@@ -1053,9 +1053,9 @@ Definition wp_syscall_sconf_body
       (* ...and WAIT'S: the set its children reading shrank to -- see
          [sysc_wait_out] *)
       sysc_wait_out U (us_M U') (pv_tf (us_V U') !!! tf_arg_idx 0) cs cs' pid -∗
-      WP (Loop : expr riscv_lang))
+      mWP (Loop : expr riscv_lang))
    ∧ kstack_closer pj (m !!! Regidx csp_rs1) (trap_res true + av)) -∗
-  WP (Loop : expr riscv_lang).
+  mWP (Loop : expr riscv_lang).
 
 Module Type SYSCALL.
   (* the kernel-side resources the syscall table's entries consume, for the

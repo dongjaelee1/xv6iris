@@ -36,25 +36,18 @@ From iris.algebra Require Import auth gmap frac dfrac.
 From iris.base_logic.lib Require Import ghost_var invariants gen_heap ghost_map.
 Require Import SailStdpp.Base SailStdpp.Values SailStdpp.MachineWord.
 Require Import RiscvPtsto.
-Require Import DinodeEnc.
-Require Import DirView.
 Require Import FsTree.
-Require Import FsBlocks.
-Require Import FsBytesGamma.
-Require Import BlkmapDefs.
+Require Import FsStateDefs.
 Require Import IrefSlots.
 Require Import Xv6Cameras.
 Require Import FdSlots.
 Require Import FileInvDefs.
 Require Import ProcAvail.
-Require Import FsStateEra.
-Require Import InodeRegion.
 Require Import Xv6G.
-Require FsImg.
 Require Import FsAbsDelta.
 Require Import AppInv.
 Require Import PieceFam.
-Require Import FsAbs.
+Require Import FsAbsDefs.
 Require Import PathElems.
 Require Import ArgPath.
 Require Import FsAbsCreateFire.

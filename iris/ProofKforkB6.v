@@ -418,7 +418,7 @@ Section KforkPrologue.
         is_itable2 fsc_itlock fsc_ic fsc_fs fsc_ireg fsc_cov fsc_logst icfg_nib icfg_dev -∗
         itable_inv -∗
         R -∗
-        WP (Loop : expr riscv_lang))%I.
+        mWP (Loop : expr riscv_lang))%I.
 
   (* exit continuation 2 of [kfk_prologue], named: inline it was
      2790 B in Delta at every step of that walk
@@ -499,7 +499,7 @@ Section KforkPrologue.
         cpu_own (S lvl) eb pme false ({["proc"]} ∪ lks) -∗
         kalloc_env_at fsc_kalloc fsc_kpages None -∗
         R -∗
-        WP (Loop : expr riscv_lang))%I.
+        mWP (Loop : expr riscv_lang))%I.
 
   (* exit continuation 1 of [kfk_prologue], named: inline it was
      1033 B in Delta at every step of that walk
@@ -529,7 +529,7 @@ Section KforkPrologue.
           ∨ (∃ n : nat, ⌜(n <= K_allocproc)%nat /\ avail_zero (avail_sub on n)⌝ ∗
              kalloc_env_at fsc_kalloc fsc_kpages None) ) -∗
         R -∗
-        WP (Loop : expr riscv_lang))%I.
+        mWP (Loop : expr riscv_lang))%I.
 
 
   (* =================================================================== *)
@@ -624,7 +624,7 @@ Section KforkPrologue.
     (∀ CIDh : CpuId,
        ⌜ b = false \/ pme = zero_reg -> (CIDh : CPU) = (CID0 : CPU) ⌝ -∗
        wp_next (CID0 := CIDh) false pme (fun CID : CpuId => kfk_pro_exit3 γw γl γf γs m lvl K eb pme b pid_p Up stsP R lks sp0 ra0 s00 s10 s50 Q CID)) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros sp0 ra0 s00 s10 s50 HK Hlvl Hbelow.
     

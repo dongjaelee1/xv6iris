@@ -277,8 +277,8 @@ Section UkShMalloc.
          (<[Regidx a0_idx := r]>
             (<[Regidx a7_idx := (mword_of_int 12 : mword 64)]> m))
          (ret_pc (m !!! Regidx ra_idx)) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof.
     intros Harg Heag Hn0 Hsz0 Hszok Hal.
     iIntros "#Hcode Hrun Hsz Hcont".
@@ -369,8 +369,8 @@ Section UkShMalloc.
        ⌜ m' !!! Regidx a0_idx = r ⌝ -∗
        ushm_sbrk_ans sz n r -∗
        urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (2 + nn) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using Hpsok_free.
     intros Harg Hn0 Hsz0 Hszok Hal.
     iIntros "#Hcode Hrun Hsz Hcont".
@@ -575,8 +575,8 @@ Section UkShMalloc.
        ushm_hdr SH_BASE (mword_of_int p) 0 -∗
        ushm_hdr p (mword_of_int SH_BASE) nu -∗
        urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (2 + nn) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Ha0 Hplo Hp16 Hnu0 Hnu31 Hphi.
     iIntros "#Hcode Hfreep (Hbnx & Hbsz & Hbpad) (Hnx & Hsz & Hpad) Hrun Hcont".
@@ -1397,8 +1397,8 @@ Section UkShMalloc.
        ⌜ m' !!! Regidx s2_idx = vs2 ⌝ -∗
        ⌜ m' !!! Regidx s3_idx = vs3 ⌝ -∗
        urun N h' m' (ret_pc vra) (8 + n) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hal8 Hlo Hbsp Hup Hsp.
     iIntros "#Hcode Hw1 Hw2 Hw3 Hw4 Hw5 Hw6 Hw7 Hw8 Hrun Hcont".
@@ -1581,8 +1581,8 @@ Section UkShMalloc.
              ushm_one (sz + 65536) (4096 - ((nbytes + 15) / 16 + 1)) ∗
              ubytes γd q (Z.to_nat nbytes) g)) -∗
        urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (10 + avail) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using Hpsok_free.
     intros Ha0 Hnb0 Hnbhi Hszlo Hszal Hszok.
     iIntros "#Hcode Hfreep Hbase Hsz Hrun Hcont".
@@ -3656,8 +3656,8 @@ Section UkShMalloc.
              ⌜ 0 < q /\ q mod 16 = 0 /\ q + nbytes < 2 ^ 38 ⌝ ∗
              usz γs (sz + 65536) ∗ ubytes γd q (Z.to_nat nbytes) g)) -∗
        urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (10 + avail) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using Hpsok_free.
     intros Ha0 Hnb0 Hnbhi Hszlo Hszal Hszok.
     iIntros "#Hcode Hfreep Hbase Hsz Hrun Hcont".
@@ -3739,8 +3739,8 @@ Section UkShMalloc.
           ushm_one szv (R - ((nbytes + 15) / 16 + 1)) ∗
           ubytes γd q (Z.to_nat nbytes) g) -∗
        urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (10 + avail) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Ha0 Hnb0 Hnbhi Hfit.
     iIntros "#Hcode Hone Hrun Hcont".
@@ -4611,8 +4611,8 @@ Section UkShMalloc.
                ⌜ 0 < p /\ p mod 16 = 0 /\ p + nbytes < 2 ^ 38 ⌝ ∗
                ubytes γd p (Z.to_nat nbytes) g ∗ usz γs (sz + 65536))) -∗
          urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (10 + avail) -∗
-         WP (Loop : expr riscv_lang)) -∗
-      WP (Loop : expr riscv_lang).
+         mWP (Loop : expr riscv_lang)) -∗
+      mWP (Loop : expr riscv_lang).
   Proof.
     intros Hszlo Hszal Hszok h m nbytes avail Ha0 Hnb0 Hnbhi.
     iIntros "#Hcode (Hfreep & [%fb Hbase] & Hsz) Hrun Hcont".

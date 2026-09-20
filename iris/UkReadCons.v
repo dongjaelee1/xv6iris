@@ -252,8 +252,8 @@ Section UkReadCons.
        uread_cons_ans fsc_cons Rd Rin r cap g -∗
        ubytes (ukn_d N) a k g -∗
        urun N h' (<[Regidx a0_idx := r]> m) (add_vec_int pc 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hn Ha0 Hfdlt Hl0 Ha1 Ha2 Hcapk Hcap31 Hal.
     iIntros "#Hi Hrun Hstd Hbuf Hacc Hlink Hcont".

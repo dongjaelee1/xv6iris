@@ -497,8 +497,8 @@ Section ProofFilewriteParts.
         ctx_word_pointsto (KTR := KT1) cur_ctx (pa_stk sp0 10) (DfracOwn 1) w10 -∗
         ctx_word_pointsto (KTR := KT1) cur_ctx (pa_stk sp0 11) (DfracOwn 1) w11 -∗
         ctx_word_pointsto (KTR := KT1) cur_ctx (pa_stk sp0 12) (DfracOwn 1) w12 -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK Hsp0.
     iIntros "Hcg #Htext Hpc Hcont".
@@ -667,8 +667,8 @@ Section ProofFilewriteParts.
         ⌜callee_saved m mf /\ mf !!! Regidx Ra0 = rv⌝ -∗
         sie_cap_gpr KT1 mf K b p -∗
         pc_is (ret_pc ra0) -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK Hsp0 Hra0 Hs00 Hs20 Hs50 Hs60 Hmtsp Hmta0 Hthr.
     iIntros "Hcg #Htext Hpc Hb1 Hb2 Hb3 Hb4 Hb5 Hb6 Hb7 Hb8 Hb9 Hb10 Hb11 Hb12 Hcont".
@@ -928,8 +928,8 @@ Section ProofFilewriteParts.
         ctx_word_pointsto (KTR := KT1) cur_ctx (pa_stk sp0 9) (DfracOwn 1) v7 -∗
         ctx_word_pointsto (KTR := KT1) cur_ctx (pa_stk sp0 10) (DfracOwn 1) v8 -∗
         ctx_word_pointsto (KTR := KT1) cur_ctx (pa_stk sp0 11) (DfracOwn 1) v9 -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hmtsp Hab Hbc Hcd Hde Hef Hfg.
     iIntros "Hcg Hpc Hia Hib Hic Hid Hie Hif Hb3 Hb5 Hb6 Hb9 Hb10 Hb11 Hcont".
@@ -1067,8 +1067,8 @@ Section ProofFilewriteParts.
                 Mr !!! Regidx r = Mt !!! Regidx r) ⌝ -∗
         sie_cap_gpr KT1 Mr K b p -∗
         pc_is (mword_of_int (FW + 0xf4) : mword 64) -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hab Hjt.
     iIntros "Hcg Hpc Hia Hib Hcont".
@@ -1122,8 +1122,8 @@ Section ProofFilewriteParts.
         sie_cap_gpr KT1 Mr K b p -∗
         pc_is (mword_of_int (FW + 0xf4) : mword 64) -∗
         ctx_word_pointsto (KTR := KT1) cur_ctx (pa_stk sp0 6) (DfracOwn 1) v4 -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hmtsp Hab Hbc Hjt.
     iIntros "Hcg Hpc Hia Hib Hic Hb6 Hcont".
@@ -1188,8 +1188,8 @@ Section ProofFilewriteParts.
         sie_cap_gpr KT1 Mr K b p -∗
         pc_is (mword_of_int (FW + 0x82) : mword 64) -∗
         ctx_word_pointsto cur_ctx (mword_of_int (KernelSyms.devsw + 16 * mj + 8)) dq slot -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hmj Ha5.
     iIntros "Hcg #Htext Hpc Hslot Hcont".
@@ -1334,7 +1334,7 @@ Section ProofFilewriteParts.
     ctx_word_pointsto (KTR := KT1) cur_ctx (pa_stk sp0 9) (DfracOwn 1) u9 -∗
     ctx_word_pointsto (KTR := KT1) cur_ctx (pa_stk sp0 10) (DfracOwn 1) u10 -∗
     ctx_word_pointsto (KTR := KT1) cur_ctx (pa_stk sp0 11) (DfracOwn 1) u11 -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using wp_panic_sconf.
     intros Hmtsp HK Hbelow.
     iIntros "Hcg Hcnt #Htext #Hkd Hpc #Hpenv Hb3 Hb5 Hb6 Hb9 Hb10 Hb11".
@@ -1558,8 +1558,8 @@ Section ProofFilewriteParts.
               \/ (iz = nz /\ rv = (mword_of_int nz : mword 64)))⌝ -∗
         sie_cap_gpr KT1 mf K b p -∗
         pc_is (ret_pc ra0) -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK Hnz Hiz Hsp0 Hra0 Hs00 Hcs1 Hs20 Hcs3 Hs40 Hs50 Hs60 Hcs7 Hcs8 Hcs9
            Hmtsp Hmts5 Hmts4 Hthr.

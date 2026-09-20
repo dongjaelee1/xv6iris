@@ -50,7 +50,6 @@ Require Import UserFd.
 Require Import UserHeap.
 Require Import UserCwd.
 Require Import ProcGeom.           (* [NOFILE] / [tf_arg_idx] *)
-Require Import UmodeArith.         (* [moi_small] *)
 Require Import PieceFam.
 Require Import UexecSlot UexecRet UsysMemOk UexecSG.
 Require Import UkRun UkRunSys.
@@ -71,21 +70,14 @@ Require Import SpecSysOpen.
 Require Import ArgPath.
 Require Import AppCfg AppInv.
 Require Import FsCfg.
-Require Import FsBlocks.
-Require Import FsBytesGamma.
 Require Import PathElems.
 Require Import FsTree.
 Require Import FsImgCheck.         (* [fname_f] *)
-Require Import InodeInv.
-Require Import BioDefs.
-Require Import FsAbsReadFire.
 Require Import FsAbsEra.
 Require Import PinnedObs.
-Require Import ConsoleInv.
 Require Import EchoOut.
 Require Import AppEcho.
 Require Import AppFile.
-Require Import FileDeltas.
 Require Import FileOpen.
 Require Import FsImg.              (* re-IMPORTED late, as FileOpen does *)
 Require Import FsAbsDefs.
@@ -250,8 +242,8 @@ Section UkFileOpen.
         ∨ (uk_open_taint_fd (ukn_fd N) l rv ∗ file_taint c)) -∗
        UserCwd.ucwd (ukn_cwd N) cw -∗
        urun N h' (<[Regidx a0_idx := rv]> m) (add_vec_int pc 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Heq Hn Hal4 Hpath Ha0 Hcr Htr Hel Hst.
     iIntros "#Hi #Hro Hrun Hcwd Hstd #Hinv Hd1 Hd2 Hcont".
@@ -375,8 +367,8 @@ Section UkFileOpen.
         ∨ (uk_open_taint_fd (ukn_fd N) l rv ∗ file_taint c)) -∗
        UserCwd.ucwd (ukn_cwd N) cw -∗
        urun N h' (<[Regidx a0_idx := rv]> m) (add_vec_int pc 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Heq Hn Hal4 Hpath Ha0 Hcr Htr Hel Hst.
     iIntros "#Hi #Hro Hrun Hcwd Hstd #Hinv Hd Hcont".
@@ -451,8 +443,8 @@ Section UkFileOpen.
         ∨ (fdq r q (Some (i, bs)) ∗ file_taint c)) -∗
        urun N h' (<[Regidx a0_idx := rv]> m) (add_vec_int pc 4) avail -∗
        ubytes (ukn_d N) (uint (m !!! Regidx a1_idx)) k gb -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Heq Hn Hcnt Hcapk Hfdv Hfdlt Hal4.
     iIntros "#Hi Hrun Hufdh #Hm #Hinv Hd Hbuf Hcont".
@@ -533,8 +525,8 @@ Section UkFileOpen.
         ∨ (fdq r q (Some (i, bs)) ∗ file_taint c)) -∗
        urun N h' (<[Regidx a0_idx := rv]> m) (add_vec_int pc 4) avail -∗
        ubytes (ukn_d N) (uint (m !!! Regidx a1_idx)) k gb -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Heq Hn Hcnt Hcnt0 Hcapk Hfdv Hfdlt Hal4.
     iIntros "#Hi Hrun Hufdh #Hm #Hinv Hd Hbuf Hcont".
@@ -613,8 +605,8 @@ Section UkFileOpen.
         ∨ (UserOff.uoff γo p ∗ fdq r q (Some (i, bs)) ∗ file_taint c)) -∗
        urun N h' (<[Regidx a0_idx := rv]> m) (add_vec_int pc 4) avail -∗
        ubytes (ukn_d N) (uint (m !!! Regidx a1_idx)) k gb -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Heq Hn Hcnt Hcnt0 Hcapk Hfdv Hfdlt Hal4.
     iIntros "#Hbr #Hrb #Hi Hrun Hufdh #Hm #Hinv Hd Hu Hbuf Hcont".
@@ -893,8 +885,8 @@ Section UkFileOpen.
              redir_K omo c r ty)) -∗
        UserCwd.ucwd (ukn_cwd N) cw -∗
        urun N h' (<[Regidx a0_idx := rv]> m) (add_vec_int pc 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Heq Hn Hal4 Hpath Ha0 Hcr Htr Hnp Hstart Hlast Hin Hokw.
     iIntros "#Hi #Hro Hrun Hcwd Hstd #Hinv #Hm #Hlb Hown Hcont".
@@ -1126,8 +1118,8 @@ Section UkFileOpen.
         ∨ (uk_open_taint_fd (ukn_fd N) l rv ∗ file_taint c)) -∗
        UserCwd.ucwd (ukn_cwd N) cw -∗
        urun N h' (<[Regidx a0_idx := rv]> m) (add_vec_int pc 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Heq Hn Hal4 Hpath Ha0 Hcr Htr Hel Hst.
     iIntros "#Hi #Hro Hrun Hcwd Hstd #Hinv Hd1 Hd2 Hcont".
@@ -1204,8 +1196,8 @@ Section UkFileOpen.
         ∨ (uk_open_taint_fd (ukn_fd N) l rv ∗ file_taint c)) -∗
        UserCwd.ucwd (ukn_cwd N) cw -∗
        urun N h' (<[Regidx a0_idx := rv]> m) (add_vec_int pc 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Heq Hn Hal4 Hpath Ha0 Hcr Htr Hel Hst.
     iIntros "#Hi #Hro Hrun Hcwd Hstd #Hinv Hd Hcont".
@@ -1297,8 +1289,8 @@ Section UkFileOpen.
              redir_K omo c r ty)) -∗
        UserCwd.ucwd (ukn_cwd N) cw -∗
        urun N h' (<[Regidx a0_idx := rv]> m) (add_vec_int pc 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Heq Hn Hal4 Hpath Ha0 Hcr Htr Hnp Hstart Hlast Hin Hokw.
     iIntros "#Hi #Hro Hrun Hcwd Hstd #Hinv #Hm #Hlb Hown Hcont".
@@ -1405,8 +1397,8 @@ Section UkFileOpen.
         ∨ (uk_open_taint_fd (ukn_fd N) l rv ∗ file_taint c)) -∗
        UserCwd.ucwd (ukn_cwd N) cw -∗
        urun N h' (<[Regidx a0_idx := rv]> m) (add_vec_int pc 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Heq Hn Hal4 Hpath Ha0 Hcr Htr Hel Hst.
     iIntros "#Hi #Hdi Hrun Hcwd Hstd #Hinv Hd1 Hd2 Hcont".
@@ -1442,8 +1434,8 @@ Section UkFileOpen.
         ∨ (uk_open_taint_fd (ukn_fd N) l rv ∗ file_taint c)) -∗
        UserCwd.ucwd (ukn_cwd N) cw -∗
        urun N h' (<[Regidx a0_idx := rv]> m) (add_vec_int pc 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Heq Hn Hal4 Hpath Ha0 Hcr Htr Hel Hst.
     iIntros "#Hi #Hdi Hrun Hcwd Hstd #Hinv Hd Hcont".
@@ -1498,8 +1490,8 @@ Section UkFileOpen.
              redir_K omo c r ty)) -∗
        UserCwd.ucwd (ukn_cwd N) cw -∗
        urun N h' (<[Regidx a0_idx := rv]> m) (add_vec_int pc 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Heq Hn Hal4 Hpath Ha0 Hcr Htr Hnp Hstart Hlast Hin Hokw.
     iIntros "#Hi #Hdi Hrun Hcwd Hstd #Hinv #Hm #Hlb Hown Hcont".

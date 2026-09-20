@@ -29,7 +29,7 @@ Require Import RiscvLang RiscvPtsto RiscvExtras RiscvModelBytes.
 Require Import RegFile.
 Require Import UserBits.
 Require Import UmodeArith UmodeAbi.
-Require Import UserHeap UkRun UkRunLeaf UkRunMem UkRunBr.
+Require Import UserHeap UkRun UkRunMem.
 Require Import UCodeShK.
 Require Import UkSh.
 Require Import CtxIdDefs.
@@ -39,12 +39,10 @@ Require Import UkShDiag.
 Require Import UkShRedir.
 Require Import UkShRedirAns.
 Require Import ChildTok.
-Require Import EchoDisc.
 Require Import FileDisc.           (* [alt_openfail] *)
 Require Import FdSlots.
 Require Import UserFd.
 Require Import UexecSG.
-Require Import UserCwd.
 Require Import ArgPath.            (* [arg_path_of] *)
 Require Import PathElems.          (* [path_elems] *)
 Require Import FsAbsEra.           (* [np_elems] / [um_start_of] *)
@@ -119,7 +117,7 @@ Section UkShRedirPaid.
     Cr -∗
     (UserFd.ustd (ukn_fd N) l -∗ Cd -∗ ukn_pay N (-1)) -∗
     urun N h m (mword_of_int 0x10e) (ush_Dg + n) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hfd2 Hat Hxlen Hxb.
     assert (Hal : uint (m !!! Regidx s1_idx) mod 8 = 0).

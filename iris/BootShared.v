@@ -548,7 +548,7 @@ Section BootBssChain.
          ([∗ list] p ∈ ps, page_own p)).
   Proof using .
     intro Hbf. pose proof (boot_mem_of_facts g Hbf) as Hmem.
-    iIntros "#Hcl Hfd Hir Hirf Hfda Hbss (Hsa & Hcu & Hchi & Hlm & Hrdtok & Hclean) Hu0 Hu1 H".
+    iIntros "#Hcl Hfd Hir Hirf Hfda Hbss (Hsa & Hcu & Hchi & Hlm & Hdc & Hrdtok & Hclean) Hu0 Hu1 H".
     (* THE FLAG CELLS ARE GONE.  This chain used to open with two 4-byte cuts
        for [panicked] and [panicking]; upstream d80e61c5 deleted both globals
        from printk.c, so there is no such symbol and nothing to carve.  .bss
@@ -613,7 +613,7 @@ Section BootBssChain.
                  (KernelSyms.cons + 164) ram_hi
                  ltac:(zlit) ltac:(zlit) ltac:(zlit) with "H") as "[Hring H]".
     iDestruct (boot_cons_res g cn Hmem ltac:(zlit) ltac:(zlit) ltac:(zlit) ltac:(zeq)
-                 with "Hcl Hring Hsa Hcu Hchi Hlm") as "Hring".
+                 with "Hcl Hring Hsa Hcu Hchi Hlm Hdc") as "Hring".
     iDestruct (bss_cut g (KernelSyms.cons + 164) KernelSyms.pr
                  (KernelSyms.pr + 24) ram_hi
                  ltac:(zlit) ltac:(zlit) ltac:(zlit) with "H") as "[Hlk2 H]".
@@ -1762,8 +1762,13 @@ Section BootAlloc.
       (* NO RESERVATION MIRRORS COME OUT: every hart's is threaded into that
          hart's [InstrBytes.pc_is] here, inside [boot_hart_pre] (design
          §3a), so the boot client never names one. *)
+      (* ...AND THE TRANSMITTER IS UNUSED (relax-d2, lane K1): the port
+         comes up having accepted nothing, which is what makes the bytes
+         uartinit's FCR FIFO-clear discards accountable at the console
+         boundary ([SpecMain.v]). *)
       (∃ l0 : list (bv 8),
-         uart_tx_own γd l0 ∗ uart_sent γd l0 ∗ uart_out_lb γd l0) ∗
+         uart_tx_own γd l0 ∗ uart_sent γd l0 ∗ uart_out_lb γd l0
+         ∗ ⌜l0 = []⌝) ∗
       (* the RECEIVE TOKEN, born with the device invariant and owed to
          uartinit's FCR flush (SpecMain.v) *)
       uart_rx_tok γd 0%nat None ∗
@@ -1791,7 +1796,8 @@ Section BootAlloc.
          consumes input, so the ring's partner does not exist there and the
          other half is dropped at the mint. ---- *)
       (∃ l1 : list (bv 8),
-         uart_tx_own γd1 l1 ∗ uart_sent γd1 l1 ∗ uart_out_lb γd1 l1) ∗
+         uart_tx_own γd1 l1 ∗ uart_sent γd1 l1 ∗ uart_out_lb γd1 l1
+         ∗ ⌜l1 = []⌝) ∗
       uart_rx_tok γd1 0%nat None ∗
       uart_rx_hi γd1 (1/2) None ∗
       uart_log_hi γd1 (1/2) None ∗
@@ -2151,6 +2157,8 @@ Section BootAlloc.
     iDestruct "Huf" as "(Huf & Huf1 & _)".
     iMod (uart_ghosts_alloc Uart0 (g.(gdev).(duart) Uart0)
             ltac:(rewrite Hu0; reflexivity)
+            (* NOTHING HAS BEEN RECEIVED AT POWER-ON (relax-d2, lane K1) *)
+            ltac:(rewrite Hu0; reflexivity)
             ltac:(rewrite Hu0; vm_compute; reflexivity)
             ltac:(rewrite Hu0; reflexivity)
             (* NOTHING HAS BEEN ACCEPTED AT POWER-ON (lane OUT-FUPD): the
@@ -2159,7 +2167,7 @@ Section BootAlloc.
                claims exactly here. *)
             ltac:(rewrite Hu0; reflexivity) with "Hores") as (γd)
       "(Hacc & Hout & Htxa & Hdla & Htx & Hsent & Hdlab & Hcol & Hincl &
-        Htok & Hhi1 & Hhi2 & Hlgh & Hdvh & Hlmh & Harm2 & Hpre)".
+        Htok & Hhi1 & Hhi2 & Hlgh & Hdvh & Hlmh & Hdch & Harm2 & Hpre)".
     (* ---- THE CONSOLE RING'S GHOSTS, beside the UART's and not before
        them: the ring's half of the receive side's HIGH-WATER MARK is one
        of the pair [uart_ghosts_alloc] just made, and the ring's names
@@ -2175,7 +2183,10 @@ Section BootAlloc.
        this is the whole of the thread and no other boot file moves. *)
     iEval (rewrite /uart_deliv) in "Hdvh".
     iEval (rewrite /uart_logm) in "Hlmh".
-    iMod (cons_ghosts_alloc γd with "Hhi1 Hdvh Hlmh")
+    (* ...AND THE DELIVERED COUNT'S RING HALF (relax-d2, lane K2), which
+       travels the same way and has no PLIC sink either. *)
+    iEval (rewrite /uart_dlcnt) in "Hdch".
+    iMod (cons_ghosts_alloc γd with "Hhi1 Hdvh Hlmh Hdch")
       as (cnm) "[%Hcnu Hcgb]".
     (* ---- the .bss, in address order.  It runs AFTER the two mints above
        because the console ring's resource now owns three of their ghost
@@ -2212,12 +2223,13 @@ Section BootAlloc.
                (LogEntryDefs.MkCH [] [] [] None)) as "Hores1"; [done|].
     iMod (uart_ghosts_alloc Uart1 (g.(gdev).(duart) Uart1)
             ltac:(rewrite Hu0; reflexivity)
+            ltac:(rewrite Hu0; reflexivity)
             ltac:(rewrite Hu0; vm_compute; reflexivity)
             ltac:(rewrite Hu0; reflexivity)
             ltac:(rewrite Hu0; reflexivity)
             with "Hores1") as (γd1)
       "(Hacc1 & Hout1 & Htxa1 & Hdla1 & Htx1 & Hsent1 & Hdlab1 & Hcol1 &
-        Hincl1 & Htok1 & Hhi11 & _ & Hlgh1 & _ & _ & Harm12 & Hpre1)".
+        Hincl1 & Htok1 & Hhi11 & _ & Hlgh1 & _ & _ & _ & Harm12 & Hpre1)".
     iDestruct (uart_out_auth_lb γd1 (g.(gdev).(duart) Uart1) with "Hout1")
       as "[Hout1 #Hlb1]".
     assert (Hacceq1 : uart_acc (g.(gdev).(duart) Uart1)
@@ -2384,7 +2396,8 @@ Section BootAlloc.
     iSplitL "Hprocsavail"; [iExact "Hprocsavail" |].
     iSplitL "Hchb"; [iExact "Hchb" |].
     iSplitL "Htx Hsent".
-    { iExists (uart_acc (g.(gdev).(duart) Uart0)). iFrame "Htx Hsent Hlb". }
+    { iExists (uart_acc (g.(gdev).(duart) Uart0)). iFrame "Htx Hsent Hlb".
+      iPureIntro. rewrite Hu0. reflexivity. }
     iSplitL "Htok"; [iExact "Htok" |].
     iSplitL "Hhi2"; [iExact "Hhi2" |].
     iSplitL "Hlgh"; [iExact "Hlgh" |].
@@ -2392,7 +2405,8 @@ Section BootAlloc.
     iSplitL "Hdlab";
       [iExists (uart_dlab (g.(gdev).(duart) Uart0)); iExact "Hdlab" |].
     iSplitL "Htx1 Hsent1".
-    { iExists (uart_acc (g.(gdev).(duart) Uart1)). iFrame "Htx1 Hsent1 Hlb1". }
+    { iExists (uart_acc (g.(gdev).(duart) Uart1)). iFrame "Htx1 Hsent1 Hlb1".
+      iPureIntro. rewrite Hu0. reflexivity. }
     iSplitL "Htok1"; [iExact "Htok1" |].
     iSplitL "Hhi11"; [iExact "Hhi11" |].
     iSplitL "Hlgh1"; [iExact "Hlgh1" |].

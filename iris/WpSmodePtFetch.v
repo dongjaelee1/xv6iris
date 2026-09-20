@@ -607,8 +607,8 @@ Section SPtFolded.
          menvcfg ↦ᵣ{ dq } menvcfg1 -∗
          sr_inv R -∗
          pc_is npc -∗ Rl npc ms1 mdv1 -∗
-         WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+         mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HSIE HMPRV HSXL Hmm HPBMTE Hmenvval.
     iIntros "#Hhw #Hminv Hhs Hpriv Hmst Hmie Hmdl Hmenv Hinv Hpc Hinstr Hex

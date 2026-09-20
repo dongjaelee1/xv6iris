@@ -330,7 +330,7 @@ Section SysMknod.
              (npar_cur M pv P) Farm) Fok -∗
     pf_at (acre_commit_at_nm Γ appE (ADev ma mi) (npar_nm M pv)
              (P (length (npar_elems pl))) Farm) Fok.
-  Proof.
+  Proof using .
     intros Hpl. iIntros "Hok".
     rewrite /acre_commit_at_nm. iApply (pf_at_mono with "[] Hok").
     iIntros "Hok". rewrite /acre_commit_at_gen_nm.
@@ -352,7 +352,7 @@ Section SysMknod.
     pf_at (acre_commit_at_nm Γ appE (ADev ma mi) Nm
              (npar_cur M pv (fun _ _ => True%I)) Farm) Fok -∗
     pf_at (acre_commit_at_nm Γ appE (ADev ma mi) Nm (fun _ => True%I) Farm) Fok.
-  Proof.
+  Proof using .
     iIntros "Hok". rewrite /acre_commit_at_nm.
     iApply (pf_at_mono with "[] Hok"). iIntros "Hok".
     rewrite /acre_commit_at_gen_nm.
@@ -371,7 +371,7 @@ Section SysMknod.
     pf_at (acre_commit_at Γ appE (ADev ma mi) (fun _ => True%I) Farm) Fok -∗
     pf_at (acre_commit_at_nm Γ appE (ADev ma mi) Nm
              (npar_cur M pv (fun _ _ => True%I)) Farm) Fok.
-  Proof.
+  Proof using .
     iIntros "Hok". rewrite /acre_commit_at /acre_commit_at_nm.
     iApply (pf_at_mono with "[] Hok"). iIntros "Hok".
     rewrite /acre_commit_at_gen /acre_commit_at_gen_nm.
@@ -813,8 +813,8 @@ Definition wp_sys_mknod_frame
       proc_priv γf pj pid (us_upt U P') -∗
       (* the armed post on the returned a0 (implies [sys_mknod_ret]) *)
       ARMS (mf !!! Regidx (mword_of_int 10 : mword 5)) -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 (* THE CONTRACT'S BODY.  The abstract state is read at the LIVE Γ,
    [fs_gamma_L fsc_fs]; the device numbers are the syscall arguments' own

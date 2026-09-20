@@ -22,7 +22,7 @@ that built all of this is retired — `completed/user-wp-slot.md`.
   register file, mstatus (up to `user_mstatus_ok`), stale trap CSRs and pc
   — given `hw_config ∗ minstret_inv ∗ wire_inv`, the `u_regs` bundle,
   `user_pt_inv pt M`, `user_cfg C`, `Rut pt` and the PAIRED trap seam
-  `▷ (user_trap_frame C pt Rut ∗ X -∗ WP Loop)`, conclude `WP Loop`.
+  `▷ (user_trap_frame C pt Rut ∗ X -∗ mWP Loop)`, conclude `mWP Loop`.
   The pair is the RETURN CHANNEL: the frame goes to the kernel, the next
   round's WP comes back.  `X` occurs only under that `▷`, hence the guard.
   `UserExec.stvec_handler_wp` is the UNPAIRED form and stays what the
@@ -35,7 +35,7 @@ that built all of this is retired — `completed/user-wp-slot.md`.
   the residue's conjunct today.  Its proof
   is now a **Löb** that
   RETURNS ITSELF: `iLöb` gives `▷ □ uexec_wp`, the paired premise gives
-  `▷ (frame ∗ uexec_wp -∗ WP Loop)`, and one `iNext` strips both so the
+  `▷ (frame ∗ uexec_wp -∗ mWP Loop)`, and one `iNext` strips both so the
   old-shape `▷ stvec_handler_wp` the safety theorem wants can be built
   from the two.  Everything else in that proof is the unchanged `user_inv`
   repacking.
@@ -269,14 +269,14 @@ PARKS' — `ProofUserinit`'s and `ProofSysFork`'s applications of
 Vocabulary: "user execution" is the machine running in U-mode between an
 `sret` in userret and the next trap into uservec; "the kernel's trap loop"
 is `ProofUserretClosed.stvec_handler_loop`, one iteration being
-uservec → usertrap → userret → sret.  A user-execution WP is a `WP Loop`
+uservec → usertrap → userret → sret.  A user-execution WP is a `mWP Loop`
 whose precondition describes a user-mode machine state: `uexec_wp`
 covers EVERY state (only the generic user-safety theorem inhabits it),
 `uexec_slot W` covers the one state `W : uvis` records.
 
 **The defect being fixed.**  The last premise of both WPs is the whole
 kernel contract user execution sees:
-`▷ (user_trap_frame C pt Rut ∗ uexec_wp -∗ WP Loop)`.  Two facts about
+`▷ (user_trap_frame C pt Rut ∗ uexec_wp -∗ mWP Loop)`.  Two facts about
 it make a verified program unable to use it: (F1) `user_trap_frame`
 existentially hides cause, tval, sepc and the register file, so the
 kernel is never told WHICH state trapped; (F2) the successor the process
@@ -288,7 +288,7 @@ the INVERSE shape — the kernel promising to resume the process at an
 exact state — which is why `sync_uexec_slot` takes it as an assumption
 and never uses the premise above.  The reconciling observation:
 `UmodeSyscall.usys_ret g va M` (sync's own after-the-syscall
-continuation, `∀ CID ret, resume at (g[a0:=ret], M, va+4) -∗ WP Loop`)
+continuation, `∀ CID ret, resume at (g[a0:=ret], M, va+4) -∗ mWP Loop`)
 IS `uexec_slot` at the bumped key, ∀-bound over `ret`.  So no kernel
 promise is needed; the contract's two premises are re-typed.
 

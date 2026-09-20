@@ -1136,8 +1136,8 @@ Section WpCsrwGprNewA.
       pc_is (add_vec_int pc 4) -∗
       gpr_file m -∗
       medeleg ↦ᵣ legalize_medeleg medeleg0 (m !!! Regidx rs1) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hpmp Hstat Hrs1) "Hmm Hpmpc Hpc Hf Hcsr Hinstr Hcont".
     assert (Hfresh : cw_fresh medeleg)
@@ -1248,8 +1248,8 @@ Section WpCsrwGprNewA.
       pc_is (add_vec_int pc 4) -∗
       gpr_file m -∗
       mcounteren ↦ᵣ legalize_mcounteren mcounteren0 (m !!! Regidx rs1) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hpmp Hstat Hrs1) "Hmm Hpmpc Hpc Hf Hcsr Hinstr Hcont".
     assert (Hfresh : cw_fresh mcounteren)
@@ -1360,8 +1360,8 @@ Section WpCsrwGprNewA.
       pc_is (add_vec_int pc 4) -∗
       gpr_file m -∗
       menvcfg ↦ᵣ menvcfg_legalized menvcfg0 (m !!! Regidx rs1) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hpmp Hstat Hrs1) "Hmm Hpmpc Hpc Hf Hcsr Hinstr Hcont".
     assert (Hfresh : cw_fresh menvcfg)
@@ -1441,8 +1441,8 @@ Section WpCsrwGprNewA.
       pc_is (add_vec_int pc 4) -∗
       gpr_file m -∗
       mepc ↦ᵣ mepc_val (m !!! Regidx rs1) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hpmp Hstat Hrs1) "Hmm Hpmpc Hpc Hf Hcsr Hinstr Hcont".
     assert (Hfresh : cw_fresh mepc)

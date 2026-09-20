@@ -87,8 +87,8 @@ Definition wp_argint_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG 
       p_trapframe p ↦₈{dqt} page_base tfp -∗
       tf_page tfp ws -∗
       ip ↦₄[KT1] arg_int32 v -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type ARGINT.
   Parameter wp_argint_sconf :

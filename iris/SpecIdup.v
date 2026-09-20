@@ -262,8 +262,8 @@ Definition wp_idup_sconf_body
     (* ...and the new one, minted from the table's retained share at a
        fraction only the table knows -- which [inode_held] hides anyway. *)
     inode_held_at (ientry k) z -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type IDUP.
   Parameter wp_idup_sconf :

@@ -128,7 +128,7 @@ Section ProofVirtioDiskRwDSeam.
        vdrw_slot_rest m2 -∗ vdrw_slot_rest t -∗
        vdrw_idx (KTR := KT1) sp0 (mword_of_int (Z.of_nat h)) (mword_of_int (Z.of_nat m2))
                     (mword_of_int (Z.of_nat t)) -∗
-       WP (Loop : expr riscv_lang)))%I.
+       mWP (Loop : expr riscv_lang)))%I.
 
   (* P4, packaged as the wand P3 consumes. *)
   Lemma wp_vdrw_p4_seam (γk : gname)

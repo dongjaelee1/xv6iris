@@ -191,8 +191,8 @@ Definition wp_copyinstr_sconf_mem_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `
     ⌜callee_saved mm mr⌝ -∗
     ⌜uptd_ext_sz szv P P'⌝ -∗
     ⌜copyinstr_ret M srcva maxn dst_new (mr !!! Regidx (mword_of_int 10 : mword 5))⌝ -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type COPYINSTR.
   Parameter wp_copyinstr_sconf_mem :

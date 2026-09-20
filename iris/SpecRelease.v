@@ -102,8 +102,8 @@ Definition wp_release_gen_sconf_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{C
     pc_is ret_tgt -∗
     ⌜ callee_saved m mr ⌝ -∗
     cpu_own n eb p outb (lks ∖ {[s]}) -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 (* THE GENERIC FORM WITH THE PAYLOAD CLOSED OVER: the same contract with a
    finisher whose prelude needs only the running token and the lock's parked
@@ -157,8 +157,8 @@ Definition wp_release_gen_pay_sconf_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId}
     pc_is ret_tgt -∗
     ⌜ callee_saved m mr ⌝ -∗
     cpu_own n eb p outb (lks ∖ {[s]}) -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Definition wp_release_sconf_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx} (kt : ktier) (γl : gname) (lka : mword 64) (s : string) (R : CtxId → iProp Σ) (m : regfile) (n : nat) (eb : bool) (p : mword 64) (av : nat) (lks : gset string) :=
   let pcE : mword 64 := mword_of_int KernelSyms.release in
@@ -197,8 +197,8 @@ Definition wp_release_sconf_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{CID :
     pc_is ret_tgt -∗
     ⌜ callee_saved m mr ⌝ -∗
     cpu_own n eb p outb (lks ∖ {[s]}) -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 (* THE HOOKED INSTANCE: the caller hands its payload in an UNFINISHED shape
    [Rin] and a hook that finishes it at the lock's stamped context
@@ -246,8 +246,8 @@ Definition wp_release_hook_sconf_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{
     pc_is ret_tgt -∗
     ⌜ callee_saved m mr ⌝ -∗
     cpu_own n eb p outb (lks ∖ {[s]}) -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 (* The cancelling instance: release DESTROYS the lock at its word clear and
    walks off with the storage.  The caller brings the dead state [D] it wants
@@ -306,8 +306,8 @@ Definition wp_release_cancel_sconf_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} 
     pc_is ret_tgt -∗
     ⌜ callee_saved m mr ⌝ -∗
     cpu_own n eb p outb (lks ∖ {[s]}) -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type RELEASE_GEN.
   (* the PAY tier takes no transport class: the payload never moves in the

@@ -202,7 +202,7 @@ Section UkShLoop.
        ushl_dat γd -∗ usz γs sz -∗
        ubytes γd sh_buf sh_nbuf f -∗
        urun N h m (mword_of_int 0x938) (16 + (UkSh.ush_Dbody + n)) -∗
-       WP (Loop : expr riscv_lang))%I.
+       mWP (Loop : expr riscv_lang))%I.
 
   (* [UkSh.ush_rest]'s opaque [R], AT THIS SHELL.  The re-cut left [R] a
      parameter precisely so that this line -- which mentions the parser's

@@ -262,7 +262,7 @@ Section CrBodies.
      agreeing with the ring's own cursor. *)
   Definition cr_ghost `{XI : CurCtx} (cn : cons_names) (rr ww ee : mword 32)
       (bs : list (bv 8)) (ts : list (option (list mobs))) : iProp Σ :=
-    (∃ (cur nrd : nat) (st pd : list (list mobs * bv 8))
+    (∃ (cur nrd ndl : nat) (st pd : list (list mobs * bv 8))
        (hh : option (list mobs)) (L0 : list LogEntryDefs.log_entry) (gp : bool),
        ⌜cons_stored rr ww cur st bs ts⌝ ∗ ⌜cons_pend rr ww ee pd bs ts⌝ ∗
        ⌜cons_chain (st ++ pd)⌝ ∗ ⌜cons_below (st ++ pd) hh⌝ ∗
@@ -271,6 +271,11 @@ Section CrBodies.
           CONS-IO, milestone B): the copy loop never moves either, but the
           FINAL RELEASE spends both to prove [ConsLog.read_ok]. *)
        cons_logm cn L0 ∗ ⌜cons_log_ok L0 (st ++ pd) gp⌝ ∗
+       (* ...AND THE DELIVERED COUNT (relax-d2, lane K2).  THIS function is
+          its one mover: every pop carries the reader's cursor and the
+          ring's own count up together, and the final release sets the
+          boundary's count to the cursor. *)
+       cons_dlcnt cn ndl ∗ ⌜(nrd <= cur)%nat⌝ ∗ ⌜(ndl <= nrd)%nat⌝ ∗
        (⌜cur = nrd⌝ ∨ cons_dirty_lb cn))%I.
 
   Lemma cr_res_open `{XI : CurCtx} (cn : cons_names) :
@@ -283,16 +288,18 @@ Section CrBodies.
       cons_data bs ∗ cons_tags ts ∗ cr_ghost cn rr ww ee bs ts.
   Proof using .
     iIntros "H". rewrite /cons_res.
-    iDestruct "H" as (rr ww ee bs ts cur nrd st pd hh L0 gp)
+    iDestruct "H" as (rr ww ee bs ts cur nrd ndl st pd hh L0 gp)
       "(Hrc & Hwc & Hec & %Hlb & %Hlt & %Hok & %Hrow & %Hst & %Hpd & %Hch &
-        %Hbl & Hdat & Hts & Ha & Hcu & Hhi & Hlm & %Hlog & Hmk)".
+        %Hbl & Hdat & Hts & Ha & Hcu & Hhi & Hlm & %Hlog & Hdc & %Hnc &
+        %Hdn & Hmk)".
     iExists rr, ww, ee, bs, ts.
     iFrame "Hrc Hwc Hec Hdat Hts".
     iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
     iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
-    rewrite /cr_ghost. iExists cur, nrd, st, pd, hh, L0, gp.
-    iFrame "Ha Hcu Hhi Hlm Hmk". iPureIntro. split_and!;
-      [exact Hst | exact Hpd | exact Hch | exact Hbl | exact Hlog].
+    rewrite /cr_ghost. iExists cur, nrd, ndl, st, pd, hh, L0, gp.
+    iFrame "Ha Hcu Hhi Hlm Hdc Hmk". iPureIntro. split_and!;
+      [exact Hst | exact Hpd | exact Hch | exact Hbl | exact Hlog
+      | exact Hnc | exact Hdn].
   Qed.
 
   Lemma cr_res_seal `{XI : CurCtx} (cn : cons_names) (rr ww ee : mword 32)
@@ -305,14 +312,16 @@ Section CrBodies.
   Proof using .
     intros Hlb Hlt Hok Hrow.
     iIntros "Hrc Hwc Hec Hdat Hts Hgh". rewrite /cr_ghost.
-    iDestruct "Hgh" as (cur nrd st pd hh L0 gp)
-      "(%Hst & %Hpd & %Hch & %Hbl & Ha & Hcu & Hhi & Hlm & %Hlog & Hmk)".
+    iDestruct "Hgh" as (cur nrd ndl st pd hh L0 gp)
+      "(%Hst & %Hpd & %Hch & %Hbl & Ha & Hcu & Hhi & Hlm & %Hlog & Hdc &
+        %Hnc & %Hdn & Hmk)".
     rewrite /cons_res.
-    iExists rr, ww, ee, bs, ts, cur, nrd, st, pd, hh, L0, gp.
-    iFrame "Hrc Hwc Hec Hdat Hts Ha Hcu Hhi Hlm Hmk".
+    iExists rr, ww, ee, bs, ts, cur, nrd, ndl, st, pd, hh, L0, gp.
+    iFrame "Hrc Hwc Hec Hdat Hts Ha Hcu Hhi Hlm Hdc Hmk".
     iPureIntro. split_and!;
       [exact Hlb | exact Hlt | exact Hok | exact Hrow
-       | exact Hst | exact Hpd | exact Hch | exact Hbl | exact Hlog].
+       | exact Hst | exact Hpd | exact Hch | exact Hbl | exact Hlog
+       | exact Hnc | exact Hdn].
   Qed.
 
   (* ...AND THE ONE ACCESSOR THE FINAL RELEASE NEEDS, at the SEALED ring:
@@ -321,28 +330,40 @@ Section CrBodies.
      the only reader of the mirror, and it happens where the ring is whole
      ([cr_mk_retx]'s release and the killed exit), not inside the copy
      block. *)
+  (* ...AND IT HANDS OUT THE DELIVERED COUNT TOO (relax-d2, lane K2).  The
+     release is that count's one mover, and what it must re-establish is
+     [ndl' <= nrd] -- the reader's own cursor, which the token pins and
+     which this call does not touch.  [nrd <= cur] rides inside the wand
+     unchanged, so the ring comes back whole. *)
   Lemma cr_res_log `{XI : CurCtx} (cn : cons_names) :
     cons_res cn -∗
     ∃ (st R : list (list mobs * bv 8)) (L0 : list LogEntryDefs.log_entry)
-      (gp : bool),
+      (gp : bool) (nrd ndl : nat),
       ⌜st `prefix_of` R⌝ ∗ ⌜cons_chain R⌝ ∗ ⌜cons_log_ok L0 R gp⌝ ∗
+      ⌜(ndl <= nrd)%nat⌝ ∗
       cons_stored_auth cn st ∗ cons_logm cn L0 ∗
-      (cons_stored_auth cn st -∗ cons_logm cn L0 -∗ cons_res cn).
+      cons_cursor cn nrd ∗ cons_dlcnt cn ndl ∗
+      (∀ ndl' : nat, ⌜(ndl' <= nrd)%nat⌝ -∗
+         cons_stored_auth cn st -∗ cons_logm cn L0 -∗
+         cons_cursor cn nrd -∗ cons_dlcnt cn ndl' -∗ cons_res cn).
   Proof using .
     iIntros "H". rewrite /cons_res.
-    iDestruct "H" as (rr ww ee bs ts cur nrd st pd hh L0 gp)
+    iDestruct "H" as (rr ww ee bs ts cur nrd ndl st pd hh L0 gp)
       "(Hrc & Hwc & Hec & %Hlb & %Hlt & %Hok & %Hrow & %Hst & %Hpd & %Hch &
-        %Hbl & Hdat & Hts & Ha & Hcu & Hhi & Hlm & %Hlog & Hmk)".
-    iExists st, ((st ++ pd)%list), L0, gp.
-    iFrame "Ha Hlm".
+        %Hbl & Hdat & Hts & Ha & Hcu & Hhi & Hlm & %Hlog & Hdc & %Hnc &
+        %Hdn & Hmk)".
+    iExists st, ((st ++ pd)%list), L0, gp, nrd, ndl.
+    iFrame "Ha Hlm Hcu Hdc".
     iSplitR; [iPureIntro; by exists pd |].
     iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
-    iIntros "Ha Hlm".
-    iExists rr, ww, ee, bs, ts, cur, nrd, st, pd, hh, L0, gp.
-    iFrame "Hrc Hwc Hec Hdat Hts Ha Hcu Hhi Hlm Hmk".
+    iSplitR; [by iPureIntro |].
+    iIntros (ndl') "%Hdn' Ha Hlm Hcu Hdc".
+    iExists rr, ww, ee, bs, ts, cur, nrd, ndl', st, pd, hh, L0, gp.
+    iFrame "Hrc Hwc Hec Hdat Hts Ha Hcu Hhi Hlm Hdc Hmk".
     iPureIntro. split_and!;
       [exact Hlb | exact Hlt | exact Hok | exact Hrow
-       | exact Hst | exact Hpd | exact Hch | exact Hbl | exact Hlog].
+       | exact Hst | exact Hpd | exact Hch | exact Hbl | exact Hlog
+       | exact Hnc | exact Hdn'].
   Qed.
 
   (* two lower bounds on one [mono_list], the shorter inside the longer *)
@@ -530,8 +551,8 @@ Section CrBodies.
             rewrite length_app (proj1 Hwin). cbn [length]. lia. }
         iDestruct "Hdl" as (dv) "(Hdv & #Hdvlb & %Hdvl)".
         (* the ring, opened for its log: the mirror and the authority *)
-        iDestruct (cr_res_log cn with "Hres") as (st R L0 gp)
-          "(%Hpst & %HchR & %Hlog & Ha & Hlm & Hback)".
+        iDestruct (cr_res_log cn with "Hres") as (st R L0 gp nrdk ndlk)
+          "(%Hpst & %HchR & %Hlog & %Hdnk & Ha & Hlm & Hcu & Hdc & Hback)".
         iDestruct (cons_stored_lb_prefix with "Ha Hsl'") as %Hp1.
         iDestruct (cons_stored_lb_agree with "Hdvlb Hsl'") as %Hag.
         assert (Hdvp : dv `prefix_of` sl')
@@ -548,11 +569,17 @@ Section CrBodies.
         assert (Hro : ConsLog.read_ok L0 dv ws)
           by (exact (cons_read_ok_of L0 R dv ws (proj1 Hlog)
                        (proj1 (proj2 Hlog)) HchR Hpfxr)).
+        (* K2 (relax-d2): the reader's token pins the ring's cursor, and the
+           boundary's delivered count lands exactly on it -- [ndlk] was
+           [length dv = n0] and this call delivered [length ws = dc]. *)
+        iDestruct (cons_cursor_agree with "Hcu Hrd") as %Hnrdk.
         rewrite /cons_deliv /cons_logm /uart_deliv /uart_logm.
-        iMod (uart_inv_cons_read (cn_uart cn) dv ws L0 (Rin ws) Hro
-                with "Huinv Hdv Hlm [Hpay]") as "(Hdv & Hlm & HRin)";
-          [ iApply "Hpay" |].
-        iDestruct ("Hback" with "Ha Hlm") as "Hres".
+        iMod (uart_inv_cons_read (cn_uart cn) dv ws L0 ndlk (Rin ws) Hro
+                with "Huinv Hdv Hlm Hdc [Hpay]")
+          as "(Hdv & Hlm & %Hndlk & Hdc & HRin)"; [ iApply "Hpay" |].
+        iDestruct ("Hback" $! (ndlk + length ws)%nat
+                     with "[%] Ha Hlm Hcu Hdc") as "Hres";
+          [ rewrite Hndlk Hdvl Hlws; lia |].
         iModIntro. iFrame "Hres". iNext. iExists n0, sl.
         iSplitR; [iExact "Hsl" |].
         iSplitR "Hrd Hdv".
@@ -619,8 +646,9 @@ Section CrBodies.
     iIntros "#Hlk #Hpr Hgh Hacc".
     iPoseProof (is_conslock_cred with "Hlk") as "#Hcinv".
     rewrite /cr_ghost.
-    iDestruct "Hgh" as (cur nrd st pd hh L0 gp)
-      "(%Hst & %Hpd & %Hch & %Hbl & Ha & Hcu & Hhi & Hlm & %Hlog & Hmk)".
+    iDestruct "Hgh" as (cur nrd ndl st pd hh L0 gp)
+      "(%Hst & %Hpd & %Hch & %Hbl & Ha & Hcu & Hhi & Hlm & %Hlog & Hdc &
+        %Hnc & %Hdn & Hmk)".
     pose proof Hst as Hst0. destruct Hst0 as [Hlst Hstk].
     destruct (Hstk 0%Z ltac:(lia)) as (h' & b' & Hs0 & Ht0 & He0 & Hb0).
     replace (cur + Z.to_nat 0)%nat with cur in Hs0 by lia.
@@ -647,11 +675,13 @@ Section CrBodies.
                         with "Hstlb") as "#Hsl'".
           iMod (cons_cursor_update cn (n0 + d)%nat (S cur) with "Hcu Hrd")
             as "[Hcu Hrd]".
-          iModIntro. iSplitL "Ha Hcu Hhi Hlm".
-          { iExists (S cur), (S cur), st, pd, hh, L0, gp. iFrame "Ha Hcu Hhi Hlm".
+          iModIntro. iSplitL "Ha Hcu Hhi Hlm Hdc".
+          { iExists (S cur), (S cur), ndl, st, pd, hh, L0, gp.
+            iFrame "Ha Hcu Hhi Hlm Hdc".
             iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
             iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
             iSplitR; [iPureIntro; exact Hlog |].
+            iSplitR; [iPureIntro; lia |]. iSplitR; [iPureIntro; lia |].
             iLeft. by iPureIntro. }
           iLeft. iExists (sl ++ [(h, b)])%list.
           replace (n0 + S d)%nat with (S cur) by lia.
@@ -670,11 +700,13 @@ Section CrBodies.
              unstatable ([cr_racc]'s note). *)
           iMod (cons_cursor_update cn (n0 + d)%nat (n0 + S d)%nat
                   with "Hcu Hrd") as "[Hcu Hrd]".
-          iModIntro. iSplitL "Ha Hcu Hhi Hlm".
-          { iExists (S cur), (n0 + S d)%nat, st, pd, hh, L0, gp. iFrame "Ha Hcu Hhi Hlm".
+          iModIntro. iSplitL "Ha Hcu Hhi Hlm Hdc".
+          { iExists (S cur), (n0 + S d)%nat, ndl, st, pd, hh, L0, gp.
+            iFrame "Ha Hcu Hhi Hlm Hdc".
             iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
             iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
             iSplitR; [iPureIntro; exact Hlog |].
+            iSplitR; [iPureIntro; lia |]. iSplitR; [iPureIntro; lia |].
             iRight. iExact "Hdt". }
           (* the link is DROPPED here: a marked ring never fires, and
              [dl] freezes where it stood (lane CONS-IO, milestone B). *)
@@ -685,22 +717,26 @@ Section CrBodies.
         iDestruct (cons_cursor_agree with "Hcu Hrd") as %Hnrd. subst nrd.
         iMod (cons_cursor_update cn (n0 + d)%nat (n0 + S d)%nat
                 with "Hcu Hrd") as "[Hcu Hrd]".
-        iModIntro. iSplitL "Ha Hcu Hhi Hlm".
-        { iExists (S cur), (n0 + S d)%nat, st, pd, hh, L0, gp. iFrame "Ha Hcu Hhi Hlm".
+        iModIntro. iSplitL "Ha Hcu Hhi Hlm Hdc".
+        { iExists (S cur), (n0 + S d)%nat, ndl, st, pd, hh, L0, gp.
+            iFrame "Ha Hcu Hhi Hlm Hdc".
           iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
           iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
           iSplitR; [iPureIntro; exact Hlog |].
+          iSplitR; [iPureIntro; lia |]. iSplitR; [iPureIntro; lia |].
           iRight. iExact "Hdt". }
         iRight. iFrame "Hsl Hrd Hdl". iExact "Hdt".
     - rewrite /cr_racc.
       iDestruct "Hacc" as "[Hsl _]".
       iPoseProof (cr_price_none cn Wd with "Hpr") as "#Hc".
       iMod (cons_cred_pay cn Wd ⊤ ltac:(solve_ndisj) with "Hcinv Hc") as "#Hdt".
-      iModIntro. iSplitL "Ha Hcu Hhi Hlm".
-      { iExists (S cur), nrd, st, pd, hh, L0, gp. iFrame "Ha Hcu Hhi Hlm".
+      iModIntro. iSplitL "Ha Hcu Hhi Hlm Hdc".
+      { iExists (S cur), nrd, ndl, st, pd, hh, L0, gp.
+        iFrame "Ha Hcu Hhi Hlm Hdc".
         iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
         iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
         iSplitR; [iPureIntro; exact Hlog |].
+        iSplitR; [iPureIntro; lia |]. iSplitR; [iPureIntro; lia |].
         iRight. iExact "Hdt". }
       iFrame "Hsl". iRight. iExact "Hdt".
   Qed.
@@ -718,8 +754,9 @@ Section CrBodies.
     cr_ghost cn rr ww ee bs ts ∗ cr_racc cn Wd ord 0%nat g [].
   Proof using .
     iIntros "Hgh Hpay Hrp". rewrite /cr_ghost.
-    iDestruct "Hgh" as (cur nrd st pd hh L0 gp)
-      "(%Hst & %Hpd & %Hch & %Hbl & Ha & Hcu & Hhi & Hlm & %Hlog & Hmk)".
+    iDestruct "Hgh" as (cur nrd ndl st pd hh L0 gp)
+      "(%Hst & %Hpd & %Hch & %Hbl & Ha & Hcu & Hhi & Hlm & %Hlog & Hdc &
+        %Hnc & %Hdn & Hmk)".
     iDestruct (cons_stored_lb_get with "Ha") as "[Ha #Hstlb]".
     assert (Hstpd : st `prefix_of` (st ++ pd)%list) by (by exists pd).
     destruct ord as [n0 |].
@@ -731,10 +768,11 @@ Section CrBodies.
          and that is the arm this call takes however clean the ring looks
          right now. *)
       iDestruct "Hdl" as (dv) "(Hdv & #Hdvlb & [%Hdvl | #Hdt0])".
-      2:{ iSplitL "Ha Hcu Hhi Hlm Hmk".
-          { iExists cur, nrd, st, pd, hh, L0, gp.
-            iFrame "Ha Hcu Hhi Hlm Hmk". iPureIntro. split_and!;
-              [exact Hst | exact Hpd | exact Hch | exact Hbl | exact Hlog]. }
+      2:{ iSplitL "Ha Hcu Hhi Hlm Hdc Hmk".
+          { iExists cur, nrd, ndl, st, pd, hh, L0, gp.
+            iFrame "Ha Hcu Hhi Hlm Hdc Hmk". iPureIntro. split_and!;
+              [exact Hst | exact Hpd | exact Hch | exact Hbl | exact Hlog
+              | exact Hnc | exact Hdn]. }
           iRight. rewrite Nat.add_0_r. iFrame "Hpay".
           iSplitR; [iExists st; iExact "Hstlb" |].
           iSplitL "Hdv"; [| iExact "Hdt0"].
@@ -746,11 +784,12 @@ Section CrBodies.
         destruct (cons_prefix_len st n0
                     ltac:(rewrite (proj1 Hst); lia)) as (sl & Hpfx & Hlsl).
         iPoseProof (cons_stored_lb_weaken cn st sl Hpfx with "Hstlb") as "#Hsl".
-        iSplitL "Ha Hcu Hhi Hlm".
-        { iExists cur, nrd, st, pd, hh, L0, gp. iFrame "Ha Hcu Hhi Hlm".
+        iSplitL "Ha Hcu Hhi Hlm Hdc".
+        { iExists cur, nrd, ndl, st, pd, hh, L0, gp. iFrame "Ha Hcu Hhi Hlm Hdc".
           iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
           iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
           iSplitR; [iPureIntro; exact Hlog |].
+          iSplitR; [iPureIntro; lia |]. iSplitR; [iPureIntro; lia |].
           iLeft. by iPureIntro. }
         iLeft. iExists sl. rewrite Nat.add_0_r.
         iSplitL "Hpay"; [iExact "Hpay" |].
@@ -762,21 +801,23 @@ Section CrBodies.
         * apply cons_window_0. exact Hlsl.
         * apply (cons_chain_prefix _ (st ++ pd)%list);
             [ exact (transitivity Hpfx Hstpd) | exact Hch ].
-      + iSplitL "Ha Hcu Hhi Hlm".
-        { iExists cur, nrd, st, pd, hh, L0, gp. iFrame "Ha Hcu Hhi Hlm".
+      + iSplitL "Ha Hcu Hhi Hlm Hdc".
+        { iExists cur, nrd, ndl, st, pd, hh, L0, gp. iFrame "Ha Hcu Hhi Hlm Hdc".
           iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
           iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
           iSplitR; [iPureIntro; exact Hlog |].
+          iSplitR; [iPureIntro; lia |]. iSplitR; [iPureIntro; lia |].
           iRight. iExact "Hdt". }
         iRight. rewrite Nat.add_0_r. iFrame "Hpay".
         iSplitR; [iExists st; iExact "Hstlb" |].
         iSplitL "Hdv"; [| iExact "Hdt"].
         rewrite /cons_dl. iExists dv. iFrame "Hdv Hdvlb". by iLeft.
     - rewrite /cr_racc.
-      iSplitL "Ha Hcu Hhi Hlm Hmk".
-      { iExists cur, nrd, st, pd, hh, L0, gp. iFrame "Ha Hcu Hhi Hlm Hmk".
+      iSplitL "Ha Hcu Hhi Hlm Hdc Hmk".
+      { iExists cur, nrd, ndl, st, pd, hh, L0, gp. iFrame "Ha Hcu Hhi Hlm Hdc Hmk".
         iPureIntro. split_and!;
-          [exact Hst | exact Hpd | exact Hch | exact Hbl | exact Hlog]. }
+          [exact Hst | exact Hpd | exact Hch | exact Hbl | exact Hlog
+          | exact Hnc | exact Hdn]. }
       iSplitR; [iExists st; iExact "Hstlb" |]. iLeft. by iPureIntro.
   Qed.
 
@@ -807,8 +848,9 @@ Section CrBodies.
     iIntros "#Hlk #Hpr #Htag Hgh Hacc".
     iPoseProof (is_conslock_cred with "Hlk") as "#Hcinv".
     rewrite /cr_ghost.
-    iDestruct "Hgh" as (cur nrd st pd hh L0 gp)
-      "(%Hst & %Hpd & %Hch & %Hbl & Ha & Hcu & Hhi & Hlm & %Hlog & Hmk)".
+    iDestruct "Hgh" as (cur nrd ndl st pd hh L0 gp)
+      "(%Hst & %Hpd & %Hch & %Hbl & Ha & Hcu & Hhi & Hlm & %Hlog & Hdc &
+        %Hnc & %Hdn & Hmk)".
     pose proof (cons_stored_pop rr ww cur st bs ts Hge Hst) as Hst'.
     pose proof (cons_pend_shift rr ww ee pd bs ts Hge Hpd) as Hpd'.
     assert (Hstpd : st `prefix_of` (st ++ pd)%list) by (by exists pd).
@@ -839,11 +881,13 @@ Section CrBodies.
               [ exact (transitivity Hsnoc Hstpd) | exact Hch ]. }
           iMod (cons_cursor_update cn (n0 + d)%nat (S cur) with "Hcu Hrd")
             as "[Hcu Hrd]".
-          iModIntro. iSplitL "Ha Hcu Hhi Hlm".
-          { iExists (S cur), (S cur), st, pd, hh, L0, gp. iFrame "Ha Hcu Hhi Hlm".
+          iModIntro. iSplitL "Ha Hcu Hhi Hlm Hdc".
+          { iExists (S cur), (S cur), ndl, st, pd, hh, L0, gp.
+            iFrame "Ha Hcu Hhi Hlm Hdc".
             iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
             iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
             iSplitR; [iPureIntro; exact Hlog |].
+            iSplitR; [iPureIntro; lia |]. iSplitR; [iPureIntro; lia |].
             iLeft. by iPureIntro. }
           iLeft. iExists sl.
           replace (n0 + S d)%nat with (S cur) by lia.
@@ -861,11 +905,13 @@ Section CrBodies.
              this call's pops ([cr_pop]'s note at the same transition) *)
           iMod (cons_cursor_update cn (n0 + d)%nat (n0 + S d)%nat
                   with "Hcu Hrd") as "[Hcu Hrd]".
-          iModIntro. iSplitL "Ha Hcu Hhi Hlm".
-          { iExists (S cur), (n0 + S d)%nat, st, pd, hh, L0, gp. iFrame "Ha Hcu Hhi Hlm".
+          iModIntro. iSplitL "Ha Hcu Hhi Hlm Hdc".
+          { iExists (S cur), (n0 + S d)%nat, ndl, st, pd, hh, L0, gp.
+            iFrame "Ha Hcu Hhi Hlm Hdc".
             iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
             iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
             iSplitR; [iPureIntro; exact Hlog |].
+            iSplitR; [iPureIntro; lia |]. iSplitR; [iPureIntro; lia |].
             iRight. iExact "Hdt". }
           (* the link is DROPPED here: a marked ring never fires, and
              [dl] freezes where it stood (lane CONS-IO, milestone B). *)
@@ -874,22 +920,26 @@ Section CrBodies.
       + iDestruct (cons_cursor_agree with "Hcu Hrd") as %Hnrd. subst nrd.
         iMod (cons_cursor_update cn (n0 + d)%nat (n0 + S d)%nat
                 with "Hcu Hrd") as "[Hcu Hrd]".
-        iModIntro. iSplitL "Ha Hcu Hhi Hlm".
-        { iExists (S cur), (n0 + S d)%nat, st, pd, hh, L0, gp. iFrame "Ha Hcu Hhi Hlm".
+        iModIntro. iSplitL "Ha Hcu Hhi Hlm Hdc".
+        { iExists (S cur), (n0 + S d)%nat, ndl, st, pd, hh, L0, gp.
+            iFrame "Ha Hcu Hhi Hlm Hdc".
           iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
           iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
           iSplitR; [iPureIntro; exact Hlog |].
+          iSplitR; [iPureIntro; lia |]. iSplitR; [iPureIntro; lia |].
           iRight. iExact "Hdt". }
         iRight. iFrame "Hsl Hrd Hdl". iExact "Hdt".
     - rewrite /cr_racc /cr_rout.
       iDestruct "Hacc" as "[Hsl _]".
       iPoseProof (cr_price_none cn Wd with "Hpr") as "#Hc".
       iMod (cons_cred_pay cn Wd ⊤ ltac:(solve_ndisj) with "Hcinv Hc") as "#Hdt".
-      iModIntro. iSplitL "Ha Hcu Hhi Hlm".
-      { iExists (S cur), nrd, st, pd, hh, L0, gp. iFrame "Ha Hcu Hhi Hlm".
+      iModIntro. iSplitL "Ha Hcu Hhi Hlm Hdc".
+      { iExists (S cur), nrd, ndl, st, pd, hh, L0, gp.
+        iFrame "Ha Hcu Hhi Hlm Hdc".
         iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
         iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
         iSplitR; [iPureIntro; exact Hlog |].
+        iSplitR; [iPureIntro; lia |]. iSplitR; [iPureIntro; lia |].
         iRight. iExact "Hdt". }
       iFrame "Hsl". iRight. iExact "Hdt".
   Qed.
@@ -1134,7 +1184,7 @@ Section CrBodies.
          cpu_own 0%nat eb (proc_addr jp) true lks -∗
          pc_is (ret_pc (m0 !!! Regidx Rra)) -∗
          proc_priv_core (proc_addr jp) pid (upd_usM (us_upt U P') Mo) -∗
-         WP (Loop : expr riscv_lang)))%I.
+         mWP (Loop : expr riscv_lang)))%I.
 
   (* =================================================================== *)
   (*  +0xce .. +0xe0 -- THE EPILOGUE.  All three exits reach it with the  *)
@@ -1170,7 +1220,7 @@ Section CrBodies.
     (⌜(r < 0)%Z⌝ -∗ ChildTok.kill_shot (pv_gen (us_V U))) -∗
     cr_saved sp0 m0 -∗ cr_rest sp0 -∗
     cr_ret (CID0 := CID0) cn Wd ord fault jp m0 av eb pid U Ment n lks -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros pj Hm0sp HMsp HMa0 HMcs Hr Hav Heb Hcr.
     iIntros "#Ht Hcg Hcnt Hpc Hpriv #Htags Hwin Hshotq
@@ -1508,7 +1558,7 @@ Section CrBodies.
          cpu_own 0%nat true (proc_addr jp) true lks -∗
          proc_priv_core (proc_addr jp) pid (upd_usM (us_upt U P') Mo) -∗
          cr_rest sp0 -∗
-         WP (Loop : expr riscv_lang)))%I.
+         mWP (Loop : expr riscv_lang)))%I.
 
   (* The caller's exit, RE-BASED on a page table this call has already
      extended.  Every block below hands the process block back at some
@@ -1635,7 +1685,7 @@ Section ProofConsoleread.
          cons_res cn -∗
          proc_priv_core (proc_addr jp) pid (upd_usM (us_upt U P') Mo) -∗
          cr_rest sp0 -∗
-         WP (Loop : expr riscv_lang)))%I.
+         mWP (Loop : expr riscv_lang)))%I.
 
   Lemma cr_mk_retx (cn : cons_names) (Wd : iProp Σ) (ord : option nat)
       (γc : gname) (jp : nat) (sp0 : mword 64) (m0 : regfile)
@@ -1846,7 +1896,7 @@ Section ProofConsoleread.
          cons_res cn -∗
          proc_priv_core (proc_addr jp) pid (upd_usM (us_upt U P') Mo) -∗
          cr_rest sp0 -∗
-         WP (Loop : expr riscv_lang)))%I.
+         mWP (Loop : expr riscv_lang)))%I.
 
   (* =================================================================== *)
   (*  [HAVE] (+0x76): a byte is available.  Entered from BOTH the         *)
@@ -1901,7 +1951,7 @@ Section ProofConsoleread.
          (∃ w : mword 64, pa_stk sp0 10%nat ↦₈[KT1] w) -∗
          (∃ w : mword 64, pa_stk sp0 11%nat ↦₈[KT1] w) -∗
          (∃ w : mword 64, pa_stk sp0 12%nat ↦₈[KT1] w) -∗
-         WP (Loop : expr riscv_lang)))%I.
+         mWP (Loop : expr riscv_lang)))%I.
 
   (* ---- the address arithmetic the two stack objects need -------------- *)
 
@@ -2978,7 +3028,7 @@ Section ProofConsoleread.
          cons_res cn -∗
          proc_priv_core (proc_addr jp) pid (upd_usM (us_upt U P') Mo) -∗
          cr_rest sp0 -∗
-         WP (Loop : expr riscv_lang)))%I.
+         mWP (Loop : expr riscv_lang)))%I.
 
   Lemma cr_mk_wait (cn : cons_names) (Wd : iProp Σ) (ord : option nat)
       (γa γc γf : gname) (γs : list gname) (jp : nat) (γlp : gname)

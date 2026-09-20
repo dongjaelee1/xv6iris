@@ -527,8 +527,8 @@ Section ProofSysPipe.
         sie_cap_gpr KT1 Mr nav b p -∗
         pc_is (mword_of_int ze : mword 64) -∗
         p_ofile p fd ↦₈ (zero_reg : mword 64) -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hfd Hro Ha5 Hs1 Hs2 Hs6 Hs8 Hs12.
     destruct (sp_ofile_arith (Z.of_nat fd) Hfd) as (Ha1 & Ha2 & Ha3 & Ha4).
@@ -825,8 +825,8 @@ Section ProofSysPipe.
         (∃ on', fileclose_pipe_env fn on' 0%nat) -∗
         fileclose_fs_env fn 0%nat eb p -∗
         proc_priv_bare p pidv Upr -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hnav Hs0 Hr1 Hr2 Hs04 Hs812 Hs1618 Ht1 Ht2 Hbelow.
     iIntros "Hcg Hcpu Hextc Hextm #Htext #Hkd Hpc #Hftab #Hpe Hi0 Hi4 Hi8 Hic Hj10
@@ -992,8 +992,8 @@ Section ProofSysPipe.
         ⌜callee_saved m mf /\ mf !!! Regidx Ra0 = rv⌝ -∗
         sie_cap_gpr KT1 mf av b p -∗
         pc_is (ret_pc ra0) -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hav Hsp0 Hra0 Hs00 Hs10 Hmtsp Hmt15 Hthr.
     iIntros "Hcg #Htext Hpc Hb1 Hb2 Hb3 Hb4 Hb5 Hb6 Hb7 Hb8 Hcont".
@@ -1320,7 +1320,7 @@ Section ProofSysPipe.
            ctx_word4_pointsto (KTR := KT1) cur_ctx (pa_stk sp0 8) (DfracOwn 1) lo ∗
            ctx_word4_pointsto (KTR := KT1) cur_ctx (pa_add (pa_stk sp0 8) 4) (DfracOwn 1) hi) -∗
         sys_pipe_post γf p pid (upd_usM (us_upt U P') (umem_wr (us_M U) v d bs)) sts d bs res -∗
-        WP (Loop : expr riscv_lang)))%I).
+        mWP (Loop : expr riscv_lang)))%I).
     iAssert EPI with "[Hcont Hb1 Hb2 Hb3 Hb4]" as "Hepi".
     { rewrite /EPI.
       iIntros (CIDE HsE mj P' d bs res) "(%Hjsp & %Hja5 & %Hjthr) %Hext %Hd8 Hcg Hcpu Hextc Hextm Hpc Hiru Hpenv Hfenv Hrest Hslot8 Hpost".
@@ -2565,7 +2565,7 @@ Section ProofSysPipe.
           (trunc32 (mword_of_int (Z.of_nat fd1) : mword 64)) -∗
         ctx_word4_pointsto (KTR := KT1) cur_ctx (pa_add (pa_stk sp0 8) 4) (DfracOwn 1)
           (trunc32 (mword_of_int (Z.of_nat fd0) : mword 64)) -∗
-        WP (Loop : expr riscv_lang)))%I).
+        mWP (Loop : expr riscv_lang)))%I).
     (* EPI and T7C are offered as a CONJUNCTION, the pipealloc idiom: exactly
        one is taken on each path, and T7C's own exit is EPI, so they must
        SHARE the epilogue rather than split it. *)

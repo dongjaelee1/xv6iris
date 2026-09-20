@@ -177,8 +177,8 @@ Definition wp_either_copyin_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !f
       pc_is ret_tgt -∗
       either_copyin_post ktb kts user γf p pid U dst src len src_bytes
         (mf !!! Regidx (mword_of_int 10 : mword 5)) -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type EITHER_COPYIN.
   Parameter wp_either_copyin_sconf :

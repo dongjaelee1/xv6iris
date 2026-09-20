@@ -99,8 +99,8 @@ Definition wp_flags2perm_sconf_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{CI
     ⌜callee_saved mm mr⌝ -∗
     ⌜mr !!! Regidx (mword_of_int 10 : mword 5)
        = (mword_of_int (f2p fl) : mword 64)⌝ -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type FLAGS2PERM.
   Parameter wp_flags2perm_sconf :

@@ -126,7 +126,7 @@ Section ProofVirtioDiskRwCSeam.
        t ↪[dn_head γd] HInactive -∗
        vdrw_idx (KTR := KT1) sp0 (mword_of_int (Z.of_nat h)) (mword_of_int (Z.of_nat m2))
                     (mword_of_int (Z.of_nat t)) -∗
-       WP (Loop : expr riscv_lang)))%I.
+       mWP (Loop : expr riscv_lang)))%I.
 
   (* P3, packaged as the wand P2.3 consumes. *)
   Lemma wp_vdrw_p3_seam (γk : gname)

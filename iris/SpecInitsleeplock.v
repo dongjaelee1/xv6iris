@@ -72,8 +72,8 @@ Definition wp_initsleeplock_sconf_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `
     WpLock.lk_cpu_ready (sl_lk slk) -∗
     sl_name slk s -∗
     sl_pid slk ↦₄ (mword_of_int 0 : mword 32) -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type INITSLEEPLOCK.
   Parameter wp_initsleeplock_sconf :

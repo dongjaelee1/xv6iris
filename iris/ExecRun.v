@@ -449,8 +449,8 @@ Section ExecRun.
        urun N h'
          (<[Regidx (mword_of_int 10) := (mword_of_int (-1) : mword 64)]> m)
          (add_vec_int pc 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hn Ha0 Ha1 Hal4 Hload.
     iIntros "#Hi Hrun Hcwd #Hrf #Hgen Hsup Hcont".
@@ -482,8 +482,8 @@ Section ExecRun.
        urun N h'
          (<[Regidx (mword_of_int 10) := (mword_of_int (-1) : mword 64)]> m)
          (add_vec_int pc 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hn Ha0 Ha1 Hal4 Hload.
     iIntros "#Hi Hrun Hcwd #Hrf #Hgen Hsup Hcont".
@@ -621,8 +621,8 @@ Section ExecRun.
        urun N h'
          (<[Regidx (mword_of_int 10) := (mword_of_int (-1) : mword 64)]> m)
          (add_vec_int pc 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hn Ha0 Ha1 Hal4 Hload Hres.
     iIntros "#Hi Hrun Hcwd #Hcl #Hinv #Hrd #Hcon #Hgen #Hrf HPay Hcont".
@@ -665,8 +665,8 @@ Section ExecRun.
        urun N h'
          (<[Regidx (mword_of_int 10) := (mword_of_int (-1) : mword 64)]> m)
          (add_vec_int pc 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hn Ha0 Hal4 Hload.
     iIntros "#Hi Hrun Hcwd #HT #Hgen #Hrd Hcont".
@@ -992,8 +992,8 @@ Section ExecRun.
        urun N h'
          (<[Regidx (mword_of_int 10) := (mword_of_int (-1) : mword 64)]> m)
          (add_vec_int pc 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hn Ha0 Ha1 Hal4 Hload.
     iIntros "#Hi Hrun Hcwd #Hrf #Hgen Hsup Hcont".

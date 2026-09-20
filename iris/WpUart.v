@@ -790,6 +790,10 @@ Section DevLoops.
      [obs_wire (open_seg h) = u_wire u], and a drained byte sits at accepted
      position [length (u_out u)] -- the two are the same position exactly
      because of this clause. *)
+  (* the open segment of an OPTIONAL history: nothing before the first. *)
+  Definition open_seg_o (o : option (list mobs)) : list mobs :=
+    match o with Some g => open_seg g | None => [] end.
+
   Definition uart_col_ok (iu : uart_id) (u : uart_state) (hs : list (list mobs))
       (np nk : nat) (hl ht : option (list mobs)) : Prop :=
     np = (nk + length (u_rx u))%nat
@@ -804,7 +808,38 @@ Section DevLoops.
     /\ (forall (j : nat) (h : list mobs), hs !! j = Some h -> ohist_ext hl h)
     /\ ohist_le hl ht
     /\ (forall (j : nat) (h : list mobs),
-          hs !! j = Some h -> ohist_le (Some h) ht).
+          hs !! j = Some h -> ohist_le (Some h) ht)
+    (* ...AND EVERY QUEUED BYTE KNOWS ITS INPUT NUMBER (relax-d2, lane K1).
+       Four clauses, all read against [DevModel.u_recv] -- the cumulative
+       list of bytes this receiver ACCEPTED -- which [ObsTrace.obs_wf]'s
+       INPUT TIE identifies with the era's [ObsUartIn] trace:
+
+         * the COUNT: pops plus queue IS what was accepted, so the pop
+           counter is also "how many inputs have left the FIFO";
+         * the PER-ENTRY NUMBER: the [j]th queued byte is input [nk+j+1],
+           which is what a POP hands its caller and what finally tells the
+           console boundary which keystroke it is filing;
+         * the ANCHOR's number, [nk] -- unguarded, so [None] means zero,
+           which is what makes "the last byte I popped was input [nk]"
+           available even when the queue has drained;
+         * the TOP's number, [np].  It is what carries the anchor's clause
+           through an FCR RECEIVE FLUSH, where the anchor jumps to the top:
+           a flush pops everything, so the popper's count becomes the push
+           count and the two clauses stay each other's. *)
+    /\ (nk + length (u_rx u))%nat = length (u_recv u)
+    /\ (forall (j : nat) (hj : list mobs),
+          hs !! j = Some hj ->
+          length (obs_ins iu (open_seg hj)) = (nk + j + 1)%nat)
+    /\ ins_len iu hl = nk
+    /\ ins_len iu ht = np
+    (* ...AND WHAT THE TOP'S ERA LOOKED LIKE.  Two clauses the FCR FLUSH
+       spends and nothing else reads: the top's era stamp, and the wire as
+       it stood at the top -- a prefix of what the transmitter has finished
+       with.  At uartinit the transmitter has finished with NOTHING, so the
+       second reads "no console output preceded the bytes the flush is
+       about to discard", which is exactly [ConsLog.flush_lost]'s witness. *)
+    /\ (forall g : list mobs, ht = Some g -> obs_boots g = S gen_id)
+    /\ obs_wire iu (open_seg_o ht) `prefix_of` u_out u.
 
   (* the lower bound at an optional history: nothing at all when there is
      none, which is the boot state and the state after a flush that found an
@@ -936,6 +971,22 @@ Section DevLoops.
       (L : list LogEntryDefs.log_entry) : iProp Σ :=
     ghost_var γ.(un_logm) q L.
 
+  (* THE DELIVERED COUNT, in two halves (relax-d2, lane K2): the port
+     invariant's, pinned to [length (ch_dl H)], and the console ring's
+     ([ConsoleInv.cons_dlcnt], the same [ghost_var] at the same name -- the
+     two files are SIBLINGS, exactly as [uart_deliv]/[cons_deliv] are).
+
+     WHY THE NUMBER AND NOT THE LIST.  The LIST's kernel half travels with
+     the reader's LEASE, where the lag between the ring's consumed count
+     and the boundary's [dl] is nobody's business; so the ring cannot read
+     an upper bound on [dl] off it.  A full-ring drop needs exactly that
+     bound -- the boundary is told "the log holds 128 echoed entries beyond
+     the delivered ones", and the ring proves it from [cur + 128] echoed
+     entries and [length dl <= cur].  The number is what makes the second
+     half of that sentence sayable inside the ring. *)
+  Definition uart_dlcnt (γ : uart_names) (q : Qp) (n : nat) : iProp Σ :=
+    ghost_var γ.(un_dlcnt) q n.
+
   (* THE CONSOLEINTR ARM IN PROGRESS (redesign R2, option A).  A ghost_var
      PAIR: one half in the port invariant, one riding the PLIC payload
      beside the receive token.  consoleintr agrees the two at the arm's
@@ -988,6 +1039,8 @@ Section DevLoops.
   Proof using . rewrite /uart_deliv. apply _. Qed.
   Global Instance uart_logm_timeless γ q L : Timeless (uart_logm γ q L).
   Proof using . rewrite /uart_logm. apply _. Qed.
+  Global Instance uart_dlcnt_timeless γ q n : Timeless (uart_dlcnt γ q n).
+  Proof using . rewrite /uart_dlcnt. apply _. Qed.
 
   Lemma in_log_lb_get γ L : in_log_auth γ L -∗ in_log_auth γ L ∗ in_log_lb γ L.
   Proof using .
@@ -1043,12 +1096,180 @@ Section DevLoops.
      THE ARM'S HALF IS HERE and not beside it: it is a FIELD of the history
      the resource is about, so keeping it anywhere else would need a second
      agreement to say the two describe the same arm. *)
+  (* THE LOG IS COMPLETE UP TO ITS TOP (relax-d2, lane K1).  Entry [j] of
+     the console boundary's log is the [j+1]st byte the host typed at this
+     port in this era -- equivalently, stated at the top alone (the log's
+     chain makes the two the same): the log's LENGTH is the INPUT NUMBER of
+     its last entry.  It is the boundary's half of K1: the kernel proves
+     "input [n] is what I am filing now" at the arm's OPEN, and this clause
+     is what carries that from one byte's close to the next byte's open.
+     Read at [None] as zero, so an empty log satisfies it and the founding
+     is free. *)
+  (* ...UP TO THE FLUSH.  [ConsLog.flush_lost] is the one exception the
+     hardware forces (uartinit's FCR clear), so the clause is stated AT THE
+     LOG'S TOP with that offset: the top entry is input [length L + f], and
+     [f] comes with its witness.  Two riders travel with it, and both are
+     there for the TRANSPORT below: the top's era stamp and its trace
+     shape, which are what turn "the top is a prefix of the byte being
+     opened" into "its open SEGMENT is a prefix"
+     ([ObsTrace.open_seg_prefix_of_boots]).  At an empty log the clause is
+     vacuous -- which is also why an FCR flush, which moves no entry, leaves
+     it alone. *)
+  Definition cons_log_ins (iu : uart_id)
+      (L : list LogEntryDefs.log_entry) : Prop :=
+    match log_top L with
+    | None => True
+    | Some g =>
+        obs_boots g = S gen_id /\ trace_shape g true
+        /\ exists f : nat, ConsLog.flush_lost g f
+             /\ (length L + f)%nat = length (obs_ins iu (open_seg g))
+    end.
+
+  (* the founding case, and the only step that moves it: a CLOSE files one
+     entry, and the entry's own input number is what the clause becomes *)
+  Lemma cons_log_ins_nil (iu : uart_id) : cons_log_ins iu [].
+  Proof using . done. Qed.
+
+  Lemma cons_log_ins_snoc (iu : uart_id) (L : list LogEntryDefs.log_entry)
+      (e : LogEntryDefs.log_entry) (f : nat) :
+    obs_boots (LogEntryDefs.le_hist e) = S gen_id ->
+    trace_shape (LogEntryDefs.le_hist e) true ->
+    ConsLog.flush_lost (LogEntryDefs.le_hist e) f ->
+    (length L + 1 + f)%nat
+      = length (obs_ins iu (open_seg (LogEntryDefs.le_hist e))) ->
+    cons_log_ins iu (L ++ [e]).
+  Proof using .
+    intros Hb Hsh Hfl Hn.
+    rewrite /cons_log_ins /log_top (ConsLog.cl_top_snoc L e) /=.
+    split_and!; [exact Hb | exact Hsh |]. exists f. split; [exact Hfl |].
+    rewrite length_app /=. lia.
+  Qed.
+
+  (* an empty TOP is an empty log *)
+  Lemma log_top_nil (L : list LogEntryDefs.log_entry) :
+    log_top L = None -> L = [].
+  Proof using .
+    rewrite /log_top. destruct L as [| e L]; [done |].
+    intro Hx. exfalso.
+    assert (Hlt : (length (e :: L) - 1 < length (e :: L))%nat)
+      by (cbn [length]; lia).
+    destruct (lookup_lt_is_Some_2 _ _ Hlt) as [y Hy].
+    rewrite Hy /= in Hx. discriminate.
+  Qed.
+
+  (* ...and the witness travels forward inside one power cycle *)
+  Lemma flush_lost_mono (g h : list mobs) (f : nat) :
+    g `prefix_of` h -> obs_boots g = obs_boots h -> trace_shape h true ->
+    ConsLog.flush_lost g f -> ConsLog.flush_lost h f.
+  Proof using .
+    intros Hp Hb Hsh [-> | (sf & Hsfp & Hw & Hn)]; [by left |].
+    right. exists sf. split_and!; [| exact Hw | exact Hn].
+    etrans; [exact Hsfp | exact (open_seg_prefix_of_boots g h Hp Hb Hsh)].
+  Qed.
+
+  (* ==================================================================== *)
+  (*  WHAT K1 COSTS THE CALLER (relax-d2, lane K1).                        *)
+  (*                                                                      *)
+  (*  The byte the arm is about to open is the input RIGHT AFTER the one   *)
+  (*  the log's mark [hg] names -- or, before anything has been logged at  *)
+  (*  all, the first input the console ever saw, with everything before it *)
+  (*  lost to uartinit's flush.  uartintr reads the disjunct off the PLIC  *)
+  (*  payload's own clause and the pop's two input numbers; nothing below  *)
+  (*  has to know which arm it is in.                                      *)
+  (* ==================================================================== *)
+  Definition k1_next (hg : option (list mobs)) (h : list mobs) : Prop :=
+    (ins_len Uart0 hg + 1)%nat = length (obs_ins Uart0 (open_seg h))
+    \/ (hg = None
+         /\ exists f : nat, ConsLog.flush_lost h f
+              /\ (1 + f)%nat = length (obs_ins Uart0 (open_seg h))).
+
+  (* WHAT UARTINIT'S FLUSH LEFT BEHIND (relax-d2, lane K1).  The FCR clear
+     discards every byte then in the FIFO, and those bytes are logged
+     nowhere; what the kernel CAN say is that they all arrived before any
+     console output, which is [ConsLog.flush_lost]'s witness.  Stated at the
+     popper's ANCHOR and quantified over every later history of the era, so
+     that the byte a later pop hands consoleintr gets the witness by
+     application -- no transport at the use site. *)
+  Definition uart_flushed (iu : uart_id) (hl : option (list mobs)) : Prop :=
+    forall h' : list mobs,
+      ohist_ext hl h' -> trace_shape h' true -> obs_boots h' = S gen_id ->
+      ins_len iu hl = 0%nat
+      \/ exists sf : list mobs,
+           sf `prefix_of` open_seg h' /\ obs_wire iu sf = []
+           /\ length (obs_ins iu sf) = ins_len iu hl.
+
+  (* before the first pop there is nothing to have lost *)
+  Lemma uart_flushed_none (iu : uart_id) : uart_flushed iu None.
+  Proof using . intros h' _ _ _. by left. Qed.
+
+  (* at the CONSOLE port it IS [ConsLog.flush_lost], by definition *)
+  Lemma uart_flushed_cons (hl : option (list mobs)) (h' : list mobs) :
+    uart_flushed Uart0 hl ->
+    ohist_ext hl h' -> trace_shape h' true -> obs_boots h' = S gen_id ->
+    ConsLog.flush_lost h' (ins_len Uart0 hl).
+  Proof using . intros Hf Hx Hsh Hb. exact (Hf h' Hx Hsh Hb). Qed.
+
+  (* ...and how the flush site builds it: the column's top knows its era and
+     the wire as it stood there, and at uartinit the transmitter has
+     finished with nothing. *)
+  Lemma uart_flushed_intro (iu : uart_id) (hl : option (list mobs)) :
+    (forall g : list mobs, hl = Some g -> obs_boots g = S gen_id) ->
+    obs_wire iu (open_seg_o hl) = [] ->
+    uart_flushed iu hl.
+  Proof using .
+    intros Hb Hw h' Hx Hsh Hbh. destruct hl as [g |]; [| by left].
+    right. exists (open_seg g). cbn [open_seg_o] in Hw.
+    split_and!; [| exact Hw | reflexivity].
+    destruct Hx as [Hp _].
+    apply (open_seg_prefix_of_boots g h' Hp); [| exact Hsh].
+    rewrite (Hb g eq_refl) Hbh. reflexivity.
+  Qed.
+
+  (* ...AND WHAT IT BUYS: [ConsLog]'s K1 clause, at the boundary's own log. *)
+  Lemma cons_log_ins_k1 (L : list LogEntryDefs.log_entry)
+      (hg : option (list mobs)) (h : list mobs) :
+    cons_log_ins Uart0 L ->
+    hg = log_top L ->
+    trace_shape h true ->
+    obs_boots h = S gen_id ->
+    (forall e, e ∈ L -> hist_ext (LogEntryDefs.le_hist e) h) ->
+    k1_next hg h ->
+    exists f : nat, ConsLog.flush_lost h f
+      /\ (length L + 1 + f)%nat = length (obs_ins Uart0 (open_seg h)).
+  Proof using .
+    intros Hins -> Hsh Hbh Hbelow [Hl | (Htopn & f & Hfl & Hn)].
+    - rewrite /cons_log_ins in Hins.
+      destruct (log_top L) as [g |] eqn:Htop.
+      + destruct Hins as (Hbg & Hsg & f & Hfl & Heq).
+        (* the top entry is IN the log, hence strictly before [h] *)
+        assert (Hin : exists e, L !! (length L - 1)%nat = Some e
+                                /\ LogEntryDefs.le_hist e = g).
+        { rewrite /log_top in Htop.
+          destruct (L !! (length L - 1)%nat) as [e |] eqn:He;
+            [| discriminate]. exists e. split; [reflexivity |].
+          by injection Htop as <-. }
+        destruct Hin as (e & He & <-).
+        pose proof (Hbelow e (elem_of_list_lookup_2 _ _ _ He)) as [Hp _].
+        exists f. split.
+        * apply (flush_lost_mono _ h f Hp); [| exact Hsh | exact Hfl].
+          rewrite Hbg Hbh. reflexivity.
+        * cbn [ins_len] in Hl. lia.
+      + rewrite (log_top_nil L Htop). cbn [length ins_len] in Hl |- *.
+        exists 0%nat. split; [by left | lia].
+    - assert (HL : L = []) by (apply log_top_nil; exact Htopn).
+      rewrite HL. cbn [length]. exists f. split; [exact Hfl | lia].
+  Qed.
+
   Definition cons_claim_at (iu : uart_id) (γ : uart_names) (u : uart_state)
       : iProp Σ :=
     (∃ (o : option (list mobs)) (H : LogEntryDefs.cons_hist),
        obs_hist_lb_o o ∗ chist_at iu (S gen_id) (default [] o) H ∗
        uart_log_hi γ (1/2) (log_top (LogEntryDefs.ch_log H)) ∗
        uart_deliv γ (1/2) (LogEntryDefs.ch_dl H) ∗
+       (* ...AND ITS LENGTH, AS A NUMBER (relax-d2, lane K2): the half the
+          console ring holds the partner of, so the ring can bound the
+          delivered list from above without seeing it. *)
+       uart_dlcnt γ (1/2) (length (LogEntryDefs.ch_dl H)) ∗
        in_log_auth γ (LogEntryDefs.ch_log H) ∗
        uart_logm γ (1/2) (LogEntryDefs.ch_log H) ∗
        uart_arm γ (1/2) (LogEntryDefs.ch_arm H) ∗
@@ -1056,7 +1277,8 @@ Section DevLoops.
           in one [iPureIntro; split] instead of threading them through the
           middle of the separating conjunction. *)
        ⌜LogEntryDefs.ch_acc H = uart_acc u⌝ ∗
-       ⌜ConsLog.cons_hist_ok H⌝)%I.
+       ⌜ConsLog.cons_hist_ok H⌝ ∗
+       ⌜cons_log_ins iu (LogEntryDefs.ch_log H)⌝)%I.
 
   Global Instance cons_claim_at_timeless iu γ u :
     Timeless (cons_claim_at iu γ u).
@@ -1082,6 +1304,16 @@ Section DevLoops.
     rewrite obs_wire_app. cbn [obs_wire]. by rewrite app_nil_r.
   Qed.
 
+  (* ...and what an INPUT event does to the input projection: it is the
+     event, so the open cycle's accepted list grows by exactly its byte. *)
+  Lemma obs_ins_open_seg_in (i : uart_id) (h : list mobs) (b : bv 8) :
+    obs_ins i (open_seg (h ++ [ObsUartIn i b])%list)
+    = (obs_ins i (open_seg h) ++ [b])%list.
+  Proof using .
+    rewrite (open_seg_io h [ObsUartIn i b] ltac:(repeat constructor)).
+    rewrite obs_ins_app. by rewrite obs_ins_in.
+  Qed.
+
   Definition uart_col (iu : uart_id) (γ : uart_names) (u : uart_state)
       (hs : list (list mobs)) (np nk : nat)
       (hl ht : option (list mobs)) : iProp Σ :=
@@ -1102,7 +1334,13 @@ Section DevLoops.
         can be paid at the CURRENT era's claim and at no other. *)
      ([∗ list] h ∈ hs, riscv_rx_tag h ∗ obs_hist_lb h ∗
                        uart_out_lb γ (obs_wire iu (open_seg h)) ∗
-                       ⌜obs_boots h = S gen_id⌝) ∗
+                       ⌜obs_boots h = S gen_id⌝ ∗
+                       (* ...AND THAT THE MACHINE WAS ON.  With the era
+                          stamp it is what makes one byte's open SEGMENT a
+                          prefix of a later byte's
+                          ([ObsTrace.open_seg_prefix_of_boots]), which is
+                          how the flush's witness travels forward. *)
+                       ⌜trace_shape h true⌝) ∗
      obs_hist_lb_o ht ∗
      ⌜uart_col_ok iu u hs np nk hl ht⌝)%I.
 
@@ -1166,19 +1404,22 @@ Section DevLoops.
      MMIO access but the THR store leaves [uart_acc] alone
      ([DevModel.uart_read_stable]/[uart_write_out]'s first conjunct), which
      is what carries the output claim over. *)
+  (* ...AND THE ACCEPTED INPUT IS UNTOUCHED TOO (relax-d2, lane K1): no MMIO
+     access can make a byte arrive, so every leaf hands this over out of
+     [DevModel.uart_read_recv]/[uart_write_recv]. *)
   Lemma uart_colE_stable (iu : uart_id) (γ : uart_names) (u u' : uart_state) :
     u_rx u' = u_rx u ->
     uart_loopback u' = uart_loopback u ->
     u_wire u' = u_wire u ->
     u_out u' = u_out u ->
     uart_acc u' = uart_acc u ->
+    u_recv u' = u_recv u ->
     uart_colE iu γ u -∗ uart_colE iu γ u'.
   Proof using .
-    iIntros (Hrx Hlb Hw Ho Hacc) "H".
+    iIntros (Hrx Hlb Hw Ho Hacc Hrc) "H".
     iDestruct "H" as (hs np nk hl ht) "(Ha & Hk & Hts & Hht & %Hok)".
     iExists hs, np, nk, hl, ht. iFrame "Ha Hk Hts Hht". iPureIntro.
-    destruct Hok as (H1 & H2 & H3 & Hwo & H4 & H5 & H6 & H7 & H8).
-    rewrite /uart_col_ok Hrx Hlb Hw Ho. split_and!; assumption.
+    rewrite /uart_col_ok Hrx Hlb Hw Ho Hrc. exact Hok.
   Qed.
 
   (* THE DRAIN, the one transition that moves the transmit pair: with LOOP
@@ -1193,12 +1434,16 @@ Section DevLoops.
     iIntros (Hpop) "H".
     iDestruct "H" as (hs np nk hl ht) "(Ha & Hk & Hts & Hht & %Hok)".
     pose proof Hok as Hok'.
-    destruct Hok' as (H1 & H2 & H3 & Hwo & H4 & H5 & H6 & H7 & H8).
+    destruct Hok' as (H1 & H2 & H3 & Hwo & H4 & H5 & H6 & H7 & H8 & _).
     destruct (uart_tx_pop_rx u b u' H3 Hpop) as [Hrxe Hlbe].
     iExists hs, np, nk, hl, ht. iFrame "Ha Hk Hts Hht". iPureIntro.
-    rewrite /uart_col_ok Hrxe Hlbe. split_and!; try assumption.
-    rewrite (uart_tx_pop_wire u b u' Hpop) (uart_tx_pop_out u b u' Hpop) H3.
-    by rewrite Hwo.
+    rewrite /uart_col_ok Hrxe Hlbe (uart_tx_pop_recv u b u' Hpop).
+    destruct Hok as (_ & _ & _ & _ & _ & _ & _ & _ & _
+                     & R1 & R2 & R3 & R4 & R5 & R6).
+    rewrite (uart_tx_pop_out u b u' Hpop).
+    split_and!; try assumption.
+    - rewrite (uart_tx_pop_wire u b u' Hpop) H3. by rewrite Hwo.
+    - etrans; [exact R6 | by apply prefix_app_r].
   Qed.
 
   (* THE PUSH (the device thread's rx arm), AS AN ACCESSOR.  The order the
@@ -1211,7 +1456,15 @@ Section DevLoops.
      and the arrival does not touch [uart_acc], so the caller keeps it and
      carries it over with [uart_out_claim_stable] -- the push owes no
      monotonicity law and this accessor never sees the application. *)
+  (* ...AND IT IS WHERE THE INPUT TIE IS SPENT (relax-d2, lane K1).  The new
+     byte's INPUT NUMBER is decided here and nowhere else: [Htie] is
+     [ObsTrace.obs_wf]'s input tie at the history BEFORE the event, which
+     [RiscvExec.wp_uart_step] hands the thread, and it is the only thing
+     that says how many bytes this receiver had already accepted.  The
+     column files the number beside the tag, so every later reader of the
+     FIFO -- uartgetc, uartintr, consoleintr -- gets it for free. *)
   Lemma uart_col_push_acc (iu : uart_id) (γ : uart_names) (u : uart_state) (h : list mobs) :
+    obs_ins iu (open_seg h) = u_recv u ->
     (∃ hs np nk hl ht, uart_col iu γ u hs np nk hl ht) -∗ obs_auth h -∗
       obs_auth h ∗
       (∀ (u' : uart_state) (b : bv 8),
@@ -1219,13 +1472,20 @@ Section DevLoops.
          ⌜uart_loopback u' = uart_loopback u⌝ -∗
          (* an arrival touches neither end of the transmit pair *)
          ⌜u_wire u' = u_wire u⌝ -∗ ⌜u_out u' = u_out u⌝ -∗
+         ⌜u_recv u' = (u_recv u ++ [b])%list⌝ -∗
          riscv_rx_tag (h ++ [ObsUartIn iu b])%list -∗
          obs_hist_lb (h ++ [ObsUartIn iu b])%list -∗
          uart_out_lb γ (obs_wire iu (open_seg (h ++ [ObsUartIn iu b])%list)) -∗
-         ⌜obs_boots (h ++ [ObsUartIn iu b])%list = S gen_id⌝ ==∗
+         ⌜obs_boots (h ++ [ObsUartIn iu b])%list = S gen_id⌝ -∗
+         (* ...AND WHAT THE ARRIVAL SAYS ABOUT THE ERA: the machine is ON,
+            and the wire as it stands IS what the transmitter has finished
+            with.  Both are the thread's own facts at this step, and both
+            are what the FCR flush later reads off the column's top. *)
+         ⌜trace_shape (h ++ [ObsUartIn iu b])%list true⌝ -∗
+         ⌜obs_wire iu (open_seg (h ++ [ObsUartIn iu b])%list) = u_out u'⌝ ==∗
          (∃ hs np nk hl ht, uart_col iu γ u' hs np nk hl ht)).
   Proof using .
-    iIntros "H Hauth".
+    intros Htie. iIntros "H Hauth".
     iDestruct "H" as (hs np nk hl ht) "(Ha & Hk & Hts & #Hht & %Hok)".
     (* the top is at or before the machine's current history *)
     iAssert (⌜ohist_le ht (Some h)⌝)%I as "%Htop".
@@ -1233,8 +1493,9 @@ Section DevLoops.
       iDestruct (obs_hist_lb_prefix with "Hauth Hht") as %Hp.
       iPureIntro. exact Hp. }
     iFrame "Hauth".
-    iIntros (u' b) "%Hrx %Hlbk %Hw %Ho #Htg #Hlbn #Hwlb %Hbts".
-    destruct Hok as (H1 & H2 & H3 & Hwo & H4 & H5 & H6 & H7 & H8).
+    iIntros (u' b) "%Hrx %Hlbk %Hw %Ho %Hrc #Htg #Hlbn #Hwlb %Hbts %Hshn %Hrid".
+    destruct Hok as (H1 & H2 & H3 & Hwo & H4 & H5 & H6 & H7 & H8
+                     & R1 & R2 & R3 & R4 & R5 & R6).
     iMod (mono_nat_own_update (S np) with "Ha") as "[Ha _]"; [lia|].
     iModIntro.
     set (hn := (h ++ [ObsUartIn iu b])%list).
@@ -1251,10 +1512,17 @@ Section DevLoops.
     iFrame "Ha Hk".
     iSplitL "Hts".
     { rewrite big_sepL_app. iFrame "Hts". cbn [big_opL].
-      iSplitL; [| done]. iFrame "Htg Hlbn Hwlb". iPureIntro. exact Hbts. }
+      iSplitL; [| done]. iFrame "Htg Hlbn Hwlb". iPureIntro.
+      split; [exact Hbts | exact Hshn]. }
     iSplitR; [iExact "Hlbn" |].
-    iPureIntro. rewrite /uart_col_ok Hrx Hlbk Hw Ho !length_app H2 H3.
-    cbn [length]. split_and!; [lia | lia | reflexivity | exact Hwo | | | | | ].
+    (* the new byte's input number: the tie says the accepted list is the
+       era's input trace, and an input event grows it by exactly this byte *)
+    assert (Hnum : length (obs_ins iu (open_seg hn)) = S (length (u_recv u))).
+    { rewrite /hn obs_ins_open_seg_in length_app Htie /=. lia. }
+    iPureIntro. rewrite /uart_col_ok Hrx Hlbk Hw Ho Hrc !length_app H2 H3.
+    cbn [length].
+    split_and!; [lia | lia | reflexivity | exact Hwo | | | | | | lia | | exact R3
+                | | intros g Hg; injection Hg as <-; exact Hbts | ].
     - (* the byte and its history still belong together *)
       intros j c g Hj Hg.
       destruct (decide (j < length (u_rx u))%nat) as [Hlt|Hge].
@@ -1309,6 +1577,21 @@ Section DevLoops.
         subst j. rewrite lookup_app_r in Hj; [| lia].
         rewrite Nat.sub_diag in Hj. cbn in Hj. injection Hj as <-.
         cbn. reflexivity.
+    - (* the PER-ENTRY INPUT NUMBER: the old ones are unmoved ([nk] did not
+         change) and the new one is [np + 1] *)
+      intros j g Hj.
+      destruct (decide (j < length hs)%nat) as [Hjlt | Hjge].
+      + rewrite lookup_app_l in Hj; [| lia]. exact (R2 j g Hj).
+      + assert (Hj' : j = length hs).
+        { apply lookup_lt_Some in Hj. rewrite length_app in Hj.
+          cbn [length] in Hj. lia. }
+        subst j. rewrite lookup_app_r in Hj; [| lia].
+        rewrite Nat.sub_diag in Hj. cbn in Hj. injection Hj as <-.
+        rewrite Hnum. lia.
+    - (* ...and the TOP is the byte just pushed *)
+      cbn [ins_len]. rewrite Hnum. lia.
+    - (* ...and the wire at the new top IS the drained sequence *)
+      cbn [open_seg_o]. rewrite Hrid Ho. reflexivity.
   Qed.
 
   (* THE POLL: a non-empty FIFO means at least one more byte has been pushed
@@ -1322,7 +1605,7 @@ Section DevLoops.
     iIntros (Hne) "H Htok".
     iDestruct "H" as (hs np nk hl0 ht) "(Ha & Hk & Hts & Hht & %Hok)".
     iDestruct (uart_rx_tok_agree with "Hk Htok") as %[<- <-].
-    destruct Hok as (H1 & H2 & H3 & Hwo & H4 & H5 & H6 & H7 & H8).
+    pose proof Hok as (H1 & H2 & H3 & Hwo & H4 & H5 & H6 & H7 & H8 & _).
     assert (Hle : (S nk <= np)%nat)
       by (destruct (u_rx u); [done | cbn [length] in H1; lia]).
     iDestruct (mono_nat_lb_own_get with "Ha") as "#Hlb".
@@ -1331,7 +1614,7 @@ Section DevLoops.
        token into the column's own slot. *)
     iSplitR "Htok".
     - iExists hs, np, nk, hl0, ht. iFrame "Ha Hk Hts Hht". iPureIntro.
-      rewrite /uart_col_ok. split_and!; assumption.
+      exact Hok.
     - iSplitL "Htok"; [iExact "Htok"|].
       rewrite /uart_rx_pushed_lb.
       iApply (mono_nat_lb_own_le (γ := γ.(un_rxpush)) (n := np) (S nk) Hle).
@@ -1353,8 +1636,16 @@ Section DevLoops.
     u_out u' = u_out u ->
     (* ...and so is the accepted sequence, which carries the output claim *)
     uart_acc u' = uart_acc u ->
+    (* ...and so is the ACCEPTED INPUT: a pop consumes the FIFO, it does not
+       un-receive the byte (relax-d2, lane K1) *)
+    u_recv u' = u_recv u ->
     uart_colE iu γ u -∗ uart_rx_tok γ k hl -∗ uart_rx_pushed_lb γ (S k) ==∗
       uart_colE iu γ u' ∗
+      (* THE ANCHOR'S INPUT NUMBER, on the way out (relax-d2, lane K1): the
+         byte the popper filed LAST was input [k].  Read with the byte's own
+         number below it says the two are adjacent, which is what the
+         console boundary's log-completeness clause is proved from. *)
+      ⌜ins_len iu hl = k⌝ ∗
       (∃ h, ⌜obs_ends_in iu h bt⌝ ∗ ⌜ohist_ext hl h⌝ ∗
             riscv_rx_tag h ∗ obs_hist_lb h ∗
             (* ...and the byte's own WIRE RIDER (lane CONS-IO), which is what
@@ -1363,27 +1654,38 @@ Section DevLoops.
             (* ...and its ERA STAMP (milestone C), which is what says the
                shift this byte pays for is the CURRENT era's *)
             ⌜obs_boots h = S gen_id⌝ ∗
+            (* ...AND ITS INPUT NUMBER (relax-d2, lane K1): this byte is the
+               [S k]th the host typed at this port in this era. *)
+            ⌜length (obs_ins iu (open_seg h)) = S k⌝ ∗
+            (* ...AND THAT THE MACHINE WAS ON AT IT (relax-d2, lane K1),
+               which is what lets the flush's witness travel to this byte *)
+            ⌜trace_shape h true⌝ ∗
             uart_rx_tok γ (S k) (Some h)).
   Proof using .
-    iIntros (Hpop Hw Ho Hacc) "H Htok #Hlb".
+    iIntros (Hpop Hw Ho Hacc Hrc) "H Htok #Hlb".
     iDestruct "H" as (hs np nk hl0 ht) "(Ha & Hk & Hts & Hht & %Hok)".
     iDestruct (uart_rx_tok_agree with "Hk Htok") as %[<- <-].
-    destruct Hok as (H1 & H2 & H3 & Hwo & H4 & H5 & H6 & H7 & H8).
+    destruct Hok as (H1 & H2 & H3 & Hwo & H4 & H5 & H6 & H7 & H8
+                     & R1 & R2 & R3 & R4 & R5 & R6).
     iDestruct (mono_nat_lb_own_valid with "Ha Hlb") as %[_ Hge].
     destruct (u_rx u) as [| b rx'] eqn:Hrx.
     { cbn [length] in H1. lia. }
     destruct (Hpop b rx' eq_refl) as (-> & Hrx' & Hlb').
     destruct hs as [| hh hs']; [cbn [length] in H2; discriminate|].
-    iDestruct "Hts" as "[(#Hth & #Hlbh & #Hwlb & %Hbts) Hts]".
+    iDestruct "Hts" as "[(#Hth & #Hlbh & #Hwlb & %Hbts & %Hshh) Hts]".
     assert (Hhead : obs_ends_in iu hh b) by exact (H4 0%nat b hh eq_refl eq_refl).
     assert (Hanch : ohist_ext hl0 hh) by exact (H6 0%nat hh eq_refl).
+    (* the head's input number: the column filed it at the push *)
+    assert (Hnum : length (obs_ins iu (open_seg hh)) = S nk)
+      by (pose proof (R2 0%nat hh eq_refl) as Hh0; lia).
     iMod (uart_rx_tok_update γ nk (S nk) hl0 (Some hh) with "Hk Htok")
       as "[Hk Htok]".
     iModIntro. iSplitR "Htok".
     - iExists hs', np, (S nk), (Some hh), ht. iFrame "Ha Hk Hts Hht".
       iPureIntro.
-      rewrite /uart_col_ok Hrx' Hlb' Hw Ho. cbn [length] in H1, H2.
-      split_and!; [lia | lia | exact H3 | exact Hwo | | | | |].
+      rewrite /uart_col_ok Hrx' Hlb' Hw Ho Hrc. cbn [length] in H1, H2, R1.
+      split_and!; [lia | lia | exact H3 | exact Hwo | | | | | | lia | | | exact R4
+                  | exact R5 | exact R6].
       + intros j c g Hj Hg. exact (H4 (S j) c g Hj Hg).
       + intros i j gi gj Hi Hj Hij.
         exact (H5 (S i) (S j) gi gj Hi Hj ltac:(lia)).
@@ -1391,10 +1693,14 @@ Section DevLoops.
         exact (H5 0%nat (S j) hh g eq_refl Hj ltac:(lia)).
       + exact (H8 0%nat hh eq_refl).
       + intros j g Hj. exact (H8 (S j) g Hj).
-    - iExists hh. iFrame "Htok".
+      + intros j g Hj. pose proof (R2 (S j) g Hj) as Hg. lia.
+      + cbn [ins_len]. exact Hnum.
+    - iSplitR; [iPureIntro; exact R3 |].
+      iExists hh. iFrame "Htok".
       iSplitR; [iPureIntro; exact Hhead |].
       iSplitR; [iPureIntro; exact Hanch |].
-      iFrame "Hth Hlbh Hwlb". iPureIntro. exact Hbts.
+      iFrame "Hth Hlbh Hwlb". iPureIntro.
+      split_and!; [exact Hbts | exact Hnum | exact Hshh].
   Qed.
 
   (* THE FLUSH: an FCR write that clears the receive FIFO is a pop of
@@ -1412,19 +1718,35 @@ Section DevLoops.
     u_out u' = u_out u ->
     (* the FCR write moves no accepted byte, so the output claim rides *)
     uart_acc u' = uart_acc u ->
+    (* ...and it un-receives nothing either: the flushed bytes were accepted
+       and are simply lost to the driver (relax-d2, lane K1) *)
+    u_recv u' = u_recv u ->
     uart_colE iu γ u -∗ uart_rx_tok γ k hl ==∗
-      uart_colE iu γ u' ∗ ∃ k' hl', uart_rx_tok γ k' hl'.
+      uart_colE iu γ u' ∗
+      (* ...AND WHAT THE DISCARDED BYTES WERE (relax-d2, lane K1): the new
+         anchor's era, and the wire as it stood there.  A caller that also
+         knows the transmitter has finished with nothing -- uartinit does --
+         turns the pair into [uart_flushed], which is how the console
+         boundary later accounts for the bytes this clear threw away. *)
+      ∃ k' hl', uart_rx_tok γ k' hl'
+                ∗ ⌜forall g : list mobs, hl' = Some g -> obs_boots g = S gen_id⌝
+                ∗ ⌜obs_wire iu (open_seg_o hl') `prefix_of` u_out u⌝.
   Proof using .
-    iIntros (Hrx Hlb Hw Ho Hacc) "H Htok".
+    iIntros (Hrx Hlb Hw Ho Hacc Hrc) "H Htok".
     iDestruct "H" as (hs np nk hl0 ht) "(Ha & Hk & Hts & #Hht & %Hok)".
     iDestruct (uart_rx_tok_agree with "Hk Htok") as %[<- <-].
-    destruct Hok as (H1 & H2 & H3 & Hwo & H4 & H5 & H6 & H7 & H8).
+    destruct Hok as (H1 & H2 & H3 & Hwo & H4 & H5 & H6 & H7 & H8
+                     & R1 & R2 & R3 & R4 & R5 & R6).
     iMod (uart_rx_tok_update γ nk np hl0 ht with "Hk Htok") as "[Hk Htok]".
-    iModIntro. iSplitR "Htok"; [| iExists np, ht; iExact "Htok"].
+    iModIntro. iSplitR "Htok";
+      [| iExists np, ht; iFrame "Htok"; iPureIntro;
+         split; [exact R5 | exact R6] ].
     iExists [], np, np, ht, ht. iFrame "Ha Hk Hht".
     iSplitR; [done|].
-    iPureIntro. rewrite /uart_col_ok Hrx Hlb Hw Ho H3.
-    cbn [length]. split_and!; [lia | reflexivity | reflexivity | exact Hwo | | | | |].
+    iPureIntro. rewrite /uart_col_ok Hrx Hlb Hw Ho Hrc H3.
+    cbn [length].
+    split_and!; [lia | reflexivity | reflexivity | exact Hwo | | | | | | lia
+                | intros j g Hj; done | exact R4 | exact R4 | exact R5 | exact R6].
     - intros j c g Hj. done.
     - intros i j gi gj Hi. done.
     - intros j g Hj. done.
@@ -1567,11 +1889,54 @@ Section DevLoops.
      fupds.  The arm's own half below does that work: it says WHICH arm is
      open, not merely that one may be, so a second open is refuted by the
      ghost rather than by a counting argument. *)
+  (* ...AND AT THE CONSOLE PORT THE LOG'S MARK IS THE ANCHOR ITSELF
+     (relax-d2, lane K1).  Between interrupts every popped byte has been
+     FILED, so the newest logged history and the newest popped one are the
+     same -- which, read against the column's [ins_len hl = nk], is what
+     tells the next pop's arm WHICH input it is handling.  [Uart1] has no
+     log and no consumer, so its half never moves and the old "at or
+     before" is all that can be said there. *)
+  (* ...OR NOTHING HAS BEEN LOGGED YET, and everything the popper has
+     removed went to uartinit's flush ([uart_flushed]).  The disjunction is
+     what makes the BOOT deposit provable: at that point the log is empty
+     and the anchor may already be past the bytes the flush discarded. *)
+  Definition uart_log_at (iu : uart_id) (hg hl : option (list mobs)) : Prop :=
+    match iu with
+    | Uart0 => hg = hl \/ (hg = None /\ uart_flushed Uart0 hl)
+    | Uart1 => ohist_le hg hl
+    end.
+
+  Lemma uart_log_at_le (iu : uart_id) (hg hl : option (list mobs)) :
+    uart_log_at iu hg hl -> ohist_le hg hl.
+  Proof using .
+    destruct iu; cbn; [| done].
+    intros [-> | [-> _]]; [destruct hl; cbn; done | exact I].
+  Qed.
+
+  (* THE RELAY, BUILT (relax-d2, lane K1): uartintr turns the payload's own
+     clause and the pop's two input numbers into the one fact consoleintr
+     hands the boundary. *)
+  Lemma k1_next_of_log_at (hg hl : option (list mobs)) (h : list mobs)
+      (k : nat) :
+    uart_log_at Uart0 hg hl ->
+    ins_len Uart0 hl = k ->
+    length (obs_ins Uart0 (open_seg h)) = S k ->
+    ohist_ext hl h -> trace_shape h true -> obs_boots h = S gen_id ->
+    k1_next hg h.
+  Proof using .
+    intros Hat Hanum Hnum Hx Hsh Hbh. cbn [uart_log_at] in Hat.
+    destruct Hat as [-> | [-> Hfl]].
+    - left. rewrite Hanum Hnum. lia.
+    - right. split; [reflexivity |]. exists k. split.
+      + rewrite -Hanum. exact (uart_flushed_cons hl h Hfl Hx Hsh Hbh).
+      + lia.
+  Qed.
+
   Definition uart_rx_writer (iu : uart_id) (γ : uart_names) (k : nat)
       (hl : option (list mobs)) : iProp Σ :=
     (uart_rx_tok γ k hl ∗
      (∃ hh : option (list mobs), uart_rx_hi γ (1/2) hh ∗ ⌜ohist_le hh hl⌝) ∗
-     (∃ hg : option (list mobs), uart_log_hi γ (1/2) hg ∗ ⌜ohist_le hg hl⌝) ∗
+     (∃ hg : option (list mobs), uart_log_hi γ (1/2) hg ∗ ⌜uart_log_at iu hg hl⌝) ∗
      (* THE ARM'S OTHER HALF (redesign R2), at [None]: between interrupts no
         consoleintr arm is in progress, and this payload is the one carrier
         that reaches consoleintr and comes back at every interrupt. *)
@@ -2372,6 +2737,23 @@ Section DevLoops.
       (cs : list (bv 8)) (j : nat) (hg : option (list mobs))
       (L : list LogEntryDefs.log_entry) (Φ : iProp Σ) :
     ConsLog.cons_echo c (take j cs) ->
+    (* ---- K3 (relax-d2): A STORE ARM SENDS ITS BYTE.  The arm whose PLAN
+       is the single glyph [echo_of c] closes only after that glyph went
+       out, so the entry it files is ECHOED.  The erase arms plan a run of
+       [consputc_bs] triples and may stop early; their plan is never one
+       byte ([ConsLog.cons_bs_join_not_single]), so they discharge this
+       vacuously. ---- *)
+    (cs = [ConsLog.echo_of c] -> j = 1%nat) ->
+    (* ---- K1 (relax-d2, lane K1): WHICH KEYSTROKE THIS IS.  The byte is
+       the input right after the one the log's mark names, or -- before
+       anything has been logged -- the first the console ever saw, with
+       uartinit's flush accounting for the rest ([k1_next]).  The two
+       riders are what transport the flush witness forward: the byte's era
+       stamp and its trace shape, both of which the receive column files
+       beside its tag. ---- *)
+    trace_shape h true ->
+    obs_boots h = S gen_id ->
+    k1_next hg h ->
     uart_inv Uart0 γ -∗ uart_log_hi γ (1/2) hg -∗ uart_logm γ (1/2) L -∗
     uart_arm γ (1/2) (Some (h, c, cs, j)) -∗
     cons_link Uart0 (S gen_id) ConsLog.EvClose Φ
@@ -2383,11 +2765,12 @@ Section DevLoops.
            ⌜forall e, e ∈ L -> hist_ext (LogEntryDefs.le_hist e) h⌝ ∗
            uart_arm γ (1/2) None ∗ Φ.
   Proof using .
-    intros Hecho. iIntros "#Hinv Hhi Hlm Hmine HΨ".
+    intros Hecho Hk3 Hsh Hbh Hnext. iIntros "#Hinv Hhi Hlm Hmine HΨ".
     iInv "Hinv" as ">Hbody" "Hclose".
     iDestruct "Hbody" as (u) "(Hu & Hg & Hcol & Hcons)".
     iDestruct "Hcons" as (o H)
-      "(#Hlb & Hres & Hhi0 & Hdv & Hau & Hlm0 & Harm & %Hacc0 & %Hok)".
+      "(#Hlb & Hres & Hhi0 & Hdv & Hdc0 & Hau & Hlm0 & Harm & %Hacc0 & %Hok
+        & %Hins)".
     rewrite /uart_logm. iDestruct (ghost_var_agree with "Hlm Hlm0") as %->.
     rewrite /uart_log_hi. iDestruct (ghost_var_agree with "Hhi Hhi0") as %Hagr.
     iDestruct (uart_arm_agree with "Hmine Harm") as %Harmeq0.
@@ -2396,7 +2779,16 @@ Section DevLoops.
     iEval (rewrite Harmeq) in "Harm".
     assert (Hev : ConsLog.cons_ev_ok H ConsLog.EvClose).
     { cbn [ConsLog.cons_ev_ok]. exists (h, c, cs, j).
-      split; [exact Harmeq | exact Hecho]. }
+      split; [exact Harmeq |]. split; [exact Hecho | exact Hk3]. }
+    (* the arm's own order fact, which is also what places the log's
+       entries strictly before [h] for K1's transport *)
+    assert (Hext : forall e, e ∈ LogEntryDefs.ch_log H ->
+                     hist_ext (LogEntryDefs.le_hist e) h).
+    { destruct Hok as [_ Harmok]. rewrite Harmeq /= in Harmok.
+      destruct Harmok as (_ & _ & _ & Hx & _). exact Hx. }
+    (* K1 AT THE CLOSE: the entry this arm files is input [length L + 1 + f]. *)
+    destruct (cons_log_ins_k1 (LogEntryDefs.ch_log H) hg h
+                Hins Hagr Hsh Hbh Hext Hnext) as (fk & Hfl & Hcnt).
     iEval (rewrite Hagr) in "Hhi".
     iMod ("HΨ" $! o H with "Hlb Hres [//] [%]") as (o') "(#Hlb' & Hres' & HΦ)";
       [exact Hev |].
@@ -2408,21 +2800,21 @@ Section DevLoops.
             with "Hlm Hlm0") as "[Hlm Hlm0]".
     iMod (uart_arm_update γ (Some (h, c, cs, j)) (Some (h, c, cs, j)) None
             with "Hmine Harm") as "[Hmine Harm]".
-    iMod ("Hclose" with "[Hu Hg Hcol Hres' Hhi0 Hdv Hau Hlm0 Harm]") as "_".
+    iMod ("Hclose" with "[Hu Hg Hcol Hres' Hhi0 Hdv Hdc0 Hau Hlm0 Harm]") as "_".
     { iNext. iExists u. iFrame "Hu Hg Hcol".
       iExists o', (ConsLog.cons_step H ConsLog.EvClose).
       rewrite /ConsLog.cons_step Harmeq.
       cbn [LogEntryDefs.ch_acc LogEntryDefs.ch_log LogEntryDefs.ch_dl
            LogEntryDefs.ch_arm].
-      iFrame "Hlb' Hres' Hdv Hau Hlm0 Harm".
+      iFrame "Hlb' Hres' Hdv Hdc0 Hau Hlm0 Harm".
       rewrite /log_top (ConsLog.cl_top_snoc (LogEntryDefs.ch_log H)
                           (h, c, take j cs)) /=.
-      iFrame "Hhi0". iPureIntro. split; [exact Hacc0 |].
-      pose proof (ConsLog.cons_hist_ok_step H ConsLog.EvClose Hok Hev) as Hok'.
-      by rewrite /ConsLog.cons_step Harmeq in Hok'. }
-    iModIntro. iFrame "Hhi Hlm Hmine HΦ". iPureIntro.
-    destruct Hok as [_ Harmok]. rewrite Harmeq /= in Harmok.
-    destruct Harmok as (_ & _ & _ & Hext & _). exact Hext.
+      iFrame "Hhi0". iPureIntro. split_and!; [exact Hacc0 | |].
+      - pose proof (ConsLog.cons_hist_ok_step H ConsLog.EvClose Hok Hev) as Hok'.
+        by rewrite /ConsLog.cons_step Harmeq in Hok'.
+      - exact (cons_log_ins_snoc Uart0 (LogEntryDefs.ch_log H)
+                 (h, c, take j cs) fk Hbh Hsh Hfl Hcnt). }
+    iModIntro. iFrame "Hhi Hlm Hmine HΦ". iPureIntro. exact Hext.
   Qed.
 
   (* ==================================================================== *)
@@ -2440,24 +2832,75 @@ Section DevLoops.
   (*  holds its half at [Some ...] until the close, so the agreement below  *)
   (*  fails for anyone else.  That is cons.lock's exclusion, stated.        *)
   (* ==================================================================== *)
+  (* ==================== K2 (relax-d2) ================================= *)
+  (*  WHAT A DROP ARM PAYS.  [ConsLog.cons_drop_ok] asks an arm that echoes *)
+  (*  nothing to say WHY, and the four reasons split in two: three are      *)
+  (*  facts about the byte ([c = 0], [c = ^P], [c] is an erase character),  *)
+  (*  which the switch's own guard hands the caller for free; the fourth is *)
+  (*  a FULL RING, which is a fact about the LOG and the DELIVERED COUNT    *)
+  (*  and can only be stated by the holder of the two ghost halves the ring *)
+  (*  carries.  So the payment is a disjunction: a pure side condition, or  *)
+  (*  the two halves with the count fact between them.                      *)
+  (*  [Q] IS THE CALLER'S RESIDUE, and it is what makes the two arms one    *)
+  (*  premise: the accessor gives [Q] back, so a caller that lent the ring's *)
+  (*  two halves names the RING itself as [Q] and hands in the wand that     *)
+  (*  re-seals it, while a caller whose guard already decided the byte takes *)
+  (*  [Q := emp] and hands in nothing.  Without it the return would be the   *)
+  (*  disjunction again, and the lender could not tell which arm came back.  *)
+  Definition cons_drop_pay (γ : uart_names) (c : bv 8) (cs : list (bv 8))
+      (Q : iProp Σ) : iProp Σ :=
+    (⌜cs = [] -> bv_unsigned c = 0%Z \/ bv_unsigned c = 16%Z
+                 \/ ConsLog.cons_erase c = true⌝ ∗ Q
+     ∨ ∃ (L : list LogEntryDefs.log_entry) (n : nat),
+         ⌜(128 + n <= ConsLog.echoed_count L)%nat⌝ ∗
+         uart_logm γ (1/2) L ∗ uart_dlcnt γ (1/2) n ∗
+         (uart_logm γ (1/2) L -∗ uart_dlcnt γ (1/2) n -∗ Q))%I.
+  (* ==================================================================== *)
+
+  (* ===================================================================== *)
+  (*  K1 IS PROVED ABOVE, at [cons_log_ins_k1]: the boundary's own log      *)
+  (*  clause, the mark's agreement with the log's top, and the one fact     *)
+  (*  the caller relays ([k1_next]).  Lane K2's placeholder lemma stood     *)
+  (*  here.                                                                 *)
+  (* ===================================================================== *)
+  (* DELETED (lane K1): [k1_log_complete], the last [Admitted] in this file. *)
+  (* ===================================================================== *)
   Lemma uart_inv_cons_open (γ : uart_names) (h : list mobs) (c : bv 8)
-      (cs : list (bv 8)) (hg : option (list mobs)) (Φ : iProp Σ) :
+      (cs : list (bv 8)) (hg : option (list mobs)) (Q Φ : iProp Σ) :
     ohist_ext hg h ->
     obs_ends_in Uart0 h c ->
     ConsLog.cons_echo c cs ->
+    (* ---- K1 (relax-d2, lane K1): WHICH KEYSTROKE THIS IS.  The byte is
+       the input right after the one the log's mark [hg] names, or -- before
+       anything has been logged -- the first the console ever saw, with
+       uartinit's flush accounting for the rest ([k1_next]).  uartintr reads
+       the disjunct off the PLIC payload's clause and the pop's two input
+       numbers; the two riders transport the flush witness forward.
+       Everything else K1 needs is inside: the boundary's own
+       [cons_log_ins] turns the mark's input number into the log's LENGTH
+       ([cons_log_ins_k1]). ---- *)
+    trace_shape h true ->
+    obs_boots h = S gen_id ->
+    k1_next hg h ->
     uart_inv Uart0 γ -∗
     uart_out_lb γ (obs_wire Uart0 (open_seg h)) -∗
     uart_log_hi γ (1/2) hg -∗
     uart_arm γ (1/2) None -∗
+    (* ---- K2 (relax-d2): the drop arm's reason, in the caller's own terms
+       -- see [cons_drop_pay].  The residue [Q] comes back. ---- *)
+    cons_drop_pay γ c cs Q -∗
     cons_link Uart0 (S gen_id) (ConsLog.EvOpen h c cs) Φ
     ={⊤}=∗ uart_log_hi γ (1/2) hg ∗
-           uart_arm γ (1/2) (Some (h, c, cs, 0%nat)) ∗ Φ.
+           uart_arm γ (1/2) (Some (h, c, cs, 0%nat)) ∗
+           (* ---- K2 ---- *) Q ∗ Φ.
   Proof using .
-    intros Hx Hends Hecho. iIntros "#Hinv #Hwlb Hhi Hmine HΨ".
+    intros Hx Hends Hecho Hsh Hbh Hnext.
+    iIntros "#Hinv #Hwlb Hhi Hmine Hk2 HΨ".
     iInv "Hinv" as ">Hbody" "Hclose".
     iDestruct "Hbody" as (u) "(Hu & Hg & Hcol & Hcons)".
     iDestruct "Hcons" as (o H)
-      "(#Hlb & Hres & Hhi0 & Hdv & Hau & Hlm0 & Harm & %Hacc0 & %Hok)".
+      "(#Hlb & Hres & Hhi0 & Hdv & Hdc0 & Hau & Hlm0 & Harm & %Hacc0 & %Hok
+        & %Hins)".
     (* the log's mark: the caller's half names the claim's own top *)
     rewrite /uart_log_hi.
     iDestruct (ghost_var_agree with "Hhi Hhi0") as %Hagr.
@@ -2477,26 +2920,56 @@ Section DevLoops.
     assert (Hwire : obs_wire Uart0 (open_seg h)
                     `prefix_of` LogEntryDefs.ch_acc H).
     { rewrite Hacc0 /uart_acc. etrans; [exact Hpre |]. by apply prefix_app_r. }
-    (* fire the event *)
-    iMod ("HΨ" $! o H with "Hlb Hres [//] [%]") as (o') "(#Hlb' & Hres' & HΦ)".
+    (* ---- K2: the drop arm's reason, read at the CLAIM's own log and
+       delivered list.  The pure arm is already in the boundary's terms; the
+       resource arm's two halves agree with the invariant's, which is what
+       turns the caller's [L]/[n] into [ch_log H]/[length (ch_dl H)]. ---- *)
+    iAssert (⌜cs = [] -> ConsLog.cons_drop_ok c (LogEntryDefs.ch_log H)
+                                               (LogEntryDefs.ch_dl H)⌝ ∗ Q ∗
+             uart_logm γ (1/2) (LogEntryDefs.ch_log H) ∗
+             uart_dlcnt γ (1/2) (length (LogEntryDefs.ch_dl H)))%I
+      with "[Hk2 Hlm0 Hdc0]" as "(%Hdrop & HQ & Hlm0 & Hdc0)".
+    { rewrite /cons_drop_pay. iDestruct "Hk2" as "[[%Hp HQ] | Hq]".
+      - iFrame "HQ Hlm0 Hdc0".
+        iPureIntro. intro Hnil. rewrite /ConsLog.cons_drop_ok.
+        destruct (Hp Hnil) as [H0 | [H16 | Her]];
+          [by left | right; by left | right; right; by left].
+      - iDestruct "Hq" as (L n) "(%Hcnt & Hlm & Hdc & Hback)".
+        iDestruct (ghost_var_agree with "Hlm Hlm0") as %HLeq.
+        iDestruct (ghost_var_agree with "Hdc Hdc0") as %Hneq.
+        subst L. subst n.
+        rewrite ConsLog.echoed_count_eq in Hcnt.
+        iFrame "Hlm0 Hdc0". iSplitR.
+        + iPureIntro. intros _. rewrite /ConsLog.cons_drop_ok.
+          right; right; right. exact Hcnt.
+        + iApply ("Hback" with "Hlm Hdc"). }
+    (* ---- K1 (relax-d2, lane K1): the log holds every earlier input of
+       this era but the [f] uartinit's flush lost, so the entry this arm
+       will file is input number [length (ch_log H) + 1 + f]. ---- *)
+    pose proof (cons_log_ins_k1 (LogEntryDefs.ch_log H) hg h
+                  Hins Hagr Hsh Hbh Hbelow Hnext) as Hk1.
+    assert (Hev : ConsLog.cons_ev_ok H (ConsLog.EvOpen h c cs)).
     { cbn [ConsLog.cons_ev_ok]. split_and!;
-        [exact Hnone | exact Hends | exact Hecho | exact Hbelow | exact Hwire]. }
+        [exact Hnone | exact Hends | exact Hecho | exact Hbelow | exact Hwire
+        | exact Hk1 | exact Hdrop]. }
+    (* fire the event *)
+    iMod ("HΨ" $! o H with "Hlb Hres [//] [%]") as (o') "(#Hlb' & Hres' & HΦ)";
+      [exact Hev |].
     (* and move both halves with the history *)
     iMod (uart_arm_update γ None None (Some (h, c, cs, 0%nat))
             with "Hmine Harm") as "[Hmine Harm]".
-    iMod ("Hclose" with "[Hu Hsent Hout Htx Hdl Hcol Hres' Hhi0 Hdv Hau Hlm0 Harm]")
+    iMod ("Hclose" with "[Hu Hsent Hout Htx Hdl Hcol Hres' Hhi0 Hdv Hdc0 Hau Hlm0 Harm]")
       as "_".
     { iNext. iExists u. iFrame "Hu Hcol". iSplitL "Hsent Hout Htx Hdl";
         [rewrite /uart_ghosts; iFrame "Hsent Hout Htx Hdl" |].
       iExists o', (ConsLog.cons_step H (ConsLog.EvOpen h c cs)).
       cbn [ConsLog.cons_step LogEntryDefs.ch_acc LogEntryDefs.ch_log
            LogEntryDefs.ch_dl LogEntryDefs.ch_arm].
-      iFrame "Hlb' Hres' Hhi0 Hdv Hau Hlm0 Harm". iPureIntro. split.
+      iFrame "Hlb' Hres' Hhi0 Hdv Hdc0 Hau Hlm0 Harm". iPureIntro. split_and!.
       - exact Hacc0.
-      - apply (ConsLog.cons_hist_ok_step H (ConsLog.EvOpen h c cs) Hok).
-        cbn [ConsLog.cons_ev_ok]. split_and!;
-          [exact Hnone | exact Hends | exact Hecho | exact Hbelow | exact Hwire]. }
-    iModIntro. by iFrame "Hhi Hmine HΦ".
+      - exact (ConsLog.cons_hist_ok_step H (ConsLog.EvOpen h c cs) Hok Hev).
+      - exact Hins. }
+    iModIntro. by iFrame "Hhi Hmine HQ HΦ".
   Qed.
 
   (* ------------------------------------------------------------------ *)
@@ -2530,33 +3003,50 @@ Section DevLoops.
      two halves, and [uart_inv_body] is TIMELESS, so the fire is one
      [|={⊤}=>] with no machine step.  [uart_inv_append]'s twin, and stated
      at [⊤] for its reason. *)
+  (* ...AND IT IS THE ONE MOVER OF THE DELIVERED COUNT (relax-d2, lane K2).
+     The reader holds cons.lock -- so it holds the ring's half of
+     [uart_dlcnt] -- and opens the port invariant here, so both halves are
+     in hand and the pair advances with [ch_dl].  The agreement [n = length
+     dv] comes back out because the ring's own clause is stated against the
+     reader's cursor, not against the boundary's list. *)
   Lemma uart_inv_cons_read (γ : uart_names) (dv ws : list (list mobs * bv 8))
-      (L : list LogEntryDefs.log_entry) (Φ : iProp Σ) :
+      (L : list LogEntryDefs.log_entry) (n : nat) (Φ : iProp Σ) :
     ConsLog.read_ok L dv ws ->
     uart_inv Uart0 γ -∗ uart_deliv γ (1/2) dv -∗ uart_logm γ (1/2) L -∗
+    (* ---- K2 ---- *) uart_dlcnt γ (1/2) n -∗
     cons_link Uart0 (S gen_id) (ConsLog.EvRead ws) Φ
-      ={⊤}=∗ uart_deliv γ (1/2) (dv ++ ws) ∗ uart_logm γ (1/2) L ∗ Φ.
+      ={⊤}=∗ uart_deliv γ (1/2) (dv ++ ws) ∗ uart_logm γ (1/2) L ∗
+             (* ---- K2 ---- *)
+             ⌜n = length dv⌝ ∗ uart_dlcnt γ (1/2) (n + length ws)%nat ∗ Φ.
   Proof using .
-    intros Hread. iIntros "#Hinv Hdv Hlm HΨ".
+    intros Hread. iIntros "#Hinv Hdv Hlm Hdc HΨ".
     iInv "Hinv" as ">Hbody" "Hclose".
     iDestruct "Hbody" as (u) "(Hu & Hg & Hcol & Hcons)".
     iDestruct "Hcons" as (o H)
-      "(#Hlb & Hres & Hhi0 & Hdv0 & Hau & Hlm0 & Harm & %Hacc0 & %Hok)".
+      "(#Hlb & Hres & Hhi0 & Hdv0 & Hdc0 & Hau & Hlm0 & Harm & %Hacc0 & %Hok
+        & %Hins)".
     rewrite /uart_logm. iDestruct (ghost_var_agree with "Hlm Hlm0") as %->.
     rewrite /uart_deliv. iDestruct (ghost_var_agree with "Hdv Hdv0") as %->.
+    (* K2: the count's two halves agree, so the caller's [n] IS the
+       delivered list's length, and the pair moves with it *)
+    rewrite /uart_dlcnt. iDestruct (ghost_var_agree with "Hdc Hdc0") as %->.
     iMod ("HΨ" $! o H with "Hlb Hres [//] [%]") as (o') "(#Hlb' & Hres' & HΦ)".
     { cbn [ConsLog.cons_ev_ok]. exact Hread. }
     iMod (ghost_var_update_halves
             ((LogEntryDefs.ch_dl H ++ ws)%list) with "Hdv Hdv0") as "[Hdv Hdv0]".
-    iMod ("Hclose" with "[Hu Hg Hcol Hres' Hhi0 Hdv0 Hau Hlm0 Harm]") as "_".
+    iMod (ghost_var_update_halves
+            ((length (LogEntryDefs.ch_dl H) + length ws)%nat)
+            with "Hdc Hdc0") as "[Hdc Hdc0]".
+    iMod ("Hclose" with "[Hu Hg Hcol Hres' Hhi0 Hdv0 Hdc0 Hau Hlm0 Harm]") as "_".
     { iNext. iExists u. iFrame "Hu Hg Hcol".
       iExists o', (ConsLog.cons_step H (ConsLog.EvRead ws)).
       cbn [ConsLog.cons_step LogEntryDefs.ch_acc LogEntryDefs.ch_log
            LogEntryDefs.ch_dl LogEntryDefs.ch_arm].
-      iFrame "Hlb' Hres' Hhi0 Hdv0 Hau Hlm0 Harm". iPureIntro.
-      split; [exact Hacc0 |].
+      rewrite length_app.
+      iFrame "Hlb' Hres' Hhi0 Hdv0 Hdc0 Hau Hlm0 Harm". iPureIntro.
+      split_and!; [exact Hacc0 | | exact Hins].
       by apply (ConsLog.cons_hist_ok_step H (ConsLog.EvRead ws) Hok Hread). }
-    iModIntro. by iFrame "Hdv Hlm HΦ".
+    iModIntro. iFrame "Hdv Hlm Hdc HΦ". by iPureIntro.
   Qed.
 
   (* THE COLUMN ACROSS THE ONE TRANSITION THAT GROWS THE ACCEPTED SEQUENCE.
@@ -2574,13 +3064,13 @@ Section DevLoops.
     uart_loopback u' = uart_loopback u ->
     u_wire u' = u_wire u ->
     u_out u' = u_out u ->
+    u_recv u' = u_recv u ->
     uart_colE iu γ u -∗ uart_colE iu γ u'.
   Proof using .
-    iIntros (Hrx Hlb Hw Ho) "H".
+    iIntros (Hrx Hlb Hw Ho Hrc) "H".
     iDestruct "H" as (hs np nk hl ht) "(Ha & Hk & Hts & Hht & %Hok)".
     iExists hs, np, nk, hl, ht. iFrame "Ha Hk Hts Hht". iPureIntro.
-    destruct Hok as (H1 & H2 & H3 & Hwo & H4 & H5 & H6 & H7 & H8).
-    rewrite /uart_col_ok Hrx Hlb Hw Ho. split_and!; assumption.
+    rewrite /uart_col_ok Hrx Hlb Hw Ho Hrc. exact Hok.
   Qed.
 
   (* ==================================================================== *)
@@ -2611,16 +3101,18 @@ Section DevLoops.
   Proof using .
     iIntros (Hacc) "HΨ Hcl".
     iDestruct "Hcl" as (o H)
-      "(Hlb & Hres & Hhi & Hdv & Hau & Hlm & Harm & %Hacc0 & %Hok)".
+      "(Hlb & Hres & Hhi & Hdv & Hdc & Hau & Hlm & Harm & %Hacc0 & %Hok
+        & %Hins)".
     iMod ("HΨ" $! o H with "Hlb Hres [//] [%]") as (o') "(Hlb' & Hres' & HΦ)".
     { exact I. }
     iModIntro. iFrame "HΦ".
     iExists o', (ConsLog.cons_step H (ConsLog.EvOut b)).
     cbn [ConsLog.cons_step LogEntryDefs.ch_acc LogEntryDefs.ch_log
          LogEntryDefs.ch_dl LogEntryDefs.ch_arm].
-    iFrame "Hlb' Hres' Hhi Hdv Hau Hlm Harm". iPureIntro. split.
+    iFrame "Hlb' Hres' Hhi Hdv Hdc Hau Hlm Harm". iPureIntro. split_and!.
     - by rewrite Hacc0 Hacc.
     - by apply (ConsLog.cons_hist_ok_step H (ConsLog.EvOut b) Hok I).
+    - exact Hins.
   Qed.
 
   Definition store_ob (i : uart_id) (γ : uart_names) (b : bv 8)
@@ -2629,6 +3121,7 @@ Section DevLoops.
        ⌜u_rx u' = u_rx u⌝ -∗ ⌜uart_loopback u' = uart_loopback u⌝ -∗
        ⌜u_wire u' = u_wire u⌝ -∗ ⌜u_out u' = u_out u⌝ -∗
        ⌜uart_acc u' = (uart_acc u ++ [b])%list⌝ -∗
+       ⌜u_recv u' = u_recv u⌝ -∗
        uart_out_auth γ u -∗ uart_colE i γ u -∗ cons_claim_at i γ u
        ={⊤ ∖ ↑uartN i}=∗
        uart_out_auth γ u ∗ uart_colE i γ u' ∗ cons_claim_at i γ u' ∗ Φ)%I.
@@ -2645,8 +3138,8 @@ Section DevLoops.
       (Φ Φ' : iProp Σ) :
     (Φ -∗ Φ') -∗ store_ob i γ b Φ -∗ store_ob i γ b Φ'.
   Proof using .
-    iIntros "HΦ H" (u u') "%H1 %H2 %H3 %H4 %H5 Hout Hcol Hin".
-    iMod ("H" $! u u' with "[//] [//] [//] [//] [//] Hout Hcol Hin")
+    iIntros "HΦ H" (u u') "%H1 %H2 %H3 %H4 %H5 %H6 Hout Hcol Hin".
+    iMod ("H" $! u u' with "[//] [//] [//] [//] [//] [//] Hout Hcol Hin")
       as "(Hout & Hcol & Hin & HP)".
     iModIntro. iFrame "Hout Hcol Hin". by iApply "HΦ".
   Qed.
@@ -2667,9 +3160,9 @@ Section DevLoops.
   Lemma store_ob_of_cons_link (i : uart_id) (γ : uart_names) (b : bv 8)
       (Φ : iProp Σ) : cons_link i (S gen_id) (ConsLog.EvOut b) Φ -∗ store_ob i γ b Φ.
   Proof using .
-    iIntros "HΨ" (u u') "%H1 %H2 %H3 %H4 %H5 Hout Hcol Hin".
+    iIntros "HΨ" (u u') "%H1 %H2 %H3 %H4 %H5 %H6 Hout Hcol Hin".
     iMod (cons_claim_at_store i γ u u' b Φ H5 with "HΨ Hin") as "[Hin HΦ]".
-    iDestruct (uart_colE_store i γ u u' b H1 H2 H3 H4 with "Hcol") as "Hcol".
+    iDestruct (uart_colE_store i γ u u' b H1 H2 H3 H4 H6 with "Hcol") as "Hcol".
     iModIntro. iFrame "Hout Hcol Hin HΦ".
   Qed.
 
@@ -2709,9 +3202,10 @@ Section DevLoops.
     cons_link Uart0 (S gen_id) (ConsLog.EvByte b) Φ -∗
     store_ob Uart0 γ b (uart_arm γ (1/2) (Some (h, c, cs, S j)) ∗ Φ).
   Proof using .
-    intros Hlk. iIntros "Hmine HΨ" (u u') "%H1 %H2 %H3 %H4 %H5 Hout Hcol Hin".
+    intros Hlk. iIntros "Hmine HΨ" (u u') "%H1 %H2 %H3 %H4 %H5 %H6 Hout Hcol Hin".
     iDestruct "Hin" as (o H)
-      "(#Hlb & Hres & Hhi0 & Hdv & Hau & Hlm0 & Harm & %Hacc0 & %Hok)".
+      "(#Hlb & Hres & Hhi0 & Hdv & Hdc0 & Hau & Hlm0 & Harm & %Hacc0 & %Hok
+        & %Hins)".
     iDestruct (uart_arm_agree with "Hmine Harm") as %Harmeq0.
     assert (Harmeq : LogEntryDefs.ch_arm H = Some (h, c, cs, j))
       by (symmetry; exact Harmeq0).
@@ -2723,16 +3217,17 @@ Section DevLoops.
       [exact Hev |].
     iMod (uart_arm_update γ (Some (h, c, cs, j)) (Some (h, c, cs, j))
             (Some (h, c, cs, S j)) with "Hmine Harm") as "[Hmine Harm]".
-    iDestruct (uart_colE_store Uart0 γ u u' b H1 H2 H3 H4 with "Hcol") as "Hcol".
+    iDestruct (uart_colE_store Uart0 γ u u' b H1 H2 H3 H4 H6 with "Hcol") as "Hcol".
     iModIntro. iFrame "Hout Hcol HΦ Hmine".
     iExists o', (ConsLog.cons_step H (ConsLog.EvByte b)).
     rewrite /ConsLog.cons_step Harmeq.
     cbn [LogEntryDefs.ch_acc LogEntryDefs.ch_log LogEntryDefs.ch_dl
          LogEntryDefs.ch_arm].
-    iFrame "Hlb' Hres' Hhi0 Hdv Hau Hlm0 Harm". iPureIntro. split.
+    iFrame "Hlb' Hres' Hhi0 Hdv Hdc0 Hau Hlm0 Harm". iPureIntro. split_and!.
     - by rewrite Hacc0 H5.
     - pose proof (ConsLog.cons_hist_ok_step H (ConsLog.EvByte b) Hok Hev) as Hok'.
       by rewrite /ConsLog.cons_step Harmeq in Hok'.
+    - exact Hins.
   Qed.
 
   (* THE ECHO'S CHAIN.  The arm's counter advances with the bytes, so the
@@ -2948,8 +3443,10 @@ Section DevLoops.
   Lemma plic_uslot_deposit (iu : uart_id) (γu : uart_names) (cl : bool)
       (k : nat) (hl hh hg : option (list mobs)) :
     ohist_le hh hl ->
-    (* ...AND THE LOG'S MARK (lane CONS-IO), on the ring mark's mould *)
-    ohist_le hg hl ->
+    (* ...AND THE LOG'S MARK (lane CONS-IO), on the ring mark's mould -- at
+       the CONSOLE port an EQUALITY (relax-d2, lane K1): parking the token
+       is claiming that everything popped has been filed. *)
+    uart_log_at iu hg hl ->
     plic_uslot iu γu cl -∗ uart_rx_tok γu k hl -∗ uart_rx_hi γu (1/2) hh -∗
     uart_log_hi γu (1/2) hg -∗ uart_arm γu (1/2) None
       ==∗ uart_inited γu ∗ plic_uslot iu γu cl.
@@ -2975,7 +3472,7 @@ Section DevLoops.
       (k : nat) (hl hh hg : option (list mobs)) :
     ↑plicN ⊆ E ->
     ohist_le hh hl ->
-    ohist_le hg hl ->
+    uart_log_at j hg hl ->
     plic_inv γ γ1 -∗ uart_rx_tok (plic_unames γ γ1 j) k hl -∗
     uart_rx_hi (plic_unames γ γ1 j) (1/2) hh -∗
     uart_log_hi (plic_unames γ γ1 j) (1/2) hg -∗
@@ -3015,6 +3512,10 @@ Section DevLoops.
      constrains it. *)
   Lemma uart_ghosts_alloc (iu : uart_id) (u : uart_state) :
     u_rx u = [] ->
+    (* ...AND NOTHING HAS BEEN RECEIVED (relax-d2, lane K1): the reset UART
+       has accepted no input, which is the base case of the column's
+       input-number clauses. *)
+    u_recv u = [] ->
     uart_loopback u = false ->
     (* ...AND NOTHING HAS BEEN DRIVEN ON THE WIRE THAT IS NOT DRAINED: at
        power-on both lists are empty ([DevModel.uart0_state]), which is the
@@ -3048,12 +3549,16 @@ Section DevLoops.
                    console port it goes to the ring, at [Uart1] it is
                    dropped like the second high-water half. *)
                 uart_logm γ (1/2) [] ∗
+                (* ...AND THE DELIVERED COUNT'S RING HALF, at 0 (relax-d2,
+                   lane K2): the number beside [uart_deliv]'s list, whose
+                   other half is inside the port's claim. *)
+                uart_dlcnt γ (1/2) 0%nat ∗
                 (* ...AND THE ARM'S PAYLOAD HALF (redesign R2), at [None]:
                    the invariant's half is inside the port's claim above. *)
                 uart_arm γ (1/2) None ∗
                 uart_preinit γ.
   Proof using .
-    intros Hrx Hlb Hwo Hacc0. iIntros "Hres".
+    intros Hrx Hrc Hlb Hwo Hacc0. iIntros "Hres".
     iMod (own_alloc (●ML (uart_acc u : list (leibnizO (bv 8))))) as (γa) "Ha";
       [apply mono_list_auth_valid|].
     iMod (own_alloc (●ML (u_out u : list (leibnizO (bv 8))))) as (γb) "Hb";
@@ -3098,39 +3603,50 @@ Section DevLoops.
     iMod (ghost_var_alloc (@None LogEntryDefs.cons_arm)) as (γar) "Har".
     iEval (rewrite -Qp.half_half) in "Har".
     iDestruct (ghost_var_split with "Har") as "[Har1 Har2]".
+    (* the delivered COUNT, at 0 (relax-d2, lane K2) *)
+    iMod (ghost_var_alloc 0%nat) as (γdc) "Hdc".
+    iEval (rewrite -Qp.half_half) in "Hdc".
+    iDestruct (ghost_var_split with "Hdc") as "[Hdc1 Hdc2]".
     iModIntro.
-    iExists (UartNames γa γb γc γd γpu γpo γhi γin γlg γml γdv γlm γar).
+    iExists (UartNames γa γb γc γd γpu γpo γhi γin γlg γml γdv γlm γar γdc).
     rewrite /uart_sent_auth /uart_out_auth /uart_tx_auth /uart_tx_own
             /uart_dlab_auth /uart_dlab_is /uart_sent /uart_colE /uart_col
             /uart_rx_tok /uart_rx_popped /uart_rx_hi /uart_preinit /=.
     iFrame "Ha Hb Hc1 Hd1 Hc2 Hsent Hd2".
     (* the column's own half of the pop counter and the caller's token are
        the SAME proposition, so the rest are placed by hand *)
-    iSplitR "Hres Hlg1 Hml Hdv1 Hlm1 Hpo2 Hhi1 Hhi2 Hlg2 Hdv2 Hlm2 Har1 Har2 Hin".
+    iSplitR "Hres Hlg1 Hml Hdv1 Hlm1 Hdc1 Hpo2 Hhi1 Hhi2 Hlg2 Hdv2 Hlm2 Hdc2
+             Har1 Har2 Hin".
     { iExists [], 0%nat, 0%nat, None, None. iFrame "Hpu Hpo1".
       iSplitR; [done|]. iSplitR; [done|].
-      iPureIntro. rewrite /uart_col_ok Hrx Hlb. cbn [length].
+      iPureIntro. rewrite /uart_col_ok Hrx Hrc Hlb. cbn [length].
       split_and!; [done | done | done | exact Hwo | intros j b h Hj; done
                   | intros i j hi hj Hi; done | intros j h Hj; done
-                  | exact I | intros j h Hj; done]. }
-    iSplitL "Hres Hlg1 Hml Hdv1 Hlm1 Har1".
+                  | exact I | intros j h Hj; done
+                  | done | intros j hj Hj; done | done | done
+                  | intros g Hg; done
+                  | cbn [open_seg_o obs_wire]; apply prefix_nil ]. }
+    iSplitL "Hres Hlg1 Hml Hdv1 Hlm1 Hdc1 Har1".
     { (* the port's ONE claim, founded at the empty history *)
       iExists None, (LogEntryDefs.MkCH [] [] [] None).
       cbn [LogEntryDefs.ch_acc LogEntryDefs.ch_log LogEntryDefs.ch_dl
            LogEntryDefs.ch_arm].
       iSplitR; [done |].
       iFrame "Hres".
-      rewrite /uart_log_hi /uart_deliv /in_log_auth /uart_logm /uart_arm /=.
-      iFrame "Hlg1 Hdv1 Hml Hlm1 Har1". iPureIntro. split.
+      rewrite /uart_log_hi /uart_deliv /uart_dlcnt /in_log_auth /uart_logm
+              /uart_arm /=.
+      iFrame "Hlg1 Hdv1 Hdc1 Hml Hlm1 Har1". iPureIntro. split_and!.
       - by rewrite Hacc0.
       - split; [split; [intros e He; inversion He
-                       | intros i e1 e2 H1; done] | exact I]. }
+                       | intros i e1 e2 H1; done] | exact I].
+      - exact (cons_log_ins_nil iu). }
     iSplitL "Hpo2"; [iExact "Hpo2" |].
     iSplitL "Hhi1"; [iExact "Hhi1" |].
     iSplitL "Hhi2"; [iExact "Hhi2" |].
     iSplitL "Hlg2"; [rewrite /uart_log_hi /=; iExact "Hlg2" |].
     iSplitL "Hdv2"; [rewrite /uart_deliv /=; iExact "Hdv2" |].
     iSplitL "Hlm2"; [rewrite /uart_logm /=; iExact "Hlm2" |].
+    iSplitL "Hdc2"; [rewrite /uart_dlcnt /=; iExact "Hdc2" |].
     iSplitL "Har2"; [rewrite /uart_arm /=; iExact "Har2" | iExact "Hin"].
   Qed.
 
@@ -3199,6 +3715,9 @@ Section DevLoops.
     (□ ∀ (h κ : list mobs) (d : dev_state) (u' : uart_state),
        ⌜uart_step i d κ (set_duart d i u')⌝ -∗ ⌜trace_shape h true⌝ -∗
        ⌜obs_wire i (open_seg h) = u_wire (duart d i)⌝ -∗
+       (* ...AND THE INPUT TIE (relax-d2, lane K1), which the rx arm spends
+          to give the byte it queues its INPUT NUMBER *)
+       ⌜obs_ins i (open_seg h) = u_recv (duart d i)⌝ -∗
        ⌜u_wire (duart d i) = u_out (duart d i)⌝ -∗
        (* ...AND THE ERA STAMP (lane CONS-IO milestone C): the history the
           ledger is stepped at belongs to THIS era, and the era's number is
@@ -3225,7 +3744,7 @@ Section DevLoops.
     obs_inv -∗ uart_obs_permit i γ.
   Proof using .
     intros Heq Htag. iIntros "#Hoinv !>" (h κ d u')
-      "%Hstep %Hsh %Hwire %Hwo %Hbts Hcl Hg Hauth".
+      "%Hstep %Hsh %Hwire %Hrecv %Hwo %Hbts Hcl Hg Hauth".
     iInv "Hoinv" as "HP" "Hclose".
     iEval (rewrite Heq /obs_pred_triv) in "HP".
     iDestruct "HP" as (h') ">Hfrag".
@@ -3289,14 +3808,15 @@ Section DevLoops.
   Proof using .
     iIntros "#Hoinv". iPoseProof Htx as "#Htx". iPoseProof Hrx as "#Hrx".
     iIntros "!>" (h κ d u')
-      "%Hstep %Hsh %Hwire %Hwo %Hbts Hcl Hg Hauth".
+      "%Hstep %Hsh %Hwire %Hrecv %Hwo %Hbts Hcl Hg Hauth".
     (* THE CLAIM'S WITNESS, PLACED INSIDE THE RUN'S OWN HISTORY.  This is
        the only point where both the invariant's monotone bound and the
        machine's history authority are in hand, so it is where the pure
        [ho `prefix_of` h] the ledger's wand needs is produced (lane
        OUT-FUPD). *)
     iDestruct "Hcl" as (o0 CH)
-      "(#Holb & Hres & Hlgh & Hdv & Hau & Hlm0 & Harm & %Hacc0 & %Hlok)".
+      "(#Holb & Hres & Hlgh & Hdv & Hdc0 & Hau & Hlm0 & Harm & %Hacc0 & %Hlok
+        & %Hlins)".
     iDestruct (obs_hist_lb_o_prefix o0 h with "Hauth Holb") as %Hopre.
     iInv "Hoinv" as "HP" "Hclose".
     iEval (rewrite Heq /obs_ledger) in "HP".
@@ -3313,8 +3833,8 @@ Section DevLoops.
         iMod ("Hclose" with "[Hfrag HR]") as "_".
         { iNext. rewrite Heq /obs_ledger. iExists h. iFrame. }
         iModIntro. rewrite app_nil_r.
-        iSplitL "Hres Hlgh Hdv Hau Hlm0 Harm".
-        { iExists o0, CH. iFrame "Holb Hres Hlgh Hdv Hau Hlm0 Harm".
+        iSplitL "Hres Hlgh Hdv Hdc0 Hau Hlm0 Harm".
+        { iExists o0, CH. iFrame "Holb Hres Hlgh Hdv Hdc0 Hau Hlm0 Harm".
           by iPureIntro. }
         iFrame "Hg Hauth"; try done.
       + iEval (rewrite /chist_at Hook) in "Hres".
@@ -3327,8 +3847,8 @@ Section DevLoops.
         iMod ("Hclose" with "[Hfrag HR]") as "_".
         { iNext. rewrite Heq /obs_ledger. iExists _. iFrame. }
         iModIntro.
-        iSplitL "Hres Hlgh Hdv Hau Hlm0 Harm".
-        { iExists o0, CH. iFrame "Holb Hlgh Hdv Hau Hlm0 Harm".
+        iSplitL "Hres Hlgh Hdv Hdc0 Hau Hlm0 Harm".
+        { iExists o0, CH. iFrame "Holb Hlgh Hdv Hdc0 Hau Hlm0 Harm".
           iSplitL "Hres"; [by iEval (rewrite /chist_at Hook) |].
           by iPureIntro. }
         iFrame "Hg Hauth"; try done.
@@ -3344,24 +3864,24 @@ Section DevLoops.
       iMod ("Hclose" with "[Hfrag HR]") as "_".
       { iNext. rewrite Heq /obs_ledger. iExists _. iFrame. }
       iModIntro.
-      iSplitL "Hres Hlgh Hdv Hau Hlm0 Harm".
-      { iExists o0, CH. iFrame "Holb Hres Hlgh Hdv Hau Hlm0 Harm".
+      iSplitL "Hres Hlgh Hdv Hdc0 Hau Hlm0 Harm".
+      { iExists o0, CH. iFrame "Holb Hres Hlgh Hdv Hdc0 Hau Hlm0 Harm".
         by iPureIntro. }
       iFrame "Hg Hauth". rewrite /uart_tag_of Htag. iExact "Htg".
     - (* the latch: silent *)
       iMod ("Hclose" with "[Hfrag HR]") as "_".
       { iNext. rewrite Heq /obs_ledger. iExists h. iFrame. }
       iModIntro. rewrite app_nil_r.
-      iSplitL "Hres Hlgh Hdv Hau Hlm0 Harm".
-      { iExists o0, CH. iFrame "Holb Hres Hlgh Hdv Hau Hlm0 Harm".
+      iSplitL "Hres Hlgh Hdv Hdc0 Hau Hlm0 Harm".
+      { iExists o0, CH. iFrame "Holb Hres Hlgh Hdv Hdc0 Hau Hlm0 Harm".
         by iPureIntro. }
       iFrame "Hg Hauth"; try done.
     - (* the stutter: silent *)
       iMod ("Hclose" with "[Hfrag HR]") as "_".
       { iNext. rewrite Heq /obs_ledger. iExists h. iFrame. }
       iModIntro. rewrite app_nil_r.
-      iSplitL "Hres Hlgh Hdv Hau Hlm0 Harm".
-      { iExists o0, CH. iFrame "Holb Hres Hlgh Hdv Hau Hlm0 Harm".
+      iSplitL "Hres Hlgh Hdv Hdc0 Hau Hlm0 Harm".
+      { iExists o0, CH. iFrame "Holb Hres Hlgh Hdv Hdc0 Hau Hlm0 Harm".
         by iPureIntro. }
       iFrame "Hg Hauth"; try done.
   Qed.
@@ -3372,12 +3892,12 @@ Section DevLoops.
      sets a PENDING bit and no slot moves, at either port. *)
   Lemma wp_uart_loop (i : uart_id) (γ γp γp1 : uart_names) :
     gen_cert -∗ uart_inv i γ -∗ plic_inv γp γp1 -∗ uart_obs_permit i γ -∗
-    WP (UartLoop i : expr riscv_lang).
+    mWP (UartLoop i : expr riscv_lang).
   Proof using .
     iIntros "#Hcert #Huinv #Hpinv #Hperm".
     iLöb as "IH".
     iApply (wp_uart_step with "Hcert").
-    iIntros (gr m d h Hsh Hwire Hbts) "(Hgr & Hmem & Hdev & Hoauth)".
+    iIntros (gr m d h Hsh Hwire Hrecv Hbts) "(Hgr & Hmem & Hdev & Hoauth)".
     (* No invariant is opened until the arm is known: each arm then opens
        exactly the one half of the fabric it moves. *)
     iApply fupd_mask_intro; [set_solver|]. iIntros "Hmask".
@@ -3424,7 +3944,7 @@ Section DevLoops.
          own authority against its own ledger and puts it where it found
          it. *)
       iMod ("Hperm" $! h _ d u'
-              with "[//] [//] [//] [] [//] [Hcons] Hg Hoauth")
+              with "[//] [//] [//] [//] [] [//] [Hcons] Hg Hoauth")
         as "(Hcons & Hg & Hoauth & _)".
       { iPureIntro. rewrite Hu. exact Hwo. }
       { rewrite Hu. iExact "Hcons". }
@@ -3465,10 +3985,11 @@ Section DevLoops.
          here, with the auth in hand and BEFORE the permit moves it. *)
       iDestruct (uart_colE_wire_out_keep i γ u with "Hcol") as "[%Hwo Hcol]".
 
-      iDestruct (uart_col_push_acc i γ u h with "Hcol Hoauth")
+      iDestruct (uart_col_push_acc i γ u h
+                   ltac:(rewrite -Hu; exact Hrecv) with "Hcol Hoauth")
         as "[Hoauth Hpush]".
       iMod ("Hperm" $! h [ObsUartIn i b] d u'
-              with "[//] [//] [//] [] [//] [Hcons] Hg Hoauth")
+              with "[//] [//] [//] [//] [] [//] [Hcons] Hg Hoauth")
         as "(Hcons & Hg & Hoauth & #Htg)".
       { iPureIntro. rewrite Hu. exact Hwo. }
       { rewrite Hu. iExact "Hcons". }
@@ -3501,8 +4022,13 @@ Section DevLoops.
       { rewrite obs_boots_app (obs_boots_io [ObsUartIn i b]
                                  ltac:(repeat constructor)).
         rewrite Nat.add_0_r. exact Hbts. }
-      iMod ("Hpush" $! u' b with "[//] [//] [//] [//] Htg Hlbn Hwlb [//]")
+      iMod ("Hpush" $! u' b
+              with "[//] [//] [//] [//] [%] Htg Hlbn Hwlb [//] [%] [%]")
         as "Hcol".
+      { exact (uart_rx_push_recv u b u' Hrx). }
+      { apply (trace_shape_io h [ObsUartIn i b] Hsh).
+        repeat constructor. }
+      { exact Hrider. }
       (* an arrival touches the rx FIFO only, so the port's claim -- stated
          over the ACCEPTED bytes -- carries over unchanged *)
       iDestruct (cons_claim_at_stable i γ u u'
@@ -3556,7 +4082,7 @@ Section DevLoops.
        [plicN], so the two openings compose. *)
     gen_cert -∗ crash_inv -∗ perm_inv gen_id (dn_perm γd) -∗ disk_inv γd -∗
     plic_inv γu γu1 -∗
-    WP (DiskLoop : expr riscv_lang).
+    mWP (DiskLoop : expr riscv_lang).
   Proof using .
     intros Himg.
     iIntros "#Hcert #Hcinv #Hqinv #Hvinv #Hpinv".
@@ -4092,7 +4618,7 @@ Section DevLoops.
   (* ------------------------------------------------------------------ *)
   Lemma wp_plic_loop (γu γu1 : uart_names) :
     gen_cert -∗ plic_inv γu γu1 -∗ wire_inv -∗
-    WP (PlicLoop : expr riscv_lang).
+    mWP (PlicLoop : expr riscv_lang).
   Proof using .
     iIntros "#Hcert #Hpinv #Hwinv".
     iLöb as "IH".

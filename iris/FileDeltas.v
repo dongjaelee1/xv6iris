@@ -42,7 +42,6 @@ From Stdlib Require Import ZArith Lia List.
 From stdpp Require Import gmap list sorting bitvector.definitions.
 From iris.proofmode Require Import proofmode.
 
-Require Import FsState.
 Require Import FsTree.             (* [DOT], [DOTDOT]                     *)
 Require Import FsImg.              (* [ROOTINO]                           *)
 Require Import FsImgCheck.         (* [fname_f] and its four peers        *)
@@ -56,7 +55,6 @@ Require Import FsCatPin.           (* [CAT_INO], [cat_bytes]              *)
 Require Import ConsoleInv.         (* [CONSOLE]                           *)
 Require Import FsConsPin.          (* [file_pin], [cons_absent/_present]  *)
 Require Import FsFPin.             (* [f_absent], [fname_f_ne_*]          *)
-Require Import EchoFsPure.         (* [echo_fs_pure]                      *)
 Require Import FileFsPure.         (* [file_fs_pure]                      *)
 Require Import ElfUser.            (* the four binaries' lengths          *)
 Require Import LineWords.

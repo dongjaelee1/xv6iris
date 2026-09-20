@@ -152,8 +152,8 @@ Section WpSconfFencePub.
     pub_step P Q -∗ P -∗
     ▷ (sie_cap_gpr kt m n false p -∗
        pc_is (add_vec_int pc 4) -∗ Q -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros "Hcg Hpc Hinstr Hpub HP Hcont".
     iApply (wp_instr_s_sconf m n false false pc false
@@ -258,8 +258,8 @@ Section WpSconfFencePub.
     ghost_step P Q -∗ P -∗
     ▷ (sie_cap_gpr kt m n false p -∗
        pc_is (add_vec_int pc 4) -∗ Q -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros "Hcg Hpc Hinstr Hpub HP Hcont".
     iApply (wp_instr_s_sconf m n false false pc false
@@ -411,8 +411,8 @@ Section WpSconfFencePub.
     hart_rview_lb_at cpu_id K -∗
     ▷ (sie_cap_gpr kt m n false p -∗
        pc_is (add_vec_int pc 4) -∗ hart_view_lb K -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hp Hs) "Hcg Hpc Hinstr #HK Hcont".
     iApply (wp_instr_s_sconf m n false false pc false
@@ -449,8 +449,8 @@ Section WpSconfFencePub.
     hart_rview_lb_at cpu_id K -∗
     ▷ (sie_cap_gpr kt m n false p -∗
        pc_is (add_vec_int pc 4) -∗ hart_view_lb K -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hp Hs) "Hcg Hpc Hinstr #HK Hcont".
     iApply (wp_instr_s_sconf m n false false pc false

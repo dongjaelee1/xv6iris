@@ -5699,7 +5699,7 @@ moulds — H1 is a stub walk, H3 is a second copy of a landed discharge,
 H2 is a lane — but H4 decides the SHAPE of the family and of `palt_ok`,
 and (b) would delete R2's exclusion machinery as a side effect.  After
 it, the order is H1, H3, H2, then the assembly, and the first proof step
-of the assembly is `blk2_inv_alloc` on the `WP Loop` goal at 0x9c0
+of the assembly is `blk2_inv_alloc` on the `mWP Loop` goal at 0x9c0
 (`Cr := blk2_inv ∗ the three halves ∗ era_pin`), with the three paid
 diagnostics recovering the family through `blk2_inv_close` inside
 `ush_execfail_law_at`'s own `∃ Pf` — the existential is the law's
@@ -6296,3 +6296,116 @@ Wq pn γp L` to the left child beside `wcur gL (1/2) 0` and `blk2_inv`.
 The exclusion premise `□ (XL -∗ YR ={Eex}=∗ False)` is then
 `pipe_excl_wtok_lb_pipeN` applied to `pipe_inv` (out of `ep_pay`), at
 `Eex := ↑pipeN`, with `L <> []` by computation.
+
+### UPSTREAM-MERGE-6 (2026-09-20) — the TEN upstream commits land; relax-d2's pipe side was ALREADY DONE by upstream (and it RULED that the pipeline keeps D2), and the two seams that cost real work are `dl_list_auth` and a dead-import sweep that took an import a `Context` needed
+
+**WHAT LANDED.**  Branch `app-pipe/upstream-merge-6` (worktree
+`/shared/xv6iris-pipe-merge`), seven commits on top of `c03afe0c4`:
+
+- `5ffc5b8a3` — the merge of the nine commits `main..origin/main`, two
+  parents, one conflicted file (`iris/PipeOut.v`, 21 hunks, not the five
+  the brief expected).
+- `5f499a91a` — the **mWP rename**: 25 code uses in 5 files
+  (`UShPipeChild.v` 8, `UkShPipe.v` 7, `UkShPipePaid.v` 5, `UkShCat.v` 3,
+  `UShCatPay.v` 1), every one of them `WP (Loop : expr riscv_lang)`; no
+  campaign file uses Iris's own `WP e @ s; E {{ Φ }}`.  One code quotation
+  in this worklist (`WP Loop` → `mWP Loop`); prose "WP" untouched.
+- `ae27fe34c`, `a6df8c69b`, `11d500f88` — `PipeOut.v`'s three fix-forward
+  commits under the new `dl_list_auth` conjunct (below).
+- `2ba2c9964` — the **tenth** commit `5333e7f21` (dead-import sweep,
+  `UShPanicHold.v`), folded in on the coordinator's word; clean merge.
+- `bfeedfcc4` — `UPipeBootAdequacy.v`'s restored import and
+  `UShPipeExit.v`'s pattern.
+
+`ec2-lane.sh merge build` **RC=0 on the whole tree**.  Detectors:
+`grep -rn '\[ws | ws |\]' iris/*.v` empty, `grep -rn '^Admitted' iris/*.v`
+empty.  **Audits, all four at their baselines**: `audit-only` 13,
+`audit-echo-only` 14, `audit-tree-only` 13, `audit-pipe-only` 14 (the
+system and tree lists are the same 13; echo and pipe add
+`PrimString.length`).  No upstream file was edited: this lane's edits are
+`PipeOut.v`, `UPipeBootAdequacy.v`, `UShPipeExit.v` and the five mWP
+files — all campaign files.
+
+**WHAT THE BRIEF GOT WRONG (the big one).**  "OUR twins
+(`PipeOutPure.D2_next_input_p`, `PipeDisc`'s `disc_p`/`disc_seg_p`,
+`PipeOut`'s `pecl` steps, `PipeDiscDec`) must follow the same relaxation"
+— **no.  Upstream's relax-d2 commit `92249f035` already contains the pipe
+files** (`PipeDisc.v`, `PipeOut.v`, `PipeOutPure.v` are in its stat), and
+what it did there is the opposite of a relaxation:
+
+1. **The pipeline application KEEPS D2.**  `D2_next_input_p` survives
+   untouched; only its comment changed, to say so ("F2 at the pipeline
+   session, under the per-byte rule D2 this application keeps").  The
+   echo application's `EchoOutPure.D2_next_input` is the one that was
+   deleted, replaced by `next_input_of_complete` + the kernel's FIFO
+   clauses (`ConsLog.cons_drop_ok`'s fourth disjunct, `echoed_count`) and
+   the ring-capacity refutation `EchoOutPure.drop_refuted`.
+2. **`PipeDisc.disc_p_disc` is now ONE WAY**: `Forall disc_seg (cycles_of
+   h) -> disc_p h -> disc h` (it was an `<->`).  §6 stays true in the
+   surviving direction and upstream's new comment says why the converse is
+   gone: `EchoDisc.disc_pt` now asks only for the input's COMPLETE lines
+   (`sess ps cs (done_of (ins p)) prefix_of obs_wire`), the pipe's
+   `disc_pt_p` still asks for the whole typed input, so a user who types a
+   line as a burst is inside the echo discipline and outside the pipe's.
+   The bridge is upstream's new `EchoDisc.disc_pt_of_strict`.
+   **Nothing in the tree consumed the `<->`**: `disc_p_disc` has no proof
+   callers, only prose references (here and one comment in `PipeOut.v`).
+3. `pipe_phi` is byte-identical (`disc_p h -> Forall good_out_p
+   (cycles_of h)`), so the STOP rule never fired.  `PipeDiscDec.v` needed
+   nothing — it decides `disc_seg'`-style searches and never mentions
+   `disc_p_disc`.
+4. The brief's "diff `AppEcho.v`": `AppEcho.v` is not in `92249f035`'s
+   stat at all.
+
+**WHAT THE MERGE ACTUALLY COST: `dl_list_auth`.**  relax-d2's real
+interface change for us is that **`EchoOut.inp_lb` is now a lower bound of
+the DELIVERED list, not of the era's echo list `E`** (`inp_lb v I := ∃ D,
+dl_list_lb v D ∗ ⌜snd <$> D = I⌝`), `inp_lb_of_lb` is gone in favour of
+`inp_lb_of_dl_lb`, and `era_full` hands out a sixth ghost.  So `pecl`
+gains `∗ dl_list_auth v (ch_dl H)` and every step must name it.  Statement
+by statement, on top of PIPE-2W-3's section 2c:
+
+- `pecl` — one conjunct added; the seven existentials
+  (`v w so r gb pre opn`), the round's ledger and `pcl_pure2`'s
+  disjunction are OURS and unchanged.
+- `pcl_pure_dl_E` — upstream's, kept verbatim (`pcl_pure … -> (snd <$>
+  ch_dl H) prefix_of (snd <$> o_E so)`).
+- **`pcl_pure2_dl_E` (NEW, ours)** — the same at the round's disjunction.
+  It is needed because our writer steps read the `I0` bound BEFORE they
+  case-split on whether a round is open (the refutation of the open case
+  uses `write_stage_byte_p`'s `HlenE`, which needs the bound).  Both
+  disjuncts carry `pein_pure` and the E-tie, which is all the proof reads,
+  so it is `pcl_pure2_pein` + `pcl_pure2_E` and upstream's body.
+- the six writer sites (`pecl_step_write`, `pecl_step_write_blk`, the
+  prologue step, and section 2c's three open-block steps) —
+  `inp_lb_le with "Hdll Hilb"` then `etrans` through `pcl_pure2_dl_E`.
+- `pecl_step_read` — upstream's `dl_list_auth_grow` before the split, and
+  the handed-back bound is `inp_lb_of_dl_lb` at `ch_dl CH ++ ws` instead
+  of `inp_lb_of_lb` at `E`.
+- `era_full_split_p` — `era_full`'s sixth ghost named in the intro
+  pattern, `dl_list_lb_get` taken, the auth framed into the claim; the
+  credential's bound is `inp_lb_of_dl_lb v [] []`.
+- `UShPipeExit.pecl_open_cs_len` — one pattern.
+
+No statement of ours changed meaning; three lemmas (`pecl`,
+`era_full_split_p`, `pecl_open_cs_len`) changed shape only where the claim
+itself grew a conjunct.
+
+**THE TRAP WORTH REMEMBERING (new durable gotcha).**  Upstream's nightly
+dead-import sweep `d1b060979` removed `Require Import PipeOut` from
+`UPipeBootAdequacy.v` — it *was* dead in upstream's tree — while lane
+PIPE-2W-2 had meanwhile added `Context `{!pipeOutG Σ}` and `pipeOutΣ` to
+that file on main.  **A backtick-generalised `Context` over a name that is
+not in scope does not fail; it BINDS the name** (the error 100 lines later
+prints `pipeOutG : gFunctors → Type` in the environment and complains
+about an uninferrable `riscvGpreS`).  The import is back with a comment
+saying the sweep must leave it.  Any lane adding a `Context `{!cG Σ}` to a
+file must check the file's own `Require` list — the sweep is computed from
+`.glob` files and cannot see a class that only a generalisation mentions.
+
+**WHAT THE NEXT LANE NEEDS FIRST.**  Nothing is owed by this lane.  Two
+things to know: (i) `inp_lb` means DELIVERED bytes now — a new pipe writer
+step takes its bound off `Hdll`, not off `HE`; (ii) the pipeline is now
+the STRICTER of the two console disciplines, so a witness or a claim can
+be carried pipe → echo (`disc_p_disc`, `disc_pt_of_strict`) and never the
+other way.

@@ -553,8 +553,8 @@ Section batch.
     hsil_node D rs m = Some (rs1, m1) ->
     gen_cert -∗
     hreg_frame rs D -∗
-    ▷ (hreg_frame rs1 D -∗ WP (HartE gen_id cpu_id m1 : expr riscv_lang)) -∗
-    WP (HartE gen_id cpu_id m : expr riscv_lang).
+    ▷ (hreg_frame rs1 D -∗ mWP (HartE gen_id cpu_id m1 : expr riscv_lang)) -∗
+    mWP (HartE gen_id cpu_id m : expr riscv_lang).
   Proof using .
     iIntros (Hnode) "#Hcert Hrf H".
     iApply (wp_hart_step with "Hcert").
@@ -637,8 +637,8 @@ Section batch.
     rtc (hsilD D) x y ->
     gen_cert -∗
     hreg_frame x.2 D -∗
-    (hreg_frame y.2 D -∗ WP (HartE gen_id cpu_id y.1 : expr riscv_lang)) -∗
-    WP (HartE gen_id cpu_id x.1 : expr riscv_lang).
+    (hreg_frame y.2 D -∗ mWP (HartE gen_id cpu_id y.1 : expr riscv_lang)) -∗
+    mWP (HartE gen_id cpu_id x.1 : expr riscv_lang).
   Proof using .
     intros Hrtc. induction Hrtc as [x|x y0 z Hxy _ IH].
     - iIntros "#Hcert Hrf H". by iApply "H".
@@ -656,8 +656,8 @@ Section batch.
     gen_cert -∗
     hreg_frame x.1 D -∗
     (hreg_frame (hsil n D x).1 D -∗
-       WP (HartE gen_id cpu_id (hsil n D x).2 : expr riscv_lang)) -∗
-    WP (HartE gen_id cpu_id x.2 : expr riscv_lang).
+       mWP (HartE gen_id cpu_id (hsil n D x).2 : expr riscv_lang)) -∗
+    mWP (HartE gen_id cpu_id x.2 : expr riscv_lang).
   Proof using .
     exact (wp_hsil_rtc D (x.2, x.1) ((hsil n D x).2, (hsil n D x).1)
              (hrun_silent_sound n D x.1 x.2 (hsil n D x).1 (hsil n D x).2

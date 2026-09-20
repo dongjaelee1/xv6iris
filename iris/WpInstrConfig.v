@@ -505,8 +505,8 @@ Section WpInstrConfig.
                          elp0 senv0) mm_Dro ∗ Psi)) -∗
     ▷ (hart_state ↦ᵣ HART_ACTIVE tt -∗ cur_privilege ↦ᵣ priv1 -∗
        mstatus ↦ᵣ mst1 -∗ pmpcfg_n ↦ᵣ pcfg1 -∗ pc_is npc -∗ Psi -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros "#Hhw Hfrag Hrw Hro Hbody Hcont".
     iDestruct (hw_config_cert with "Hhw") as "#Hcert".
@@ -588,8 +588,8 @@ Section WpInstrConfig.
     ▷ (hart_state ↦ᵣ HART_ACTIVE tt -∗ cur_privilege ↦ᵣ priv1 -∗
        mstatus ↦ᵣ ms1 -∗ pmpcfg_n ↦ᵣ pmpcfg1 -∗ pc_is npc -∗
        gpr_file m' -∗ R -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hpmp HmIE Hstat.
     iIntros "#Hhw _ Hhs Hpriv Hms Hpmpc Hpc Hgpr Hinstr Hex Hcont".

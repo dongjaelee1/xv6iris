@@ -304,8 +304,8 @@ Section WpSconfLock.
         Tc -∗
         sie_cap_gpr kt (<[Regidx rd := regval_into_reg (sign_extend' 64 v)]> m) n b p -∗
         pc_is (add_vec_int pc 2) -∗
-        WP (Loop : expr riscv_lang))) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang))) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros pa Hpalk Hrd Hrdok Href.
     (* the class, consumed at [rs1] -- the one line the funnel change needs,
@@ -694,8 +694,8 @@ Section WpSconfLock.
         locked γl h0 -∗
         sie_cap_gpr kt (<[Regidx rd := regval_into_reg (sign_extend' 64 v)]> m) n b p -∗
         pc_is (add_vec_int pc 2) -∗
-        WP (Loop : expr riscv_lang))) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang))) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros pa h0 Hpalk Hrd Hrdok Hbp Href.
     (* the class, consumed at [rs1] -- the one line the funnel change needs,
@@ -928,8 +928,8 @@ Section WpSconfLock.
       Out -∗
       sie_cap_gpr kt m n b p -∗
       pc_is (add_vec_int pc 4) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros pa Hpalk Href.
     (* the class, consumed at [rs1] -- the one line the funnel change needs,
@@ -1072,8 +1072,8 @@ Section WpSconfLock.
         Tc -∗
         sie_cap_gpr kt (<[Regidx rd := regval_into_reg c]> m) n b p -∗
         pc_is (add_vec_int pc 2) -∗
-        WP (Loop : expr riscv_lang))) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang))) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros pa Hpacpu Hrd Hrdok Href.
     (* the class, consumed at [rs1] -- the one line the funnel change needs,
@@ -1286,8 +1286,8 @@ Section WpSconfLock.
       locked γl h0 -∗
       sie_cap_gpr kt (<[Regidx rd := regval_into_reg cpuv]> m) n b p -∗
       pc_is (add_vec_int pc 2) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros pa h0 cpuv Hpacpu Hrd Hrdok Hbp Href.
     (* the class, consumed at [rs1] -- the one line the funnel change needs,
@@ -1380,8 +1380,8 @@ Section WpSconfLock.
         cpu_locks_at h0 lks -∗
         sie_cap_gpr kt (<[Regidx rd := regval_into_reg c]> m) n b p -∗
         pc_is (add_vec_int pc (if cmp then 2 else 4)) -∗
-        WP (Loop : expr riscv_lang))) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang))) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros pa h0 Hpacpu Hrd Hrdok Hfresh Hbp Href.
     assert (Hpa_all : forall hh : CpuId,
@@ -1495,8 +1495,8 @@ Section WpSconfLock.
         cpu_locks_at h0 lks -∗
         sie_cap_gpr kt (<[Regidx rd := regval_into_reg c]> m) n b p -∗
         pc_is (add_vec_int pc 2) -∗
-        WP (Loop : expr riscv_lang))) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang))) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros pa h0 cpuv Hpacpu Hrd Hrdok Hfresh Hbp Href.
     assert (Hpa_all : forall hh : CpuId,
@@ -1698,8 +1698,8 @@ Section WpSconfLock.
       sie_cap_gpr kt m n b p -∗
       pc_is (add_vec_int pc (if cmp then 2 else 4)) -∗
       T' -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros pa Hpacpu Hsv Harm Hbp Hupd Href.
     (* the class, consumed at [rs1 / rs2] -- the one line the funnel change needs,
@@ -1876,8 +1876,8 @@ Section WpSconfLock.
       pc_is (add_vec_int pc 2) -∗
       locked γl h0 -∗
       cpu_locks_at h0 ({[s]} ∪ S) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros pa h0 Hpacpu Hmycpu Hfresh Hbp Href.
     (* the class, consumed at [rs1 / rs2] -- the one line the funnel change needs,
@@ -1946,8 +1946,8 @@ Section WpSconfLock.
       (* the rank WAS held -- so the caller knows the set strictly shrank,
          which is what pop_off's unwind premise needs. *)
       ⌜s ∈ S⌝ -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros pa h0 Hpacpu Hbp Href.
     (* the class, consumed at [rs1] -- the one line the funnel change needs,
@@ -2041,8 +2041,8 @@ Section WpSconfLock.
            prerequisite landing early, not incidental churn. <<< *)
         (⌜w = (mword_of_int 0 : mword 32)⌝ ∗ locked_pre γl h0 ∗ WpLock.lock_pay_won R
          ∨ ⌜neq_vec (sign_extend' 64 w) zero_reg = true⌝) -∗
-        WP (Loop : expr riscv_lang))) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang))) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros pa h0 Hpalk Hone Hstz Hrd Hrdok Href.
     assert (Hzeroone : amoswap_stored (rget m rs2) = WpLock.lkw_one)

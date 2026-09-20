@@ -175,8 +175,8 @@ Section YieldPostSched.
         pc_is (ret_pc (m !!! Regidx (mword_of_int 1 : mword 5))) -∗
         trap_csrs_ext KT1 eb -∗
         cpu_claim_ext eb pj -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros pj Hav Hj Hspd Hsp0 Hsp_msch Hs1_msch
            Hmsch18 Hmsch19 Hmsch20 Hmsch21 Hmsch22 Hmsch23 Hmsch24 Hmsch25 Hmsch26 Hmsch27 Hfresh.

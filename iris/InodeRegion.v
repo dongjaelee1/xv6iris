@@ -1011,7 +1011,7 @@ Qed.
    is what keeps that a one-token edit (durable-notes: keep a side
    condition in one named, Ltac-dischargeable predicate).  (ii) A raw
    [\/] does not even PARSE in those premise lists: a [_body] definition
-   is elaborated in [bi_scope] (that is what makes the trailing bare [WP e]
+   is elaborated in [bi_scope] (that is what makes the trailing bare [mWP e]
    legal, RiscvPtsto.v:1470), and [bi_scope] has [∨] for [bi_or] and no
    [\/] at all -- the failure surfaces as a syntax error at the body's
    final [WP], a hundred lines below the disjunction. *)

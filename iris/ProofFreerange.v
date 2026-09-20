@@ -131,8 +131,8 @@ Section ProofFreerange.
       cpu_own ncnt eb pcur b lks -∗
       pc_is ret_tgt -∗ ⌜ callee_saved m mr ⌝ -∗
       kalloc_avail γk onf -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros sp0 spr ret_tgt HK6 Hretm HMesp HMecs Hfresh.
     assert (Hspr6 : spr = pa_stk sp0 6).
@@ -631,8 +631,8 @@ Section ProofFreerange.
           cpu_own ncnt eb pcur b lks -∗
           pc_is ret_tgt -∗ ⌜ callee_saved m mr ⌝ -∗
           kalloc_avail γk (Some (length (p0 :: rest))) -∗
-          WP (Loop : expr riscv_lang)) -∗
-        WP (Loop : expr riscv_lang))%I
+          mWP (Loop : expr riscv_lang)) -∗
+        mWP (Loop : expr riscv_lang))%I
         with "[]" as "Hloop".
       { iIntros (fuel). iInduction fuel as [|fuel IHf] "IHf".
         { iIntros (CID0 M qs on) "%Hlen %Hinv Hcg Hcnt Hpc Hpages Havail Hc1 Hc2 Hc3 Hc4 Hc5 Hc6 Hcont".

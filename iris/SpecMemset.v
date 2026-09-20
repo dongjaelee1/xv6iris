@@ -75,8 +75,8 @@ Definition wp_memset_free_sconf_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{C
     pc_is ret_tgt -∗
     ([∗ list] j ∈ seq 0 len, (pa_add p j) ↦c[ktb] cbyte) -∗
     ⌜ callee_saved m0 mfin ⌝ -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Definition wp_memset_sconf_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx}
     (kt ktb : ktier) `{!KtierLe ktb kt} (m0 : regfile) (n : nat) (len : nat) (cval : mword 64) (olds : nat -> bv 8) (b : bool) (pcur : mword 64) :=
@@ -101,8 +101,8 @@ Definition wp_memset_sconf_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{CID : 
     pc_is ret_tgt -∗
     ([∗ list] j ∈ seq 0 len, (pa_add p j) ↦c[ktb] cbyte) -∗
     ⌜ callee_saved m0 mfin ⌝ -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type MEMSET.
   Parameter wp_memset_free_sconf :

@@ -27,33 +27,19 @@ From iris.base_logic.lib Require Import ghost_var invariants gen_heap ghost_map.
 Require Import SailStdpp.Operators_mwords.
 Require Import SailStdpp.Base SailStdpp.Values SailStdpp.MachineWord.
 Require Import RiscvPtsto.
-Require Import RiscvExtras.      (* [moi32_small]                           *)
-Require Import DinodeEnc.
-Require Import FsTree.           (* [file_bytes]                            *)
-Require Import FsBlocks.         (* [blk_splice] and its three lookups      *)
-Require Import FsBytesGamma.     (* [fs_gamma_L]                            *)
-Require Import BioDefs.          (* [BSIZE]                                 *)
-Require Import InodeDefs.        (* [file_byte]                             *)
-Require Import InodeInv.         (* [MAXFILE], [blk_holes_zero]             *)
+Require Import FsStateDefs.     (* [fs_gamma_L]                            *)
 Require Import IrefSlots.
 Require Import Xv6Cameras.
 (* the three binder classes the section list names, IMPORTED rather than
    inherited ([FsAbsMknodFire]'s header records why). *)
 Require Import FdSlots.          (* [fdslotG]                               *)
-Require Import UserOff.          (* [off_supply]: the fire's offset supplier,
-                                    parked or HELD ([uoff])                 *)
 Require Import FileInvDefs.      (* [fileG]: carries [icacheG] and [icfg]   *)
 Require Import ProcAvail.        (* [pavG]                                  *)
-Require Import FsStateEra.       (* [era_node], [era_node_rec]              *)
-Require Import InodeRegion.      (* [ftop_inv]/[ftop_body]/[ftop_clean]     *)
 Require Import Xv6G.
 Require Import SpecWritei.       (* [wi_dinode]                             *)
-Require Import SpecCopyin.       (* [ubytes_at]: the content seam           *)
 Require Import FsAbsDelta.   (* [abs_view_insert]                       *)
 Require Import SysWriteDefs.   (* [FW_MAX], [wri_pre], [wchunks], [wr_fail_why] *)
 Require Import UserPtTree.     (* [uptd] / [uva_rmapped]: the partial arm's reason *)
-Require Import FsAbsOpenFire.    (* [opf_era_file_row], [opf_era_type]      *)
-Require FsImg.                   (* [T_FILE_z] -- Require, NOT Import       *)
 Require Import AppInv.          (* [appN]/[appE]: the application's namespace, the commit mask (app-instances.md round A) *)
 Require Import FsAbsDefs.            (* LAST (FsAbs's own rule)                 *)
 Require Import CtxIdDefs.

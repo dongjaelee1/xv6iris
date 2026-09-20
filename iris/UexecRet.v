@@ -1927,7 +1927,7 @@ Section UexecRet.
           into "the array really is [uvis_fd W']". *)
        trapped_machine C pt Rut sz sc stv W' ∗ Rfd (uvis_fd W') ∗
        uexec_ret_F X sc W' -∗
-       WP (Loop : expr riscv_lang))%I.
+       mWP (Loop : expr riscv_lang))%I.
 
   Definition ukont_F (X : uvis -d> iPropO Σ) `{CID : CpuId} `{XI : CtxIdDefs.CurCtx}
       (C : ucfg) (pt : uptd) (Rfd : list fdstate -> iProp Σ) (Rut : uptd -> iProp Σ) (sz : Z)
@@ -2020,7 +2020,7 @@ Section UexecRet.
          uvb_F X (CID := h) (XI := xi) C pt Rfd Rut (uvis_sz W) (uvis_perm W) (uvis_fd W)
            (uvis_cwd W) (uvis_gen W) (uvis_ch W) (uvis_pid W) (uvis_lazy W)
            (uvis_M W) (tf_resume_gpr0 (uvis_tf W)) (tf_resume_pc (uvis_tf W)) -∗
-         WP (Loop : expr riscv_lang))%I.
+         mWP (Loop : expr riscv_lang))%I.
 
   Local Instance uslot_F_contractive : Contractive uslot_F.
   Proof using .
@@ -2080,7 +2080,7 @@ Section UexecRet.
        (* ...and the fill row, as [uslot_F] states it *)
        ⌜lz = false -> lazy_free (ud_um pt) szv⌝ -∗
        uvb (CID := h) (XI := xi) C pt Rfd Rut szv π fdv cw g cs pidv lz M m pc -∗
-       WP (Loop : expr riscv_lang))%I.
+       mWP (Loop : expr riscv_lang))%I.
 
   (* ...AND THE CONTINUATION WITH THE PAY FACT BESIDE IT, which is what a
      leaf actually hands the engine and what [UkRun.urun_close] builds.
@@ -2129,7 +2129,7 @@ Section UexecRet.
          (uvis_cwd W) (uvis_gen W) (uvis_ch W) (uvis_pid W) (uvis_lazy W)
          (uvis_M W)
          (tf_resume_gpr0 (uvis_tf W)) (tf_resume_pc (uvis_tf W)) -∗
-       WP (Loop : expr riscv_lang)).
+       mWP (Loop : expr riscv_lang)).
   Proof using . exact (fixpoint_unfold uslot_F W). Qed.
 
   (* A SLOT ABSORBS A GHOST UPDATE, because it ends in a [WP].  This is what
@@ -2263,7 +2263,7 @@ Section UexecRet.
        ⌜uvis_pid W' = pidv⌝ -∗ ⌜uvis_lazy W' = lz⌝ -∗
        trapped_machine C pt Rut sz sc stv W' ∗ Rfd (uvis_fd W') ∗
        uexec_ret sc W' -∗
-       WP (Loop : expr riscv_lang)).
+       mWP (Loop : expr riscv_lang)).
   Proof using . reflexivity. Qed.
 
   (* the arms, read at the fixpoint *)

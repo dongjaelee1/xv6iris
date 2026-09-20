@@ -88,8 +88,8 @@ Definition wp_namecmp_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ} `{GEN : 
     (* THE BOOLEAN, against the canonical name view *)
     ⌜(mr !!! Regidx (mword_of_int 10 : mword 5) = (mword_of_int 0 : mword 64))
      <-> bname 14 f = bname 14 g⌝ -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type NAMECMP.
   Parameter wp_namecmp_sconf :

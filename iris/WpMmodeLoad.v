@@ -306,8 +306,8 @@ Section WpLdGpr.
       pc_is (add_vec_int pc (if is_rvc then 2 else 4)) -∗
       gpr_file (<[Regidx rd := regval_into_reg v]> m) -∗
       phys_word_pointsto ea dq v -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros offset ea Hpmp Hstat Hrd.
     iIntros "Hmm Hpmpc Hpc Hfile Hinstr Hbw #Hpr Hcont".
@@ -442,8 +442,8 @@ Section MmodeLoadTor.
       gpr_file (<[Regidx rd := regval_into_reg v]> m) -∗
       ctx_phys_word_pointsto cur_ctx ea dq v -∗
       own_context cur_ctx -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros offset ea Hpmp Hstat Htor Hrd.
     iIntros "Hmm Hpmpc Hpaddr Hpc Hfile Hinstr Hbytes Hrun Hcont".
@@ -556,8 +556,8 @@ Section MmodeLoadTor.
       gpr_file (<[Regidx rd := regval_into_reg v]> m) -∗
       ctx_phys_word_pointsto cur_ctx ea dq v -∗
       own_context cur_ctx -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros imm ea Hpmp Hstat Htor Hrd.
     iIntros "Hmm Hpmpc Hpaddr Hpc Hfile Hinstr Hbytes Hrun Hcont".

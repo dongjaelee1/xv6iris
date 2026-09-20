@@ -57,7 +57,6 @@ From iris.proofmode Require Import proofmode.
 From iris.base_logic.lib Require Import mono_nat own ghost_var ghost_map invariants.
 From iris.algebra.lib Require Import mono_list.
 Require Import RiscvLang RiscvPtsto.
-Require Import ObsTrace.
 Require Import Xv6Cameras.         (* [bioslotG] *)
 Require Import Xv6G.               (* [xv6G] *)
 Require Import FdSlots.            (* [fdslotG] *)
@@ -66,7 +65,6 @@ Require Import ProcAvail.          (* [pavG] *)
 Require Import FsCrash.
 Require Import FsDurSnap.
 Require Import FsImgDisk.
-Require Import SystemAdequacy.
 Require Import FsBootParams.
 Require Import FsImgCheck.
 Require Import FsImg.
@@ -74,11 +72,6 @@ Require Import FsState.
 Require Import FsAbsDefs.
 Require Import FsInitPin.
 Require Import FsInitPinBoot.
-Require Import FsShPin.
-Require Import FsEchoPin.
-Require Import FsTree.
-Require Import FsAbsDelta.
-Require Import ConsoleInv.
 Require Import FsConsPin.
 Require Import FsCfgBoot.
 Require Import FsDurImg.
@@ -87,7 +80,6 @@ Require Import FsNode.             (* [fs_node] *)
 Require Import FileInvDefs.        (* [fileG] / [file_app]: the era's record *)
 Require Import AppCfg.
 Require Import AppInv.
-Require Import FsCfg.
 Require Import EchoDisc.           (* [line_ok] *)
 Require Import EchoOut.
 Require Import AppEcho.            (* [echo_taint], [echo_cl], [cons_state],

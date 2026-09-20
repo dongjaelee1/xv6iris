@@ -321,6 +321,17 @@ Definition wp_consoleintr_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fds
   ohist_ext hh hb ->
   (* ...and strictly newer than everything the kernel has LOGGED *)
   ohist_ext hg hb ->
+  (* ...AND IT IS THE VERY NEXT INPUT AFTER THE ONE THE LOG'S MARK NAMES
+     (relax-d2, lane K1).  The receive FIFO is drained in arrival order and
+     one byte's arm closes before the next byte is popped, so the kernel
+     knows WHICH keystroke it is handling: [hg]'s input number plus one.
+     uartintr supplies it out of the pop's two numbers and the payload's
+     own clause ([WpUart.uart_log_at] at the console port identifies the
+     log's mark with the popper's anchor); the arms spend it at the log's
+     OPEN and CLOSE, where it becomes [ConsLog]'s K1 clause -- "the log
+     holds every earlier input of this era". *)
+  trace_shape hb true ->
+  WpUart.k1_next hg hb ->
   length γs = NPROC ->
   (* cons.lock's and wakeup's transient noff increments stay in int range *)
   (Z.of_nat lvl + 2 < 2 ^ 31)%Z ->
@@ -426,8 +437,8 @@ Definition wp_consoleintr_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fds
       (* ...AND THE ARM'S HALF, BACK AT [None] (redesign R2): the close that
          ended this byte's log entry returned it. *)
       uart_arm γu (1/2) None -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type CONSOLEINTR.
   Parameter wp_consoleintr_sconf :

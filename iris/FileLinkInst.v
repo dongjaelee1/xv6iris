@@ -22,22 +22,15 @@ Require Import SailStdpp.Operators_mwords.
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values
         SailStdpp.MachineWord.
 Require Import RiscvLang.
-Require Import ObsTrace.
 Require Import LineWords.
 Require Import EchoDisc.
-Require Import ConsLog.
-Require Import EchoOutPure.
 Require Import FileState.
 Require Import FileDisc.
-Require Import FileOutPure.
 Require Import EchoOut.
-Require Import AppEcho.
 Require Import AppFile.
 Require Import FileOut.
 Require Import FileLinks.
 Require Import FileLinksLine.
-Require Import EchoLinks.
-Require Import EchoLinksLine.
 Require Import LinkRec.
 Require Import StageRec.   (* the cursor / stage record *)
 Require Import FileLinksAt.
@@ -46,7 +39,6 @@ Require Import FileLinksAtLine.
 Require Import FileLinksAtPro.
 Require Import RiscvPtsto.
 Require Import WpUart.
-Require Import CtxIdDefs.
 Local Open Scope list_scope.
 
 Section file_link_inst.

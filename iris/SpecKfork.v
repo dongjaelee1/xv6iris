@@ -427,8 +427,8 @@ Definition wp_kfork_sconf_body
       pc_is ret_tgt -∗
       kfork_post γf lvl eb pme b pid_p Up stsP csP Q Rc K mr
         (mr !!! Regidx (mword_of_int 10 : mword 5)) lks -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Require Import UserFd.   (* [ufdG] -- the class a minted user slot needs *)
 

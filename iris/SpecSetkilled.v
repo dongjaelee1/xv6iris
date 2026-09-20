@@ -162,8 +162,8 @@ Definition wp_setkilled_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslo
          persistent), or the process's own death payload, which the fault
          arm hands its kexit directly ([SpecKexit]'s left side at -1) *)
       (if self then ChildTok.kill_owed gn else app_taint) -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type SETKILLED.
   Parameter wp_setkilled_sconf :

@@ -165,8 +165,8 @@ Definition wp_uvmcopy_mem_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ} `{GE
            proc_ptm P' sznew
              (umem_write Mnew 0%Z (4096 * n)%nat
                 (fun a => Mold !!! Z.of_nat a))) ) -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type UVMCOPY.
   Parameter wp_uvmcopy_mem_sconf :

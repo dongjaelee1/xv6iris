@@ -66,10 +66,7 @@ Require Import FileInvDefs.
 Require Import UserFd.
 Require Import UserConsole.       (* [cons_cred] and its six families *)
 Require Import LineWords.         (* [wl_nl] *)
-Require Import UexecSG.
 Require Import UexecExecInst.     (* [uprogSG_free] -- /init's instance *)
-Require Import UkRun.
-Require Import UkInit.
 Require Import UInitKernel.       (* [init_cons_dance_all] and its two intros *)
 Require Import AppCfg AppInv.
 Require Import FsCfg.

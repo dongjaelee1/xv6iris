@@ -3172,9 +3172,9 @@ Section SmodeCorePt.
                     (pa_add (Interface.ReadReq.pa req) j) < ram_hi)%Z) ->
     gen_cert -∗
     ▷ (∀ w : bv (8 * n),
-         WP (HartE gen_id cpu_id (C (hread_resume (bv_unsigned w) m))
+         mWP (HartE gen_id cpu_id (C (hread_resume (bv_unsigned w) m))
              : expr riscv_lang)) -∗
-    WP (HartE gen_id cpu_id (C m) : expr riscv_lang).
+    mWP (HartE gen_id cpu_id (C m) : expr riscv_lang).
   Proof using .
     iIntros (HC Hproj Hdev Hif Hram) "#Hcert H".
     destruct (hread_req_at_inv _ _ _ Hproj) as (K & Hm & Hres).
@@ -4752,8 +4752,8 @@ Section SmodeCorePt.
              (wrap_post rs2 mi)⌝ -∗
          hreg_frame rs3 s_Drw -∗
          hreg_frame_ro Df rs3 s_Dro -∗ Psi rs2 -∗
-         WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+         mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HQhart HQmi.
     iIntros "#Hcert Hfrag Hrw Hro Hbody Hcont".
@@ -5204,8 +5204,8 @@ Section SmodeCorePt.
              (wrap_post rs2 mi)⌝ -∗
          hreg_frame rs3 s_Drwb -∗
          hreg_frame_ro Df rs3 s_Dro -∗ Psi rs2 -∗
-         WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+         mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HQhart HQmi.
     iIntros "#Hcert Hfrag Hrw Hro Hbody Hcont".
@@ -5720,8 +5720,8 @@ Section SmodeCorePt.
          satp ↦ᵣ satp1 -∗ pmpcfg_n ↦ᵣ pcfg1 -∗ pmpaddr_n ↦ᵣ paddr1 -∗
          tlb ↦ᵣ tv1 -∗ Res tv1 -∗
          pc_is npc -∗ Rl npc ms1 mdv1 -∗
-         WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+         mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HSIE HMPRV HSXL Hmm HPBMTE Hmenvval Hpmp.
     pose proof Hpmp as (HA & Hord & HX & HW & HR & Hcov).
@@ -5916,8 +5916,8 @@ Section SmodeCorePt.
          satp ↦ᵣ satp0 -∗ pmpcfg_n ↦ᵣ pcfg -∗ pmpaddr_n ↦ᵣ paddr -∗
          tlb ↦ᵣ tv1 -∗ Res tv1 -∗
          pc_is npc -∗ Rl npc -∗
-         WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+         mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hpmp.
     iIntros "Hsm Hsatp Hpcfg Hpaddr Htlbc HRes Hpc Hinstr Htr Hex Hcont".
@@ -6099,8 +6099,8 @@ Section SmodeCorePt.
          menvcfg ↦ᵣ{ dq } menvcfg0 -∗
          tlb_res_pt root_ppn -∗
          pc_is npc -∗ Rl npc ms1 mdv1 -∗
-         WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+         mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HSIE HMPRV HSXL Hmm HPBMTE Hmenvval.
     iIntros "#Hhw #Hminv Hhs Hpriv Hmstatus Hmiec Hmdlc Hmenvc Htlbres

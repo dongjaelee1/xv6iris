@@ -144,8 +144,8 @@ Section UexecWp.
           in hand is good at whatever hart-and-thread runs the process
           next. *)
        ▷ (user_trap_frame (CID := h) (XI := xi) C pt Rut ∗ X -∗
-          WP (Loop : expr riscv_lang)) -∗
-       WP (Loop : expr riscv_lang))%I.
+          mWP (Loop : expr riscv_lang)) -∗
+       mWP (Loop : expr riscv_lang))%I.
 
   Local Instance uexec_F_contractive : Contractive uexec_F.
   Proof using . rewrite /uexec_F. solve_contractive. Qed.

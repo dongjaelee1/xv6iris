@@ -444,8 +444,8 @@ Section WfiWait.
     (∀ rs3 : regstate, ⌜wfi_wake rs rs3⌝ -∗
        hreg_frame rs3 wfi_Drw -∗
        hreg_frame_ro (s_Df (DfracOwn 1)) rs3 wfi_Dro -∗
-       resv_any cpu_id -∗ Psi -∗ WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       resv_any cpu_id -∗ Psi -∗ mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using XI.
     iIntros (Hhart) "#Hcert Hany Hrw Hro HPsi Hcont".
     iRevert "Hany Hrw Hro HPsi Hcont". iRevert (rs Hhart).
@@ -1051,8 +1051,8 @@ Section WfiLeaf.
     ( ▷ ( sie_cap_gpr kt m n b p -∗
           intr_count 0 false -∗
           pc_is (add_vec_int pc 4) -∗
-          WP (Loop : expr riscv_lang))) -∗
-    WP (Loop : expr riscv_lang).
+          mWP (Loop : expr riscv_lang))) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros "#Hkpt Hcg Hcnt Hpc #Hinstr Hcont".
     (* ---- the bundles, into the 25 cells ---- *)

@@ -203,8 +203,8 @@ Section UkShParseExec.
              = mword_of_int (Z.of_nat (length done + length rest)) ⌝ -∗
          ⌜ mc' !!! Regidx s1_idx = mword_of_int p ⌝ -∗
          urun N h' mc' (mword_of_int 0x662) (24 + nn) -∗
-         WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+         mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intro rest.
     induction rest as [| tk rest IH ];
@@ -1113,8 +1113,8 @@ Section UkShParseExec.
            Pex -∗
            urun N h' m' (ret_pc (m !!! Regidx ra_idx))
              (16 + (24 + nn)) -∗
-           WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+           mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof.
     intros Ha0 Ha1 Hoffle Hw0 Hnosym Htoks Htlen Hs0 Hs64 Hps0 Hps8 Hpssz.
     iIntros "#Hcode #Hro Hcur Hstr Hws Hsy HM #Hpx Hpay Hrun Hcont".

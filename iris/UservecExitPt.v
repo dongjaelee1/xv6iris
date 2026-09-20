@@ -223,8 +223,8 @@ Section UservecExitPt.
       own_context XI -∗
       pc_is (ret_pc (m !!! Regidx (mword_of_int 5))) -∗
       gpr_file (<[Regidx (mword_of_int 1) := regval_into_reg (uva 0x9c)]> m) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HSIE HMPRV HSXL HTVM Hmm HPBMTE Hmenvval0 Hwf Ht1 HkMode Hkasid Hkppn.
     iIntros "#Hhw #Hinv Hhs Hpriv Hms Hmie Hmdl Hmenv #Hclaim Hutlb #Hkinv

@@ -71,10 +71,10 @@ it.  Restore it when sbrk gives it a source.
 Config, page table, residue, break, image and permission map are all
 INSIDE, existentially.  None of them appears in a leaf statement.
 
-The hart `h` is explicit because `WP (Loop)` is itself hart-indexed and an
+The hart `h` is explicit because `mWP (Loop)` is itself hart-indexed and an
 interrupt may hand the process back on a different hart, so a
 continuation's obligation really is "safe at whatever hart you resume me
-on" — every leaf's successor is `∀ h', urun … h' m' pc' -∗ WP Loop`.
+on" — every leaf's successor is `∀ h', urun … h' m' pc' -∗ mWP Loop`.
 
 **`ukc` is dead.**  It quantified over the ambient because a leaf consumed
 a bundle at ONE ambient but demanded a continuation good at EVERY one; the

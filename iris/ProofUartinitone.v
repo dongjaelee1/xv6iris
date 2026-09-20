@@ -109,6 +109,20 @@ Section ProofUartinitone.
 
   (* "the tx FIFO is empty" -- from the token (the accepted trace is exactly
      [l]) plus the carried lower bound (all of [l] has been transmitted). *)
+  (* ...AND, WHEN NOTHING HAS BEEN ACCEPTED, THE WIRE IS STILL CLEAN
+     (relax-d2, lane K1): [uart_acc u = u_out u ++ u_tx u] is [[]], so the
+     transmitter has finished with nothing.  It is what turns the FCR
+     clear's report into [WpUart.uart_flushed]: no console output preceded
+     the bytes it discards. *)
+  Lemma ui_out_nil (gd : uart_names) (u : uart_state) (l : list (bv 8)) :
+    l = [] -> uart_ghosts gd u -∗ uart_tx_own gd l -∗ ⌜ u_out u = [] ⌝.
+  Proof using .
+    intros ->. iIntros "(_ & _ & Ht & _) Hown".
+    iDestruct (uart_tx_own_agree with "Ht Hown") as %Hacc.
+    iPureIntro. rewrite /uart_acc in Hacc.
+    by destruct (proj1 (app_nil (u_out u) (u_tx u)) Hacc) as [-> _].
+  Qed.
+
   Lemma ui_tx_empty (gd : uart_names) (u : uart_state) (l : list (bv 8)) :
     uart_ghosts gd u -∗ uart_tx_own gd l -∗ uart_out_lb gd l -∗ ⌜ u_tx u = [] ⌝.
   Proof using .
@@ -142,7 +156,7 @@ Section ProofUartinitone.
     : wp_uartinitone_sconf_body i γd nm nm_addr m K l b0 k hl p.
   Proof using .
     cbv beta delta [wp_uartinitone_sconf_body].
-    intros pcE ret_tgt HK Ha0 Ha1.
+    intros pcE ret_tgt HK Ha0 Ha1 Hlnil.
     set (sp0 := m !!! Regidx csp_rs1).
     set (spr := add_vec sp0 (sign_extend' 64 (sign_extend' 12 (mword_of_int 48 : mword 6)))).
     iIntros "Hcg #Htext Hpc #Hbase #Hrx #Hnm #Huinv Htx #Hlb #Hsent Htok Hdlab Hraw Hcont".
@@ -273,7 +287,8 @@ Section ProofUartinitone.
         [ iApply (uart_ghosts_stable γd uu uu' Ha Ho Hdb with "Hg") |].
       iSplitL "Hcol";
         [ iApply (uart_colE_stable i γd uu uu' Hrxe Hlbe
-             ltac:(exact (uart_write_wire _ _ _ _ Hw)) Ho Ha with "Hcol")
+             ltac:(exact (uart_write_wire _ _ _ _ Hw)) Ho Ha
+             ltac:(exact (uart_write_recv _ _ _ _ Hw)) with "Hcol")
         | iFrame "Hin Ht Hd" ]. }
     iApply wp_next_off_intro.
     iIntros "Hcg Hpc [Htx Hdlab]".
@@ -340,7 +355,8 @@ Section ProofUartinitone.
       iModIntro. iSplitL "Hg'"; [ iExact "Hg'" |].
       iSplitL "Hcol";
         [ iApply (uart_colE_stable i γd uu uu' Hrxe Hlbe
-             ltac:(exact (uart_write_wire _ _ _ _ Hw)) Ho Ha with "Hcol")
+             ltac:(exact (uart_write_wire _ _ _ _ Hw)) Ho Ha
+             ltac:(exact (uart_write_recv _ _ _ _ Hw)) with "Hcol")
         | iFrame "Hin Ht Hd'" ]. }
     iApply wp_next_off_intro.
     iIntros "Hcg Hpc [Htx Hdlab]".
@@ -405,7 +421,8 @@ Section ProofUartinitone.
         [ iApply (uart_ghosts_stable γd uu uu' Ha Ho Hdb with "Hg") |].
       iSplitL "Hcol";
         [ iApply (uart_colE_stable i γd uu uu' Hrxe Hlbe
-             ltac:(exact (uart_write_wire _ _ _ _ Hw)) Ho Ha with "Hcol")
+             ltac:(exact (uart_write_wire _ _ _ _ Hw)) Ho Ha
+             ltac:(exact (uart_write_recv _ _ _ _ Hw)) with "Hcol")
         | iFrame "Hin Ht Hd" ]. }
     iApply wp_next_off_intro.
     iIntros "Hcg Hpc [Htx Hdlab]".
@@ -452,7 +469,8 @@ Section ProofUartinitone.
         [ iApply (uart_ghosts_stable γd uu uu' Ha Ho Hdb with "Hg") |].
       iSplitL "Hcol";
         [ iApply (uart_colE_stable i γd uu uu' Hrxe Hlbe
-             ltac:(exact (uart_write_wire _ _ _ _ Hw)) Ho Ha with "Hcol")
+             ltac:(exact (uart_write_wire _ _ _ _ Hw)) Ho Ha
+             ltac:(exact (uart_write_recv _ _ _ _ Hw)) with "Hcol")
         | iFrame "Hin Ht Hd" ]. }
     iApply wp_next_off_intro.
     iIntros "Hcg Hpc [Htx Hdlab]".
@@ -504,7 +522,8 @@ Section ProofUartinitone.
       iModIntro. iSplitL "Hg'"; [ iExact "Hg'" |].
       iSplitL "Hcol";
         [ iApply (uart_colE_stable i γd uu uu' Hrxe Hlbe
-             ltac:(exact (uart_write_wire _ _ _ _ Hw)) Ho Ha with "Hcol")
+             ltac:(exact (uart_write_wire _ _ _ _ Hw)) Ho Ha
+             ltac:(exact (uart_write_recv _ _ _ _ Hw)) with "Hcol")
         | iFrame "Hin Ht Hd'" ]. }
     iApply wp_next_off_intro.
     iIntros "Hcg Hpc [Htx Hdlab]".
@@ -551,7 +570,7 @@ Section ProofUartinitone.
                  uart_rx_tok γd k hl)%I
               (uart_tx_own γd l ∗ uart_dlab_is γd (DfracOwn (1/2)) false ∗
                  ∃ (k' : nat) (hl' : option (list mobs)),
-                   uart_rx_tok γd k' hl')%I
+                   uart_rx_tok γd k' hl' ∗ ⌜hl' = hl \/ uart_flushed i hl'⌝)%I
               false p
               ltac:(unfold uart_size; lia)
               ltac:(rgne; rewrite HL9a5; destruct i; vm_compute; reflexivity)
@@ -571,16 +590,27 @@ Section ProofUartinitone.
       | u_rx uu' = (if ?cl then [] else _) => destruct cl eqn:Hclr
       end.
       + iMod (uart_colE_flush i γd uu uu' k hl Hrxe Hlbe
-                ltac:(exact (uart_write_wire _ _ _ _ Hw)) Ho Ha with "Hcol Htok")
+                ltac:(exact (uart_write_wire _ _ _ _ Hw)) Ho Ha
+                ltac:(exact (uart_write_recv _ _ _ _ Hw)) with "Hcol Htok")
           as "[Hcol Htok]".
+        (* WHAT THE CLEAR DISCARDED (relax-d2, lane K1): the column reports
+           its top's era and the wire as it stood there, and at uartinit the
+           transmitter has finished with NOTHING -- so no console output
+           preceded the bytes this clear throws away. *)
+        iDestruct (ui_out_nil γd uu l Hlnil with "Hg Ht") as %Hout0.
         iModIntro. iSplitL "Hg";
           [ iApply (uart_ghosts_stable γd uu uu' Ha Ho Hdb with "Hg") |].
-        iFrame "Hcol Hin Ht Hd Htok".
+        iDestruct "Htok" as (k' hl') "(Htok & %Hb' & %Hw')".
+        iFrame "Hcol Hin Ht Hd". iExists k', hl'. iFrame "Htok".
+        iPureIntro. right. apply (uart_flushed_intro i hl' Hb').
+        rewrite Hout0 in Hw'. by apply prefix_nil_inv in Hw'.
       + iDestruct (uart_colE_stable i γd uu uu' Hrxe Hlbe
-             ltac:(exact (uart_write_wire _ _ _ _ Hw)) Ho Ha with "Hcol") as "Hcol".
+             ltac:(exact (uart_write_wire _ _ _ _ Hw)) Ho Ha
+             ltac:(exact (uart_write_recv _ _ _ _ Hw)) with "Hcol") as "Hcol".
         iModIntro. iSplitL "Hg";
           [ iApply (uart_ghosts_stable γd uu uu' Ha Ho Hdb with "Hg") |].
-        iFrame "Hcol Hin Ht Hd". iExists k, hl. iExact "Htok". }
+        iFrame "Hcol Hin Ht Hd". iExists k, hl. iFrame "Htok".
+        iPureIntro. by left. }
     iApply wp_next_off_intro.
     iIntros "Hcg Hpc (Htx & Hdlab & Htok)".
     assert (Hpp34 : add_vec_int (mword_of_int (UIO + 0x30) : mword 64) 4 = mword_of_int (UIO + 0x34)) by (apply bv_eq; vm_compute; reflexivity).
@@ -670,7 +700,8 @@ Section ProofUartinitone.
         [ iApply (uart_ghosts_stable γd uu uu' Ha Ho Hdb with "Hg") |].
       iSplitL "Hcol";
         [ iApply (uart_colE_stable i γd uu uu' Hrxe Hlbe
-             ltac:(exact (uart_write_wire _ _ _ _ Hw)) Ho Ha with "Hcol")
+             ltac:(exact (uart_write_wire _ _ _ _ Hw)) Ho Ha
+             ltac:(exact (uart_write_recv _ _ _ _ Hw)) with "Hcol")
         | iFrame "Hin Ht Hd" ]. }
     iApply wp_next_off_intro.
     iIntros "Hcg Hpc [Htx Hdlab]".

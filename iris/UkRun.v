@@ -1583,7 +1583,7 @@ Section UkRun.
        run's own reading (design/pipe.md, "The exit path").  PERSISTENT
        like the two above it, so a leaf hands back the copy it read. *)
     urun_rows N fdv -∗
-    (∀ h : CpuId, urun N h m pc avail -∗ WP (Loop : expr riscv_lang)) -∗
+    (∀ h : CpuId, urun N h m pc avail -∗ mWP (Loop : expr riscv_lang)) -∗
     ukcq (ukn_pay N) pm M sz fdv cw gn cs pidv m pc.
   Proof using .
     iIntros "Hheap Hstk Hufd Hcwd Hch #Hmy #Hdep #Hnpx Hcont".
@@ -1627,7 +1627,7 @@ Section UkRun.
     udep -∗
     urun_rows N fdv -∗
     (∀ h : CpuId, urun N h (<[Regidx rd := v]> m) pc' avail -∗
-                  WP (Loop : expr riscv_lang)) -∗
+                  mWP (Loop : expr riscv_lang)) -∗
     ukcq (ukn_pay N) pm M sz fdv cw gn cs pidv (<[Regidx rd := v]> m) pc'.
   Proof using .
     intros Hns. iIntros "Hheap Hstk Hufd Hcwd Hch #Hmy #Hdep #Hnpx Hcont".
@@ -1671,7 +1671,7 @@ Section UkRun.
        that crosses here is the taint and the key's own pay fact. *)
     □ (∀ W : uvis,
          T -∗ my_pay (uvis_gen W) (ukn_pay N) -∗ uslot W) -∗
-    T -∗ urun N h m pc avail -∗ WP (Loop : expr riscv_lang).
+    T -∗ urun N h m pc avail -∗ mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hal. iIntros "#Hgen HT Hrun".
     iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv)
@@ -2112,7 +2112,7 @@ Section UkRun.
           ubyte (ukn_d N) k b) -∗
        urun N h (tf_resume_gpr0 (uvis_tf W))
          (tf_resume_pc (uvis_tf W)) avail -∗
-       WP (Loop : expr riscv_lang))
+       mWP (Loop : expr riscv_lang))
     -∗ uslot W.
   Proof using .
     intros Hal8 Hroom Hstk Hfdlen Hstop Hlzf.
@@ -2309,7 +2309,7 @@ Section UkRun.
        upid (ukn_pid N) (bv_unsigned (uvis_pid W)) -∗
        urun N h (tf_resume_gpr0 (uvis_tf W)) (tf_resume_pc (uvis_tf W))
          avail -∗
-       WP (Loop : expr riscv_lang))
+       mWP (Loop : expr riscv_lang))
     -∗ uslot W.
   Proof using .
     intros Hal8 Hroom Hstk Hfdlen Hstop Hlzf.
@@ -2494,7 +2494,7 @@ Section UkRun.
           ubyteq (ukn_d N) DfracDiscarded k b) -∗
        urun N h (tf_resume_gpr0 (uvis_tf W)) (tf_resume_pc (uvis_tf W))
          avail -∗
-       WP (Loop : expr riscv_lang))
+       mWP (Loop : expr riscv_lang))
     -∗ uslot W.
   Proof using .
     intros Hal8 Hroom Hstk Hfdlen Hstop Hlzf.

@@ -382,7 +382,7 @@ Section UkShCatDiag.
     Cr -∗
     (UserFd.ustd (ukn_fd N) l -∗ Cd -∗ ukn_pay N (-1)) -∗
     urun N h m (mword_of_int 0xda) (UkShDiag.ush_Dg + n) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hfd2 Hal Hc2 Hxlen Hxb Hdglk Hw1 Harg Hw2.
     iIntros "#Hlaw #Hcode #Hro #Hw [%Hxr #Hxs] Hstd Hc Hpay Hrun".
@@ -546,7 +546,7 @@ Section UkShCatDiag.
     Cr -∗
     (UserFd.ustd (ukn_fd N) l -∗ Cd -∗ ukn_pay N (-1)) -∗
     urun N h m (mword_of_int 0xda) (UkShDiag.ush_Dg + n) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hfd2 Hal Hxlen Hxb.
     iIntros "#Hlaw #Hcode #Hro #Hw #Hxs Hstd Hc Hpay Hrun".
@@ -617,7 +617,7 @@ Section UkShCatArm.
         Cr -∗
         urun N h m (mword_of_int ShSyms.runcmd)
           (6 + (2 + (UkShDiag.ush_Dg + n))) -∗
-        WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang).
 
   #[local] Typeclasses Opaque wp_kshr_exec_cat_at.
 

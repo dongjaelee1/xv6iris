@@ -42,7 +42,6 @@ Require Import FileInvDefs.      (* [fileG], and its [appcfg] field [file_app] *
 Require Import FsCfg.            (* [fsc_fs] *)
 Require Import PathElems.        (* [path_elems] *)
 Require Import FsTree.           (* [fname] *)
-Require Import FsImg.            (* [ROOTINO] *)
 Require Import FsImgCheck.       (* [fname_f] *)
 Require Import FsBlocks.         (* [fs_names] *)
 Require Import FsBytesGamma.     (* [fs_gamma_L] *)
@@ -69,7 +68,6 @@ Require Import BioDefs.          (* [BSIZE] *)
 Require Import UmodeArith.       (* [moi_small] *)
 Require Import FsImg.            (* re-IMPORTED last: the three leaves above
                                     carry a [ROOTINO] of their own *)
-Require Import ConsoleInv.
 Require Import FsConsPin.        (* [cons_absent], [cons_present_at] *)
 Require Import FileFsPure.
 Require Import EchoDisc.         (* [line_ok] *)
@@ -77,7 +75,6 @@ Require Import EchoOut.          (* [echoOutG] *)
 Require Import AppEcho.          (* [echo_taint] at the projection *)
 Require Import AppFile.          (* the claim, the deed, the two phases *)
 Require Import FileDeltas.       (* the pure legs *)
-Require Import FsAbs.            (* [γtop] (FsAbs's own rule: LAST but one) *)
 Require Import FsAbsDefs.        (* [aview] / [anode] / [arow_at] *)
 Import Defs.
 

@@ -216,8 +216,8 @@ Definition wp_sys_close_sconf_body
       (∃ on', fileclose_pipe_env fn on' n) -∗
       fileclose_fs_env_nopid fn n eb p -∗
       iref_slot -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type SYSCLOSE.
   Parameter wp_sys_close_sconf :

@@ -1104,8 +1104,8 @@ Section UkShParse.
          urun N h'
            (<[Regidx rd := regval_into_reg (zero_extend' 64 b0)]> m)
            (add_vec_int pc 4) avail -∗
-         WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+         mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hns Ha Hrd. iIntros "#Hi Hb Hrun Hcont".
     destruct tx.
@@ -1193,8 +1193,8 @@ Section UkShParse.
     (∀ (h' : CpuId) (v : mword 64),
        urun N h' (<[Regidx s0_idx := regval_into_reg v]> m)
          (mword_of_int (p + 2)) nn -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros "#Hi Hrun Hcont".
     iApply (wp_uk_caddi4spn N h m (mword_of_int p)
@@ -1235,8 +1235,8 @@ Section UkShParse.
        uword γd (uint (m !!! Regidx csp_rs1) - 8) (m !!! Regidx ra_idx) -∗
        uword γd (uint (m !!! Regidx csp_rs1) - 16) (m !!! Regidx s0_idx) -∗
        urun N h' m' (mword_of_int p4) nn -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hp1 Hp2 Hp3 Hp4. subst p1 p2 p3 p4.
     iIntros "#Hi0 #Hi1 #Hi2 #Hi3 Hrun Hcont".
@@ -1342,8 +1342,8 @@ Section UkShParse.
        ⌜ m' !!! Regidx csp_rs1 = sp0 ⌝ -∗
        ⌜ m' !!! Regidx s0_idx = vs0 ⌝ -∗
        urun N h' m' (ret_pc vra) (2 + nn) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hq1 Hq2 Hq3 Hal8 Hlo Hsp. subst q1 q2 q3.
     iIntros "#Hi0 #Hi1 #Hi2 #Hi3 Hw8 Hw0 Hrun Hcont".
@@ -1461,8 +1461,8 @@ Section UkShParse.
          ⌜ mc' !!! Regidx a0_idx
              = mword_of_int (ushp_chr s (len - j) j f c) ⌝ -∗
          urun N h' mc' (mword_of_int 0xa9e) nn -∗
-         WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+         mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros r. induction r as [| r IH ];
       intros j h mc Hr Hj Hs0 Hs64 Ha0 Ha5 Ha1;
@@ -1688,8 +1688,8 @@ Section UkShParse.
          ⌜ m' !!! Regidx a0_idx
              = mword_of_int (ushp_chr s len 0%nat f c) ⌝ -∗
          urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (2 + nn) -∗
-         WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+         mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Ha0 Ha1 Hs0 Hs64. iIntros "#Hcode Hstr Hrun Hcont".
     rewrite shpp_strchr.
@@ -1986,8 +1986,8 @@ Section UkShParse.
              mc' !!! Regidx q = mc !!! Regidx q ⌝ -∗
          ⌜ mc' !!! Regidx a3_idx = mword_of_int (s + Z.of_nat len) ⌝ -∗
          urun N h' mc' (mword_of_int 0xa4c) nn -∗
-         WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+         mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros r. induction r as [| r IH ];
       intros k h mc Hr Hk Hs0 Hs64 Ha5;
@@ -2166,8 +2166,8 @@ Section UkShParse.
          ⌜ ucallee_saved m m' ⌝ -∗
          ⌜ m' !!! Regidx a0_idx = mword_of_int (Z.of_nat len) ⌝ -∗
          urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (2 + nn) -∗
-         WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+         mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Ha0 Hs0 Hs64. iIntros "#Hcode Hstr Hrun Hcont".
     rewrite shpp_strlen.
@@ -2630,8 +2630,8 @@ Section UkShParse.
     (([∗ list] i ↦ _ ∈ rs, uword γd (ad i) (vals i)) -∗
        ∀ h' : CpuId,
          urun N h' m (mword_of_int (pcs (length rs))) nn -∗
-         WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+         mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     induction rs as [| ru rs IH ];
       intros pcs ad vals h m Hsp Hpc Hoff; iIntros "#Hi Hw Hrun Hcont".
@@ -2796,8 +2796,8 @@ Section UkShParse.
        ∀ h' : CpuId,
          urun N h' (ushp_spillback rs vals m)
            (mword_of_int (pcs (length rs))) nn -∗
-         WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+         mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     induction rs as [| ru rs IH ];
       intros pcs ad vals h m Hsp Hpc Hoff; iIntros "#Hi Hw Hrun Hcont".
@@ -2892,8 +2892,8 @@ Section UkShParse.
                     (add_vec_int (m !!! Regidx csp_rs1)
                        (- (8 * Z.of_nat k)))]> m))
          (mword_of_int (pcs (length rs) + 2)) nn -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Ek Himm Hp0 Hpc Hoff.
     iIntros "#Hi0 #Hisp #Hifp Hrun Hcont".
@@ -2983,8 +2983,8 @@ Section UkShParse.
        urun N h'
          (<[Regidx csp_rs1 := regval_into_reg sp0]> (ushp_spillback rs vals me))
          (ret_pc (vals 0%nat)) (k + nn) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Ek Hal8 Hlo Hhi Hsplu Hsp Himm Hpc Hoff Hra0 Hratl.
     iIntros "#Hcode #Hild #Hipop #Hijr Hsl Hloc Hrun Hcont".
@@ -3569,8 +3569,8 @@ Section UkShParse.
                ⌜ 0 < p /\ p mod 16 = 0 /\ p + nbytes < 2 ^ 38 ⌝ ∗
                ubytes γd p (Z.to_nat nbytes) g ∗ UM')) -∗
          urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (10 + avail) -∗
-         WP (Loop : expr riscv_lang)) -∗
-      WP (Loop : expr riscv_lang).
+         mWP (Loop : expr riscv_lang)) -∗
+      mWP (Loop : expr riscv_lang).
 
   (* ===================================================================== *)
   (* THE SAME CONTRACT AT A BOUNDED REQUEST (lane SH-MALLOC-3).             *)
@@ -3608,8 +3608,8 @@ Section UkShParse.
                ⌜ 0 < p /\ p mod 16 = 0 /\ p + nbytes < 2 ^ 38 ⌝ ∗
                ubytes γd p (Z.to_nat nbytes) g ∗ UM')) -∗
          urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (10 + avail) -∗
-         WP (Loop : expr riscv_lang)) -∗
-      WP (Loop : expr riscv_lang).
+         mWP (Loop : expr riscv_lang)) -∗
+      mWP (Loop : expr riscv_lang).
 
   (* the landed type IS the bounded one at the allocator's own ceiling *)
   Lemma ushp_malloc_ty_le_top (UM UM' : iProp Σ) :

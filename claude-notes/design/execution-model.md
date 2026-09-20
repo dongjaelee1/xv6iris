@@ -20,7 +20,7 @@
 ## The minstret invariant
 
 - `minstret` is not threaded through pre/postconditions — every WP takes the duplicable persistent `minstret_inv` (MinstretInv.v), and a leaf obtains the two cells transiently by opening the invariant across its step. Top boot theorems take `minstret_inv`; a future cells-in wrapper can `minstret_inv_alloc`.
-- **All WP-Loop masks are pinned to `⊤`** (`WP Loop` is the top level): there are NO `↑minstretN ⊆ E`/`↑lockN ⊆ E`/`↑clockN ⊆ E` side premises anywhere — `iInv` side conditions discharge automatically at ⊤. Leaf σ-callbacks run at `⊤ ∖ ↑minstretN`.
+- **All WP-Loop masks are pinned to `⊤`** (`mWP Loop` is the top level): there are NO `↑minstretN ⊆ E`/`↑lockN ⊆ E`/`↑clockN ⊆ E` side premises anywhere — `iInv` side conditions discharge automatically at ⊤. Leaf σ-callbacks run at `⊤ ∖ ↑minstretN`.
 - Namespaces are deliberately disjoint (`minstretN` vs `lockN = nroot.@"xv6spinlock"` vs `clockN`), because a leaf's σ-callback runs at mask `⊤ ∖ ↑minstretN` and must still be free to open the lock and clock invariants.
 
 ## Registers & the register file

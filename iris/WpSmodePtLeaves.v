@@ -102,8 +102,8 @@ Section WpSmodePtGprEngine.
       sr_inv R -∗
       pc_is (add_vec_int pc 2) -∗
       gpr_file (<[Regidx rd := regval_into_reg wval]> m) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (HSIE HMPRV HSXL Hmm HPBMTE Hmenvval0)
       "Hex #Hhw #Hminv Hhs Hpriv Hms Hmie Hmdl Hmenv Hinv Hpc Hfile Hinstr
@@ -399,8 +399,8 @@ Section WpSmodePtLoad.
       gpr_file (<[Regidx rd := regval_into_reg v]> m) -∗
       TsoCtx.own_context XI -∗
       pa ↦₈[kt']{ dqm } v -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros ea a8 pa Hrd HSIE HMPRV HSXL Hmm HMXR Hpmm HPBMTE Hmenvval0.
     (* the three [let]s collapse: the engine spells the address as the term,
@@ -665,8 +665,8 @@ Section WpSmodePtLoad.
       gpr_file (<[Regidx rd := regval_into_reg v]> m) -∗
       TsoCtx.own_context XI -∗
       pa ↦₈{ dqm } v -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros ea a8 pa Hrd HSIE HMPRV HSXL Hmm HMXR Hpmm HPBMTE Hmenvval0.
     iPoseProof (sr_ktier_wit_KT0 R) as "#Hwit".
@@ -938,8 +938,8 @@ Section WpSmodePtStore.
       gpr_file m -∗
       TsoCtx.own_context XI -∗
       pa ↦₈[kt'] (m !!! Regidx rs2) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros ea a8 pa HSIE HMPRV HSXL Hmm HMXR Hpmm HPBMTE Hmenvval0.
     unfold pa, a8, ea in *. clear pa a8 ea.
@@ -1182,8 +1182,8 @@ Section WpSmodePtStore.
       gpr_file m -∗
       TsoCtx.own_context XI -∗
       pa ↦₈ (m !!! Regidx rs2) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros ea a8 pa HSIE HMPRV HSXL Hmm HMXR Hpmm HPBMTE Hmenvval0.
     iPoseProof (sr_ktier_wit_KT0 R) as "#Hwit".
@@ -1239,8 +1239,8 @@ Section WpSmodePtGprGamma.
       sr_inv R -∗
       pc_is (add_vec_int pc 2) -∗
       gpr_file (<[Regidx rd := regval_into_reg wval]> m) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros "Hex Hsm Hinv Hpc Hfile Hinstr Hcont".
     (* UNBUNDLE rather than ride a [smode_config]-shaped wrapper: such a
@@ -1283,8 +1283,8 @@ Section WpSmodePtGprGamma.
       pc_is (add_vec_int pc 2) -∗
       gpr_file (<[Regidx csp_rs1 := regval_into_reg
         (add_vec (m !!! Regidx csp_rs1) (sign_extend' 64 (caddi16sp_imm imm6)))]> m) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros "Hsm Hinv Hpc Hfile Hinstr Hcont".
     assert (Hsp : uint csp_rs1 <> 0) by (vm_compute; discriminate).
@@ -1317,8 +1317,8 @@ Section WpSmodePtGprGamma.
       pc_is (add_vec_int pc 2) -∗
       gpr_file (<[Regidx csp_rs1 := regval_into_reg
         (add_vec (m !!! Regidx csp_rs1) (sign_extend' 64 (caddi16sp_imm imm6)))]> m) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
     Proof using .
     exact (wp_caddi16sp_gpr_s_r (kpt_share_regime root_ppn) γ pc imm6 m q).
   Qed.

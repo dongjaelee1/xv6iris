@@ -746,7 +746,7 @@ Section CreateSpec.
       (Fok : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ)) :
     cre_commits Γ tyz ma mi Nm Nd (fun _ => True%I) Farm Fdots Fun Fok -∗
     cre_commits Γ tyz ma mi Nm Nd Pd Farm Fdots Fun Fok.
-  Proof.
+  Proof using .
     rewrite /cre_commits. iIntros "(Ha & Hd & Hu & Hac)". iFrame "Ha Hd Hu".
     iApply (pf_at_mono with "[] Hac"). iIntros "Hac".
     rewrite /acre_commit_at_gen_nm.
@@ -773,7 +773,7 @@ Section CreateSpec.
     □ (∀ d : Z, Pd' d -∗ Pd d) -∗ □ (∀ d : Z, Pd d -∗ Pd' d) -∗
     cre_commits Γ tyz ma mi Nm Nd Pd Farm Fdots Fun Fok -∗
     cre_commits Γ tyz ma mi Nm Nd Pd' Farm Fdots Fun Fok.
-  Proof.
+  Proof using .
     rewrite /cre_commits. iIntros "#Hin #Hout (Ha & Hd & Hu & Hac)".
     iFrame "Ha Hd Hu".
     iApply (pf_at_mono with "[] Hac"). iIntros "Hac".
@@ -948,7 +948,7 @@ Section CreateSpec.
     pf_at (acre_commit_at_nm Γ appE (ADev ma mi) Nm Pd Farm) Fok -∗
     cre_child_unfired_ndp Γ (ADev ma mi) Nd Farm Fun -∗
     cre_commits Γ (bv_unsigned T_DEVICE) ma mi Nm Nd Pd Farm (pfam_triv (fun _ _ _ _ => True%I)) Fun Fok.
-  Proof.
+  Proof using .
     rewrite /cre_commits /cre_child_unfired_ndp /acre_commit_at_nm (cre_c0_dev ma mi).
     iIntros "Hac [Ha Hu]".
     iDestruct (cre_dots_leg_nodir Γ (bv_unsigned T_DEVICE)
@@ -971,7 +971,7 @@ Section CreateSpec.
     pf_at (acre_commit_at_nm Γ appE (AFile []) Nm Pd Farm) Fok -∗
     cre_child_unfired_ndp Γ (AFile []) Nd Farm Fun -∗
     cre_commits Γ (bv_unsigned T_FILE) ma mi Nm Nd Pd Farm (pfam_triv (fun _ _ _ _ => True%I)) Fun Fok.
-  Proof.
+  Proof using .
     rewrite /cre_commits /cre_child_unfired_ndp /acre_commit_at_nm (cre_c0_file ma mi).
     iIntros "Hac [Ha Hu]".
     iDestruct (cre_dots_leg_nodir Γ (bv_unsigned T_FILE)
@@ -1489,8 +1489,8 @@ Definition wp_create_sconf_body
             fired or not and the legs whole or the do-then-undo pair
             (ruling Q-h) *)
          cre_fail_arms Γfs fsc_fs tyz ma mi Nm Nd P Pmiss Farm Fdots Fun Fok Fex pl) -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type CREATE.
   Parameter wp_create_sconf :

@@ -151,7 +151,7 @@ Section NparCur.
       (pl : list (bv 8)) (P : nat -> Z -> iProp Σ) (d : Z) :
     arg_path_of M pv pl ->
     P (length (npar_elems pl)) d -∗ npar_cur M pv P d.
-  Proof.
+  Proof using .
     intros Hpl. iIntros "HP". rewrite /npar_cur. iIntros (pl') "%Hpl'".
     rewrite (arg_path_of_uniq M pv pl' pl Hpl' Hpl). iExact "HP".
   Qed.
@@ -160,7 +160,7 @@ Section NparCur.
       (pl : list (bv 8)) (P : nat -> Z -> iProp Σ) (d : Z) :
     arg_path_of M pv pl ->
     npar_cur M pv P d -∗ P (length (npar_elems pl)) d.
-  Proof.
+  Proof using .
     intros Hpl. iIntros "H". rewrite /npar_cur.
     iApply ("H" $! pl with "[%]"). exact Hpl.
   Qed.
@@ -170,7 +170,7 @@ Section NparCur.
       (pl : list (bv 8)) (P : nat -> Z -> iProp Σ) :
     arg_path_of M pv pl ->
     ⊢ □ (∀ d : Z, npar_cur M pv P d -∗ P (length (npar_elems pl)) d).
-  Proof.
+  Proof using .
     intros Hpl. iIntros "!>" (d) "H".
     iApply (npar_cur_elim M pv pl P d Hpl with "H").
   Qed.
@@ -179,7 +179,7 @@ Section NparCur.
       (pl : list (bv 8)) (P : nat -> Z -> iProp Σ) :
     arg_path_of M pv pl ->
     ⊢ □ (∀ d : Z, P (length (npar_elems pl)) d -∗ npar_cur M pv P d).
-  Proof.
+  Proof using .
     intros Hpl. iIntros "!>" (d) "H".
     iApply (npar_cur_intro M pv pl P d Hpl with "H").
   Qed.

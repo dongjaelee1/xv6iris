@@ -53,9 +53,6 @@ Require Import ProcAvail.
 Require Import FileInvDefs.
 Require Import UserFd.
 Require Import FsAbsDefs.
-Require Import FsAbsDelta.
-Require Import FsTree.
-Require Import FsImg.
 Require Import FsConsPin.
 Require Import EchoFsPure.
 Require Import FileFsPure.
@@ -67,20 +64,9 @@ Require Import EchoOut.
 Require Import AppEcho.
 Require Import AppPipeClaim.
 Require Import AppPipeCons.
-Require Import UserHeap.
-Require Import UserPerm.
-Require Import UmodeAbi.
-Require Import ProcGeom.
-Require Import UInitFd.
-Require Import PieceFam.
-Require Import ArgPath.
-Require Import UexecSlot UexecRet UsysMemOk UexecSG.
-Require Import UkRun UkRunLeaf UkRunSys.
-Require Import UCodeInit UkInit.
+Require Import UkRun.
+Require Import UkInit.
 Require Import UexecExecInst.      (* THE INSTANCE: [uexecSG_xv6] *)
-Require Import SpecSysOpen.
-Require Import SysMknodDefs SpecSysMknod.
-Require Import UConsOpen.
 Require Import UkSh.
 Require Import CtxIdDefs.
 Require Import UInitCons.

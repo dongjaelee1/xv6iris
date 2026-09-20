@@ -294,8 +294,8 @@ Section WpUmodeBranch.
          uv_cap_gpr (CID := CID0) (XI := XI0) C pt Ψ M m -∗
          pc_is (CID := CID0)
            (if taken then tgt else add_vec_int pc (if is_rvc then 2 else 4)) -∗
-         WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+         mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hui Hred Hlpad Hg1 Hexp Htaken Htgt Halign.
     iIntros "Hcg Hpc Hcont".
@@ -305,7 +305,7 @@ Section WpUmodeBranch.
                   pc_is (CID := CID0)
                     (uv_next (if taken then Some tgt else None)
                        (add_vec_int pc (if is_rvc then 2 else 4))) -∗
-                  WP (Loop : expr riscv_lang)))%I with "[Hcont]" as "Hcont".
+                  mWP (Loop : expr riscv_lang)))%I with "[Hcont]" as "Hcont".
     { iNext. rewrite uv_next_bool. iExact "Hcont". }
     iApply (wp_uv_retire_later C pt Ψ M m pc is_rvc i o
               (if taken then Some tgt else None) None
@@ -355,8 +355,8 @@ Section WpUmodeBranch.
        uv_cap_gpr (CID := CID0) (XI := XI0) C pt Ψ M m -∗
        pc_is (CID := CID0)
          (if taken then tgt else add_vec_int pc (if is_rvc then 2 else 4)) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hui Hred Hlpad Hg1 Hexp Htaken Htgt Halign.
     iIntros "Hcg Hpc Hcont".
@@ -386,8 +386,8 @@ Section WpUmodeBranch.
     (∀ (CID0 : CpuId) (XI0 : CtxIdDefs.CurCtx),
        uv_cap_gpr (CID := CID0) (XI := XI0) C pt Ψ M m -∗
        pc_is (CID := CID0) (if taken then tgt else add_vec_int pc 4) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hui Htaken Htgt Halign.
     exact (wp_uv_btype_gen Ψ M m pc false
@@ -417,8 +417,8 @@ Section WpUmodeBranch.
     ▷ (∀ (CID0 : CpuId) (XI0 : CtxIdDefs.CurCtx),
          uv_cap_gpr (CID := CID0) (XI := XI0) C pt Ψ M m -∗
          pc_is (CID := CID0) (if taken then tgt else add_vec_int pc 4) -∗
-         WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+         mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hui Htaken Htgt Halign.
     exact (wp_uv_btype_gen_later Ψ M m pc false
@@ -453,8 +453,8 @@ Section WpUmodeBranch.
     ▷ (∀ (CID0 : CpuId) (XI0 : CtxIdDefs.CurCtx),
          uv_cap_gpr (CID := CID0) (XI := XI0) C pt Ψ M m -∗
          pc_is (CID := CID0) (if taken then tgt else add_vec_int pc 4) -∗
-         WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+         mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hui Htaken Htgt Halign.
     iIntros "Hcg Hpc Hcont".
@@ -481,8 +481,8 @@ Section WpUmodeBranch.
     (∀ (CID0 : CpuId) (XI0 : CtxIdDefs.CurCtx),
        uv_cap_gpr (CID := CID0) (XI := XI0) C pt Ψ M m -∗
        pc_is (CID := CID0) (if taken then tgt else add_vec_int pc 4) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hui Htaken Htgt Halign.
     iIntros "Hcg Hpc Hcont".
@@ -517,8 +517,8 @@ Section WpUmodeBranch.
     (∀ (CID0 : CpuId) (XI0 : CtxIdDefs.CurCtx),
        uv_cap_gpr (CID := CID0) (XI := XI0) C pt Ψ M m -∗
        pc_is (CID := CID0) (if taken then tgt else add_vec_int pc 2) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hui Hcr Htaken Htgt Halign.
     iIntros "Hcg Hpc Hcont".
@@ -563,8 +563,8 @@ Section WpUmodeBranch.
     (∀ (CID0 : CpuId) (XI0 : CtxIdDefs.CurCtx),
        uv_cap_gpr (CID := CID0) (XI := XI0) C pt Ψ M m -∗
        pc_is (CID := CID0) (if taken then tgt else add_vec_int pc 2) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hui Hcr Htaken Htgt Halign.
     iIntros "Hcg Hpc Hcont".

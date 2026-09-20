@@ -298,8 +298,8 @@ Section UptTramp.
          utlb_inv_pt uroot tfp um -∗
          own_context XI -∗
          pc_is npc -∗ Rl npc ms1 mdv1 -∗
-         WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+         mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HSIE HMPRV HSXL Hmm HPBMTE Hmenvval
            Hcanon Hvpn Hident Hcanon2 Hvpn2 Hident2 Hva2 Hpa4va4.
@@ -419,8 +419,8 @@ Section UptTramp.
          utlb_inv_pt uroot tfp um -∗
          own_context XI -∗
          pc_is npc -∗ Rl npc ms1 mdv1 -∗
-         WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+         mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HSIE HMPRV HSXL Hmm HPBMTE Hmenvval
            Hcanon Hvpn Hident Hcanon2 Hvpn2 Hident2 Hva2 Hpa4va4.

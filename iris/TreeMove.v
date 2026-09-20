@@ -58,7 +58,6 @@ Require Import FsBytesGamma.     (* [fs_gamma_L] *)
 Require Import OffGv.            (* [off_gv] *)
 Require Import AppCfg.           (* [app_pred] / [app_run] / [MkAppcfg] *)
 Require Import AppInv.           (* [app_inv], [app_body], [app_step], [appE] *)
-Require Import SysWriteDefs.     (* [wri_pre], [wchunks] *)
 Require Import FsAbsDelta.       (* [cre_pre], [delta_ent], [delta_unl_ent] *)
 Require Import FsAbsWriteFire.   (* [awrite_full_at] / [awrite_part_at] / chain *)
 Require Import UserPtTree.       (* [uptd]: the partial arm's table *)
@@ -78,7 +77,6 @@ Require Import SysOpenDefs.      (* [open_au_create_at]: open(O_CREATE)    *)
 Require Import TreeView.         (* TL-1 *)
 Require Import AppTree.          (* TL-2 + TL-3W: the claim, the deed, the move *)
 Require Import TreeObs.          (* the claim law at the era's record *)
-Require Import FsAbs.            (* [γtop] (FsAbs's own rule: LAST but one) *)
 Require Import FsAbsDefs.        (* [aview] / [anode] / [arow_at] *)
 
 Local Open Scope Z_scope.
@@ -203,7 +201,7 @@ Section TreeMove.
       (I : gmap Z fs_node) (av' : aview) :
     file_app = MkAppcfg tree_names (tree_pred c) r ->
     (tree_pred c r (abs_view I) -∗ tree_pred c r av') -∗ app_step i I av'.
-  Proof.
+  Proof using .
     intros Heq. rewrite /app_step Heq. cbn [app_pred app_run app_names].
     iIntros "Hw" (n') "%Hav Hp". rewrite Hav. iModIntro. iNext.
     iApply ("Hw" with "Hp").
@@ -215,7 +213,7 @@ Section TreeMove.
       (I : gmap Z fs_node) (av' : aview) :
     file_app = MkAppcfg tree_names (tree_pred c) r ->
     tree_taint c -∗ app_step i I av'.
-  Proof.
+  Proof using .
     intros Heq. iIntros "#HT".
     iApply (tree_app_step_of c r i I av' Heq). iIntros "_".
     rewrite /tree_pred. iLeft. iExact "HT".
@@ -233,7 +231,7 @@ Section TreeMove.
       (I : gmap Z fs_node) (av' : aview) :
     file_app = MkAppcfg tree_names (tree_pred c) r ->
     tree_turn c -∗ app_step i I av'.
-  Proof.
+  Proof using .
     intros Heq. rewrite /app_step Heq. cbn [app_pred app_run app_names].
     iIntros "Hcl" (n') "%Hav Hp". rewrite Hav.
     iMod (tree_taint_mint c with "Hcl") as "#Ht". iModIntro. iNext.
@@ -250,7 +248,7 @@ Section TreeMove.
     ghost_map_auth (γtop (fs_gamma_L γfs)) (1/2) I ={appE}=∗
       ghost_map_auth (γtop (fs_gamma_L γfs)) (1/2) I ∗ tree_own r g root t
       ∗ (⌜subtree (abs_view I) root = Some t⌝ ∨ tree_taint c).
-  Proof.
+  Proof using .
     intros Heq. iIntros "#Hinv Hown Hka".
     iDestruct (tree_own_claim_law c r Heq) as "#Hlaw".
     iMod (inv_acc appE appN with "Hinv") as "[Hbody Hclose]"; [ set_solver | ].
@@ -281,7 +279,7 @@ Section TreeMove.
     ghost_map_auth (γtop (fs_gamma_L γfs)) (1/2) I' ={appE}=∗
       ghost_map_auth (γtop (fs_gamma_L γfs)) (1/2) I'
       ∗ (tree_own r g root t' ∨ tree_taint c).
-  Proof.
+  Proof using .
     intros Heq Hsub Hne. iIntros "#Hinv Htk Hka".
     iMod (inv_acc appE appN with "Hinv") as "[Hbody Hclose]"; [ set_solver | ].
     iEval (rewrite /app_body) in "Hbody".
@@ -325,7 +323,7 @@ Section TreeMove.
          ghost_map_auth (γtop (fs_gamma_L γfs)) (1/2) I' ={appE}=∗
          ghost_map_auth (γtop (fs_gamma_L γfs)) (1/2) I' ∗
          tree_wq c r g root i t).
-  Proof.
+  Proof using .
     intros Heq Hrow. iIntros "#Hinv Hq Hka".
     rewrite /tree_wq.
     iDestruct "Hq" as "[Hd | #HT]"; last first.
@@ -398,7 +396,7 @@ Section TreeMove.
     app_inv γfs -∗ tree_wq c r g root i t -∗
     awrite_chain_at (fs_gamma_L γfs) appE i γo M ua P nn
       (fun _ : nat => tree_wq c r g root i t) k cnt.
-  Proof.
+  Proof using .
     intros Heq. revert k. induction cnt as [| cnt IH]; intros k.
     { iIntros "#Hinv Hq". rewrite awrite_chain_at_0. iExact "Hq". }
     iIntros "#Hinv Hq". rewrite awrite_chain_at_S. iSplit; [iExact "Hq" |].
@@ -433,7 +431,7 @@ Section TreeMove.
     app_inv γfs -∗ tree_wq c r g root i t -∗
     awrite_chain (fs_gamma_L γfs) appE i γo M ua nn
       (fun _ : nat => tree_wq c r g root i t) k cnt.
-  Proof.
+  Proof using .
     intros Heq. rewrite /awrite_chain. iIntros "#Hinv Hq" (P).
     iApply (tree_awrite_chain_at γfs c r g root i t γo M ua P nn cnt k Heq
               with "Hinv Hq").
@@ -486,7 +484,7 @@ Section TreeMove.
          ghost_map_auth (γtop (fs_gamma_L γfs)) (1/2) I' ={appE}=∗
          ghost_map_auth (γtop (fs_gamma_L γfs)) (1/2) I' ∗
          (tree_own r g root (top_ins d nm i (tabs_of ch) t) ∨ tree_taint c)).
-  Proof.
+  Proof using .
     intros Heq Hnm Hpre Hleaf Hnd Hno Hdd. iIntros "#Hinv Hown Hka".
     pose proof (cre_pre_ne (abs_view I) d nm e nl i ch Hpre Hnd) as Hdi.
     pose proof (delta_create_armed (abs_view I) d nm e nl i ch Hpre Hdi) as Hcr.
@@ -553,7 +551,7 @@ Section TreeMove.
          ghost_map_auth (γtop (fs_gamma_L γfs)) (1/2) I' ∗
          (tree_own r g FsImg.ROOTINO (top_ins d nm i (tabs_of ch) t)
           ∨ tree_taint c)).
-  Proof.
+  Proof using .
     intros Heq Hnm Hpre Hleaf Hni Hdd. iIntros "#Hinv Hown Hka".
     assert (Hdi : d <> i) by (intros ->; exact (Hni Hdd)).
     pose proof (delta_create_armed (abs_view I) d nm e nl i ch Hpre Hdi) as Hcr.
@@ -612,7 +610,7 @@ Section TreeMove.
          ghost_map_auth (γtop (fs_gamma_L γfs)) (1/2) I' ={appE}=∗
          ghost_map_auth (γtop (fs_gamma_L γfs)) (1/2) I' ∗
          (tree_own r g root (top_unlink d nm t) ∨ tree_taint c)).
-  Proof.
+  Proof using .
     intros Heq Hnm Hd Hnm0 Hlf Hdd. iIntros "#Hinv Hown Hka".
     iMod (tree_claim_read γfs c r g root t I Heq with "Hinv Hown Hka")
       as "(Hka & Hown & [%Hsub | #HT])"; last first.
@@ -672,7 +670,7 @@ Section TreeMove.
       (ents : gmap fname Z) (nl : nat) (tg : Z) (a : anode) :
     unl_pre av d nm ents nl tg a ->
     forall s : fname, fs_pname s -> astep av tg s = None.
-  Proof.
+  Proof using .
     intros (_ & _ & _ & _ & _ & Ht & _ & Hdots) s Hs.
     rewrite /astep /aents Ht /= /anode_ents.
     destruct (an_node a) as [bs | es | ma mi] eqn:Hn;
@@ -699,7 +697,7 @@ Section TreeMove.
     app_inv γfs -∗ tree_own r g root t -∗
     uent_commit_at (fs_gamma_L γfs) appE (fun d : Z => ⌜d = dpar⌝%I)
       (tree_uent_fam c r g root t).(pf_recv).
-  Proof.
+  Proof using .
     intros Heq Hdd. iIntros "#Hinv Hown".
     rewrite /uent_commit_at.
     iIntros (I d tg nm ents nl a) "%Hpre %Hd Hka". subst d.
@@ -723,7 +721,7 @@ Section TreeMove.
     app_inv γfs -∗ tree_own r g root t -∗
     pf_at (uent_commit_at (fs_gamma_L γfs) appE (fun d : Z => ⌜d = dpar⌝%I))
       (tree_uent_fam c r g root t).
-  Proof.
+  Proof using .
     intros Heq Hdd. iIntros "#Hinv Hown". iApply pf_at_intro. iSplit.
     - iApply (tree_uent_commit γfs c r g root dpar t Heq Hdd with "Hinv Hown").
     - cbn [pf_refund]. iExact "Hown".
@@ -754,7 +752,7 @@ Section TreeMove.
   (* create's child kinds are all LEAVES of the application tree: an empty
      file, a device, and a directory holding nothing but its dots. *)
   Lemma tabs_leaf_cre_c0 (tyz ma mi : Z) : tabs_leaf (tabs_of (cre_c0 tyz ma mi)).
-  Proof.
+  Proof using .
     rewrite /cre_c0. case_decide as H1.
     - intros e0 He0. cbn in He0. injection He0 as <-.
       rewrite /hide_dots !delete_empty //.
@@ -763,7 +761,7 @@ Section TreeMove.
 
   Lemma tabs_leaf_cre_child (tyz ma mi d i : Z) :
     tabs_leaf (tabs_of (cre_child tyz ma mi d i)).
-  Proof.
+  Proof using .
     rewrite /cre_child. case_decide as H1; [| apply tabs_leaf_cre_c0].
     intros e0 He0. cbn in He0. injection He0 as <-.
     rewrite /dots_ents /hide_dots.
@@ -784,7 +782,7 @@ Section TreeMove.
       ghost_map_auth (γtop (fs_gamma_L γfs)) (1/2) I ∗
       (⌜aview_tree_wf (abs_view I) /\ adir_at (abs_view I) FsImg.ROOTINO
         /\ aview_rooted (abs_view I)⌝ ∨ tree_taint c).
-  Proof.
+  Proof using .
     intros Heq. iIntros "#Hinv Hka".
     iAssert (□ (∀ v : aview, app_pred app_run v -∗
                   app_pred app_run v ∗
@@ -826,7 +824,7 @@ Section TreeMove.
     tabs_leaf (tabs_of ch) ->
     app_inv γfs -∗ tree_own r g FsImg.ROOTINO t -∗
     aarm_commit_at (fs_gamma_L γfs) appE ch (tree_arm_fam c r g t).(pf_recv).
-  Proof.
+  Proof using .
     intros Heq Hleaf. iIntros "#Hinv Hown".
     rewrite /aarm_commit_at. iIntros (I i) "%Hnone %Hsome Hka".
     iMod (tree_claim_read γfs c r g FsImg.ROOTINO t I Heq with "Hinv Hown Hka")
@@ -865,7 +863,7 @@ Section TreeMove.
     app_inv γfs -∗
     aunarm_of_arm (fs_gamma_L γfs) appE (tree_arm_fam c r g t)
       (tree_unarm_fam c r g t).(pf_recv).
-  Proof.
+  Proof using .
     intros Heq. iIntros "#Hinv". rewrite /aunarm_of_arm.
     iIntros (i) "Harm". rewrite /cre_arm_fired.
     iDestruct "Harm" as (av0) "[_ Hrec]". cbn [pf_recv].
@@ -906,7 +904,7 @@ Section TreeMove.
   Lemma tree_dots_commit (γfs : fs_names) (c : tree_fixed) (r : tree_names) :
     file_app = MkAppcfg tree_names (tree_pred c) r ->
     ⊢ adots_commit_at (fs_gamma_L γfs) appE (fun _ _ _ _ => True%I).
-  Proof.
+  Proof using .
     intros Heq. rewrite /adots_commit_at.
     iIntros (I i d full) "%Hi Hka". iModIntro. iFrame "Hka". iSplitR.
     { iApply (tree_app_step_of c r i I _ Heq). rewrite /dots_delta.
@@ -933,7 +931,7 @@ Section TreeMove.
     app_inv γfs -∗
     acre_commit_at_gen (fs_gamma_L γfs) appE cf (fun d : Z => ⌜d = dpar⌝%I)
       (tree_arm_fam c r g t) (tree_acre_fam c r g t cf).(pf_recv).
-  Proof.
+  Proof using .
     intros Heq Hleaf Hdd. iIntros "#Hinv". rewrite /acre_commit_at_gen.
     iIntros (I d i nm ents nl) "%Hpre %Hnm Harm %Hd Hka". subst d.
     rewrite /cre_arm_fired. iDestruct "Harm" as (av0) "[_ Hrec]".
@@ -964,7 +962,7 @@ Section TreeMove.
       (pfam_triv (fun _ _ _ _ => True%I))
       (tree_unarm_fam c r g t)
       (tree_acre_fam c r g t (cre_child tyz ma mi)).
-  Proof.
+  Proof using .
     intros Heq Hdd. iIntros "#Hinv Hown". rewrite /cre_commits.
     iSplitL "Hown".
     { rewrite /pf_at. iSplit; [| cbn [pf_refund]; iExact "Hown"].
@@ -1005,7 +1003,7 @@ Section TreeMove.
   (* =================================================================== *)
 
   Lemma tabs_leaf_dev (ma mi : Z) : tabs_leaf (tabs_of (ADev ma mi)).
-  Proof. intros e0 He0. cbn in He0. discriminate. Qed.
+  Proof using . intros e0 He0. cbn in He0. discriminate. Qed.
 
   Lemma tree_mknod_au (γfs : fs_names) (c : tree_fixed) (r : tree_names)
       (g : gname) (t : ttree) (cw ma mi : Z) (M : gmap Z (bv 8))
@@ -1027,7 +1025,7 @@ Section TreeMove.
       (tree_arm_fam c r g t) (tree_unarm_fam c r g t)
       (tree_acre_fam c r g t (fun _ _ => ADev ma mi))
       (pfam_triv (fun _ _ _ _ => True%I)).
-  Proof.
+  Proof using .
     intros Heq Hpath Hnp Hstart Hdd. iIntros "#Hinv Hown".
     rewrite /mknod_au_at. iSplitR.
     { (* THE WALK: no hops at all, and the start cursor is pure *)
@@ -1083,7 +1081,7 @@ Section TreeMove.
      the (read-only) open observation and -- at [O_TRUNC] CLEAR -- no
      truncate leg at all. *)
   Lemma tabs_leaf_file : tabs_leaf (tabs_of (AFile [])).
-  Proof. intros e0 He0. cbn in He0. discriminate. Qed.
+  Proof using . intros e0 He0. cbn in He0. discriminate. Qed.
 
   Lemma tree_open_create_au (γfs : fs_names) (c : tree_fixed)
       (r : tree_names) (g : gname) (t : ttree) (cw : Z)
@@ -1103,7 +1101,7 @@ Section TreeMove.
       (pfam_triv (fun _ _ _ _ => True%I))
       (pfam_triv (fun _ _ _ => True%I))
       (pfam_triv (fun _ _ _ => True%I)).
-  Proof.
+  Proof using .
     intros Heq Hpath Hnp Hstart Htr Hdd. iIntros "#Hinv Hown".
     rewrite /open_au_create_at. iSplitR.
     { iIntros (pl0) "%Hpath0".
@@ -1175,7 +1173,7 @@ Section TreeMove.
             (bv_unsigned (mword_of_int 0 : mword 16))
             (bv_unsigned (mword_of_int 0 : mword 16))))
       (pfam_triv (fun _ _ _ _ => True%I)).
-  Proof.
+  Proof using .
     intros Heq Hpath Hnp Hstart Hdd. iIntros "#Hinv Hown".
     rewrite /mkdir_au_at. iSplitR.
     { iIntros (pl0) "%Hpath0".
@@ -1238,7 +1236,7 @@ Section TreeMove.
          ghost_map_auth (γtop (fs_gamma_L γfs)) (1/2) I' ={appE}=∗
          ghost_map_auth (γtop (fs_gamma_L γfs)) (1/2) I' ∗
          (tree_own r g FsImg.ROOTINO t ∨ tree_taint c)).
-  Proof.
+  Proof using .
     intros Heq Ha Hnl Hni. iIntros "#Hinv Hown Hka".
     iMod (tree_claim_read γfs c r g FsImg.ROOTINO t I Heq with "Hinv Hown Hka")
       as "(Hka & Hown & [%Hsub | #HT])"; last first.

@@ -2077,8 +2077,8 @@ Section WpSconfCsr.
       sie_cap_gpr kt m n false p -∗
       stvec ↦ᵣ wval -∗
       pc_is (add_vec_int pc 4) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrs1 Hwval Hmode) "Hcg Hstv Hpc Hinstr Hcont".
     assert (Hfresh : cw_fresh (R_bitvector_64 stvec))
@@ -2218,8 +2218,8 @@ Section WpSconfCsr.
       sie_cap_gpr kt m n false p -∗
       Rout -∗
       pc_is (add_vec_int pc 4) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrs1 Hwval) "Hcg Hbit Hhook HP Hslot Hpc Hinstr Hcont".
     assert (Hok : cw2_ok satp mstatus).
@@ -2354,8 +2354,8 @@ Section WpSconfCsr.
       sie_cap_gpr kt m n false p -∗
       Rout -∗
       pc_is (add_vec_int pc 4) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrs1 Hwval) "Hcg Hbit Hslot Hpc Hinstr Hcont".
     assert (Hok : cw2_ok satp mstatus).
@@ -2529,8 +2529,8 @@ Section WpSconfCsr.
       sie_cap_gpr kt m n false p -∗
       sepc ↦ᵣ mepc_val wval -∗
       pc_is (add_vec_int pc 4) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrs1 Hwval) "Hcg Hsepc Hpc Hinstr Hcont".
     assert (Hfresh : cw_fresh (R_bitvector_64 sepc))
@@ -2696,8 +2696,8 @@ Section WpSconfCsr.
       sie_cap_gpr kt (<[Regidx rd := regval_into_reg (f v)]> m) n false p -∗
       R_bitvector_64 rg ↦ᵣ{dq} v -∗
       pc_is (add_vec_int pc 4) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrd Hrdok Hne Hfresh Hext Hgb Hex H344 H144 Hcb)
             "Hrdcsr Hcg Hcell Hpc Hinstr Hcont".
@@ -2810,8 +2810,8 @@ Section WpSconfCsr.
       sie_cap_gpr kt (<[Regidx rd := regval_into_reg sc]> m) n false p -∗
       scause ↦ᵣ{dq} sc -∗
       pc_is (add_vec_int pc 4) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrd Hrdok) "Hcg Hcell Hpc Hinstr Hcont".
     assert (Hfresh : cw_fresh (R_bitvector_64 scause))
@@ -2851,8 +2851,8 @@ Section WpSconfCsr.
       sie_cap_gpr kt (<[Regidx rd := regval_into_reg tv]> m) n false p -∗
       stval ↦ᵣ{dq} tv -∗
       pc_is (add_vec_int pc 4) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrd Hrdok) "Hcg Hcell Hpc Hinstr Hcont".
     assert (Hfresh : cw_fresh (R_bitvector_64 stval))
@@ -2890,8 +2890,8 @@ Section WpSconfCsr.
       sie_cap_gpr kt (<[Regidx rd := regval_into_reg (mepc_val ep)]> m) n false p -∗
       sepc ↦ᵣ{dq} ep -∗
       pc_is (add_vec_int pc 4) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrd Hrdok) "Hcg Hcell Hpc Hinstr Hcont".
     assert (Hfresh : cw_fresh (R_bitvector_64 sepc))
@@ -2962,8 +2962,8 @@ Section WpSconfCsr.
       ⌜ sconf_ms_facts ms ⌝ -∗
       sie_cap_gpr kt m n false p -∗
       pc_is (add_vec_int pc 4) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros "Hcg Hpc Hinstr Hcont".
     assert (Hfresh : cw_fresh (R_bitvector_64 mstatus))
@@ -3097,8 +3097,8 @@ Section WpSconfCsr.
       ⌜ sconf_ms_facts ms ⌝ -∗
       sie_cap_gpr kt m n true p -∗
       pc_is (add_vec_int pc 4) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros "Hcg Hpc Hinstr Hcont".
     assert (Hfresh : cw_fresh (R_bitvector_64 mstatus))
@@ -3267,8 +3267,8 @@ Section WpSconfCsr.
       sie_cap_gpr_at kt msf m n false p -∗
       sret_bits (_get_Mstatus_SPP msf) (_get_Mstatus_SPIE msf) -∗
       pc_is (add_vec_int pc 4) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrs1 Hwval HWsie HWmxr0 HWfs0 HWvs0 HWxs0)
             "Hcg Hsppc Hpc Hinstr Hcont".
@@ -3419,8 +3419,8 @@ Section WpSconfCsr.
       sie_cap_gpr_at kt msf m n false p -∗
       sret_bits (_get_Mstatus_SPP msf) (_get_Mstatus_SPIE msf) -∗
       pc_is (add_vec_int pc 4) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrs1 Hwval Hms0f Hsie0) "Hcg Hsppc Hpc Hinstr Hcont".
     pose proof Hms0f as (_ & _ & HMXR0 & _ & HXS0 & HFS0 & HVS0 & _ & _ & _).
@@ -3475,8 +3475,8 @@ Section WpSconfCsr.
       sie_cap_gpr kt (<[Regidx rd := regval_into_reg sp0]> m) n false p -∗
       kpt_on cpu_id -∗
       pc_is (add_vec_int pc 4) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrd Hrdok) "Hcg #Hkptr Hpc Hinstr Hcont".
     pose proof (rd_ok_sp rd Hrdok) as Hrdsp.
@@ -3614,8 +3614,8 @@ Section WpSconfCsr.
       ⌜ sconf_ms_facts ms ⌝ -∗
       sie_cap_gpr kt m (trap_res b + n)%nat true p -∗
       pc_is (add_vec_int pc 4) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros "Hcg Htok Hcsrs Hcells Hclm Hpc Hinstr Hcont".
     assert (Hfresh : cw_fresh (R_bitvector_64 mstatus))
@@ -3794,8 +3794,8 @@ Section WpSconfCsr.
       ⌜ sconf_ms_facts ms ⌝ -∗
       sie_cap_gpr kt m (trap_res eb + n)%nat true p -∗
       pc_is (add_vec_int pc 4) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     destruct eb.
     2:{ (* ---- base state DISABLED: the real flip, via the restore leaf ---- *)
@@ -3870,8 +3870,8 @@ Section WpSconfCsr.
            Persistent, so the give-back is free on both sides. *)
         TimerCap.timer_cap ∗
         sr_ktier_wit strans_regime kt ) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrd Hrdok) "Hcg Hpc Hinstr Hcont".
     pose proof (rd_ok_sp rd Hrdok) as Hrdsp.
@@ -4034,8 +4034,8 @@ Section WpSconfCsr.
       cpu_claim p -∗
       cpu_priv_pay b p -∗
       pc_is (add_vec_int pc 4) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros "Hcg Hcnt Hpc Hinstr Hcont".
     assert (Hfresh : cw_fresh (R_bitvector_64 mstatus))
@@ -4239,8 +4239,8 @@ Section WpSconfCsr.
       cpu_claim_pay k eb p -∗
       cpu_priv_pay b p -∗
       pc_is (add_vec_int pc 4) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrd Hrdok) "Hcg Hcnt Hpc Hinstr Hcont".
     pose proof (rd_ok_sp rd Hrdok) as Hrdsp.

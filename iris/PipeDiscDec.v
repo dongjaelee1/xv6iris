@@ -50,7 +50,6 @@
 From Stdlib Require Import ZArith Lia List.
 From stdpp Require Import list list_numbers bitvector.definitions.
 Require Import RiscvLang.        (* [mobs] *)
-Require Import ObsTrace.         (* [obs_wire Uart0], [cycles_of] *)
 Require Import LineWords.
 Require Import EchoDisc.         (* [pro_cands], [pro_canon], [nlines_max] *)
 Require Import PipeDisc.

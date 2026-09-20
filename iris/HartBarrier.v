@@ -119,8 +119,8 @@ Section barrier.
     hbar_at m = Some bk ->
     fence_drains bk = true ->
     gen_cert -∗ pub_step P Q -∗ P -∗
-    ▷ (Q -∗ WP (HartE gen_id cpu_id (C (hbar_resume m)) : expr riscv_lang)) -∗
-    WP (HartE gen_id cpu_id (C m) : expr riscv_lang).
+    ▷ (Q -∗ mWP (HartE gen_id cpu_id (C (hbar_resume m)) : expr riscv_lang)) -∗
+    mWP (HartE gen_id cpu_id (C m) : expr riscv_lang).
   Proof using .
     iIntros (HC Hproj Hdrain) "#Hcert Hpub HP H".
     destruct (hbar_at_inv _ _ Hproj) as (K & Hm & Hres).
@@ -242,8 +242,8 @@ Section barrier.
     mctx C ->
     hbar_at m = Some bk ->
     gen_cert -∗ ghost_step P Q -∗ P -∗
-    ▷ (Q -∗ WP (HartE gen_id cpu_id (C (hbar_resume m)) : expr riscv_lang)) -∗
-    WP (HartE gen_id cpu_id (C m) : expr riscv_lang).
+    ▷ (Q -∗ mWP (HartE gen_id cpu_id (C (hbar_resume m)) : expr riscv_lang)) -∗
+    mWP (HartE gen_id cpu_id (C m) : expr riscv_lang).
   Proof using .
     iIntros (HC Hproj) "#Hcert Hpub HP H".
     destruct (hbar_at_inv _ _ Hproj) as (K & Hm & Hres).
@@ -331,8 +331,8 @@ Section barrier.
     mctx C ->
     hbar_at m = Some Barrier_RISCV_i ->
     gen_cert -∗ ifence_step P Q -∗ P -∗
-    ▷ (Q -∗ WP (HartE gen_id cpu_id (C (hbar_resume m)) : expr riscv_lang)) -∗
-    WP (HartE gen_id cpu_id (C m) : expr riscv_lang).
+    ▷ (Q -∗ mWP (HartE gen_id cpu_id (C (hbar_resume m)) : expr riscv_lang)) -∗
+    mWP (HartE gen_id cpu_id (C m) : expr riscv_lang).
   Proof using .
     iIntros (HC Hproj) "#Hcert Hstep HP H".
     destruct (hbar_at_inv _ _ Hproj) as (K & Hm & Hres).
@@ -432,8 +432,8 @@ Section barrier.
     hbar_at m = Some bk ->
     fence_acq bk = true ->
     gen_cert -∗ hart_rview_lb_at cpu_id K -∗
-    ▷ (hart_view_lb K -∗ WP (HartE gen_id cpu_id (C (hbar_resume m)) : expr riscv_lang)) -∗
-    WP (HartE gen_id cpu_id (C m) : expr riscv_lang).
+    ▷ (hart_view_lb K -∗ mWP (HartE gen_id cpu_id (C (hbar_resume m)) : expr riscv_lang)) -∗
+    mWP (HartE gen_id cpu_id (C m) : expr riscv_lang).
   Proof using .
     iIntros (HC Hproj Hacq) "#Hcert #HK H".
     destruct (hbar_at_inv _ _ Hproj) as (Kc & Hm & Hres).

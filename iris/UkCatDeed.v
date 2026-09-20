@@ -40,10 +40,8 @@ Require Import UserHeap UkRun UkRunLeaf UkRunSys.
 Require Import UCodeCat.
 Require Import CtxIdDefs.
 Require User.CatSyms User.CatInstrs.
-Require Import ChildTok.
-Require Import FdSlots PipeNames ProcGeom UserFd UserCwd.
-Require Import UexecSG UexecSlot UexecRet UsysMemOk.
-Require Import UexecExecInst.  (* THE INSTANCES: [uexecSG_xv6], [uprogSG_gen] *)
+Require Import FdSlots UserFd UserCwd.
+Require Import UsysMemOk.
 Require Import UkCat.
 Require Import UserOff.            (* [foff_pub] *)
 Require Import UkFileOpen.
@@ -54,9 +52,8 @@ Require Import SysOpenDefs.      (* [om_create] / [om_readable] *)
 Require Import FsAbsEra.         (* [um_start_of] *)
 Require Import FsImg.            (* [FsImg.ROOTINO] *)
 Require Import ProcGeom.         (* [NOFILE] *)
-Require Import ConsoleInv.
 Require Import SysReadDefs.     (* [ard_count] -- what a read of a parked row delivers *)
-Require Import Xv6Cameras Xv6G IrefSlots ProcAvail FileInvDefs BioDefs.
+Require Import Xv6Cameras Xv6G IrefSlots ProcAvail FileInvDefs.
 Require Import EchoOut AppEcho.
 Import Defs.
 
@@ -145,8 +142,8 @@ Section UkCatDeed.
          (<[Regidx a0_idx := rv]>
             (<[Regidx a7_idx := (mword_of_int 5 : mword 64)]> m))
          (ret_pc (m !!! Regidx ra_idx)) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Heq Ha0 Hahi Ha1 Hcnt Hfdv Hfdlt.
     iIntros "#Hcode Hufdh #Hm #Hinv Hd Hbs Hrun Hcont".
@@ -300,8 +297,8 @@ Section UkCatDeed.
          (<[Regidx a0_idx := rv]>
             (<[Regidx a7_idx := (mword_of_int 5 : mword 64)]> m))
          (ret_pc (m !!! Regidx ra_idx)) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Heq Ha0 Hahi Ha1 Hcnt Hfdv Hfdlt.
     iIntros "#Hbr #Hrb #Hcode Hufdh #Hm #Hinv Hd Hu Hbs Hrun Hcont".
@@ -671,8 +668,8 @@ Section UkCatDeed.
          (<[Regidx a0_idx := ret]>
             (<[Regidx a7_idx := (mword_of_int 15 : mword 64)]> m))
          (ret_pc (m !!! Regidx ra_idx)) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Heq Hpath Ha0 Ha1 Hel Hst.
     iIntros "#Hcode #Hdi #Hinv Hrun Hcwd Hstd Hd1 Hd2 Hcont".
@@ -785,8 +782,8 @@ Section UkCatDeed.
          (<[Regidx a0_idx := ret]>
             (<[Regidx a7_idx := (mword_of_int 15 : mword 64)]> m))
          (ret_pc (m !!! Regidx ra_idx)) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Heq Hpath Ha0 Ha1 Hel Hst.
     iIntros "#Hcode #Hdi #Hinv Hrun Hcwd Hstd Hd Hcont".

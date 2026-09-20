@@ -1476,7 +1476,7 @@ Section LoopApply.
     user_cfg C -∗
     Rut pt -∗
     ▷ ukb C pt Rfd Rut sz (perm_of (ud_um pt) sz) fdv cw gn cs pidv lz -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hlo Hsz Hms Hlz.
     iIntros "Hkc Hhw Hmi Hwi Hregs Hupt Hfrag Hcfg Hrut Hk".
@@ -1539,7 +1539,7 @@ Section LoopApply.
     user_cfg C -∗
     Rut pt -∗
     ▷ ukb C pt Rfd Rut sz (perm_of (ud_um pt) sz) fdv cw gn cs pidv lz -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hlo Hsz Hms Hpi HM Hsw Hfd Hcw Hgn Hch Hpid Hlz Hlf Hg Hpc.
     iIntros "Hs".

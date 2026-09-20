@@ -135,8 +135,8 @@ Section Wp_slli.
       gpr_file (<[Regidx rd :=
         regval_into_reg (shift_bits_left (m !!! Regidx rs1)
           (subrange_vec_dec shamt (Z.sub log2_xlen 1) 0))]> m) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hpmp Hstat Hrd) "Hmm Hpmpc Hpc Hf Hinstr Hcont".
     iDestruct (mmode_config_cert with "Hmm") as "[#Hcert Hmm]".
@@ -179,8 +179,8 @@ Section Wp_srli.
       gpr_file (<[Regidx rd :=
         regval_into_reg (shift_bits_right (m !!! Regidx rs1)
           (subrange_vec_dec shamt (Z.sub log2_xlen 1) 0))]> m) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hpmp Hstat Hrd) "Hmm Hpmpc Hpc Hf Hinstr Hcont".
     iDestruct (mmode_config_cert with "Hmm") as "[#Hcert Hmm]".

@@ -2382,8 +2382,8 @@ Section Pt2Engine.
          tlb_inv_pt2_kcur rc Sp -∗
          own_context XI -∗
          pc_is npc -∗ Rl npc ms1 mdv1 -∗
-         WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+         mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HSIE HMPRV HSXL Hmm HPBMTE Hmenvval HSp
            Hcanon Hvpn Hident Hcanon2 Hvpn2 Hident2 Hva2 Hpa4va4.
@@ -2497,8 +2497,8 @@ Section Pt2Engine.
          tlb_inv_pt2_kprev rc kroot Sc -∗
          own_context XI -∗
          pc_is npc -∗ Rl npc ms1 mdv1 -∗
-         WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+         mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HSIE HMPRV HSXL Hmm HPBMTE Hmenvval HSc Hbc
            Hcanon Hvpn Hident Hcanon2 Hvpn2 Hident2 Hva2 Hpa4va4.

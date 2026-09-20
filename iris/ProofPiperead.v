@@ -852,7 +852,7 @@ Section ProofPiperead.
      (∃ z : mword 64, pa_stk sp0 10 ↦₈[KT1] z) -∗
      (∃ z : mword 64, pa_stk sp0 11 ↦₈[KT1] z) -∗
      (∃ z : mword 64, pa_stk sp0 12 ↦₈[KT1] z) -∗
-     WP (Loop : expr riscv_lang))%I.
+     mWP (Loop : expr riscv_lang))%I.
 
   Definition pr_cphase_body
       (spr s0v pi addrv pj sp0 vs6 vs7 vs8 : mword 64)
@@ -886,7 +886,7 @@ Section ProofPiperead.
      pa_stk sp0 10 ↦₈[KT1] vs8 -∗
      (∃ z : mword 64, pa_stk sp0 11 ↦₈[KT1] z) -∗
      (∃ z : mword 64, pa_stk sp0 12 ↦₈[KT1] z) -∗
-     WP (Loop : expr riscv_lang))%I.
+     mWP (Loop : expr riscv_lang))%I.
 
   Definition pr_epic_body
       (sp0 spr vs6 vs7 vs8 : mword 64)
@@ -922,7 +922,7 @@ Section ProofPiperead.
      (∃ z : mword 64, pa_stk sp0 10 ↦₈[KT1] z) -∗
      (∃ z : mword 64, pa_stk sp0 11 ↦₈[KT1] z) -∗
      (∃ z : mword 64, pa_stk sp0 12 ↦₈[KT1] z) -∗
-     WP (Loop : expr riscv_lang))%I.
+     mWP (Loop : expr riscv_lang))%I.
 
   Definition pr_wloop_body
       (W0 : regfile) (av : nat) (pj : mword 64)
@@ -948,7 +948,7 @@ Section ProofPiperead.
      (∃ z : mword 64, pa_stk sp0 10 ↦₈[KT1] z) -∗
      (∃ z : mword 64, pa_stk sp0 11 ↦₈[KT1] z) -∗
      (∃ z : mword 64, pa_stk sp0 12 ↦₈[KT1] z) -∗
-     WP (Loop : expr riscv_lang))%I.
+     mWP (Loop : expr riscv_lang))%I.
 
   Lemma wp_piperead_sconf (γa : gname) (γf : gname)
       (γs : list gname) (j : nat) (γlp : gname)
@@ -1819,7 +1819,7 @@ Section ProofPiperead.
           proc_priv_core pj pid
             (upd_usM (us_upt U P') (umem_wr (us_M U) addrv dw bsw)) -∗
           (∃ b : bv 8, chaddr ↦ₘ[KT1] b) -∗
-          WP (Loop : expr riscv_lang))%I : iProp Σ)).
+          mWP (Loop : expr riscv_lang))%I : iProp Σ)).
       iAssert WXP with "[EPI Hf1 Hf2 Hf3 Hf4 Hf5 Hf6 Hf7 Hc8 Hc9 Hc10 Hq12 Hchback]" as "HWX".
       { rewrite /WXP. iEval (rewrite /EPIP) in "EPI".
         iIntros (M2 P' dw bsw rv) "%Hxg %Hxext %Hxret %Hxdwle %Hxrvtie Hcg Hpc Hown Hpay Hlocked Hres Href HRP Hpriv Hchx".
@@ -2120,7 +2120,7 @@ Section ProofPiperead.
              proc_ptm P'' (uint (pv_sz (us_V U))) M'' -∗
              proc_priv_core pj pid (upd_usM (us_upt U P'') M'')) -∗
           chaddr ↦ₘ[KT1] chb -∗
-          WP (Loop : expr riscv_lang))%I with "[]" as "CLOOP".
+          mWP (Loop : expr riscv_lang))%I with "[]" as "CLOOP".
       { iIntros (fuel). iInduction fuel as [|fuel IHf] "IHf".
         { iIntros (i cur M3 P' Mc acc chb) "%Hfu %Hi %Hrg3 %Hex3 %Hcur %Hwr3 %Hlacc %Hmc HWX Hcg Hpc Hown Hpay Hlocked Hres Href HR Hszc Hptc Hpt Hpback Hch".
           exfalso. lia. }

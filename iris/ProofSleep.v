@@ -205,8 +205,8 @@ Section SleepJoin.
         pc_is (ret_pc (m !!! Regidx (mword_of_int 1 : mword 5))) -∗
         trap_csrs_ext KT1 eb -∗
         cpu_claim_ext eb pj -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros pj Hav Hj Hno Hspd Hsp0 Hsp_mj Hs1_mj
            Hmj18 Hmj19 Hmj20 Hmj21 Hmj22 Hmj23 Hmj24 Hmj25 Hmj26 Hmj27.

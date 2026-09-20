@@ -115,8 +115,8 @@ Definition wp_kerneltrap_returns_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ} `{G
       kv_cell pa9 v9 -∗ kv_cell pa10 v10 -∗ kv_cell pa11 v11 -∗ kv_cell pa12 v12 -∗
       kv_cell pa13 v13 -∗ kv_cell pa14 v14 -∗ kv_cell pa15 v15 -∗ kv_cell pa16 v16 -∗
       kv_cell pa17 v17 -∗
-      WP (Loop : expr riscv_lang) ) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang) ) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type KERNELTRAP_RETURNS.
   Parameter kerneltrap_returns :
@@ -323,8 +323,8 @@ Definition wp_kerneltrap_sconf_body
       sepc ↦ᵣ ep -∗ scause ↦ᵣ sc' -∗ stval ↦ᵣ tv' -∗
       pc_is ret_tgt -∗
       cpu_claim p -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type KERNELTRAP.
   Parameter wp_kerneltrap_sconf :

@@ -336,7 +336,7 @@ Section LogWriteDefs.
       Fb -∗
       bio_locked bn (fs_view γfs γd dev cov) k pidv dev bno bs bsd true -∗
       bslot -∗
-      WP (Loop : expr riscv_lang))%I.
+      mWP (Loop : expr riscv_lang))%I.
 
   (* re-anchor the continuation from the hart a block was entered at to the
      hart it hands it on at (ProofBread.bd_cont_shift's twin) *)
@@ -505,7 +505,7 @@ Section LogWriteBlocks.
     lw_frame m -∗
     lw_res bn γ γfs γd cov dev k pidv bno bs bsd Fb Bud -∗
     lw_cont (CID0 := CID0) bn γ γfs γd cov dev k pidv bno bs bsd Fb Bud m K n eb p b lks -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK Hbeq (Hsp & Hs1v & Hthr) Hno.
     iIntros "Hcg #Htext Hpc #Hlctx Hcnt Hpay Htok HRres Hframe Hout Hcont".
@@ -789,7 +789,7 @@ Section LogWriteBlocks.
     lh_n_pa ↦₄ (mword_of_int (Z.of_nat nl) : mword 32) -∗
     lw_closeP γ bn γfs γd cov logstart dev k pidv bno bs bsd Fb Bud nl -∗
     lw_cont (CID0 := CID0) bn γ γfs γd cov dev k pidv bno bs bsd Fb Bud m K n eb p b lks -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK Hnoff Hbeq Hk Hnl Ha0 Hregs Hno.
     pose proof Hregs as (Hsp & Hs1v & Hthr).
@@ -1036,7 +1036,7 @@ Section LogWriteBlocks.
      ∧ (⌜i <> nl⌝ -∗ lh_block i ↦₄ bno -∗
         lw_closeR γ bn γfs γd cov logstart dev k pidv bno bs bsd Fb Bud nl)) -∗
     lw_cont (CID0 := CID0) bn γ γfs γd cov dev k pidv bno bs bsd Fb Bud m K n eb p b lks -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK Hnoff Hbeq Hk Hnl Hinl Ha0 Hregs Ha5v Ha2v Hno.
     pose proof Hregs as (Hsp & Hs1v & Hthr).
@@ -1306,7 +1306,7 @@ Section LogWriteBlocks.
     (lh_block nl ↦₄ bno -∗
        lw_closeP γ bn γfs γd cov logstart dev k pidv bno bs bsd Fb Bud nl) -∗
     lw_cont (CID0 := CID0) bn γ γfs γd cov dev k pidv bno bs bsd Fb Bud m K n eb p b lks -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK Hnoff Hbeq Hk Hnl Ha0 Hregs Ha2v Hno.
     pose proof Hregs as (Hsp & Hs1v & Hthr).
@@ -1533,7 +1533,7 @@ Section LogWriteBlocks.
     (lw_closeA γ bn γfs γd cov logstart dev k pidv bno bs bsd Fb Bud nl W
      ∧ lw_closeB γ bn γfs γd cov logstart dev k pidv bno bs bsd Fb Bud nl W) -∗
     lw_cont (CID0 := CID0) bn γ γfs γd cov dev k pidv bno bs bsd Fb Bud m K n eb p b lks -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK Hnoff Hbeq Hk Hnl HnW Ha0 Hno.
     iInduction fuel as [|fuel] "IH";

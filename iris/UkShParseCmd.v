@@ -185,8 +185,8 @@ Section UkShParseCmd.
            Pex -∗
            urun N h' m' (ret_pc (m !!! Regidx ra_idx))
              (6 + (16 + (24 + nn))) -∗
-           WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+           mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof.
     intros Ha0 Ha1 Hoffle Hw0 Hnosym Htoks Htlen Hs0 Hs64 Hps0 Hps8 Hpssz.
     iIntros "#Hcode #Hro Hcur Hstr Hws Hsy HM #Hpx Hpay Hrun Hcont".
@@ -688,8 +688,8 @@ Section UkShParseCmd.
            Pex -∗
            urun N h' m' (ret_pc (m !!! Regidx ra_idx))
              (6 + (6 + (16 + (24 + nn)))) -∗
-           WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+           mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof.
     intros Ha0 Ha1 Hoffle Hw0 Hnosym Htoks Htlen Hs0 Hs64 Hps0 Hps8 Hpssz.
     iIntros "#Hcode #Hro Hcur Hstr Hws Hsy HM #Hpx Hpay Hrun Hcont".
@@ -1466,8 +1466,8 @@ Section UkShParseCmd.
          ⌜ forall r : mword 5, ucallee_saved_idx r = true ->
              mc' !!! Regidx r = mc !!! Regidx r ⌝ -∗
          urun N h' mc' (mword_of_int 0x83e) nn -∗
-         WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+         mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intro rest.
     induction rest as [| tk' rest IH ];
@@ -1748,8 +1748,8 @@ Section UkShParseCmd.
                (<[Regidx a0_idx
                   := regval_into_reg (mword_of_int p : mword 64)]> me)))
          (ret_pc (vals 0%nat)) (4 + nn) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hal8 Hlo Hhi Hsplu Hsp Hs1.
     iIntros "#Hcode Hsl Hloc Hrun Hcont".
@@ -1824,8 +1824,8 @@ Section UkShParseCmd.
          ⌜ ucallee_saved m m' ⌝ -∗
          ⌜ m' !!! Regidx a0_idx = mword_of_int p ⌝ -∗
          urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (4 + nn) -∗
-         WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+         mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Ha0 Hs0 Hs64 Hp0 Hp8 Hpsz Htlen Hsnd.
     iIntros "#Hcode #Hro Hnode Hline Hrun Hcont".
@@ -2543,8 +2543,8 @@ Section UkShParseCmd.
            Pex -∗
            urun N h' m' (ret_pc (m !!! Regidx ra_idx))
              (8 + (6 + (6 + (16 + (24 + nn))))) -∗
-           WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+           mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof.
     intros Ha0 Hnosym Htoks Htlen Hs0 Hs64.
     iIntros "#Hcode #Hro Hstr Hws Hsy HM #Hpx Hpay Hrun Hcont".
@@ -3450,8 +3450,8 @@ Section UkShParseCmd.
            Pex -∗
            urun N h' m' (ret_pc (m !!! Regidx ra_idx))
              (60 + nn) -∗
-           WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+           mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using ushp_malloc_ok.
     intros Ha0 Hnosym Htoks Htlen Hs0 Hs64.
     iIntros "#Hcode #Hro Hstr Hws Hsy HM #Hpx Hpay Hrun Hcont".

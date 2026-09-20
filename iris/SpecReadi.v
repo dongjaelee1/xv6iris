@@ -446,8 +446,8 @@ Definition wp_readi_sconf_body
               pa_add dst i ↦ₘ[ktb] rd_delivered data dst_olds off tot i) ∗
             proc_priv_bare pj pidv U) -∗
       bslot -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type READI.
   Parameter wp_readi_sconf :

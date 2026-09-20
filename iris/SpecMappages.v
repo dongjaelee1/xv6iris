@@ -73,8 +73,8 @@ Definition wp_mappages_sconf_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{CID 
       \/ ((k < npages)%nat /\
           mr !!! Regidx (mword_of_int 10) = mword_of_int (-1) /\
           avail_zero (avail_sub on g)) ⌝ -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type MAPPAGES.
   Parameter wp_mappages_sconf :

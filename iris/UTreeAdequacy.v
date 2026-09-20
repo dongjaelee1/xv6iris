@@ -56,7 +56,7 @@ From iris.program_logic Require Import language lifting adequacy.
 Require Import SailStdpp.Operators_mwords.
 Require Import Riscv.rv64d_types Riscv.rv64d.
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.MachineWord.
-Require Import RiscvLang ObsTrace RiscvPtsto.
+Require Import RiscvLang RiscvPtsto.
 Require Import FdSlots.
 Require Import FileInvDefs.
 Require Import WpUart.             (* [cons_licence] / [cons_licence_triv] *)
@@ -116,7 +116,7 @@ Section TreeAdequacy.
     ⊢ AppInv.app_inv FsCfg.fsc_fs -∗ app_boot app_tree c (S gen_id) r -∗
       app_turn app_tree c (S gen_id) -∗
       |==> init_boot_bundle (bv_unsigned InodeInv.ROOTINO) fdt0.
-  Proof.
+  Proof using ufdG0.
     intros Heq Hiface _.
     (* the console claim and the kill credential, off the one equation:
        both are the GENERIC slot's at this record ([AppTree]'s
@@ -154,7 +154,7 @@ Section TreeAdequacy.
   (*  the history, so both steps hand it straight back.                    *)
   (* =================================================================== *)
   Global Instance tree_laws : App.xv6_app_laws app_tree.
-  Proof.
+  Proof using ufdG0.
     split.
     - exact app_tree_birth.
     - exact app_tree_Rt.
@@ -198,7 +198,7 @@ Section TreeAdequacy.
         κs (t2, g2) ->
       (forall e2, e2 ∈ t2 -> language.reducible (Λ := riscv_lang) e2 g2)
       /\ app_phi app_tree g2 κs.
-  Proof.
+  Proof using bioslotGpreS0 fdslotGpreS0 fileGpreS0 irefslotGpreS0 pavGpreS0 riscvGpreS0 ufdG0 wchGpreS0 xv6G0.
     intros n κs t2 g2 Hn.
     (* EVERY OBLIGATION GOES IN AS A HOLE ([UInitBootAdequacy]'s measured
        rule): handing [xv6_app_adequacy] its arguments at once makes the

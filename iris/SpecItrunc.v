@@ -479,8 +479,8 @@ Definition wp_itrunc_sconf_body
       (* SPEND AT MOST TWO, AT LEAST ONE: iupdate always runs; the bitmap
          unit is spent only if the inode named a block at all *)
       (∃ u' : nat, ⌜(u <= u' <= S u)%nat⌝ ∗ log_op icfg_log u') -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 (* ===================================================================== *)
 (*  THE CREDITED SET-FORM CONTRACT (fs-sysfile GR-2b, retrofit 4a)        *)
@@ -636,8 +636,8 @@ Definition wp_itrunc_gen_body
          ⌜(it_entry crb u - (it_bm w + it_iu cru) <= u')%nat
           /\ (u' + it_iu cru <= it_entry crb u)%nat⌝ ∗
          log_opS icfg_log u' Sb') -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type ITRUNC.
   Parameter wp_itrunc_sconf :

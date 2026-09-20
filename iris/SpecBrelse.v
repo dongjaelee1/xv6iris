@@ -95,8 +95,8 @@ Definition wp_brelse_sconf_body
       proc_priv_bare p pidv Upr -∗
       (* the reference's slot unit comes back *)
       bslot -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type BRELSE.
   Parameter wp_brelse_sconf :

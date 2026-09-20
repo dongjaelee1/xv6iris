@@ -216,8 +216,8 @@ Section MachineProof.
       ∀ mf : regfile,
         ⌜callee_saved mm mf /\ mf !!! Regidx Ra0 = rv⌝ -∗
         sie_cap_gpr KT1 mf K b p -∗ pc_is (ret_pc ra0) -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK Hsp0 Hra0 Hs00 Hmtsp Hmta0 Hthr.
     iIntros "Hcg #Htext Hpc Hb1 Hb2 Hcont".
@@ -409,8 +409,8 @@ Qed.
         pc_is (mword_of_int (KernelSyms.strncpy + 0x3e) : mword 64) -∗
         ([∗ list] j ∈ seq 0 n, (pa_add t j) ↦ₘ[KT1]{dq} f j) -∗
         ([∗ list] j ∈ seq 0 n, (pa_add s j) ↦ₘ[KT1] hf j) -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hk0n Hcstr Hn31 Hend rem.
     induction rem as [|rem IH]; intros k h M CID0 Hchain Hpos Hsum Hk0k Hcopy Hzero
@@ -586,8 +586,8 @@ Qed.
         pc_is (mword_of_int (KernelSyms.strncpy + 0x3e) : mword 64) -∗
         ([∗ list] j ∈ seq 0 n, (pa_add t j) ↦ₘ[KT1]{dq} f j) -∗
         ([∗ list] j ∈ seq 0 n, (pa_add s j) ↦ₘ[KT1] hf j) -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hn31 rem. induction rem as [|rem IH];
       intros d h M CID0 Hchain Hsum Hcopy Hunt Hnn Hsp Ha0 Ha1 Ha2 Ha5 Hthr;

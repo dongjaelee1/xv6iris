@@ -74,8 +74,8 @@ Definition wp_virtio_disk_intr_sconf_body
       sie_cap_gpr KT1 mf K b pme -∗
       cpu_own lvl eb pme b lks -∗
       kernel_text -∗ pc_is ret_tgt -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type VIRTIODISKINTR.
   Parameter wp_virtio_disk_intr_sconf :

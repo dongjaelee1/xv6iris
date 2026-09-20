@@ -273,7 +273,7 @@ Section AslProps.
       cpu_claim (proc_addr j) -∗
       sie_cap_gpr KT1 M (trap_res eb + (av - 4))%nat false (proc_addr j) -∗
       pc_is (mword_of_int (KernelSyms.acquiresleep + 0x36)) -∗
-      WP (Loop : expr riscv_lang)))%I.
+      mWP (Loop : expr riscv_lang)))%I.
 
   Definition asl_loop `{GEN : GenId} `{XI : CurCtx} (CID0 : CPU)
       (γs : list gname) (j : nat)
@@ -300,7 +300,7 @@ Section AslProps.
       sie_cap_gpr KT1 M (trap_res eb + (av - 4))%nat false (proc_addr j) -∗
       pc_is (mword_of_int (KernelSyms.acquiresleep + 0x1c)) -∗
       asl_exit CID0 γs j γl γsl R H q m pidv av Upr slk spd sp0 eb lks -∗
-      WP (Loop : expr riscv_lang)))%I.
+      mWP (Loop : expr riscv_lang)))%I.
 
   (* ---- THE NESTED PAIR: the same two anchors (control at +0x36 and at
      +0x1c), for the [cpu_own (S n)] contract.  Three differences, all
@@ -342,7 +342,7 @@ Section AslProps.
       arm_pay KT1 (S n) eb (proc_addr j) -∗
       sie_cap_gpr KT1 M (av - 4)%nat false (proc_addr j) -∗
       pc_is (mword_of_int (KernelSyms.acquiresleep + 0x36)) -∗
-      WP (Loop : expr riscv_lang))%I.
+      mWP (Loop : expr riscv_lang))%I.
 
   Definition asl_nloop `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx}
       (γl γsl : gname) (R : iProp Σ) (H : Qp -> iProp Σ) (q : Qp) (X : iProp Σ)
@@ -366,7 +366,7 @@ Section AslProps.
       sie_cap_gpr KT1 M (av - 4)%nat false (proc_addr j) -∗
       pc_is (mword_of_int (KernelSyms.acquiresleep + 0x1c)) -∗
       asl_nexit γl γsl R H q X m j pidv av Upr slk spd sp0 eb n lks -∗
-      WP (Loop : expr riscv_lang))%I.
+      mWP (Loop : expr riscv_lang))%I.
 
   (* ---- R3 / F22: THE NESTED PAIR OVER A λ PAYLOAD, llb-TIERED: the exit
      hands the payload at the running context and the floor the inner
@@ -393,7 +393,7 @@ Section AslProps.
       arm_pay KT1 (S n) eb (proc_addr j) -∗
       sie_cap_gpr KT1 M (av - 4)%nat false (proc_addr j) -∗
       pc_is (mword_of_int (KernelSyms.acquiresleep + 0x36)) -∗
-      WP (Loop : expr riscv_lang))%I.
+      mWP (Loop : expr riscv_lang))%I.
 
   Definition asl_nloop_l `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx}
       (γl γsl : gname) (R : CtxIdDefs.CtxId -> iProp Σ) (H : Qp -> iProp Σ) (q : Qp) (X : iProp Σ) (Tl : nat)
@@ -417,7 +417,7 @@ Section AslProps.
       sie_cap_gpr KT1 M (av - 4)%nat false (proc_addr j) -∗
       pc_is (mword_of_int (KernelSyms.acquiresleep + 0x1c)) -∗
       asl_nexit_l γl γsl R H q X Tl m j pidv av Upr slk spd sp0 eb n lks -∗
-      WP (Loop : expr riscv_lang))%I.
+      mWP (Loop : expr riscv_lang))%I.
 
 End AslProps.
 
@@ -481,8 +481,8 @@ Section AslBodies.
         sleeplocked_q γsl q slk pidv -∗
         R CtxIdDefs.cur_ctx -∗
         proc_priv_bare pj pidv Upr -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using bioslotG0.
     intros pj Hav Hanch Hspd Hsp0 Hasl Hbelow.
     pose proof (locks_below_not_elem _ _ Hbelow) as Hfresh.
@@ -843,7 +843,7 @@ Section AslBodies.
     cpu_claim pj -∗
     sie_cap_gpr KT1 M (trap_res eb + (av - 4))%nat false pj -∗
     pc_is (mword_of_int (KernelSyms.acquiresleep + 0x32)) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     (* NB: [eb] is deliberately NOT substituted here.  This body runs [iNext]
        over [cpu_own], and with [eb] literal [intr_count]'s [if eb] reduces,
@@ -948,7 +948,7 @@ Section AslBodies.
     sie_cap_gpr KT1 M (trap_res eb + (av - 4))%nat false pj -∗
     pc_is (mword_of_int (KernelSyms.acquiresleep + 0x1c)) -∗
     asl_exit CID0 γs j γl γsl R H q m pidv av Upr slk spd sp0 eb lks -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros pj Hav Hj Hjpl Hanch Hasl Hbelow.
     pose proof (locks_below_not_elem _ _ Hbelow) as Hfresh.
@@ -1583,8 +1583,8 @@ Section ProofAcquiresleep.
         X -∗
         R -∗
         proc_priv_bare pj pidv Upr -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros pcE slk pj ret_tgt Hav Hb31 Hfresh.
     set (sp0 := (m !!! Regidx csp_rs1 : mword 64)).
@@ -2196,8 +2196,8 @@ Section ProofAcquiresleep.
         (∃ K : nat, ⌜(Tl <= K)%nat⌝ ∗ TsoCtx.ctx_floor CtxIdDefs.cur_ctx K) -∗
         R CtxIdDefs.cur_ctx -∗
         proc_priv_bare pj pidv Upr -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros pcE slk pj ret_tgt Hav Hb31 Hfresh.
     set (sp0 := (m !!! Regidx csp_rs1 : mword 64)).

@@ -232,7 +232,7 @@ Section FsinitDefs.
         bslots 3 -∗
         iref_slot -∗
         ireg_boot -∗
-        WP (Loop : expr riscv_lang))%I.
+        mWP (Loop : expr riscv_lang))%I.
 
   (* ------------------------------------------------------------------ *)
   (* THE BUFFER'S DATA BYTES, out of the handle and back.  [ds_held_L]'s *)
@@ -315,7 +315,7 @@ Section FsinitEpilogue.
     fsi_cont (CID0 := CID0)
  v_magic v_size v_nblocks v_nlog pidv dq j
              m K eb b lks Upr -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK Hsp Hthr.
     pose proof HK as HK'. 

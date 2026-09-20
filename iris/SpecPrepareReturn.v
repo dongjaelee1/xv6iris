@@ -287,8 +287,8 @@ Definition wp_prepare_return_sconf_body
         (us_tf U (prepare_return_tf (pv_tf (us_V U)) ksat
                      (add_vec ks (mword_of_int 4096)) cid_word)) -∗
       pc_is ret_tgt -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type PREPARE_RETURN.
   Parameter wp_prepare_return_sconf :

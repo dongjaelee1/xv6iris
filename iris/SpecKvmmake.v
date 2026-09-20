@@ -69,8 +69,8 @@ Definition wp_kvmmake_sconf_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{CID :
     ⌜kvm_pas_ok pas⌝ -∗
     ([∗ list] i ∈ seq 0 64,
        page_filled (zero_extend' 64 (concat_vec (pas i) (zeros' 12 : mword 12))) kalloc_junk) -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type KVMMAKE.
   Parameter wp_kvmmake_sconf :

@@ -162,8 +162,8 @@ Section ProofUvmdealloc.
       ⌜ ((uint newsz >= uint oldsz)%Z /\ mr !!! Regidx Ra0 = oldsz)
         \/ ((uint newsz < uint oldsz)%Z /\ mr !!! Regidx Ra0 = newsz) ⌝ -∗
       Res -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK4 Hcross Hrettgt Hjsp Hjs1 Hjthr Hpay.
     pose (sp0 := (mm !!! Regidx csp_rs1 : mword 64)).

@@ -110,8 +110,8 @@ Definition wp_proc_freepagetable_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG �
     cpu_own ilvl eb p b lks -∗
     pc_is ret_tgt -∗
     ⌜callee_saved mm mr⌝ -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 (* ===================================================================== *)
 (*  THE MEMORY-INDEXED CONTRACT.                                          *)
@@ -156,8 +156,8 @@ Definition wp_proc_freepagetable_mem_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslo
     cpu_own ilvl eb p b lks -∗
     pc_is ret_tgt -∗
     ⌜callee_saved mm mr⌝ -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type PROC_FREEPAGETABLE.
   Parameter wp_proc_freepagetable_mem_sconf :

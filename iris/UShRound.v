@@ -54,7 +54,6 @@ Require Import Riscv.rv64d_types Riscv.rv64d Riscv.riscv_extras.
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.MachineWord.
 Require Import RiscvLang RiscvPtsto RiscvExtras RiscvModelBytes.
 Require Import RegFile.
-Require Import ObsTrace.
 Require Import Xv6Cameras.
 Require Import Xv6G.
 Require Import FdSlots.
@@ -65,18 +64,14 @@ Require Import UserFd.
 Require Import UserPerm.
 Require Import UserCwd.
 Require Import UserChildren.
-Require Import UserConsole.
 Require Import UmodeArith UmodeAbi.
 Require Import ProcGeom.
-Require Import ChildTok.
-Require Import UexecSlot UexecRet UexecSG.
+Require Import UexecRet.
 Require Import ExecEntry.
 Require Import UkRun UkRunSys.
 Require Import UkRunLeaf.                (* [wp_uk_cli] / [wp_uk_cjr]: the stub *)
 Require Import UexecExecInst.            (* THE INSTANCES *)
 Require Import WpUart.
-Require Import ConsLog.
-Require Import LogEntryDefs.
 Require Import FsCfg.
 Require Import FsImg.
 Require Import FsImgCheck.
@@ -89,7 +84,6 @@ Require Import AppCfg.
 Require Import AppInv.
 Require Import LineWords.
 Require Import EchoDisc.
-Require Import EchoOutPure.
 Require Import EchoOut.
 Require Import FileDisc.
 Require Import FileOutPure.
@@ -111,10 +105,8 @@ Require Import UkShMalloc.
 Require Import UkShParse.
 Require Import UCodeShP.
 Require Import UCodeShK.
-Require Import UkShRedir.
 Require Import UkShRedirLine.
 Require Import UkShRedirAns.
-Require Import UkShRedirSeam.
 Require Import UkShEcho.
 Require Import UkShFork.
 Require Import UkFileOpen.
@@ -135,9 +127,7 @@ Require Import UShKernel.
 Require Import UInitSh.
 Require Import UCatOut.                  (* [cat_tie] -- the pure round tie *)
 Require Import UCatKernel.
-Require Import UEchoFile.                (* K1: echo's entry at `f` *)
 Require Import CtxIdDefs.
-Require Import FsAbs.
 Local Open Scope Z_scope.
 Import Defs.
 
@@ -590,15 +580,38 @@ Section UShRound.
   Lemma Wcf_S3 I p : Wcf I (S (S (S p))) = (Wcl I 3%nat ∗ PRE I)%I.
   Proof using . reflexivity. Qed.
 
+  (* NAME THE LEAF, do not search (optimization.md, "Prove a big [Timeless]
+     instance structurally").  [Timeless] patterns are keyed modulo delta and
+     nearly every one of the tree's instances sits under a transparent
+     definition, so ONE [apply _] at this altitude tries almost all of them:
+     the four goals below measured 107s in a single sentence, which was this
+     file's whole cost and the tail of the build's critical path.  Descend
+     through the CONNECTIVES and name the leaf, SYNTACTICALLY -- a [first
+     [...]] spelling would peel straight through a name that has its own
+     instance. *)
+  Local Ltac tl_leaf :=
+    lazymatch goal with
+    | |- Timeless (bi_sep _ _) => apply bi.sep_timeless; [tl_leaf | tl_leaf]
+    | |- Timeless (bi_or _ _) => apply bi.or_timeless; [tl_leaf | tl_leaf]
+    | |- Timeless (FileLinkInst.file_Wcl_at _ _ _ _) =>
+           apply FileLinkInst.file_Wcl_at_timeless
+    | |- Timeless (FileLinkInst.file_Wbl_at _ _ _) =>
+           apply FileLinkInst.file_Wbl_at_timeless
+    | |- Timeless (sh_pre_at _ _) => apply sh_pre_at_timeless
+    | |- Timeless (sh_done_at _ _) => apply sh_deed_at_timeless
+    | |- Timeless (sh_pend_at _ _) => apply sh_deed_at_timeless
+    | |- _ => apply _
+    end.
+
   Global Instance Wcf_timeless I p : Timeless (Wcf I p).
   Proof using .
     destruct p as [| [| [| p]]];
       [ rewrite Wcf_0 | rewrite Wcf_1 | rewrite Wcf_2 | rewrite Wcf_S3 ];
-      apply _.
+      tl_leaf.
   Qed.
 
   Global Instance Wbf_timeless I : Timeless (Wbf I).
-  Proof using . rewrite /Wbf. apply _. Qed.
+  Proof using . rewrite /Wbf. tl_leaf. Qed.
 
   (* ...AND IT IS INHABITED AT THE ERA'S HEAD (RULING H' at HOLD-POS): at
      [I = []] nothing is filed, so the head is DONE at [cs = []] with the
@@ -1824,7 +1837,7 @@ Section UShRound.
           Wcf I 3%nat -∗
           urun N' h m (mword_of_int 0x9c0)
             (60 + (8 + (UkShDiag.ush_Dg + n))) -∗
-          WP (Loop : expr riscv_lang)))%I.
+          mWP (Loop : expr riscv_lang)))%I.
 
   Hypothesis Hchild_redir : ⊢ sh_redir_child_law.
 

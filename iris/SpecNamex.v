@@ -363,7 +363,7 @@ Definition namex_post
        else ⌜mf !!! Regidx (mword_of_int 10 : mword 5)
              = (mword_of_int 0 : mword 64)⌝ ∗
             iref_slots 2) -∗
-      WP (Loop : expr riscv_lang))%I.
+      mWP (Loop : expr riscv_lang))%I.
 
 (* THE SET-FORM CONTINUATION (fs-sysfile GR-2b, retrofit 6).  Verbatim
    [namex_post] except that the ledger clause remembers the caller's set and
@@ -434,7 +434,7 @@ Definition namex_postS
        else ⌜mf !!! Regidx (mword_of_int 10 : mword 5)
              = (mword_of_int 0 : mword 64)⌝ ∗
             iref_slots 2) -∗
-      WP (Loop : expr riscv_lang))%I.
+      mWP (Loop : expr riscv_lang))%I.
 
 Definition wp_namex_sconf_body
     `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, !fileG Σ,
@@ -567,7 +567,7 @@ Definition wp_namex_sconf_body
     namex_post (CID := CIDc) pj pv nb ret_tgt pl m K b eb lks
 
                plen pfun npar n pidv dq dqb dqs dqpv Upr) -∗
-  WP (Loop : expr riscv_lang).
+  mWP (Loop : expr riscv_lang).
 
 (* =====================================================================  *)
 (*  THE SET-FORM CONTRACT (fs-sysfile GR-2b, retrofit 6)                  *)
@@ -726,7 +726,7 @@ Definition wp_namex_gen_body
     namex_postS (CID := CIDc) pj pv nb ret_tgt pl m K b eb lks
 
                 plen pfun npar n Sb pidv dq dqb dqs dqpv Upr) -∗
-  WP (Loop : expr riscv_lang).
+  mWP (Loop : expr riscv_lang).
 
 Module Type NAMEX.
   Parameter wp_namex_sconf :
@@ -881,8 +881,8 @@ Definition wp_namex_root_body
          inum, and userinit's [p->cwd = namei("/")] installs it beside the
          pointer ([ProcDefs.pv_cwi]). *)
       inode_held_at ipv (bv_unsigned ROOTINO) -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type NAMEX_ROOT.
   Parameter wp_namex_root :

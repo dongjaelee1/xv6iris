@@ -47,14 +47,8 @@ Local Open Scope Z_scope.
 Import Defs.
 Require Import UserFd.
 Require Import UkShParse.
-Require Import UkShParseSym.
 Require Import UkShParseLex.
-Require Import UkShParseTok.
-Require Import UkShParseRedir.
-Require Import UkShRedirLex.
-Require Import UkShRedirGtk.
 Require Import UkShRedirCmd.
-Require Import UkShRedirPr.
 Require Import UkShParseCmd.
 
 Require Import UexecSG.   (* [uexecSG] / [uprogSG]: the ARM deposit class *)
@@ -247,8 +241,8 @@ Section UkShPipeParse.
          ⌜ ucallee_saved m m' ⌝ -∗
          ⌜ m' !!! Regidx a0_idx = mword_of_int p ⌝ -∗
          urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (4 + (4 + nn)) -∗
-         WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+         mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Ha0 Hs0 Hs64 Hp0 Hp8 Hpsz Hpl0 Hpl8 Hplsz Hpr0 Hpr8 Hprsz
       Htlenl Htlenr Hsndl Hsndr.

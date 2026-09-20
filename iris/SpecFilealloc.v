@@ -97,8 +97,8 @@ Definition wp_filealloc_sconf_body `{!riscvGS Σ, !xv6G Σ, !fileG Σ, !fdslotG 
     pc_is ret_tgt -∗
     ⌜ callee_saved m mr ⌝ -∗
     filealloc_post γf (mr !!! Regidx (mword_of_int 10 : mword 5)) -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type FILEALLOC.
   Parameter wp_filealloc_sconf :

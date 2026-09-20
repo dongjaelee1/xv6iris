@@ -23,31 +23,22 @@ Require Import SailStdpp.Operators_mwords.
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values
         SailStdpp.MachineWord.
 Require Import RiscvLang.
-Require Import ObsTrace.
 Require Import LineWords.
 Require Import EchoDisc.
-Require Import LogEntryDefs.
 Require Import ConsLog.
-Require Import EchoOutPure.
-Require Import FileState.
 Require Import FileDisc.
-Require Import FileOutPure.
 Require Import EchoOut.
-Require Import AppEcho.
 Require Import AppFile.
 Require Import FileOut.
 Require Import FileLinks.
 Require Import FileLinksLine.
 Require Import FileLineWit.        (* the consumed input's lines are its last byte's history's *)
-Require Import EchoLinks.
-Require Import EchoLinksLine.
 Require Import LinkRec.
 Require Import ReadRec.
 Require Import FileLinkInst.
 Require Import RiscvPtsto.
 Require Import ConsoleInv.
 Require Import WpUart.
-Require Import RegFile.
 Require Import Xv6Cameras.
 Require Import Xv6G.
 Require Import FdSlots.
@@ -55,9 +46,7 @@ Require Import IrefSlots.
 Require Import ProcAvail.
 Require Import FileInvDefs.
 Require Import UserFd.
-Require Import UserHeap.
-Require Import UexecSlot UexecRet UsysMemOk UexecSG.
-Require Import UkRun UkRunSys.
+Require Import UkRun.
 Require Import UexecExecInst.
 Require Import AppInv.
 Require Import FsCfg.

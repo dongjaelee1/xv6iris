@@ -403,7 +403,7 @@ Definition uservec_post `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fileG Σ} `{GEN 
          gn cs pid
          (pv_tf (us_V U') !!! tf_arg_idx 0) (us_M U') sts'
          (pv_cwi (us_V U')) cs') -∗
-    WP (Loop : expr riscv_lang)).
+    mWP (Loop : expr riscv_lang)).
 Global Typeclasses Opaque uservec_post.
 
 (* Same as [uservec_post]: only [riscvGS]/[sieG] -- [usertrap_res] is held
@@ -545,7 +545,7 @@ Definition wp_uservec_pt_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fileG Σ} 
   wp_next true (proc_addr j) (fun CID' : CpuId =>
     uservec_post (CID := CID') (URes CID') C pt vksp U M g sts gn cs pid
       sepc_v sc_v f Wk) -∗
-  WP (Loop : expr riscv_lang).
+  mWP (Loop : expr riscv_lang).
 
 Require Import UserFd.   (* [ufdG] -- the class a minted user slot needs *)
 Module Type USERVEC.

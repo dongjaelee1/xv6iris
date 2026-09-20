@@ -29,7 +29,7 @@
 
    THE FOUR FACTS, in the order the Iris claim spends them:
      F1  the stage is below the session   ([D_pending_sess], [D_stage_prefix])
-     F2  the next echo is the next input  ([D2_next_input])
+     F2  the owed output is complete     ([next_input_of_complete])
      F3  the read window is a slice of E  ([read_window_prefix])
      F4  PHI's pure part                  ([good_out_of_stage]) *)
 From Stdlib Require Import ZArith Lia List.
@@ -209,6 +209,108 @@ Definition pending_at (ps cs : list nat) (I : list (bv 8)) : list (bv 8) :=
 
 Definition pending (ps cs : list nat) (E : list (list mobs * bv 8))
   : list (bv 8) := pending_at ps cs (snd <$> E).
+
+(* ---- THE BYTES OF AN INPUT'S FIRST [n] COMPLETE LINES ---------------- *)
+
+(* [lines_bytes I n] counts the first [n] complete lines of [I], each with
+   the newline that closed it.  It is the yardstick the claim's
+   DELIVERED-COUNT clause is stated in -- "every completed line whose block
+   has begun has been consumed" is [lines_bytes Eb q <= length dl] -- and
+   that clause is what bounds the console ring: with at most the line in
+   progress unconsumed, and [EchoDisc.line_max] keeping a line under the
+   ring's 128, a full ring is impossible ([drop_refuted]). *)
+Definition lines_bytes (I : list (bv 8)) (n : nat) : nat :=
+  length (wl_join (take n (bodies_of I))).
+
+Lemma lines_bytes_0 (I : list (bv 8)) : lines_bytes I 0%nat = 0%nat.
+Proof. by rewrite /lines_bytes take_0 wl_join_nil. Qed.
+
+(* the two snoc steps: a byte inside a line adds nothing to any count, and
+   the newline that closes line [nlines I] leaves the counts below it *)
+Lemma lines_bytes_snoc_other (I : list (bv 8)) (b : bv 8) (n : nat) :
+  b <> wl_nl -> lines_bytes (I ++ [b]) n = lines_bytes I n.
+Proof. intro Hb. by rewrite /lines_bytes (bodies_of_snoc_other I b Hb). Qed.
+
+Lemma lines_bytes_snoc_nl (I : list (bv 8)) (n : nat) :
+  (n <= nlines I)%nat -> lines_bytes (I ++ [wl_nl]) n = lines_bytes I n.
+Proof.
+  intro Hn. rewrite /lines_bytes bodies_of_snoc_nl.
+  rewrite (take_app_le (bodies_of I) [rest_of I] n); [reflexivity |].
+  rewrite /nlines in Hn. exact Hn.
+Qed.
+
+(* ...one more line is more bytes *)
+Lemma lines_bytes_S (I : list (bv 8)) (n : nat) (l : list (bv 8)) :
+  bodies_of I !! n = Some l ->
+  lines_bytes I (S n) = (lines_bytes I n + length l + 1)%nat.
+Proof.
+  intro Hl. rewrite /lines_bytes (take_S_r _ _ _ Hl) wl_join_snoc !length_app.
+  cbn [length]. lia.
+Qed.
+
+Lemma lines_bytes_le (I : list (bv 8)) (n m : nat) :
+  (n <= m)%nat -> (lines_bytes I n <= lines_bytes I m)%nat.
+Proof.
+  intro Hnm. rewrite /lines_bytes. apply prefix_length.
+  destruct (prefix_take_le (bodies_of I) n m Hnm) as [bs Hbs].
+  exists (wl_join bs). by rewrite Hbs wl_join_app.
+Qed.
+
+(* ALL the complete lines are the input minus the line in progress *)
+Lemma lines_bytes_nlines (I : list (bv 8)) :
+  lines_bytes I (nlines I) = length (done_of I).
+Proof. rewrite /lines_bytes /nlines take_ge; [reflexivity | lia]. Qed.
+
+Lemma lines_bytes_all (I : list (bv 8)) :
+  lines_bytes I (nlines I) = (length I - length (rest_of I))%nat.
+Proof. rewrite lines_bytes_nlines. exact (length_done_of I). Qed.
+
+Lemma lines_bytes_rest (I : list (bv 8)) :
+  (lines_bytes I (nlines I) + length (rest_of I))%nat = length I.
+Proof.
+  rewrite lines_bytes_nlines -{3}(done_of_app_rest I) length_app. lia.
+Qed.
+
+(* ...and the LAST of them costs its own body plus its newline *)
+Lemma lines_bytes_last (I : list (bv 8)) :
+  (0 < nlines I)%nat ->
+  lines_bytes I (nlines I)
+  = (lines_bytes I (nlines I - 1)%nat
+     + length (bodies_of I !!! (nlines I - 1)%nat) + 1)%nat.
+Proof.
+  intro Hq.
+  assert (Hk : (nlines I - 1 < length (bodies_of I))%nat)
+    by (rewrite /nlines in Hq |- *; lia).
+  destruct (lookup_lt_is_Some_2 (bodies_of I) (nlines I - 1)%nat Hk) as [l Hl].
+  rewrite (list_lookup_total_correct _ _ _ Hl).
+  replace (nlines I) with (S (nlines I - 1)%nat) at 1 by lia.
+  exact (lines_bytes_S I (nlines I - 1)%nat l Hl).
+Qed.
+
+(* THE RING BOUND, as pure arithmetic: under D3 an input is its complete
+   lines plus at most one line's worth of bytes -- whether the last line
+   counted is the one before the input's end or the input's own last. *)
+Lemma lines_bytes_disc_bound (I : list (bv 8)) (n : nat) :
+  disc_input I ->
+  (n = nlines I \/ (rest_of I = [] /\ n = (nlines I - 1)%nat)) ->
+  (length I <= lines_bytes I n + line_max)%nat.
+Proof.
+  intros Hd Hn.
+  pose proof (lines_bytes_rest I) as Hsum.
+  destruct Hn as [-> | [Hr ->]].
+  - pose proof (disc_input_rest_short I Hd). lia.
+  - destruct (decide (0 < nlines I)%nat) as [Hpos | Hz].
+    + rewrite (lines_bytes_last I Hpos) in Hsum.
+      assert (Hk : (nlines I - 1 < length (bodies_of I))%nat)
+        by (rewrite /nlines in Hpos |- *; lia).
+      destruct (lookup_lt_is_Some_2 (bodies_of I) (nlines I - 1)%nat Hk)
+        as [l Hl].
+      rewrite (list_lookup_total_correct _ _ _ Hl) in Hsum.
+      pose proof (body_ok_short l (disc_input_body I _ l Hd Hl)).
+      rewrite Hr in Hsum. cbn [length] in Hsum. lia.
+    + assert (Hnl : nlines I = 0%nat) by lia.
+      rewrite Hnl lines_bytes_0 Hr in Hsum. cbn [length] in Hsum. lia.
+Qed.
 
 (* THE TRANSCRIPT DUE AFTER E's LAST ECHO.  The note's law is a RIGHT
    append ([D cs (E ++ [(h,c)]) = D cs E ++ pending cs E ++ [echo_of c]]),
@@ -607,7 +709,7 @@ Qed.
 (* F2.  The wire is abstract ([W]) so that the Iris lane may instantiate it
    with [obs_wire Uart0 (open_seg h)] or with [obs_wire Uart0 h]; the two
    hypotheses about it are the discipline's LOWER bound at the input BEFORE
-   this byte ([EchoDisc.disc_pt], D1/D2) and the claim's UPPER bound.
+   this byte ([EchoDisc.disc_pt], D1) and the claim's UPPER bound.
 
    WHAT REPLACES THE LENGTH COMPARISON.  With a fixed line the two stages
    were two numbers and one was below the other by [sess]'s strict growth.
@@ -633,55 +735,137 @@ Lemma hist_ext_irrefl (h : list mobs) : hist_ext h h -> False.
 Proof. intros [_ Hl]. lia. Qed.
 
 
-Lemma D2_next_input (ps cs : list nat) (E : list (list mobs * bv 8))
+(* THE ECHO STEP'S FACT.  [w] -- the process output still owed at this
+   stage -- IS the whole of it, so the echo about to go out is the next
+   byte of the transcript and nothing of the process's is pending in front
+   of it.
+
+   WHERE THE TWO FACTS COME FROM.  That the echoed list holds every earlier
+   input of the era ([length E = m - 1]) is the KERNEL's FIFO discipline --
+   the receive FIFO is drained in arrival order and each popped byte's arm
+   closes before the next pop -- handed to the claim as
+   [ConsLog.cons_ev_ok]'s log-completeness clause together with the claim's
+   own "every log entry is echoed".  It is not a trace fact, and it is a
+   PREMISE here.  That the output is complete is the DISCIPLINE's, read at
+   [LineWords.done_of]: at a line's first byte the bound is the full
+   transcript for every completed line, and mid-line [pending] is empty, so
+   there is nothing to be complete. *)
+Lemma next_input_of_complete (ps cs : list nat) (E : list (list mobs * bv 8))
       (w W : list (bv 8)) (h : list mobs) (c : bv 8) (m : nat) :
   E_disc E -> E_index E ->
   (forall x, x ∈ E -> hist_ext x.1 h) ->
   obs_ends_in Uart0 h c ->
   length (ins h) = m ->
+  length E = (m - 1)%nat ->
   w `prefix_of` pending ps cs E ->
-  sess ps cs (take (m - 1)%nat (ins h)) `prefix_of` W ->
+  sess ps cs (done_of (take (m - 1)%nat (ins h))) `prefix_of` W ->
   W `prefix_of` (D ps cs E ++ w) ->
-  m = S (length E) /\ w = pending ps cs E.
+  w = pending ps cs E.
 Proof.
-  intros HEb HEi Hnew Hends Hm Hw Hlow Hup.
-  assert (Hm1 : (1 <= m)%nat).
-  { destruct Hends as [h0 Hh0]. rewrite -Hm Hh0 ins_app ins_in.
-    rewrite (length_app (ins h0) [c]). cbn [length]. lia. }
+  intros HEb HEi Hnew Hends Hm HlenE Hw Hlow Hup.
   assert (Hprefix : forall j x, E !! j = Some x -> x.1 `prefix_of` h).
   { intros j x Hx. apply (Hnew x). by eapply elem_of_list_lookup_2. }
-  pose proof (E_length_le_hist E h HEi Hprefix) as HlenE.
-  pose proof (E_bytes_of_hist E h HEi Hprefix HlenE) as HEq.
-  (* both bounds are takes of the SAME input, hence comparable *)
-  assert (Hboth : sess ps cs (take (m - 1)%nat (ins h))
-                  `prefix_of` sess ps cs (take (length E) (ins h))).
-  { rewrite -HEq. etrans; [exact Hlow |]. etrans; [exact Hup |].
-    by apply D_stage_prefix. }
-  assert (Hle : (m - 1 <= length E)%nat).
-  { destruct (decide (m - 1 <= length E)%nat) as [? | Hgt]; [done | exfalso].
-    apply prefix_length in Hboth.
-    assert (Hpr : take (length E) (ins h) `prefix_of` take (m - 1)%nat (ins h))
-      by (apply prefix_take_le; lia).
-    assert (Hne : take (length E) (ins h) <> take (m - 1)%nat (ins h)).
-    { intro Hq. apply (f_equal length) in Hq.
-      rewrite !length_take in Hq. lia. }
-    pose proof (sess_length_lt ps cs (take (length E) (ins h))
-                  (take (m - 1)%nat (ins h)) Hpr Hne). lia. }
-  assert (Heq : (m - 1)%nat = length E).
-  { destruct (decide ((m - 1)%nat = length E)) as [? | Hne]; [done | exfalso].
-    assert (Hlt : (m - 1 < length E)%nat) by lia.
-    destruct (lookup_lt_is_Some_2 E (m - 1)%nat Hlt) as [x Hx].
-    destruct (HEi (m - 1)%nat x Hx) as [Hxe Hxlen].
-    assert (Hxin : x ∈ E) by (by eapply elem_of_list_lookup_2).
-    destruct (Hnew x Hxin) as [Hpre Hlen'].
-    assert (Hsame : x.1 = h).
-    { eapply ins_hist_agree; [exact Hpre | exact Hxe | exact Hends |]. lia. }
-    rewrite Hsame in Hlen'. lia. }
-  split; [lia |].
-  apply (anti_symm prefix); [exact Hw |].
-  eapply (prefix_app_cancel (D ps cs E)).
-  rewrite (D_pending_sess ps cs E HEb) HEq -Heq.
-  etrans; [exact Hlow | exact Hup].
+  pose proof (E_length_le_hist E h HEi Hprefix) as Hle.
+  pose proof (E_bytes_of_hist E h HEi Hprefix Hle) as HEq.
+  rewrite HlenE in HEq.
+  destruct (decide (rest_of (snd <$> E) = [])) as [Hr | Hr].
+  - (* at a line boundary the truncation is the identity, and the stage
+       plus what is owed IS the session *)
+    apply (anti_symm prefix); [exact Hw |].
+    eapply (prefix_app_cancel (D ps cs E)).
+    rewrite (D_pending_sess ps cs E HEb).
+    etrans; [| etrans; [exact Hlow | exact Hup] ].
+    rewrite -HEq (done_of_rest_nil (snd <$> E) Hr). reflexivity.
+  - (* mid-line nothing is owed, so [w] is empty and so is [pending] *)
+    assert (Hne : (snd <$> E) <> []).
+    { intro Hq. rewrite Hq rest_of_nil in Hr. by apply Hr. }
+    assert (Hp : pending ps cs E = []).
+    { rewrite /pending /pending_at decide_False; [| exact Hne].
+      by rewrite decide_False. }
+    rewrite Hp in Hw. rewrite Hp. by apply prefix_nil_inv.
+Qed.
+
+(* ---- THE DROP ARM IS REFUTED ----------------------------------------- *)
+
+(* [ConsLog.cons_drop_ok] says why a [consoleintr] arm echoed nothing: a
+   NUL, a ^P, an erase with nothing to erase, or a FULL RING.  The first
+   three are refuted by D3 -- a disciplined input holds none of those bytes
+   -- and the fourth by the ring bound: the era's log holds every earlier
+   input ([ConsLog.cons_ev_ok]'s log-completeness clause), the claim has
+   echoed every one of them, and the claim's delivered-count clause says
+   every completed line whose block has begun is consumed.  So what the
+   ring can still hold is the line in progress, which [EchoDisc.line_max]
+   keeps under 128. *)
+
+Lemma epu_filter_all {A} (P : A -> Prop) `{!forall x, Decision (P x)}
+      (l : list A) : Forall P l -> filter P l = l.
+Proof.
+  induction l as [| x l IH]; intro HF; [by rewrite filter_nil |].
+  destruct (Forall_cons_1 _ _ _ HF) as [Hx Hl].
+  rewrite filter_cons. case_decide; [| contradiction]. by rewrite (IH Hl).
+Qed.
+
+(* the three byte-valued disjuncts, at one disciplined byte *)
+Lemma disc_drop_byte (I : list (bv 8)) (c : bv 8) :
+  disc_input I -> c ∈ I ->
+  bv_unsigned c <> 0%Z /\ bv_unsigned c <> 16%Z /\ cons_erase c = false.
+Proof.
+  intros Hd Hc. pose proof (disc_input_byte_val I c Hd Hc) as Hv.
+  split; [lia |]. split; [lia |]. apply (disc_byte_ok I c Hd Hc).
+Qed.
+
+(* THE FULL-RING DISJUNCT.  [L] is the era's log at the moment the arm
+   opens, [dl] what the claim has delivered, [Eb] the bytes the claim has
+   echoed and [w] the process output it still owes. *)
+Lemma drop_refuted (h : list mobs) (L : list log_entry)
+      (dl : list (list mobs * bv 8)) (Eb w : list (bv 8)) :
+  (length L + 1)%nat = length (ins (open_seg h)) ->
+  Forall log_echoed L ->
+  (128 + length dl <= length (filter log_echoed L))%nat ->
+  (lines_bytes Eb (if decide (rest_of Eb = [] /\ w = [])
+                   then (nlines Eb - 1)%nat else nlines Eb)
+   <= length dl)%nat ->
+  Eb = take (length L) (ins (open_seg h)) ->
+  disc_input (ins (open_seg h)) ->
+  False.
+Proof.
+  intros HK1 HA1 Hring HA2 HEb Hdisc.
+  rewrite (epu_filter_all log_echoed L HA1) in Hring.
+  assert (HlenEb : length Eb = length L)
+    by (rewrite HEb length_take; lia).
+  assert (HdEb : disc_input Eb)
+    by (rewrite HEb; exact (disc_input_prefix _ _ (prefix_take _ _) Hdisc)).
+  assert (Hb : (length Eb
+                <= lines_bytes Eb (if decide (rest_of Eb = [] /\ w = [])
+                                   then (nlines Eb - 1)%nat else nlines Eb)
+                   + line_max)%nat).
+  { apply (lines_bytes_disc_bound Eb _ HdEb). case_decide as Hc.
+    - right. split; [exact (proj1 Hc) | reflexivity].
+    - by left. }
+  rewrite /line_max in Hb. lia.
+Qed.
+
+(* ...and the two together, at the shape [ConsLog.cons_ev_ok] hands the
+   claim at [EvOpen] *)
+Lemma cons_drop_refuted (h : list mobs) (c : bv 8) (L : list log_entry)
+      (dl : list (list mobs * bv 8)) (Eb w : list (bv 8)) :
+  (length L + 1)%nat = length (ins (open_seg h)) ->
+  Forall log_echoed L ->
+  (lines_bytes Eb (if decide (rest_of Eb = [] /\ w = [])
+                   then (nlines Eb - 1)%nat else nlines Eb)
+   <= length dl)%nat ->
+  Eb = take (length L) (ins (open_seg h)) ->
+  disc_input (ins (open_seg h)) ->
+  c ∈ ins (open_seg h) ->
+  cons_drop_ok c L dl -> False.
+Proof.
+  intros HK1 HA1 HA2 HEb Hdisc Hc Hdrop.
+  destruct (disc_drop_byte _ c Hdisc Hc) as (H0 & H16 & Her).
+  destruct Hdrop as [Hz | [Hp | [He | Hring]]].
+  - exact (H0 Hz).
+  - exact (H16 Hp).
+  - rewrite Her in He. discriminate.
+  - exact (drop_refuted h L dl Eb w HK1 HA1 Hring HA2 HEb Hdisc).
 Qed.
 
 (* ====================================================================== *)
@@ -964,7 +1148,7 @@ Qed.
 (* ====================================================================== *)
 (*  8.  THE TWO WITNESSES PUT THE SAME BYTES ON THE WIRE                   *)
 (*                                                                        *)
-(*  Lane ECHO-OUT needs D2's LOWER bound at the CLAIM's resolution, and    *)
+(*  Lane ECHO-OUT needs D1's LOWER bound at the CLAIM's resolution, and    *)
 (*  the discipline supplies it at ITS OWN existential witness              *)
 (*  ([EchoDisc.disc_seg'] is [∃ ps cs, ... disc_pt ps cs p]).  The two     *)
 (*  pairs are different objects, and F2 is stated at one pair on purpose.  *)
@@ -1372,7 +1556,7 @@ Proof.
 Qed.
 
 (* ...AND THE SESSION TRANSCRIPTS THEMSELVES.  This is what lets lane
-   ECHO-OUT feed [D2_next_input] the discipline's bound at the CLAIM's
+   ECHO-OUT feed [next_input_of_complete] the discipline's bound at the CLAIM's
    resolution: the two are the same BYTES, and the discipline's input is a
    PREFIX of the claim's -- which is what the old index comparison
    ([i <= j]) becomes once the stage is an input. *)
@@ -1471,16 +1655,20 @@ Proof.
   by rewrite IH.
 Qed.
 
-(* THE DISCIPLINE'S LOWER BOUND AT THE OPEN CYCLE'S LAST INPUT: D1/D2 read
+(* THE DISCIPLINE'S LOWER BOUND AT THE OPEN CYCLE'S LAST INPUT: D1 read
    off [disc_seg'] at the wire the last byte was typed on, which is what
-   F2's [Hlow] is.  The resolution is the DISCIPLINE's; [sess_prefix_det]
-   is what moves the bound to the claim's. *)
+   F2's [Hlow] is.  The bound is at the COMPLETE LINES of the input before
+   that byte ([LineWords.done_of]); [pro_ok] is at [nlines], which the
+   truncation leaves alone ([LineWords.nlines_done]).  The resolution is
+   the DISCIPLINE's; [sess_prefix_det] is what moves the bound to the
+   claim's. *)
 Lemma disc_seg'_pt_last (seg : list mobs) (c : bv 8) :
   disc_seg' seg -> obs_ends_in Uart0 seg c ->
   exists ps' cs' : list nat,
     pro_ok ps' cs' (nlines (removelast (ins seg)))
     /\ Forall (fun x => (x < 4)%nat) cs'
-    /\ sess ps' cs' (removelast (ins seg)) `prefix_of` obs_wire Uart0 seg.
+    /\ sess ps' cs' (done_of (removelast (ins seg)))
+         `prefix_of` obs_wire Uart0 seg.
 Proof.
   intros [Hd (ps & cs & Hlen & Hf & Hall)] [seg0 ->].
   exists ps, cs.
@@ -1508,6 +1696,103 @@ Proof.
   change (length (@nil (bv 8))) with 0%nat in H.
   assert (Hne : ps <> []) by (intros ->; by apply Exists_nil in Hd).
   pose proof (pro_of_pos ps HF Hne). lia.
+Qed.
+
+(* ---- THE RECEIVE FLUSH LOSES NOTHING UNDER THE DISCIPLINE ------------- *)
+
+(* uartinit's FCR write clears the receive FIFO, so the kernel's log can
+   only be complete up to the bytes the environment pushed before the
+   console existed ([ConsLog.flush_lost]).  The kernel says WHEN those bytes
+   were taken -- inside a prefix of the era's segment that carries NO
+   console output -- and the discipline says there are none: D1 asks the
+   prologue to be on the wire before the era's FIRST input, and the prologue
+   is not empty. *)
+
+(* [in_pres]'s index law: the [i]-th pre-history holds exactly [i] inputs.
+   It is the reading [in_pres_length] gives at every prefix at once, and
+   what the discipline is instantiated at below (at [i = 0], the empty
+   input). *)
+Lemma in_pres_lookup_ins (seg : list mobs) (i : nat) (p : list mobs) :
+  in_pres seg !! i = Some p -> length (ins p) = i.
+Proof.
+  revert i p. induction seg as [| e seg IH] using rev_ind; intros i p Hp.
+  - cbn [in_pres] in Hp. rewrite lookup_nil in Hp. discriminate Hp.
+  - destruct e as [ii b | ii b | |]; [destruct ii | | |].
+    + rewrite in_pres_in in Hp.
+      destruct (decide (i < length (in_pres seg))%nat) as [Hlt | Hge].
+      { rewrite lookup_app_l in Hp; [| exact Hlt]. exact (IH i p Hp). }
+      rewrite lookup_app_r in Hp; [| lia].
+      assert (Hi : i = length (in_pres seg)).
+      { apply lookup_lt_Some in Hp. cbn [length] in Hp. lia. }
+      rewrite Hi Nat.sub_diag in Hp. cbn in Hp. injection Hp as <-.
+      by rewrite Hi in_pres_length.
+    + rewrite (in_pres_snoc_other seg (ObsUartIn Uart1 b) I) in Hp.
+      exact (IH i p Hp).
+    + rewrite (in_pres_snoc_other seg (ObsUartOut ii b) I) in Hp.
+      exact (IH i p Hp).
+    + rewrite (in_pres_snoc_other seg ObsPowerOn I) in Hp. exact (IH i p Hp).
+    + rewrite (in_pres_snoc_other seg ObsPowerOff I) in Hp. exact (IH i p Hp).
+Qed.
+
+(* ...and the list of pre-histories grows with the segment, which is how a
+   pre-history of a PREFIX is one the segment's own discipline speaks about *)
+Lemma in_pres_mono (s1 s2 : list mobs) :
+  s1 `prefix_of` s2 -> in_pres s1 `prefix_of` in_pres s2.
+Proof.
+  intros [k ->]. induction k as [| e k IH] using rev_ind.
+  - rewrite app_nil_r. reflexivity.
+  - rewrite app_assoc. etrans; [exact IH |].
+    destruct e as [ii b | ii b | |]; [destruct ii | | |].
+    + rewrite in_pres_in. by eexists.
+    + rewrite (in_pres_snoc_other _ (ObsUartIn Uart1 b) I). reflexivity.
+    + rewrite (in_pres_snoc_other _ (ObsUartOut ii b) I). reflexivity.
+    + rewrite (in_pres_snoc_other _ ObsPowerOn I). reflexivity.
+    + rewrite (in_pres_snoc_other _ ObsPowerOff I). reflexivity.
+Qed.
+
+(* A DISCIPLINED SEGMENT HAS NO INPUT BEFORE ITS FIRST OUTPUT, so the window
+   the flush could have eaten is empty.  [sf] is that window: a prefix of
+   the era's segment with nothing on the wire.  If it held an input, the
+   pre-history [p0] of its FIRST one would be a pre-history of the whole
+   segment at the EMPTY input, and D1 there demands the prologue --
+   nonempty once its round has settled ([sess_nonnil]) -- on a wire that is
+   a prefix of [sf]'s, which is empty. *)
+Lemma flush_lost_disc (seg sf : list mobs) (f : nat) :
+  disc_seg' seg -> sf `prefix_of` seg ->
+  obs_wire Uart0 sf = [] -> length (obs_ins Uart0 sf) = f -> f = 0%nat.
+Proof.
+  intros Hd Hpre Hw Hlen.
+  destruct (decide (f = 0%nat)) as [Hz | Hne]; [exact Hz | exfalso].
+  (* the wire the user had seen when [sf]'s first byte was typed *)
+  assert (Hlp : (0 < length (in_pres sf))%nat)
+    by (rewrite in_pres_length /ins; lia).
+  destruct (lookup_lt_is_Some_2 (in_pres sf) 0%nat Hlp) as [p0 Hp0].
+  assert (Hins0 : ins p0 = [])
+    by (apply nil_length_inv; exact (in_pres_lookup_ins sf 0%nat p0 Hp0)).
+  (* it is one of the SEGMENT's pre-histories, and its wire is empty *)
+  assert (Hp0seg : p0 ∈ in_pres seg).
+  { apply elem_of_list_lookup_2 with 0%nat.
+    destruct (in_pres_mono sf seg Hpre) as [z Hz].
+    rewrite Hz lookup_app_l; [exact Hp0 | lia]. }
+  assert (Hw0 : obs_wire Uart0 p0 = []).
+  { destruct (in_pres_prefix sf 0%nat p0 Hp0) as [z Hz].
+    rewrite Hz obs_wire_app in Hw. by apply app_eq_nil in Hw as [Hw _]. }
+  (* D1 at the empty input asks for the prologue, and there is no room *)
+  destruct Hd as [_ (ps & cs & _ & _ & Hall)].
+  destruct (Hall p0 Hp0seg) as [Hok Hpt].
+  destruct Hok as [HF Hlt].
+  apply (sess_nonnil ps cs [] HF (proj2 (pro_done_rounds ps) ltac:(lia))).
+  apply prefix_nil_inv.
+  rewrite /disc_pt Hins0 done_of_nil Hw0 in Hpt. exact Hpt.
+Qed.
+
+(* ...at the shape [ConsLog.cons_ev_ok] hands the claim at [EvOpen] *)
+Lemma flush_lost_zero (h : list mobs) (f : nat) :
+  trace_shape h true -> disc h -> ConsLog.flush_lost h f -> f = 0%nat.
+Proof.
+  intros Hsh Hdisc [Hz | (sf & Hpre & Hw & Hlen)]; [exact Hz |].
+  exact (flush_lost_disc (open_seg h) sf f
+           (disc_seg'_open_seg h Hsh Hdisc) Hpre Hw Hlen).
 Qed.
 
 (* ====================================================================== *)

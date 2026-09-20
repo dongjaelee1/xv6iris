@@ -192,8 +192,8 @@ Definition wp_write_head_sconf_body
          at [lm_upd M (log_hdr_bno logstart) bs'], a value that mentions the
          bytes; the clear's is the same shape) *)
       ▷ Q bs' -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type WRITE_HEAD.
   Parameter wp_write_head_sconf :

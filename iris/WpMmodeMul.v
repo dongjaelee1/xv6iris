@@ -155,8 +155,8 @@ Section WpMulGpr.
              (mulop_mul.(mul_op_signed_rs2))
              (m !!! Regidx rs1) (m !!! Regidx rs2)
              (mulop_mul.(mul_op_result_part)))]> m) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hpmp Hstat Hrd) "Hmm Hpmpc Hpc Hf Hinstr Hcont".
     iDestruct (mmode_config_cert with "Hmm") as "[#Hcert Hmm]".

@@ -71,7 +71,7 @@ Definition wp_user_exec_closed_body `{!riscvGS Σ} `{GEN : GenId} `{CID : CpuId}
      ⊢ Rut pt' -∗ own_context cur_ctx ∗ (own_context cur_ctx -∗ Rut pt')) ->
   hw_config -∗ minstret_inv -∗ wire_inv -∗
   user_inv C pt Rut -∗ ▷ stvec_handler_wp C pt Rut -∗
-  WP (Loop : expr riscv_lang).
+  mWP (Loop : expr riscv_lang).
 
 Module Type USER.
   Parameter wp_user_exec_closed :

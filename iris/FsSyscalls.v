@@ -309,8 +309,8 @@ Definition wp_sys_mkdir_friendly_body
       pc_is ret_tgt -∗
       fs_res ns' dqb dqs dqbs dqn -∗
       proc_priv γf pj pid (us_upt U P') -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 (* THE LIFTING.  A functor over the LANDED seal, F2's [FsLookupTree]
    pattern: [SpecSysMkdir] does not move, and the whole claim is that the
@@ -499,8 +499,8 @@ Definition wp_sys_chdir_friendly_body
       fs_res 2 dqb dqs dqbs dqn -∗
       sys_chdir_post γf pj pid (us_upt U P')
         (mf !!! Regidx (mword_of_int 10 : mword 5)) -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module FsSysChdir (M : SYSCHDIR).
 

@@ -519,6 +519,12 @@ Section SpecMain.
        the boot path exactly when cpuid() returns 0. *)
     cid_word = (zero_reg : mword 64) ->
     (K_main <= K)%nat ->
+    (* ...AND NEITHER TRANSMITTER HAS BEEN USED (relax-d2, lane K1): main is
+       the first code to touch either port, so the bytes uartinit's FCR
+       FIFO-clear discards had no console output before them -- which is
+       [ConsLog.flush_lost]'s witness and the only thing that makes them
+       accountable at the console boundary. *)
+    l0 = [] -> l1 = [] ->
     (* kinit's free-page run: [end .. PHYSTOP), page-aligned.  The cursor is
        PGROUNDUP(end) + PGSIZE, and [PageGeom.kmem_lo] IS the dumped `end`
        symbol (a plain [Z] literal computed from [KernelSyms.end_] at its own
@@ -828,7 +834,7 @@ Section SpecMain.
        cannot build: the proc-lock names are chosen when main allocates the
        64 locks out of procinit's output, so [γs] is quantified in the
        statement inside the proof and [procs_inv] is NOT a precondition. *)
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
 
 End SpecMain.
 

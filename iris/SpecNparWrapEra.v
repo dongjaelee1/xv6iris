@@ -235,8 +235,8 @@ Definition wp_npar_wrap_era_body
              = (mword_of_int 0 : mword 64)⌝ ∗
             iref_slots 2 ∗
             np_dead fsc_fs P Pmiss pl) -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type NPAR_WRAP_ERA.
   Parameter wp_npar_wrap_era :

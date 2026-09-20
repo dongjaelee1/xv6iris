@@ -419,8 +419,8 @@ Section KexecABody.
                   plen pfun na avf aslen afun pidv U dqb dqs dqa dqpv dqas
                   m M32 K eb b lks sp0 ra0 s00 s10 s20 pv av ipv zi n1 -∗
         wp_next (CID0 := CID) true (proc_addr jp) KEX -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hqf HK Hroot Hnib0 Hlg Hsz Hbm0 Hbmc Hbml Hins0 Hcovb
            Hiregb Hcstr Hplen Hjp Hgs Hsp Hra Hs0 Hs1 Hs2 Ha0 Ha1.
@@ -897,7 +897,7 @@ Section KexecABody.
         kxc_frameA6x sp0 ra0 s00 s10 s20 pv av (m !!! Regidx Rs4) ef -∗
         (* THE EXIT, HANDED BACK -- see [kxc_phaseA]'s copy below. *)
         wp_next (CID0 := CID) true (proc_addr jp) KEX -∗
-        WP (Loop : expr riscv_lang))%I.
+        mWP (Loop : expr riscv_lang))%I.
 
   (* WHY [kxc_a2]'s TWO [bad:] TAILS WERE TAKEN, as a pure fact about the
      payload and the buffer readi filled: EITHER the file was too short to
@@ -998,7 +998,7 @@ Section KexecABody.
         kxc_frameA6x sp0 ra0 s00 s10 s20 pv av (m !!! Regidx Rs4) ef -∗
         (* THE EXIT, HANDED BACK -- see [kxc_phaseA]'s copy below. *)
         wp_next (CID0 := CID) true (proc_addr jp) KEX -∗
-        WP (Loop : expr riscv_lang))%I.
+        mWP (Loop : expr riscv_lang))%I.
 
 
   (* =================================================================== *)
@@ -1129,7 +1129,7 @@ Section KexecABody.
            av dqa avf aslen dqas afun) -∗
     (* ---- and the FALL-THROUGH: the state at +0x090, phase B's entry ---- *)
     wp_next true (proc_addr jp) (fun CID : CpuId => kxc_a2_exit1_r jp gf plen pfun na avf aslen afun pidv U dqb dqs dqa dqpv dqas m K eb b lks sp0 ra0 s00 s10 s20 pv av RX KEX CID) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hqf HK Hroot Hnib0 Hlg Hsz Hbm0 Hbmc Hbml Hins0 Hcovb
            Hiregb Hjp Hgs Hsp Hra Hs0 Hs1 Hs2.
@@ -2100,7 +2100,7 @@ Section KexecABody.
            av dqa avf aslen dqas afun) -∗
     (* ---- and the FALL-THROUGH: the state at +0x090, phase B's entry ---- *)
     wp_next true (proc_addr jp) (fun CID : CpuId => kxc_a2_exit1 jp gf plen pfun na avf aslen afun pidv U dqb dqs dqa dqpv dqas m K eb b lks sp0 ra0 s00 s10 s20 pv av HD XCH KEX CID) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hqf HK Hroot Hnib0 Hlg Hsz Hbm0 Hbmc Hbml Hins0 Hcovb
            Hiregb Hjp Hgs Hsp Hra Hs0 Hs1 Hs2.
@@ -2332,8 +2332,8 @@ Section KexecAMain.
            TWO HALVES" -- the shape [kxc_a1] already uses internally, now on
            phase A's own interface, because [ProofKexec.v] composes across it. *)
         wp_next (CID0 := CID) true (proc_addr jp) KEX -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hqf HK Hroot Hnib0 Hlg Hsz Hbm0 Hbmc Hbml Hins0 Hcovb
            Hiregb Hcstr Hplen Hjp Hgs Hsp Hra Hs0 Hs1 Hs2 Ha0 Ha1.

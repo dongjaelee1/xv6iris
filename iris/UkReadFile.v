@@ -208,8 +208,8 @@ Section UkReadFile.
        spost_at uslot USYS_read fdep W r M' fdv' cw' cs' -∗
        urun N h' (<[Regidx a0_idx := r]> m) (add_vec_int pc 4) avail -∗
        ubytes (ukn_d N) (uint (m !!! Regidx a1_idx)) k g -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hn Hcnt Hcapk Hfdv Hfdlt Hal4.
     iIntros "#Hi Hrun Hsb Hufdh Hbuf Hcont".
@@ -488,8 +488,8 @@ Section UkReadFile.
                 g j = cat_file !!! (off + j)%nat⌝)) -∗
        urun N h' (<[Regidx a0_idx := r]> m) (add_vec_int pc 4) avail -∗
        ubytes (ukn_d N) (uint (m !!! Regidx a1_idx)) k g -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hn Hcnt Hcapk Hfdv Hfdlt Hal4.
     iIntros "#Hi Hrun Hufdh Hpin Hbuf Hcont".
@@ -556,8 +556,8 @@ Section UkReadFile.
              g j = cat_file !!! (off + j)%nat⌝) -∗
        urun N h' (<[Regidx a0_idx := r]> m) (add_vec_int pc 4) avail -∗
        ubytes (ukn_d N) (uint (m !!! Regidx a1_idx)) k g -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hn Hcnt Hcnt0 Hcapk Hfdv Hfdlt Hal4.
     iIntros "#Hi Hrun Hufdh Hpin Hbuf Hcont".

@@ -201,8 +201,8 @@ Section WpSconfAlu.
       sie_cap_gpr kt (<[Regidx rd := regval_into_reg
         (add_vec (m !!! Regidx csp_rs1) (sign_extend' 64 (caddi4spn_imm nzimm)))]> m) n b p -∗
       pc_is (add_vec_int pc 2) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrdc Hrd Hrdok) "Hcg Hpc Hinstr Hcont".
     (* c.addi4spn reads sp, a CONCRETE register, so the engine's source guard
@@ -237,8 +237,8 @@ Section WpSconfAlu.
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt (<[Regidx rd := regval_into_reg wval]> m) n b p -∗
       pc_is (add_vec_int pc 2) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros wval.
     iIntros (Hrd Hrdok) "Hcg Hpc Hinstr Hcont".
@@ -263,8 +263,8 @@ Section WpSconfAlu.
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt (<[Regidx rd := regval_into_reg wval]> m) n b p -∗
       pc_is (add_vec_int pc 2) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros wval.
     iIntros (Hrd Hrdok) "Hcg Hpc Hinstr Hcont".
@@ -291,8 +291,8 @@ Section WpSconfAlu.
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt (<[Regidx rd := regval_into_reg wval]> m) n b p -∗
       pc_is (add_vec_int pc 4) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrd Hops Hwval) "Hcg Hpc Hinstr Hcont".
     iApply (wp_gpr_write_s_sconf_val_base pc rd rs1 rs1
@@ -318,8 +318,8 @@ Section WpSconfAlu.
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt (<[Regidx rd := regval_into_reg wval]> m) n b p -∗
       pc_is (add_vec_int pc 2) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros wval.
     iIntros (Hrd Hops) "Hcg Hpc Hinstr Hcont".
@@ -344,8 +344,8 @@ Section WpSconfAlu.
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt (<[Regidx rd := regval_into_reg wval]> m) n b p -∗
       pc_is (add_vec_int pc 2) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros wval.
     iIntros (Hrd Hops) "Hcg Hpc Hinstr Hcont".
@@ -379,8 +379,8 @@ Section WpSconfAlu.
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt (<[Regidx rd := regval_into_reg wval]> m) n b p -∗
       pc_is (add_vec_int pc 4) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrd Hops Hwval) "Hcg Hpc Hinstr Hcont".
     iApply (wp_gpr_write_s_sconf_val_base pc rd rs1 rs2
@@ -404,8 +404,8 @@ Section WpSconfAlu.
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt (<[Regidx rd := regval_into_reg wval]> m) n b p -∗
       pc_is (add_vec_int pc 2) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrd Hops Hwval) "Hcg Hpc Hinstr Hcont".
     iApply (wp_gpr_write_s_sconf_val pc rd rs1 rs2
@@ -432,8 +432,8 @@ Section WpSconfAlu.
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt (<[Regidx rd := regval_into_reg wval]> m) n b p -∗
       pc_is (add_vec_int pc 2) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros wval.
     iIntros (Hrd Hops) "Hcg Hpc Hinstr Hcont".
@@ -462,8 +462,8 @@ Section WpSconfAlu.
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt (<[Regidx rd := regval_into_reg wval]> m) n b p -∗
       pc_is (add_vec_int pc 4) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrd Hops Hwval) "Hcg Hpc Hinstr Hcont".
     iApply (wp_gpr_write_s_sconf_val_base pc rd rs1 rs2
@@ -492,8 +492,8 @@ Section WpSconfAlu.
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt (<[Regidx rd := regval_into_reg wval]> m) n b p -∗
       pc_is (add_vec_int pc 4) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros wval.
     iIntros (Hrd Hops) "Hcg Hpc Hinstr Hcont".
@@ -518,8 +518,8 @@ Section WpSconfAlu.
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt (<[Regidx rd := regval_into_reg wval]> m) n b p -∗
       pc_is (add_vec_int pc 4) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrd Hops Hwval) "Hcg Hpc Hinstr Hcont".
     iApply (wp_gpr_write_s_sconf_val_base pc rd rs1 rs2
@@ -550,8 +550,8 @@ Section WpSconfAlu.
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt (<[Regidx rd := regval_into_reg wval]> m) n b p -∗
       pc_is (add_vec_int pc 2) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrd Hops Hwval) "Hcg Hpc Hinstr Hcont".
     iApply (wp_gpr_write_s_sconf_val pc rd rs1 rs2
@@ -576,8 +576,8 @@ Section WpSconfAlu.
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt (<[Regidx rd := regval_into_reg wval]> m) n b p -∗
       pc_is (add_vec_int pc 2) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros wval.
     intros Hrd Hops.
@@ -599,8 +599,8 @@ Section WpSconfAlu.
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt (<[Regidx rd := regval_into_reg wval]> m) n b p -∗
       pc_is (add_vec_int pc 2) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrd Hops Hwval) "Hcg Hpc Hinstr Hcont".
     iApply (wp_gpr_write_s_sconf_val pc rd rs1 rs2
@@ -624,8 +624,8 @@ Section WpSconfAlu.
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt (<[Regidx rd := regval_into_reg wval]> m) n b p -∗
       pc_is (add_vec_int pc 2) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros wval Hrd Hops.
     exact (wp_csubw_wval_s_sconf pc rd rs1 rs2
@@ -644,8 +644,8 @@ Section WpSconfAlu.
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt (<[Regidx rd := regval_into_reg wval]> m) n b p -∗
       pc_is (add_vec_int pc 4) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrd Hops Hwval) "Hcg Hpc Hinstr Hcont".
     iApply (wp_gpr_write_s_sconf_val_base pc rd rs1 rs2
@@ -672,8 +672,8 @@ Section WpSconfAlu.
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt (<[Regidx rd := regval_into_reg wval]> m) n b p -∗
       pc_is (add_vec_int pc 4) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrd Hops Hwval) "Hcg Hpc Hinstr Hcont".
     iApply (wp_gpr_write_s_sconf_val_base pc rd rs1 rs1
@@ -697,8 +697,8 @@ Section WpSconfAlu.
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt (<[Regidx rd := regval_into_reg wval]> m) n b p -∗
       pc_is (add_vec_int pc 2) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrd Hrdok Hwval) "Hcg Hpc Hinstr Hcont".
     iApply (wp_gpr_write_s_sconf_val pc rd rd rd
@@ -723,8 +723,8 @@ Section WpSconfAlu.
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt (<[Regidx rd := regval_into_reg wval]> m) n b p -∗
       pc_is (add_vec_int pc 4) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrd Hrdok Hwval) "Hcg Hpc Hinstr Hcont".
     iApply (wp_gpr_write_s_sconf_val_base pc rd rd rd
@@ -749,8 +749,8 @@ Section WpSconfAlu.
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt (<[Regidx rd := regval_into_reg wval]> m) n b p -∗
       pc_is (add_vec_int pc 4) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrd Hops Hwval) "Hcg Hpc Hinstr Hcont".
     iApply (wp_gpr_write_s_sconf_val_base pc rd rs1 rs1
@@ -775,8 +775,8 @@ Section WpSconfAlu.
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt (<[Regidx rd := regval_into_reg wval]> m) n b p -∗
       pc_is (add_vec_int pc 2) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros wval.
     iIntros (Hrd Hrdok) "Hcg Hpc Hinstr Hcont".
@@ -803,8 +803,8 @@ Section WpSconfAlu.
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt (<[Regidx rd := regval_into_reg wval]> m) n b p -∗
       pc_is (add_vec_int pc 2) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros wval.
     iIntros (Hrsd Hrd Hrdok) "Hcg Hpc Hinstr Hcont".
@@ -831,8 +831,8 @@ Section WpSconfAlu.
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt (<[Regidx rd := regval_into_reg wval]> m) n b p -∗
       pc_is (add_vec_int pc 2) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros wval.
     iIntros (Hcrsd Hrd Hrdok) "Hcg Hpc Hinstr Hcont".
@@ -858,8 +858,8 @@ Section WpSconfAlu.
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt (<[Regidx rd := regval_into_reg wval]> m) n b p -∗
       pc_is (add_vec_int pc 4) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros wval.
     iIntros (Hrd Hops) "Hcg Hpc Hinstr Hcont".
@@ -887,8 +887,8 @@ Section WpSconfAlu.
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt (<[Regidx rd := regval_into_reg wval]> m) n b p -∗
       pc_is (add_vec_int pc 4) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros wval.
     iIntros (Hrd Hops) "Hcg Hpc Hinstr Hcont".
@@ -919,8 +919,8 @@ Section WpSconfAlu.
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt (<[Regidx rd := regval_into_reg wval]> m) n b p -∗
       pc_is (add_vec_int pc 4) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrd Hrdok Hwval) "Hcg Hpc Hinstr Hcont".
     (* li reads x0 and nothing else -- the reason this cannot be an instance of
@@ -964,8 +964,8 @@ Section WpSconfAlu.
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt (<[Regidx rd := regval_into_reg (add_vec pc (auipc_off imm))]> m) n b p -∗
       pc_is (add_vec_int pc 4) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrd Hrdok) "Hcg Hpc Hinstr Hcont".
     iApply (wp_gpr_write_s_sconf_pc_val_base pc rd rd rd
@@ -1020,8 +1020,8 @@ Section WpSconfAlu.
       sie_cap_gpr kt (<[Regidx csp_rs1 := regval_into_reg wval]> m) n' b p -∗
       P -∗
       pc_is (add_vec_int pc 2) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros wval.
     iIntros "Hcg Hpc Hinstr Hrecap Hcont".
@@ -1059,8 +1059,8 @@ Section WpSconfAlu.
       sie_cap_gpr kt (<[Regidx csp_rs1 := regval_into_reg wval]> m) n' b p -∗
       P -∗
       pc_is (add_vec_int pc 2) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros wval.
     iIntros "Hcg Hpc Hinstr Hrecap Hcont".
@@ -1108,8 +1108,8 @@ Section WpSconfAlu.
       sie_cap_gpr kt (<[Regidx csp_rs1 := regval_into_reg wval]> m) (n - k) b p -∗
       stack_own (KTR := kt) sp0 k -∗
       pc_is (add_vec_int pc 2) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros sp0 wval.
     iIntros (Hk Hw) "Hcg Hpc Hinstr Hcont".
@@ -1140,8 +1140,8 @@ Section WpSconfAlu.
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt (<[Regidx csp_rs1 := regval_into_reg wval]> m) (n + k) b p -∗
       pc_is (add_vec_int pc 2) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros sp0 wval.
     iIntros (Hw) "Hcg Hpc Hinstr Hframe Hcont".
@@ -1174,8 +1174,8 @@ Section WpSconfAlu.
       sie_cap_gpr kt (<[Regidx csp_rs1 := regval_into_reg wval]> m) (n - k) b p -∗
       stack_own (KTR := kt) sp0 k -∗
       pc_is (add_vec_int pc 2) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros sp0 wval.
     iIntros (Hk Hw) "Hcg Hpc Hinstr Hcont".
@@ -1206,8 +1206,8 @@ Section WpSconfAlu.
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt (<[Regidx csp_rs1 := regval_into_reg wval]> m) (n + k) b p -∗
       pc_is (add_vec_int pc 2) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros sp0 wval.
     iIntros (Hw) "Hcg Hpc Hinstr Hframe Hcont".
@@ -1247,8 +1247,8 @@ Section WpSconfAlu.
       sie_cap_gpr kt (<[Regidx csp_rs1 := regval_into_reg wval]> m) n' b p -∗
       P -∗
       pc_is (add_vec_int pc 4) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros wval.
     iIntros "Hcg Hpc Hinstr Hrecap Hcont".
@@ -1286,8 +1286,8 @@ Section WpSconfAlu.
       sie_cap_gpr kt (<[Regidx csp_rs1 := regval_into_reg wval]> m) (n - k) b p -∗
       stack_own (KTR := kt) sp0 k -∗
       pc_is (add_vec_int pc 4) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros sp0 wval.
     iIntros (Hk Hw) "Hcg Hpc Hinstr Hcont".
@@ -1318,8 +1318,8 @@ Section WpSconfAlu.
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt (<[Regidx csp_rs1 := regval_into_reg wval]> m) (n + k) b p -∗
       pc_is (add_vec_int pc 4) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros sp0 wval.
     iIntros (Hw) "Hcg Hpc Hinstr Hframe Hcont".
@@ -1351,8 +1351,8 @@ Section WpSconfAlu.
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt (<[Regidx rd := regval_into_reg wval]> m) n b p -∗
       pc_is (add_vec_int pc 4) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrd Hops Hwval) "Hcg Hpc Hinstr Hcont".
     iApply (wp_gpr_write_s_sconf_val_base pc rd rs1 rs2
@@ -1375,8 +1375,8 @@ Section WpSconfAlu.
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt (<[Regidx rd := regval_into_reg wval]> m) n b p -∗
       pc_is (add_vec_int pc 4) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrd Hops Hwval) "Hcg Hpc Hinstr Hcont".
     iApply (wp_gpr_write_s_sconf_val_base pc rd rs1 rs1
@@ -1401,8 +1401,8 @@ Section WpSconfAlu.
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt (<[Regidx rd := regval_into_reg wval]> m) n b p -∗
       pc_is (add_vec_int pc 4) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrd Hops Hwval) "Hcg Hpc Hinstr Hcont".
     iApply (wp_gpr_write_s_sconf_val_base pc rd rs1 rs1
@@ -1425,8 +1425,8 @@ Section WpSconfAlu.
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt (<[Regidx rd := regval_into_reg wval]> m) n b p -∗
       pc_is (add_vec_int pc 4) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrd Hops Hwval) "Hcg Hpc Hinstr Hcont".
     iApply (wp_gpr_write_s_sconf_val_base pc rd rs1 rs1
@@ -1451,8 +1451,8 @@ Section WpSconfAlu.
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt (<[Regidx rd := regval_into_reg wval]> m) n b p -∗
       pc_is (add_vec_int pc 4) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrd Hops Hwval) "Hcg Hpc Hinstr Hcont".
     iApply (wp_gpr_write_s_sconf_val_base pc rd rs1 rs2
@@ -1482,8 +1482,8 @@ Section WpSconfAlu.
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt (<[Regidx rd := regval_into_reg wval]> m) n b p -∗
       pc_is (add_vec_int pc 2) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros wval.
     iIntros (Hrd Hrdok) "Hcg Hpc Hinstr Hcont".
@@ -1507,8 +1507,8 @@ Section WpSconfAlu.
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt (<[Regidx rd := regval_into_reg wval]> m) n b p -∗
       pc_is (add_vec_int pc 4) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrd Hops Hwval) "Hcg Hpc Hinstr Hcont".
     iApply (wp_gpr_write_s_sconf_val_base pc rd rs1 rs2
@@ -1537,8 +1537,8 @@ Section WpSconfAlu.
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt (<[Regidx rd := regval_into_reg wval]> m) n b p -∗
       pc_is (add_vec_int pc 4) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrd Hops Hwval) "Hcg Hpc Hinstr Hcont".
     iApply (wp_gpr_write_s_sconf_val_base pc rd rs1 rs2
@@ -1562,8 +1562,8 @@ Section WpSconfAlu.
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt (<[Regidx rd := regval_into_reg wval]> m) n b p -∗
       pc_is (add_vec_int pc 4) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrd Hops Hwval) "Hcg Hpc Hinstr Hcont".
     iApply (wp_gpr_write_s_sconf_val_base pc rd rs1 rs2
@@ -1586,8 +1586,8 @@ Section WpSconfAlu.
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt (<[Regidx rd := regval_into_reg wval]> m) n b p -∗
       pc_is (add_vec_int pc 2) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros wval.
     iIntros (Hrd Hops) "Hcg Hpc Hinstr Hcont".
@@ -1614,8 +1614,8 @@ Section WpSconfAlu.
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt (<[Regidx rd := regval_into_reg wval]> m) n b p -∗
       pc_is (add_vec_int pc 4) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros wval.
     iIntros (Hrd Hops) "Hcg Hpc Hinstr Hcont".
@@ -1644,8 +1644,8 @@ Section WpSconfAlu.
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt (<[Regidx rd := regval_into_reg wval]> m) n b p -∗
       pc_is (add_vec_int pc 4) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros wval.
     iIntros (Hrd Hops) "Hcg Hpc Hinstr Hcont".
@@ -1675,8 +1675,8 @@ Section WpSconfAlu.
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt (<[Regidx rd := regval_into_reg wval]> m) n b p -∗
       pc_is (add_vec_int pc 4) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrd Hops Hwval) "Hcg Hpc Hinstr Hcont".
     iApply (wp_gpr_write_s_sconf_val_base pc rd rs1 rs1
@@ -1709,8 +1709,8 @@ Section WpSconfAlu.
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr KT1 (<[Regidx rd := regval_into_reg wval]> m) n b p -∗
       pc_is (add_vec_int pc 4) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrd Hops Hwval) "Hcg Hpc Hinstr Hcont".
     iApply (wp_gpr_write_s_sconf_val_base (kt := KT1) pc rd rs1 rs1
@@ -1752,8 +1752,8 @@ Section WpSconfAlu.
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr KT1 (<[Regidx rd := regval_into_reg wval]> m) n b p -∗
       pc_is (add_vec_int pc 4) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrd Hops Hwval) "Hcg Hpc Hinstr Hcont".
     iApply (wp_gpr_write_s_sconf_val_base (kt := KT1) pc rd rs1 rs2
@@ -1787,8 +1787,8 @@ Section WpSconfAlu.
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr KT1 (<[Regidx rd := regval_into_reg wval]> m) n b p -∗
       pc_is (add_vec_int pc 4) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros wval Hrd Hops.
     exact (wp_sllw_wval_s_sconf pc rd rs1 rs2 wval m n b Hrd Hops eq_refl).

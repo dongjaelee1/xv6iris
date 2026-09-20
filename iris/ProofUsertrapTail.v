@@ -338,7 +338,7 @@ Section ProofUsertrapTail.
       ∗ app_taint)
      ∨ (fileclose_cpays sts ∗ Q (-1))) -∗
     ut_hold_nm N U b lks sts cs pid -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hwf Hnx Hst Hbelow. destruct Hwf as (Hj & Hjl & Hlen & Hlg).
     iIntros "#Htext Hpc Hcg Hcl #Hmyp Htear (Hcpu & Hcsrs & Hclm & [#Hcaps Hown])".
@@ -528,7 +528,7 @@ Section UtRet2.
     wp_next true (un_pj N)
       (fun CID' => usertrap_post (CID := CID') (ut_res (CID := CID') Rsys) pt ksp m0
                      mie_v menvcfg0 U0 sts0 gn cs pid epw scw fdep Wk) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hwf Hgenk Hfdk Hchk Hfde Hpipe Hpidr Hav Hnx Htfpe Hksp Hm0sp Hmfsp Hmfs1 Hcs Hmiev Hmenvv Hrd Hepcw Hlive.
     (* the budget, in numbers [lia] can see -- every one of these is a
@@ -1082,7 +1082,7 @@ Section UtRet.
     wp_next true (un_pj N)
       (fun CID' => usertrap_post (CID := CID') (ut_res (CID := CID') Rsys) pt ksp m0
                      mie_v menvcfg0 U0 sts0 gn cs pid epw scw fdep Wk) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hwf Hgenk Hfdk Hchk Hfde Hpipe Hpidr Hav Hnx Htfpe Hksp Hm0sp Hmsp Hms1 Hcs Hmiev Hmenvv Hrd Hlive.
     pose proof (ut_nx_bound b av nx Hav Hnx) as Hks.
@@ -1415,7 +1415,7 @@ Section UtA6.
     wp_next true (un_pj N)
       (fun CID' => usertrap_post (CID := CID') (ut_res (CID := CID') Rsys) pt ksp m0
                      mie_v menvcfg0 U0 sts0 gn cs pid epw scw fdep Wk) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hwf Hgenk Hfdk Hchk Hfde Hpipe Hpidr Hav Hnx Htfpe Hksp Hm0sp Hmsp Hms1 Hcs Hmiev Hmenvv Hrd Hgna Hbelow.
     pose proof (ut_nx_bound b av nx Hav Hnx) as Hks.
@@ -2085,7 +2085,7 @@ Section UtFa.
     wp_next true (un_pj N)
       (fun CID' => usertrap_post (CID := CID') (ut_res (CID := CID') Rsys) pt ksp m0
                      mie_v menvcfg0 U0 sts0 gn cs pid epw scw fdep Wk) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hwf Hgenk Hfdk Hchk Hfde Hpipe Hpidr Hav Hnx Htfpe Hksp Hm0sp Hmsp Hms1 Hcs Hmiev Hmenvv Hrd Hlive.
     pose proof (ut_nx_bound b av nx Hav Hnx) as Hks.

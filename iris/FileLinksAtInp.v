@@ -30,25 +30,14 @@ Require Import SailStdpp.Operators_mwords.
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values
         SailStdpp.MachineWord.
 Require Import RiscvLang RiscvPtsto.
-Require Import ObsTrace.
-Require Import LineWords.
-Require Import EchoDisc.
-Require Import ConsLog.
-Require Import EchoOutPure.
 Require Import EchoOut.
 Require Import FileState.
-Require Import FileDisc.
-Require Import FileOutPure.
-Require Import AppEcho.
 Require Import AppFile.
 Require Import FileOut.
-Require Import FileLinks.
 Require Import FileLinksLine.
-Require Import EchoLinks.
 Require Import LinkRec.
 Require Import FileLinksAt.
 Require Import FileLinksAtBan.
-Require Import FileLinksAtLine.
 Require Import FileLinkInst.
 Require Import Xv6Cameras.
 Require Import Xv6G.

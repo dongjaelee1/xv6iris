@@ -258,7 +258,7 @@ Definition npar_era_post
                [FsAbsNpar.np_dead] for why the two disjuncts' bounds
                differ. *)
             np_dead fsc_fs P Pmiss pl) -∗
-      WP (Loop : expr riscv_lang))%I.
+      mWP (Loop : expr riscv_lang))%I.
 
 (* ===================================================================== *)
 (*  2. THE CONTRACT: [SpecNamex.wp_namex_gen_body] + the parent trace     *)
@@ -346,7 +346,7 @@ Definition wp_npar_era_body
     npar_era_post (CID := CIDc) pj pv nb ret_tgt pl m K b eb lks
 
                   plen pfun n Sb P Pmiss pidv dq dqb dqs dqpv Upr) -∗
-  WP (Loop : expr riscv_lang).
+  mWP (Loop : expr riscv_lang).
 
 Module Type NPAR_ERA.
   Parameter wp_npar_era :

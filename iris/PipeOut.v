@@ -1976,7 +1976,7 @@ Section pipe_out.
      current-round ghost at it, and hands the writer HALF of that ghost
      with the ledger's first bound.  From here the claim reads the block
      off the ledger ([pcl_pure_o]) until the prompt files the code. *)
-  Lemma pecl_blk2_open (k : nat) (v : era_pins) (P a : nat)
+  Lemma pecl_blk2_open_gen (k : nat) (v : era_pins) (P a : nat)
       (b : bv 8) (ps0 cs0 : list nat) (I0 : list (bv 8)) (ho : list mobs)
       (H : LogEntryDefs.cons_hist) :
     I0 <> [] ->
@@ -1986,10 +1986,10 @@ Section pipe_out.
     P = length (proc_before_p ps0 cs0 I0) ->
     palt_ok (pline_of (bodies_of I0 !!! (nlines I0 - 1)%nat)) (palt_of a) ->
     palt_panic (palt_of a) = false ->
-    palt_isforkS (palt_of a) = false ->
     pcont (pline_of (bodies_of I0 !!! (nlines I0 - 1)%nat)) (palt_of a)
       !! 0%nat = Some b ->
-    nodollar b ->
+    ((palt_isforkS (palt_of a) = false /\ nodollar b)
+     \/ palt_isforkS (palt_of a) = true) ->
     era_pin γ k v -∗ turn v P -∗ ps_lb v ps0 -∗ cs_lb v cs0 -∗ inp_lb v I0 -∗
     pecl k ho H ==∗
       pecl k ho (ConsLog.cons_step H (ConsLog.EvOut b))
@@ -1998,7 +1998,7 @@ Section pipe_out.
             ∗ cur_half w (1/2) (nlines I0 - 1)%nat gb ∗ rblk_lb gb [b]
             ∗ ps_lb v ps0 ∗ cs_lb v cs0 ∗ inp_lb v I0) ∨ T).
   Proof using .
-    intros Hne0 Hr0 Hdiv Hpin0 HPeq Halt Hpan Hfk Hhead Hnd.
+    intros Hne0 Hr0 Hdiv Hpin0 HPeq Halt Hpan Hhead Hfarm.
     pose proof (nlines_pos_of_rest_nil I0 Hne0 Hr0) as Hpos0.
     pose proof (pop_nlines_removelast I0 Hr0) as Hrl0.
     iIntros "#Hpin Ht #Hpslb #Hcslb #Hilb Hcl".
@@ -2112,7 +2112,9 @@ Section pipe_out.
                       | exact Hpan |].
           apply (pop_prefix_snoc_lookup [] _ b);
             [apply prefix_nil | exact Hhead]. }
-        left. split; [exact Hfk | by apply Forall_singleton, Hnd].
+        destruct Hfarm as [[Hfk Hnd] | Hfk];
+          [left; split; [exact Hfk | by apply Forall_singleton, Hnd]
+           | by right].
       + pose proof (ps_len_ok_p_write so b Hpsl) as Hx.
         rewrite Hwnil in Hx. exact Hx.
     - iLeft. iExists w, gb2.
@@ -2126,7 +2128,7 @@ Section pipe_out.
      WHOLE, so an ordinary state and a writer's half cannot coexist
      ([cur_half_excl]).  The ledger then pins the block's BYTES, which
      [turn] alone cannot (PIPE-2W's [pend_both_not_inj]). *)
-  Lemma pecl_blk2_byte (k : nat) (v : era_pins) (w : pipe_era) (gb : gname)
+  Lemma pecl_blk2_byte_gen (k : nat) (v : era_pins) (w : pipe_era) (gb : gname)
       (P r a : nat) (b : bv 8) (pre0 : list (bv 8))
       (ps0 cs0 : list nat) (I0 : list (bv 8)) (ho : list mobs)
       (H : LogEntryDefs.cons_hist) :
@@ -2138,11 +2140,10 @@ Section pipe_out.
     P = length (proc_before_p ps0 cs0 I0) ->
     palt_ok (pline_of (bodies_of I0 !!! r)) (palt_of a) ->
     palt_panic (palt_of a) = false ->
-    palt_isforkS (palt_of a) = false ->
     (pre0 ++ [b]) `prefix_of`
       pcont (pline_of (bodies_of I0 !!! r)) (palt_of a) ->
-    Forall nodollar pre0 ->
-    nodollar b ->
+    ((palt_isforkS (palt_of a) = false /\ Forall nodollar pre0 /\ nodollar b)
+     \/ palt_isforkS (palt_of a) = true) ->
     era_pin γ k v -∗ pera_pin g k w -∗
     turn v (P + length pre0)%nat -∗ cur_half w (1/2) r gb -∗
     rblk_lb gb pre0 -∗ ps_lb v ps0 -∗ cs_lb v cs0 -∗ inp_lb v I0 -∗
@@ -2151,7 +2152,7 @@ Section pipe_out.
       ∗ ((turn v (S (P + length pre0))%nat ∗ cur_half w (1/2) r gb
           ∗ rblk_lb gb (pre0 ++ [b])) ∨ T).
   Proof using .
-    intros Hne0 Hr0 Hreq Hcseq Hpin0 HPeq Halt Hpan Hfk Hpref Hnd0 Hnd.
+    intros Hne0 Hr0 Hreq Hcseq Hpin0 HPeq Halt Hpan Hpref Hfarm.
     pose proof (nlines_pos_of_rest_nil I0 Hne0 Hr0) as Hpos0.
     iIntros "#Hpin #Hperaw Ht Hcw #Hrlb0 #Hpslb #Hcslb #Hilb Hcl".
     iDestruct "Hcl" as "[#HT | Hp]".
@@ -2250,11 +2251,138 @@ Section pipe_out.
           split_and!; [exact Hnn | exact Hrr | by rewrite Hqq Hreq2
                       | exact Halt | exact Hpan |].
           rewrite -Hwp' -Hpre0. exact Hpref. }
+        destruct Hfarm as [(Hfk & Hnd0 & Hnd) | Hfk]; [| by right].
         left. split; [exact Hfk |].
         apply Forall_app. split; [| by apply Forall_singleton, Hnd].
         rewrite -Hwp' -Hpre0. exact Hnd0.
       + exact (ps_len_ok_p_write so b Hpsl).
     - iLeft. rewrite Hpre0 -Hwp'. iFrame "Ht Hcw Hrlb1".
+  Qed.
+
+  (* ---- THE TWO STEPS AT THE NON-TERMINAL ARM (the landed statements,
+          byte for byte): an ordinary round's block is `$'-free and its
+          alternative is not a [PForkS]. ---- *)
+  Lemma pecl_blk2_open (k : nat) (v : era_pins) (P a : nat)
+      (b : bv 8) (ps0 cs0 : list nat) (I0 : list (bv 8)) (ho : list mobs)
+      (H : LogEntryDefs.cons_hist) :
+    I0 <> [] ->
+    rest_of I0 = [] ->
+    (nlines I0 <= S (length cs0))%nat ->
+    pro_pin_p ps0 cs0 I0 ->
+    P = length (proc_before_p ps0 cs0 I0) ->
+    palt_ok (pline_of (bodies_of I0 !!! (nlines I0 - 1)%nat)) (palt_of a) ->
+    palt_panic (palt_of a) = false ->
+    palt_isforkS (palt_of a) = false ->
+    pcont (pline_of (bodies_of I0 !!! (nlines I0 - 1)%nat)) (palt_of a)
+      !! 0%nat = Some b ->
+    nodollar b ->
+    era_pin γ k v -∗ turn v P -∗ ps_lb v ps0 -∗ cs_lb v cs0 -∗ inp_lb v I0 -∗
+    pecl k ho H ==∗
+      pecl k ho (ConsLog.cons_step H (ConsLog.EvOut b))
+      ∗ ((∃ (w : pipe_era) (gb : gname),
+            turn v (S P) ∗ pera_pin g k w
+            ∗ cur_half w (1/2) (nlines I0 - 1)%nat gb ∗ rblk_lb gb [b]
+            ∗ ps_lb v ps0 ∗ cs_lb v cs0 ∗ inp_lb v I0) ∨ T).
+  Proof using .
+    intros Hne0 Hr0 Hdiv Hpin0 HPeq Halt Hpan Hfk Hhead Hnd.
+    exact (pecl_blk2_open_gen k v P a b ps0 cs0 I0 ho H Hne0 Hr0 Hdiv Hpin0
+             HPeq Halt Hpan Hhead (or_introl (conj Hfk Hnd))).
+  Qed.
+
+  Lemma pecl_blk2_byte (k : nat) (v : era_pins) (w : pipe_era) (gb : gname)
+      (P r a : nat) (b : bv 8) (pre0 : list (bv 8))
+      (ps0 cs0 : list nat) (I0 : list (bv 8)) (ho : list mobs)
+      (H : LogEntryDefs.cons_hist) :
+    I0 <> [] ->
+    rest_of I0 = [] ->
+    r = (nlines I0 - 1)%nat ->
+    length cs0 = r ->
+    pro_pin_p ps0 cs0 I0 ->
+    P = length (proc_before_p ps0 cs0 I0) ->
+    palt_ok (pline_of (bodies_of I0 !!! r)) (palt_of a) ->
+    palt_panic (palt_of a) = false ->
+    palt_isforkS (palt_of a) = false ->
+    (pre0 ++ [b]) `prefix_of`
+      pcont (pline_of (bodies_of I0 !!! r)) (palt_of a) ->
+    Forall nodollar pre0 ->
+    nodollar b ->
+    era_pin γ k v -∗ pera_pin g k w -∗
+    turn v (P + length pre0)%nat -∗ cur_half w (1/2) r gb -∗
+    rblk_lb gb pre0 -∗ ps_lb v ps0 -∗ cs_lb v cs0 -∗ inp_lb v I0 -∗
+    pecl k ho H ==∗
+      pecl k ho (ConsLog.cons_step H (ConsLog.EvOut b))
+      ∗ ((turn v (S (P + length pre0))%nat ∗ cur_half w (1/2) r gb
+          ∗ rblk_lb gb (pre0 ++ [b])) ∨ T).
+  Proof using .
+    intros Hne0 Hr0 Hreq Hcseq Hpin0 HPeq Halt Hpan Hfk Hpref Hnd0 Hnd.
+    exact (pecl_blk2_byte_gen k v w gb P r a b pre0 ps0 cs0 I0 ho H Hne0 Hr0
+             Hreq Hcseq Hpin0 HPeq Halt Hpan Hpref
+             (or_introl (conj Hfk (conj Hnd0 Hnd)))).
+  Qed.
+
+  (* ===================================================================== *)
+  (*  THE TERMINAL ROUND'S TWO BYTE STEPS (lane PIPE-STAGE-3, design        *)
+  (*  section 4.3h).  The twins of the two above at a [PForkS]              *)
+  (*  alternative: the block MAY carry the prompt's `$' (it is inside       *)
+  (*  [alt_forkc]) and the round's bytes are NOT `$'-free, so the claim      *)
+  (*  reconstructs [pblk_open]'s RIGHT arm -- where D4, and not              *)
+  (*  `$'-freeness, is what refutes the next input ([pecl_step_echo]'s       *)
+  (*  terminal case).  THERE IS NO TERMINAL FILING STEP: a fork-failure     *)
+  (*  round never signals completion, so its code never enters [cs] and     *)
+  (*  the claim's [cs_nofork] is untouched.                                 *)
+  (* ===================================================================== *)
+  Lemma pecl_blk2_open_t (k : nat) (v : era_pins) (P a : nat)
+      (b : bv 8) (ps0 cs0 : list nat) (I0 : list (bv 8)) (ho : list mobs)
+      (H : LogEntryDefs.cons_hist) :
+    I0 <> [] ->
+    rest_of I0 = [] ->
+    (nlines I0 <= S (length cs0))%nat ->
+    pro_pin_p ps0 cs0 I0 ->
+    P = length (proc_before_p ps0 cs0 I0) ->
+    palt_ok (pline_of (bodies_of I0 !!! (nlines I0 - 1)%nat)) (palt_of a) ->
+    palt_panic (palt_of a) = false ->
+    palt_isforkS (palt_of a) = true ->
+    pcont (pline_of (bodies_of I0 !!! (nlines I0 - 1)%nat)) (palt_of a)
+      !! 0%nat = Some b ->
+    era_pin γ k v -∗ turn v P -∗ ps_lb v ps0 -∗ cs_lb v cs0 -∗ inp_lb v I0 -∗
+    pecl k ho H ==∗
+      pecl k ho (ConsLog.cons_step H (ConsLog.EvOut b))
+      ∗ ((∃ (w : pipe_era) (gb : gname),
+            turn v (S P) ∗ pera_pin g k w
+            ∗ cur_half w (1/2) (nlines I0 - 1)%nat gb ∗ rblk_lb gb [b]
+            ∗ ps_lb v ps0 ∗ cs_lb v cs0 ∗ inp_lb v I0) ∨ T).
+  Proof using .
+    intros Hne0 Hr0 Hdiv Hpin0 HPeq Halt Hpan Hfk Hhead.
+    exact (pecl_blk2_open_gen k v P a b ps0 cs0 I0 ho H Hne0 Hr0 Hdiv Hpin0
+             HPeq Halt Hpan Hhead (or_intror Hfk)).
+  Qed.
+
+  Lemma pecl_blk2_byte_t (k : nat) (v : era_pins) (w : pipe_era) (gb : gname)
+      (P r a : nat) (b : bv 8) (pre0 : list (bv 8))
+      (ps0 cs0 : list nat) (I0 : list (bv 8)) (ho : list mobs)
+      (H : LogEntryDefs.cons_hist) :
+    I0 <> [] ->
+    rest_of I0 = [] ->
+    r = (nlines I0 - 1)%nat ->
+    length cs0 = r ->
+    pro_pin_p ps0 cs0 I0 ->
+    P = length (proc_before_p ps0 cs0 I0) ->
+    palt_ok (pline_of (bodies_of I0 !!! r)) (palt_of a) ->
+    palt_panic (palt_of a) = false ->
+    palt_isforkS (palt_of a) = true ->
+    (pre0 ++ [b]) `prefix_of`
+      pcont (pline_of (bodies_of I0 !!! r)) (palt_of a) ->
+    era_pin γ k v -∗ pera_pin g k w -∗
+    turn v (P + length pre0)%nat -∗ cur_half w (1/2) r gb -∗
+    rblk_lb gb pre0 -∗ ps_lb v ps0 -∗ cs_lb v cs0 -∗ inp_lb v I0 -∗
+    pecl k ho H ==∗
+      pecl k ho (ConsLog.cons_step H (ConsLog.EvOut b))
+      ∗ ((turn v (S (P + length pre0))%nat ∗ cur_half w (1/2) r gb
+          ∗ rblk_lb gb (pre0 ++ [b])) ∨ T).
+  Proof using .
+    intros Hne0 Hr0 Hreq Hcseq Hpin0 HPeq Halt Hpan Hfk Hpref.
+    exact (pecl_blk2_byte_gen k v w gb P r a b pre0 ps0 cs0 I0 ho H Hne0 Hr0
+             Hreq Hcseq Hpin0 HPeq Halt Hpan Hpref (or_intror Hfk)).
   Qed.
 
   Lemma pecl_blk2_file (k : nat) (v : era_pins) (w : pipe_era) (gb : gname)

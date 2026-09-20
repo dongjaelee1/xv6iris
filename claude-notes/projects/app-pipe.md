@@ -277,11 +277,14 @@ arm is the theorem's one named premise (`pipe_both_law`).
   `echo fork | cat` the good run prints `alt_forkc` byte for byte, so
   the ambiguity has to be read off the BYTES.  One ruling asked for (D4
   also ends the session at a main-loop panic).  See the Findings block.
-- [ ] **PIPE-STAGE-3** (after MODEL-3, merged 62981b282): the terminal
+- [x] **PIPE-STAGE-3** (after MODEL-3, merged 62981b282): the terminal
   claim steps, mode `alt_forkc` (3) pinned by the runcmd child,
   `pwc_line2`'s third arm's second shape, the main loop's `$ ` as two
   right steps, the stray's steps, the fork #1 corollary, a test.  Brief
-  `brief-pipe-stage-3.md`.
+  `brief-pipe-stage-3.md`.  **DONE except the RECORD plumbing of item 3,
+  which is REFUTED**: the second shape carries the family's `inv` and
+  every boundary field of `LinkRec` (`lk_line`, `lk_sp_t`, `lk_open_t`)
+  is a `Timeless` field.  See the Findings block.
 - [ ] **SH-PIPE-ROUND-5** (after STAGE-3): the assembly; `pcat_image_entry`
   restated; the third paid diagnostic; `sh_pipe_child_law_all` proved →
   `pipe_adequacy_pipeΣ_of_child` premise-free.
@@ -6672,3 +6675,250 @@ STAGE-3's first item, and everything they need is landed:
 (`palt_ok_forkS_old`, `pcont_forkS_old`), and `pecl_step_echo`'s
 terminal case as the worked example of how D4 is spent.  Note that the
 family's `R = L` branch must NOT be reachable at mode `fork`.
+
+### PIPE-STAGE-3 (2026-09-21) — the terminal round LANDS at the stage (mode fork, both cursors, the loop's two prompt steps, the stray), and the SECOND SHAPE CANNOT BE A `LinkRec` BOUNDARY FIELD: it carries the family's `inv` and every one of those fields is `Timeless`
+
+Branch `app-pipe/pipe-stage-3` off main (`80de98946`), code commits
+`9aa0ee099` and `2a0f7cf4a`-class follow-ups (see `git log`).  Files
+moved: `iris/PipeOut.v` (the claim's two byte steps re-cut + their
+terminal twins), `iris/PipeBoth.v` (the pure terminal witness, the third
+mode, the two terminal obligations and their discharges, the two
+concurrent terminal steps, two chains, the second shape, the fork-#1
+corollary, the end-to-end test), plus one report file
+`iris/PipeStage3Assumptions.v` (NOT a `_CoqProject` row).
+`iris/PipeLinks.v`, `iris/PipeLinkInst.v` and `iris/PipeLinksLine.v` are
+UNTOUCHED — see the refutation.
+
+Whole-tree `ec2-lane.sh stage3 build` **RC=0**; no `Admitted`;
+`Proof using` on every new result.  `Print Assumptions` on the lane's
+**seventeen** headline results: **all seventeen Closed under the global
+context**.  **All four audits at their baselines**, measured on the
+mirror after the changes: `audit-pipe-only` **14**, `audit-echo-only`
+**14**, `audit-tree-only` **13**, `audit-only` **13**.
+
+**THE TERMINAL BYTE STEPS, VERBATIM (item 1).**  `pecl_blk2_open` and
+`pecl_blk2_byte` keep their landed statements BYTE-IDENTICALLY; their
+proofs are now one line each, through `_gen` twins whose `$`-freeness
+premise is the DISJUNCTION that `pblk_open` already is:
+
+```coq
+  ((palt_isforkS (palt_of a) = false /\ nodollar b)
+   \/ palt_isforkS (palt_of a) = true) ->            (* _open_gen *)
+
+  ((palt_isforkS (palt_of a) = false /\ Forall nodollar pre0 /\ nodollar b)
+   \/ palt_isforkS (palt_of a) = true) ->            (* _byte_gen *)
+```
+
+and the terminal twins are the right injection:
+
+```coq
+  Lemma pecl_blk2_open_t (k : nat) (v : era_pins) (P a : nat) (b : bv 8)
+      (ps0 cs0 : list nat) (I0 : list (bv 8)) (ho : list mobs)
+      (H : LogEntryDefs.cons_hist) :
+    I0 <> [] -> rest_of I0 = [] -> (nlines I0 <= S (length cs0))%nat ->
+    pro_pin_p ps0 cs0 I0 -> P = length (proc_before_p ps0 cs0 I0) ->
+    palt_ok (pline_of (bodies_of I0 !!! (nlines I0 - 1)%nat)) (palt_of a) ->
+    palt_panic (palt_of a) = false ->
+    palt_isforkS (palt_of a) = true ->                (* <- the ONE change *)
+    pcont (pline_of (bodies_of I0 !!! (nlines I0 - 1)%nat)) (palt_of a)
+      !! 0%nat = Some b ->                            (* and NO [nodollar b] *)
+    era_pin γ k v -∗ turn v P -∗ ps_lb v ps0 -∗ cs_lb v cs0 -∗ inp_lb v I0 -∗
+    pecl k ho H ==∗ ... (the landed conclusion, unchanged)
+```
+
+`pecl_blk2_byte_t` likewise drops `Forall nodollar pre0` and `nodollar b`
+and flips the flag.  **There is NO terminal filing step**, as ruled: a
+fork-failure round never signals completion, its code never enters `cs`,
+and the claim's `cs_nofork` and `pab`'s guard are therefore untouched.
+Both twins are the RIGHT arm of `pblk_open` and nothing else moved in
+`PipeOut.v`.
+
+**MODE FORK (item 2), AND THE `R = L` BRANCH IS UNREACHABLE AT IT.**
+
+```coq
+  Definition rsrc (L : list (bv 8)) (n : nat) : list (bv 8) :=
+    match n with S O => L | S (S (S O)) => alt_forkc | _ => dg_execR end.
+
+  Definition rmode (gM : gname) (L R : list (bv 8)) (c2 : nat)
+      (YR : iProp Σ) : iProp Σ :=
+    (∃ n : nat, wcur gM (1/2) n
+       ∗ (⌜n = 0%nat /\ c2 = 0%nat⌝
+          ∨ (⌜n = 1%nat /\ R = L⌝ ∗ YR)
+          ∨ ⌜n = 2%nat /\ R = dg_execR⌝
+          ∨ ⌜n = 3%nat /\ R = alt_forkc⌝))%I.
+```
+
+`blk2_mode_fire` takes `n = 1 \/ n = 2 \/ n = 3` and the third arm
+deposits NO `YR` — the runcmd child holds the right cursor itself (it
+has not forked the right child), so the fire needs no exclusion, and
+because `rmode`'s arms are exclusive in `n` the mode half at `3` makes
+the `R = L` branch (cat printing the line) unreachable: `pblk2_cstep_R_t`
+asks for neither `XL`, nor `YR`, nor a mask `Eex`.  Landed with it:
+`pblk2_wit_t` (the `PForkS` witness) and `pblk2_wit_t_forkc` (free at
+`R := alt_forkc`, the empty selector falling to `sel_forkc`);
+`pblk2_ecl_L_t` / `pblk2_ecl_R_t` and their discharges (the twins of the
+landed obligations with the two `$`-freeness premises OFF and nothing
+on); `pblk2_cstep_R_t`; `pblk2_cterm_chain` / `pblk2_cstray_chain`.
+
+**THE STRAY'S STEPS COST `pblk2_cstep_L` A FOURTH ARM AND TWO PREMISES.**
+The stray does NOT hold the mode half, so it must answer `rmode`'s
+fourth arm too.  `pblk2_cstep_L` therefore gains `pblk2_ecl_L_t` and
+`(forall sel, sel_wf2 alt_forkc sel -> pblk2_wit_t I alt_forkc sel)`
+(always dischargeable at an `LPipe` line, by `pblk2_wit_t_forkc`), and
+its internal `iAssert` now yields the DISJUNCTION
+`(pblk2_wit I R (sel ++ [true]) /\ Forall nodollar (pend2 R sel))
+ \/ pblk2_wit_t I R (sel ++ [true])`, spent at the landed obligation or
+at the terminal one.  `blk2_inv_close`'s conclusion widens to
+`⌜R = L \/ R = dg_execR \/ R = alt_forkc⌝` (it is unreachable at a
+terminal round — the stray holds `wcur gL (1/2)` for ever — but the
+lemma still has to be provable).  Those two are the only landed
+statements in `PipeBoth.v` that moved.
+
+**THE SECOND SHAPE, AND THE PROMPT STEP, VERBATIM (item 3, the half that
+lands).**
+
+```coq
+  Definition pwc_fork_exit (N : namespace) (k : nat) (v : era_pins)
+      (I L : list (bv 8)) (gL gR gM : gname) (XL YR : iProp Σ)
+      (c2 : nat) : iProp Σ :=
+    (blk2_inv N k v I L gL gR gM XL YR
+     ∗ wcur gR (1/2) c2 ∗ wcur gM (1/2) 3%nat)%I.
+
+  Lemma pprompt_dollar_fork (N : namespace) (k : nat) (v : era_pins)
+      (I L : list (bv 8)) (gL gR gM : gname) (XL YR : iProp Σ)
+      (b : bv 8) (Φ : iProp Σ) :
+    Timeless XL -> Timeless YR ->
+    (↑N : coPset) ## (↑uartN Uart0 : coPset) ->
+    b = u_prompt !!! 0%nat ->
+    (forall sel : list bool,
+       sel_wf2 alt_forkc sel -> pblk2_wit_t I alt_forkc sel) ->
+    pblk2_ecl_R_t -∗ pipe_link_taint g -∗ era_pin γ k v -∗
+    pwc_fork_exit N k v I L gL gR gM XL YR 5%nat -∗
+    (pwc_fork_exit N k v I L gL gR gM XL YR 6%nat -∗ Φ) -∗
+    out_link Uart0 k b Φ.
+```
+
+and `pprompt_space_fork` the same at 6 → 7 (`alt_forkc_dollar`,
+`alt_forkc_space`: positions 5 and 6 of `alt_forkc` ARE the prompt's two
+bytes, by `vm_compute`).  The runcmd child's exit payload is
+`pwc_fork_exit ... 5` — positions 0–4, `fork\n`, written by the child
+itself; the loop's `$ ` is two `pblk2_cstep_R_t`; no filing anywhere.
+
+**THE REFUTATION (the lane's most important output): THE SECOND SHAPE
+CANNOT BE AN ARM OF `pwc_line2`, AND THE REASON IS NOT ABOUT PIPES.**
+Design 4.3h asks for it as "`pwc_line2`'s third arm's second shape", so
+that the main loop's `lk_prompt_dollar_line` writes the `$` at it.  That
+field's conclusion is `lk_sp_t`, whose consumer's conclusion is
+`lk_open_t` — and **`LinkRec` demands `Timeless` of all three**
+(`lk_line_tl`, `lk_sp_t_tl`, `lk_open_t_tl`, and `lk_lpr_tl` over them).
+The second shape carries the family's INVARIANT, and Iris's `inv N P` is
+`Persistent` and **not** `Timeless` (`ownI` is an `own` of
+`to_agree (Next _)`, which is not discrete; `iris/base_logic/lib/
+invariants.v` has `inv_persistent` and no `Timeless` instance).
+Mechanised as a scratch check (compiled by hand, not committed): the
+cursors alone are timeless,
+
+```coq
+  Lemma chk_cursors (gR gM : gname) (c2 : nat) :
+    Timeless (wcur gR (1/2) c2 ∗ wcur gM (1/2) 3%nat)%I.
+  Proof. apply _. Qed.                                   (* GREEN *)
+
+  Lemma chk_fork_exit ... : Timeless (pwc_fork_exit g N k v I L gL gR gM XL YR c2).
+  Proof. rewrite /pwc_fork_exit /blk2_inv. apply _. Qed.  (* RED *)
+```
+
+```
+Error: Cannot infer this placeholder of type
+"Timeless
+   (inv N (blk2_body g k v I L gL gR gM XL YR) ∗ wcur gR (1 / 2) c2 ∗
+    wcur gM (1 / 2) 3)"
+(no type class instance found)
+```
+
+There is no repair inside this application: `lk_links` (the only
+non-`Timeless` resource a boundary field's consumer gets) is the era's
+FIXED bundle and cannot hold a per-round invariant, and `▷ inv N P` does
+not give `inv N P` back, so weakening `Timeless` to "timeless up to a
+fancy update" would not help either.
+
+**AND, INDEPENDENTLY, THREE `LinkRec` LAWS ARE FALSE AT THE TERMINAL
+SHAPE** (this is the brief's STOP rule 2, and the leaf it asks for is
+`lk_read_t`).  Even with `Timeless` waived, the terminal shape has
+`length cs = nlines I - 1` (the round is unfiled), so:
+`lk_sp_t_sp` (`lk_sp_t -∗ lk_sp`) and `lk_open_t_open` need
+`wr_sp_p`/`wr_open_p`, both of which require `nlines I = length cs`;
+and `lk_read_t` (`inp_lb v (I ++ l ++ [wl_nl]) -∗ lk_open_t k v I -∗
+lk_blk k v (I ++ l ++ [wl_nl]) a 0`) needs
+`nlines (I ++ l ++ [wl_nl]) = S (length cs)`, i.e. `length cs = nlines I`.
+`lk_read_t` is the leaf that "spends the boundary credential before D4
+refutes the input": it is handed the next line as a RESOURCE
+(`inp_lb`), and the fact that the next line never arrives is D4, which
+lives in the CLAIM (`pecl_step_echo`'s terminal case) and reaches no
+pure resource entailment.  The record's own precedent for this shape is
+`lk_owed_read_taint` / `lk_ban_read_taint` — a credential meeting the
+READ's return (`lk_rr`, which carries `cs_lb`, `turn_lb` and the
+reader's stage) and yielding the taint; `lk_read_t` has no such handle,
+and adding one would still not suffice, because at a COMPLETE terminal
+block the reader's `turn_lb` and the writer's `turn` agree.
+
+**WHAT THIS MEANS FOR THE DESIGN (the recommendation).**  Put the
+terminal round's family WHERE THE ROUND'S LEDGER ALREADY IS — inside the
+claim.  `pblk_led` already keeps the round's byte ledger claim-side and
+hands the writer a `cur_half`; if the two cursors, the mode and the
+exclusion moved there too, the boundary credential would be ghost halves
+only (timeless), `lk_line`/`lk_sp_t`/`lk_open_t` could carry it, and
+`lk_read_t`'s terminal arm would become provable for the same reason
+`pecl_step_echo`'s terminal case is: the claim is in the room.  That is
+one lane, it is the same move `pe_cur` already made (PIPE-2W-3), and it
+is the only route that keeps the main loop's prompt on the record.
+
+**ITEM 4 (fork #1) AND ITEM 5 (the test), VERBATIM.**
+
+```coq
+  Lemma pblk2_fork1_chain ... :
+    pblk2_ecl_R_t -∗ pipe_link_taint g -∗ era_pin γ k v -∗
+    blk2_inv N k v I L gL gR gM XL YR -∗
+    wcur gR (1/2) 0%nat -∗ wcur gM (1/2) 3%nat -∗
+    (wcur gR (1/2) (length alt_forkc) -∗ wcur gM (1/2) 3%nat -∗ Φ) -∗
+    out_chain Uart0 k alt_forkc Φ.
+
+  Lemma pterm_round_test (E : coPset) (N : namespace) (Eex : coPset) ... :
+    ... pwc_lend g k v I -∗ XL -∗
+    (∀ gL gR gM : gname,
+       wcur gL (1/2) (length dg_execL) -∗
+       wcur gR (1/2) (length alt_forkc) -∗ wcur gM (1/2) 3%nat -∗ Φ) ={E}=∗
+      out_chain Uart0 k (alt_forkc ++ dg_execL) Φ.
+```
+
+The test allocates the family out of the round's own lend, fires mode
+`3`, writes the whole of `alt_forkc` (the child's `fork\n` and the
+loop's `$ `) at the right cursor and then the whole of `dg_execL` at the
+left one — every byte through the claim — and the pure reading at the end
+is `PForkS sel_term`, `sel_term := replicate (length alt_forkc) false ++
+replicate (length dg_execL) true`, with
+`pcont_sel_term : pcont (LPipe ws) (PForkS sel_term) = alt_forkc ++ dg_execL`
+and `palt_ok_sel_term` (both Closed).  ANTI-VACUITY: the test starts from
+`pwc_lend`, the same credential `sh_round_holds_pipe` lends, and every
+byte goes through `pblk2_cstep_R_t` / `pblk2_cstep_L`, i.e. through
+`pecl`.
+
+**STOP RULES.**  Rule 1 did NOT fire: no landed claim invariant ties the
+prompt's `$` to a filed code — `pblk_open`'s terminal arm (MODEL-3) is
+the only place `$`-freeness is claimed and the twins land on its right
+disjunct.  **Rule 2 FIRED**, at `lk_read_t` (and, before it, at
+`Timeless`); the leaf and the reason are above and no landed statement
+was weakened to get past them.
+
+**WHAT THE NEXT LANE (SH-PIPE-ROUND-5) NEEDS FIRST.**  A ruling on where
+the terminal family lives.  Everything the ROUND needs at the terminal
+arm is landed and Closed — the two claim steps, the mode, both
+concurrent steps, the two chains, the child's exit payload and the
+loop's two prompt steps — but the loop's prompt CANNOT be reached
+through `LinkRec` while the credential carries an `inv`, so ROUND-5
+either (a) moves the family into the claim (the recommendation above)
+and re-points `lk_line`/`lk_sp_t`/`lk_open_t` then, or (b) proves the
+round's terminal tail with the prompt written by `pprompt_dollar_fork` /
+`pprompt_space_fork` OUTSIDE the generic loop, which means the pipeline
+round law must cover sh's main loop up to its next `read` — a bigger
+statement than SH-PIPE-ROUND-3's.  Nothing else in the terminal round is
+open.

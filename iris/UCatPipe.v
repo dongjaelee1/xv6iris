@@ -1127,87 +1127,28 @@ Section UCatPipeEntry.
          UkCatMain.kcat_pay_all N (UShCat.cat_args W) Ci (ukn_pay N (-1))
          ∗ Ci)%I.
 
-  Lemma pcat_image_entry (ws : list (list (bv 8))) (Mn : gmap Z (bv 8))
-      (sv t : Z) (gn : nat -> bv 8)
-      (sts : list fdstate) (cw : Z) (cs : gset gname) (pidv : mword 32)
-      (Q : Z -> iProp Σ) (Pay : iProp Σ) :
-    (forall x y : Z, Q x = Q y) ->
-    line_ok ws ->
-    UShEcho.echo_node_img ws Mn sv t gn ->
-    UkShEcho.echo_argv_bytes ws gn ->
-    length sts = NOFILE ->
-    (* THE LINE IS `cat`: ONE word *)
-    length ws = 1%nat ->
-    □ (∀ W' : uvis, ⌜uvis_fd W' = sts⌝ -∗ pcat_pay_at W' Q Pay) -∗
-    UkRun.urun_nopipe sts -∗ udep -∗
-    image_entry ElfUser.cat_elf Mn (mword_of_int (t + 8) : mword 64) sts
-      cw cs pidv Q Pay uslot.
-  Proof using xv6G0 ufdG0.
-    intros HQc Hok Himg Hbytes Hfdl Hws1.
-    iIntros "#Hpay #Hnpw #Hdep".
-    iApply image_entry_of_at. iIntros "!>" (na alen afun) "%Hargs".
-    destruct (UShCat.cat_args_det_holds ws Hok Mn sv t gn na alen afun
-                Himg Hbytes Hargs) as (Hna & Halen & Hafun).
-    pose proof (UShCat.cat_room_of_det ws na alen Hok Hna Halen) as Hroom.
-    rewrite /image_entry_at.
-    iIntros "!>" (W') "%Hokk %Hcwv %Hlzf _ _ Hmp HPay".
-    destruct (UShCat.cat_kexec_pages na alen afun sts W' Hokk)
-      as (Hpc & Hsub & Hsub2 & Hx & Hdw & Hbufb & Hwr & Hrp).
-    destruct (UShCat.cat_kexec_entry_rows na alen afun sts W' Hokk Hroom
-                Hfdl Hwr Hrp)
-      as (Hroom336 & Hal8 & Hszv & Hstkrow & Hargsrow & Havd & Havs
-          & Hfdlen & Hstop).
-    pose proof (UShCat.cat_kexec_bufrow na alen afun sts W' Hokk Hroom
-                  Hdw Hbufb) as Hbuf.
-    pose proof (UShCat.cat_kexec_argnz na alen afun sts W' Hokk Hroom)
-      as Hnz.
-    pose proof (kexec_image_ok_fd _ na alen afun sts W' Hokk) as Hfd.
-    assert (Hargc0 : 0 <= uvis_argc W')
-      by exact (proj1 (uka_argc _ _ _ _ _ _ Hargsrow)).
-    assert (Hptr : forall (j : nat) (ga : uarg),
-              UShCat.cat_args W' !! j = Some ga -> UserHeap.ua_ptr ga <> 0).
-    { intros j ga Hj.
-      assert (Hlt : (j < Z.to_nat (uvis_argc W'))%nat).
-      { pose proof (lookup_lt_Some _ _ _ Hj) as Hl.
-        rewrite /UShCat.cat_args echo_args_length in Hl. exact Hl. }
-      rewrite /UShCat.cat_args (echo_args_lookup (uvis_M W') (uvis_av W')
-                                  (Z.to_nat (uvis_argc W')) j Hlt) in Hj.
-      injection Hj as <-. cbn [UserHeap.ua_ptr echo_arg].
-      exact (Hnz j Hlt). }
-    (* ---- THE KEY'S OWN WORD COUNT: the node sh built has ONE word ---- *)
-    assert (Hno : forall i j : nat, (i < na)%nat -> (j < alen i)%nat ->
-              afun i j <> ubyte0).
-    { intros i j Hi Hj.
-      rewrite (Hafun i j ltac:(lia)
-                 ltac:(rewrite <- (Halen i ltac:(lia)); exact Hj)).
-      apply (UShEcho.line_nonul ws _ Hok).
-      exact (UkShEcho.echo_off_lt ws i j Hok ltac:(lia)
-               ltac:(rewrite <- (Halen i ltac:(lia)); lia)). }
-    destruct (UShCat.cat_key_args_holds na alen afun sts W' Hokk Hno)
-      as [Hargcna _].
-    assert (Hargc1 : Z.to_nat (uvis_argc W') = 1%nat)
-      by (rewrite Hargcna Hna; exact Hws1).
-    iAssert (UkRun.urun_nopipe (uvis_fd W')) as "#Hnpw'";
-      [ rewrite Hfd; iExact "Hnpw" | ].
-    iApply (UShCat.cat_entry_run W' Q Hpc Hsub Hsub2 Hx Hroom336 Hal8
-              Hstkrow Hbuf Hargsrow Havd Havs Hfdlen Hstop Hlzf
-              with "Hdep Hnpw' Hmp").
-    iIntros (N' h) "%Hpayeq Hstd Hcwf #Hcode #Hro #Hargv #HA Hbuf' Hrun".
-    pose proof (ukn_const_of_eq N' Q Hpayeq HQc) as Htc.
-    iDestruct ("Hpay" $! W' with "[%]") as "Hpay'"; [ exact Hfd | ].
-    iDestruct ("Hpay'" $! N'
-                 with "[%] [%] Hstd Hcode Hro Hargv HPay")
-      as (Ci) "[Hp HCi]";
-      [ exact Hpayeq | exact Hargc1 | ].
-    iApply (wp_kcat_start N' h (tf_resume_gpr0 (uvis_tf W')) (uvis_av W')
-              (UShCat.cat_args W') (fun _ : nat => ubyte0) 0%nat Ci
-              Hptr
-              ltac:(rewrite /UShCat.cat_args echo_args_length;
-                    rewrite (Z2Nat.id (uvis_argc W') Hargc0);
-                    unfold uvis_argc; symmetry; apply moi_of_uint)
-              ltac:(unfold uvis_av; symmetry; apply moi_of_uint)
-              with "Hp Hcode Hro Hargv HCi Hbuf' Hrun").
-  Qed.
+  (* ===================================================================== *)
+  (*  [pcat_image_entry] IS RETIRED (lane SH-PIPE-ROUND-5 part 2, design    *)
+  (*  SS4.3j; the vacuity is lane EXEC-CAT's finding).                      *)
+  (*                                                                       *)
+  (*  It stated the (E) half of cat's entry at premises NO CALLER CAN EVER  *)
+  (*  MEET: [EchoDisc.line_ok ws] and [length ws = 1%nat] are jointly       *)
+  (*  unsatisfiable ([line_ok] contains [2 <= length ws]), and its          *)
+  (*  [line_ok] also fixes [ws !! 0 = Some cmd_echo] -- so relaxing the     *)
+  (*  count alone would leave a premise saying the command is called        *)
+  (*  `echo`.  Both halves are mechanised in [UkShCat.                      *)
+  (*  cat_line_premises_absurd] / [cat_line_head_absurd].  The lemma had    *)
+  (*  no caller anywhere in the tree.                                       *)
+  (*                                                                       *)
+  (*  THE ENTRY TO USE IS [UShCatPay.cat_image_entry_1w]: the same body at  *)
+  (*  premises a ONE-WORD line meets ([UkShCat.cat_argv_bytes] and          *)
+  (*  [ExecArgs.uargv_img] over the general argument layer, no word list    *)
+  (*  anywhere), keeping [pcat_pay_at] below as the payment interface so    *)
+  (*  that [pcat_pay_at_of_round] plugs into it unchanged.  It could not be *)
+  (*  stated HERE: its premises live in [UkShCat.v] and [UShCatPay.v],      *)
+  (*  both of which are ABOVE this file ([UShCatPay] imports it, to name    *)
+  (*  [pcat_pay_at]).                                                      *)
+  (* ===================================================================== *)
 
   (* ...AND THE `cannot open` ARM IS UNREACHABLE, mechanised: at argc = 1
      the payment's SECOND conjunct is vacuous, so a payer supplies the

@@ -1694,3 +1694,23 @@ instantiate`.  Rule: after merging two lanes cut from different bases,
 gate the COMBINED head before calling either pushable — and a fix tested
 by `scp` into the mirror's main tree must be `git checkout --`'d there
 before the next `ec2-gate.sh`, which refuses a dirty mirror.
+
+## A backtick `Context` over an out-of-scope class name BINDS the name, it does not fail (2026-09-20)
+
+Upstream's dead-import sweep removed `Require Import PipeOut` from
+`UPipeBootAdequacy.v` (dead in upstream's tree) while main had added
+`` Context `{!pipeOutG Σ} `` there.  The merged file did not fail at the
+`Context`: the generalisation bound `pipeOutG : gFunctors → Type` as a
+fresh variable, and the error surfaced 100 lines later as an unrelated
+implicit-argument failure.  The sweep reads `.glob` files and cannot see
+a class that only a generalisation mentions.  After any import sweep,
+grep every `` `{! `` binder's class for an import, and put the import back
+with a comment naming the binder.  Lane UPSTREAM-MERGE-6.
+
+## The pipeline discipline KEEPS D2; the echo discipline dropped it (relax-d2, 2026-09-19)
+
+Upstream's relax-d2 relaxed the ECHO discipline only; `PipeOutPure.
+D2_next_input_p` stands, `PipeDisc.disc_p_disc` is one-way (`disc_p h ->
+disc h`), and `EchoOut.inp_lb` now bounds the DELIVERED list (`dl_list_auth`
+is a `pecl` conjunct; a writer step takes its input bound off `Hdll`, never
+off `HE`).  A witness carries pipe → echo and never back.

@@ -242,6 +242,15 @@ Section PipeProto.
     by iPureIntro.
   Qed.
 
+  (* a lower bound is DOWNWARD CLOSED: knowing a longer prefix is in the
+     history is knowing every shorter one is *)
+  Lemma pws_lb_weaken (pn : pnames) (l l' : list (bv 8)) :
+    l' `prefix_of` l -> pws_lb pn l -∗ pws_lb pn l'.
+  Proof using .
+    intros Hp. rewrite /pws_lb. iIntros "H". iApply (own_mono with "H").
+    apply mono_list_lb_mono. exact Hp.
+  Qed.
+
   Lemma pws_auth_grow (pn : pnames) (l : list (bv 8)) (b : bv 8) :
     pws_auth pn l ==∗ pws_auth pn (l ++ [b]) ∗ pws_lb pn (l ++ [b]).
   Proof using .
@@ -358,6 +367,14 @@ Section PipeProto.
        ∗ rcur pn (ps_rp s)
        (* (P1) only the line ever goes in *)
        ∗ ⌜ps_ws s `prefix_of` L⌝
+       (* (P5) THE READER NEVER RUNS AHEAD OF THE WRITER -- the one fact
+          that makes a READ CURSOR say something about the CONTENTS (see
+          [pws_lb_of_rcur] below, and [pipe_body_needs_P5] for why nothing
+          else in this body implies it).  It is preserved for free: a write
+          grows [ps_ws] and leaves [ps_rp], a close moves neither, and a
+          READ fires only at [pst_next s = Some b], i.e. at [ps_rp s <
+          length (ps_ws s)]. *)
+       ∗ ⌜(ps_rp s <= length (ps_ws s))%nat⌝
        (* (P3) after end-of-file the contents are frozen *)
        ∗ (eof_pending pn
           ∨ ∃ w : list (bv 8),
@@ -389,7 +406,7 @@ Section PipeProto.
     pipe_body pn γp L -∗ pipe_qauth (pn_queue γp) s -∗
     ⌜ps_ws s `prefix_of` L⌝.
   Proof using .
-    iIntros "Hb Ha". iDestruct "Hb" as (s0) "(Hf & _ & _ & _ & %Hpre & _ & _)".
+    iIntros "Hb Ha". iDestruct "Hb" as (s0) "(Hf & _ & _ & _ & %Hpre & _ & _ & _)".
     iDestruct (pipe_queue_agree with "Ha Hf") as %<-. by iPureIntro.
   Qed.
 
@@ -400,7 +417,7 @@ Section PipeProto.
     pipe_body pn γp L -∗ wtok pn -∗ pipe_qauth (pn_queue γp) s -∗
     ⌜ps_ws s = []⌝.
   Proof using .
-    iIntros "Hb Ht Ha". iDestruct "Hb" as (s0) "(Hf & _ & Hw & _ & _ & _ & _)".
+    iIntros "Hb Ht Ha". iDestruct "Hb" as (s0) "(Hf & _ & Hw & _ & _ & _ & _ & _)".
     iDestruct (pipe_queue_agree with "Ha Hf") as %<-.
     rewrite /wtok. iDestruct (wcur_agree with "Hw Ht") as %Hlen.
     iPureIntro. by apply nil_length_inv.
@@ -412,7 +429,7 @@ Section PipeProto.
     ⌜w = ps_ws s /\ ps_wo s = false⌝.
   Proof using .
     iIntros "Hb #Hs Ha".
-    iDestruct "Hb" as (s0) "(Hf & _ & _ & _ & _ & [Hp | Heof] & _)".
+    iDestruct "Hb" as (s0) "(Hf & _ & _ & _ & _ & _ & [Hp | Heof] & _)".
     - iDestruct (eof_pending_shot with "Hp Hs") as %[].
     - iDestruct (pipe_queue_agree with "Ha Hf") as %<-.
       iDestruct "Heof" as (w') "[#Hs' %Hw]".
@@ -428,9 +445,40 @@ Section PipeProto.
     ⌜ps_ro s = false⌝.
   Proof using .
     iIntros "Hb #Hs Ha".
-    iDestruct "Hb" as (s0) "(Hf & _ & _ & _ & _ & _ & [Hp | [_ %Hro]])".
+    iDestruct "Hb" as (s0) "(Hf & _ & _ & _ & _ & _ & _ & [Hp | [_ %Hro]])".
     - iDestruct (ro_pending_shot with "Hp Hs") as %[].
     - iDestruct (pipe_queue_agree with "Ha Hf") as %<-. by iPureIntro.
+  Qed.
+
+  (* (P5) at the kernel's authority, the shape every link reads its
+     properties at. *)
+  Lemma pipe_body_P5 (pn : pnames) (γp : pipe_names) (L : list (bv 8))
+      (s : pipe_st) :
+    pipe_body pn γp L -∗ pipe_qauth (pn_queue γp) s -∗
+    ⌜(ps_rp s <= length (ps_ws s))%nat⌝.
+  Proof using .
+    iIntros "Hb Ha".
+    iDestruct "Hb" as (s0) "(Hf & _ & _ & _ & _ & %Hrle & _ & _)".
+    iDestruct (pipe_queue_agree with "Ha Hf") as %<-. by iPureIntro.
+  Qed.
+
+  (* WHY (P5) IS A CONJUNCT OF THE BODY AND NOT A CONSEQUENCE OF IT, at
+     the STATEMENT (design SS4.3g's third owed item; lane PIPE-EXEC-ECHO).
+     Nothing else in the body constrains [ps_rp]: (P1) is about [ps_ws],
+     (P3) about [ps_ws]/[ps_wo], (P4) about [ps_ro], and the two cursors
+     only AGREE with the state.  So the body WITHOUT (P5) is satisfied at a
+     state whose reader has run off the end of the contents, and at such a
+     state a READ PERMIT AT [c > 0] SAYS NOTHING ABOUT THE LINE -- which is
+     exactly what [pws_lb_of_rcur] below has to deny.  The witness: *)
+  Lemma pipe_body_needs_P5 (L : list (bv 8)) :
+    exists s : pipe_st,
+      ps_ws s `prefix_of` L /\ ps_rp s = 1%nat
+      /\ ps_wo s = false /\ ps_ro s = false
+      /\ ~ (ps_rp s <= length (ps_ws s))%nat.
+  Proof using .
+    exists (MkPipeSt [] 1%nat false false). cbn.
+    split_and!; [ apply prefix_nil | reflexivity | reflexivity
+                | reflexivity | lia ].
   Qed.
 
   (* ------------------------------------------------------------------- *)
@@ -449,12 +497,13 @@ Section PipeProto.
     pipe_inv pn γp L -∗ pipe_clink (pn_queue γp) w emp.
   Proof using .
     intros HE. rewrite /pipe_inv /pipe_clink. iIntros "#Hinv" (s) "Ha".
-    iInv "Hinv" as (s0) ">(Hf & Hh & Hw & Hr & %Hpre & Heof & Hro)" "Hclose".
+    iInv "Hinv" as (s0) ">(Hf & Hh & Hw & Hr & %Hpre & %Hrle & Heof & Hro)" "Hclose".
     iDestruct (pipe_queue_agree with "Ha Hf") as %<-.
     iMod (pipe_queue_update _ _ _ (pst_close w s0) with "Ha Hf") as "[Ha Hf]".
     iMod ("Hclose" with "[Hf Hh Hw Hr Heof Hro]") as "_".
     { iNext. iExists (pst_close w s0). rewrite pst_close_ws pst_close_rp.
-      iFrame "Hf Hh Hw Hr". iSplitR; [by iPureIntro |]. iSplitL "Heof".
+      iFrame "Hf Hh Hw Hr". iSplitR; [by iPureIntro |].
+      iSplitR; [by iPureIntro |]. iSplitL "Heof".
       - iDestruct "Heof" as "[Hp | Heof]"; [by iLeft |].
         iRight. iDestruct "Heof" as (w0) "[Hs %Hw0]". iExists w0. iFrame "Hs".
         iPureIntro. destruct Hw0 as [Hw1 Hw2]. split; [exact Hw1 |].
@@ -523,6 +572,7 @@ Section PipeProto.
             with "[Hfrag Hh Hw1 Hr1 He Ho]") as "#Hinv".
     { iNext. iExists pst0. rewrite /pst0 /=. iFrame "Hfrag Hh Hw1 Hr1".
       iSplitR; [ iPureIntro; apply prefix_nil | ].
+      iSplitR; [ iPureIntro; cbn; lia | ].
       iSplitL "He"; [ by iLeft | by iLeft ]. }
     iModIntro. iExists (MkPNames gh ge go gw gr gl gs).
     iDestruct (pipe_reg_of_inv _ γp L with "Hinv") as "#Hreg".
@@ -599,7 +649,7 @@ Section PipeProto.
          SHUT READ END it shoots (P4)'s one-shot inside the invariant. *)
       rewrite /pipe_olink. iIntros (s) "Ha".
       destruct (decide (ps_ro s = false)) as [Hro | Hro].
-      - iInv "Hinv" as (s0) ">(Hf & Hh & Hbw & Hbr & %Hpre & Heof & Hro')"
+      - iInv "Hinv" as (s0) ">(Hf & Hh & Hbw & Hbr & %Hpre & %Hrle & Heof & Hro')"
           "Hclose".
         iDestruct (pipe_queue_agree with "Ha Hf") as %<-.
         iAssert (|==> ro_shot pn
@@ -622,7 +672,7 @@ Section PipeProto.
        spends, in the DERAILED builder past a short write. *)
     iIntros (b) "%Hb". rewrite /pipe_wlink. iIntros (s) "%Hwo %Hro Ha".
     iDestruct "HQ" as "[Hw #Hlb]".
-    iInv "Hinv" as (s0) ">(Hf & Hh & Hbw & Hbr & %Hpre & Heof & Hro')"
+    iInv "Hinv" as (s0) ">(Hf & Hh & Hbw & Hbr & %Hpre & %Hrle & Heof & Hro')"
       "Hclose".
     iDestruct (pipe_queue_agree with "Ha Hf") as %<-.
     iDestruct (wcur_agree with "Hbw Hw") as %Hlen.
@@ -653,6 +703,9 @@ Section PipeProto.
     { iNext. iExists (pst_write b s0).
       rewrite !pst_write_ws !pst_write_rp Hlen'. iFrame "Hf Hh Hbw Hbr".
       iSplitR; [ iPureIntro; rewrite Hws'; apply prefix_take | ].
+      (* (P5) across a write: the read pointer did not move and the
+         contents grew *)
+      iSplitR; [ iPureIntro; lia | ].
       iSplitL "Hp"; [ by iLeft | ].
       (* (P4) rides across a write: [pst_write] does not touch [ps_ro] *)
       iDestruct "Hro'" as "[Hp | [#Hsh %Hr]]"; [ by iLeft | ].
@@ -694,7 +747,7 @@ Section PipeProto.
     pipe_inv pn γp L -∗ wcur pn c ={⊤}=∗ wcur pn c ∗ pws_lb pn (take c L).
   Proof using .
     iIntros "#Hinv Hw".
-    iInv "Hinv" as (s0) ">(Hf & Hh & Hbw & Hbr & %Hpre & Heof & Hro)" "Hclose".
+    iInv "Hinv" as (s0) ">(Hf & Hh & Hbw & Hbr & %Hpre & %Hrle & Heof & Hro)" "Hclose".
     iDestruct (wcur_agree with "Hbw Hw") as %Hlen.
     assert (Hws : ps_ws s0 = take c L).
     { destruct Hpre as [t Ht]. rewrite -Hlen Ht take_app_length. reflexivity. }
@@ -820,7 +873,7 @@ Section PipeProto.
       iDestruct "HQ" as "[Hr %Hacc]".
       destruct (decide (pst_eof s)) as [Heof | Hne].
       - (* an end-of-file: SHOOT the snapshot at the frozen contents *)
-        iInv "Hinv" as (s0) ">(Hf & Hh & Hbw & Hbr & %Hpre & Hoe & Hro)" "Hclose".
+        iInv "Hinv" as (s0) ">(Hf & Hh & Hbw & Hbr & %Hpre & %Hrle & Hoe & Hro)" "Hclose".
         iDestruct (pipe_queue_agree with "Ha Hf") as %<-.
         iDestruct (rcur_agree with "Hbr Hr") as %Hrp.
         assert (Hws : ps_ws s0 = take (c + length acc)%nat L).
@@ -854,7 +907,7 @@ Section PipeProto.
     (* THE READ LINK *)
     rewrite /pipe_rlink. iIntros (s b) "%Hnext Ha".
     iDestruct "HQ" as "[Hr %Hacc]".
-    iInv "Hinv" as (s0) ">(Hf & Hh & Hbw & Hbr & %Hpre & Hoe & Hro)" "Hclose".
+    iInv "Hinv" as (s0) ">(Hf & Hh & Hbw & Hbr & %Hpre & %Hrle & Hoe & Hro)" "Hclose".
     iDestruct (pipe_queue_agree with "Ha Hf") as %<-.
     iDestruct (rcur_agree with "Hbr Hr") as %Hrp.
     (* THE DEQUEUED BYTE IS THE LINE'S, at the reader's own cursor: (P1) at
@@ -862,6 +915,11 @@ Section PipeProto.
     assert (HLb : L !! (c + length acc)%nat = Some b).
     { rewrite -Hrp. eapply prefix_lookup_Some; [ | exact Hpre ].
       rewrite /pst_next in Hnext. exact Hnext. }
+    (* (P5) IS WHAT A READ RESTORES, and it restores it because the link
+       fired at all: [pst_next s0 = Some b] is [ps_rp s0 < length
+       (ps_ws s0)]. *)
+    assert (Hlt : (ps_rp s0 < length (ps_ws s0))%nat).
+    { apply lookup_lt_is_Some_1. rewrite /pst_next in Hnext. by exists b. }
     assert (Hlenb : length (acc ++ [b]) = (length acc + 1)%nat)
       by (rewrite length_app /=; lia).
     assert (Hacc' : acc ++ [b] = take (length acc + 1)%nat (drop c L)).
@@ -873,7 +931,8 @@ Section PipeProto.
     iMod ("Hclose" with "[Hf Hh Hbw Hbr Hoe Hro]") as "_".
     { iNext. iExists (pst_read s0). iFrame "Hf".
       rewrite !pst_read_ws !pst_read_rp. iFrame "Hh Hbw Hbr".
-      iSplitR; [ by iPureIntro | ]. iSplitL "Hoe".
+      iSplitR; [ by iPureIntro | ]. iSplitR; [ iPureIntro; lia | ].
+      iSplitL "Hoe".
       - iDestruct "Hoe" as "[Hp | Hoe]"; [ by iLeft | ].
         iDestruct "Hoe" as (w0) "[#Hs %Hw0]". iRight. iExists w0. iFrame "Hs".
         iPureIntro. exact Hw0.
@@ -899,6 +958,79 @@ Section PipeProto.
   Qed.
 
   (* ------------------------------------------------------------------- *)
+  (*  5a. THE READER-SIDE LOWER BOUND (design SS4.3g, the round's third    *)
+  (*      owed item)                                                      *)
+  (*                                                                      *)
+  (*  [pws_lb_of_inv] is the WRITER's: a write permit at [c] says the      *)
+  (*  first [c] bytes of the line are in.  This is its mirror one cursor   *)
+  (*  over, and it is what lets a READER say so -- which is the only way   *)
+  (*  cat can produce a witness that "a byte reached the reader" for the   *)
+  (*  two children's exclusion ([PipeBoth]'s [YR]).  It needs (P5), and    *)
+  (*  nothing weaker: see [pipe_body_needs_P5].                            *)
+  (* ------------------------------------------------------------------- *)
+  Lemma pws_lb_of_rcur (E : coPset) (pn : pnames) (γp : pipe_names)
+      (L : list (bv 8)) (c : nat) :
+    ↑pipeN ⊆ E ->
+    pipe_inv pn γp L -∗ rcur pn c ={E}=∗ rcur pn c ∗ pws_lb pn (take c L).
+  Proof using .
+    intros HE. iIntros "#Hinv Hr".
+    iInv "Hinv" as (s0)
+      ">(Hf & Hh & Hbw & Hbr & %Hpre & %Hrle & Heof & Hro)" "Hclose".
+    iDestruct (rcur_agree with "Hbr Hr") as %Hrp.
+    iDestruct (pws_auth_lb with "Hh") as "[Hh #Hlb]".
+    (* (P1) + (P5): the reader's cursor is inside the contents, and the
+       contents are a prefix of the line, so the line's first [c] bytes ARE
+       the contents' first [c] bytes. *)
+    assert (Hle : (c <= length (ps_ws s0))%nat) by (rewrite -Hrp; exact Hrle).
+    assert (Htk : take c L = take c (ps_ws s0)).
+    { destruct Hpre as [t Ht]. rewrite Ht take_app_le; [ reflexivity | lia ]. }
+    iDestruct (pws_lb_weaken pn (ps_ws s0) (take c L) with "Hlb") as "#Hlb'".
+    { rewrite Htk. apply prefix_take. }
+    iMod ("Hclose" with "[Hf Hh Hbw Hbr Heof Hro]") as "_".
+    { iNext. iExists s0. iFrame "Hf Hh Hbw Hbr Heof Hro". by iPureIntro. }
+    iModIntro. iFrame "Hr". iExact "Hlb'".
+  Qed.
+
+  (* ...AND THE EXCLUSION THE ROUND SPENDS (design SS4.3g, R2's item 3).
+     [PipeBoth]'s two child byte steps take [box (XL -* YR ={Eex}=* False)]
+     with [Eex ⊆ ⊤ ∖ ↑uartN Uart0 ∖ ↑N]; at the honest instance [XL] is
+     echo's write permit at ZERO (the left child's exec failed, so it still
+     holds its whole lend and NOTHING was ever written) and [YR] is "a byte
+     reached the reader".  The two cannot both hold: an untouched write
+     permit forces the contents EMPTY (P2), and an empty history has no
+     lower bound of length one.  The line's non-emptiness is the only
+     premise, and every line ends in a newline. *)
+  Lemma pipe_excl_wtok_lb (E : coPset) (pn : pnames) (γp : pipe_names)
+      (L : list (bv 8)) :
+    ↑pipeN ⊆ E -> L <> [] ->
+    pipe_inv pn γp L -∗
+    □ (wcur pn 0%nat -∗ pws_lb pn (take 1%nat L) ={E}=∗ False).
+  Proof using .
+    intros HE HL. iIntros "#Hinv !> Hw #Hlb".
+    iInv "Hinv" as (s0)
+      ">(Hf & Hh & Hbw & Hbr & %Hpre & %Hrle & Heof & Hro)" "Hclose".
+    iDestruct (wcur_agree with "Hbw Hw") as %Hlen.
+    assert (Hws : ps_ws s0 = []) by (by apply nil_length_inv).
+    iDestruct (pws_lb_prefix with "Hh Hlb") as %Hp.
+    rewrite Hws in Hp. apply prefix_nil_inv in Hp.
+    exfalso. destruct L as [| b L']; [ by destruct (HL eq_refl) | ].
+    rewrite /= in Hp. discriminate.
+  Qed.
+
+  (* the instance the round applies, at the protocol's own namespace --
+     disjoint from the console port's and from the block family's, which is
+     what [PipeBoth.pblk2_cstep_L]'s mask side condition asks. *)
+  Lemma pipe_excl_wtok_lb_pipeN (pn : pnames) (γp : pipe_names)
+      (L : list (bv 8)) :
+    L <> [] ->
+    pipe_inv pn γp L -∗
+    □ (wcur pn 0%nat -∗ pws_lb pn (take 1%nat L) ={↑pipeN}=∗ False).
+  Proof using .
+    intros HL. exact (pipe_excl_wtok_lb (↑pipeN) pn γp L
+                        ltac:(reflexivity) HL).
+  Qed.
+
+  (* ------------------------------------------------------------------- *)
   (*  6.  SH'S END-OF-ROUND READING (design SS4.2, as amended by SH-PIPE)  *)
   (* ------------------------------------------------------------------- *)
 
@@ -908,7 +1040,7 @@ Section PipeProto.
     pipe_body pn γp L -∗ pws_lb pn L -∗ eof_shot pn w -∗ ⌜w = L⌝.
   Proof using .
     iIntros "Hb #Hlb #Hs".
-    iDestruct "Hb" as (s) "(Hf & Hh & _ & _ & %Hpre & Hoe & _)".
+    iDestruct "Hb" as (s) "(Hf & Hh & _ & _ & %Hpre & _ & Hoe & _)".
     iDestruct (pws_lb_prefix with "Hh Hlb") as %HL.
     assert (Hws : ps_ws s = L).
     { apply (prefix_length_eq _ _ Hpre). by apply prefix_length. }
@@ -925,7 +1057,7 @@ Section PipeProto.
     pipe_body pn γp L -∗ wtok pn -∗ eof_shot pn w -∗ ⌜w = []⌝.
   Proof using .
     iIntros "Hb Ht #Hs".
-    iDestruct "Hb" as (s) "(Hf & _ & Hbw & _ & _ & Hoe & _)".
+    iDestruct "Hb" as (s) "(Hf & _ & Hbw & _ & _ & _ & Hoe & _)".
     rewrite /wtok. iDestruct (wcur_agree with "Hbw Ht") as %Hlen.
     assert (Hws : ps_ws s = []) by (by apply nil_length_inv).
     iDestruct "Hoe" as "[Hp | Hoe]".
@@ -964,7 +1096,7 @@ Section PipeProto.
     pipe_body pn γp L -∗ wcur pn c -∗ eof_shot pn w -∗ ⌜w = take c L⌝.
   Proof using .
     iIntros "Hb Hc #Hs".
-    iDestruct "Hb" as (s) "(Hf & _ & Hbw & _ & %Hpre & Hoe & _)".
+    iDestruct "Hb" as (s) "(Hf & _ & Hbw & _ & %Hpre & _ & Hoe & _)".
     iDestruct (wcur_agree with "Hbw Hc") as %Hlen.
     assert (Hws : ps_ws s = take c L).
     { destruct Hpre as [t Ht]. rewrite -Hlen Ht take_app_length. reflexivity. }

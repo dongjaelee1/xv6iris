@@ -254,7 +254,7 @@ arm is the theorem's one named premise (`pipe_both_law`).
   STOPPED on H1–H4; H4 = the MODEL GAP (design §4.3g: fork #2's panic
   beside a live left child whose exec fails → a STRAY writer; ruling
   STRAYS pending the owner's word).
-- [ ] **PIPE-EXEC-ECHO** (H1 + H3 + the reader-side lower bound; needed on
+- [x] **PIPE-EXEC-ECHO** (H1 + H3 + the reader-side lower bound; needed on
   every route).  Brief `brief-pipe-exec-echo.md`.
 - [x] **EXEC-CAT** (H2: `UkShCat.v` + `UShCatPay.v`, the exec of `/cat`
   from sh's EXEC arm).  Brief `brief-exec-cat.md`.
@@ -6066,3 +6066,233 @@ audited cone GREW by the whole program tier.
 `UInitPipe.sh_pipe_child_law_all` and nothing else.  The day it lands,
 `pipe_adequacy_pipeΣ_of_child` loses its only premise by application and
 no statement in these files moves.
+
+### PIPE-EXEC-ECHO (2026-09-20) — H1 and H3 both land at the moulds and cost no walk; the reader-side lower bound is NOT one lemma, because as briefed it is UNPROVABLE (the protocol's body says nothing about the read pointer), and the body gains (P5); H1 could not live in `UkShPipe.v`
+
+Branch `app-pipe/pipe-exec-echo` off main (`4c258fa32`), three code
+commits (`415813994`, `02c6f8151`, `e446f20bd`).  Files: `iris/PipeProto.v`
+(the body's conjunct list and its destructuring patterns; every landed
+STATEMENT byte-identical) and TWO new files, `iris/UShPipeCall.v` and
+`iris/UShEchoPipePay.v` (+ two `_CoqProject` rows), plus the report file
+`iris/PipeExecEchoAssumptions.v` (not a `_CoqProject` row).
+`UkShPipe.v` is UNTOUCHED, and so are `UkShCat.v`/`UShCatPay.v` (EXEC-CAT)
+and `UShLine.v`/`UInitPipe.v`/`UPipeBootAdequacy.v` (PIPE-CC).
+Whole-tree `ec2-lane.sh execl build` **RC=0** (and `make -f CoqMakefile
+-n` then has nothing left to compile); no `Admitted`; `Proof using` on
+every result.
+
+**`make audit-echo-only` = FOURTEEN and `make audit-pipe-only` = FOURTEEN**,
+the same list textually (1 `functional_extensionality_dep` + the 2
+`xv6iris_extras` reservation `Parameter`s + 11 PrimString/PrimInt63),
+measured after the changes.  `Print Assumptions` on the lane's ten results
+(`iris/PipeExecEchoAssumptions.v`, a report file, not a `_CoqProject` row):
+SEVEN are **Closed under the global context** — `pws_lb_of_rcur`,
+`pipe_excl_wtok_lb`, `pipe_excl_wtok_lb_pipeN`, `pipe_body_needs_P5`,
+`pipe_body_P5`, `ep_registrar_of_wq`, `image_entry_pay_mono` — and the
+three that are not are at the STANDING PRIMITIVES only:
+`ush_pipe_call_paid` and `ush_pipe_call_echo_pay` at
+`functional_extensionality_dep` + the two reservation `Parameter`s, and
+`sh_exec_sup_echo_pipe_at` at those three plus the eleven
+PrimString/PrimInt63 (it names `ElfUser.echo_elf`, a `PrimString`-backed
+blob).  Nothing new anywhere.
+
+**(3) THE READER-SIDE LOWER BOUND IS REFUTED AS BRIEFED, and that is the
+lane's finding.**  Design §4.3g asks for one lemma: "`rcur pn c`, `c > 0`,
+`pipe_inv` ⊢ `pws_lb pn (take c L)`".  It does not follow from the landed
+body, and no premise about the reader fixes that: NOTHING IN `pipe_body`
+CONSTRAINS `ps_rp` AT ALL.  (P1) is about `ps_ws`, (P3) about
+`ps_ws`/`ps_wo`, (P4) about `ps_ro`, and the two cursors only AGREE with
+the state — so the body is satisfied at a state whose reader has run off
+the end of the contents, where a read permit at `c > 0` says nothing
+about the line.  Mechanised, `PipeProto.pipe_body_needs_P5`:
+
+```coq
+  Lemma pipe_body_needs_P5 (L : list (bv 8)) :
+    exists s : pipe_st,
+      ps_ws s `prefix_of` L /\ ps_rp s = 1%nat
+      /\ ps_wo s = false /\ ps_ro s = false
+      /\ ~ (ps_rp s <= length (ps_ws s))%nat.
+```
+
+So the body gains **(P5)**, `⌜(ps_rp s <= length (ps_ws s))%nat⌝`, placed
+after (P1).  It is free everywhere: true of `pst0`, preserved by a write
+(`ps_ws` grows, `ps_rp` stands), preserved by a close (neither moves), and
+RESTORED by a read exactly because the read link fires only at `pst_next
+s0 = Some b`, i.e. at `ps_rp s0 < length (ps_ws s0)` — one `assert` in
+`pipe_rchain_of_inv`.  Nothing outside `PipeProto.v` mentions `pipe_body`
+(`UEchoPipe`, `UCatPipe` and `PipeBoth` use `pipe_inv` and the lemmas), so
+this is a definition change with no sweep and no landed statement moved.
+
+The two results, then (the second is what `PipeBoth`'s byte steps want):
+
+```coq
+  Lemma pws_lb_of_rcur (E : coPset) (pn : pnames) (γp : pipe_names)
+      (L : list (bv 8)) (c : nat) :
+    ↑pipeN ⊆ E ->
+    pipe_inv pn γp L -∗ rcur pn c ={E}=∗ rcur pn c ∗ pws_lb pn (take c L).
+
+  Lemma pipe_excl_wtok_lb_pipeN (pn : pnames) (γp : pipe_names)
+      (L : list (bv 8)) :
+    L <> [] ->
+    pipe_inv pn γp L -∗
+    □ (wcur pn 0%nat -∗ pws_lb pn (take 1%nat L) ={↑pipeN}=∗ False).
+```
+
+Three notes for the round.  (a) `pws_lb_of_rcur` needs NO `0 < c` premise
+— at `c = 0` the bound is `pws_lb pn []`, which is free — so it is
+stronger than the design asked.  (b) The exclusion needs `L <> []`, and
+only that; every line ends in a newline, so `wl_line (drop 1 ws)` is never
+empty and the round discharges it by computation.  (c) The MASK:
+`PipeBoth.pblk2_cstep_L` asks `Eex ⊆ (⊤ ∖ ↑uartN Uart0 ∖ ↑N)`, and
+`pipe_excl_wtok_lb_pipeN` is at `Eex := ↑pipeN`; `uartN Uart0 = nroot.@
+"dev".@"uart".@Uart0` and `pipeN = nroot.@"pipeproto"` are disjoint, so
+the round's obligation is `↑pipeN ⊆ ⊤ ∖ ↑uartN Uart0 ∖ ↑N` at ITS choice
+of the family's `N` — `solve_ndisj`, and it is the reason design §4.3f
+told the round to keep `N` off `pipe_inv`'s namespace.  The generic
+`pipe_excl_wtok_lb` at any `E ⊇ ↑pipeN` is there beside it.
+Beside them: `pws_lb_weaken` (a lower bound is downward closed) and
+`pipe_body_P5` (the property at the kernel's authority, the shape every
+link reads).
+
+**(1) H1 LANDED — but NOT in `UkShPipe.v`, and the reason is a wedge, not
+a preference.**  The brief said "a NEW lemma beside
+`ush_pipe_call_of_leaf`".  `UkShPipe.v` binds `{SG : uexecSG Σ}` as a
+SECTION VARIABLE — it is a class-generic `Uk*` walk file and its own
+header says why ("a premise naming `pipe_qfrag` could not be discharged
+here at all") — so every `UkRun.urun` in its statements is at that
+variable, while `UkReadPipe.wp_uk_pipe_read_end`, which has to READ row
+4's post, is proved at the ambient `UexecExecInst.uexecSG_xv6`.  The two
+print identically and do not unify (durable-notes, "A section variable of
+a class type is a LOCAL INSTANCE"), so the paid discharge cannot sit in
+that section.  It sits in a new file one row above, with `UkReadPipe.v`'s
+binder list VERBATIM (that is what makes every class the file does not
+bind — `uexecSG`, `ctokG` — resolve here as it resolved there).  Nothing
+landed moves.
+
+```coq
+  Lemma ush_pipe_call_paid (N : uk_names Σ) `{!ukn_const N}
+      (l : list fdstate) (R : pipe_names -> iProp Σ) :
+    fd_lowest_closed l = None ->
+    (∀ γp : pipe_names,
+       pipe_qfrag (pn_queue γp) pst0 ={⊤}=∗ pipe_reg γp ∗ R γp) -∗
+    udepw_law (PS := PS) 21 -∗
+    UkShPipe.ush_pipe_call (SG := uexecSG_xv6) (PS := PS) N l R.
+```
+
+STOP RULE 1 DID NOT FIRE: `wp_uk_pipe_read_end`'s registrar takes
+`ep_pay_of_alloc`'s fupd with no adjustment at all — same mask (`⊤`), same
+shape, and the leaf's premise ORDER is `wp_uk_ecall_pipe`'s verbatim
+(`uinstr_is`, `urun`, `udepw`, registrar, `ustd`, `ubytes`, continuation),
+so the landed walk's three instructions are reused line for line.  Two
+small differences from the landed twin, both simplifications: the leaf's
+success arm hands the two ends as `UserFd.ufd`, which CARRIES `NSTD <= fd`
+(`UserFd.ufd_ge`), so the `ualloc_at`/`ushpi_after_none` scan the taint
+version needed is gone; and `udepw_law 21` is the only other premise,
+which in the landed twin already stood BESIDE the taint rather than being
+derived from it.
+
+The INSTANCE at `ep_pay_of_alloc` is in `UShEchoPipePay.v` (the first file
+above `UEchoPipe`): `ep_registrar_of_wq` is `ep_pay_of_alloc` read as the
+registrar premise, and
+
+```coq
+  Definition ep_reg_pay (L : list (bv 8)) (γp : pipe_names) : iProp Σ :=
+    (∃ pn : pnames, rtok pn ∗ side_R pn ∗ ep_pay Wq pn γp L)%I.
+
+  Lemma ush_pipe_call_echo_pay `{PSx : uprogSG Σ}
+      (Hfree : forall k : Z, free_num k -> psok k)
+      (N : uk_names Σ) `{!ukn_const N}
+      (l : list fdstate) (L : list (bv 8)) :
+    fd_lowest_closed l = None ->
+    Wq -∗ udepw_law (PS := PSx) 21 -∗
+    UkShPipe.ush_pipe_call (SG := uexecSG_xv6) (PS := PSx) N l (ep_reg_pay L).
+```
+
+**WHAT `Wq` IS AND WHO SUPPLIES IT** (the brief's question).  `Wq` is the
+ERA'S CONSOLE CREDENTIAL, opaque here as it is in `UEchoPipe.v`: at the
+pipeline round it is what sh's fork lent the LEFT child
+(`UkShFork.ushf_wq`'s left arm).  echo at a pipe writes NO console byte,
+so the credential is never spent — it rides `ep_frame` across the exec and
+comes back out of `ep_exit` (`UEchoPipe.ep_exit_payL` hands it back beside
+`side_L`).  The RUNCMD CHILD supplies it here, out of its own lend, at the
+instant of `pipe(2)`: it is the one linear resource the registrar
+consumes, and `pipe_reg γp`, `rtok pn`, `side_R pn` and `ep_pay Wq pn γp
+L` are what comes back — the registration to the registry, the reader's
+permit and the right side token to sh (for cat and for the two waits), and
+`ep_pay` to echo through the exec channel.
+
+**(2) H3 LANDED, and STOP RULE 2 DID NOT FIRE EITHER.**
+
+```coq
+  Lemma sh_exec_sup_echo_pipe_at
+      (ws : list (list (bv 8))) (Qv Cr T : iProp Σ)
+      (pn : pnames) (γp : pipe_names)
+      `{!Persistent T} `{!Timeless T} :
+    EchoDisc.line_ok ws ->
+    □ (Cr -∗ ep_pay Wq pn γp (wl_line (drop 1 ws))) -∗
+    □ (ep_exit Wq pn (wl_line (drop 1 ws)) -∗ Qv) -∗
+    □ (app_taint -∗ Qv) -∗
+    udep (PS := uprogSG_free) -∗
+    UShEcho.sh_echo_slot T -∗
+    UkShEcho.sh_exec_sup_echo_at (ush_fd1pipe γp) ws (fun _ : Z => Qv) Cr.
+```
+
+at `ush_fd1pipe γp l := ∃ rb, l !! 1%nat = Some (FdOpen rb true (FdPipe
+γp))` — `UkSh.ush_fd1p` one descriptor kind over, and it goes in through
+`UkShEcho.sh_exec_sup_echo_at`'s `Fd1` PARAMETER, which lane SH-CHILD-2
+already made one for the redirect child's file row.  No landed definition
+moves.
+
+The (E) half needs NO exec-post row the console version did not.
+`UEchoPipe.ep_image_entry`'s premise list is
+`UShEchoPay.echo_slot_of_kexec_at_at`'s MINUS the whole stage (no
+`LinkRec`/`StageRec`, no `Wc` laws, no `ck_lineok`, and none of the
+room/alignment/argv/`kexec` rows — it derives those from
+`kexec_image_ok` itself through `echo_kexec_pages`/`echo_kexec_entry_rows`)
+PLUS exactly ONE row in the same position: `take NSTD sts !! 1 = Some
+(FdOpen rb true (FdPipe γp))` where the console version had
+`UkSh.ush_fd1p (take NSTD sts)`.  So the assembly is the mould's body with
+the stage deleted: (W) is `exec_walk_of_pin` at `era0_echo_pins`, (L) is
+`echo_elf_loadable`, the taint arm is `sh_echo_slot`'s generic slot, and
+(E) is one application of `ep_image_entry`.  It cost ONE new generic
+lemma, `image_entry_pay_mono`: the exec channel's entry is
+CONTRAVARIANT in its linear payload, which is the whole seam between the
+round's lend and echo's own (the mould hid this by destructuring `Pay`
+inside the entry; with (E) already landed at `ep_pay` the conversion has
+to be a step).  The refund is the lend WHOLE beside the ledger fragment,
+as in the mould.
+
+Three things stay abstract, deliberately, as the mould's do: `Cr` (the
+lend, with the ONE law `□ (Cr -∗ ep_pay Wq pn γp L)` — the round's lend is
+`ep_pay pn γp L ∗ wcur gL (1/2) 0 ∗ blk2_inv ∗ …` and this file needs only
+that echo's own payload comes out of it), `Qv` (the child's exit payload,
+constant in the status as `UkShRun.wp_kshr_fork1` forces, with its
+`ep_exit` law and its `app_taint` law), and `T` (the era's taint
+proposition, exactly as `sh_echo_slot` takes it — `Persistent` and
+`Timeless`, which `exec_walk_of_pin` asks for and the brief's shape did
+not mention).
+
+**WHAT THE DESIGN GOT WRONG.**
+1. §4.3g's third owed item ("a READER-side lower bound in `PipeProto`") is
+   not a lemma: the body it would be proved from does not constrain the
+   read pointer.  (P5) has to be added first, and it is invisible in the
+   design's §3 table because every row there is about `ps_ws` or a flag.
+2. The brief's "`iris/UkShPipe.v` (H1: a NEW lemma beside
+   `ush_pipe_call_of_leaf`)": impossible, for the section-variable
+   instance reason above.  Anything proved through
+   `UkReadPipe.wp_uk_pipe_read_end` is above `UkShPipe.v`, not in it.
+3. §4.3g's H3 paragraph says the pipe entry "is a second discharge of the
+   same 300-line shape at `sh_exec_sup_echo_at Fd1`".  It is SHORTER than
+   that, not equal: `ep_image_entry` already is the (E) half, so what is
+   left is the (W)/(L)/taint assembly plus one contravariance step.  The
+   300 lines were the stage, and at a pipe there is no stage.
+
+**THE ONE THING THE NEXT LANE NEEDS FIRST.**  H4's ruling still, as
+SH-PIPE-ROUND-4 said — but the round's own first step is now unblocked on
+both H1 and H3, and the shape it should write is
+`ush_pipe_call_echo_pay`'s: the runcmd child spends `Wq` at `pipe(2)`,
+keeps `rtok pn ∗ side_R pn` for cat and the two waits, and lends `ep_pay
+Wq pn γp L` to the left child beside `wcur gL (1/2) 0` and `blk2_inv`.
+The exclusion premise `□ (XL -∗ YR ={Eex}=∗ False)` is then
+`pipe_excl_wtok_lb_pipeN` applied to `pipe_inv` (out of `ep_pay`), at
+`Eex := ↑pipeN`, with `L <> []` by computation.

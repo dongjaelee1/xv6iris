@@ -124,8 +124,8 @@ Theorem pfork_execL_admitted :
   /\ [gap_b0; gap_b1] `prefix_of` pcont (LPipe gap_ws) (PForkS [false; true]).
 Proof using.
   split.
-  - rewrite /palt_ok. split; [discriminate |].
-    rewrite dg_execL_len alt_forkc_len. cbn [count_true length]. lia.
+  - cbn [palt_ok]. split_and!;
+      [discriminate | vm_compute; lia | vm_compute; lia].
   - apply (bool_decide_unpack _). vm_compute. exact I.
 Qed.
 

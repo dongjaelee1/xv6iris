@@ -125,6 +125,7 @@ Section pipe_links.
     pro_pin_p ps0 cs0 I0 ->
     P = length (proc_before_p ps0 cs0 I0) ->
     palt_ok (pline_of (bodies_of I0 !!! (nlines I0 - 1)%nat)) (palt_of a) ->
+    palt_isforkS (palt_of a) = false ->
     pcont (pline_of (bodies_of I0 !!! (nlines I0 - 1)%nat)) (palt_of a)
       !! 0%nat = Some b ->
     era_pin γ k v -∗ turn v P -∗ ps_lb v ps0 -∗ cs_lb v cs0 -∗ inp_lb v I0 -∗
@@ -132,11 +133,11 @@ Section pipe_links.
       ∨ T) -∗ Φ) -∗
     out_link Uart0 k b Φ.
   Proof using Hcons.
-    intros Hne0 Hr0 Hdiv Hpin0 HPeq Halt Hhead.
+    intros Hne0 Hr0 Hdiv Hpin0 HPeq Halt Hfk Hhead.
     iIntros "#Hpin Ht #Hpslb #Hcslb #Hilb HΦ" (o H) "#Hlb Hres".
     rewrite !pchist_at0.
     iMod (pecl_step_write_blk g k v P a b ps0 cs0 I0 (default [] o) H
-            Hne0 Hr0 Hdiv Hpin0 HPeq Halt Hhead
+            Hne0 Hr0 Hdiv Hpin0 HPeq Halt Hfk Hhead
             with "Hpin Ht Hpslb Hcslb Hilb Hres") as "(Hres & Hret)".
     iModIntro. iExists o. rewrite pchist_at0. iFrame "Hlb Hres".
     by iApply "HΦ".
@@ -198,6 +199,7 @@ Section pipe_links.
     P = length (proc_before_p ps0 cs0 I0) ->
     palt_ok (pline_of (bodies_of I0 !!! r)) (palt_of a) ->
     palt_panic (palt_of a) = false ->
+    palt_isforkS (palt_of a) = false ->
     pcont (pline_of (bodies_of I0 !!! r)) (palt_of a) = pre0 ++ u_prompt ->
     b = u_prompt !!! 0%nat ->
     era_pin γ k v -∗ pera_pin g k w -∗
@@ -207,11 +209,11 @@ Section pipe_links.
        ∗ cs_lb v (cs0 ++ [a]) ∗ inp_lb v I0) ∨ T) -∗ Phi) -∗
     out_link Uart0 k b Phi.
   Proof using Hcons.
-    intros Hne0 Hr0 Hreq Hcseq Hpin0 HPeq Halt Hpan Hcont Hbv.
+    intros Hne0 Hr0 Hreq Hcseq Hpin0 HPeq Halt Hpan Hfk Hcont Hbv.
     iIntros "#Hpin #Hpera Ht Hcw #Hrlb #Hpslb #Hcslb #Hilb HPhi" (o H) "#Hlb Hres".
     rewrite !pchist_at0.
     iMod (pecl_blk2_file g k v w gb P r a b pre0 ps0 cs0 I0 (default [] o) H
-            Hne0 Hr0 Hreq Hcseq Hpin0 HPeq Halt Hpan Hcont Hbv
+            Hne0 Hr0 Hreq Hcseq Hpin0 HPeq Halt Hpan Hfk Hcont Hbv
             with "Hpin Hpera Ht Hcw Hrlb Hpslb Hcslb Hilb Hres")
       as "(Hres & Hret)".
     iModIntro. iExists o. rewrite pchist_at0. iFrame "Hlb Hres".
@@ -322,6 +324,7 @@ Section pipe_links.
         ⌜P = length (proc_before_p ps0 cs0 I0)⌝ -∗
         ⌜palt_ok (pline_of (bodies_of I0 !!! (nlines I0 - 1)%nat))
                  (palt_of a)⌝ -∗
+        ⌜palt_isforkS (palt_of a) = false⌝ -∗
         ⌜pcont (pline_of (bodies_of I0 !!! (nlines I0 - 1)%nat)) (palt_of a)
            !! 0%nat = Some b⌝ -∗
         era_pin γ k v -∗ turn v P -∗
@@ -375,6 +378,7 @@ Section pipe_links.
         ⌜P = length (proc_before_p ps0 cs0 I0)⌝ -∗
         ⌜palt_ok (pline_of (bodies_of I0 !!! r)) (palt_of a)⌝ -∗
         ⌜palt_panic (palt_of a) = false⌝ -∗
+        ⌜palt_isforkS (palt_of a) = false⌝ -∗
         ⌜pcont (pline_of (bodies_of I0 !!! r)) (palt_of a) = pre0 ++ u_prompt⌝ -∗
         ⌜b = u_prompt !!! 0%nat⌝ -∗
         era_pin γ k v -∗ pera_pin g k w -∗
@@ -432,7 +436,7 @@ Section pipe_links.
       iIntros "Hpin Ht Hps Hcs HE HΦ".
       iApply (pipe_write_link with "Hpin Ht Hps Hcs HE HΦ"); try assumption.
     - iIntros "!>" (k v P a b ps0 cs0 I0 Φ).
-      iIntros "%Hne %Hrest %Hbnd %Hpin0 %HPeq %Halt %Hhead".
+      iIntros "%Hne %Hrest %Hbnd %Hpin0 %HPeq %Halt %Hfk %Hhead".
       iIntros "Hpin Ht Hps Hcs HE HΦ".
       iApply (pipe_write_link_blk with "Hpin Ht Hps Hcs HE HΦ");
         try assumption.
@@ -449,7 +453,7 @@ Section pipe_links.
       iApply (pipe_cons_link_of_taint with "HT [HΦ]").
       by iApply "HΦ".
     - iIntros "!>" (k v w gb P r a b pre0 ps0 cs0 I0 Phi).
-      iIntros "%Hne %Hrest %Hreq %Hcseq %Hpin0 %HPeq %Halt %Hpan %Hcont %Hbv".
+      iIntros "%Hne %Hrest %Hreq %Hcseq %Hpin0 %HPeq %Halt %Hpan %Hfk %Hcont %Hbv".
       iIntros "Hpin Hpera Ht Hcw Hrlb Hps Hcs HE HPhi".
       iApply (pipe_file_link with "Hpin Hpera Ht Hcw Hrlb Hps Hcs HE HPhi");
         try assumption.

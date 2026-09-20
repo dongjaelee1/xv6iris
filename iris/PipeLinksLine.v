@@ -73,8 +73,21 @@ Definition pline_at (I : list (bv 8)) : pline :=
 
 (* THE RECORD'S [lk_ab]: the block alternative [a] owes at input [I],
    guarded by ADMISSIBILITY alone (see the header). *)
+(* THE GUARD GAINS [palt_isforkS = false] (lane PIPE-MODEL-3): the
+   terminal fork-failure round's block is NEVER written through this
+   layer -- it is written by TWO processes at the two cursors and its
+   code is never filed -- and [PipeOut.pecl_step_write_blk], which files
+   the code at the block's FIRST byte, must not be reachable at it.  The
+   guard is where the claim's [cs_nofork] comes from: [pab_nofork]
+   carries it out of the same lookup [pab_ok] reads. *)
+Definition pab_gd (I : list (bv 8)) (a : nat) : Prop :=
+  palt_ok (pline_at I) (palt_of a) /\ palt_isforkS (palt_of a) = false.
+
+Global Instance pab_gd_dec I a : Decision (pab_gd I a).
+Proof using. rewrite /pab_gd. apply _. Defined.
+
 Definition pab (I : list (bv 8)) (a : nat) : list (bv 8) :=
-  if decide (palt_ok (pline_at I) (palt_of a))
+  if decide (pab_gd I a)
   then pcont (pline_at I) (palt_of a) else [].
 
 (* THE RECORD'S [lk_apr]: the alternative is admissible and does not
@@ -82,16 +95,25 @@ Definition pab (I : list (bv 8)) (a : nat) : list (bv 8) :=
    shell's prompt ([PipeDisc.pcont_shape], minus the [pline_ok] premise a
    WRITER does not hold; [pcont_prompt] below). *)
 Definition papr (I : list (bv 8)) (a : nat) : Prop :=
-  palt_ok (pline_at I) (palt_of a) /\ palt_panic (palt_of a) = false.
+  palt_ok (pline_at I) (palt_of a) /\ palt_panic (palt_of a) = false
+  /\ palt_isforkS (palt_of a) = false.
 
 Lemma pab_ok (I : list (bv 8)) (a i : nat) (b : bv 8) :
   pab I a !! i = Some b -> palt_ok (pline_at I) (palt_of a).
 Proof using.
-  rewrite /pab. case_decide as H; [by intros _ | by rewrite lookup_nil].
+  rewrite /pab. case_decide as H;
+    [by intros _; destruct H | by rewrite lookup_nil].
+Qed.
+
+Lemma pab_nofork (I : list (bv 8)) (a i : nat) (b : bv 8) :
+  pab I a !! i = Some b -> palt_isforkS (palt_of a) = false.
+Proof using.
+  rewrite /pab. case_decide as H;
+    [by intros _; destruct H | by rewrite lookup_nil].
 Qed.
 
 Lemma pab_is (I : list (bv 8)) (a : nat) :
-  palt_ok (pline_at I) (palt_of a) -> pab I a = pcont (pline_at I) (palt_of a).
+  pab_gd I a -> pab I a = pcont (pline_at I) (palt_of a).
 Proof using. intro H. rewrite /pab decide_True; [reflexivity | done]. Qed.
 
 (* ---- THE BLOCK'S LAST TWO BYTES ARE THE SHELL'S PROMPT.  [pcont_shape]
@@ -99,11 +121,12 @@ Proof using. intro H. rewrite /pab decide_True; [reflexivity | done]. Qed.
         "ends with the prompt" half is read off the eight constructors
         instead -- every one of them is literally [_ ++ u_prompt]. ---- *)
 Lemma pcont_prompt (l : pline) (a : palt) :
-  palt_ok l a -> palt_panic a = false ->
+  palt_ok l a -> palt_panic a = false -> palt_isforkS a = false ->
   exists u : list (bv 8), pcont l a = u ++ u_prompt.
 Proof using.
-  intros Hok Hp.
-  destruct a as [k | | | | sel | | |]; rewrite /pcont.
+  intros Hok Hp Hfk.
+  destruct a as [k | | | | sel | | sel |]; rewrite /pcont;
+    [| | | | | | done |].
   - (* [PEcho k]: [k < 4] at an [LEcho] line, [k = 3] at an [LPipe] one --
        and the panic index is excluded, so [k < 3] either way. *)
     assert (Hk : (k < 3)%nat).
@@ -119,7 +142,6 @@ Proof using.
   - exists dg_execR. reflexivity.
   - exists (pmerge sel dg_execL dg_execR). reflexivity.
   - exists (wl_line dg_pipe). reflexivity.
-  - exists (wl_line dg_fork). reflexivity.
   - exists []. by rewrite app_nil_l.
 Qed.
 
@@ -144,8 +166,8 @@ Qed.
 Lemma pab_len_ge2 (I : list (bv 8)) (a : nat) :
   papr I a -> (2 <= length (pab I a))%nat.
 Proof using.
-  intros [Hok Hp]. rewrite (pab_is I a Hok).
-  destruct (pcont_prompt (pline_at I) (palt_of a) Hok Hp) as (u & Hu).
+  intros (Hok & Hp & Hfk). rewrite (pab_is I a (conj Hok Hfk)).
+  destruct (pcont_prompt (pline_at I) (palt_of a) Hok Hp Hfk) as (u & Hu).
   exact (proj1 (prompt_tail_facts _ u Hu)).
 Qed.
 
@@ -153,8 +175,8 @@ Lemma pab_dollar (I : list (bv 8)) (a : nat) :
   papr I a ->
   pab I a !! (length (pab I a) - 2)%nat = Some (u_prompt !!! 0%nat).
 Proof using.
-  intros [Hok Hp]. rewrite (pab_is I a Hok).
-  destruct (pcont_prompt (pline_at I) (palt_of a) Hok Hp) as (u & Hu).
+  intros (Hok & Hp & Hfk). rewrite (pab_is I a (conj Hok Hfk)).
+  destruct (pcont_prompt (pline_at I) (palt_of a) Hok Hp Hfk) as (u & Hu).
   exact (proj1 (proj2 (prompt_tail_facts _ u Hu))).
 Qed.
 
@@ -162,8 +184,8 @@ Lemma pab_space (I : list (bv 8)) (a : nat) :
   papr I a ->
   pab I a !! (length (pab I a) - 1)%nat = Some (u_prompt !!! 1%nat).
 Proof using.
-  intros [Hok Hp]. rewrite (pab_is I a Hok).
-  destruct (pcont_prompt (pline_at I) (palt_of a) Hok Hp) as (u & Hu).
+  intros (Hok & Hp & Hfk). rewrite (pab_is I a (conj Hok Hfk)).
+  destruct (pcont_prompt (pline_at I) (palt_of a) Hok Hp Hfk) as (u & Hu).
   exact (proj2 (proj2 (prompt_tail_facts _ u Hu))).
 Qed.
 
@@ -186,8 +208,14 @@ Qed.
 Lemma pcont_ppan (l : pline) : pcont l (palt_of 3%nat) = alt_panic.
 Proof using. apply pcont_panic. exact ppan_panic. Qed.
 
+Lemma ppan_nofork : palt_isforkS (palt_of 3%nat) = false.
+Proof using. rewrite palt_of_3. reflexivity. Qed.
+
 Lemma pab_pan (I : list (bv 8)) : pab I 3%nat = alt_panic.
-Proof using. rewrite (pab_is I 3%nat (ppan_ok _)). exact (pcont_ppan _). Qed.
+Proof using.
+  rewrite (pab_is I 3%nat (conj (ppan_ok _) ppan_nofork)).
+  exact (pcont_ppan _).
+Qed.
 
 (* THE EXEC-FAILED CHILD'S alternative is PER-LINE and the design's
    "literally 1" is refuted at the statement: [palt_ok (LPipe ws)
@@ -233,16 +261,26 @@ Proof using.
   - rewrite (palt_of_code PExecL). reflexivity.
 Qed.
 
+Lemma pexf_of_nofork (l : pline) : palt_isforkS (palt_of (pexf_of l)) = false.
+Proof using.
+  destruct l as [ws | ws]; cbn [pexf_of].
+  - rewrite (palt_of_lt4 1%nat ltac:(lia)). reflexivity.
+  - rewrite (palt_of_code PExecL). reflexivity.
+Qed.
+
 Lemma pab_exf (I : list (bv 8)) :
   pab I (pexf_of (pline_at I)) = pexfb (pline_at I).
 Proof using.
-  rewrite (pab_is I _ (pexf_of_ok (pline_at I))). exact (pcont_pexf _).
+  rewrite (pab_is I _ (conj (pexf_of_ok (pline_at I))
+                         (pexf_of_nofork (pline_at I)))).
+  exact (pcont_pexf _).
 Qed.
 
 Lemma papr_exf (I : list (bv 8)) : papr I (pexf_of (pline_at I)).
 Proof using.
-  rewrite /papr. split;
-    [ exact (pexf_of_ok (pline_at I)) | exact (pexf_of_nopanic (pline_at I)) ].
+  rewrite /papr. split_and!;
+    [ exact (pexf_of_ok (pline_at I)) | exact (pexf_of_nopanic (pline_at I))
+    | exact (pexf_of_nofork (pline_at I)) ].
 Qed.
 
 (* THE ALTERNATIVE A ROUND TAKES WHEN NOBODY WROTE: the shell's own prompt
@@ -282,15 +320,25 @@ Proof using.
   - rewrite (palt_of_code PSilent). reflexivity.
 Qed.
 
+Lemma pnoc_of_nofork (l : pline) : palt_isforkS (palt_of (pnoc_of l)) = false.
+Proof using.
+  destruct l as [ws | ws]; cbn [pnoc_of].
+  - rewrite (palt_of_lt4 2%nat ltac:(lia)). reflexivity.
+  - rewrite (palt_of_code PSilent). reflexivity.
+Qed.
+
 Lemma pab_noc (I : list (bv 8)) : pab I (pnoc_of (pline_at I)) = u_prompt.
 Proof using.
-  rewrite (pab_is I _ (pnoc_of_ok (pline_at I))). exact (pcont_pnoc _).
+  rewrite (pab_is I _ (conj (pnoc_of_ok (pline_at I))
+                         (pnoc_of_nofork (pline_at I)))).
+  exact (pcont_pnoc _).
 Qed.
 
 Lemma papr_noc (I : list (bv 8)) : papr I (pnoc_of (pline_at I)).
 Proof using.
-  rewrite /papr. split;
-    [ exact (pnoc_of_ok (pline_at I)) | exact (pnoc_of_nopanic (pline_at I)) ].
+  rewrite /papr. split_and!;
+    [ exact (pnoc_of_ok (pline_at I)) | exact (pnoc_of_nopanic (pline_at I))
+    | exact (pnoc_of_nofork (pline_at I)) ].
 Qed.
 
 Lemma pab_noc_len (I : list (bv 8)) :
@@ -499,7 +547,8 @@ Lemma wr_blk_byte_p (ps cs : list nat) (I : list (bv 8)) (P a j : nat)
   proc_stream_p ps (cs ++ [a]) I !! (P + j)%nat = Some b.
 Proof using.
   intros Hw Hb. pose proof (pab_ok I a j b Hb) as Hok.
-  rewrite (pab_is I a Hok) in Hb.
+  pose proof (pab_nofork I a j b Hb) as Hfk.
+  rewrite (pab_is I a (conj Hok Hfk)) in Hb.
   pose proof Hw as (_ & _ & _ & HP).
   rewrite /proc_stream_p (wr_blk_low_p ps cs I P a Hw) lookup_app_r; [| lia].
   replace (P + j - length (proc_before_p ps cs I))%nat with j by lia.
@@ -776,7 +825,7 @@ Lemma wr_blk_open_p (ps cs : list nat) (I : list (bv 8)) (P a : nat) :
   wr_blk_t_p ps cs I P -> papr I a ->
   wr_open_t_p ps (cs ++ [a]) I (P + length (pab I a))%nat.
 Proof using.
-  intros [Hw Ht] Hpr. pose proof Hpr as [Hok Hnp].
+  intros [Hw Ht] Hpr. pose proof Hpr as (Hok & Hnp & Hfk).
   pose proof (wr_blk_started_p ps cs I P Hw) as Hst.
   pose proof Hw as (Hpin & Hr & Hn & HP).
   split; [| exact (wr_tail_snoc_p ps cs a Hnp Ht)].
@@ -786,7 +835,7 @@ Proof using.
   - rewrite (length_app cs [a]) Hn. cbn [length]. lia.
   - rewrite Hn (pro_idx_p_snoc_ne cs a Hnp). apply Hpin. lia.
   - rewrite /proc_stream_p (wr_blk_low_p ps cs I P a Hw)
-            (wr_blk_cont_p ps cs I P a Hw Hnp) -(pab_is I a Hok)
+            (wr_blk_cont_p ps cs I P a Hw Hnp) -(pab_is I a (conj Hok Hfk))
             (length_app (proc_before_p ps cs I) (pab I a)) HP.
     reflexivity.
 Qed.
@@ -1455,6 +1504,7 @@ Section pipe_links_line.
     iDestruct (pipe_links_blk with "Hlk") as "#Hblk".
     iDestruct (pipe_links_taint with "Hlk") as "#Ht".
     pose proof (pab_ok I a i b Hb) as Hok.
+    pose proof (pab_nofork I a i b Hb) as Hfk.
     rewrite /pwc_blk. iDestruct "Hc" as "[Hl | #HT]"; last first.
     { iApply ("Ht" $! k b Φ with "HT [HΦ]").
       iIntros "#HT'". iApply "HΦ". by iRight. }
@@ -1465,14 +1515,15 @@ Section pipe_links_line.
     - (* THE BLOCK-FIRST BYTE files the alternative *)
       cbn [blkcs_p]. rewrite Nat.add_0_r.
       iApply ("Hblk" $! k v P a b ps cs I Φ
-                with "[%] [%] [%] [%] [%] [%] [%] Hpin Htn Hps Hcs HE [HΦ]").
+                with "[%] [%] [%] [%] [%] [%] [%] [%] Hpin Htn Hps Hcs HE [HΦ]").
       { exact Hne. }
       { exact Hr. }
       { lia. }
       { exact Hpin. }
       { exact HP. }
       { exact Hok. }
-      { rewrite (pab_is I a Hok) in Hb. exact Hb. }
+      { exact Hfk. }
+      { rewrite (pab_is I a (conj Hok Hfk)) in Hb. exact Hb. }
       iIntros "Hres". iApply "HΦ".
       iDestruct "Hres" as "[(Htn' & Hps' & Hcs' & HE') | #HT]"; last by iRight.
       iLeft. iExists ps, cs, P. cbn [blkcs_p]. rewrite Nat.add_1_r.
@@ -1550,13 +1601,14 @@ Section pipe_links_line.
       pose proof (wr_blk_nonnil_p ps cs I P Hw) as Hne.
       destruct Hw as (Hpin & Hm & Hdv & HP).
       iApply ("Hblk" $! k v P (pnoc_of (pline_at I)) b ps cs I Φ
-                with "[%] [%] [%] [%] [%] [%] [%] Hpin Htn Hps Hcs HE [HΦ]").
+                with "[%] [%] [%] [%] [%] [%] [%] [%] Hpin Htn Hps Hcs HE [HΦ]").
       { exact Hne. }
       { exact Hm. }
       { lia. }
       { exact Hpin. }
       { exact HP. }
       { exact (pnoc_of_ok (pline_at I)). }
+      { exact (pnoc_of_nofork (pline_at I)). }
       { exact Hhd2. }
       iIntros "Hres". iApply "HΦ". rewrite /pwc_sp.
       iDestruct "Hres" as "[(Htn' & Hps' & Hcs' & HE') | #HT]"; last by iRight.

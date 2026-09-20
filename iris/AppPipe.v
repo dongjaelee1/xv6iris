@@ -340,14 +340,14 @@ Section PipeApp.
          record, by conversion and not by a bridge.  Three [reflexivity]s,
          and if one of them ever needs a tactic a field has moved. ---- *)
   Lemma pipe_app_pred_eq (c : app_fixed app_pipe) :
-    app_pred app_pipe c = pipe_pred c.
+    app_pred app_pipe c = pipe_pred (pgn_cl c).
   Proof using . reflexivity. Qed.
 
   Lemma pipe_app_names_eq : app_names app_pipe = echo_names.
   Proof using . reflexivity. Qed.
 
   Lemma pipe_app_boot_eq (c : app_fixed app_pipe) (k : nat) :
-    app_boot app_pipe c k = pipe_boot c k.
+    app_boot app_pipe c k = pipe_boot (pgn_cl c) k.
   Proof using . reflexivity. Qed.
 
   (* ---- the conclusion's one ingredient ---- *)

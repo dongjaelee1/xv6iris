@@ -4855,3 +4855,80 @@ as a type mismatch on `g` at the first use.  And `Hweq : o_w = pending_p
 …` does not rewrite a goal spelling `pending_at_p … (snd <$> E)`: the two
 are convertible, not syntactic, so the rewrite goes through
 `(_ : … = …); [| symmetry; exact Hweq]`.
+
+### PIPE-2W-3 (2026-09-19/20) — `pe_cur` landed, the round's ledger is PER-ROUND, and the three claim steps are PROVED: the family's byte steps and its filing are now theorems about `pecl`, not obligations
+
+Branch `app-pipe/pipe-2w-3` off main (= PIPE-2W-2 merged, fec9ad181).
+
+**0.  THE GATE'S TWO RED SITES, FIXED FIRST** (they were PIPE-2W-2's
+sweep, and both are the fixed part's type):
+
+- `AppPipe.v:343` — the anti-vacuity conversion lemmas still read
+  `app_pred app_pipe c = pipe_pred c` / `app_boot app_pipe c k =
+  pipe_boot c k`, but the record's fields are `fun c => pipe_pred
+  (pgn_cl c)` / `fun c => pipe_boot (pgn_cl c)` and `pipe_pred` takes an
+  `echo_fixed`.  Both statements now read `pipe_pred (pgn_cl c)` /
+  `pipe_boot (pgn_cl c) k` and stay `reflexivity` — the field really did
+  not move, only the wrapper's spelling had.
+- `UCatPipe.v:333` (and `:339`, `:349`) — three `PipeLinks` call sites
+  passed `γ` where the lemma's section variable is now `g : pipe_gn`;
+  and section `UCatPipe` itself still declared `Context (γ :
+  echo_fixed)` while its record equation had been swept to `pecl g`, so
+  `g` was unbound from line 393 on.  The section now declares `Context
+  (g : pipe_gn)` + `Local Notation γ := (pgn_cl g)`, exactly as
+  `PCatOut` above it, and the three call sites pass `g`.
+
+**1.  `pe_cur`, THE EXCLUSIVE CURRENT-ROUND GHOST** (design §4.3e, as
+ruled).  `pipe_era` is `MkPEra { pe_blk ; pe_cur }`, `pipeOutG` gains
+`ghost_varG Σ (nat * gname)`, and `cur_half w q r gb := ghost_var
+(pe_cur w) q (r, gb)`.  Between rounds the claim holds the WHOLE ghost
+(`cur_frac false = 1`); while a block is open it holds one half and the
+round's family the other.  That is what excludes a stale earlier-round
+family: `cur_half_agree` pins BOTH the round index and its ledger's
+gname, and `cur_half_excl` refutes the between-rounds state from a
+writer's half.
+
+**2.  THE CLAIM'S FOUR STEPS** (all in `PipeOut.v`, all green):
+`pecl_blk2_open` (the block's FIRST byte: mints the round's ledger with
+`rblk_alloc`, retargets and splits `pe_cur`, hands back the writer's
+half and `rblk_lb gb [b]`), `pecl_blk2_byte` (every further byte, left
+or right), `pecl_blk2_file` (the prompt's first byte: grows `cs` by the
+round's code, rejoins the two halves) and the era-wide `blk_auth` moves.
+
+**3.  WHAT CHANGED IN `PipeBoth.v`.**  The lane's parameter `gblk` is
+GONE.  The family carries the claim's own resources:
+
+    pblk_led k I R sel := ⌜sel = []⌝
+                          ∨ ∃ w gb, pera_pin g k w
+                              ∗ cur_half w (1/2) (nlines I - 1) gb
+                              ∗ rblk_lb gb (pend2 R sel)
+
+(the empty selector IS the state in which no round ledger exists yet),
+and `pwc_blk2` holds it in place of the old `blk_lb`.
+`pblk2_ecl_L`/`_R`/`_file` keep their shapes and are now DISCHARGED
+(`pblk2_ecl_L_holds`, `_R_holds`, `_file_holds`, `pblk2_ecl_holds`): the
+`sel = []` arm of the family goes through the OPENING step and every
+other byte through the byte step, which is why one obligation covers
+both the first byte and the rest.
+
+**4.  THREE PREMISES THE STEPS HONESTLY NEED, and where they come from.**
+
+- `Forall nodollar R` (the right-hand source).  The claim will not take a
+  `$` inside a block; `dg_execL` has `dg_execL_nodollar` and the
+  right-hand list is `dg_execR` or `wl_line (drop 1 ws)`, both of which
+  have it.
+- `pblk2_wit I R sel` — SOME admissible non-panicking alternative of the
+  round's line whose continuation the block so far is a prefix of.  This
+  is what the claim reads an unfiled block against, and mid-block the
+  round's own code is not decided yet.  `pblk2_wit_of_code` turns the
+  round's FINAL code into it and `pblk2_wit_mono` (over the new pure
+  `PipeBothPure.pend2_prefix`: a longer selector writes a longer block)
+  carries it back to every prefix, so `pipe_round_lend_holds` still asks
+  the walk for nothing but `pblk2_code I R sel a`.  For the CONCURRENT
+  steps, where the selector lives under the invariant's existential, the
+  premise is `∀ sel, sel_wf2 R sel → pblk2_wit I R sel`, and
+  `pblk2_wit_both` proves it for the real `PBoth` round by padding the
+  selector out with each side's remaining bytes.
+- `sel ≠ []` at the filing (a round that files must have written at
+  least one byte — otherwise the block never opened and the ordinary
+  `pwc_blk` path applies).

@@ -330,13 +330,13 @@ Section PCatOut.
     - destruct p as [| p']; cbn [pcatcs].
       + (* THE BLOCK-FIRST BYTE *)
         rewrite Nat.add_0_r.
-        iApply (pipe_write_link_blk γ Hcons k v P a b ps0 cs0 I0 Φ
+        iApply (pipe_write_link_blk g Hcons k v P a b ps0 cs0 I0 Φ
                   Hne Hr ltac:(lia) Hpin HP Hok Hb
                   with "Hpin Htn Hps Hcs Hilb [HΦ]").
         iIntros "Hres". iApply "HΦ". cbn [pcatcs].
         replace (P + 1)%nat with (S P) by lia. iExact "Hres".
       + (* every byte after it *)
-        iApply (pipe_write_link γ Hcons k v (P + S p')%nat b ps0
+        iApply (pipe_write_link g Hcons k v (P + S p')%nat b ps0
                   (cs0 ++ [a]) I0 Φ
                   ltac:(rewrite length_app; cbn [length]; lia)
                   Hpin1
@@ -346,7 +346,7 @@ Section PCatOut.
         replace (P + S (S p'))%nat with (S (P + S p')) by lia.
         iExact "Hres".
     - (* THE TAINT ARM continues the tower on its own *)
-      iApply (pipe_write_link_taint γ Hcons k b Φ with "HT [HΦ]").
+      iApply (pipe_write_link_taint g Hcons k b Φ with "HT [HΦ]").
       iIntros "#HT'". iApply "HΦ". by iRight.
   Qed.
 
@@ -384,12 +384,16 @@ Section UCatPipe.
      [UkReadPipe], and a standalone [ctokG] here would make the same
      proposition a different term.  [UCatKernel] omits it for the same
      reason. *)
-  Context `{!echoOutG Σ, !pipeProtoG Σ}.
+  Context `{!echoOutG Σ, !pipeProtoG Σ, !pipeOutG Σ}.
   (* NO [uexecSG] AND NO [uprogSG] SECTION VARIABLE, for [UCatKernel]'s
      reason (lane CAT-WALK-2, K2): a variable of either class here would be
      a SECOND instance whose [UkRun.urun] prints identically and does not
      unify with the one [UkReadPipe]'s leaf and [UkCatCat]'s walk run at. *)
-  Context (γ : echo_fixed).
+  (* THE FIXED PART IS [PipeOut.pipe_gn] (lane PIPE-2W-2): the echo half
+     is [pgn_cl g], so every statement below names [γ] as it did, and the
+     record equation is at the pipeline application's own claim. *)
+  Context (g : pipe_gn).
+  Local Notation γ := (pgn_cl g).
   Context (Hcons : @riscv_cons_res Σ (@riscv_fixedGS Σ HRg) = pecl g).
   (* the record's kill equation, [UShRound]'s [Hkill] at this claim: the
      pipeline application's kill credential IS the echo taint

@@ -1587,6 +1587,56 @@ Section pipe_out.
 
   Notation T := (echo_taint γ).
 
+  (* ===================================================================== *)
+  (*  THE RESOLUTION, FROZEN (design claude-notes/design/app-pipe.md        *)
+  (*  SS4.3l, lane SH-PIPE-ROUND-5 part 4).                                 *)
+  (*                                                                       *)
+  (*  A read site holds only LOWER bounds of the claim's resolution list    *)
+  (*  ([EchoOut.cs_lb]), and a lower bound can never refute a LONGER        *)
+  (*  resolution -- which is why the terminal round's refutation could not  *)
+  (*  be taken there (part 3).  A PERSISTED AUTHORITY can: [mono_list]'s    *)
+  (*  [dq]-indexed authority may be frozen to [DfracDiscarded]              *)
+  (*  ([mono_list_auth_persist]), the frozen form is [CoreId] and therefore *)
+  (*  persistent, and [mono_list_both_dfrac_valid_L] reads it against any   *)
+  (*  lower bound.  A round that is never FILED never grows [cs], so a      *)
+  (*  terminal round may hand the writer this, and the writer may hand it   *)
+  (*  to the read.                                                         *)
+  (* ===================================================================== *)
+  Definition cs_frozen (v : era_pins) (l : list nat) : iProp Σ :=
+    own (ep_gcs v) (●ML□ (l : list (leibnizO nat))).
+
+  Global Instance cs_frozen_persistent v l : Persistent (cs_frozen v l).
+  Proof using . rewrite /cs_frozen. apply _. Qed.
+  Global Instance cs_frozen_timeless v l : Timeless (cs_frozen v l).
+  Proof using . rewrite /cs_frozen. apply _. Qed.
+
+  Lemma cs_freeze (v : era_pins) (l : list nat) :
+    cs_auth v l ==∗ cs_frozen v l.
+  Proof using .
+    rewrite /cs_auth /cs_frozen. iIntros "H".
+    iMod (own_update _ _ (●ML□ (l : list (leibnizO nat))) with "H") as "$";
+      [ apply mono_list_auth_persist | done ].
+  Qed.
+
+  Lemma cs_frozen_prefix (v : era_pins) (l l' : list nat) :
+    cs_frozen v l -∗ cs_lb v l' -∗ ⌜l' `prefix_of` l⌝.
+  Proof using .
+    rewrite /cs_frozen /cs_lb. iIntros "Ha Hl".
+    iDestruct (own_valid_2 with "Ha Hl") as %Hv.
+    iPureIntro. by apply mono_list_both_dfrac_valid_L in Hv as [_ Hv].
+  Qed.
+
+  (* ...AND THE CONTRADICTION THE TERMINAL READ SPENDS: a resolution
+     LONGER than the frozen one cannot be a lower bound of it. *)
+  Lemma cs_frozen_lb_absurd (v : era_pins) (l l' : list nat) :
+    (length l < length l')%nat ->
+    cs_frozen v l -∗ cs_lb v l' -∗ False.
+  Proof using .
+    intro Hlt. iIntros "Ha Hl".
+    iDestruct (cs_frozen_prefix v l l' with "Ha Hl") as %Hp.
+    iPureIntro. pose proof (prefix_length _ _ Hp) as Hle. lia.
+  Qed.
+
   (* [EchoOut.ecl] at the pipeline stage: the same four authorities, the
      same delivered count, no extra per-era ghost. *)
   Definition pecl (k : nat) (ho : list mobs)

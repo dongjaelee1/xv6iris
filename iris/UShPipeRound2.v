@@ -452,3 +452,35 @@ Section UShPipeRound2Pay.
   Qed.
 
 End UShPipeRound2Pay.
+
+(* ===================================================================== *)
+(*  S8  WHY ROUTE (γ) CANNOT BE TAKEN (lane SH-PIPE-ROUND-5 part 4;       *)
+(*  design SS4.3l, and its own pre-authorised fallback condition).        *)
+(*                                                                       *)
+(*  SS4.3l would FREEZE the claim's resolution authority at the terminal   *)
+(*  round ([PipeOut.cs_freeze], landed beside it: the mechanism works).   *)
+(*  For [PipeOut.pecl] to CARRY the frozen authority, no landed claim     *)
+(*  step that can still fire at a terminal round may GROW [cs].  Two do:  *)
+(*  [PipeOut.pecl_step_write_blk] and [PipeOut.pecl_blk2_file].  Both are *)
+(*  applicable at a terminal round's state, and the witness is            *)
+(*  PIPE-MODEL-3's own ([PipeDisc.d4_ambiguous_bytes]): at                *)
+(*  `echo fork | cat' the fork-failure round and the GOOD round print the *)
+(*  same bytes, so the block the terminal round has written is also the   *)
+(*  block a NON-TERMINAL alternative owes -- and [pecl_blk2_file]'s four  *)
+(*  pure premises are then all met at that alternative.  A claim that had *)
+(*  frozen [cs] could not answer it, so [pecl] must keep [cs_auth] at     *)
+(*  fraction 1 at a terminal round and route (γ) fails.                   *)
+(* ===================================================================== *)
+Lemma pterm_gamma_witness (pre0 : list (bv 8)) :
+  pcont (LPipe pd_ws3) (PForkS sel_forkc) = (pre0 ++ u_prompt)%list ->
+  palt_ok (LPipe pd_ws3) PRan
+  /\ palt_panic PRan = false
+  /\ palt_isforkS PRan = false
+  /\ pcont (LPipe pd_ws3) PRan = (pre0 ++ u_prompt)%list.
+Proof using.
+  intro Hc. split_and!.
+  - apply palt_ok_LPipe_ran.
+  - exact palt_panic_ran.
+  - reflexivity.
+  - rewrite d4_ambiguous_bytes. exact Hc.
+Qed.

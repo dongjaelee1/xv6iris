@@ -28,3 +28,9 @@ Print Assumptions pterm_posw_3.
 Print Assumptions pterm_posb_of.
 Print Assumptions pterm_posb_of_shape.
 Print Assumptions pterm_wc_read_of.
+
+(* part 4 *)
+Print Assumptions PipeOut.cs_freeze.
+Print Assumptions PipeOut.cs_frozen_prefix.
+Print Assumptions PipeOut.cs_frozen_lb_absurd.
+Print Assumptions pterm_gamma_witness.

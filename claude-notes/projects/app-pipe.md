@@ -256,8 +256,16 @@ arm is the theorem's one named premise (`pipe_both_law`).
   STRAYS pending the owner's word).
 - [ ] **PIPE-EXEC-ECHO** (H1 + H3 + the reader-side lower bound; needed on
   every route).  Brief `brief-pipe-exec-echo.md`.
-- [ ] **EXEC-CAT** (H2: `UkShCat.v` + `UShCatPay.v`, the exec of `/cat`
+- [x] **EXEC-CAT** (H2: `UkShCat.v` + `UShCatPay.v`, the exec of `/cat`
   from sh's EXEC arm).  Brief `brief-exec-cat.md`.
+  LANDED (both files, tree RC=0, audits pipe 14 / echo 14): the (W) half,
+  the generalised exec-failed diagnostic, the pinned supply at
+  `FsCatPin.era0_cat_pins`, and the two halves composed
+  (`UShCatPay.wp_kshr_exec_cat_paid`).  **FOUND: the landed (E) half
+  `UCatPipe.pcat_image_entry` is VACUOUS** (`line_ok ws` and
+  `length ws = 1` are jointly unsatisfiable); repaired additively as
+  `UShCatPay.cat_image_entry_1w`, and `UCatPipe.v` owes the restatement.
+  See the Findings block.
 - [ ] **PIPE-MODEL-3 / PIPE-STAGE-3 / SH-PIPE-ROUND-5** (the strays, design
   §4.3g) — NOT launched; awaiting the owner's ruling.
 - [ ] **PIPE-CC** (in parallel with ROUND-4; ROUND-3's item 3): the pipe
@@ -5697,3 +5705,139 @@ diagnostics recovering the family through `blk2_inv_close` inside
 `ush_execfail_law_at`'s own `∃ Pf` — the existential is the law's
 PROVER's to choose, so `Pf 0` may be the recovery and `Pf (S p)` may
 bundle `UShPanic`'s existential.
+
+### EXEC-CAT (2026-09-20) — H2 is LANDED, and the (E) half the design said was landed is VACUOUS
+
+Branch `app-pipe/exec-cat`, three commits (`814b129c2`, `587e43760`,
+`1c02b85e9`), two NEW files, nothing else moved.  Whole-tree
+`ec2-lane.sh execr build` **RC=0**; `make audit-pipe-only` **14**,
+`make audit-echo-only` **14**, textually unmoved (neither audit's cone
+reaches these leaves, which is the honest state until the round is
+assembled).  No `Admitted`, no `Axiom`, every proof carries a minimal
+`Proof using`.  `Print Assumptions` on the two `_holds`: the exec arm =
+`resv_matches`, `resv_is_valid`, `functional_extensionality_dep`; the
+supply = those three plus the eleven `PrimString`/`PrimInt63`
+primitives — i.e. **exactly** `PipeAssumptions.v`'s fourteen, nothing
+new.
+
+**WHAT LANDED — `iris/UkShCat.v`, the (W) half.**
+
+- **The right command is ONE TOKEN, not a word list.**
+  `UShPipeChild.wp_kshm_child_pipe_paid` hands the right child
+  `UExec (ush_args s0 G [(S (S gp), ge)])`, so `cat_cmd a b s0 g` is
+  that node at an abstract token and `cat_argv_bytes a b g` (the length
+  equation `b = a + |"cat"|` as a CONJUNCT, `line_ok`'s own pattern) is
+  everything the arm reads of it.  `cat_cmd_str` / `cat_cmd_word` /
+  `cat_cmd_cap` / `cat_cmd_argv0` are `UkShEcho`'s four accessors at it;
+  `cat_argv_bytes_of_cut` shows `nulterminate`'s PIPE row satisfies the
+  reading, so the premise is not a threaded unknown.
+- `sh_exec_sup_cat_at Fd0 a b Q Cr` — `UkShEcho.sh_exec_sup_echo_at`
+  with THREE changes and no others: argv[0]'s address is `s0 + a` (echo's
+  token starts at the line's base, cat's does not), the argv reading is
+  `cat_argv_bytes`, and the ledger row is a PARAMETER whose pipe instance
+  is `ush_fd0p γp l := ∃ wb, l !! 0 = Some (FdOpen true wb (FdPipe γp))`,
+  exactly as `UCatPipe.pcat_round_at_g` reads it.  Sealed
+  (`Typeclasses Opaque`) with its `Persistent` instance named.
+- `wp_kshd_execfail_paid_at` — **`UkShDiag.wp_kshd_execfail_paid` with
+  the COMMAND NAME and the alternative as parameters.**  The landed walk
+  is fixed at `ua_len x = 4`, `ua_bytes x j = cmd_echo !!! j` and
+  `ush_execfail_law_at alt_execfail 17`; the general block is the format's
+  first window (indices 0–4), the ARGUMENT (5 .. 4+|cmd|) and the
+  format's second window (the literal's 7..14 landing at
+  `p + (|cmd| - 2)`), so the law's index is `13 + |cmd|` — echo's 17 at
+  4, cat's **16** at 3.  `execfail_at_echo_bytes` is the anti-vacuity
+  witness that echo's three byte families ARE instances of the general
+  ones; `wp_kshd_execfail_cat` is the instance at `PipeDisc.alt_execR`.
+- `wp_kshr_exec_cat_at_holds` — the arm 0xce–0xda, the pinned exec at the
+  root through `UkShEcho.wp_kshr_exec_at_cwd_holds` (which names no
+  command and is applied verbatim), and the failure tail paid.
+
+**WHAT LANDED — `iris/UShCatPay.v`, the supply.**
+`cat_pl`/`cat_path_elems`/`cat_pl_line`/`cat_pl_shape`/`cmd_cat_nonul`/
+`sh_cat_pin_resolves` (`UShEcho` §§1–2 at /cat, with the path's bytes
+tied to the name sh passes); `sh_cat_slot` and
+`sh_cat_slot_of_fs_pure_holds` (the projection an era holding
+`FileFsPure.file_fs_pure` answers — `AppPipeCons.pipe_cat_pins_acc` is
+that projection one level up); `cat_uargv_shape` /
+`cat_uargv_exec_of_cmd` / `cat_args_det_1w` / `cat_path_of_holds`;
+`cat_room_1w`; `cat_image_entry_1w`; `sh_exec_sup_cat_wq_holds_at`; and
+the consumer TEST `wp_kshr_exec_cat_paid`, which composes the two halves
+at a dummy payment and comes out a WP over sh's EXEC arm.
+
+**WHAT WAS REFUTED — `UCatPipe.pcat_image_entry` IS VACUOUS, and it is
+the lemma the brief told this lane to plug into.**  Its premises include
+both
+
+    EchoDisc.line_ok ws        and        length ws = 1%nat
+
+and `line_ok` contains `2 <= length ws` (it must — echo prints nothing at
+argc 1, durable-notes' degenerate-member rule).  It also contains
+`ws !! 0 = Some cmd_echo`, so relaxing only the count leaves a premise
+saying the command is called "echo".  Both halves are mechanised:
+`UkShCat.cat_line_premises_absurd` and `UkShCat.cat_line_head_absurd`.
+Design §5.3's "AS LANDED … `pcat_image_entry` at argv `["cat"]`" is
+therefore false: no caller can ever apply that entry, and the lane that
+landed it could not tell a threaded premise from an unsatisfiable one
+because it never instantiated `ws`.
+
+STOP rule 2 forbids editing `UCatPipe.v`, so the repair is ADDITIVE and
+lives in `UShCatPay.cat_image_entry_1w`: `pcat_image_entry`'s body at
+premises that can be met —
+
+    (forall x y : Z, Q x = Q y) -> 0 < sv + Z.of_nat a ->
+    UkShCat.cat_argv_bytes a b gn ->
+    uargv_img Mn (t + 8) (ush_args sv gn (UkShCat.cat_toks a b)) ->
+    length sts = NOFILE ->
+    box (forall W', uvis_fd W' = sts -* UCatPipe.pcat_pay_at W' Q Pay)
+    -* urun_nopipe sts -* udep -* image_entry cat_elf Mn (t+8) sts …
+
+— keeping `UCatPipe.pcat_pay_at` as the payment interface, so the landed
+`UCatPipe.pcat_pay_at_of_round` plugs in UNCHANGED.  **What `UCatPipe.v`
+owes is exactly this restatement of `pcat_image_entry`'s premises**; its
+proof is otherwise the landed one line for line.
+
+**WHAT THE DESIGN GOT WRONG, beyond that.**
+
+1. **A one-word command has NO admissibility predicate in the tree, and
+   the word-list layer cannot give it one.**  `EchoDisc.line_ok` is the
+   only one, and it is echo's by construction.  The right repair is NOT a
+   second `line_ok`: every `line_ok` in `UShEcho`'s node layer
+   (`echo_node_img`, `echo_args_det`, `echo_uargv_shape`,
+   `echo_node_img_s0_pos`) is spent on facts `ExecArgs` already has
+   without it — `uargv_shape` / `uargv_img` / `uargv_det` name no word
+   list at all.  So `UShCatPay` §3 reads the right command over
+   `ExecArgs` in four short lemmas and no word list appears in this lane
+   anywhere.  A future generalisation of `UShEcho`'s layer should delete
+   those `line_ok` premises rather than add a sibling predicate.
+2. **The exec-failed diagnostic's walk was echo-specific and the design
+   costed it at zero.**  `UkShDiag.wp_kshd_execfail_paid`'s own header
+   says "a second line shape supplies its own bytes by its own byte
+   proof" — but the byte proof is not the cost; the cost is that
+   `ua_len x = 4` and the `C3` shift `p + 2` are wired into the WALK.
+   `wp_kshd_execfail_paid_at` is the generalisation and echo's is an
+   instance of it (`execfail_at_echo_bytes`), so `UkShDiag.v` should
+   eventually be re-based on it and the copy deleted.
+3. **`sh_exec_sup_cat_at` cannot take echo's a0 premise.**  Echo's supply
+   says `m !!! a0 = mword_of_int s0` because `echo_off ws 0 = 0`; the
+   right command's token starts at `S (S gp)`, so the supply's a0
+   equation and its path reading are both at `s0 + a`.  Any round that
+   hands the right child a0 must pass `s0 + a`, not `s0`.
+
+**STOP rules.**  STOP 1 (a row sh's EXEC arm lacks for a one-word line)
+did NOT fire: the arm reads only argv[0]'s pointer, its string and the
+node's base, and all three exist at one token — `line_ok` is used nowhere
+in the arm.  STOP 2 fired, and its answer is the vacuity above.
+
+**THE ONE THING THE NEXT LANE NEEDS FIRST.**  The round (SH-PIPE-ROUND-5,
+or whatever succeeds it) must hand the right child a payload that is a
+CONSTANT family and a lend `Cr = RcR γp`, and then
+`UShCatPay.wp_kshr_exec_cat_paid` is the whole of H2 at one application —
+its remaining inputs are (i) `sh_cat_slot T` at the pipe era (the era
+equation `app_pred app_run = pipe_pred γ r` is PIPE-CC's, and
+`AppPipeCons.pipe_cat_pins_acc` is the pin), (ii) the round law
+`∀ N'' l, ukn_pay N'' = (fun _ => Qc) -> Fd0 l -> ustd … -∗ Cr -∗
+∃ I Cend, UkCatCat.kcat_round N'' 0 I Cend ∗ I ∗ (Cend -∗ ukn_pay N'' (-1))`,
+which is `UCatPipe.pcat_round_at_g` funded, and (iii)
+`UkShDiag.ush_execfail_law_at PipeDisc.alt_execR 16 Cr Cd` — a THIRD paid
+diagnostic beside `dg_pipe`'s 5 and `alt_panic`'s 5, which
+`UShPipeChild.wp_kshm_child_pipe_paid` does not yet carry.

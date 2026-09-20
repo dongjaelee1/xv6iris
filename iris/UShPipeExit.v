@@ -137,7 +137,7 @@ Section pipe_exit.
     iRight. iExists v2. iFrame "Hpin2". iExists (o_cs so). iFrame "Hcsa".
     iPureIntro.
     destruct Hopen as (_ & Hop & _).
-    destruct Hop as (Hreq & _ & _ & _ & (a' & Hat)).
+    destruct Hop as (Hreq & _ & _ & (a' & Hat & _)).
     destruct Hat as (_ & _ & Hcslen & _).
     rewrite Hcslen -Hreq Hr. reflexivity.
   Qed.

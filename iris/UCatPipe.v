@@ -310,13 +310,14 @@ Section PCatOut.
     pcat_stage ps0 cs0 I0 P ->
     palt_ok (pcat_line I0) (palt_of a) ->
     palt_panic (palt_of a) = false ->
+    palt_isforkS (palt_of a) = false ->
     pcont (pcat_line I0) (palt_of a) !! p = Some b ->
     era_pin γ k v -∗
     pcch v ps0 cs0 I0 a P p -∗
     (pcch v ps0 cs0 I0 a P (S p) -∗ Φ) -∗
     out_link Uart0 k b Φ.
   Proof using Hcons.
-    intros Hst Hok Hnp Hb.
+    intros Hst Hok Hnp Hfk Hb.
     pose proof (pcat_stage_nonnil ps0 cs0 I0 P Hst) as Hne.
     pose proof (pcat_stage_pin_snoc ps0 cs0 I0 P a Hst) as Hpin1.
     pose proof Hst as (Hr & Hn & _ & HP & Hpin).
@@ -327,7 +328,7 @@ Section PCatOut.
       + (* THE BLOCK-FIRST BYTE *)
         rewrite Nat.add_0_r.
         iApply (pipe_write_link_blk g Hcons k v P a b ps0 cs0 I0 Φ
-                  Hne Hr ltac:(lia) Hpin HP Hok Hb
+                  Hne Hr ltac:(lia) Hpin HP Hok Hfk Hb
                   with "Hpin Htn Hps Hcs Hilb [HΦ]").
         iIntros "Hres". iApply "HΦ". cbn [pcatcs].
         replace (P + 1)%nat with (S P) by lia. iExact "Hres".

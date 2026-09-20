@@ -61,6 +61,9 @@ Require Import PipeLinks.
 Require Import PipeLinksLine.
 Require Import PipeBoth.
 Require Import PipeLinkInst.
+Require Import Xv6G.            (* [xv6G] -- the backtick Context trap: a
+                                   generalisation over a name that is NOT
+                                   in scope BINDS it (durable-notes) *)
 Require Import PipeNames.
 Require Import PipeQueue.
 Require Import PipeProto.
@@ -323,4 +326,80 @@ Section UShPipeRound2.
                  with "Htn Htb Hta") as %[].
   Qed.
 
+  (* =================================================================== *)
+  (*  S7  ...AND BACK: the round's lend RETURNED when nothing was written *)
+  (*                                                                     *)
+  (*  The [pipe(2)]-failed tail is paid from the SAME [Cr] the split      *)
+  (*  would have turned into the family, so the family has to be          *)
+  (*  reversible at the empty block: with both cursors at zero the        *)
+  (*  family IS the lend again.  This is what makes the FIRST of the      *)
+  (*  three panic tails payable -- and the contrast with S6 is the        *)
+  (*  lane's finding: the first tail is fine because no child exists,     *)
+  (*  the third is not because the stray does.                            *)
+  (* =================================================================== *)
+  Lemma pwc_blk2_zero_to_blk (k : nat) (v : era_pins) (I R : list (bv 8))
+      (sel : list bool) (a : nat) :
+    pwc_blk2 g k v I R sel 0%nat 0%nat -∗ pwc_blk g k v I a 0%nat.
+  Proof using .
+    rewrite /pwc_blk2 /pwc_blk. iIntros "[Hf | #HT]"; last by iRight.
+    iDestruct "Hf"
+      as (ps cs P) "(%Hw & %Htl & Htn & #Hps & #Hcs & _ & #HE)".
+    assert (Hz : (P + 0 + 0)%nat = (P + 0)%nat) by lia.
+    rewrite Hz. iLeft. iExists ps, cs, P. cbn [blkcs_p].
+    iSplitR.
+    { iPureIntro. split;
+        [ exact (wr_blk2_p_blk ps cs I P R sel 0%nat 0%nat Hw)
+        | exact Htl ]. }
+    by iFrame "Htn Hps Hcs HE".
+  Qed.
+
+  Lemma pipe_round_unwind (E : coPset) (I L : list (bv 8))
+      (gL gR gM : gname) (XL YR : iProp Σ) (v : era_pins) :
+    Timeless XL -> Timeless YR ->
+    (↑blk2N : coPset) ⊆ E ->
+    era_pin γ (S gen_id) v -∗
+    blk2_inv g blk2N (S gen_id) v I L gL gR gM XL YR -∗
+    PipeBoth.wcur gL (1/2) 0%nat -∗ PipeBoth.wcur gR (1/2) 0%nat ={E}=∗
+    pipe_Wcl_at g I 3%nat.
+  Proof using .
+    intros HX HY HN. iIntros "#Hpin #Hinv HcL HcR".
+    iMod (blk2_inv_close g E blk2N (S gen_id) v I L gL gR gM XL YR
+            0%nat 0%nat HX HY HN with "Hinv HcL HcR") as (R sel) "[Hf _]".
+    iModIntro.
+    rewrite /pipe_Wcl_at (pipe_inst_lcred g (S gen_id) I 3%nat).
+    iExists v. iFrame "Hpin". cbn [pwc_lpr2].
+    iApply (pwc_blk2_zero_to_blk (S gen_id) v I R sel 0%nat with "Hf").
+  Qed.
+
 End UShPipeRound2.
+
+(* ===================================================================== *)
+(*  S5  THE ENTRY PAYMENT'S FRAME IS SEPARABLE                           *)
+(*                                                                       *)
+(*  [UEchoPipe.ep_pay Wq pn gp L] is [pipe_inv * (side_L pn * Wq) *       *)
+(*  wcur pn 0 * pws_lb pn []] -- the era's console credential [Wq] sits   *)
+(*  BESIDE the protocol's handle and nothing reads it.  So the           *)
+(*  [pipe(2)] registrar may be run at [Wq := emp] and the left cursor    *)
+(*  half joined to its result at the arm's own split, which is the only  *)
+(*  order in which BOTH the [pipe(2)]-failed tail and echo's exec are    *)
+(*  payable: [UkShPipe.ush_pipe_ans]'s -1 arm returns NOTHING of the     *)
+(*  registrar, so a [Wq] that carried [wcur gL (1/2) 0] would be lost at *)
+(*  a [pipe(2)] failure and S7's unwind could not run.                   *)
+(* ===================================================================== *)
+Section UShPipeRound2Pay.
+  Context {Σ : gFunctors}.
+  Context `{!riscvGS Σ, !xv6G Σ, !pipeProtoG Σ}.
+
+  Lemma ep_pay_frame (Wq : iProp Σ) (pn : pnames) (gp : pipe_names)
+      (L : list (bv 8)) :
+    (UEchoPipe.ep_pay emp%I pn gp L ∗ Wq) ⊣⊢ UEchoPipe.ep_pay Wq pn gp L.
+  Proof using .
+    rewrite /UEchoPipe.ep_pay /UEchoPipe.ep_frame.
+    iSplit.
+    - iIntros "((#Hinv & [HL _] & Hw & Hlb) & HQ)".
+      iFrame "Hinv HL HQ Hw Hlb".
+    - iIntros "(#Hinv & [HL HQ] & Hw & Hlb)".
+      iFrame "Hinv HL HQ Hw Hlb".
+  Qed.
+
+End UShPipeRound2Pay.

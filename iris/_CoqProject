@@ -1681,6 +1681,7 @@ UEchoPipe.v
 UCatPipe.v
 PipeLinksLine.v
 PipeBoth.v
+PipeForkGap.v
 PipeLinkInst.v
 PipeStageInst.v
 UShPipeRound.v

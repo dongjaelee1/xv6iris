@@ -243,9 +243,13 @@ arm is the theorem's one named premise (`pipe_both_law`).
   block for the three-part reconciliation the coordinator has to rule on.
   RULED: design §4.3f (R1 `pwc_line2`'s third arm, R2 the recoverable
   family with the right child's mode, R3 cat's generic cursor).
-- [ ] **SH-PIPE-ROUND-4** (design §4.3f; after SH-PIPE-ROUND-3): R1+R2+R3
+- [~] **SH-PIPE-ROUND-4** (design §4.3f; after SH-PIPE-ROUND-3): R1+R2+R3
   implemented and `sh_pipe_child_law` PROVED; `sh_round_holds_pipe`
   premise-free.  Brief `brief-sh-pipe-round-4.md`.
+  **R1, R2 and R3 ARE LANDED** (tree green); `sh_pipe_child_law` is NOT
+  proved — the round stops at four measured holes, of which H4 is a
+  RULING about the model (`PFork` at the second fork has no alternative
+  for the interleaving the machine can print).  See the Findings block.
 - [ ] **PIPE-CC** (in parallel with ROUND-4; ROUND-3's item 3): the pipe
   era's `cons_cred` instance (`UInitPipe.v`, five `UShLine` `_at` twins),
   `pipe_prog_law` discharged modulo `sh_pipe_child_law`;
@@ -5345,3 +5349,341 @@ assemble: the registrar (`PipeProto.pipe_proto_alloc` at the arm's
 and the end-of-round reading (`pipe_Qc_two` + `pipe_round_reading` at the
 widened payloads).  Item 3 is a SEPARATE lane and it is upstream's
 `cons_cred_holds_at` gap, shared with the file application.
+
+### SH-PIPE-ROUND-4 (2026-09-20) — the RULING R1/R2/R3 lands whole and the tree is green; R2 as ruled is INCOMPLETE (the two children's participation has to be exclusive, and the file says so in two abstract witnesses); and the ROUND stops before its first instruction, at three measured holes and one MODEL hole that makes the theorem FALSE as it stands
+
+Branch `app-pipe/sh-pipe-round-4` off main (`5302bc081` + `d71159395`),
+three code commits (`ebb6342d1`, `39dcea3b2`, `84ec2cfb8`) beside the
+notes.  Files moved:
+`iris/PipeLinks.v` (the seventh leaf), `iris/PipeBoth.v` (S7 rebuilt, S10
+new), `iris/PipeLinkInst.v` (ten fields re-pointed), `iris/UCatPipe.v`
+(the generic round), plus ONE new file `iris/PipeForkGap.v` (+ one
+`_CoqProject` row): H4's model gap, mechanised; nothing imports it.
+`UShPipeExit.v` and `UShPipeRound.v` are untouched, and so is
+`UPipeBootAdequacy.v`.
+Whole-tree `ec2-lane.sh round4 build` **RC=0**; no `Admitted`;
+`Proof using` on every result.
+
+`Print Assumptions` on the lane's thirteen headline results
+(`iris/PipeRound4Assumptions.v`, a report file, not a `_CoqProject`
+row): **eleven are Closed under the global context** —
+`pwc_line2`, `pprompt_dollar_line2`, `pblk2_exit_lk`,
+`pipe_link_inst_at`, `blk2_inv_alloc`, `blk2_mode_fire`,
+`pblk2_cstep_L`, `pblk2_cstep_R`, `blk2_inv_close`,
+`pfork_execL_gap`, `gap_mixed_no_wit` — and the two that are not are
+cat's rounds (`pcat_round_at_g` and its byte-identical instance
+`pcat_round_at`), at the STANDING primitives only
+(`functional_extensionality_dep` + the two `xv6iris_extras` reservation
+`Parameter`s), which is what the landed `pcat_round_at` already carried.
+
+**`audit-pipe-only` = FOURTEEN**, echo's
+list exactly (1 `functional_extensionality_dep` + the 2 `xv6iris_extras`
+reservation `Parameter`s + 11 PrimString/PrimInt63), measured after the
+changes.  `audit-echo-only` is unmoved BY CONSTRUCTION and the
+dependency graph says so: `EchoAssumptions.v` is
+`Require Import UInitBootAdequacy. Print Assumptions
+echo_adequacy_echoΣ.`, and the transitive cone of `UInitBootAdequacy`
+(1,484 modules) contains NONE of this lane's five files -- every one of
+them sits above or beside `AppEcho`/`EchoOut`, never under them.
+
+**(R1) LANDED — and the ruling's PREFERRED route is IMPOSSIBLE, while its
+FALLBACK is unnecessary.**  The ruling offered the filing step as a
+seventh leaf of `PipeLinks.pipe_links` with `pblk_led` and `pblk2_code`
+moved down, or else `pipe_links2` with fifteen wrappers.  Measured:
+`pblk2_code` names `PipeLinksLine.pline_at` (and `pab`/`papr`), and
+`wr_tail_p` is `PipeLinksLine`'s too — all of them ABOVE `PipeLinks.v`
+(`PipeLinksLine` *imports* `PipeLinks`), so nothing can move down.  What
+CAN: state the leaf at **`PipeOut.pecl_blk2_file`'s own premises**, which
+are all in `PipeOut`'s vocabulary.  `PipeLinks.pipe_file_link` /
+`pipe_link_file` is that, wrapped exactly as (W') wraps
+`pecl_step_write_blk`; the bundle is seven-fold, the six landed
+projections keep their statements, and NO consumer of `lk_links` moves.
+Note for the record: the STEP is free (`PipeBoth.pblk2_ecl_file_holds` is
+a closed entailment), so the leaf is needed **only for `Hcons`** — the
+record field that consumes `lk_line` (`lk_prompt_dollar_line`) takes no
+`Hcons`, and the bundle is where this application keeps it.
+
+```coq
+  Definition pwc_line2 (k : nat) (v : era_pins) (I : list (bv 8))
+    : iProp Σ :=
+    (pwc_pro g k v I
+     ∨ (∃ a : nat, ⌜papr I a⌝ ∗ pwc_post g k v I a)
+     ∨ (∃ (R : list (bv 8)) (sel : list bool) (c1 c2 a : nat),
+          ⌜pblk2_code I R sel a⌝ ∗ ⌜sel <> []⌝
+          ∗ pwc_blk2 k v I R sel c1 c2))%I.
+```
+
+with `pwc_line2_timeless`, `_taint`, `_of_line`, `_of_pro`, `_of_post`,
+`_of_blk0`, `_of_blk2`, `pwc_ban_done_line2`, `pwc_lpr2` (+ timeless) and
+`pprompt_dollar_line2` (the first two arms are `pprompt_dollar_line`
+verbatim, the third is `pblk2_exit_lk`, the round's exit at the link and
+therefore `Hcons`-free).  `PipeLinkInst.v` points `lk_line`, `lk_lpr`,
+`lk_line_tl`, `lk_lpr_tl`, `lk_line_taint`, `lk_line_of_blk0/_post/_pro`,
+`lk_ban_done_line` and `lk_prompt_dollar_line` there; `lk_lpr_0..S3` stay
+`eq_refl`; the pure side needed NOTHING beyond `pblk2_code` (the
+ruling's "whatever `pblk2_exit` asks beyond `pwc_blk2`" is exactly
+`pblk2_code` and `sel <> []`, both already landed).
+
+**(R2) LANDED, WITH THREE CORRECTIONS — one of which is a hole in the
+ruling.**
+
+```coq
+  Definition blk2_body (k : nat) (v : era_pins) (I L : list (bv 8))
+      (gL gR gM : gname) (XL YR : iProp Σ) : iProp Σ :=
+    ((∃ (R : list (bv 8)) (sel : list bool) (c1 c2 : nat),
+        pwc_blk2 k v I R sel c1 c2
+        ∗ wcur gL (1/2) c1 ∗ wcur gR (1/2) c2
+        ∗ (⌜c1 = 0%nat⌝ ∨ XL)
+        ∗ rmode gM L R c2 YR)
+     ∨ blk2_done gL gR)%I.
+
+  Definition blk2_inv (N : namespace) (k : nat) (v : era_pins)
+      (I L : list (bv 8)) (gL gR gM : gname) (XL YR : iProp Σ) : iProp Σ :=
+    inv N (blk2_body k v I L gL gR gM XL YR).
+
+  Definition blk2_done (gL gR : gname) : iProp Σ :=
+    ((∃ x : nat, wcur gL 1 x) ∗ (∃ y : nat, wcur gR 1 y))%I.
+
+  Definition rsrc (L : list (bv 8)) (n : nat) : list (bv 8) :=
+    match n with S O => L | _ => dg_execR end.
+
+  Definition rmode (gM : gname) (L R : list (bv 8)) (c2 : nat)
+      (YR : iProp Σ) : iProp Σ :=
+    (∃ n : nat, wcur gM (1/2) n
+       ∗ (⌜n = 0%nat /\ c2 = 0%nat⌝
+          ∨ (⌜n = 1%nat /\ R = L⌝ ∗ YR)
+          ∨ ⌜n = 2%nat /\ R = dg_execR⌝))%I.
+```
+
+1. **THE DONE ARM NEEDS NO THIRD GHOST.**  The ruling's `wcur gD 1 1`
+   cannot be used: the party that has to REFUTE the DONE arm most often
+   is a CHILD, at its byte step, and a child never holds `gD`.  It does
+   hold half of its own cursor, so park the two cursors WHOLE — a half
+   beside a whole is `False` (`blk2_done_not_L` / `_not_R`), which the
+   two children AND the round (holding both returned halves) all refute
+   from what they already have.  One ghost fewer and one law fewer than
+   the ruling asks for.
+2. **THE MODE IS AS RULED**, with `pwc_blk2_R_indep`: at `c2 = 0` the
+   family does not read `R` at all (`pmerge_all_true`; `wr_blk2_p` reads
+   `R` only through `c2 <= length R`).  The fire (`blk2_mode_fire`) needs
+   NO exclusion — the invariant itself carries the `YR` the fire
+   deposits, so the byte steps spend it instead.
+3. **THE RULING LEFT OUT THE TWO CHILDREN'S EXCLUSION, and without it
+   `pblk2_cstep_L` IS NOT PROVABLE.**  The witness every byte step spends
+   is `pblk2_wit I R (sel ++ [b])`, and at `R = L` (cat printing the
+   line) with a MIXED selector it is FALSE: `pend2 L sel` then carries
+   bytes of `dg_execL` followed by bytes of the LINE, and no alternative
+   of an `LPipe` line has that continuation (`PExecL`'s is `dg_execL`,
+   `PRan`'s is the line, `PBoth sel'`'s is the merge of `dg_execL` with
+   `dg_execR`).  So "the left child printed" and "cat printed the line"
+   are incompatible — TRUE of the machine (the left child prints
+   `dg_execL` only when its exec failed, and then nothing ever enters the
+   pipe, so cat prints nothing) but a fact about the PROTOCOL, not about
+   the console.  **MECHANISED** beside H4, `PipeForkGap.gap_mixed_no_wit`:
+   at `echo hello | cat`, `pblk2_wit`'s body at `pend2 gap_L [true;false]`
+   — the mixed selector with `R` = the line — is refuted against every
+   admissible non-panicking alternative (the `PBoth` arm because ITS two
+   sources both begin `ex`, so its second byte is never the line's `h`).
+   The exclusion enters as two abstract witnesses and one premise:
+   `XL` ("the left child kept echo's write permit"), `YR` ("a byte
+   reached the reader"), and `□ (XL -∗ YR ={Eex}=∗ False)`, spent at both
+   byte steps.  `PipeBoth.v` stays protocol-free; the round supplies the
+   pair out of `PipeProto` — the honest instance is `XL := wcur pn 0`
+   (echo's write permit, which the failed-exec left child gets back with
+   its whole lend) and `YR := pws_lb pn (take 1 L)`, whose refutation is
+   one lemma about `pipe_body` that **PipeProto does not have yet**: a
+   READER-side lower bound (`rcur pn c` with `c > 0` and `pipe_inv` give
+   `pws_lb pn (take c L)`).  That lemma is the round's first owed item.
+
+Landed with it: `blk2_inv_alloc` (mints `gL`, `gR`, `gM` and installs the
+family at the empty selector out of `pwc_lend`), `blk2_mode_fire`,
+`pblk2_cstep_L`, `pblk2_cstep_R` (at the child's own `rsrc L n`),
+`blk2_inv_close`:
+
+```coq
+  Lemma blk2_inv_close (E : coPset) (N : namespace) (k : nat)
+      (v : era_pins) (I L : list (bv 8)) (gL gR gM : gname)
+      (XL YR : iProp Σ) (c1 c2 : nat) :
+    Timeless XL -> Timeless YR ->
+    (↑N : coPset) ⊆ E ->
+    blk2_inv N k v I L gL gR gM XL YR -∗
+    wcur gL (1/2) c1 -∗ wcur gR (1/2) c2 ={E}=∗
+    ∃ (R : list (bv 8)) (sel : list bool),
+      pwc_blk2 k v I R sel c1 c2 ∗ ⌜R = L \/ R = dg_execR⌝.
+```
+
+(the unset-mode state is normalised to `R := dg_execR` on the way out, so
+the consumer reads two arms and not three).
+
+**(R3) LANDED, and CHEAPER than the ruling.**  `pcat_round_at_g` is the
+landed round with the cursor a parameter — and the `pcat_stage ps0 cs0 I0
+P` premise DROPPED, because the proof never used it either (the stage
+facts all ride the `Hw`/`Hend` premises).  Six occurrences of
+`pcch g v ps0 cs0 I0 pcat_alt P` became `Ch`:
+
+```coq
+  Lemma pcat_round_at_g (pn : pnames) (γp : pipe_names) (L : list (bv 8))
+      (l : list fdstate) (wb : bool) (I0 : list (bv 8))
+      (Ch : nat -> iProp Σ) (Cend : iProp Σ) :
+    pcat_out I0 = L ->
+    l !! 0%nat = Some (FdOpen true wb (FdPipe γp)) ->
+    pipe_inv pn γp L -∗ ... -∗ cat_code γt -∗
+    UkCatCat.kcat_round N (mword_of_int 0) (pcat_round_inv_g pn l Ch) Cend.
+```
+
+`pcat_round_at` is re-derived BYTE-IDENTICAL at
+`Ch := pcch g v ps0 cs0 I0 pcat_alt P` by `exact` (`pcat_round_inv` and
+`pcat_round_inv_g` at that cursor are convertible), so `git diff` on the
+statement is empty.
+
+**THE ROUND (item 4) IS NOT LANDED, AND IT STOPS BEFORE ITS FIRST
+INSTRUCTION.**  Four holes, measured rather than guessed; the first three
+are lanes, the fourth is a RULING and it is about the MODEL.
+
+- **(H1) There is no `ush_pipe_call` at a non-trivial registration.**
+  The only discharge in the tree is `UkShPipe.ush_pipe_call_of_leaf`,
+  and it is `ush_pipe_call N l (fun _ => emp)` — **at `R := emp` and with
+  `app_taint` as a premise** (plus `udepw_law 21`).  A paid round needs
+  `R γp := PipeProto.pipe_proto_alloc`'s quintuple beside the
+  registration, i.e. the same three-instruction stub walk (0xc96–0xc9c)
+  re-proved through `UkReadPipe.wp_uk_pipe_read_end` at a REAL registrar
+  and at the registry's `udepw_law 21` instead of the taint.  Small, but
+  it is a lane and nothing in the tree is a step towards it.
+- **(H2) The right child's exec of /cat does not exist.**  `grep` for
+  `sup_cat` / `exec_sup_cat` over `iris/*.v` is EMPTY: there is no cat
+  argv-bytes reading, no `sh_exec_sup_cat`, no `wp_kshr_exec_cat`.  The
+  mould is `UkShEcho.v` (1,621 lines: `echo_cmd`, `echo_argv_bytes`,
+  `sh_exec_sup_echo_at`, `wp_kshr_exec_echo_at`) plus
+  `UShEchoPay.v` (624: the supply discharged through
+  `ExecRun.udepw_at_refR_of_sup` and `exec_walk_of_pin` at the claim's
+  pin).  `UCatPipe.pcat_image_entry` is the (E) half and IS landed; what
+  is missing is (W) and the argv layer.  This is the campaign's largest
+  remaining lane and the design never costed it.
+- **(H3) The left child's exec of /echo AT A PIPE does not exist
+  either.**  `UShEchoPay.sh_exec_sup_echo_wq_holds_at_D`'s (E) half is
+  `UShEchoPay.echo_slot_of_kexec_at_at`, i.e. `UEchoOut`'s CONSOLE slot
+  at fd 1 = `ush_fd1p`; the pipe's is `UEchoPipe.ep_uexec_slot_at` /
+  `ep_image_entry`.
+  The pipe needs `UEchoPipe.ep_image_entry` (landed) at fd 1 = the pipe's
+  write end, which is a second discharge of the same 300-line shape at
+  `sh_exec_sup_echo_at Fd1` with `Fd1 ld := take NSTD ld !! 1 = Some
+  (FdOpen _ true (FdPipe γp))`.
+- **(H4) THE `PFork` TAIL AT THE SECOND FORK CANNOT BE PAID, and the
+  reason is that the MODEL HAS NO ALTERNATIVE FOR WHAT THE MACHINE CAN
+  PRINT THERE.**  This is the lane's most important finding and it is a
+  ruling for the coordinator.
+
+  The resource half.  `wp_kshr_pipe_arm_paid` fixes the split
+  `∀ γp, Cr -∗ R γp -∗ RcL γp ∗ (RcR γp ∗ (Rk γp ∗ Cx γp))` BEFORE either
+  fork, and ONE `Cx γp` pays BOTH fork panics (`ush_execfail_law_at
+  alt_panic 5 (Cx γp) (Bx γp)`).  At the SECOND fork's panic the left
+  child already exists and is holding `wcur gL (1/2)` out of `RcL γp`, so
+  the runcmd child holds only the right and mode halves and
+  `blk2_inv_close` — which needs BOTH cursor halves — cannot run.  The
+  left half is needed by the left child (to print `dg_execL` at `PExecL`)
+  and by the parent (to recover the family for `alt_panic` at `PFork`),
+  and the split must choose one before either outcome is known.  That is
+  not a missing lemma: it is a linear conflict, and it is the shape STOP
+  rule 1 asks about.
+
+  The model half, which is why no re-split fixes it.  `fork1` #2 can fail
+  AFTER `fork1` #1 succeeded, and child 1's `exec /echo` can fail (the
+  model admits `PExecL`, and the echo application treats a failing exec
+  as reachable).  Then the console carries `dg_execL` ("exec echo
+  failed\n") and `alt_panic` ("fork\n") INTERLEAVED, from two live
+  processes — and `palt_ok (LPipe ws)` has no alternative with that
+  continuation: `PBoth sel` merges `dg_execL` with `dg_execR` ONLY, and
+  every other arm is a single fixed list.  So **the pipeline theorem as
+  stated is false at that interleaving** unless one of:
+  (a) the model gains a second merge alternative (`dg_execL` with
+      `alt_panic`), and the family a third cursor whose source is
+      `alt_panic` — the runcmd child becomes a third writer;
+  (b) the proof REFUTES a failing `exec /echo` under the claim's pin, in
+      which case `PExecL` is an unreachable arm of the model and the left
+      child never writes a console byte at all — which would ALSO retire
+      the whole of R2's exclusion machinery (item 3 above), because
+      `R = L` would then be the only source and `c1 = 0` always;
+  (c) sh's runcmd child is shown never to reach the second `fork1` with a
+      live first child that can still print — it cannot: it does not
+      wait.
+  Design section 1's sentence "`PFork` covers BOTH forks: if the second
+  fails the first child is already running echo into a pipe ... nothing
+  reaches the console" is exactly this assumption, stated as a fact and
+  never discharged.
+
+  **MECHANISED**, `iris/PipeForkGap.v` (new; not imported by anything):
+
+```coq
+  Definition gap_ws : list (list (bv 8)) := [cmd_echo; sb "hello"%string].
+  Definition gap_b0 : bv 8 := alt_panic !!! 0%nat.     (* `f' *)
+  Definition gap_b1 : bv 8 := dg_execL !!! 0%nat.      (* `e' *)
+
+  Theorem pfork_execL_gap (a : palt) :
+    palt_ok (LPipe gap_ws) a ->
+    ~ ([gap_b0; gap_b1] `prefix_of` pcont (LPipe gap_ws) a).
+```
+
+  — the two-byte wire the machine can produce at that round (the panic
+  wins the port, then the left child's first diagnostic byte) is not a
+  prefix of ANY admissible alternative's continuation.  The seven
+  constant arms fall to `bool_decide`; the `PBoth` arm falls because both
+  of ITS sources begin `e`, so its first byte is never `f`
+  (`gap_not_both`, one `pmerge` cons step).  Stated at one line and not
+  at every line on purpose: at a line whose own text begins `fe` the
+  `PRan` arm would carry those bytes and the refutation would be about
+  the other seven arms only — one line is enough to have the finding.
+  `Print Assumptions pfork_execL_gap` = Closed under the global context.
+
+  Route (b) is worth the coordinator's attention for a second reason: it
+  is also the cheapest route to R2's exclusion, and it would delete `XL`,
+  `YR` and the `Eex` premise from the four S7 laws.
+
+  `iris/PipeForkGap.v` carries BOTH refutations (`pfork_execL_gap` for
+  H4, `gap_mixed_no_wit` for R2's omission) — 227 lines, no Iris, nothing
+  imports it.
+
+**WHAT THE DESIGN GOT WRONG.**
+1. section 4.3f (R1)'s placement advice: "`pblk_led` and `pblk2_code` and
+   the pure facts they need move up to `PipeOut.v`/`PipeBothPure.v`" is
+   impossible — `pblk2_code` names `PipeLinksLine.pline_at`, which is
+   above `PipeLinks.v`.  The leaf is stated at `pecl_blk2_file`'s own
+   premises instead, and neither the move nor the `pipe_links2` fallback
+   is needed.
+2. section 4.3f (R2)'s `wcur gD 1 1` is the wrong token for the DONE arm
+   (a child must refute it and never holds `gD`), and the ruling omits
+   the two children's exclusion, without which `pblk2_cstep_L` is not
+   provable at the invariant's existential `R`.
+3. section 1's `PFork` sentence assumes `exec /echo` cannot fail; with
+   the model's own `PExecL` it makes the theorem false at one reachable
+   interleaving (H4).
+4. section 4.3f's closing sentence — "`sh_pipe_child_law` is
+   SH-PIPE-ROUND-3's `wp_kshm_child_pipe_paid_line` at `RcL`/`RcR` ... no
+   new walk anywhere" — leaves out three whole discharges (H1, H2, H3),
+   of which H2 is a lane the size of `UkShEcho` + `UShEchoPay`.
+
+**OPERATIONAL NOTES.**
+- durable-notes' "a quoted `*)` inside a comment ends the comment" bites
+  on the OPENING quote too: `("the left child` leaves the comment inside
+  a string and the error is reported at the line where the string opened,
+  not where the comment did.  Use `` `...' `` in comments in this tree.
+- `iCombine` on two `ghost_var γ (1/2) x` already yields the WHOLE; the
+  `Qp.half_half` rewrite PIPE-2W-3 recorded for the combining direction
+  must be `rewrite ?Qp.half_half` here or it fails with "does not match
+  any subterm".
+- `iDestruct (wcur_agree with "H1 H2") as %<-` eliminates the SECOND
+  variable, so a later `iAssert` that names it fails with "The variable
+  c2 was not found in the current environment" — read the substitution
+  before writing the next tactic.
+
+**THE ONE THING THE NEXT LANE NEEDS FIRST.**  The owner's ruling on H4
+(a)/(b)/(c).  Everything else in the round is bounded work at known
+moulds — H1 is a stub walk, H3 is a second copy of a landed discharge,
+H2 is a lane — but H4 decides the SHAPE of the family and of `palt_ok`,
+and (b) would delete R2's exclusion machinery as a side effect.  After
+it, the order is H1, H3, H2, then the assembly, and the first proof step
+of the assembly is `blk2_inv_alloc` on the `WP Loop` goal at 0x9c0
+(`Cr := blk2_inv ∗ the three halves ∗ era_pin`), with the three paid
+diagnostics recovering the family through `blk2_inv_close` inside
+`ush_execfail_law_at`'s own `∃ Pf` — the existential is the law's
+PROVER's to choose, so `Pf 0` may be the recovery and `Pf (S p)` may
+bundle `UShPanic`'s existential.

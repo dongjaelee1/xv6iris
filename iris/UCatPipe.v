@@ -718,10 +718,224 @@ Section UCatPipe.
   Definition pcat_hold (pn : pnames) (l : list fdstate) (c : nat) : iProp Σ :=
     (UserFd.ustd γfd l ∗ (rcur pn c ∨ T))%I.
 
+  (* THE ROUND'S INVARIANT, GENERIC IN THE CURSOR (lane SH-PIPE-ROUND-4,
+     design 4.3f (R3)).  [pcch] files [pcat_alt] at cat's FIRST byte,
+     which is the one thing a TWO-WRITER block may not do; the round's
+     proof never unfolds it, so the cursor is a parameter and the landed
+     statement is re-derived at [Ch := pcch g v ps0 cs0 I0 pcat_alt P]
+     below, byte-identical. *)
+  Definition pcat_round_inv_g (pn : pnames) (l : list fdstate)
+      (Ch : nat -> iProp Σ) : iProp Σ :=
+    (∃ c : nat, pcat_hold pn l c ∗ Ch c)%I.
+
   Definition pcat_round_inv (pn : pnames) (l : list fdstate) (v : era_pins)
       (ps0 cs0 : list nat) (I0 : list (bv 8)) (P : nat) : iProp Σ :=
     (∃ c : nat, pcat_hold pn l c ∗ pcch g v ps0 cs0 I0 pcat_alt P c)%I.
 
+  Lemma pcat_round_at_g (pn : pnames) (γp : pipe_names) (L : list (bv 8))
+      (l : list fdstate) (wb : bool) (I0 : list (bv 8))
+      (Ch : nat -> iProp Σ) (Cend : iProp Σ) :
+    pcat_out I0 = L ->
+    (* fd 0 IS this pipe's read end, in the child's own ledger *)
+    l !! 0%nat = Some (FdOpen true wb (FdPipe γp)) ->
+    (* THE PROTOCOL -- the whole of what cat knows about the pipe *)
+    pipe_inv pn γp L -∗
+    (* THE KILL ARM IS PAID BY THE KERNEL NOW (lane KILL-TAINT).  A pipe
+       read answers -1 when the reader was KILLED while it waited, and
+       what the post hands over at that arm is no longer the bare shot
+       but [ChildTok.kill_shot gn * app_taint]: a process inside a
+       syscall holds its own incarnation's marker, so a nonzero killed
+       flag was written by a THIRD PARTY, who paid the taint into
+       <p->lock>'s killed row ([PipeKillMark], [SchedCtx.
+       kill_paid_shot_tear]).  The named premise this round used to take
+       ([box (forall gn, kill_shot gn -* T)]) is GONE -- and it had to
+       go: it is refutable, [PipeKillMark.kill_taint_premise_gives_T]. *)
+    (* [Hdg]: cat's `read error` tail, payable at a TAINTED era out of the
+       free write law ([UkCatCat.kcat_round_of_law]'s route) *)
+    □ (T -∗ UkCatCat.kcat_dg_cr N) -∗
+    (* [Hw]: the turn's write, at the cursor and back at the cursor plus
+       the count -- COUNT-EXACT, so cat's `write error` tail is refuted
+       inside the walk and this round never funds [kcat_dg_cw].  Its
+       taint disjunct carries NO count bound (unlike the file round's):
+       at a tainted era the cursor is the credential's right arm at every
+       index, so a cursor that moves by a nonsense count is still a
+       cursor. *)
+    □ (∀ (c nb : nat) (rv : mword 64) (fbb : nat -> bv 8),
+         ⌜rv = (mword_of_int (Z.of_nat nb) : mword 64)⌝ -∗
+         (⌜(Z.to_nat (bv_unsigned rv) <= 512)%nat
+           /\ forall j : nat, (j < Z.to_nat (bv_unsigned rv))%nat ->
+                pcont (pcat_line I0) (palt_of pcat_alt) !! (c + j)%nat
+                = Some (fbb j)⌝
+          ∨ T) -∗
+         UserFd.ustd γfd l -∗
+         Ch c -∗
+         UkCat.kcat_wr N (mword_of_int 1) (mword_of_int CatSyms.buf) nb
+           (ubytes γd CatSyms.buf 512 fbb)
+           (fun wret : mword 64 =>
+              (⌜wret = (mword_of_int (Z.of_nat nb) : mword 64)⌝
+               ∗ UserFd.ustd γfd l
+               ∗ Ch
+                   (c + Z.to_nat (bv_unsigned rv))%nat
+               ∗ ubytes γd CatSyms.buf 512 fbb))) -∗
+    (* [Hend]: the loop's NORMAL exit, which is END OF FILE -- the read
+       answered zero, and the protocol's one-shot says the pipe's whole
+       contents are the bytes cat has printed. *)
+    □ (∀ c : nat,
+         (eof_shot pn (take c L) ∨ T) -∗
+         pcat_hold pn l c -∗
+         Ch c -∗ Cend) -∗
+    cat_code γt -∗
+    UkCatCat.kcat_round N (mword_of_int 0)
+      (pcat_round_inv_g pn l Ch) Cend.
+  Proof using Hcons Hkill.
+    intros HL Hl0.
+    iIntros "#Hinv #Hdg #Hw #Hend #Hcode".
+    assert (Hm1s : bv_signed (mword_of_int (-1) : mword 64) = -1)
+      by (vm_compute; reflexivity).
+    rewrite /UkCatCat.kcat_round. iModIntro.
+    iIntros (h m avail f) "%Ha0 %Ha1 %Ha2 _ HI Hbuf Hrun Hcont".
+    rewrite /pcat_round_inv_g.
+    iDestruct "HI" as (c) "[[Hstd Hcur] Hc]".
+    (* THE PAYMENT: the protocol at the cursor, or the taint *)
+    iAssert (pipe_rpay (pn_queue γp) (pipe_rQ pn L c) (pipe_rQe pn L c) 512)
+      with "[Hcur]" as "Hpay".
+    { iDestruct "Hcur" as "[Hr | #HT]".
+      - iApply (pipe_rpay_of_inv pn γp L c 512 with "Hinv Hr").
+      - iApply pipe_rpay_taint. rewrite Hkill. iExact "HT". }
+    assert (Hfd0 : bv_signed (trunc32 (m !!! Regidx a0_idx))
+                   = Z.of_nat 0%nat)
+      by (rewrite Ha0; vm_compute; reflexivity).
+    iApply (pcat_read_walk CatSyms.buf 512%nat f h m avail l 0%nat wb γp
+              (pipe_rQ pn L c) (pipe_rQe pn L c)
+              ltac:(vm_compute; discriminate)
+              ltac:(vm_compute; reflexivity)
+              Ha1 Ha2 Hfd0 ltac:(vm_compute; lia) Hl0
+              with "Hcode Hstd Hpay Hbuf Hrun").
+    iIntros (h' rv gb M' Pt gn) "%Hans %Hlin %Himg %Hnf Hrp Hstd Hbuf Hrun".
+    iApply ("Hcont" $! h' rv gb with "[Hrp Hstd Hc] Hbuf Hrun").
+    iDestruct (pcat_rpost with "Hrp") as "[Hgood | [#HTa _]]"; last first.
+    { (* THE TAINT ARM of the post: everything from the taint *)
+      iAssert T as "#HT"; [ rewrite -Hkill; iExact "HTa" | ].
+      iSplit; [| iSplit ].
+      - iIntros "_". iApply ("Hdg" with "HT").
+      - iIntros "_".
+        iApply ("Hend" $! c with "[] [Hstd] Hc"); [ by iRight | ].
+        rewrite /pcat_hold. iFrame "Hstd". by iRight.
+      - iIntros (nb) "%Hret _".
+        iApply (UkCat.kcat_wr_mono N (mword_of_int 1)
+                  (mword_of_int CatSyms.buf) nb
+                  (ubytes γd CatSyms.buf 512 gb)
+                  (fun wret : mword 64 =>
+                     (⌜wret = (mword_of_int (Z.of_nat nb) : mword 64)⌝
+                      ∗ UserFd.ustd γfd l
+                      ∗ Ch
+                          (c + Z.to_nat (bv_unsigned rv))%nat
+                      ∗ ubytes γd CatSyms.buf 512 gb)%I)
+                  _ with "[] [Hstd Hc]").
+        { iIntros (wret) "(%Hws & Hstd & Hc' & Hb)".
+          iSplitR "Hb"; [ | iExact "Hb" ].
+          iLeft. iSplitR; [ by iPureIntro | ].
+          rewrite /pcat_round_inv_g.
+          iExists (c + Z.to_nat (bv_unsigned rv))%nat.
+          iSplitR "Hc'"; [ | iExact "Hc'" ].
+          rewrite /pcat_hold. iFrame "Hstd". by iRight. }
+        iApply ("Hw" $! c nb rv gb with "[%] [] Hstd Hc");
+          [ exact Hret | by iRight ]. }
+    (* THE CONTENT ARM *)
+    iDestruct "Hgood" as (acc d) "([%Hlen %Hd] & %Himg2 & HQ & Harm)".
+    iDestruct "HQ" as "[Hr %Hacc]".
+    assert (Hd512 : (d <= 512)%nat) by lia.
+    (* the bytes the call delivered ARE the line's, at the cursor *)
+    assert (Hbytes : forall j : nat, (j < d)%nat ->
+              L !! (c + j)%nat = Some (gb j)).
+    { intros j Hj.
+      assert (Hj' : (j < length acc)%nat) by lia.
+      rewrite (pcat_acc_line L acc c Hacc j Hj').
+      f_equal. symmetry.
+      assert (Hm : M' !! uint (add_vec_int (mword_of_int CatSyms.buf : mword 64)
+                                 (Z.of_nat j)) = Some (acc !!! j))
+        by (apply (Himg2 ltac:(intros i Hi; apply Hlin; lia)); lia).
+      rewrite (Himg j ltac:(lia)) in Hm. by injection Hm as <-. }
+    iDestruct "Harm" as "[[%Hrv Heof] | [[%Hrv %Hd0] Hwhy]]"; last first.
+    { (* THE -1 ARMS: two are refuted, the third is the KILL *)
+      iAssert T as "#HT".
+      { iDestruct "Hwhy" as "[%Hnm | [Hk | %Hn0]]".
+        - exfalso. apply Hnm. rewrite Hd0. apply Hnf. lia.
+        - iDestruct "Hk" as "[_ HTa]". rewrite -Hkill. iExact "HTa".
+        - exfalso. lia. }
+      iSplit; [| iSplit ].
+      - iIntros "_". iApply ("Hdg" with "HT").
+      - iIntros "%Hz". exfalso. rewrite Hrv Hm1s in Hz. lia.
+      - iIntros (nb) "%Hret _".
+        iApply (UkCat.kcat_wr_mono N (mword_of_int 1)
+                  (mword_of_int CatSyms.buf) nb
+                  (ubytes γd CatSyms.buf 512 gb)
+                  (fun wret : mword 64 =>
+                     (⌜wret = (mword_of_int (Z.of_nat nb) : mword 64)⌝
+                      ∗ UserFd.ustd γfd l
+                      ∗ Ch
+                          (c + Z.to_nat (bv_unsigned rv))%nat
+                      ∗ ubytes γd CatSyms.buf 512 gb)%I)
+                  _ with "[] [Hstd Hc]").
+        { iIntros (wret) "(%Hws & Hstd & Hc' & Hb)".
+          iSplitR "Hb"; [ | iExact "Hb" ].
+          iLeft. iSplitR; [ by iPureIntro | ].
+          rewrite /pcat_round_inv_g.
+          iExists (c + Z.to_nat (bv_unsigned rv))%nat.
+          iSplitR "Hc'"; [ | iExact "Hc'" ].
+          rewrite /pcat_hold. iFrame "Hstd". by iRight. }
+        iApply ("Hw" $! c nb rv gb with "[%] [] Hstd Hc");
+          [ exact Hret | by iRight ]. }
+    (* THE COUNT ARM: the answer is [d], and [d] is at most 512 *)
+    assert (Hbu : bv_unsigned rv = Z.of_nat d).
+    { rewrite Hrv -uint_unsigned. apply uint_moi. unfold Z64. lia. }
+    assert (Hto : Z.to_nat (bv_unsigned rv) = d)
+      by (rewrite Hbu Nat2Z.id; reflexivity).
+    assert (Hsg : bv_signed rv = Z.of_nat d).
+    { rewrite (pcat_signed_small rv ltac:(rewrite Hbu; lia)). exact Hbu. }
+    iSplit; [| iSplit ].
+    - (* cat's `read error` is REFUTED at a real count *)
+      iIntros "%Hneg". exfalso. rewrite Hsg in Hneg. lia.
+    - (* END OF FILE: the read answered zero *)
+      iIntros "%Hz". rewrite Hsg in Hz.
+      assert (Hd00 : d = 0%nat) by lia.
+      iDestruct ("Heof" with "[%] [%]") as "#Hs";
+        [ exact Hd00 | lia | ].
+      rewrite Hd00 in Hd.
+      rewrite Hd00. rewrite Hd. rewrite Nat.add_0_r.
+      iApply ("Hend" $! c with "[] [Hstd Hr] Hc"); [ by iLeft | ].
+      rewrite /pcat_hold. iFrame "Hstd". iLeft. iExact "Hr".
+    - (* THE TURN'S WRITE, at the cursor *)
+      iIntros (nb) "%Hret %Hnb0".
+      iApply (UkCat.kcat_wr_mono N (mword_of_int 1)
+                (mword_of_int CatSyms.buf) nb
+                (ubytes γd CatSyms.buf 512 gb)
+                (fun wret : mword 64 =>
+                   (⌜wret = (mword_of_int (Z.of_nat nb) : mword 64)⌝
+                    ∗ UserFd.ustd γfd l
+                    ∗ Ch
+                        (c + Z.to_nat (bv_unsigned rv))%nat
+                    ∗ ubytes γd CatSyms.buf 512 gb)%I)
+                _ with "[Hr] [Hstd Hc]").
+      { iIntros (wret) "(%Hws & Hstd & Hc' & Hb)".
+        iSplitR "Hb"; [ | iExact "Hb" ].
+        iLeft. iSplitR; [ by iPureIntro | ].
+        rewrite /pcat_round_inv_g.
+        iExists (c + Z.to_nat (bv_unsigned rv))%nat.
+        iSplitR "Hc'"; [ | iExact "Hc'" ].
+        rewrite /pcat_hold. iFrame "Hstd". iLeft.
+        rewrite Hto -Hd. iExact "Hr". }
+      iApply ("Hw" $! c nb rv gb with "[%] [] Hstd Hc"); [ exact Hret | ].
+      iLeft. iPureIntro. rewrite Hto. split; [ exact Hd512 | ].
+      intros j Hj.
+      exact (pcat_round_line I0 L c d gb HL Hbytes j Hj).
+  Qed.
+
+
+  (* ...AND THE LANDED STATEMENT, BYTE-IDENTICAL, at cat's own cursor
+     ([git diff] shows only the proof).  This is the consumer the FILE
+     era's twin has; the pipeline round uses [pcat_round_at_g] at the
+     two-writer family's right cursor instead. *)
   Lemma pcat_round_at (pn : pnames) (γp : pipe_names) (L : list (bv 8))
       (l : list fdstate) (wb : bool) (v : era_pins)
       (ps0 cs0 : list nat) (I0 : list (bv 8)) (P : nat) (Cend : iProp Σ) :
@@ -780,147 +994,9 @@ Section UCatPipe.
       (pcat_round_inv pn l v ps0 cs0 I0 P) Cend.
   Proof using Hcons Hkill.
     intros Hst HL Hl0.
-    iIntros "#Hinv #Hdg #Hw #Hend #Hcode".
-    assert (Hm1s : bv_signed (mword_of_int (-1) : mword 64) = -1)
-      by (vm_compute; reflexivity).
-    rewrite /UkCatCat.kcat_round. iModIntro.
-    iIntros (h m avail f) "%Ha0 %Ha1 %Ha2 _ HI Hbuf Hrun Hcont".
-    iDestruct "HI" as (c) "[[Hstd Hcur] Hc]".
-    (* THE PAYMENT: the protocol at the cursor, or the taint *)
-    iAssert (pipe_rpay (pn_queue γp) (pipe_rQ pn L c) (pipe_rQe pn L c) 512)
-      with "[Hcur]" as "Hpay".
-    { iDestruct "Hcur" as "[Hr | #HT]".
-      - iApply (pipe_rpay_of_inv pn γp L c 512 with "Hinv Hr").
-      - iApply pipe_rpay_taint. rewrite Hkill. iExact "HT". }
-    assert (Hfd0 : bv_signed (trunc32 (m !!! Regidx a0_idx))
-                   = Z.of_nat 0%nat)
-      by (rewrite Ha0; vm_compute; reflexivity).
-    iApply (pcat_read_walk CatSyms.buf 512%nat f h m avail l 0%nat wb γp
-              (pipe_rQ pn L c) (pipe_rQe pn L c)
-              ltac:(vm_compute; discriminate)
-              ltac:(vm_compute; reflexivity)
-              Ha1 Ha2 Hfd0 ltac:(vm_compute; lia) Hl0
-              with "Hcode Hstd Hpay Hbuf Hrun").
-    iIntros (h' rv gb M' Pt gn) "%Hans %Hlin %Himg %Hnf Hrp Hstd Hbuf Hrun".
-    iApply ("Hcont" $! h' rv gb with "[Hrp Hstd Hc] Hbuf Hrun").
-    iDestruct (pcat_rpost with "Hrp") as "[Hgood | [#HTa _]]"; last first.
-    { (* THE TAINT ARM of the post: everything from the taint *)
-      iAssert T as "#HT"; [ rewrite -Hkill; iExact "HTa" | ].
-      iSplit; [| iSplit ].
-      - iIntros "_". iApply ("Hdg" with "HT").
-      - iIntros "_".
-        iApply ("Hend" $! c with "[] [Hstd] Hc"); [ by iRight | ].
-        rewrite /pcat_hold. iFrame "Hstd". by iRight.
-      - iIntros (nb) "%Hret _".
-        iApply (UkCat.kcat_wr_mono N (mword_of_int 1)
-                  (mword_of_int CatSyms.buf) nb
-                  (ubytes γd CatSyms.buf 512 gb)
-                  (fun wret : mword 64 =>
-                     (⌜wret = (mword_of_int (Z.of_nat nb) : mword 64)⌝
-                      ∗ UserFd.ustd γfd l
-                      ∗ pcch g v ps0 cs0 I0 pcat_alt P
-                          (c + Z.to_nat (bv_unsigned rv))%nat
-                      ∗ ubytes γd CatSyms.buf 512 gb)%I)
-                  _ with "[] [Hstd Hc]").
-        { iIntros (wret) "(%Hws & Hstd & Hc' & Hb)".
-          iSplitR "Hb"; [ | iExact "Hb" ].
-          iLeft. iSplitR; [ by iPureIntro | ].
-          rewrite /pcat_round_inv.
-          iExists (c + Z.to_nat (bv_unsigned rv))%nat.
-          iSplitR "Hc'"; [ | iExact "Hc'" ].
-          rewrite /pcat_hold. iFrame "Hstd". by iRight. }
-        iApply ("Hw" $! c nb rv gb with "[%] [] Hstd Hc");
-          [ exact Hret | by iRight ]. }
-    (* THE CONTENT ARM *)
-    iDestruct "Hgood" as (acc d) "([%Hlen %Hd] & %Himg2 & HQ & Harm)".
-    iDestruct "HQ" as "[Hr %Hacc]".
-    assert (Hd512 : (d <= 512)%nat) by lia.
-    (* the bytes the call delivered ARE the line's, at the cursor *)
-    assert (Hbytes : forall j : nat, (j < d)%nat ->
-              L !! (c + j)%nat = Some (gb j)).
-    { intros j Hj.
-      assert (Hj' : (j < length acc)%nat) by lia.
-      rewrite (pcat_acc_line L acc c Hacc j Hj').
-      f_equal. symmetry.
-      assert (Hm : M' !! uint (add_vec_int (mword_of_int CatSyms.buf : mword 64)
-                                 (Z.of_nat j)) = Some (acc !!! j))
-        by (apply (Himg2 ltac:(intros i Hi; apply Hlin; lia)); lia).
-      rewrite (Himg j ltac:(lia)) in Hm. by injection Hm as <-. }
-    iDestruct "Harm" as "[[%Hrv Heof] | [[%Hrv %Hd0] Hwhy]]"; last first.
-    { (* THE -1 ARMS: two are refuted, the third is the KILL *)
-      iAssert T as "#HT".
-      { iDestruct "Hwhy" as "[%Hnm | [Hk | %Hn0]]".
-        - exfalso. apply Hnm. rewrite Hd0. apply Hnf. lia.
-        - iDestruct "Hk" as "[_ HTa]". rewrite -Hkill. iExact "HTa".
-        - exfalso. lia. }
-      iSplit; [| iSplit ].
-      - iIntros "_". iApply ("Hdg" with "HT").
-      - iIntros "%Hz". exfalso. rewrite Hrv Hm1s in Hz. lia.
-      - iIntros (nb) "%Hret _".
-        iApply (UkCat.kcat_wr_mono N (mword_of_int 1)
-                  (mword_of_int CatSyms.buf) nb
-                  (ubytes γd CatSyms.buf 512 gb)
-                  (fun wret : mword 64 =>
-                     (⌜wret = (mword_of_int (Z.of_nat nb) : mword 64)⌝
-                      ∗ UserFd.ustd γfd l
-                      ∗ pcch g v ps0 cs0 I0 pcat_alt P
-                          (c + Z.to_nat (bv_unsigned rv))%nat
-                      ∗ ubytes γd CatSyms.buf 512 gb)%I)
-                  _ with "[] [Hstd Hc]").
-        { iIntros (wret) "(%Hws & Hstd & Hc' & Hb)".
-          iSplitR "Hb"; [ | iExact "Hb" ].
-          iLeft. iSplitR; [ by iPureIntro | ].
-          rewrite /pcat_round_inv.
-          iExists (c + Z.to_nat (bv_unsigned rv))%nat.
-          iSplitR "Hc'"; [ | iExact "Hc'" ].
-          rewrite /pcat_hold. iFrame "Hstd". by iRight. }
-        iApply ("Hw" $! c nb rv gb with "[%] [] Hstd Hc");
-          [ exact Hret | by iRight ]. }
-    (* THE COUNT ARM: the answer is [d], and [d] is at most 512 *)
-    assert (Hbu : bv_unsigned rv = Z.of_nat d).
-    { rewrite Hrv -uint_unsigned. apply uint_moi. unfold Z64. lia. }
-    assert (Hto : Z.to_nat (bv_unsigned rv) = d)
-      by (rewrite Hbu Nat2Z.id; reflexivity).
-    assert (Hsg : bv_signed rv = Z.of_nat d).
-    { rewrite (pcat_signed_small rv ltac:(rewrite Hbu; lia)). exact Hbu. }
-    iSplit; [| iSplit ].
-    - (* cat's `read error` is REFUTED at a real count *)
-      iIntros "%Hneg". exfalso. rewrite Hsg in Hneg. lia.
-    - (* END OF FILE: the read answered zero *)
-      iIntros "%Hz". rewrite Hsg in Hz.
-      assert (Hd00 : d = 0%nat) by lia.
-      iDestruct ("Heof" with "[%] [%]") as "#Hs";
-        [ exact Hd00 | lia | ].
-      rewrite Hd00 in Hd.
-      rewrite Hd00. rewrite Hd. rewrite Nat.add_0_r.
-      iApply ("Hend" $! c with "[] [Hstd Hr] Hc"); [ by iLeft | ].
-      rewrite /pcat_hold. iFrame "Hstd". iLeft. iExact "Hr".
-    - (* THE TURN'S WRITE, at the cursor *)
-      iIntros (nb) "%Hret %Hnb0".
-      iApply (UkCat.kcat_wr_mono N (mword_of_int 1)
-                (mword_of_int CatSyms.buf) nb
-                (ubytes γd CatSyms.buf 512 gb)
-                (fun wret : mword 64 =>
-                   (⌜wret = (mword_of_int (Z.of_nat nb) : mword 64)⌝
-                    ∗ UserFd.ustd γfd l
-                    ∗ pcch g v ps0 cs0 I0 pcat_alt P
-                        (c + Z.to_nat (bv_unsigned rv))%nat
-                    ∗ ubytes γd CatSyms.buf 512 gb)%I)
-                _ with "[Hr] [Hstd Hc]").
-      { iIntros (wret) "(%Hws & Hstd & Hc' & Hb)".
-        iSplitR "Hb"; [ | iExact "Hb" ].
-        iLeft. iSplitR; [ by iPureIntro | ].
-        rewrite /pcat_round_inv.
-        iExists (c + Z.to_nat (bv_unsigned rv))%nat.
-        iSplitR "Hc'"; [ | iExact "Hc'" ].
-        rewrite /pcat_hold. iFrame "Hstd". iLeft.
-        rewrite Hto -Hd. iExact "Hr". }
-      iApply ("Hw" $! c nb rv gb with "[%] [] Hstd Hc"); [ exact Hret | ].
-      iLeft. iPureIntro. rewrite Hto. split; [ exact Hd512 | ].
-      intros j Hj.
-      exact (pcat_round_line I0 L c d gb HL Hbytes j Hj).
+    exact (pcat_round_at_g pn γp L l wb I0
+             (pcch g v ps0 cs0 I0 pcat_alt P) Cend HL Hl0).
   Qed.
-
 
   (* =================================================================== *)
   (*  5.  THE EXIT ROW, OUT OF THE REGISTRY                               *)

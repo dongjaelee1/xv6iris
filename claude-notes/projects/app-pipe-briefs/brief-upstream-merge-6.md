@@ -1,10 +1,10 @@
 # Lane UPSTREAM-MERGE-6 — merge the nine upstream commits (mWP, relax-d2, the import and Proof-using sweeps) under the pipe campaign
 
 Worktree: `/shared/xv6iris-pipe-merge`, branch `app-pipe/upstream-merge-6`
-(= main e5e556929 -- EXEC-CAT, PIPE-CC and PIPE-EXEC-ECHO merged -- with `git merge --no-commit origin/main` ALREADY RUN
+(= main c03afe0c4 -- EXEC-CAT, PIPE-CC, PIPE-EXEC-ECHO merged + the UInitPipe seam fix, gate green, audits 13/14/13/14 -- with `git merge --no-commit origin/main` ALREADY RUN
 and left CONFLICTED for you — `git status` shows it; do not redo the
 merge, resolve it).  Helper lane name `merge` (the remote clone is main's
-fully built tree at e5e556929; after your first `sync` most of the tree
+fully built tree at d70932a62 (= c03afe0c4 minus notes); after your first `sync` most of the tree
 rebuilds — that is expected, upstream touched 688 files).  Read
 `brief-common.md` first.  NEVER run rocq/coqc/make locally.
 

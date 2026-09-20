@@ -1998,7 +1998,7 @@ Section pipe_out.
             ∗ cur_half w (1/2) (nlines I0 - 1)%nat gb ∗ rblk_lb gb [b]
             ∗ ps_lb v ps0 ∗ cs_lb v cs0 ∗ inp_lb v I0) ∨ T).
   Proof using .
-    intros Hne0 Hr0 Hdiv Hpin0 HPeq Halt Hpan Hhead Harm.
+    intros Hne0 Hr0 Hdiv Hpin0 HPeq Halt Hpan Hhead Hfarm.
     pose proof (nlines_pos_of_rest_nil I0 Hne0 Hr0) as Hpos0.
     pose proof (pop_nlines_removelast I0 Hr0) as Hrl0.
     iIntros "#Hpin Ht #Hpslb #Hcslb #Hilb Hcl".
@@ -2112,7 +2112,7 @@ Section pipe_out.
                       | exact Hpan |].
           apply (pop_prefix_snoc_lookup [] _ b);
             [apply prefix_nil | exact Hhead]. }
-        destruct Harm as [[Hfk Hnd] | Hfk];
+        destruct Hfarm as [[Hfk Hnd] | Hfk];
           [left; split; [exact Hfk | by apply Forall_singleton, Hnd]
            | by right].
       + pose proof (ps_len_ok_p_write so b Hpsl) as Hx.
@@ -2152,7 +2152,7 @@ Section pipe_out.
       ∗ ((turn v (S (P + length pre0))%nat ∗ cur_half w (1/2) r gb
           ∗ rblk_lb gb (pre0 ++ [b])) ∨ T).
   Proof using .
-    intros Hne0 Hr0 Hreq Hcseq Hpin0 HPeq Halt Hpan Hpref Harm.
+    intros Hne0 Hr0 Hreq Hcseq Hpin0 HPeq Halt Hpan Hpref Hfarm.
     pose proof (nlines_pos_of_rest_nil I0 Hne0 Hr0) as Hpos0.
     iIntros "#Hpin #Hperaw Ht Hcw #Hrlb0 #Hpslb #Hcslb #Hilb Hcl".
     iDestruct "Hcl" as "[#HT | Hp]".
@@ -2251,7 +2251,7 @@ Section pipe_out.
           split_and!; [exact Hnn | exact Hrr | by rewrite Hqq Hreq2
                       | exact Halt | exact Hpan |].
           rewrite -Hwp' -Hpre0. exact Hpref. }
-        destruct Harm as [(Hfk & Hnd0 & Hnd) | Hfk]; [| by right].
+        destruct Hfarm as [(Hfk & Hnd0 & Hnd) | Hfk]; [| by right].
         left. split; [exact Hfk |].
         apply Forall_app. split; [| by apply Forall_singleton, Hnd].
         rewrite -Hwp' -Hpre0. exact Hnd0.

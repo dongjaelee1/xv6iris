@@ -829,7 +829,7 @@ Section pipe_both.
   (*  fact about the PROTOCOL, not about the console.  It enters here   *)
   (*  as two abstract witnesses and one premise: [XL] (`the left child  *)
   (*  kept echo's write permit'), [YR] (`a byte reached the reader'),   *)
-  (*  and [XL -* YR ={Eex}=* False].  This file stays protocol-free;    *)
+  (*  and [box (XL -* YR ={Eex}=* False)].  This file stays protocol-free;    *)
   (*  the round supplies the pair out of [PipeProto].                   *)
   (* ================================================================= *)
 
@@ -1025,15 +1025,12 @@ Section pipe_both.
     iDestruct "Hin" as "[Hfam | Hdone]"; last first.
     { iDestruct (blk2_done_not_R gL gR 0%nat with "HR Hdone") as %[]. }
     iDestruct "Hfam" as (R sel c1 c2) "(Hf & HgL & HgR & Hxl & Hrm)".
+    (* the right cursor is the child's own, still at zero -- so the
+       family does not read [R] and the mode's arm says nothing more *)
     iDestruct (wcur_agree with "HR HgR") as %<-.
     rewrite {1}/rmode. iDestruct "Hrm" as (n0) "[HgM Harm]".
     iDestruct (wcur_agree with "HM HgM") as %<-.
-    iAssert (⌜c2 = 0%nat⌝)%I with "[Harm]" as %Hc2.
-    { iDestruct "Harm" as "[%Ha | [[%Ha _] | %Ha]]".
-      - iPureIntro. exact (proj2 Ha).
-      - exfalso. destruct Ha as [Ha _]. discriminate Ha.
-      - exfalso. destruct Ha as [Ha _]. discriminate Ha. }
-    subst c2.
+    iClear "Harm".
     iMod (wcur_update gM 0%nat 0%nat n with "HM HgM") as "[HM HgM]".
     iDestruct (pwc_blk2_R_indep k v I R (rsrc L n) sel c1 with "Hf") as "Hf".
     iMod ("Hclose" with "[Hf HgL HgR Hxl HgM HY]") as "_".
@@ -1057,7 +1054,7 @@ Section pipe_both.
     dg_execL !! c1 = Some b ->
     (forall sel : list bool,
        sel_wf2 dg_execR sel -> pblk2_wit I dg_execR sel) ->
-    (XL -∗ YR ={Eex}=∗ False) -∗
+    □ (XL -∗ YR ={Eex}=∗ False) -∗
     pblk2_ecl_L -∗ pipe_link_taint g -∗ era_pin γ k v -∗
     blk2_inv N k v I L gL gR gM XL YR -∗ wcur gL (1/2) c1 -∗
     (⌜c1 = 0%nat⌝ -∗ XL) -∗
@@ -1191,7 +1188,7 @@ Section pipe_both.
     (forall sel : list bool,
        count_true sel = 0%nat -> (length sel <= length L)%nat ->
        pblk2_wit I L sel) ->
-    (XL -∗ YR ={Eex}=∗ False) -∗
+    □ (XL -∗ YR ={Eex}=∗ False) -∗
     pblk2_ecl_R -∗ pipe_link_taint g -∗ era_pin γ k v -∗
     blk2_inv N k v I L gL gR gM XL YR -∗
     wcur gR (1/2) c2 -∗ wcur gM (1/2) n -∗
@@ -1301,7 +1298,7 @@ Section pipe_both.
       - right. right. exact (proj2 Ha). }
     rewrite /wcur.
     iCombine "HcL HgL" as "HLf". iCombine "HcR HgR" as "HRf".
-    rewrite Qp.half_half.
+    rewrite ?Qp.half_half.
     iMod ("Hclose" with "[HLf HRf]") as "_".
     { iNext. rewrite /blk2_body. iRight. rewrite /blk2_done /wcur.
       iSplitL "HLf"; [iExists c1 | iExists c2]; by iFrame. }
@@ -1537,7 +1534,6 @@ Section pipe_both.
               ps cs I Φ
               with "[//] [//] [//] [//] [//] [//] [//] [//] [//] [//]
                     Hpin Hpera [Htn] Hcur Hrlb Hps Hcs HE [HΦ]").
-    { iPureIntro. rewrite Hlb. exact Hq. }
     { replace (P + length (pend2 R sel))%nat with (P + c1 + c2)%nat
         by (rewrite Hlb; lia). iExact "Htn". }
     iIntros "Hret". iApply "HΦ".

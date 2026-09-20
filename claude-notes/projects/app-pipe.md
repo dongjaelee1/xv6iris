@@ -6948,7 +6948,23 @@ file `iris/PipeRound5Assumptions.v` (NOT a `_CoqProject` row).
 `UInitPipeAdequacy.v` and `PipeAssumptions.v` are byte-identical to
 main.  Whole-tree `ec2-lane.sh round5 build` **RC=0**; no `Admitted`;
 `Proof using` on every result.  `Print Assumptions` on all TEN results:
-**all ten Closed under the global context**.
+**all ten Closed under the global context**.  **ALL FOUR AUDITS AT THEIR
+BASELINES**, measured on the mirror after the changes: `audit-only`
+**13**, `audit-echo-only` **14**, `audit-tree-only` **13**,
+`audit-pipe-only` **14** — the pipeline list unmoved and verbatim
+PIPE-CC's (1 `functional_extensionality_dep` + the 2 `xv6iris_extras`
+reservation `Parameter`s + 11 `PrimString`/`PrimInt63` primitives).
+Nothing imports `UShPipeRound2.v`, so this is true by construction as
+well as by measurement.
+
+**THE FINAL THEOREM IS NOT REACHED, and this lane states that plainly**:
+`pipe_adequacy_pipeΣ_final` does not exist, `UInitPipe.
+sh_pipe_child_law_all` is still owed, and `iris/PipeAssumptions.v` still
+audits `UInitPipeAdequacy.pipe_adequacy_pipeΣ_of_child` — whose ONE
+premise is the child law.  No `Context` hypothesis had to be carried by
+anything this lane landed: every result is `Proof using .` or names only
+section VARIABLES (`Σ`, the four classes, `g`, `GEN`), and in particular
+none of them needs `PipeBoth`'s `Hcons` (`riscv_cons_res = pecl g`).
 
 **THE STOP, AND IT IS A THEOREM (`pipe_fork_exit_not_lpr`).**
 

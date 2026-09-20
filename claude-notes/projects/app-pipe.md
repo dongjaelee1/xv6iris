@@ -5356,10 +5356,13 @@ Branch `app-pipe/sh-pipe-round-4` off main (`5302bc081` + `d71159395`),
 two code commits (`ebb6342d1`, `39dcea3b2`) plus this one.  Files moved:
 `iris/PipeLinks.v` (the seventh leaf), `iris/PipeBoth.v` (S7 rebuilt, S10
 new), `iris/PipeLinkInst.v` (ten fields re-pointed), `iris/UCatPipe.v`
-(the generic round).  NO new file, no `_CoqProject` row, `UShPipeExit.v`
-and `UShPipeRound.v` untouched, `UPipeBootAdequacy.v` untouched.
+(the generic round), plus ONE new file `iris/PipeForkGap.v` (+ one
+`_CoqProject` row): H4's model gap, mechanised; nothing imports it.
+`UShPipeExit.v` and `UShPipeRound.v` are untouched, and so is
+`UPipeBootAdequacy.v`.
 Whole-tree `ec2-lane.sh round4 build` **RC=0**; no `Admitted`;
-`Proof using` on every result.
+`Proof using` on every result; **`audit-pipe-only` = FOURTEEN** and
+**`audit-echo-only` = FOURTEEN**, echo's list exactly and unmoved.
 
 **(R1) LANDED — and the ruling's PREFERRED route is IMPOSSIBLE, while its
 FALLBACK is unnecessary.**  The ruling offered the filing step as a
@@ -5579,9 +5582,30 @@ are lanes, the fourth is a RULING and it is about the MODEL.
   Design section 1's sentence "`PFork` covers BOTH forks: if the second
   fails the first child is already running echo into a pipe ... nothing
   reaches the console" is exactly this assumption, stated as a fact and
-  never discharged.  NOT mechanised here (it needs `pcont` at a concrete
-  line and a `PBoth`-quantified argument); the statement-level argument
-  above is complete.
+  never discharged.
+
+  **MECHANISED**, `iris/PipeForkGap.v` (new; not imported by anything):
+
+```coq
+  Definition gap_ws : list (list (bv 8)) := [cmd_echo; sb "hello"%string].
+  Definition gap_b0 : bv 8 := alt_panic !!! 0%nat.     (* `f' *)
+  Definition gap_b1 : bv 8 := dg_execL !!! 0%nat.      (* `e' *)
+
+  Theorem pfork_execL_gap (a : palt) :
+    palt_ok (LPipe gap_ws) a ->
+    ~ ([gap_b0; gap_b1] `prefix_of` pcont (LPipe gap_ws) a).
+```
+
+  — the two-byte wire the machine can produce at that round (the panic
+  wins the port, then the left child's first diagnostic byte) is not a
+  prefix of ANY admissible alternative's continuation.  The seven
+  constant arms fall to `bool_decide`; the `PBoth` arm falls because both
+  of ITS sources begin `e`, so its first byte is never `f`
+  (`gap_not_both`, one `pmerge` cons step).  Stated at one line and not
+  at every line on purpose: at a line whose own text begins `fe` the
+  `PRan` arm would carry those bytes and the refutation would be about
+  the other seven arms only — one line is enough to have the finding.
+  `Print Assumptions pfork_execL_gap` = Closed under the global context.
 
   Route (b) is worth the coordinator's attention for a second reason: it
   is also the cheapest route to R2's exclusion, and it would delete `XL`,

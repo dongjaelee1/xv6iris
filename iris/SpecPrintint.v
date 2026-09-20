@@ -104,8 +104,8 @@ Definition wp_printint_sconf_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{CID 
     cpu_own n eb p b lks -∗
     pc_is ret_tgt -∗
     ⌜ callee_saved m0 mf /\ mf !!! Regidx ra_idx = ra0 ⌝ -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type PRINTINT.
   Parameter wp_printint_sconf :

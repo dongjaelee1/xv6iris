@@ -34,7 +34,7 @@ Section SepThread.
     ([∗ list] k↦x ∈ l, Res -∗ Phi k x ={E}=∗ Res ∗ Psi k x) -∗
     ([∗ list] k↦x ∈ l, Phi k x) ={E}=∗
     Res ∗ [∗ list] k↦x ∈ l, Psi k x.
-  Proof.
+  Proof using .
     revert Phi Psi.
     induction l as [|x l IH]; iIntros (Phi Psi) "HRes Hstep HPhi".
     { iModIntro. iFrame "HRes". done. }

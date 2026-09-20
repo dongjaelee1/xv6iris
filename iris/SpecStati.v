@@ -174,8 +174,8 @@ Definition wp_stati_sconf_body
        ZERO-extension, because [lwu] feeds an 8-byte [sd]. *)
     stat_at st dev inum (di_type dn) (di_nlink dn)
             (zero_extend' 64 (di_size dn : mword 32)) -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type STATI.
   Parameter wp_stati_sconf :

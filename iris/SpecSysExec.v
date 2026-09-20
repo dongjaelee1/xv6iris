@@ -474,8 +474,8 @@ Definition wp_sys_exec_sconf_body
       sys_exec_arms Fs Γfs fsc_fs (pv_cwi (us_V U)) γf pj pid Q P Pmiss Fo (us_M U) v0 v1 sts
         gn cs (upd_upt (us_V U) P')
         (mf !!! Regidx (mword_of_int 10 : mword 5)) -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 (* ===================================================================== *)
 (*  4.  THE SEAL                                                          *)

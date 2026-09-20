@@ -121,8 +121,8 @@ Definition wp_yield_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG �
       pc_is ret_tgt -∗
       trap_csrs_ext KT1 eb -∗
       cpu_claim_ext eb pj -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type YIELD.
   Parameter wp_yield_sconf :

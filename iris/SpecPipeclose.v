@@ -109,8 +109,8 @@ Definition wp_pipeclose_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslo
     (kalloc_avail γk on ∨ kalloc_avail γk (avail_inc on)) -∗
     (* the link fired, or the pipe is tainted and the payment comes back *)
     pipe_cpost (pn_queue γp) w Φ true -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type PIPECLOSE.
   Parameter wp_pipeclose_sconf :

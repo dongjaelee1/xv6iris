@@ -35,7 +35,7 @@
       dirlookup READS THE DIRECTORY'S BYTES FOR THE WHOLE CALL.  Its
       [readi] loop consumes [InodeInv.inode_blocks fsc_fs bm data] from entry
       to return, and the call SLEEPS.  A mask-changing fupd cannot be held
-      open across a [WP Loop] step, so the bytes half cannot arrive at one
+      open across a [mWP Loop] step, so the bytes half cannot arrive at one
       point and leave at another; it must be in hand throughout.  And the
       record half cannot travel either: the caller ALREADY holds
       [dinode_at] (it is inside [IcacheEscrow.ic_loaded], which ilock hands
@@ -658,8 +658,8 @@ Definition wp_dirlookup_tree_body
                 = (mword_of_int 0 : mword 64)⌝ ∗
             iref_slot ∗
             (if hasp then pf ↦₄[KT1] pofv else emp)) -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 (* THE LIFTING.  A functor over the LANDED contract, not a new interface:
    SpecDirlookup does not move (R10, §20.18 ruling 1), and this file's whole

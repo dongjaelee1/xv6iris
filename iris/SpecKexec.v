@@ -1321,8 +1321,8 @@ Definition wp_kexec_frame
          [∗ list] j ∈ seq 0 (aslen i), pa_add (avf i) j ↦ₘ{dqas} afun i j) -∗
       bslots 3 -∗
       iref_slots 2 -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 (* THE CONTRACT.  The abstract state is read at the LIVE Γ; the
    descriptor view [sts] is the caller's (kexec never opens the

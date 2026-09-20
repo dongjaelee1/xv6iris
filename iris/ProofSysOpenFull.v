@@ -103,7 +103,6 @@ Require Import SpecNameiEra.
 Require Import DirentEnc.       (* [bview]: argstr's buffer as a list *)
 Require Import ArgPath.         (* [arg_path_of]: the reading of trapframe
                                    argument 0, which the walk is at *)
-Require Import SysMknodDefs.     (* [npar_elems]: the PARENT prefix (TL-3K) *)
 Require Import SysOpenDefs.
 Require Import SpecCreate.           (* [CREATE]: create's one contract   *)
 Require Import SpecSysOpen.   (* the ONE contract: the frame, the arms, [SYSOPEN] *)

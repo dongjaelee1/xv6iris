@@ -37,14 +37,11 @@ From iris.proofmode Require Import proofmode.
 From iris.base_logic.lib Require Import mono_nat own ghost_var ghost_map.
 From iris.algebra.lib Require Import mono_list.
 Require Import RiscvLang.
-Require Import ObsTrace.
 Require Import FsAbsDefs.
-Require Import AppCfg.
 Require Import AppInv.
 Require Import FsConsPin.
 Require Import EchoFsPure.
 Require Import FileFsPure.
-Require Import EchoDisc.
 Require Import EchoOut.
 Require Import AppEcho.
 Require Import AppPipeClaim.
@@ -52,10 +49,6 @@ Require Import FsTree.            (* [fname] *)
 Require Import FsAbsDelta.        (* [cre_pre] / [delta_arm] / [delta_create] *)
 Require Import FsImg.             (* [ROOTINO] *)
 Require Import FileDeltas.        (* the pure legs, upstream's, READ-ONLY *)
-Require Import FsInitPin.
-Require Import FsInitPinBoot.
-Require Import FsShPin.
-Require Import FsEchoPin.
 Require Import FsCatPin.
 Require Import ConsoleInv.        (* [CONSOLE] *)
 Local Open Scope Z_scope.

@@ -174,6 +174,16 @@ Record uart_state := UartState {
   u_scr  : bv 8;         (* scratch: a byte of storage with no semantics *)
   u_rbr  : bv 8;         (* receive holding register: the last byte in *)
   u_thri : bool;         (* the transmit interrupt LATCH *)
+  (* THE RECEIVER'S CUMULATIVE INPUT: every byte this port's receiver has
+     ACCEPTED FROM OUTSIDE since reset, in arrival order.  It is the INPUT
+     side's [u_wire]: the rx FIFO is consumed, so without it nothing in the
+     state remembers what came in, and [ObsTrace.obs_wf]'s INPUT TIE --
+     [obs_ins i (open_seg h) = u_recv (duart g i)] -- would have nothing to
+     tie the [ObsUartIn] trace to.  It grows in [uart_rx_push]'s accept arm
+     and NOWHERE else: a byte the transmitter loops back ([uart_tx_pop]
+     under LOOP) did not come from outside and emits no observation, so
+     [uart_recv] leaves it alone. *)
+  u_recv : list (bv 8);
 }.
 
 (* The FIFOs are 16 deep, which is what FCR bit 0 switches ON; with the FIFOs
@@ -275,7 +285,7 @@ Definition uart_msr (u : uart_state) : bv 8 :=
 
 (* Every arm below spells [UartState]'s fields positionally, in the record's
    own order:
-     rx  tx  out  wire  ier  lcr  fcr  dll  dlm  mcr  scr  rbr  thri
+     rx  tx  out  wire  ier  lcr  fcr  dll  dlm  mcr  scr  rbr  thri  recv
    Coq has no record-update syntax and a setter per arm would only move the
    same list somewhere else; adding a register means extending each arm here,
    and the type checker finds every one of them. *)
@@ -298,7 +308,8 @@ Definition uart_read (u : uart_state) (off : Z) : option (bv 8 * uart_state) :=
       | b :: rx' =>
           Some (b, UartState rx' (u_tx u) (u_out u) (u_wire u) (u_ier u)
                              (u_lcr u) (u_fcr u) (u_dll u) (u_dlm u)
-                             (u_mcr u) (u_scr u) (u_rbr u) (u_thri u))
+                             (u_mcr u) (u_scr u) (u_rbr u) (u_thri u)
+                             (u_recv u))
       end
   else if off =? 1 then
     if uart_dlab u then Some (u_dlm u, u) else Some (u_ier u, u)
@@ -307,7 +318,7 @@ Definition uart_read (u : uart_state) (off : Z) : option (bv 8 * uart_state) :=
           if uart_isr_thri u then
             UartState (u_rx u) (u_tx u) (u_out u) (u_wire u) (u_ier u)
                       (u_lcr u) (u_fcr u) (u_dll u) (u_dlm u)
-                      (u_mcr u) (u_scr u) (u_rbr u) false
+                      (u_mcr u) (u_scr u) (u_rbr u) false (u_recv u)
           else u)
   else if off =? 3 then Some (u_lcr u, u)
   else if off =? 4 then Some (u_mcr u, u)
@@ -322,7 +333,7 @@ Definition uart_write (u : uart_state) (off : Z) (b : bv 8) : option uart_state 
     if uart_dlab u then
       Some (UartState (u_rx u) (u_tx u) (u_out u) (u_wire u) (u_ier u)
                       (u_lcr u) (u_fcr u) b (u_dlm u)
-                      (u_mcr u) (u_scr u) (u_rbr u) (u_thri u))
+                      (u_mcr u) (u_scr u) (u_rbr u) (u_thri u) (u_recv u))
     else (* THR: push onto the transmit FIFO (dropped if full, as in hw).
             The transmitter is no longer idle, so the latch drops -- and it
             drops on the DROPPED write too: the byte is lost, but the write
@@ -330,16 +341,16 @@ Definition uart_write (u : uart_state) (off : Z) (b : bv 8) : option uart_state 
       if (length (u_tx u) <? uart_fifo_depth)%nat then
         Some (UartState (u_rx u) (u_tx u ++ [b]) (u_out u) (u_wire u) (u_ier u)
                         (u_lcr u) (u_fcr u) (u_dll u) (u_dlm u)
-                        (u_mcr u) (u_scr u) (u_rbr u) false)
+                        (u_mcr u) (u_scr u) (u_rbr u) false (u_recv u))
       else
         Some (UartState (u_rx u) (u_tx u) (u_out u) (u_wire u) (u_ier u)
                         (u_lcr u) (u_fcr u) (u_dll u) (u_dlm u)
-                        (u_mcr u) (u_scr u) (u_rbr u) false)
+                        (u_mcr u) (u_scr u) (u_rbr u) false (u_recv u))
   else if off =? 1 then
     if uart_dlab u then
       Some (UartState (u_rx u) (u_tx u) (u_out u) (u_wire u) (u_ier u)
                       (u_lcr u) (u_fcr u) (u_dll u) b
-                      (u_mcr u) (u_scr u) (u_rbr u) (u_thri u))
+                      (u_mcr u) (u_scr u) (u_rbr u) (u_thri u) (u_recv u))
     else
       (* IER holds four bits.  Enabling the transmit interrupt on an ALREADY
          idle transmitter arms the latch, because no later edge would. *)
@@ -347,7 +358,8 @@ Definition uart_write (u : uart_state) (off : Z) (b : bv 8) : option uart_state 
       Some (UartState (u_rx u) (u_tx u) (u_out u) (u_wire u) ier
                       (u_lcr u) (u_fcr u) (u_dll u) (u_dlm u)
                       (u_mcr u) (u_scr u) (u_rbr u)
-                      (u_thri u || (Z.testbit (bv_unsigned ier) 1 && uart_thre u)))
+                      (u_thri u || (Z.testbit (bv_unsigned ier) 1 && uart_thre u))
+                      (u_recv u))
   else if off =? 2 then
     (* FCR: bit 0 enables the FIFOs, bit 1 clears the receive FIFO and bit 2
        the transmit FIFO.  Bits 1 and 2 are self-clearing, so what the
@@ -364,21 +376,21 @@ Definition uart_write (u : uart_state) (off : Z) (b : bv 8) : option uart_state 
                     (u_out u) (u_wire u) (u_ier u) (u_lcr u)
                     (Z_to_bv 8 (Z.land (bv_unsigned b) 0xc9))
                     (u_dll u) (u_dlm u) (u_mcr u) (u_scr u) (u_rbr u)
-                    (u_thri u || clr_tx))
+                    (u_thri u || clr_tx) (u_recv u))
   else if off =? 3 then
     Some (UartState (u_rx u) (u_tx u) (u_out u) (u_wire u) (u_ier u)
                     b (u_fcr u) (u_dll u) (u_dlm u)
-                    (u_mcr u) (u_scr u) (u_rbr u) (u_thri u))
+                    (u_mcr u) (u_scr u) (u_rbr u) (u_thri u) (u_recv u))
   else if off =? 4 then
     (* MCR holds five bits; 7:5 read back as zero. *)
     Some (UartState (u_rx u) (u_tx u) (u_out u) (u_wire u) (u_ier u)
                     (u_lcr u) (u_fcr u) (u_dll u) (u_dlm u)
                     (Z_to_bv 8 (Z.land (bv_unsigned b) 0x1f))
-                    (u_scr u) (u_rbr u) (u_thri u))
+                    (u_scr u) (u_rbr u) (u_thri u) (u_recv u))
   else if off =? 7 then
     Some (UartState (u_rx u) (u_tx u) (u_out u) (u_wire u) (u_ier u)
                     (u_lcr u) (u_fcr u) (u_dll u) (u_dlm u)
-                    (u_mcr u) b (u_rbr u) (u_thri u))
+                    (u_mcr u) b (u_rbr u) (u_thri u) (u_recv u))
   else if (off =? 5) || (off =? 6) then Some u  (* LSR and MSR are read-only *)
   else None.
 
@@ -453,7 +465,8 @@ Definition uart_recv (u : uart_state) (b : bv 8) : uart_state :=
   UartState (if (length (u_rx u) <? uart_fifo_depth)%nat then u_rx u ++ [b]
              else u_rx u)
             (u_tx u) (u_out u) (u_wire u) (u_ier u) (u_lcr u) (u_fcr u)
-            (u_dll u) (u_dlm u) (u_mcr u) (u_scr u) b (u_thri u).
+            (u_dll u) (u_dlm u) (u_mcr u) (u_scr u) b (u_thri u)
+            (u_recv u).
 
 (* The receiver touches the receive side and nothing else, so none of the
    three quantities the UART ghosts track (WpUart.v) can move under it.
@@ -479,7 +492,8 @@ Definition uart_tx_pop (u : uart_state) : option (bv 8 * uart_state) :=
                           (if uart_loopback u then u_wire u else u_wire u ++ [b])
                           (u_ier u) (u_lcr u) (u_fcr u) (u_dll u) (u_dlm u)
                           (u_mcr u) (u_scr u) (u_rbr u)
-                          (match tx' with [] => true | _ => u_thri u end) in
+                          (match tx' with [] => true | _ => u_thri u end)
+                          (u_recv u) in
       Some (b, if uart_loopback u then uart_recv u' b else u')
   end.
 
@@ -487,7 +501,15 @@ Definition uart_tx_pop (u : uart_state) : option (bv 8 * uart_state) :=
    full, which is flow control and not an overrun: the host is told to wait,
    exactly as the machine's front end does. *)
 Definition uart_rx_push (u : uart_state) (b : bv 8) : option uart_state :=
-  if (length (u_rx u) <? uart_fifo_depth)%nat then Some (uart_recv u b)
+  if (length (u_rx u) <? uart_fifo_depth)%nat then
+    (* the accept arm, and the ONE place [u_recv] grows: this is the byte
+       that came FROM OUTSIDE, and the language emits [ObsUartIn i b] for
+       exactly this transition ([ObsTrace.uart_step_recv]).  Spelled out
+       rather than as [uart_recv u b] with one field patched, so that the
+       record's own order still reads off one constructor application. *)
+    Some (UartState (u_rx u ++ [b]) (u_tx u) (u_out u) (u_wire u) (u_ier u)
+                    (u_lcr u) (u_fcr u) (u_dll u) (u_dlm u) (u_mcr u)
+                    (u_scr u) b (u_thri u) (u_recv u ++ [b]))
   else None.
 
 (* -- the accepted-byte trace -- *)
@@ -527,7 +549,7 @@ Qed.
 Lemma uart_rx_push_acc (u : uart_state) (b : bv 8) (u' : uart_state) :
   uart_rx_push u b = Some u' -> uart_acc u' = uart_acc u.
 Proof.
-  unfold uart_rx_push, uart_recv, uart_acc.
+  unfold uart_rx_push, uart_acc.
   destruct (length (u_rx u) <? uart_fifo_depth)%nat; [| discriminate].
   intro H. injection H as <-. reflexivity.
 Qed.
@@ -672,13 +694,58 @@ Proof.
   rewrite Hlb. intro H. injection H as <- <-. done.
 Qed.
 
+(* ---- THE CUMULATIVE INPUT [u_recv], one lemma per transition ----
+
+   The receive FIFO is CONSUMED, so the only record of what came in is
+   [u_recv], and the input tie ([ObsTrace.obs_wf]) reads it against the
+   [ObsUartIn] trace.  Exactly one transition grows it -- the rx accept arm
+   -- and these say so for every other one, in the shape the [*_rx] lemmas
+   below use.  The LOOPBACK arm is the interesting negative: a byte the
+   transmitter hands back to this UART's own receiver did not come from
+   outside and emits no observation, so [uart_recv] must leave [u_recv]
+   alone or the tie would count it. *)
+Lemma uart_recv_recv (u : uart_state) (b : bv 8) :
+  u_recv (uart_recv u b) = u_recv u.
+Proof. reflexivity. Qed.
+
+Lemma uart_read_recv (u : uart_state) (off : Z) (b : bv 8) (u' : uart_state) :
+  uart_read u off = Some (b, u') -> u_recv u' = u_recv u.
+Proof.
+  unfold uart_read. intros H.
+  repeat (case_match; try discriminate); simplify_eq; reflexivity.
+Qed.
+
+Lemma uart_write_recv (u : uart_state) (off : Z) (b : bv 8) (u' : uart_state) :
+  uart_write u off b = Some u' -> u_recv u' = u_recv u.
+Proof.
+  unfold uart_write. intros H.
+  repeat (case_match; try discriminate); simplify_eq; reflexivity.
+Qed.
+
+Lemma uart_tx_pop_recv (u : uart_state) (b : bv 8) (u' : uart_state) :
+  uart_tx_pop u = Some (b, u') -> u_recv u' = u_recv u.
+Proof.
+  unfold uart_tx_pop. destruct (u_tx u) as [| b0 tx'] eqn:Htx; [discriminate|].
+  destruct (uart_loopback u); intro H; injection H as <- <-.
+  - by rewrite uart_recv_recv.
+  - reflexivity.
+Qed.
+
+Lemma uart_rx_push_recv (u : uart_state) (b : bv 8) (u' : uart_state) :
+  uart_rx_push u b = Some u' -> u_recv u' = u_recv u ++ [b].
+Proof.
+  unfold uart_rx_push.
+  destruct (length (u_rx u) <? uart_fifo_depth)%nat; [| discriminate].
+  intro H. injection H as <-. reflexivity.
+Qed.
+
 Lemma uart_rx_push_rx (u : uart_state) (b : bv 8) (u' : uart_state) :
   uart_rx_push u b = Some u' ->
   u_rx u' = u_rx u ++ [b] /\ uart_loopback u' = uart_loopback u.
 Proof.
   unfold uart_rx_push.
   destruct (length (u_rx u) <? uart_fifo_depth)%nat eqn:Hroom; [| discriminate].
-  intro H. injection H as <-. cbn [u_rx uart_recv u_mcr]. rewrite Hroom. done.
+  intro H. injection H as <-. cbn [u_rx u_mcr]. done.
 Qed.
 
 (* A THR write appends the byte to the accepted trace -- but ONLY with DLAB
@@ -809,7 +876,7 @@ Qed.
 Lemma uart_rx_push_out (u : uart_state) (b : bv 8) (u' : uart_state) :
   uart_rx_push u b = Some u' -> u_out u' = u_out u.
 Proof.
-  unfold uart_rx_push, uart_recv.
+  unfold uart_rx_push.
   destruct (length (u_rx u) <? uart_fifo_depth)%nat; [| discriminate].
   intro H. injection H as <-. reflexivity.
 Qed.
@@ -864,7 +931,7 @@ Qed.
 Lemma uart_rx_push_dlab (u : uart_state) (b : bv 8) (u' : uart_state) :
   uart_rx_push u b = Some u' -> uart_dlab u' = uart_dlab u.
 Proof.
-  unfold uart_rx_push, uart_recv.
+  unfold uart_rx_push.
   destruct (length (u_rx u) <? uart_fifo_depth)%nat; [| discriminate].
   intro H. injection H as <-. reflexivity.
 Qed.
@@ -1405,7 +1472,7 @@ Definition uart_divisor_reset : Z := 0x0c.   (* 9600 baud in DLL, DLM = 0 *)
 Definition uart0_state : uart_state :=
   UartState [] [] [] [] byte0 byte0 byte0
             (Z_to_bv 8 uart_divisor_reset) byte0
-            (Z_to_bv 8 uart_mcr_reset) byte0 byte0 false.
+            (Z_to_bv 8 uart_mcr_reset) byte0 byte0 false [].
 (* BOTH PORTS COME UP THE SAME WAY: they are the same chip on the same
    board, so the power-on state is one definition read at either index. *)
 Definition uarts0_state : uart_id -> uart_state := fun _ => uart0_state.

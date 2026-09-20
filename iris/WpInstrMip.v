@@ -101,8 +101,8 @@ Section WpInstrMip.
                     hreg_frame (mm_rs pc npc ms (minstret_inc_flag mc micfg Machine) cy ti ip' mst0 pmpcfg0 mc micfg misa0 mseccfg0 pmar0 elp0 senv0) mm_Drw ∗
                     hreg_frame_ro (mm_Df dq) (mm_rs pc npc ms (minstret_inc_flag mc micfg Machine) cy ti ip' mst0 pmpcfg0 mc micfg misa0 mseccfg0 pmar0 elp0 senv0) mm_Dro ∗ Psi)) -∗
     ▷ (mmode_config dq -∗ pmpcfg_n ↦ᵣ{ dq } pmpcfg0 -∗ pc_is npc -∗ Psi -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HmIE HMPRV HSXL HKF.
     iIntros "#Hhw Hfrag Hrw Hro Hbody Hcont".
@@ -175,8 +175,8 @@ Section WpInstrMip.
                    (∃ ip' : mword 64, (R_bitvector_64 mip) ↦ᵣ ip') ∗ R)) -∗
     ▷ (mmode_config dq -∗ pmpcfg_n ↦ᵣ{ dq } pmpcfg0 -∗
        pc_is npc -∗ gpr_file m' -∗ R -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hpmp Hstat.
     iIntros "Hmm Hpmpc Hpc Hgpr Hinstr Hex Hcont".

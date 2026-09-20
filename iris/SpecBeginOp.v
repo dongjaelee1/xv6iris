@@ -134,8 +134,8 @@ Definition wp_begin_op_sconf_body
       proc_priv_bare pj pidv Upr -∗
       (* THE reservation: a full-budget operation *)
       log_op γ MAXOPBLOCKS -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type BEGIN_OP.
   Parameter wp_begin_op_sconf :

@@ -54,8 +54,8 @@ Definition wp_memset_head_sconf_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{C
     sie_cap_gpr kt m2 (n - 2) b pcur -∗
     pc_is (add_vec_int pcE 8) -∗
     pa_ra ↦₈[kt] ra0 -∗ pa_s0 ↦₈[kt] s00 -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 (* SKIP (memset+0x08, taken): the count is zero, so the c.beqz jumps straight
    to the epilogue at +0x1e -- no byte is written and no register moves. *)
@@ -71,8 +71,8 @@ Definition wp_memset_skip_sconf_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{C
   wp_next b pcur (fun (CID : CpuId) =>
     sie_cap_gpr kt M n b pcur -∗
     pc_is (mword_of_int (KernelSyms.memset + 0x1e) : mword 64) -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 (* SETUP (memset+0x08..+0x10): the count is nonzero, so the c.beqz falls
    through; the (unsigned int) count truncation (c.slli/c.srli) and the a5
@@ -99,8 +99,8 @@ Definition wp_memset_setup_sconf_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{
   wp_next b pcur (fun (CID : CpuId) =>
     sie_cap_gpr kt m6 n b pcur -∗
     pc_is (add_vec_int pcE 20) -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 (* LOOP (memset+0x14..+0x1a).
    THE THREE tp EXCLUSIONS ARE [IntrDefs.SrcOk] INSTANCES, not premises.  Every
@@ -160,8 +160,8 @@ Definition wp_memset_loop_free_sconf_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId
     sie_cap_gpr kt (<[Regidx ra5 := regval_into_reg (ms_addr p N)]> m) n b pcur -∗
     pc_is (add_vec_int pc6 4) -∗
     ([∗ list] j ∈ seq off rem, (ms_pa (ms_addr p j)) ↦ₘ[ktb] cbyte) -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Definition wp_memset_loop_sconf_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx} (kt ktb : ktier) `{!KtierLe ktb kt} (N : nat) (p e cval : mword 64) (ra1 ra4 ra5 : mword 5) `{!SrcOk ra1, !SrcOk ra4, !SrcOk ra5} (imm_bne : mword 13) (olds : nat -> bv 8) (n : nat) (b : bool) (pcur : mword 64) :=
   let pc0 := mword_of_int (KernelSyms.memset + 0x14) in
@@ -199,8 +199,8 @@ Definition wp_memset_loop_sconf_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{C
     sie_cap_gpr kt (<[Regidx ra5 := regval_into_reg (ms_addr p N)]> m) n b pcur -∗
     pc_is (add_vec_int pc6 4) -∗
     ([∗ list] j ∈ seq off rem, (ms_pa (ms_addr p j)) ↦ₘ[ktb] cbyte) -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Definition wp_memset_suffix_sconf_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx} (kt : ktier) (M : regfile) (n : nat) (ra0e s00e : mword 64) (b : bool) (pcur : mword 64) :=
   let spd := M !!! Regidx csp_rs1 in
@@ -221,8 +221,8 @@ Definition wp_memset_suffix_sconf_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `
     ⌜ mf = <[Regidx csp_rs1 := regval_into_reg sp0up]>
            (<[Regidx (mword_of_int 8 : mword 5) := regval_into_reg s00e]>
             (<[Regidx (mword_of_int 1 : mword 5) := regval_into_reg ra0e]> M)) ⌝ -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type MEMSET_PARTS.
   Parameter wp_memset_head_sconf :

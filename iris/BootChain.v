@@ -2,7 +2,7 @@
 (* BootChain.v -- THE PER-HART BOOT CHAIN.                                 *)
 (*                                                                        *)
 (* One hart's whole life, from the residue a power-on hands it to the       *)
-(* [WP (LoopE gen c)] adequacy asks for, composed out of the three proven   *)
+(* [mWP (LoopE gen c)] adequacy asks for, composed out of the three proven  *)
 (* contracts:                                                             *)
 (*                                                                        *)
 (*   [SpecEntry.wp_entry_boot]  ([LinkEntry.Entry])   -- reset -> <main>    *)
@@ -157,8 +157,8 @@ Section BootRun.
           used to be dropped at this seam. *)
        timer_cap -∗
        pc_is (mword_of_int KernelSyms.main) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hreset.
     pose proof (reset_regs_mie _ _ Hreset) as Hmie0.
@@ -222,7 +222,7 @@ Section BootRun.
        The two cells it is made of -- [mcounteren], persisted into
        [sstc_enabled], and [stimecmp], sealed into [stimecmp_inv] -- are
        exactly what timerinit wrote and what this seam used to drop.  The
-       fupd goes in front of a [WP (Loop)] goal, so peel it with [fupd_wp]
+       fupd goes in front of a [mWP (Loop)] goal, so peel it with [fupd_wp]
        first; the [iModIntro] goes back after the bridge. *)
     iApply fupd_wp.
     iMod (timer_cap_intro ⊤ (DfracOwn 1) mcounterenf stimecmpf HmcenTM
@@ -284,7 +284,7 @@ Section BootSecondary.
        a premise and why it is not inside [boot_hart_res] *)
     own_context cur_ctx -∗
     started_inv γi ξd (main_dep γd γv) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof.
     intros Hreset Hnz.
     pose proof (fin_to_nat_lt cpu_id) as Hn.
@@ -360,6 +360,10 @@ Section BootPrimary.
     (K_kvmmake + 64 + 3 < length ps)%nat ->
     (* the disk's protocol is in its not-live arm at boot *)
     virtio_live c0 = false ->
+    (* ...AND NEITHER TRANSMITTER HAS BEEN USED (relax-d2, lane K1):
+       forwarded whole to [SpecMain], where uartinit's FCR FIFO-clear
+       spends it ([ConsLog.flush_lost]'s witness). *)
+    l0 = [] -> l1 = [] ->
     (* the console ring's names carry the RECEIVE side's, which is where the
        high-water mark's two halves live (app-echo.md, CONS-CURSOR C2) *)
     cn_uart cn = γd ->
@@ -482,9 +486,9 @@ Section BootPrimary.
     kptb_unset -∗
     kmap_auth kmap_M0 -∗
     ([∗ list] p ∈ ps, page_own p) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof.
-    intros Hreset Hz Hprun Hlen Hlive Hcnu Himg.
+    intros Hreset Hz Hprun Hlen Hlive Hl0 Hl1 Hcnu Himg.
     iIntros "#Htext #Hdata Hres Hthr #Hstarted Hprim #Hecho Hlk Hgl Hfirst Hnext Hpark Hpst Hpav Hchb
              Hfs Hmir Hirslot Hirauth #Hcert #Hseam
              #Hdev #Hwire Hinitb Htx Hsent Hlb Htok Hhi Hlgh Harm Hdlab
@@ -500,7 +504,8 @@ Section BootPrimary.
               γd1 l1 b1
               dk sb nib cov ndisk S Pb Rspent
               (register_lookup tlb rs) γi ξd (main_dep γd γv)
-              (cid_word_of_zero _ Hz) K_main_boot_le eq_refl eq_refl Hprun Hlen
+              (cid_word_of_zero _ Hz) K_main_boot_le Hl0 Hl1
+              eq_refl eq_refl Hprun Hlen
               Hlive Hcnu Himg eq_refl
               with "Hcap Hctx Hcpu Hg Htext Hdata Hpc Hstarted Hprim [] Hecho Hlk Hgl
                     Hfirst Hnext Hpark Hpst Hpav Hchb Hfs Hmir Hirslot Hirauth

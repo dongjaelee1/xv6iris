@@ -172,9 +172,9 @@ Section events.
                   (Interface.ReadReq.pa req) n w⌝ -∗
                ⌜P w⌝ -∗
                hart_rview_lb_at cpu_id tvn -∗
-               WP (HartE gen_id cpu_id (C (hread_resume (bv_unsigned w) m))
+               mWP (HartE gen_id cpu_id (C (hread_resume (bv_unsigned w) m))
                    : expr riscv_lang)))) -∗
-    WP (HartE gen_id cpu_id (C m) : expr riscv_lang).
+    mWP (HartE gen_id cpu_id (C m) : expr riscv_lang).
   Proof using .
     iIntros (HC Hproj Hdev Hif Hexcl) "#Hcert H".
     destruct (hread_req_at_inv _ _ _ Hproj) as (K & Hm & Hres).
@@ -288,9 +288,9 @@ Section events.
               tso_interp_of riscv_eraGS img σ.(mem) log V ∗
               (∀ tvn : nat, ⌜(tv <= tvn)%nat⌝ -∗ ⌜(tvn <= length log)%nat⌝ -∗
                  hart_rview_lb_at cpu_id tvn -∗
-                 WP (HartE gen_id cpu_id (C (hread_resume (bv_unsigned w) m))
+                 mWP (HartE gen_id cpu_id (C (hread_resume (bv_unsigned w) m))
                      : expr riscv_lang)))) -∗
-    WP (HartE gen_id cpu_id (C m) : expr riscv_lang).
+    mWP (HartE gen_id cpu_id (C m) : expr riscv_lang).
   Proof using .
     (* RE-DERIVED from the value-after-view rule (tso-pin-memo.md §0): the
        existential moves outside by the byte-wise determinism step that used
@@ -343,9 +343,9 @@ Section events.
               (Interface.ReadReq.pa req) n w⌝ ∗
          ▷ (|={∅,⊤}=> mstate_interp σ ∗ hart_iview_auth cpu_id itv ∗
               tso_interp_of riscv_eraGS img σ.(mem) log V ∗
-              WP (HartE gen_id cpu_id (C (hread_resume (bv_unsigned w) m))
+              mWP (HartE gen_id cpu_id (C (hread_resume (bv_unsigned w) m))
                   : expr riscv_lang))) -∗
-    WP (HartE gen_id cpu_id (C m) : expr riscv_lang).
+    mWP (HartE gen_id cpu_id (C m) : expr riscv_lang).
   Proof using .
     iIntros (HC Hproj Hdev Hif) "#Hcert H".
     destruct (hread_req_at_inv _ _ _ Hproj) as (K & Hm & Hres).
@@ -438,8 +438,8 @@ Section events.
             (resv_frag cpu_id None -∗
              view_lb view_name loglen_name (hart_agent cpu_id)
                (wstore_tv (Interface.WriteReq.access_kind req) b log tv) -∗
-             WP (HartE gen_id cpu_id (C (hwrite_resume m)) : expr riscv_lang)))) -∗
-    WP (HartE gen_id cpu_id (C m) : expr riscv_lang).
+             mWP (HartE gen_id cpu_id (C (hwrite_resume m)) : expr riscv_lang)))) -∗
+    mWP (HartE gen_id cpu_id (C m) : expr riscv_lang).
   Proof using .
     iIntros (HC Hproj Hdev) "#Hcert Hfrag H".
     destruct (hwrite_req_at_inv _ _ _ Hproj) as (K & Hm & Hres).
@@ -545,9 +545,9 @@ Section events.
                    (rtv (Interface.ReadReq.access_kind req) log tv) log V) ∗
               (resv_fragb cpu_id (Some (snap_of (Interface.ReadReq.pa req) n w))
                  (ak_acq (Interface.ReadReq.access_kind req)) -∗
-               WP (HartE gen_id cpu_id (C (hread_resume (bv_unsigned w) m))
+               mWP (HartE gen_id cpu_id (C (hread_resume (bv_unsigned w) m))
                    : expr riscv_lang)))) -∗
-    WP (HartE gen_id cpu_id (C m) : expr riscv_lang).
+    mWP (HartE gen_id cpu_id (C m) : expr riscv_lang).
   Proof using .
     iIntros (HC Hproj Hdev Hexcl) "#Hcert Hfrag H".
     destruct (hread_req_at_inv _ _ _ Hproj) as (K & Hm & Hres).
@@ -674,8 +674,8 @@ Section events.
             (resv_frag cpu_id None -∗
              view_lb view_name loglen_name (hart_agent cpu_id)
                (wstore_tv (Interface.WriteReq.access_kind req) b log tv) -∗
-             WP (HartE gen_id cpu_id (C (hwrite_resume m)) : expr riscv_lang)))) -∗
-    WP (HartE gen_id cpu_id (C m) : expr riscv_lang).
+             mWP (HartE gen_id cpu_id (C (hwrite_resume m)) : expr riscv_lang)))) -∗
+    mWP (HartE gen_id cpu_id (C m) : expr riscv_lang).
   Proof using .
     iIntros (HC Hproj Hdev Hn) "#Hcert Hfrag H".
     destruct (hwrite_req_at_inv _ _ _ Hproj) as (K & Hm & Hres).
@@ -755,9 +755,9 @@ Section events.
        ∃ (w : bv (8 * n)) (d' : dev_state),
          ⌜dev_read σ.(mdev) (Interface.ReadReq.pa req) n = Some (w, d')⌝ ∗
          ▷ (|={∅,⊤}=> mstate_interp (MState σ.(sregs) σ.(mem) d') ∗
-              WP (HartE gen_id cpu_id (C (hread_resume (bv_unsigned w) m))
+              mWP (HartE gen_id cpu_id (C (hread_resume (bv_unsigned w) m))
                   : expr riscv_lang))) -∗
-    WP (HartE gen_id cpu_id (C m) : expr riscv_lang).
+    mWP (HartE gen_id cpu_id (C m) : expr riscv_lang).
   Proof using .
     (* Proof plan: via wp_hart_step; [dev_read] is a function, so the
        arm's ∃ (w, d') is pinned by the witness equation. *)
@@ -809,8 +809,8 @@ Section events.
             (Interface.WriteReq.value req) = Some d'⌝ ∗
          ▷ (|={∅,⊤}=> mstate_interp (MState σ.(sregs) σ.(mem) d') ∗
               (resv_frag cpu_id None -∗
-               WP (HartE gen_id cpu_id (C (hwrite_resume m)) : expr riscv_lang)))) -∗
-    WP (HartE gen_id cpu_id (C m) : expr riscv_lang).
+               mWP (HartE gen_id cpu_id (C (hwrite_resume m)) : expr riscv_lang)))) -∗
+    mWP (HartE gen_id cpu_id (C m) : expr riscv_lang).
   Proof using .
     (* Proof plan: as wp_hart_dev_read, in the frag form (an MMIO write is a
        [MemWrite] event and clears the reservation). *)

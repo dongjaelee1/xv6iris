@@ -34,7 +34,7 @@
    WHERE THE RULES WENT.  [HartMCycle.swp_try_step_gen] is the wrapper,
    generic in the instruction -- the direct replacement for
    [wp_exec_step_hart_active_inv] -- and [HartMCycle.wp_loop_cycle] is the
-   boundary rule ([WP Loop] from [WP Loop], both ticks) built from it.  The
+   boundary rule ([mWP Loop] from [mWP Loop], both ticks) built from it.  The
    tick is absorbed by [HartMCycle.swp_tick_wrap], which needs no premise
    about the machine at all.
 

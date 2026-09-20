@@ -392,13 +392,13 @@ Section ProofProcdumpLoop.
            cpu_own 0%nat eb p b lks -∗
            pc_is (mword_of_int (KernelSyms.procdump + 0x8e)) -∗
            procdump_view -∗
-           WP (Loop : expr riscv_lang)) -∗
+           mWP (Loop : expr riscv_lang)) -∗
        sie_cap_gpr KT1 M K' b p -∗
        cpu_own 0%nat eb p b lks -∗
        pc_is (mword_of_int (KernelSyms.procdump + 0x6e)) -∗
        ([∗ list] k ∈ seq 0 j, proc_dump_slot (proc_addr k)) -∗
        ([∗ list] k ∈ seq j (NPROC - j), proc_dump_slot (proc_addr k)) -∗
-       WP (Loop : expr riscv_lang))%I.
+       mWP (Loop : expr riscv_lang))%I.
 
   Definition pdl_adv_body `{GEN : GenId} `{XI : CurCtx} (CID0 : CpuId)
       (spv p : mword 64) (m0 : regfile) (K' : nat) (eb b : bool)
@@ -412,13 +412,13 @@ Section ProofProcdumpLoop.
            cpu_own 0%nat eb p b lks -∗
            pc_is (mword_of_int (KernelSyms.procdump + 0x8e)) -∗
            procdump_view -∗
-           WP (Loop : expr riscv_lang)) -∗
+           mWP (Loop : expr riscv_lang)) -∗
        sie_cap_gpr KT1 Ma K' b p -∗
        cpu_own 0%nat eb p b lks -∗
        pc_is (mword_of_int (KernelSyms.procdump + 0x66)) -∗
        ([∗ list] k ∈ seq 0 (S j), proc_dump_slot (proc_addr k)) -∗
        ([∗ list] k ∈ seq (S j) (NPROC - S j), proc_dump_slot (proc_addr k)) -∗
-       WP (Loop : expr riscv_lang))%I.
+       mWP (Loop : expr riscv_lang))%I.
 
   Definition pdl_print_body `{GEN : GenId} `{XI : CurCtx} (CID0 : CpuId)
       (spv p : mword 64) (m0 : regfile) (K' : nat) (eb b : bool)
@@ -437,7 +437,7 @@ Section ProofProcdumpLoop.
            cpu_own 0%nat eb p b lks -∗
            pc_is (mword_of_int (KernelSyms.procdump + 0x8e)) -∗
            procdump_view -∗
-           WP (Loop : expr riscv_lang)) -∗
+           mWP (Loop : expr riscv_lang)) -∗
        sie_cap_gpr KT1 Mp K' b p -∗
        cpu_own 0%nat eb p b lks -∗
        pc_is (mword_of_int (KernelSyms.procdump + 0x56)) -∗
@@ -446,7 +446,7 @@ Section ProofProcdumpLoop.
        p_name (proc_addr j) 0 ↦ₛ{dq3} nm2 -∗
        ([∗ list] k ∈ seq 0 j, proc_dump_slot (proc_addr k)) -∗
        ([∗ list] k ∈ seq (S j) (NPROC - S j), proc_dump_slot (proc_addr k)) -∗
-       WP (Loop : expr riscv_lang))%I.
+       mWP (Loop : expr riscv_lang))%I.
 
   Lemma wp_pd_loop `{GEN : GenId} `{CID0 : CpuId} `{XI : CurCtx}
       (γpr : gname) (γd : uart_names) (γv : disk_names)
@@ -470,7 +470,7 @@ Section ProofProcdumpLoop.
         cpu_own 0%nat eb p b lks -∗
         pc_is (mword_of_int (KernelSyms.procdump + 0x8e)) -∗
         procdump_view -∗
-        WP (Loop : expr riscv_lang)) -∗
+        mWP (Loop : expr riscv_lang)) -∗
     ∀ (j : nat) (M : regfile),
       ⌜ (j < NPROC)%nat ⌝ -∗ ⌜ pd_regs_loop M spv j /\ pd_regs_hi m0 M ⌝ -∗
       sie_cap_gpr KT1 M K' b p -∗
@@ -478,7 +478,7 @@ Section ProofProcdumpLoop.
       pc_is (mword_of_int (KernelSyms.procdump + 0x6e)) -∗
       ([∗ list] k ∈ seq 0 j, proc_dump_slot (proc_addr k)) -∗
       ([∗ list] k ∈ seq j (NPROC - j), proc_dump_slot (proc_addr k)) -∗
-      WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK Hfresh.
     iIntros "#Hkt #Hkd #Hpenv Hqexit".

@@ -344,8 +344,8 @@ Definition wp_ialloc_sconf_body
          iref_slot ∗
          t ↪[ln_tx icfg_log]{#qt} tt ∗
          log_op icfg_log (S u)) -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 (* ---- THE CREDITED (SET-FORM) TWIN, fs-sysfile S5i, retrofit 5 of five ----
 
@@ -521,8 +521,8 @@ Definition wp_ialloc_gen_body
          iref_slot ∗
          t ↪[ln_tx icfg_log]{#qt} tt ∗
          log_opS icfg_log (S u) Sb) -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type IALLOC.
   (* the CREDITED core (fs-sysfile S5i); [wp_ialloc_sconf] is derived from

@@ -228,8 +228,8 @@ Section ProofUvmunmap.
       sie_cap_gpr KT1 mf K b p -∗
       pc_is (ret_pc (mm !!! Regidx Rra)) -∗
       ⌜callee_saved mm mf⌝ -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros spr HK Hmmsp Hjsp Hjthr.
     iIntros "Hcg #Htext Hpc Hk1 Hk2 Hk3 Hk4 Hk5 Hk6 Hk7 Hk8 Hcont".
@@ -448,7 +448,7 @@ Section ProofUvmunmap.
      pc_is (mword_of_int (KernelSyms.uvmunmap + 0x4a) : mword 64) -∗
      ptree_own 2 (DfracOwn 1) t' -∗
      Own (S done) -∗
-     WP (Loop : expr riscv_lang))%I.
+     mWP (Loop : expr riscv_lang))%I.
 
   Definition uu_store_body
       (b : bool) (p spr va : mword 64) (uroot : mword 44)
@@ -470,7 +470,7 @@ Section ProofUvmunmap.
      pc_is (mword_of_int (KernelSyms.uvmunmap + 0x46) : mword 64) -∗
      ptree_own 2 (DfracOwn 1) t -∗
      Own (S done) -∗
-     WP (Loop : expr riscv_lang))%I.
+     mWP (Loop : expr riscv_lang))%I.
 
   (* ================================================================== *)
   (*  THE LOOP (+0x50 head, +0x4a tail), by induction on the remaining    *)
@@ -539,8 +539,8 @@ Section ProofUvmunmap.
       uptg_tree (uu_fx df fx (svpn_of va) npages)
                 uroot (uu_um df um (svpn_of va) npages) -∗
       Own npages -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK Hilvl Hrange Hwf Hfx Hside.
     intro rem.
@@ -1264,8 +1264,8 @@ Section ProofUvmunmap.
       ⌜callee_saved mm mr⌝ -∗
       uptg_tree (uu_fx df fx vpn0 npages) uroot (uu_um df um vpn0 npages) -∗
       Own npages -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros pcE va vpn0 ret_tgt HK Hilvl Hroot Hval Hnpr Hdf Hrange Hside Hbelow.
     pose (sp0 := (mm !!! Regidx csp_rs1 : mword 64)).

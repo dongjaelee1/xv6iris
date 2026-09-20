@@ -716,9 +716,9 @@ hypothesis, so a proof can be half right and fail 100 lines later.
   whose printed type is identical.
 - **A persistent environment resource must be introduced with `#` in a loop**, or
   the body cannot instantiate its own IH.
-- **A section-level lemma concluding `WP Loop` cannot be applied after a
+- **A section-level lemma concluding `mWP Loop` cannot be applied after a
   crossing** — `Loop` names `cpu_id`. Give it its own `` `{CIDh : CpuId} ``
-  binder. And **`WP e` is hart-free but `WP Loop` is not**, so quantify a hart
+  binder. And **`mWP e` is hart-free but `mWP Loop` is not**, so quantify a hart
   over such a goal as `(h : CpuId)`, never `(h : CPU)`.
 - **"Wrong argument name CID" also means "you are inside the section that fixes
   it"** — section variables are discharged only at `End`, so a statement needing
@@ -845,7 +845,7 @@ section's hart, so each layer sits in its own; `End` is what turns the hart into
 an ordinary argument. Hoist `Notation`s and `Ltac`s above all the sections, and
 note a `Definition` with its own `` `{CIDh : CpuId} `` is already hart-generic —
 so the vocabulary stays in one place and only the lemmas stratify. Getting the
-count wrong shows up as `iApply: cannot apply (WP Loop)`.
+count wrong shows up as `iApply: cannot apply (mWP Loop)`.
 
 **A post-resume half must be its OWN lemma with `CID` as a binder**, in a
 separate `Section` before the main one.
@@ -1258,7 +1258,7 @@ defining one as the symbol directly compiles, but `unfold` then leaves something
   `iApply`ed, never `iMod`ed with explicit arguments** — the failure is a silent
   divergence. Same for `iCombine` on two `own`s of singleton auth-maps; use
   `iDestruct (own_op with "[$H1 $H2]")` plus `=`-rewrites.
-- **A `={E}=∗` lemma cannot be `iMod`-ed onto a `WP Loop` goal** — use `iApply
+- **A `={E}=∗` lemma cannot be `iMod`-ed onto a `mWP Loop` goal** — use `iApply
   fupd_wp. iMod (…). iModIntro.` **A fancy-update lemma with no caller is an
   untested lemma.**
 - **A stale `iDestruct` pattern can split a nested conjunction and bind the wrong

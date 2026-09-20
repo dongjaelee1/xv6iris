@@ -180,8 +180,8 @@ Section ProofGrowproc.
         ⌜callee_saved m mf /\ mf !!! Regidx Ra0 = rv⌝ -∗
         sie_cap_gpr KT1 mf av b p -∗
         pc_is (ret_pc ra0) -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hav Hsp0 Hra0 Hs00 Hs10 Hs20 Hmtsp Hmta0 Hthr.
     iIntros "Hcg #Htext Hpc Hb1 Hb2 Hb3 Hb4 Hcont".
@@ -377,8 +377,8 @@ Section ProofGrowproc.
         sie_cap_gpr KT1 Ms' (av - 4)%nat b p -∗
         pc_is (mword_of_int (KernelSyms.growproc + 0x3c) : mword 64) -∗
         p_sz p ↦₈ szv' -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Ha1 Hs2.
     iIntros "Hcg #Htext Hpc Hsz Hcont".
@@ -689,7 +689,7 @@ Section ProofGrowproc.
         ctx_word_pointsto (KTR := KT1) cur_ctx (pa_stk sp0 2) (DfracOwn 1) s00 -∗
         ctx_word_pointsto (KTR := KT1) cur_ctx (pa_stk sp0 3) (DfracOwn 1) s10 -∗
         ctx_word_pointsto (KTR := KT1) cur_ctx (pa_stk sp0 4) (DfracOwn 1) s20 -∗
-        WP (Loop : expr riscv_lang))%I
+        mWP (Loop : expr riscv_lang))%I
       with "[Hpback Hcont]" as "EXIT".
     { iIntros (CIDx Mf P' szv' rv M')
         "%Hchain %Hfsp %Hfa0 %Hfthr %Hroot %Htfp %Hszb %Hbel' %Hok Hcg Hcpu Hpc Hszc Hptc Hpt Hb1 Hb2 Hb3 Hb4".

@@ -420,8 +420,8 @@ Definition ap_tail `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ} `{GEN : GenId} `{XI : 
          ⌜ callee_saved m Mf /\ Mf !!! Regidx ap_a0 = rv ⌝ -∗
          sie_cap_gpr KT1 Mf (rsv + K)%nat xb pme -∗
          pc_is ret_tgt -∗
-         WP (Loop : expr riscv_lang)) -∗
-     WP (LoopE gen_id CIDt : expr riscv_lang))%I.
+         mWP (Loop : expr riscv_lang)) -∗
+     mWP (LoopE gen_id CIDt : expr riscv_lang))%I.
 
 (* THE GENERAL PROOF.  Everything allocproc does, at an ARBITRARY page
    budget -- so both failure tails are live code and both are proved.  The
@@ -695,7 +695,7 @@ Definition ap_pid_post `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !wchG Σ} `{GEN : 
      (* ...and the pid, registered to it in the authority this lock's
         payload carries ([PidLock.nextpid_res_at]) *)
      pid_reg pidn (DfracOwn 1) γg -∗
-     WP (Loop : expr riscv_lang))%I.
+     mWP (Loop : expr riscv_lang))%I.
 
 Section ProofAllocprocPid.
   Context `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fileG Σ, !fdslotG Σ, !irefslotG Σ, !pavG Σ, !wchG Σ}.
@@ -743,7 +743,7 @@ Section ProofAllocprocPid.
     (if tk then SlotGen.nextpid_pend
            else SlotGen.nextpid_shot ∗ SlotGen.init_reg) -∗
     wp_next false p (fun (CIDc : CpuId) => ap_pid_post (CID := CIDc) m k av n eb p lks tk Q) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hn Hav Hk Hs1 Hbelow Hpid0.
     iIntros "Hcg Hcpu #Htext Hpc #Hislock Hpidi Hpidh Hsg Htok Hcont".
@@ -954,7 +954,7 @@ Section ProofAllocprocPid.
         p_pid (proc_addr k) ↦₄{DfracOwn (1/4)} pidi -∗
         p_pid (proc_addr k) ↦₄{DfracOwn (1/2)} pidh -∗
         wp_next (CID0 := CID) false p (fun (CIDc : CpuId) => ap_pid_post (CID := CIDc) m k av n eb p lks tk Q) -∗
-        WP (Loop : expr riscv_lang)))%I with "[]" as "Hloop".
+        mWP (Loop : expr riscv_lang)))%I with "[]" as "Hloop".
     { iLöb as "IH".
       iIntros (CIDl Hsl R nv) "%HR %HRa3 %HRtr Hcg Hpc Hnp Hshares Hauth Hsg Hlocked Hcpu Hpay Hpidi Hpidh Hcont".
       (* +0x62 c.mv a1,a0 : the next counter value defaults to 1 (the wrap) *)
@@ -991,7 +991,7 @@ Section ProofAllocprocPid.
           p_pid (proc_addr k) ↦₄{DfracOwn (1/4)} pidi -∗
           p_pid (proc_addr k) ↦₄{DfracOwn (1/2)} pidh -∗
           wp_next (CID0 := CID) false p (fun (CIDc : CpuId) => ap_pid_post (CID := CIDc) m k av n eb p lks tk Q) -∗
-          WP (Loop : expr riscv_lang)))%I with "[]" as "Hbody".
+          mWP (Loop : expr riscv_lang)))%I with "[]" as "Hbody".
       { iIntros (CIDm Hsm Rm) "(%HRm & %HRma3 & %HRma1) Hcg Hpc Hnp Hshares Hauth Hsg Hlocked Hcpu Hpay Hpidi Hpidh Hcont".
         (* +0x6c auipc a5,0x11 ; +0x70 addi a5,a5,-916 : q := proc *)
         iApply (wp_auipc_s_sconf (mword_of_int (KernelSyms.allocproc + 0x6c)) ap_a5 (mword_of_int 17 : mword 20) Rm (trap_res false + av)%nat false
@@ -1048,7 +1048,7 @@ Section ProofAllocprocPid.
             p_pid (proc_addr k) ↦₄{DfracOwn (1/4)} pidi -∗
             p_pid (proc_addr k) ↦₄{DfracOwn (1/2)} pidh -∗
             wp_next (CID0 := CID) false p (fun (CIDc : CpuId) => ap_pid_post (CID := CIDc) m k av n eb p lks tk Q) -∗
-            WP (Loop : expr riscv_lang)))%I with "[]" as "Hscan".
+            mWP (Loop : expr riscv_lang)))%I with "[]" as "Hscan".
         { iIntros (CIDs Hss fuel). iInduction fuel as [|fuel] "IHf".
           { iIntros (j Rj) "%Hfuel %Hj _ _ _ _ _ _ _ _ _ _ _ _ _". exfalso. exact (ap_fuel0 j Hfuel Hj). }
           iIntros (j Rj) "%Hfuel %Hj (%HRj & %HRja3 & %HRja1 & %HRja5) %Hfresh Hcg Hpc Hnp Hshares Hauth Hsg Hlocked Hcpu Hpay Hpidi Hpidh Hcont".
@@ -1842,7 +1842,7 @@ Section ProofAllocproc.
                        pc_is ret_tgt -∗
                        allocproc_post γa γk γf γs lvl eb pme on op tk b lks mr K Q
                          (mr !!! Regidx ap_a0) -∗
-                       WP (Loop : expr riscv_lang)) -∗
+                       mWP (Loop : expr riscv_lang)) -∗
                    sie_cap_gpr KT1 Mk (K - 4)%nat b pme -∗
                    cpu_own lvl eb pme b lks -∗
                    kalloc_env_at γa γk on -∗
@@ -1854,7 +1854,7 @@ Section ProofAllocproc.
                    procs_avail_at op tk -∗
                    ([∗ list] i ∈ seq 0 k, pslot_used i) -∗
                    pc_is (mword_of_int (KernelSyms.allocproc + 0x1c)) -∗
-                   WP (Loop : expr riscv_lang)))%I with "[]" as "Hloop".
+                   mWP (Loop : expr riscv_lang)))%I with "[]" as "Hloop".
     { iIntros (fuel). iInduction fuel as [|fuel IHf] "IHf".
       { iIntros (CIDk Hsk k Mk) "%Hfuel %Hk _ _ _ _ _ _ _ _ _". exfalso. exact (ap_fuel0 k Hfuel Hk). }
       iIntros (CIDk Hsk k Mk) "%Hfuel %Hk %Hregs Htl Hcont Hcg Hcpu Henv Hpav #Hacc Hpc".

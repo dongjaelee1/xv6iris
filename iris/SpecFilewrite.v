@@ -182,7 +182,6 @@ Require Import FsBytesGamma.     (* [fs_gamma_L]: the live Γ                 *)
 Require Import SpecCopyin.       (* [ubytes_at]: the content seam (RULING A) *)
 Require Import SysWriteDefs.   (* [FW_MAX], [wri_pre], [wchunks]           *)
 Require Import FsAbsWriteFire.   (* [awrite_chain]: the cursor chain         *)
-Require Import UserOff.          (* [uoff]: the HELD row's link (lane OFF-LINK-4) *)
 Require Import SpecConsolewrite. (* [cons_out_chain]: the callee's premise  *)
 Require Import SpecUartPutc.     (* [uart_base_word]: relayed to consolewrite *)
 Require Import TsoCtx.
@@ -1290,8 +1289,8 @@ Definition wp_filewrite_sconf_body
          stop position on an inode, the accepted-trace receipt on the
          console, nothing anywhere else. *)
       filewrite_arms (pv_gen (us_V U)) (pv_upt (us_V U)) st n (us_M U) uaddr Q Qe r -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 (* ONE MODULE TYPE: there is no parallel statement pinned to an inode or to
    the console, and no second walk against the code.  The arms are keyed on

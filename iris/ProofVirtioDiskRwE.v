@@ -219,8 +219,8 @@ Section VdrweLeaves.
       sie_cap_gpr KT1 (<[Regidx rd := regval_into_reg (sign_extend' 64 w)]> m) n false pme -∗
       pc_is (add_vec_int pc 4) -∗
       vdrwe_polled γd nr q dc w -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hea Hrd Hrdok.
     iIntros "Hcg Hpc Hinstr Hrow Hcont".
@@ -331,7 +331,7 @@ Section ProofVirtioDiskRwE.
        vdrw_slot_rest m2 -∗ vdrw_slot_rest t -∗
        vdrw_idx (KTR := KT1) sp0 (mword_of_int (Z.of_nat h)) (mword_of_int (Z.of_nat m2))
                     (mword_of_int (Z.of_nat t)) -∗
-       WP (Loop : expr riscv_lang)))%I.
+       mWP (Loop : expr riscv_lang)))%I.
 
   (* what the completion-wait loop head at +0x1b4 consumes.  The lock's
      resource is CLOSED here (sleep takes it as [Rk]); what survives an
@@ -372,7 +372,7 @@ Section ProofVirtioDiskRwE.
         /\ pm_ok (vdrwd_pinr_regions pd b h m2 t wr sector
                     (vdrwd_bufwin b wr bs_buf))⌝ -∗
        vdrw_p5_exit CID0 γk γs j γd pd pav pu K eb sp0 b wr sector bs_buf bs_disk m0 kq lks -∗
-       WP (Loop : expr riscv_lang)))%I.
+       mWP (Loop : expr riscv_lang)))%I.
 
   (* ------------------------------------------------------------------- *)
   (* P5, packaged as the wand P4 consumes.                                 *)

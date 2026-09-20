@@ -95,8 +95,8 @@ Definition wp_uvmdealloc_mem_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ} `
              (uint (uvmd_rsz oldsz newsz))
              (umem_del M (uint (pgroundup newsz))
                 (4096 * uvmd_np oldsz newsz)) -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type UVMDEALLOC.
   Parameter wp_uvmdealloc_mem_sconf :

@@ -610,8 +610,8 @@ Section UserStepWaitArm.
     hw_config -∗
     user_regs (HART_WAITING (wr, ib)) ms_v sc_v stval_v sepc_v va va' g -∗
     user_pt_any pt -∗ user_cfg C -∗ Rut pt -∗
-    ▷ (user_inv C pt Rut -∗ WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+    ▷ (user_inv C pt Rut -∗ mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hwr Hmsok.
     iIntros "#Hhw Hregs Hupt Hcfg Hrut Hcont".
@@ -775,7 +775,7 @@ Section UserStepObligation.
     user_step_obligation_active C pt Rut -∗
     user_inv C pt Rut -∗
     ▷ stvec_handler_wp C pt Rut -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros "#Hhw #Hactive Hinv Htrap".
     iApply (wp_user_exec with "[] Hinv Htrap").

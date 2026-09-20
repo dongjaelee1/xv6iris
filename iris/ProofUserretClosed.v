@@ -26,7 +26,7 @@
    relation is stated at, then [UexecRound.uround_ok]'s own arm picks which
    of [uexec_ret]'s arms pays), meets [uslot]'s guard by computation, and
    builds the U-mode bundle ([UexecApply.ukc_apply], step D).  Everything
-   between the round's post and the next [WP Loop] is in those two named
+   between the round's post and the next [mWP Loop] is in those two named
    lemmas: this is a whole-function continuation, so an inline discharge
    would be paid at every step of the walk (optimization.md, RULE ONE).
 
@@ -317,7 +317,7 @@ Section UserretClosed.
             (Rut_at h sz γfd cw (uvis_gen W) (uvis_ch W) (uvis_pid W) lz) sz sc stv W
           ∗ FdSlots.fd_frags γfd (uvis_fd W)
           ∗ uexec_ret sc W) -∗
-         WP (Loop : expr riscv_lang)).
+         mWP (Loop : expr riscv_lang)).
   Proof using .
     intros Hj.
     iIntros "#Hkt #Hclaim #Hwire".

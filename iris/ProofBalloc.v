@@ -258,7 +258,7 @@ Section BallocDefs.
             fsblock (fs_bytes γfs) (bv_unsigned blk) (replicate BSIZE (bv_0 8)) ∗
             log_opS γ (if cr then S u else u)
                       (Sb ∪ {[bmapstart]} ∪ {[bv_unsigned blk]}))) -∗
-        WP (Loop : expr riscv_lang))%I.
+        mWP (Loop : expr riscv_lang))%I.
 
   
   (* ONE BYTE of a buffer's data area, borrowed and given back at a new byte
@@ -367,7 +367,7 @@ Section BallocEpilogue.
     ba_arms γfs γ cov logstart bmapstart size u cr Sb rv -∗
     ba_cont (CID0 := CID0) γfs bn γ cov logstart bmapstart size u cr Sb
             pidv dq dqb dqs j m K eb b lks Upr -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK Hsp Hthr Hs1.
     pose proof HK as HK'. 
@@ -633,7 +633,7 @@ Section BallocOut.
     log_opS γ (2 + u) Sb -∗
     ba_cont (CID0 := CID0) γfs bn γ cov logstart bmapstart size u cr Sb
             pidv dq dqb dqs j m K eb b lks Upr -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK Hsp Hthr.
     pose proof HK as HK'. 
@@ -1023,7 +1023,7 @@ Section BallocExhaust.
     bio_locked bn (fs_view γfs γd dev cov) kk pidv dev bnoB bsX bsdX dX -∗
     ba_cont (CID0 := CID0) γfs bn γ cov logstart bmapstart size u cr Sb
             pidv dq dqb dqs j m K eb b lks Upr -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK Hsize Hsp Hthr Hs2 Hs5 Hs6 Hs8 Hkk Hbelow.
     pose proof HK as HK'. 
@@ -1240,7 +1240,7 @@ Section BallocRestore.
     log_opS γ (if cr then S u else u) (Sb ∪ {[bmapstart]} ∪ {[bv_unsigned rv]}) -∗
     ba_cont (CID0 := CID0) γfs bn γ cov logstart bmapstart size u cr Sb
             pidv dq dqb dqs j m K eb b lks Upr -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK Hsp Hthr Hs1 Hnz Hcv Hlg.
     pose proof HK as HK'. 
@@ -1520,7 +1520,7 @@ Section BallocBzero.
     fsblock (fs_bytes γfs) bi bsD -∗
     ba_cont (CID0 := CID0) γfs bn γ cov logstart bmapstart size u cr Sb
             pidv dq dqb dqs j m K eb b lks Upr -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK Hsize Hbirange Hbicov Hbilog Hbinz HbsDlen Hj Hgl Hsp Hthr Hs1 Hs7 Hbelow.
     pose proof HK as HK'. 
@@ -2112,7 +2112,7 @@ Section BallocAlloc.
        (bitmap_bytes used) bsdX dX -∗
     ba_cont (CID0 := CID0) γfs bn γ cov logstart bmapstart size u cr Sb
             pidv dq dqb dqs j m K eb b lks Upr -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK Hgeom Hsize Hbirange Hbinu Hok HbnoB Hbmcov Hbmlog Hkk Hj Hgl
            Hsp Hthr Ha5 Ha2 Ha3 Hs1 Hs2 Hs7 Hcred Hbelow.
@@ -2580,7 +2580,7 @@ Section BallocScan.
        (bitmap_bytes used) bsdX dX -∗
     ba_cont (CID0 := CIDx) γfs bn γ cov logstart bmapstart size u cr Sb
             pidv dq dqb dqs j m K eb b lks Upr -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK Hgeom Hsize HbnoB Hbmcov Hbmlog Hok Hkk Hj Hgl Hcred.
     pose proof HK as HK'. 
@@ -3449,8 +3449,8 @@ Section BallocMain.
               fsblock (fs_bytes γfs) (bv_unsigned blk) (replicate BSIZE (bv_0 8)) ∗
               log_opS γ (if cr then S u else u)
                         (Sb ∪ {[bmapstart]} ∪ {[bv_unsigned blk]}))) -∗
-          WP (Loop : expr riscv_lang)) -∗
-      WP (Loop : expr riscv_lang).
+          mWP (Loop : expr riscv_lang)) -∗
+      mWP (Loop : expr riscv_lang).
   Proof using .
     intros pcE pj ret_tgt HK Hgeom Hsize Hbm0 Hbmcov Hbmlog Hcred Hj Hgl Ha0 Hbelow.
     pose proof HK as HK'. 

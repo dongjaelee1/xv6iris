@@ -50,7 +50,7 @@ Require Import RegFile.
 Require Import WpMmodeLeafBase.
 Require Import UmodeArith UmodeAbi.
 Require Import UserHeap UkRun UkRunLeaf UkRunMem.
-Require Import UCodeShK UCodeShP.
+Require Import UCodeShP.
 Require Import CtxIdDefs.
 Require User.ShSyms User.ShInstrs.
 Require Import ChildTok.
@@ -59,7 +59,6 @@ Import Defs.
 Require Import UserFd.
 Require Import UkSh.
 Require Import UkShParse.
-Require Import UkShParseSym.
 Require Import UkShParseLex.
 
 Require Import UexecSG.
@@ -193,8 +192,8 @@ Section UkShRedirCmd.
        UMalloc' -∗
        Pex -∗
        urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (8 + (10 + nn)) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using ushp_malloc_ok.
     intros Ha0 Ha1 Ha2 Ha3 Ha4 Hmode Hfd.
     iIntros "#Hcode HM #Hpx Hpay Hsub Hrun Hcont".
@@ -984,8 +983,8 @@ Section UkShRedirCmd.
        UMalloc' -∗
        Pex -∗
        urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (8 + (10 + nn)) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using ushp_malloc_ok.
     intros Ha0 Ha1 Ha2 Ha3 Ha4 Hmode Hfd.
     iIntros "#Hcode HM #Hpx Hpay Hsub Hrun Hcont".

@@ -28,8 +28,6 @@
 From Stdlib Require Import ZArith Bool Lia List.
 From stdpp Require Import gmap bitvector.definitions.
 Require Import RiscvModelBytes.
-Require Import UmodeAbi.
-Require Import UCodeShP.
 Require Import LineWords.
 Require Import EchoDisc.
 Require Import FileDisc.   (* [uline] / [line_bytes] / [fname_f] -- the line

@@ -1080,7 +1080,7 @@ Section PinnedObsPar.
                       app_pred app_run v ∗ (⌜Pin v⌝ ∨ T)) -∗
     app_inv γfs -∗
     ep_hop γfs (pobs_P T hops) Pmiss k s.
-  Proof.
+  Proof using .
     intros (_ & _ & Hpin) Hk. iIntros "#Hmt #Hcl #Hinv".
     rewrite /ep_hop /ax_hop /pobs_P.
     iIntros (d0 ents dqv) "HP HF".
@@ -1120,7 +1120,7 @@ Section PinnedObsPar.
                       app_pred app_run v ∗ (⌜Pin v⌝ ∨ T)) -∗
     app_inv γfs -∗
     ep_start γfs cw (pobs_P T hops) Pmiss pl.
-  Proof.
+  Proof using .
     intros Hres. iIntros "#Hmt #Hcl #Hinv".
     pose proof Hres as Hres'. destruct Hres' as (Hstart & _ & _).
     rewrite /ep_start. iIntros (r Hr). iModIntro. iSplitR.
@@ -1140,7 +1140,7 @@ Section PinnedObsPar.
       (cw : Z) (pl : list (bv 8)) (hops : list Z) (d d' : Z) :
     pin_pwalks_at Pin cw pl hops d ->
     pobs_P T hops (length (np_elems pl)) d' -∗ ⌜d' = d⌝ ∨ T.
-  Proof.
+  Proof using .
     intros (_ & Hfin & _). rewrite /pobs_P.
     iIntros "[%Hd | HT]"; [ | iRight; iExact "HT" ].
     iLeft. iPureIntro. by rewrite Hd Hfin.
@@ -1160,7 +1160,7 @@ Section PinnedObsPar.
       ep_start γfs cw (pobs_P T hops) Pmiss pl
       ∗ □ (∀ d' : Z,
              pobs_P T hops (length (np_elems pl)) d' -∗ ⌜d' = d⌝ ∨ T).
-  Proof.
+  Proof using .
     intros Hres. iIntros "#Hmt #Hcl #Hinv". iSplitL.
     { iApply (pobs_pwalk γfs Pin T Pmiss cw pl hops d
                 (pin_pwalks_at_of_presolves _ _ _ _ _ _ Hres)
@@ -1222,7 +1222,7 @@ Section PinnedObsPar.
                       app_pred app_run v ∗ K ∗ (⌜Pin v⌝ ∨ T)) -∗
     app_inv γfs -∗
     ep_hop γfs (pobs_P_lin T hops K) Pmiss k s.
-  Proof.
+  Proof using .
     intros (_ & _ & Hpin) Hk. iIntros "#Hmt #Hcl #Hinv".
     rewrite /ep_hop /ax_hop /pobs_P_lin.
     iIntros (d0 ents dqv) "HP HF".
@@ -1267,7 +1267,7 @@ Section PinnedObsPar.
     app_inv γfs -∗
     K -∗
     ep_start γfs cw (pobs_P_lin T hops K) Pmiss pl.
-  Proof.
+  Proof using .
     intros Hres. iIntros "#Hmt #Hcl #Hinv HK".
     pose proof Hres as Hres'. destruct Hres' as (Hstart & _ & _).
     rewrite /ep_start. iIntros (r Hr). iModIntro. iSplitL "HK".
@@ -1286,7 +1286,7 @@ Section PinnedObsPar.
       (cw : Z) (pl : list (bv 8)) (hops : list Z) (d d' : Z) :
     pin_pwalks_at Pin cw pl hops d ->
     pobs_P_lin T hops K (length (np_elems pl)) d' -∗ (⌜d' = d⌝ ∗ K) ∨ T.
-  Proof.
+  Proof using .
     intros (_ & Hfin & _). rewrite /pobs_P_lin.
     iIntros "[[%Hd HK] | HT]"; [ | iRight; iExact "HT" ].
     iLeft. iFrame "HK". iPureIntro. by rewrite Hd Hfin.
@@ -1334,7 +1334,7 @@ Section PinnedObsAbsLin.
                       app_pred app_run v ∗ K ∗ (⌜Pin v⌝ ∨ T)) -∗
     app_inv γfs -∗
     ex_hop γfs (pobs_P_lin T hops K) Pmiss k s.
-  Proof.
+  Proof using .
     intros (_ & _ & Hpin) Hk. iIntros "#Hmt #Hcl #Hinv".
     rewrite /ex_hop /ax_hop /pobs_P_lin.
     iIntros (d0 ents dqv) "HP HF".
@@ -1375,7 +1375,7 @@ Section PinnedObsAbsLin.
     app_inv γfs -∗
     K -∗
     ex_start γfs cw (pobs_P_lin T hops K) Pmiss pl.
-  Proof.
+  Proof using .
     intros Hres. iIntros "#Hmt #Hcl #Hinv HK".
     pose proof Hres as Hres'. destruct Hres' as (Hstart & _ & _).
     rewrite /ex_start. iIntros (r Hr). iModIntro. iSplitL "HK".
@@ -1400,7 +1400,7 @@ Section PinnedObsAbsLin.
     pobs_P_lin T hops K (length (path_elems pl)) i -∗
     pobs_recv Pin T v i b -∗
     ⌜i = ino /\ an_node b = nd⌝ ∨ T.
-  Proof.
+  Proof using .
     intros ((_ & Hfin & _) & Hpin).
     rewrite /pobs_P_lin /pobs_recv.
     iIntros "HP [%Hrow Hc]".
@@ -1428,7 +1428,7 @@ Section PinnedObsAbsLin.
     K -∗
     pf_at (aopen_commit_at (fs_gamma_L γfs) appE)
       (MkPfam (pobs_recv Pin T) K).
-  Proof.
+  Proof using .
     iIntros "#Hcl #Hinv HK". rewrite /pf_at. cbn [pf_recv pf_refund].
     iSplit; [| iExact "HK" ].
     rewrite /aopen_commit_at /pobs_recv. iIntros (I i a) "%Hrow Hka".

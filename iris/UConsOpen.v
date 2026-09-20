@@ -66,7 +66,6 @@ Require Import FsAbsEra.           (* [ex_start] / [ex_hop] / [elend] *)
 Require Import SysOpenDefs SpecSysOpen.
 Require Import FsConsPin.
 Require Import PinnedObs.
-Require Import AppEcho.
 Require Import EchoOut.            (* [echoOutG]: the class [AppEcho]'s claims
                                       and its ledger are stated at (lane
                                       ECHO-OUT part 5).  It CARRIES
@@ -152,9 +151,9 @@ Section UConsOpen.
 
   (* A FANCY UPDATE IN FRONT OF THE TRIVIAL-POST WP.  [RiscvPtsto.wp_triv]
      is a DEFINITION, so the proofmode's [ElimModal] instance for [wp] does
-     not see through it and [iMod] fails against a bare [WP e] goal; this
+     not see through it and [iMod] fails against a bare [mWP e] goal; this
      is [fupd_wp] with the definition peeled. *)
-  Lemma fupd_wp_triv (e : expr riscv_lang) : (|={⊤}=> WP e) ⊢ WP e.
+  Lemma fupd_wp_triv (e : expr riscv_lang) : (|={⊤}=> mWP e) ⊢ mWP e.
   Proof using . rewrite /wp_triv. iIntros "H". iApply fupd_wp. iExact "H". Qed.
 
   (* =================================================================== *)

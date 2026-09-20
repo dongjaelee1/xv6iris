@@ -415,8 +415,8 @@ Definition wp_initlog_sconf_body
          that instantiates [γ := icfg_log] gets back exactly the conjunct
          [FsReady.fs_ready] asks for. *)
       log_ctx γ bn γfs cov logstart dev -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type INITLOG.
   Parameter wp_initlog_sconf :

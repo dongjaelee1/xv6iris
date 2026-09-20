@@ -2417,14 +2417,20 @@ Proof using.
   apply Forall_impl with (P := wl_body_byte); [exact Hr | exact fbody_byte_of_body].
 Qed.
 
-(* THE COMPATIBILITY, at the whole history: nothing about the echo
-   application's claim changes at an echo-only history. *)
+(* THE COMPATIBILITY, at the whole history: a file session that is
+   echo-only is disciplined for the echo application too.
+
+   IT IS ONE WAY.  [disc_pt_f] asks, at every input point, for the
+   transcript of the WHOLE input typed so far; [EchoDisc.disc_pt] asks only
+   for the input's COMPLETE LINES.  So a user who types a line as a burst
+   is inside the echo application's discipline and outside this one --
+   which is by design: the file application keeps the per-byte rule. *)
 Lemma disc_f_disc h :
-  Forall disc_seg (cycles_of h) -> (disc_f h <-> disc h).
+  Forall disc_seg (cycles_of h) -> disc_f h -> disc h.
 Proof using.
-  intro HD. split.
+  intros HD Hf.
   - (* the file model's discipline is the echo model's *)
-    intro Hf. apply Forall_lookup. intros i seg Hi.
+    apply Forall_lookup. intros i seg Hi.
     assert (Hds : disc_seg seg) by (exact (Forall_lookup_1 _ _ _ _ HD Hi)).
     assert (He : echo_only (ins seg)) by (by destruct Hds as (? & _ & _)).
     destruct (Forall_lookup_1 _ _ _ _ Hf Hi)
@@ -2449,32 +2455,8 @@ Proof using.
     destruct (Hall p Hp) as [Hok Hpt].
     split.
     + by apply (pro_ok_f_ok ps cs (nlines (ins p)) Hc4).
-    + rewrite /disc_pt -(sessf_sess ps cs s (ins p) Hep Hc4). exact Hpt.
-  - (* ...and back, at the absent file, which an echo line never touches *)
-    intro He. apply Forall_lookup. intros i seg Hi.
-    assert (Hds : disc_seg seg) by (exact (Forall_lookup_1 _ _ _ _ HD Hi)).
-    assert (Heo : echo_only (ins seg)) by (by destruct Hds as (? & _ & _)).
-    destruct (Forall_lookup_1 _ _ _ _ He Hi)
-      as (_ & (ps & cs & Hlen & Hlt4 & Hall)).
-    exists None. split; [exact I |].
-    split; [exact (disc_input_f_of_echo _ Heo Hds) |].
-    exists ps, cs. split; [exact (alts_ok_of_lt4 _ _ Heo Hlen Hlt4) |].
-    intros p Hp.
-    assert (Hple : ins p `prefix_of` ins seg)
-      by (apply ins_prefix;
-          exact (proj1 (Forall_forall _ _) (in_pres_prefix_all seg) p Hp)).
-    assert (Hep : echo_only (ins p)) by (exact (echo_only_prefix _ _ Hple Heo)).
-    assert (Hnl : (nlines (ins p) <= nlines (ins seg))%nat)
-      by (by apply nlines_prefix).
-    assert (Hc4 : forall j, (j < nlines (ins p))%nat -> (cs !!! j < 4)%nat).
-    { intros j Hj.
-      destruct (lookup_lt_is_Some_2 cs j ltac:(lia)) as [c Hc].
-      rewrite (list_lookup_total_correct _ _ _ Hc).
-      exact (Forall_lookup_1 _ _ _ _ Hlt4 Hc). }
-    destruct (Hall p Hp) as [Hok Hpt].
-    split.
-    + by apply (pro_ok_f_ok ps cs (nlines (ins p)) Hc4).
-    + rewrite /disc_pt_f (sessf_sess ps cs None (ins p) Hep Hc4). exact Hpt.
+    + apply disc_pt_of_strict.
+      rewrite -(sessf_sess ps cs s (ins p) Hep Hc4). exact Hpt.
 Qed.
 
 (* ====================================================================== *)

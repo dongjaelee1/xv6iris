@@ -147,8 +147,8 @@ Section ProofPrintint.
       sie_cap_gpr kt mf K b pcur -∗
       pc_is (ret_pc (m !!! Regidx ra_idx)) -∗
       ⌜ callee_saved m mf /\ mf !!! Regidx ra_idx = m !!! Regidx ra_idx ⌝ -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros sp0 spd HK Hsp Hagree.
     iIntros "Hcg #Htext Hpc Hc1 Hc2 Hc3 Hc4 Hc5 Hc6 Hc7 Hc8 Hcont".
@@ -303,8 +303,8 @@ Section ProofPrintint.
       sie_cap_gpr kt mb (K - 8)%nat b pcur -∗
       pc_is (mword_of_int (KernelSyms.printint + 0x40) : mword 64) -∗
       bytes_own (KTR := kt) (DfracOwn 1) buf 24 -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hi24 Hi31 Hbase Ha0 Ha3 Ha4 Ha6.
     iIntros "Hcg #Htext #Hdig Hpc Hbuf Hcont".
@@ -542,8 +542,8 @@ Section ProofPrintint.
       sie_cap_gpr kt mf (K - 8)%nat b pcur -∗
       pc_is (mword_of_int (KernelSyms.printint + 0x44) : mword 64) -∗
       bytes_own (KTR := kt) (DfracOwn 1) buf 24 -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     induction f as [|f' IH]; intros i CID0 x md Hif Hxf Hbase Ha0 Ha3 Ha4 Ha6;
       iIntros "Hcg #Htext #Hdig Hpc Hbuf Hcont";
@@ -677,8 +677,8 @@ Section ProofPrintint.
       cpu_own n eb pcur b lks -∗
       pc_is (mword_of_int (KernelSyms.printint + 0x82) : mword 64) -∗
       bytes_own (KTR := kt) (DfracOwn 1) buf 24 -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof.
     intros HK Hn31.
     assert (HK16 : (prputc_stack <= K - 8)%nat) by (lia).
@@ -845,8 +845,8 @@ Section ProofPrintint.
       cpu_own n eb pcur b lks -∗
       pc_is (ret_pc (m !!! Regidx ra_idx)) -∗
       ⌜ callee_saved m mf /\ mf !!! Regidx ra_idx = m !!! Regidx ra_idx ⌝ -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof.
     intros sp0 spd buf HK Hn31 Hn1 Hn22 Ha4 Hsp Hs2 Hkept Hal7 Hal6 Hal5 Hlkbelow.
     iIntros "Hcg Hcnt #Htext Hpc Hbuf Hc1 Hc2 Hc3 Hc4 Hc8 #Hpre Hcont".
@@ -1078,8 +1078,8 @@ Section ProofPrintint.
       cpu_own n eb pcur b lks -∗
       pc_is (ret_pc (m !!! Regidx ra_idx)) -∗
       ⌜ callee_saved m mf /\ mf !!! Regidx ra_idx = m !!! Regidx ra_idx ⌝ -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof.
     intros sp0 spd buf HK Hn31 Hbase Ha0 Hsp Hs0 Hkept Hal7 Hal6 Hal5 Hlkbelow.
     iIntros "Hcg Hcnt #Htext #Hdig Hpc Hbuf Hc1 Hc2 Hc3 Hc4 Hc8 #Hpre Hcont".

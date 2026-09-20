@@ -249,8 +249,8 @@ Definition wp_balloc_sconf_body
              [InodeInv.inode_fresh]).  Without it bmap is unprovable. *)
           fsblock (fs_bytes γfs) (bv_unsigned blk) (replicate BSIZE (bv_0 8)) ∗
           log_op γ u)) -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 (* ===================================================================== *)
 (*  THE CREDITED FORM -- balloc's contract with the LOG'S ALREADY-LOGGED  *)
@@ -370,8 +370,8 @@ Definition wp_balloc_gen_body
           fsblock (fs_bytes γfs) (bv_unsigned blk) (replicate BSIZE (bv_0 8)) ∗
           log_opS γ (if cr then S u else u)
                     (Sb ∪ {[bmapstart]} ∪ {[bv_unsigned blk]}))) -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type BALLOC.
   (* THE CREDITED / GENERAL FORM; [wp_balloc_sconf] below is its

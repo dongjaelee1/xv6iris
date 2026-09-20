@@ -572,8 +572,8 @@ Section VdrwfP6.
         cpu_own 1 eb pme false lks -∗
         pc_is (mword_of_int (KernelSyms.virtio_disk_rw + 0x20c) : mword 64) -∗
         free_bundles γd pd (fr_upd fr i true) -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hav Hi8 Hfri Hlen Hs2 Hs3 Hbelow.
     iIntros "Hcg Hown #Htext Hpc #Hpinv #Hdp Hd0 Hd8 Hd12 Hd14 Hbun Hrest Hfrag Hcont".
@@ -814,7 +814,7 @@ Section VdrwfP6.
         (* THE RECEIPT: what the client's own sequential view shift produced,
            delivered at the leaf -- the request's completion. *)
         ▷ Q -∗
-        WP (Loop : expr riscv_lang)) -∗
+        mWP (Loop : expr riscv_lang)) -∗
     P5.vdrw_p5_exit CID γk γs j γd pd pav pu K eb sp0 b wr sector bs_buf
                     bs_disk m kq lks.
   Proof using .

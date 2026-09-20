@@ -247,7 +247,7 @@ Section UkLeaf.
                       (regval_into_reg wval))) ->
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ukcq Qp π M sz fdv cw gn cs pidv (<[Regidx rd := regval_into_reg wval]> m) (add_vec_int pc (if is_rvc then 2 else 4)) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Hred Hlpad Hrd Hg1 Hg2 Hop.
     iIntros "Hb Hcont".
@@ -282,7 +282,7 @@ Section UkLeaf.
     wval = vf (m !!! Regidx rs1) ->
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ukcq Qp π M sz fdv cw gn cs pidv (<[Regidx rd := regval_into_reg wval]> m) (add_vec_int pc (if is_rvc then 2 else 4)) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Hred Hlpad Hrd Hg1 Hg2 Hop Hwval.
     iIntros "Hb Hcont".
@@ -321,7 +321,7 @@ Section UkLeaf.
     wval = vf (m !!! Regidx rs1) (m !!! Regidx rs2) ->
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ukcq Qp π M sz fdv cw gn cs pidv (<[Regidx rd := regval_into_reg wval]> m) (add_vec_int pc (if is_rvc then 2 else 4)) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Hred Hlpad Hrd Hg1 Hg2 Hop Hwval.
     iIntros "Hb Hcont".
@@ -358,7 +358,7 @@ Section UkLeaf.
     wval = add_vec zero_reg (sign_extend' 64 (sign_extend' 12 imm)) ->
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ukcq Qp π M sz fdv cw gn cs pidv (<[Regidx rd := regval_into_reg wval]> m) (add_vec_int pc 2) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Hrd Hwval.
     iIntros "Hb Hcont".
@@ -400,7 +400,7 @@ Section UkLeaf.
     wval = add_vec (m !!! Regidx rd) (sign_extend' 64 (sign_extend' 12 imm)) ->
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ukcq Qp π M sz fdv cw gn cs pidv (<[Regidx rd := regval_into_reg wval]> m) (add_vec_int pc 2) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Hrd Hwval.
     exact (wp_uk_alu1 M m pc fdv cw gn cs pidv true (C_ADDI (imm, Regidx rd))
@@ -433,7 +433,7 @@ Section UkLeaf.
              (sign_extend' 64 (caddi4spn_imm nzimm)) ->
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ukcq Qp π M sz fdv cw gn cs pidv (<[Regidx rd := regval_into_reg wval]> m) (add_vec_int pc 2) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Hcr Hrd Hwval.
     assert (Hred : uv_redirect (C_ADDI4SPN (Cregidx cr, nzimm))
@@ -487,7 +487,7 @@ Section UkLeaf.
     eq_vec (access_vec_dec tgt 0) ('b"0") = true ->
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ukcq Qp π M sz fdv cw gn cs pidv (<[Regidx rd := regval_into_reg wval]> m) tgt -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Hrd Htgt Hwval Hal0.
     iIntros "Hb Hcont".
@@ -533,7 +533,7 @@ Section UkLeaf.
     tgt = ret_pc (m !!! Regidx rs1) ->
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ukcq Qp π M sz fdv cw gn cs pidv m tgt -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Hrs1 Htgt.
     iIntros "Hb Hcont".
@@ -591,7 +591,7 @@ Section UkLeaf.
              (sign_extend' 64 (caddi16sp_imm imm)) ->
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ukcq Qp π M sz fdv cw gn cs pidv (<[Regidx csp_rs1 := regval_into_reg wval]> m) (add_vec_int pc 2) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Hwval.
     assert (Hsp : uint csp_rs1 <> 0) by (vm_compute; discriminate).
@@ -626,7 +626,7 @@ Section UkLeaf.
     wval = add_vec zero_reg (m !!! Regidx rs2) ->
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ukcq Qp π M sz fdv cw gn cs pidv (<[Regidx rd := regval_into_reg wval]> m) (add_vec_int pc 2) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Hrd Hwval.
     iIntros "Hb Hcont".
@@ -674,7 +674,7 @@ Section UkLeaf.
                          (sign_extend' 64 (sign_extend' 12 imm))) 31 0) ->
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ukcq Qp π M sz fdv cw gn cs pidv (<[Regidx rd := regval_into_reg wval]> m) (add_vec_int pc 2) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Hrd Hwval.
     exact (wp_uk_alu1 M m pc fdv cw gn cs pidv true (C_ADDIW (imm, Regidx rd))
@@ -709,7 +709,7 @@ Section UkLeaf.
     eq_vec (access_vec_dec tgt 0) ('b"0") = true ->
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ukcq Qp π M sz fdv cw gn cs pidv m tgt -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Htgt Hal0.
     iIntros "Hb Hcont".
@@ -759,7 +759,7 @@ Section UkLeaf.
     wval = add_vec (m !!! Regidx rs1) (sign_extend' 64 imm) ->
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ukcq Qp π M sz fdv cw gn cs pidv (<[Regidx rd := regval_into_reg wval]> m) (add_vec_int pc 4) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Hrd Hwval.
     assert (Hg : forall s : mstate,
@@ -786,7 +786,7 @@ Section UkLeaf.
     wval = add_vec (m !!! Regidx rs1) (m !!! Regidx rs2) ->
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ukcq Qp π M sz fdv cw gn cs pidv (<[Regidx rd := regval_into_reg wval]> m) (add_vec_int pc 4) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Hrd Hwval.
     assert (Hg : forall s : mstate,
@@ -819,7 +819,7 @@ Section UkLeaf.
              (subrange_vec_dec shamt (Z.sub log2_xlen 1) 0) ->
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ukcq Qp π M sz fdv cw gn cs pidv (<[Regidx rd := regval_into_reg wval]> m) (add_vec_int pc 4) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Hrd Hwval.
     assert (Hg : forall s : mstate,
@@ -843,7 +843,7 @@ Section UkLeaf.
              (subrange_vec_dec shamt (Z.sub log2_xlen 1) 0) ->
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ukcq Qp π M sz fdv cw gn cs pidv (<[Regidx rd := regval_into_reg wval]> m) (add_vec_int pc 4) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Hrd Hwval.
     assert (Hg : forall s : mstate,
@@ -874,7 +874,7 @@ Section UkLeaf.
                       (subrange_vec_dec (m !!! Regidx rs2) 31 0 : mword 32)) ->
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ukcq Qp π M sz fdv cw gn cs pidv (<[Regidx rd := regval_into_reg wval]> m) (add_vec_int pc 4) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Hrd Hwval.
     assert (Hg : forall s : mstate,
@@ -907,7 +907,7 @@ Section UkLeaf.
     wval = add_vec pc (auipc_off imm) ->
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ukcq Qp π M sz fdv cw gn cs pidv (<[Regidx rd := regval_into_reg wval]> m) (add_vec_int pc 4) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Hrd Hwval.
     assert (Hg : forall s : mstate,
@@ -935,7 +935,7 @@ Section UkLeaf.
     wval = sub_vec (m !!! Regidx rs1) (m !!! Regidx rs2) ->
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ukcq Qp π M sz fdv cw gn cs pidv (<[Regidx rd := regval_into_reg wval]> m) (add_vec_int pc 4) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Hrd Hwval.
     assert (Hg : forall s : mstate,
@@ -964,7 +964,7 @@ Section UkLeaf.
     wval = and_vec (m !!! Regidx rs1) (m !!! Regidx rs2) ->
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ukcq Qp π M sz fdv cw gn cs pidv (<[Regidx rd := regval_into_reg wval]> m) (add_vec_int pc 4) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Hrd Hwval.
     assert (Hop : forall s : mstate,
@@ -1002,7 +1002,7 @@ Section UkLeaf.
              (bool_to_bit (zopz0zI_u (m !!! Regidx rs1) (m !!! Regidx rs2))) ->
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ukcq Qp π M sz fdv cw gn cs pidv (<[Regidx rd := regval_into_reg wval]> m) (add_vec_int pc 4) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Hrd Hwval.
     assert (Hop : forall s : mstate,
@@ -1043,7 +1043,7 @@ Section UkLeaf.
                       (subrange_vec_dec (m !!! Regidx rs2) 31 0 : mword 32)) ->
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ukcq Qp π M sz fdv cw gn cs pidv (<[Regidx rd := regval_into_reg wval]> m) (add_vec_int pc 4) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Hrd Hwval.
     assert (Hg : forall s : mstate,
@@ -1075,7 +1075,7 @@ Section UkLeaf.
              (bool_to_bit (zopz0zI_u (m !!! Regidx rs1) (sign_extend' 64 imm))) ->
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ukcq Qp π M sz fdv cw gn cs pidv (<[Regidx rd := regval_into_reg wval]> m) (add_vec_int pc 4) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Hrd Hwval.
     assert (Hg : forall s : mstate,
@@ -1103,7 +1103,7 @@ Section UkLeaf.
     wval = and_vec (m !!! Regidx rs1) (sign_extend' 64 imm) ->
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ukcq Qp π M sz fdv cw gn cs pidv (<[Regidx rd := regval_into_reg wval]> m) (add_vec_int pc 4) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Hrd Hwval.
     assert (Hg : forall s : mstate,
@@ -1128,7 +1128,7 @@ Section UkLeaf.
     wval = xor_vec (m !!! Regidx rs1) (sign_extend' 64 imm) ->
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ukcq Qp π M sz fdv cw gn cs pidv (<[Regidx rd := regval_into_reg wval]> m) (add_vec_int pc 4) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Hrd Hwval.
     assert (Hg : forall s : mstate,
@@ -1159,7 +1159,7 @@ Section UkLeaf.
                 (add_vec (m !!! Regidx rs1) (sign_extend' 64 imm)) 31 0) ->
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ukcq Qp π M sz fdv cw gn cs pidv (<[Regidx rd := regval_into_reg wval]> m) (add_vec_int pc 4) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Hrd Hwval.
     assert (Hg : forall s : mstate,
@@ -1190,7 +1190,7 @@ Section UkLeaf.
                               shamt) ->
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ukcq Qp π M sz fdv cw gn cs pidv (<[Regidx rd := regval_into_reg wval]> m) (add_vec_int pc 4) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Hrd Hwval.
     assert (Hg : forall s : mstate,
@@ -1218,7 +1218,7 @@ Section UkLeaf.
     wval = luival imm ->
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ukcq Qp π M sz fdv cw gn cs pidv (<[Regidx rd := regval_into_reg wval]> m) (add_vec_int pc 4) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Hrd Hwval.
     assert (Hg : forall s : mstate,
@@ -1249,7 +1249,7 @@ Section UkLeaf.
               else Z.quot (uint (m !!! Regidx rs1)) (uint (m !!! Regidx rs2))) ->
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ukcq Qp π M sz fdv cw gn cs pidv (<[Regidx rd := regval_into_reg wval]> m) (add_vec_int pc 4) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Hrd Hwval.
     assert (Hop : forall s : mstate,
@@ -1287,7 +1287,7 @@ Section UkLeaf.
               else Z.rem (uint (m !!! Regidx rs1)) (uint (m !!! Regidx rs2))) ->
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ukcq Qp π M sz fdv cw gn cs pidv (<[Regidx rd := regval_into_reg wval]> m) (add_vec_int pc 4) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Hrd Hwval.
     assert (Hop : forall s : mstate,
@@ -1342,7 +1342,7 @@ Section UkLeaf.
     tgt = ret_pc (add_vec (m !!! Regidx rs1) (sign_extend' 64 imm)) ->
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ukcq Qp π M sz fdv cw gn cs pidv (uv_upd m wr) tgt -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Hrs1 Hwr Htgt.
     assert (Hwrok : uv_wrok wr).
@@ -1396,7 +1396,7 @@ Section UkLeaf.
     tgt = ret_pc (add_vec (m !!! Regidx rs1) (sign_extend' 64 imm)) ->
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ukcq Qp π M sz fdv cw gn cs pidv m tgt -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Hrs1 Hrd Htgt.
     exact (wp_uk_jalr M m pc fdv cw gn cs pidv imm rs1 rd None tgt Hui Hrs1
@@ -1422,7 +1422,7 @@ Section UkLeaf.
     wval = add_vec (m !!! Regidx rd) (m !!! Regidx rs2) ->
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ukcq Qp π M sz fdv cw gn cs pidv (<[Regidx rd := regval_into_reg wval]> m) (add_vec_int pc 2) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Hrd Hwval.
     exact (wp_uk_alu2 M m pc fdv cw gn cs pidv true (C_ADD (Regidx rd, Regidx rs2))
@@ -1446,7 +1446,7 @@ Section UkLeaf.
     wval = and_vec (m !!! Regidx rd) (m !!! Regidx rs2) ->
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ukcq Qp π M sz fdv cw gn cs pidv (<[Regidx rd := regval_into_reg wval]> m) (add_vec_int pc 2) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Hcrd Hcrs2 Hrd Hwval.
     assert (Hred : uv_redirect (C_AND (Cregidx crd, Cregidx crs2))
@@ -1486,7 +1486,7 @@ Section UkLeaf.
                       (subrange_vec_dec (m !!! Regidx rs2) 31 0 : mword 32)) ->
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ukcq Qp π M sz fdv cw gn cs pidv (<[Regidx rd := regval_into_reg wval]> m) (add_vec_int pc 2) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Hcrd Hcrs2 Hrd Hwval.
     assert (Hred : uv_redirect (C_ADDW (Cregidx crd, Cregidx crs2))
@@ -1517,7 +1517,7 @@ Section UkLeaf.
     wval = luival (sign_extend' 20 imm) ->
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ukcq Qp π M sz fdv cw gn cs pidv (<[Regidx rd := regval_into_reg wval]> m) (add_vec_int pc 2) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Hrd Hwval.
     apply (wp_uk_alu0 M m pc fdv cw gn cs pidv true (C_LUI (imm, Regidx rd))
@@ -1539,7 +1539,7 @@ Section UkLeaf.
              (subrange_vec_dec shamt (Z.sub log2_xlen 1) 0) ->
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ukcq Qp π M sz fdv cw gn cs pidv (<[Regidx rd := regval_into_reg wval]> m) (add_vec_int pc 2) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Hrd Hwval.
     exact (wp_uk_alu1 M m pc fdv cw gn cs pidv true (C_SLLI (shamt, Regidx rd))
@@ -1563,7 +1563,7 @@ Section UkLeaf.
              (subrange_vec_dec shamt (Z.sub log2_xlen 1) 0) ->
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ukcq Qp π M sz fdv cw gn cs pidv (<[Regidx rd := regval_into_reg wval]> m) (add_vec_int pc 2) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Hcrd Hrd Hwval.
     assert (Hred : uv_redirect (C_SRLI (shamt, Cregidx crd))
@@ -1594,7 +1594,7 @@ Section UkLeaf.
     wval = add_vec zero_reg (sign_extend' 64 imm) ->
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ukcq Qp π M sz fdv cw gn cs pidv (<[Regidx rd := regval_into_reg wval]> m) (add_vec_int pc 4) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Hrd Hwv.
     iIntros "Hb Hcont".

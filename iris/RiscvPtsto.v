@@ -2793,7 +2793,10 @@ Next Obligation. intros. iIntros "H". by iModIntro. Qed.
    vacuous case analysis on [Empty_set]). [wp_triv] pins the postcondition to
    the canonical [True], and the notations below drop the now-pointless
    [{{ Φ }}] clause entirely -- every WP in this project is over riscv_lang,
-   so a postcondition position never needs to be written at all. *)
+   so a postcondition position never needs to be written at all.  They are
+   spelled [mWP], not [WP]: sharing Iris's [WP] prefix at a different level
+   leaves Iris's own [WP ... {{ ... }}] notations unparseable (the build
+   makes [notation-incompatible-prefix] an error). *)
 Lemma wp_post_irrel `{!irisGS riscv_lang Σ} s E (e : expr riscv_lang) (Φ1 Φ2 : mval -> iProp Σ) :
   WP e @ s; E {{ Φ1 }} ⊢ WP e @ s; E {{ Φ2 }}.
 Proof. iApply wp_mono. iIntros ([]). Qed.
@@ -2802,8 +2805,8 @@ Definition wp_triv `{!irisGS riscv_lang Σ} (E : coPset) (e : expr riscv_lang) :
   WP e @ E {{ _, True%I }}.
 
 
-Notation "'WP' e @ E" := (wp_triv E e%E) (at level 20, e at level 20) : bi_scope.
-Notation "'WP' e" := (wp_triv ⊤ e%E) (at level 20, e at level 20) : bi_scope.
+Notation "'mWP' e @ E" := (wp_triv E e%E) (at level 20, e at level 20) : bi_scope.
+Notation "'mWP' e" := (wp_triv ⊤ e%E) (at level 20, e at level 20) : bi_scope.
 
 (* Focus the ambient hart's register bridge out of the global one, with a
    frame-preserving update handle to put an updated bridge back.  This is the

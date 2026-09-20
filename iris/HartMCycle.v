@@ -945,7 +945,7 @@ Section mcycle.
   Qed.
 
   (* ================================================================== *)
-  (* THE BOUNDARY RULE: [WP Loop] from [WP Loop], for one whole cycle.    *)
+  (* THE BOUNDARY RULE: [mWP Loop] from [mWP Loop], for one whole cycle.  *)
   (*                                                                    *)
   (* [swp_loop] (the ∀-tick restart) composed with [swp_tick_wrap] (the  *)
   (* tick axis) over a caller's cycle BODY.  This is what a leaf calls:  *)
@@ -976,15 +976,15 @@ Section mcycle.
          ⌜∃ rs1 : regstate, P rs1 /\
             reg_agree_on ((Drw ∪ Dro) ∖ tk_clock3) rs2 rs1⌝ -∗
          hreg_frame rs2 Drw -∗ hreg_frame_ro Df rs2 Dro -∗ Ψ -∗
-         WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+         mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hdisj HWcy HWti HWip.
     iIntros "#Hcert Hfrag Hbody Hcont".
     iDestruct "Hfrag" as (rr) "Hfrag".
     iApply (swp_loop rr with "Hcert Hfrag").
     iNext. iIntros (tick) "Hfrag".
-    iApply (swp_mono _ _ (fun _ => WP (Loop : expr riscv_lang))%I
+    iApply (swp_mono _ _ (fun _ => mWP (Loop : expr riscv_lang))%I
               with "[Hcont] [-]").
     2:{ iApply (swp_tick_wrap Drw Dro Df P Ψ tick Hdisj HWcy HWti HWip
                   with "Hcert [Hbody Hfrag]"). iApply ("Hbody" with "Hfrag"). }
@@ -1008,15 +1008,15 @@ Section mcycle.
     ▷ (∀ rs2 rs1 : regstate,
          ⌜P rs1 /\ reg_agree_on ((Drw ∪ Dro) ∖ tk_clock3) rs2 rs1⌝ -∗
          hreg_frame rs2 Drw -∗ hreg_frame_ro Df rs2 Dro -∗ Ψ rs1 -∗
-         WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+         mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hdisj HWcy HWti HWip.
     iIntros "#Hcert Hfrag Hbody Hcont".
     iDestruct "Hfrag" as (rr) "Hfrag".
     iApply (swp_loop rr with "Hcert Hfrag").
     iNext. iIntros (tick) "Hfrag".
-    iApply (swp_mono _ _ (fun _ => WP (Loop : expr riscv_lang))%I
+    iApply (swp_mono _ _ (fun _ => mWP (Loop : expr riscv_lang))%I
               with "[Hcont] [-]").
     2:{ iApply (swp_tick_wrap_ex Drw Dro Df P Ψ tick Hdisj HWcy HWti HWip
                   with "Hcert [Hbody Hfrag]"). iApply ("Hbody" with "Hfrag"). }
@@ -1127,8 +1127,8 @@ Section mcycle.
             reg_agree_on ((Drw ∪ Dro) ∖ tk_clock3) rs3
               (wrap_post rsB mi)⌝ -∗
          hreg_frame rs3 Drw -∗ hreg_frame_ro Df rs3 Dro -∗ Psi -∗
-         WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+         mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hdisj HWcy HWti HWip HDpriv HDhart HDmc HDcfg HWmi HDmi HWms HDms
       HWpc HDpc HDnpc Hhart Hhart2 Hmi2 Hpre.

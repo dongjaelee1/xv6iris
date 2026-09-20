@@ -382,7 +382,7 @@ Section CreateFire.
       (Φ : aview -> Z -> fname -> Z -> iProp Σ) :
     (forall d i, cf d i = cf' d i) ->
     acre_commit_at_gen Γ E cf Pd Farm Φ -∗ acre_commit_at_gen Γ E cf' Pd Farm Φ.
-  Proof.
+  Proof using .
     intros Hext. rewrite /acre_commit_at_gen. iIntros "H".
     iIntros (I d i nm ents nl) "%Hpre %Hnm Harm HPd Ha".
     rewrite -(Hext d i) in Hpre. rewrite -(Hext d i).
@@ -400,7 +400,7 @@ Section CreateFire.
       (Φ : aview -> Z -> fname -> Z -> iProp Σ) :
     □ (∀ d : Z, Pd' d -∗ Pd d) -∗ □ (∀ d : Z, Pd d -∗ Pd' d) -∗
     acre_commit_at_gen Γ E cf Pd Farm Φ -∗ acre_commit_at_gen Γ E cf Pd' Farm Φ.
-  Proof.
+  Proof using .
     rewrite /acre_commit_at_gen. iIntros "#Hin #Hout H".
     iIntros (I d i nm ents nl) "%Hpre %Hnm Harm HPd Ha".
     iDestruct ("Hin" $! d with "HPd") as "HPd".
@@ -420,7 +420,7 @@ Section CreateFire.
       (Φ : aview -> Z -> fname -> Z -> iProp Σ) :
     acre_commit_at_gen Γ E cf (fun _ => True%I) Farm Φ -∗
     acre_commit_at_gen Γ E cf Pd Farm Φ.
-  Proof.
+  Proof using .
     rewrite /acre_commit_at_gen. iIntros "H".
     iIntros (I d i nm ents nl) "%Hpre %Hnm Harm HPd Ha".
     iMod ("H" $! I d i nm ents nl with "[//] [//] Harm [//] Ha")
@@ -569,7 +569,7 @@ Section CreateFire.
       (Farm : pfam Σ (aview -> Z -> iProp Σ)) :
     app_sup -∗
     acre_commit_at_gen (fs_gamma_L γfs) E cf Pd Farm (fun _ _ _ _ => True%I).
-  Proof.
+  Proof using .
     iIntros "#Hsup". rewrite /acre_commit_at_gen.
     iIntros (I d i nm ents nl) "%Hpre %Hnm _ HPd Ha".
     iDestruct (app_step_acc d I _ with "Hsup") as "Hstep".
@@ -580,7 +580,7 @@ Section CreateFire.
   Lemma acre_commit_at_unit (γfs : fs_names) E c (Pd : Z -> iProp Σ)
       (Farm : pfam Σ (aview -> Z -> iProp Σ)) :
     app_sup -∗ acre_commit_at (fs_gamma_L γfs) E c Pd Farm (fun _ _ _ _ => True%I).
-  Proof.
+  Proof using .
     iIntros "#Hsup". rewrite /acre_commit_at.
     iApply (acre_commit_at_gen_unit γfs E _ Pd Farm with "Hsup").
   Qed.
@@ -699,7 +699,7 @@ Section CreateFire.
     (∀ (av : aview) (d : Z) (nm : fname) (i : Z),
        ⌜av !! jpin = Some a⌝ -∗ nview (fs_gamma_L γfs) q jpin a -∗ Φ av d nm i) -∗
     acre_commit_at_gen (fs_gamma_L γfs) E cf Pd Farm Φ.
-  Proof.
+  Proof using .
     iIntros "#Hsup Hn HΦ". rewrite /acre_commit_at_gen.
     iIntros (I d i nm ents nl) "%Hpre %Hnm _ HPd Ha".
     iDestruct (mkf_auth_nview with "Ha Hn") as %Hav.
@@ -717,7 +717,7 @@ Section CreateFire.
     (∀ (av : aview) (d : Z) (nm : fname) (i : Z),
        ⌜av !! jpin = Some a⌝ -∗ nview (fs_gamma_L γfs) q jpin a -∗ Φ av d nm i) -∗
     acre_commit_at (fs_gamma_L γfs) E c Pd Farm Φ.
-  Proof.
+  Proof using .
     iIntros "#Hsup Hn HΦ". rewrite /acre_commit_at.
     iApply (acre_commit_at_gen_pinned γfs E _ Pd Farm q jpin a Φ with "Hsup Hn HΦ").
   Qed.

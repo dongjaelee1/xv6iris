@@ -101,8 +101,8 @@ Definition wp_initlock_wrapper_sconf_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId
        the persistent [lock_name], ready to be sealed into [is_lock]. *)
     lock_name lk s -∗
     WpLock.lk_cpu_ready lk -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type INITLOCK_WRAPPER.
   Parameter wp_initlock_wrapper_sconf :

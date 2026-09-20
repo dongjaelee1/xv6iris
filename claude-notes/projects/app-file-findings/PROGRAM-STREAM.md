@@ -1168,7 +1168,7 @@ is `⌜s = None⌝ ∗ ∃ i, fown r (Some (i, []))` in `file_esc_pay` /
 * ITERATION: `make -f CoqMakefile -jN -k Foo.vos` / `Foo.vok` in the lane's
   remote `iris/` rebuilds exactly the stale cone in `.vos` mode and checks
   only the named files' proofs (`/shared/xv6iris-3-lanes/.logs/vb.sh`,
-  ~2.5 min per round trip).  `WP Loop` has no `ElimModal` for a fupd:
+  ~2.5 min per round trip).  `mWP Loop` has no `ElimModal` for a fupd:
   `iApply fupd_wp` first.
 
 ### 2a's DESIGN, settled (not built)

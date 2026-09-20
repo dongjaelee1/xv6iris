@@ -238,8 +238,8 @@ Definition wp_sys_fork_sconf_body
               ⌜ (1 <= bv_unsigned pidv <= PIDMAX)%Z ⌝ ∗
               child_tok γ pidv Q ∗
               ch_frag (pv_chg (us_V U)) p (csP ∪ {[γ]})) ) -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Require Import UserFd.   (* [ufdG] -- the class a minted user slot needs *)
 Module Type SYSFORK.

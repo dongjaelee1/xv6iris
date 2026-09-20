@@ -1306,7 +1306,7 @@ Section UvStorePostFetch.
     (R -∗ ∀ (CID0 : CpuId) (XI0 : CtxIdDefs.CurCtx),
        uv_cap_gpr (CID := CID0) (XI := XI0) C pt Ψ (uM_store M (uint va) kk wval) m -∗
        pc_is (CID := CID0) (add_vec_int pc dpc) -∗
-       WP (Loop : expr riscv_lang)) -∗
+       mWP (Loop : expr riscv_lang)) -∗
     resv_any cpu_id -∗
     TsoCtx.own_context XI -∗
     uv_bytes pt M t' -∗
@@ -1596,7 +1596,7 @@ Section UvStoreObl.
     uv_fetch_bridge (uc_dqc C) pt M rsA t (F_Base w) -∗
     (R -∗ ∀ (CID0 : CpuId) (XI0 : CtxIdDefs.CurCtx),
        uv_cap_gpr (CID := CID0) (XI := XI0) C pt Ψ (uM_store M (uint va) kk wval) m -∗
-       pc_is (CID := CID0) (add_vec_int pc 4) -∗ WP (Loop : expr riscv_lang)) -∗
+       pc_is (CID := CID0) (add_vec_int pc 4) -∗ mWP (Loop : expr riscv_lang)) -∗
     resv_any cpu_id -∗
     hreg_frame rsA u_Drw -∗ hreg_frame_ro (u_Df (uc_dqc C)) rsA u_Dro -∗
     TsoCtx.own_context XI -∗
@@ -1715,7 +1715,7 @@ Section UvStoreObl.
     uv_fetch_bridge (uc_dqc C) pt M rsA t (F_RVC h) -∗
     (R -∗ ∀ (CID0 : CpuId) (XI0 : CtxIdDefs.CurCtx),
        uv_cap_gpr (CID := CID0) (XI := XI0) C pt Ψ (uM_store M (uint va) kk wval) m -∗
-       pc_is (CID := CID0) (add_vec_int pc 2) -∗ WP (Loop : expr riscv_lang)) -∗
+       pc_is (CID := CID0) (add_vec_int pc 2) -∗ mWP (Loop : expr riscv_lang)) -∗
     resv_any cpu_id -∗
     hreg_frame rsA u_Drw -∗ hreg_frame_ro (u_Df (uc_dqc C)) rsA u_Dro -∗
     TsoCtx.own_context XI -∗
@@ -1857,8 +1857,8 @@ Section WpUmodeStore.
     ▷ (∀ (CID0 : CpuId) (XI0 : CtxIdDefs.CurCtx),
          uv_cap_gpr (CID := CID0) (XI := XI0) C pt Ψ (uM_store M (uint va) k wval) m -∗
          pc_is (CID := CID0) (add_vec_int pc (if is_rvc then 2 else 4)) -∗
-         WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+         mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hkw Hui Hred Hg1 Hlpad Hexp Hva Hwval Hl Hchk Hcanon Hpg Hal HMb Hntx.
     iIntros "Hcg Hpc Hcont".
@@ -1919,8 +1919,8 @@ Section WpUmodeStore.
     (∀ (CID0 : CpuId) (XI0 : CtxIdDefs.CurCtx),
        uv_cap_gpr (CID := CID0) (XI := XI0) C pt Ψ (uM_store M (uint va) k wval) m -∗
        pc_is (CID := CID0) (add_vec_int pc (if is_rvc then 2 else 4)) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hkw Hui Hred Hg1 Hlpad Hexp Hva Hwval Hl Hchk Hcanon Hpg Hal HMb Hntx.
     iIntros "Hcg Hpc Hcont".
@@ -1952,8 +1952,8 @@ Section WpUmodeStore.
     (∀ (CID0 : CpuId) (XI0 : CtxIdDefs.CurCtx),
        uv_cap_gpr (CID := CID0) (XI := XI0) C pt Ψ (uM_store8 M (uint va) wval) m -∗
        pc_is (CID := CID0) (add_vec_int pc 4) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hui Hva Hwval Hl Hchk Hcanon Hpg Hal HMb Hntx.
     iIntros "Hcg Hpc Hcont".
@@ -1987,8 +1987,8 @@ Section WpUmodeStore.
     (∀ (CID0 : CpuId) (XI0 : CtxIdDefs.CurCtx),
        uv_cap_gpr (CID := CID0) (XI := XI0) C pt Ψ (uM_store M (uint va) 4 wval) m -∗
        pc_is (CID := CID0) (add_vec_int pc 4) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hui Hva Hwval Hl Hchk Hcanon Hpg Hal HMb Hntx.
     iIntros "Hcg Hpc Hcont".
@@ -2023,8 +2023,8 @@ Section WpUmodeStore.
     (∀ (CID0 : CpuId) (XI0 : CtxIdDefs.CurCtx),
        uv_cap_gpr (CID := CID0) (XI := XI0) C pt Ψ (uM_store M (uint va) 1 wval) m -∗
        pc_is (CID := CID0) (add_vec_int pc 4) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hui Hva Hwval Hl Hchk Hcanon Hbb Hntx.
     iIntros "Hcg Hpc Hcont".
@@ -2065,8 +2065,8 @@ Section WpUmodeStore.
     (∀ (CID0 : CpuId) (XI0 : CtxIdDefs.CurCtx),
        uv_cap_gpr (CID := CID0) (XI := XI0) C pt Psi (uM_store8 M (uint tgt) wval) m -∗
        pc_is (CID := CID0) (add_vec_int pc 2) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hui Htgt Hwval Hl Hchk Hcanon Hpg Hal HMb Hntx.
     iIntros "Hcg Hpc Hcont".
@@ -2111,8 +2111,8 @@ Section WpUmodeStore.
     (∀ (CID0 : CpuId) (XI0 : CtxIdDefs.CurCtx),
        uv_cap_gpr (CID := CID0) (XI := XI0) C pt Ψ (uM_store8 M (uint va) wval) m -∗
        pc_is (CID := CID0) (add_vec_int pc 2) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hui Hcr1 Hcr2 Hva Hwval Hl Hchk Hcanon Hpg Hal HMb Hntx.
     iIntros "Hcg Hpc Hcont".
@@ -2157,8 +2157,8 @@ Section WpUmodeStore.
     (∀ (CID0 : CpuId) (XI0 : CtxIdDefs.CurCtx),
        uv_cap_gpr (CID := CID0) (XI := XI0) C pt Ψ (uM_store M (uint va) 4 wval) m -∗
        pc_is (CID := CID0) (add_vec_int pc 2) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hui Hcr1 Hcr2 Hva Hwval Hl Hchk Hcanon Hpg Hal HMb Hntx.
     iIntros "Hcg Hpc Hcont".

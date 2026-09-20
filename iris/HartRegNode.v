@@ -177,10 +177,10 @@ Section regnode.
     gen_cert -∗
     (∀ σ, mstate_interp σ ={⊤,∅}=∗
        ▷ (|={∅,⊤}=> mstate_interp σ ∗
-            WP (HartE gen_id cpu_id
+            mWP (HartE gen_id cpu_id
                   (C (hregread_resume r (register_lookup r σ.(sregs)) m))
                 : expr riscv_lang))) -∗
-    WP (HartE gen_id cpu_id (C m) : expr riscv_lang).
+    mWP (HartE gen_id cpu_id (C m) : expr riscv_lang).
   Proof using .
     (* Proof plan: via wp_hart_step; the RegRead arm is deterministic
        (successor = K (register_lookup r σ.(sregs)), state unchanged). *)
@@ -220,9 +220,9 @@ Section regnode.
     gen_cert -∗
     (∀ σ, mstate_interp σ ={⊤,∅}=∗
        ▷ (|={∅,⊤}=> mstate_interp (set_reg σ r v) ∗
-            WP (HartE gen_id cpu_id (C (hregwrite_resume m))
+            mWP (HartE gen_id cpu_id (C (hregwrite_resume m))
                 : expr riscv_lang))) -∗
-    WP (HartE gen_id cpu_id (C m) : expr riscv_lang).
+    mWP (HartE gen_id cpu_id (C m) : expr riscv_lang).
   Proof using .
     (* Proof plan: via wp_hart_step; the RegWrite arm is deterministic. *)
     iIntros (HC Hat) "#Hcert H".
@@ -306,9 +306,9 @@ Section regnode.
     P -∗
     (∀ σ, Q -∗ mstate_interp σ ={⊤,∅}=∗
        ▷ (|={∅,⊤}=> mstate_interp (set_reg σ r v) ∗
-            WP (HartE gen_id cpu_id (C (hregwrite_resume m))
+            mWP (HartE gen_id cpu_id (C (hregwrite_resume m))
                 : expr riscv_lang))) -∗
-    WP (HartE gen_id cpu_id (C m) : expr riscv_lang).
+    mWP (HartE gen_id cpu_id (C m) : expr riscv_lang).
   Proof using .
     iIntros (HC Hat) "#Hcert Hhook HP H".
     destruct (hregwrite_val_at_inv r m v Hat) as (ak & K & -> & Hres).

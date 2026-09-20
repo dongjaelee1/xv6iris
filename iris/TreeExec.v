@@ -178,8 +178,8 @@ Section TreeExec.
        urun N h'
          (<[Regidx (mword_of_int 10) := (mword_of_int (-1) : mword 64)]> m)
          (add_vec_int pc 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Heq Hn Ha0 Ha1 Hal4 Hload Hp Hstart Hd Hres.
     iIntros "#Hi Hrun Hcwd #Hpin #Hinv #Hrd #Hcon #Hgen #Hrf HPay Hcont".

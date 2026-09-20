@@ -214,8 +214,8 @@ Section ProofPrintk.
       pk_va sp0 m -∗
       ([∗ list] k ∈ [8;11;13;14;15;16;17;18;19;20;21;22;23;24]%nat,
          ∃ w : mword 64, (pa_stk sp0 k) ↦₈[kt] w) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros sp0 spd HK.
     iIntros "Hcg #Htext Hpc Hcont".
@@ -497,8 +497,8 @@ Section ProofPrintk.
       sie_cap_gpr kt mf K b pcur -∗
       pc_is (mword_of_int (KernelSyms.printk + B + 18) : mword 64) -∗
       pk_saved sp0 v9 v19 v20 v21 v22 v23 v24 v26 v27 -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros spd Hsp.
     iIntros "Hcg Hinstrs Hpc Hsv Hcont".
@@ -722,8 +722,8 @@ Section ProofPrintk.
         /\ mf !!! Regidx a0_idx = zero_reg ⌝ -∗
       cpu_own n eb pcur b (lks ∖ {["pr"]}) -∗
       R -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros sp0 spd HK HAV Houtb Hh Hsp Hagree.
     subst h.
@@ -997,8 +997,8 @@ Section ProofPrintk.
         /\ mf !!! Regidx a0_idx = zero_reg ⌝ -∗
       cpu_own n eb pcur b (lks ∖ {["pr"]}) -∗
       R -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros sp0 spd HK HAV Houtb Hh Hsp Hs9 Hnext.
     iIntros "Hcg #Htext Hinstrs Hpc H9 H10 H12 Hsv Hrest #Hlk Hheld Hcnt HR Hcont".
@@ -1077,8 +1077,8 @@ Section ProofPrintk.
         /\ mf !!! Regidx a0_idx = zero_reg ⌝ -∗
       cpu_own n eb pcur b (lks ∖ {["pr"]}) -∗
       R -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros sp0 spd HK HAV Houtb Hh Hsp Hs9.
     iIntros "Hcg #Htext Hpc H9 H10 H12 Hsv Hrest #Hlk Hheld Hcnt HR Hcont".
@@ -1230,7 +1230,7 @@ Section ProofPrintk.
         /\ mf !!! Regidx a0_idx = zero_reg ⌝ -∗
       cpu_own n eb pcur b (lks ∖ {["pr"]}) -∗
       fmt ↦ₛ{ dqf } f -∗ R -∗
-      WP (Loop : expr riscv_lang)) -∗
+      mWP (Loop : expr riscv_lang)) -∗
     (* (b) a nonempty one: the loop head, with i = 0 and a0 = fmt[0] *)
     wp_next (CID0 := CID0) false pcur (fun (CID : CpuId) =>
       ∀ (mq : regfile),
@@ -1270,8 +1270,8 @@ Section ProofPrintk.
       (pa_stk sp0 23) ↦₈[kt] (add_vec s0v (sign_extend' 64 (mword_of_int 8 : mword 12))) -∗
       (∃ w : mword 64, (pa_stk sp0 24) ↦₈[kt] w) -∗
       R -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros sp0 spd s0v fmt HKE HAV Houtb Hh Hnn Hsp Hs0 Hs2 Hkept.
     iIntros "Hcg #Htext Hpc #Hlk Hheld Hcnt Hfmt H9 H10 H12 Hva Hrest HR Kend Kloop".
@@ -1698,7 +1698,7 @@ Section ProofPrintk.
       sie_cap_gpr kt mf K b pcur -∗
       pc_is (mword_of_int (KernelSyms.printk + 0x242) : mword 64) -∗
       fmt ↦ₛ{ dqf } f -∗ Rest -∗
-      WP (Loop : expr riscv_lang)) -∗
+      mWP (Loop : expr riscv_lang)) -∗
     (* another character: the loop test at 0x86 *)
     wp_next (CID0 := CID0) b pcur (fun (CID : CpuId) =>
       ∀ mf : regfile,
@@ -1709,8 +1709,8 @@ Section ProofPrintk.
       sie_cap_gpr kt mf K b pcur -∗
       pc_is (mword_of_int (KernelSyms.printk + 0x7a) : mword 64) -∗
       fmt ↦ₛ{ dqf } f -∗ Rest -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hlen Hp31 Hs1 Hs2.
     iIntros "Hcg #Htext Hpc Hfmt HR Kend Kgo".
@@ -1857,8 +1857,8 @@ Section ProofPrintk.
       pc_is (mword_of_int (KernelSyms.printk + 0x6c) : mword 64) -∗
       cpu_own n eb pcur b lks -∗
       Rest -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using wp_prputc.
     intros HK Hn31 Hne Hbelow.
     assert (HK6 : (20 <= K)%nat) by lia.
@@ -2013,8 +2013,8 @@ Section ProofPrintk.
       sie_cap_gpr kt mf K b pcur -∗
       pc_is (mword_of_int (KernelSyms.printk + B + 12) : mword 64) -∗
       (pa_stk sp0 23) ↦₈[kt] (pk_ap s0v (S k)) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hs0 Hs0v.
     iIntros "Hcg Hinstrs Hpc Hap Hcont".
@@ -2128,8 +2128,8 @@ Section ProofPrintk.
       pk_va sp0 m -∗
       cpu_own n eb pcur b lks -∗
       Rest -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using wp_printint.
     intros sp0 s0v HK Hk Hn31 Hs0 Hs6 Hbelow.
     assert (HK14 : (28 <= K)%nat) by lia.
@@ -2318,8 +2318,8 @@ Section ProofPrintk.
       pk_va sp0 m -∗
       cpu_own n eb pcur b lks -∗
       Rest -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof.
     intros sp0 s0v HK Hk Hi31 Hn31 Hs0 Hs6 Hs4 Hbelow.
     assert (HK14 : (28 <= K)%nat) by lia.
@@ -2480,8 +2480,8 @@ Section ProofPrintk.
       pk_va sp0 m -∗
       cpu_own n eb pcur b lks -∗
       Rest -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof.
     intros sp0 s0v HK Hk Hi31 Hn31 Hs0 Hs6 Hs4 Hbelow.
     assert (HK14 : (28 <= K)%nat) by lia.
@@ -2640,8 +2640,8 @@ Section ProofPrintk.
       pk_va sp0 m -∗
       cpu_own n eb pcur b lks -∗
       Rest -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof.
     intros sp0 s0v HK Hk Hi31 Hn31 Hs0 Hs6 Hs4 Hbelow.
     assert (HK14 : (28 <= K)%nat) by lia.
@@ -2802,8 +2802,8 @@ Section ProofPrintk.
       pk_va sp0 m -∗
       cpu_own n eb pcur b lks -∗
       Rest -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof.
     intros sp0 s0v HK Hk Hi31 Hn31 Hs0 Hs6 Hs4 Hbelow.
     assert (HK14 : (28 <= K)%nat) by lia.
@@ -2962,8 +2962,8 @@ Section ProofPrintk.
       pk_va sp0 m -∗
       cpu_own n eb pcur b lks -∗
       Rest -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof.
     intros sp0 s0v HK Hk Hi31 Hn31 Hs0 Hs6 Hs4 Hbelow.
     assert (HK14 : (28 <= K)%nat) by lia.
@@ -3114,8 +3114,8 @@ Section ProofPrintk.
       pk_va sp0 m -∗
       cpu_own n eb pcur b lks -∗
       Rest -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof.
     intros sp0 s0v HK Hk Hi31 Hn31 Hs0 Hs6 Hs4 Hbelow.
     assert (HK14 : (28 <= K)%nat) by lia.
@@ -3276,8 +3276,8 @@ Section ProofPrintk.
       pk_va sp0 m -∗
       cpu_own n eb pcur b lks -∗
       Rest -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using wp_printint.
     intros sp0 s0v HK Hk Hn31 Hs0 Hs6 Hbelow.
     assert (HK14 : (28 <= K)%nat) by lia.
@@ -3416,8 +3416,8 @@ Section ProofPrintk.
       pk_va sp0 m -∗
       cpu_own n eb pcur b lks -∗
       Rest -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using wp_printint.
     intros sp0 s0v HK Hk Hn31 Hs0 Hs6 Hbelow.
     assert (HK14 : (28 <= K)%nat) by lia.
@@ -3559,8 +3559,8 @@ Section ProofPrintk.
       pk_va sp0 m -∗
       cpu_own n eb pcur b lks -∗
       Rest -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using wp_prputc.
     intros sp0 s0v HK Hk Hn31 Hs0 Hbelow.
     assert (HK6 : (20 <= K)%nat) by lia.
@@ -3663,8 +3663,8 @@ Section ProofPrintk.
       pc_is (mword_of_int (KernelSyms.printk + 0x6c) : mword 64) -∗
       cpu_own n eb pcur b lks -∗
       Rest -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof.
     intros HK Hn31 Hbelow.
     assert (HK6 : (20 <= K)%nat) by lia.
@@ -3734,8 +3734,8 @@ Section ProofPrintk.
       pc_is (mword_of_int (KernelSyms.printk + 0x6c) : mword 64) -∗
       cpu_own n eb pcur b lks -∗
       Rest -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof.
     intros HK Hn31 Hbelow.
     assert (HK6 : (20 <= K)%nat) by lia.
@@ -3927,8 +3927,8 @@ Section ProofPrintk.
       sv ↦ₛ{ dq } s -∗
       cpu_own n eb pcur b lks -∗
       Rest -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof.
     intros HK Hn31 Hnonul.
     assert (HK6 : (20 <= K)%nat) by lia.
@@ -4097,8 +4097,8 @@ Section ProofPrintk.
       (pk_vararg m k) ↦ₛ{ dq } s -∗
       cpu_own n eb pcur b lks -∗
       Rest -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using wp_prputc.
     intros sp0 s0v HK Hk Hn31 Hnonul Hnn Hs0 Hbelow.
     iIntros "Hcg #Htext Hpc Hap Hva Hstr Hcnt #Hpre HR Hcont".
@@ -4261,8 +4261,8 @@ Section ProofPrintk.
       pk_va sp0 m -∗
       cpu_own n eb pcur b lks -∗
       Rest -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof.
     intros sp0 s0v HK Hk Hn31 Hnull Hs0 Hbelow.
     iIntros "Hcg #Htext #Hdata Hpc Hap Hva Hcnt #Hpre HR Hcont".
@@ -4462,8 +4462,8 @@ Section ProofPrintk.
       pc_is (mword_of_int (KernelSyms.printk + 0x1ea) : mword 64) -∗
       cpu_own n eb pcur b lks -∗
       Rest -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof.
     intros HK Hn31.
     assert (HK6 : (20 <= K)%nat) by lia.
@@ -4677,8 +4677,8 @@ Section ProofPrintk.
       pk_va sp0 m -∗
       cpu_own n eb pcur b lks -∗
       Rest -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using wp_prputc.
     intros sp0 spd s0v HK Hk Hn31 Hsp Hs0 Hbelow.
     assert (HK6 : (20 <= K)%nat) by lia.
@@ -5087,7 +5087,7 @@ Section ProofPrintk.
       sie_cap_gpr kt mf K b pcur -∗
       pc_is (mword_of_int (KernelSyms.printk + 0x27e) : mword 64) -∗
       fmt ↦ₛ{ dqf } f -∗ Rest -∗
-      WP (Loop : expr riscv_lang)) -∗
+      mWP (Loop : expr riscv_lang)) -∗
     (* (b) c0 <> 0, c1 = 0: one character of directive and no more *)
     wp_next (CID0 := CID0) b pcur (fun (CID : CpuId) =>
       ∀ mf : regfile,
@@ -5100,7 +5100,7 @@ Section ProofPrintk.
       sie_cap_gpr kt mf K b pcur -∗
       pc_is (mword_of_int (KernelSyms.printk + 0x26c) : mword 64) -∗
       fmt ↦ₛ{ dqf } f -∗ Rest -∗
-      WP (Loop : expr riscv_lang)) -∗
+      mWP (Loop : expr riscv_lang)) -∗
     (* (c) both there: on into the comparison chain at 0xa4 *)
     wp_next (CID0 := CID0) b pcur (fun (CID : CpuId) =>
       ∀ mf : regfile,
@@ -5115,8 +5115,8 @@ Section ProofPrintk.
       sie_cap_gpr kt mf K b pcur -∗
       pc_is (mword_of_int (KernelSyms.printk + 0x98) : mword 64) -∗
       fmt ↦ₛ{ dqf } f -∗ Rest -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hlen Hi31 Hs4 Hs2.
     iIntros "Hcg #Htext Hpc Hfmt HR K0 K1 Kgo".
@@ -5358,8 +5358,8 @@ Section ProofPrintk.
       sie_cap_gpr kt mf K b pcur -∗
       pc_is (mword_of_int (KernelSyms.printk + pk_entry c0 c1 c2) : mword 64) -∗
       Rest -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros E1 E2 E3 E4 E5 E6 E7 E8 E9 Hs5 Hs11.
     iIntros "Hcg #Htext Hpc HR Hcont".
@@ -5579,8 +5579,8 @@ Section ProofPrintk.
       sie_cap_gpr kt mf K b pcur -∗
       pc_is (mword_of_int (KernelSyms.printk + pk_entry c0 c1 c2) : mword 64) -∗
       Rest -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros E1 E2 E3 E4 E5 E6 E7 E8 Hs5 Hs11 Ha3 Ha5.
     iIntros "Hcg #Htext Hpc HR Hcont".
@@ -5696,8 +5696,8 @@ Section ProofPrintk.
       sie_cap_gpr kt mf K b pcur -∗
       pc_is (mword_of_int (KernelSyms.printk + pk_entry c0 c1 c2) : mword 64) -∗
       Rest -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros E1 E2 E3 E4 E5 E6 Hs5 Hs10 Hs11 Ha2 Ha3 Ha4 Ha5.
     iIntros "Hcg #Htext Hpc HR Hcont".
@@ -5841,8 +5841,8 @@ Section ProofPrintk.
       sie_cap_gpr kt mf K b pcur -∗
       pc_is (mword_of_int (KernelSyms.printk + pk_entry c0 c1 c2) : mword 64) -∗
       Rest -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros E1 E2 E3 E4 E5 Hs5 Hs10 Hs11 Ha2 Ha3 Ha4 Ha5.
     iIntros "Hcg #Htext Hpc HR Hcont".
@@ -5964,8 +5964,8 @@ Section ProofPrintk.
       sie_cap_gpr kt mf K b pcur -∗
       pc_is (mword_of_int (KernelSyms.printk + pk_entry c0 c1 c2) : mword 64) -∗
       Rest -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros E1 E2 E3 Hs5 Hs8 Hs10 Hs11 Ha2 Ha3 Ha4 Ha5.
     iIntros "Hcg #Htext Hpc HR Hcont".
@@ -6111,8 +6111,8 @@ Section ProofPrintk.
       sie_cap_gpr kt mf K b pcur -∗
       pc_is (mword_of_int (KernelSyms.printk + pk_entry c0 c1 c2) : mword 64) -∗
       Rest -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros E1 E2 Hs5 Hs8 Hs10 Hs11 Ha2 Ha3 Ha4.
     iIntros "Hcg #Htext Hpc HR Hcont".
@@ -6298,8 +6298,8 @@ Section ProofPrintk.
       sie_cap_gpr kt mf K b pcur -∗
       pc_is (mword_of_int (KernelSyms.printk + pk_entry c0 c1 c2) : mword 64) -∗
       Rest -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hn0 Hn1 Hn2 Hs5 Hs8 Hs10 Hs11.
     iIntros "Hcg #Htext Hpc HR Hcont".
@@ -6411,8 +6411,8 @@ Section ProofPrintk.
       sie_cap_gpr kt mf K b pcur -∗
       pc_is (mword_of_int (KernelSyms.printk + pk_entry c0 c1 c2) : mword 64) -∗
       Rest -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hn1 Hn2 Hs5 Ha3 Hs7 Hs8 Hs10 Hs11.
     iIntros "Hcg #Htext Hpc HR Hcont".
@@ -6571,8 +6571,8 @@ Section ProofPrintk.
       sie_cap_gpr kt mf K b pcur -∗
       pc_is (mword_of_int (KernelSyms.printk + pk_entry c0 c1 c2) : mword 64) -∗
       fmt ↦ₛ{ dqf } f -∗ Rest -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hlen Hi31 Hc2 E1 E2 Hmqs5 Hmqa3 Hmqa4 Hmqa5 Hmqs2 Hmqs8 Hmqs10 Hmqs11.
     iIntros "Hcg #Htext Hpc Hfmt HR Hout".
@@ -6699,8 +6699,8 @@ Section ProofPrintk.
       sie_cap_gpr kt mf K b pcur -∗
       pc_is (mword_of_int (KernelSyms.printk + pk_entry c0 c1 c2) : mword 64) -∗
       fmt ↦ₛ{ dqf } f -∗ Rest -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hlen Hi31 Hc2 Hs5 Ha3 Ha5 Hs2 Hs7 Hs8 Hs10 Hs11.
     iIntros "Hcg #Htext Hpc Hfmt HR Hcont".
@@ -6912,8 +6912,8 @@ Section ProofPrintk.
       pc_is (mword_of_int (KernelSyms.printk + pk_entry (pk_ch f (S i)) (pk_ch f (S (S i)))
                                          (pk_ch f (S (S (S i))))) : mword 64) -∗
       fmt ↦ₛ{ dqf } f -∗ Rest -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hlen Hi31 Hnn Hs4 Hs2 Hconsts.
     destruct Hconsts as (Hs3 & Hs6 & Hs7 & Hs8 & Hs10 & Hs11).
@@ -7073,8 +7073,8 @@ Section ProofPrintk.
       pk_va sp0 m -∗
       cpu_own n eb pcur b lks -∗
       Rest -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using wp_printint wp_prputc.
     intros sp0 spd s0v HK Hk Hi31 Hn31 Hnum Hsp Hs0 Hs6 Hs4 Hs1 Hbelow.
     assert (HK16 : (20 <= K)%nat) by lia.
@@ -7341,8 +7341,8 @@ Section ProofPrintk.
       pk_desc_res (pk_vararg m k) d -∗
       cpu_own n eb pcur b lks -∗
       Rest -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof.
     intros sp0 s0v HK Hk Hn31 Hstr Hkind Hs0 Hs1 Hbelow.
     (* only c0 = 's' yields PkStr *)
@@ -7439,8 +7439,8 @@ Section ProofPrintk.
       pc_is (mword_of_int (KernelSyms.printk + 0x6c) : mword 64) -∗
       cpu_own n eb pcur b lks -∗
       Rest -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof.
     intros HK Hn31 Hnone Hnn Hs1 Hbelow.
     iIntros "Hcg #Htext Hpc Hcnt #Hpre HR Hcont".
@@ -7611,7 +7611,7 @@ Section ProofPrintk.
         fmtv ↦ₛ{ dqf } f -∗
         ([∗ list] j ↦ d ∈ descs, pk_desc_res (pk_vararg m j) d) -∗
         cpu_own n eb pcur bo (lks ∖ {["pr"]}) -∗
-        WP (Loop : expr riscv_lang))%I.
+        mWP (Loop : expr riscv_lang))%I.
 
     (* "go round again": what one turn from index [i] hands back to the loop
        head at 0x78.  [p'] is the new last-consumed index, [k'] the new
@@ -7635,7 +7635,7 @@ Section ProofPrintk.
         cpu_own (S n) eb pcur false lks -∗
         pk_held γpr hh n eb pcur -∗
         pk_loop_frame k' -∗
-        WP (Loop : expr riscv_lang))%I.
+        mWP (Loop : expr riscv_lang))%I.
 
     (* the unused frame slots, in the exit lemmas' shape *)
     Lemma pk_slots_rest_of (w23 : mword 64) :
@@ -7743,7 +7743,7 @@ Section ProofPrintk.
       prputc_env -∗
       pk_loop_frame k -∗
       (pk_loop_head i ∧ pk_loop_post) -∗
-      WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang).
     Proof using All.
       intros Hhh Hilen Hinv Hsp Hs0 Hs2 Hs4 Ha0 Hs9r Hconsts.
       assert (HK24 : (24 <= K)%nat) by lia.
@@ -8057,7 +8057,7 @@ Section ProofPrintk.
       prputc_env -∗
       pk_loop_frame k -∗
       pk_loop_post -∗
-      WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang).
     Proof using All.
       revert CID0 mq k p.
       induction nf as [|nf IH]; intros CID0 mq k p Hhh Hfuel Hplen Hinv Hsp Hs0 Hs2 Hs1 Hs9r Hconsts.

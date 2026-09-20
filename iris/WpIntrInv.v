@@ -2506,7 +2506,7 @@ End IntrEngine.
 (* [HartMCycle.wp_loop_cycle]'s body; the Löb hypothesis and the caller's *)
 (* continuation both have to be stripped by it, and only what is in the   *)
 (* CONTEXT when that [iNext] runs can be.  A [▷] sitting inside the       *)
-(* callback (on the leaf's own [WP Loop], where the whole-cycle engine    *)
+(* callback (on the leaf's own [mWP Loop], where the whole-cycle engine   *)
 (* used to put it) would arrive through the cycle rule's [Psi] slot,      *)
 (* AFTER the [iNext], and could never be discharged.  Outermost is also   *)
 (* the WEAKEST premise -- [P ⊢ ▷ P] -- so no caller pays for the move.    *)
@@ -2547,7 +2547,7 @@ Definition intr_cb_clock `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{XI : CurCtx}
            gpr_file (tp_pin m') ∗ R CID npc ms' m' av'))
    ∗ (∀ (npc ms' : mword 64) (m' : regfile) (av' : nat),
         sie_cap_gpr_at kt ms' m' av' b' p -∗ pc_is npc -∗ R CID npc ms' m' av' -∗
-        WP (Loop : expr riscv_lang)))%I.
+        mWP (Loop : expr riscv_lang)))%I.
 
 (* ...and the CLOCK-FREE reading, for the leaves that never touch a clock
    cell: the same callback with the three cells passed straight through. *)
@@ -2572,7 +2572,7 @@ Definition intr_cb `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId}
            gpr_file (tp_pin m') ∗ R CID npc ms' m' av'))
    ∗ (∀ (npc ms' : mword 64) (m' : regfile) (av' : nat),
         sie_cap_gpr_at kt ms' m' av' b' p -∗ pc_is npc -∗ R CID npc ms' m' av' -∗
-        WP (Loop : expr riscv_lang)))%I.
+        mWP (Loop : expr riscv_lang)))%I.
 
 (* WHAT THE INSTRUCTION HANDS BACK BESIDE THE FRAMES.  The cycle body owes
    [SmodeCorePt.spt_ex_obl] a frame at the file the instruction landed on,
@@ -2600,7 +2600,7 @@ Definition intr_ret `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{CID : CpuId} `{XI 
        (register_lookup mstatus rs2) m' av' ∗
      (∀ (npc0 ms0 : mword 64) (m0 : regfile) (av0 : nat),
         sie_cap_gpr_at kt ms0 m0 av0 b' p -∗ pc_is npc0 -∗
-        R CID npc0 ms0 m0 av0 -∗ WP (Loop : expr riscv_lang)))%I.
+        R CID npc0 ms0 m0 av0 -∗ mWP (Loop : expr riscv_lang)))%I.
 
 (* the CYCLE'S RIDER, keyed on the file the body landed on ([rs2]): its
    [nextPC] is the pc the cycle commits, so both arms name their landing pc
@@ -2628,7 +2628,7 @@ Definition intr_psi `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{CID : CpuId} `{XI 
                      ms' m' av' ∗
                    (∀ (npc0 ms0 : mword 64) (m0 : regfile) (av0 : nat),
                       sie_cap_gpr_at kt ms0 m0 av0 b' p -∗ pc_is npc0 -∗
-                      R CID npc0 ms0 m0 av0 -∗ WP (Loop : expr riscv_lang)))
+                      R CID npc0 ms0 m0 av0 -∗ mWP (Loop : expr riscv_lang)))
                 ∨
                 (* --- TRAP: the entry package, minus what the frame holds --- *)
                 (∃ (sc mstT mdvT : mword 64),
@@ -2660,7 +2660,7 @@ Lemma wp_exec_step_intr_clock `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{CID0 : C
   instr pc0 is_rvc i -∗
   ▷ wp_next true p (fun CID =>
       intr_cb_clock kt m av p pc0 is_rvc i b' R (CID := CID)) -∗
-  WP (Loop : expr riscv_lang).
+  mWP (Loop : expr riscv_lang).
 Proof.
   intros Hpc0.
   iIntros "Hcg Hpc #Hinstr Hbody".
@@ -3157,7 +3157,7 @@ Lemma wp_exec_step_intr `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{CID0 : CpuId} 
   pc_is pc0 -∗
   instr pc0 is_rvc i -∗
   ▷ wp_next true p (fun CID => intr_cb kt m av p pc0 is_rvc i b' R (CID := CID)) -∗
-  WP (Loop : expr riscv_lang).
+  mWP (Loop : expr riscv_lang).
 Proof.
   intros Hpc0. iIntros "Hcg Hpc Hinstr Hbody".
   iApply (wp_exec_step_intr_clock pc0 m av p is_rvc i b' R Hpc0

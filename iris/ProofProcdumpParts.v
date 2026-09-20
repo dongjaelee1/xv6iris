@@ -104,8 +104,8 @@ Section ProofProcdumpParts.
                  (m !!! pdR 18) (m !!! pdR 19) (m !!! pdR 20) (m !!! pdR 21)
                  (m !!! pdR 22) (m !!! pdR 23) -∗
         pc_is (mword_of_int (KernelSyms.procdump + 0x1e)) -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intro HK.
     rewrite /pdR.
@@ -341,8 +341,8 @@ Section ProofProcdumpParts.
         ⌜ pd_regs_loop M' (M !!! pdR 2) 0 /\ pd_regs_hi M M' ⌝ -∗
         sie_cap_gpr KT1 M' K' b p -∗
         pc_is (mword_of_int (KernelSyms.procdump + 0x6e)) -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     rewrite /pdR.
     change (Regidx (mword_of_int 2 : mword 5)) with (Regidx csp_rs1).
@@ -555,8 +555,8 @@ Section ProofProcdumpParts.
         ⌜ callee_saved m mf /\ mf !!! pdR 1 = (m !!! pdR 1 : mword 64) ⌝ -∗
         sie_cap_gpr KT1 mf K b p -∗
         pc_is (ret_pc (m !!! pdR 1 : mword 64)) -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK Hxsp0 Hhi.
     assert (Hxsp : Mx !!! Regidx csp_rs1 = pa_stk (m !!! Regidx csp_rs1 : mword 64) 10)

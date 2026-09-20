@@ -305,8 +305,8 @@ Section WpCsrrMhartidGpr.
       pc_is (add_vec_int pc 4) -∗
       gpr_file (<[Regidx rd := regval_into_reg mhartid_in]> m) -∗
       mhartid ↦ᵣ mhartid_in -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hpmp Hstat Hrd) "Hmm Hpmpc Hpc Hfmap Hmh Hinstr Hcont".
     assert (Hfresh : cw_fresh (R_bitvector_64 mhartid))
@@ -429,8 +429,8 @@ Section WpCsrrGprA.
       gpr_file (<[Regidx rd :=
         regval_into_reg (mstatus_in)]> m) -∗
       mstatus ↦ᵣ{dqm} mstatus_in -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hpmp Hstat Hrd) "Hmm Hpmpc Hpc Hfmap Hcsr Hinstr Hcont".
     assert (Hfresh : cw_fresh (R_bitvector_64 mstatus))
@@ -527,8 +527,8 @@ Section WpCsrrGprA.
       pc_is (add_vec_int pc 4) -∗
       gpr_file (<[Regidx rd := regval_into_reg (zero_extend' 64 mcen_in)]> m) -∗
       mcounteren ↦ᵣ mcen_in -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hpmp Hstat Hrd) "Hmm Hpmpc Hpc Hfmap Hcsr Hinstr Hcont".
     assert (Hfresh : cw_fresh (R_bitvector_32 mcounteren))

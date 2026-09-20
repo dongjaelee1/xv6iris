@@ -103,7 +103,7 @@ Section UkWaitCons.
          (add_vec_int pc 4) avail -∗
        uch (ukn_ch N) (∅ : gset gname) -∗
        ubytes (ukn_d N) (uint dst) 4 g -∗
-       WP (Loop : expr riscv_lang)) -∗
+       mWP (Loop : expr riscv_lang)) -∗
     (* ...AND THE ARM THE INTERFACE CANNOT RULE OUT: a -1, at which the
        caller keeps its token, its buffer and its reading, and is told
        nothing about why. *)
@@ -114,8 +114,8 @@ Section UkWaitCons.
          (add_vec_int pc 4) avail -∗
        uch (ukn_ch N) Sc' -∗
        ubytes (ukn_d N) (uint dst) 4 g -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hn Hdst Hnz Hp1 Hal4.
     iIntros "#Hi Hrun Hsb Hch Hbuf Hpid Htok Hreap Hfail".

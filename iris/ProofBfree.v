@@ -527,7 +527,7 @@ Section BfreeDefs.
         sb_bmapstart ↦₄{dqb} (mword_of_int bmapstart : mword 32) -∗
         bslots 2 -∗
         Bud -∗
-        WP (Loop : expr riscv_lang))%I.
+        mWP (Loop : expr riscv_lang))%I.
 
 End BfreeDefs.
 
@@ -590,7 +590,7 @@ Section BfreeTail.
     bf_cont (CID0 := CID0) γfs bn γ cov logstart bmapstart size
             (log_opSe γ (if cr then S u else u) (Sb ∪ {[bmapstart]}) e0)
             pidv dq dqb j m K b lks Upr -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hbelow HK Hsp Hthr Ha0 Hs2 Hkk Hbno Hcov Hlog Hbirange.
     pose proof HK as HK'.

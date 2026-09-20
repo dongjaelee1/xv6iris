@@ -39,7 +39,6 @@ Require Import Riscv.rv64d_types Riscv.rv64d Riscv.riscv_extras.
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.MachineWord.
 Require Import RiscvLang RiscvPtsto RiscvExtras RiscvModelBytes.
 Require Import RegFile.
-Require Import WpMmodeLeafBase.
 Require Import WpUmodeBranch.
 Require Import UmodeArith UmodeAbi.
 Require Import UserHeap UkRun UkRunLeaf UkRunMem.
@@ -53,9 +52,6 @@ Require Import UserFd.
 Require Import UkShParse.
 Require Import UkShParseSym.
 Require Import UkShParseLex.
-Require Import UkShParseTok.
-Require Import UkShParseRedir.
-Require Import UkShRedirLex.
 Require Import UkShRedirGtk.
 Require Import UkShRedirCmd.
 Require Import UkShRedirPr.
@@ -214,8 +210,8 @@ Section UkShPipeEx2.
              = mword_of_int (Z.of_nat (length done + length rest)) ⌝ -∗
          ⌜ mc' !!! Regidx s1_idx = mword_of_int p ⌝ -∗
          urun N h' mc' (mword_of_int 0x662) (24 + (8 + nn)) -∗
-         WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+         mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intro rest.
     induction rest as [| tk rest IH ];

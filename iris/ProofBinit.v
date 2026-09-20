@@ -129,8 +129,8 @@ Section ProofBinit.
       ∀ mr,
       sie_cap_gpr KT1 mr K b pcur -∗
       pc_is ret_tgt -∗ ⌜ callee_saved m mr ⌝ -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros sp0 spr ret_tgt HK6 HMesp HMecs.
     assert (Hspr6 : spr = pa_stk sp0 6).
@@ -777,7 +777,7 @@ Section ProofBinit.
               sie_cap_gpr KT1 mr K b pcur -∗ pc_is ret_tgt -∗ ⌜ callee_saved m mr ⌝ -∗
               ([∗ list] k ∈ seq 0 NBUF, sl_fresh (buf_lock (bnode k)) "buffer"%string) -∗
               bcache_lru bhead (blist 0 NBUF) -∗
-              WP (Loop : expr riscv_lang)))%I
+              mWP (Loop : expr riscv_lang)))%I
       with "[Hcont Hlock Hcpu]" as "Hpost".
     { iIntros (CID' Hs' mr) "Hcg Hpc %Hcs Hfresh Hlru".
       iSpecialize ("Hcont" $! CID' with "[%]"); [exact Hs'|].
@@ -820,8 +820,8 @@ Section ProofBinit.
         ∀ mr, sie_cap_gpr KT1 mr K b pcur -∗ pc_is ret_tgt -∗ ⌜ callee_saved m mr ⌝ -∗
         ([∗ list] k ∈ seq 0 NBUF, sl_fresh (buf_lock (bnode k)) "buffer"%string) -∗
         bcache_lru bhead L -∗
-        WP (Loop : expr riscv_lang)) -∗
-      WP (Loop : expr riscv_lang))%I
+        mWP (Loop : expr riscv_lang)) -∗
+      mWP (Loop : expr riscv_lang))%I
       with "[]" as "Hloop".
     { iIntros (fuel). iInduction fuel as [|fuel IHf] "IHf".
       { iIntros (CID0 j M l L) "%Hlen %Hj %HL %Hinv Hcg Hpc Hdone Hraw Hlnk Hlru Hc1 Hc2 Hc3 Hc4 Hc5 Hc6 Hpost".

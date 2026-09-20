@@ -554,8 +554,8 @@ Section UkShMain.
                   ubytes γd p (Z.to_nat nbytes) g ∗ usz γs szv)) -∗
             urun N h' m' (ret_pc (m !!! Regidx (mword_of_int 1)))
               (10 + avail) -∗
-            WP (Loop : expr riscv_lang)) -∗
-         WP (Loop : expr riscv_lang))
+            mWP (Loop : expr riscv_lang)) -∗
+         mWP (Loop : expr riscv_lang))
       (h : CpuId) (m : regfile) (dw dv : dfrac)
       (s0 : Z) (len : nat) (f : nat -> bv 8) (toks : list (nat * nat))
       (ld : list fdstate) (n : nat) :
@@ -587,7 +587,7 @@ Section UkShMain.
     UserChildren.uch_any γch -∗ UMalloc -∗
     urun N h m (mword_of_int 0x9c0)
       (60 + (8 + (UkShDiag.ush_Dg + n))) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using Hpay Hpsok_free.
     intros Hs1 Hns Htoks Htlen Hs0 Hs64 Hs38 Hpx.
     iIntros "#Hdp #Hcode #Hxs #Hkw #Hpcode #Hpro #Hjt Hline Hws Hsy Hstd Hcwd
@@ -770,7 +770,7 @@ Section UkShMain.
     UkShMalloc.ushm_fresh N sz -∗
     urun N h m (mword_of_int 0x9c0)
       (60 + (8 + (UkShDiag.ush_Dg + n))) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using Hpay Hpsok_free.
     intros Hs1 Hns Htoks Htlen Hs0 Hs64 Hs38 Hszlo Hszal Hszok Hpx.
     iIntros "#Hdp #Hcode #Hxs #Hkw #Hpcode #Hpro #Hjt Hline Hws Hsy Hstd Hcwd

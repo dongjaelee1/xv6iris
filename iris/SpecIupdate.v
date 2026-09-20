@@ -283,8 +283,8 @@ Definition wp_iupdate_sconf_body
       ireg_out fsc_ireg inum dn -∗
       bslots 2 -∗
       log_op icfg_log u -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 (* ===================================================================== *)
 (*  THE SET-FORM CONTRACT (fs-icache.md section 18 clause 1)              *)
@@ -455,8 +455,8 @@ Definition wp_iupdate_gen_body
       ireg_out fsc_ireg inum dn -∗
       bslots 2 -∗
       log_opS icfg_log u (Sb ∪ {[IBLOCK inum icfg_ist]}) -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 (* ===================================================================== *)
 (*  THE CREDITED SET-FORM CONTRACT (fs-sysfile S5a finding 3, retrofit 2) *)
@@ -635,8 +635,8 @@ Definition wp_iupdate_cred_body
          [log_opS (S u)] on BOTH arms, so a unit is in hand even to
          absorb -- which is why the precondition above is unchanged. *)
       log_opS icfg_log (if cru then S u else u) (Sb ∪ {[IBLOCK inum icfg_ist]}) -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 (* ===================================================================== *)
 (*  THE CREDITED SET-FORM CONTRACT, eb-GENERIC (fs-sysfile GR-2b)         *)
@@ -787,8 +787,8 @@ Definition wp_iupdate_credgen_body
          at the escrow park, which is why §G.3's self-contained receipt is
          dead and this contract is where the deposit lives. *)
       (∃ e : nat, logged_at icfg_log e (IBLOCK inum icfg_ist) ∗ ⌜(v <= e)%nat⌝) -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 (* ===================================================================== *)
 (*  THE LINK-MINTING CONTRACT (design fs-icache.md §20.18, stage C2)      *)
@@ -992,8 +992,8 @@ Definition wp_iupdate_link_body
       InodeRegion.ireg_link_pin pin (bv_unsigned inum) dn0 -∗
       bslots 2 -∗
       log_opS icfg_log (if cru then S u else u) (Sb ∪ {[IBLOCK inum icfg_ist]}) -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 (* ===================================================================== *)
 (*  THE LINK-SPENDING CONTRACT (design fs-icache.md §20.18, stage C4)     *)
@@ -1152,8 +1152,8 @@ Definition wp_iupdate_unlink_body
       dinode_at fsc_ireg inum dn -∗
       bslots 2 -∗
       log_opS icfg_log (if cru then S u else u) (Sb ∪ {[IBLOCK inum icfg_ist]}) -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type IUPDATE.
   Parameter wp_iupdate_sconf :

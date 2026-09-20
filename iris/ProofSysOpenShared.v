@@ -313,7 +313,7 @@ Section ProofSysOpenShared.
          open_arms_plain omo (fs_gamma_L fsc_fs) fsc_fs (pv_cwi (us_V U)) gf pj pidv
            Mim pvv vom
            P Pmiss Fo Ft sts U (mf !!! Regidx Ra0 : mword 64) -∗
-         WP (Loop : expr riscv_lang))%I.
+         mWP (Loop : expr riscv_lang))%I.
 
   Definition so_cont0_au `{GEN : GenId}
       (omo : offmode)
@@ -345,7 +345,7 @@ Section ProofSysOpenShared.
          open_arms_plain omo (fs_gamma_L fsc_fs) fsc_fs (pv_cwi (us_V U)) gf pj pidv
            Mim pvv vom
            P Pmiss Fo Ft sts U (mf !!! Regidx Ra0 : mword 64) -∗
-         WP (Loop : expr riscv_lang))%I.
+         mWP (Loop : expr riscv_lang))%I.
 
   (* ================================================================== *)
   (*  4.  THE ARM BUILDERS                                               *)

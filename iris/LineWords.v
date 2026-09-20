@@ -1181,6 +1181,79 @@ Proof.
   destruct (rest_of J) as [| a u]; discriminate.
 Qed.
 
+(* ---- S7.1  THE COMPLETE PART OF AN INPUT ----------------------------- *)
+
+(* [done_of I] is the input TRUNCATED TO ITS COMPLETE LINES: the join of
+   its bodies, each closed by the newline that closed it, with the partial
+   line the user is in the middle of dropped.  It is equally the first
+   [length I - length (rest_of I)] bytes of [I] ([done_of_app_rest] and
+   [length_done_of]); the join is the definition because every law below
+   is one rewrite of [wl_cut_of_join].
+
+   WHAT IT IS FOR.  A discipline that pins the wire at every byte must
+   name the whole input; one that pins it only at a line boundary names
+   this.  So the echo application's D1 reads [done_of], and the partial
+   line contributes nothing to the transcript it demands. *)
+Definition done_of (I : list (bv 8)) : list (bv 8) := wl_join (bodies_of I).
+
+Lemma done_of_nil : done_of [] = [].
+Proof. by rewrite /done_of bodies_of_nil wl_join_nil. Qed.
+
+(* the cut's two halves, with the complete one named *)
+Lemma done_of_app_rest (I : list (bv 8)) : done_of I ++ rest_of I = I.
+Proof. symmetry. exact (wl_cut_join I). Qed.
+
+Lemma done_of_prefix (I : list (bv 8)) : done_of I `prefix_of` I.
+Proof. exists (rest_of I). symmetry. exact (done_of_app_rest I). Qed.
+
+Lemma length_done_of (I : list (bv 8)) :
+  length (done_of I) = (length I - length (rest_of I))%nat.
+Proof.
+  rewrite -{2}(done_of_app_rest I) length_app. lia.
+Qed.
+
+(* the truncation IS complete: it parses to the same bodies and nothing is
+   left over *)
+Lemma wl_cut_done_of (I : list (bv 8)) : wl_cut (done_of I) = (bodies_of I, []).
+Proof.
+  rewrite /done_of -(app_nil_r (wl_join (bodies_of I))).
+  apply wl_cut_of_join; [exact (wl_cut_bodies_nonl I) | apply not_elem_of_nil].
+Qed.
+
+Lemma bodies_of_done (I : list (bv 8)) : bodies_of (done_of I) = bodies_of I.
+Proof. by rewrite /bodies_of wl_cut_done_of. Qed.
+
+Lemma rest_of_done (I : list (bv 8)) : rest_of (done_of I) = [].
+Proof. by rewrite /rest_of wl_cut_done_of. Qed.
+
+Lemma nlines_done (I : list (bv 8)) : nlines (done_of I) = nlines I.
+Proof. by rewrite /nlines bodies_of_done. Qed.
+
+Lemma done_of_idemp (I : list (bv 8)) : done_of (done_of I) = done_of I.
+Proof. by rewrite {1}/done_of bodies_of_done. Qed.
+
+(* an input whose last byte is a newline is already complete *)
+Lemma done_of_rest_nil (I : list (bv 8)) : rest_of I = [] -> done_of I = I.
+Proof. intro Hr. by rewrite -{2}(done_of_app_rest I) Hr app_nil_r. Qed.
+
+(* ...THE TWO SNOC STEPS.  The newline promotes the whole input; any other
+   byte joins the partial line and changes nothing. *)
+Lemma done_of_snoc_nl (I : list (bv 8)) : done_of (I ++ [wl_nl]) = I ++ [wl_nl].
+Proof. apply done_of_rest_nil, rest_of_snoc_nl. Qed.
+
+Lemma done_of_snoc_other (I : list (bv 8)) (b : bv 8) :
+  b <> wl_nl -> done_of (I ++ [b]) = done_of I.
+Proof. intro Hb. by rewrite /done_of (bodies_of_snoc_other I b Hb). Qed.
+
+(* ...and it is monotone, which is what carries a discipline from a prefix
+   of the input to the input *)
+Lemma done_of_mono (I I' : list (bv 8)) :
+  I `prefix_of` I' -> done_of I `prefix_of` done_of I'.
+Proof.
+  intro Hp. destruct (bodies_of_prefix I I' Hp) as [bs Hbs].
+  exists (wl_join bs). by rewrite /done_of Hbs wl_join_app.
+Qed.
+
 (* ===================================================================== *)
 (*  S7.2  THE WORDS OF A BODY                                             *)
 (*                                                                        *)

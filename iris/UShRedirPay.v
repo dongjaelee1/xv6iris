@@ -47,21 +47,15 @@ Require Import ProcGeom.          (* [NOFILE] / [NSTD] *)
 Require Import UexecSlot UexecRet.
 Require Import UkRun.
 Require Import UserFd.
-Require Import ChildTok.
 Require Import ElfFile ElfUser.
-Require Import UmodeAbi.
 Require Import FsImg.
 Require Import FsEchoPin.
-Require Import SpecKexec.
 Require Import ExecEntry.         (* [image_entry] / [image_entry_taint] *)
 Require Import FsAbsDefs.         (* [anode] / [MkAnode] / [AFile] *)
 Require Import ExecRun.           (* THE U-TIER EXEC RULE this supply is an
                                      instance of *)
-Require Import KexecDefs.
-Require Import UexecExecInst.
-Require Import UkSh UkShFork UkShEcho.
+Require Import UkShEcho.
 Require Import UkShRedirBody.     (* [ushs_fd1f]: the abstract fd-1 row *)
-Require Import LineWords.
 Require Import EchoDisc.
 Require Import UShEcho.           (* the pinned bundle's inputs *)
 Local Open Scope Z_scope.

@@ -49,31 +49,21 @@ Require Import ProcAvail.
 Require Import FileInvDefs.
 Require Import UserFd.
 Require Import UserHeap.
-Require Import UserPerm.
 Require Import ProcGeom.           (* [NOFILE] / [tf_arg_idx] *)
-Require Import VcGen.              (* [trunc32] *)
-Require Import UexecSlot UexecRet UexecSG.
+Require Import UexecSlot UexecRet.
 Require Import UkRun UkRunSys.
 Require Import UexecExecInst.
 Require Import UkReadRows.
 Require Import UkWriteLeaf.
 Require Import UkWriteFile.        (* the file arm of the write leaf *)
-Require Import SpecArgfd.
 Require Import SpecFilewrite.
 Require Import SpecSysRead.        (* [sys_rw_count] *)
-Require Import SpecCopyin.
 Require Import SysWriteDefs.       (* [wchunks] *)
 Require Import AppCfg AppInv.
 Require Import FsCfg.
-Require Import FsBlocks.
-Require Import FsBytesGamma.
-Require Import FsTree.
-Require Import FsAbsWriteFire.
 Require Import TreeView.
 Require Import AppTree.
-Require Import TreeObs.
 Require Import TreeMove.           (* the owner's move at the write fire *)
-Require Import FsAbs.
 Require Import FsAbsDefs.
 Require Import CtxIdDefs.
 Local Open Scope Z_scope.
@@ -108,7 +98,7 @@ Section UkTreeWrite.
     udepwf_st N m pc 16
       (write_file_fam (fun _ : nat => tree_wq c r g root i t) (ukn_pay N))
       (FdOpen rb true (FdInode i γo OffParked)).
-  Proof.
+  Proof using .
     intros Heq Hcnt. iIntros "#Hinv Hq".
     iApply (udepwf_st_write_file N m pc rb i γo
               (fun _ : nat => tree_wq c r g root i t) n Hcnt with "[Hq]").
@@ -165,9 +155,9 @@ Section UkTreeWrite.
        ((∃ t' : ttree, tree_own r g root t' ∗ ⌜twrote i t t'⌝)
         ∨ tree_taint c) -∗
        urun N h' (<[Regidx a0_idx := rv]> m) (add_vec_int pc 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
-  Proof.
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
+  Proof using .
     intros Heq Hn Hfdv Hfdlt Hcnt Hal4 Hti.
     iIntros "#Hi Hrun Hufdh Hbuf Hown #Hinv Hcont".
     iAssert (tree_wq c r g root i t) with "[Hown]" as "Hq".

@@ -142,8 +142,8 @@ Section UkCatVprintfS.
            = mword_of_int (bv_unsigned (f (i0 + k)%nat)) ⌝ -∗
          Co -∗
          urun N h' m' (mword_of_int 0x566) (4 + n) -∗
-         WP (Loop : expr riscv_lang)) -∗
-      WP (Loop : expr riscv_lang).
+         mWP (Loop : expr riscv_lang)) -∗
+      mWP (Loop : expr riscv_lang).
   Proof using .
     intros Ha0 Habnd.
     induction k as [| k IH ];
@@ -426,8 +426,8 @@ Section UkCatVprintfS.
        ⌜ m' !!! Regidx a1_idx = zero_extend' 64 b1 ⌝ -∗
        Co -∗
        urun N h' m' (mword_of_int 0x70e) (4 + n) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hp0 Hp1 Hinv Hs1 Ha1.
     pose proof Hinv as Hdv.
@@ -684,8 +684,8 @@ Section UkCatVprintfS.
          ⌜ vp_inv3 m0 m' sp0 a fd ap v3 i ⌝ -∗
          Co -∗
          urun N h' m' (mword_of_int 0x710) (4 + n) -∗
-         WP (Loop : expr riscv_lang)) -∗
-      WP (Loop : expr riscv_lang).
+         mWP (Loop : expr riscv_lang)) -∗
+      mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hsa0 Hsahi.
     induction k as [| k IH ];
@@ -802,8 +802,8 @@ Section UkCatVprintfS.
        ⌜ m' !!! Regidx s1_idx = mword_of_int (bv_unsigned b1) ⌝ -∗
        ⌜ m' !!! Regidx a4_idx = mword_of_int (Z.of_nat (S i)) ⌝ -∗
        urun N h' m' (mword_of_int 0x562) (4 + n) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Ha0 Habnd Hinv.
     pose proof Hinv as Hd.
@@ -976,8 +976,8 @@ Section UkCatVprintfS.
        ⌜ m' !!! Regidx s1_idx = mword_of_int (bv_unsigned b1) ⌝ -∗
        ⌜ m' !!! Regidx a4_idx = mword_of_int (Z.of_nat (S i)) ⌝ -∗
        urun N h' m' (mword_of_int 0x562) (4 + n) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Ha0 Habnd Hinv0 Hs1.
     pose proof (vp_inv_to3 m0 m sp0 a fd ap i Hinv0) as Hinv.
@@ -1126,8 +1126,8 @@ Section UkCatVprintfS.
        ⌜ m' !!! Regidx s1_idx = mword_of_int (bv_unsigned c1) ⌝ -∗
        Co -∗
        urun N h' m' (mword_of_int 0x562) (4 + n) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Ha0 Habnd Hap0 Haphi Hapal Hsanz Hinv.
     pose proof Hinv as Hd.
@@ -1492,8 +1492,8 @@ Section UkCatVprintfS.
        ⌜ m' !!! Regidx s1_idx = mword_of_int (bv_unsigned c1) ⌝ -∗
        Co -∗
        urun N h' m' (mword_of_int 0x562) (4 + n) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Ha0 Habnd Hap0 Haphi Hapal Hsanz Hr1 Hr2 Hc1u Hc1x Hc2u Hc2x
            Hinv Ha1 Ha2 Ha5.
@@ -1988,8 +1988,8 @@ Section UkCatVprintfS.
        ⌜ m' !!! Regidx s1_idx = mword_of_int (bv_unsigned c1) ⌝ -∗
        Co -∗
        urun N h' m' (mword_of_int 0x562) (4 + n) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Ha0 Habnd Hap0 Haphi Hapal Hsanz
            Hc1z Hc1d Hc1u Hc1x Hc2d Hc2u Hc2x Hinv Hs1 Ha4.
@@ -2588,8 +2588,8 @@ Section UkCatVprintfS.
        ⌜ ucallee_saved m m' ⌝ -∗
        Co -∗
        urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (12 + (4 + n)) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Ha0 Habnd Hq2 Hfq Hfsq Hpct Hc1d Hc1u Hc1x Hc2set Hapal Hsanz Ha1 Ha2.
     iIntros "Hpay1 Hpay2 Hpay3 #Hcode #Hstr Hw #Hsstr HCi Hrun Hcont".

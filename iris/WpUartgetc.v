@@ -199,7 +199,7 @@ Section WpUartgetc.
             sie_cap_gpr kt (<[Regidx Ra5 := regval_into_reg (rx_masked bt)]> m) n b p -∗
             pc_is pcNo -∗
             uart_rx_tok γd k hl -∗
-            WP (Loop : expr riscv_lang))
+            mWP (Loop : expr riscv_lang))
         ∧ (* "return the byte": it is in a0, zero-extended -- WITH THE HISTORY
              IT ARRIVED AT and the application's claim about it, and with the
              token's count one further on *)
@@ -220,9 +220,17 @@ Section WpUartgetc.
                uart_out_lb γd (obs_wire i (open_seg h)) ∗
                (* ...and its ERA STAMP (milestone C) *)
                ⌜obs_boots h = S gen_id⌝ ∗
+               (* ...AND THE TWO INPUT NUMBERS (relax-d2, lane K1): this
+                  byte is the [S k]th input of the era at this port, and
+                  the anchor it replaces was the [k]th.  Relayed verbatim
+                  to uartintr, which turns the pair into consoleintr's
+                  log-completeness premise. *)
+               ⌜length (obs_ins i (open_seg h)) = S k⌝ ∗
+               ⌜ins_len i hl = k⌝ ∗
+               ⌜trace_shape h true⌝ ∗
                uart_rx_tok γd (S k) (Some h)) -∗
-            WP (Loop : expr riscv_lang)) )) -∗
-    WP (Loop : expr riscv_lang).
+            mWP (Loop : expr riscv_lang)) )) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hlsr Hrhr Hne Hne0 Hrtp HA HB HR HZ HK HNo Hal)
       "Hcg Hpc HiL HiA HiB HiR HiZ #Huinv #Hdlab Htok Hk".

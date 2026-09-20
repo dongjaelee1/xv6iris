@@ -300,8 +300,8 @@ Definition wp_iunlockput_dep_sconf_body
       (* ...AND WHAT THE ARM PARKED, back: the transaction share at [DepTx],
          nothing at the other descriptors. *)
       ic_dep_side d -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Definition wp_iunlockput_dep_gen_body
     `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, ICFG : icfg, APP : appcfg Σ, FSC : fscfg, !irefslotG Σ, !pavG Σ, !wchG Σ} `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx}
@@ -468,8 +468,8 @@ Definition wp_iunlockput_dep_gen_body
       (* ...AND WHAT THE ARM PARKED, back: the transaction share at [DepTx],
          nothing at the other descriptors. *)
       ic_dep_side d -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 (* ---- THE TRANSACTIONAL FORMS (durable-disk B''-tx) --------------------
    The generic forms with the checkout descriptor at the write arm, closed
@@ -612,8 +612,8 @@ Definition wp_iunlockput_tx_sconf_body
       ⌜((n - iput_units)%nat <= n')%nat /\ (n' <= n)%nat⌝ -∗
       log_op icfg_log n' -∗
       iref_slot -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 Definition wp_iunlockput_tx_gen_body
     `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, ICFG : icfg, APP : appcfg Σ, FSC : fscfg, !irefslotG Σ, !pavG Σ, !wchG Σ} `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx}
     (gs : list gname) (j : nat) (gl : gname)           (* the running process *)
@@ -765,8 +765,8 @@ Definition wp_iunlockput_tx_gen_body
       (* the transaction's token, whole again *)
       log_tx icfg_log -∗
       iref_slot -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 (* ---- THE TWO PUBLISHED READINGS OF THE PARK (durable-disk B''-tx4) ----
    Both are instances of the generic bodies above at [DepTx], where the share

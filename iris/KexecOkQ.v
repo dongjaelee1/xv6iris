@@ -380,7 +380,7 @@ Definition kexec_closer `{XI : CtxIdDefs.CurCtx}
          [∗ list] j ∈ seq 0 (aslen i), pa_add (avf i) j ↦ₘ{dqas} afun i j) -∗
       bslots 3 -∗
       iref_slots 2 -∗
-      WP (Loop : expr riscv_lang))%I.
+      mWP (Loop : expr riscv_lang))%I.
 
 (* ===================================================================== *)
 (*  2.  THE ONE VALUE THE HOLE IS EVER PLUGGED WITH                       *)

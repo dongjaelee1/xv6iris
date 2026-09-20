@@ -283,8 +283,8 @@ Definition wp_kwait_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG �
          generation left is the answer's own [γ'], beside the escrow that
          redeems it. *)
       ch_frag (pv_chg (us_V U)) pj cs' -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type KWAIT.
   Parameter wp_kwait_sconf :

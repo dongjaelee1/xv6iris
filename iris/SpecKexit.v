@@ -40,7 +40,7 @@
    ==== IT DIVERGES, SO THE CONTRACT IS A CONSUMPTION LIST ==============
 
    Like scheduler()'s, this spec has no continuation: the postcondition of a
-   function that never returns is [WP Loop], full stop
+   function that never returns is [mWP Loop], full stop
    (claude-notes/completed/scheduler.md).  What that makes the precondition
    is a list of everything kexit CONSUMES, and the interesting entries are
    the process's own:
@@ -344,7 +344,7 @@ Definition wp_kexit_sconf_body
    ∨ (⌜kexit_status m = -1⌝ ∗ ChildTok.kill_shot (pv_gen (us_V U))
       ∗ ChildTok.taken_at (pv_gen (us_V U)))) -∗
   (* NO continuation: kexit does not return.  See the header. *)
-  WP (Loop : expr riscv_lang).
+  mWP (Loop : expr riscv_lang).
 
 (* ---------------------------------------------------------------------- *)
 (* WHAT THE CONSUMPTION LIST IS FOR, checked here.                          *)

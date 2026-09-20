@@ -239,8 +239,8 @@ Definition kxc_b2_body
         KexecOkQ.kexec_closer Q QF gf fsc_kalloc (proc_addr jp) pidv U m (ret_pc ra0) K
              eb eb ∅ dqb dqs fsc_bmapstart na alen plen pv dqpv
              pfun av dqa avf aslen dqas afun) -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 (* ===================================================================== *)
 (*  [kxc_b2z] -- PHASE B2 WHOLE, THE [elf.phnum = 0] PATH.  Statement      *)
@@ -293,8 +293,8 @@ Definition kxc_b2z_body
                  (m !!! Regidx Rs9) (m !!! Regidx Rs10) w13
                  w67 (kxc_fb datl dnf) ef P Mi
                  (mword_of_int 0 : mword 64) (m !!! Regidx Rs11) -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type KEXECB3.
   Parameter kxc_b2 :
@@ -764,8 +764,8 @@ Section KexecB3Incr.
                        gilf gislf n2 plen pfun na avf aslen afun pidv U eb
                        dqb dqs dqa dqpv dqas M' K sp0 ra0 s00 s10 s20 pv av
                        w5 w6 w7 w8 w9 w10 w11 w12 w13 w67 ef P Mi szv w13 ) -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros "#Htext Hst Hout".
     rewrite /kxc_at_11a.
@@ -1249,8 +1249,8 @@ Section KexecB3Body.
           KexecOkQ.kexec_closer Q QF gf fsc_kalloc (proc_addr jp) pidv U m (ret_pc ra0) K
                eb eb ∅ dqb dqs fsc_bmapstart na alen plen pv dqpv
                pfun av dqa avf aslen dqas afun) -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hqfnl Hqfnm HK Hk Hlg Hsz Hbm0 Hbmc Hbml Hins0 Hcovb Hiregb Hjp Hgs
            Hsp Hra Hs0 Hs1 Hs2.
@@ -3845,8 +3845,8 @@ Section KexecB3Loop.
           KexecOkQ.kexec_closer Q QF gf fsc_kalloc (proc_addr jp) pidv U m (ret_pc ra0) K
                eb eb ∅ dqb dqs fsc_bmapstart na alen plen pv dqpv
                pfun av dqa avf aslen dqas afun) -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hqfnl Hqfnm HK Hk Hlg Hsz Hbm0 Hbmc Hbml Hins0 Hcovb Hiregb Hjp Hgs
            Hsp Hra Hs0 Hs1 Hs2.
@@ -3949,8 +3949,8 @@ Section KexecB3Close.
                    dqb dqs dqa dqpv dqas M' K sp0 ra0 s00 s10 s20 pv av
                    w5 w6 w7 w8 w9 w10 w11 w12 w13 w67 ef P Mi
                    (mword_of_int 0 : mword 64) (m !!! Regidx Rs11) -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros "#Htext Hst Hout".
     rewrite /kxc_at_1a2.
@@ -4085,8 +4085,8 @@ Section KexecB3Close.
                    M' K sp0 ra0 s00 s10 s20 pv av
                    w5 w6 w7 w8 w9 w10 w11 w12 w13 w67
                    (kxc_fb datl dnf) ef P Mi szv sv11 -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK Hlg Hsz Hbm0 Hbmc Hbml Hins0 Hcovb Hiregb Hjp Hgs.
     pose proof HK as HK'. 

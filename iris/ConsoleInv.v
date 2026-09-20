@@ -716,6 +716,51 @@ Proof.
     exact (Hgap i h1 c1 h2 c2 (Hlk i _ H1) (Hlk (S i) _ H2)).
 Qed.
 
+(* ====================================================================== *)
+(*  THE RING'S BYTES ARE DISTINCT ECHOED LOG ENTRIES (relax-d2, lane K2).  *)
+(*                                                                        *)
+(*  A full ring is the kernel's reason for dropping a byte, and the only   *)
+(*  form that reason can take at the boundary is a COUNT: the log holds at *)
+(*  least as many echoed entries as the ring holds bytes.  The injection   *)
+(*  is the ring's own two clauses -- [cons_logged] says every ring entry   *)
+(*  IS an echoed log entry, [cons_chain] says the ring's histories are     *)
+(*  strictly increasing, hence pairwise distinct -- so the histories of    *)
+(*  the ring's bytes are a duplicate-free sublist of the echoed entries'.  *)
+(* ====================================================================== *)
+
+(* strictly increasing histories are distinct histories *)
+Lemma cons_chain_nodup (R : list (list mobs * bv 8)) :
+  cons_chain R -> NoDup (fst <$> R).
+Proof.
+  intro Hch. apply NoDup_alt. intros i j x Hi Hj.
+  rewrite list_lookup_fmap in Hi. rewrite list_lookup_fmap in Hj.
+  destruct (R !! i) as [[hi bi] |] eqn:Ei; [| discriminate].
+  destruct (R !! j) as [[hj bj] |] eqn:Ej; [| discriminate].
+  cbn in Hi, Hj. injection Hi as <-. injection Hj as Hx.
+  destruct (decide (i = j)) as [-> | Hne]; [reflexivity |].
+  exfalso. destruct (decide (i < j)%nat) as [Hlt | Hge].
+  - destruct (Hch i j hi hj bi bj Ei Ej Hlt) as [_ Hl]. rewrite Hx in Hl. lia.
+  - destruct (Hch j i hj hi bj bi Ej Ei ltac:(lia)) as [_ Hl].
+    rewrite Hx in Hl. lia.
+Qed.
+
+Lemma cons_logged_count (L : list LogEntryDefs.log_entry)
+    (R : list (list mobs * bv 8)) :
+  cons_logged L R -> cons_chain R ->
+  (length R <= ConsLog.echoed_count L)%nat.
+Proof.
+  intros Hlg Hch. rewrite ConsLog.echoed_count_eq.
+  assert (Hsub : (fst <$> R) ⊆+ (LogEntryDefs.le_hist <$> base.filter ConsLog.log_echoed L)).
+  { apply NoDup_submseteq; [exact (cons_chain_nodup R Hch) |].
+    intros x Hx. apply elem_of_list_fmap in Hx as [[h b] [-> Hp]].
+    destruct (Hlg (h, b) Hp) as (e & He & Hpe & Hec).
+    apply elem_of_list_fmap. exists e. split.
+    - injection Hpe as <- _. reflexivity.
+    - apply elem_of_list_filter. split; [exact Hec | exact He]. }
+  apply submseteq_length in Hsub.
+  by rewrite !length_fmap in Hsub.
+Qed.
+
 (* the chain survives taking a prefix, which is what lets a reader that
    holds a lower bound of the stored sequence read the order off it *)
 Lemma cons_chain_prefix (l1 l2 : list (list mobs * bv 8)) :
@@ -1603,6 +1648,18 @@ Section ConsoleInv.
   Definition cons_logm (cn : cons_names)
       (L : list LogEntryDefs.log_entry) : iProp Σ :=
     ghost_var (un_logm cn.(cn_uart)) (1/2) L.
+
+  (* ...AND THE DELIVERED COUNT, WHICH THE RING DOES SEE (relax-d2, lane
+     K2).  [cons_deliv]'s kernel half rides the LEASE, so the ring cannot
+     say how much of the log has been handed out -- and a full-ring drop
+     has to, because what the boundary is owed there is "the log holds 128
+     echoed entries beyond the delivered ones".  This is the NUMBER beside
+     the list: one half here, under [n <= cur], the other in the Uart0 port
+     invariant at [length (ch_dl H)].  It moves at one site,
+     [WpUart.uart_inv_cons_read], where the reader holds cons.lock and
+     opens the port invariant together. *)
+  Definition cons_dlcnt (cn : cons_names) (n : nat) : iProp Σ :=
+    ghost_var (un_dlcnt cn.(cn_uart)) (1/2) n.
   (* the ring's half of the high-water mark.  THE SAME PROPOSITION as
      [WpUart.uart_rx_hi (cn_uart cn) (1/2)], spelled here because this file
      sits below [WpUart] and must not depend on it; the two unfold to one
@@ -1622,6 +1679,8 @@ Section ConsoleInv.
   Proof using . rewrite /cons_deliv. apply _. Qed.
   Global Instance cons_logm_timeless cn L : Timeless (cons_logm cn L).
   Proof using . rewrite /cons_logm. apply _. Qed.
+  Global Instance cons_dlcnt_timeless cn n : Timeless (cons_dlcnt cn n).
+  Proof using . rewrite /cons_dlcnt. apply _. Qed.
 
   (* THE CURSOR PAIR MOVES ALONE (ruling F1).  Its two halves are the ring's
      and the lease's POSITION; the lease's other half -- the consumed
@@ -1644,6 +1703,11 @@ Section ConsoleInv.
   Qed.
   Lemma cons_logm_agree cn L L' :
     cons_logm cn L -∗ cons_logm cn L' -∗ ⌜L = L'⌝.
+  Proof using .
+    iIntros "H1 H2". by iDestruct (ghost_var_agree with "H1 H2") as %->.
+  Qed.
+  Lemma cons_dlcnt_agree cn n n' :
+    cons_dlcnt cn n -∗ cons_dlcnt cn n' -∗ ⌜n = n'⌝.
   Proof using .
     iIntros "H1 H2". by iDestruct (ghost_var_agree with "H1 H2") as %->.
   Qed.
@@ -1984,7 +2048,7 @@ Section ConsoleInv.
 
   Definition cons_res (cn : cons_names) : iProp Σ :=
     (∃ (r w e : mword 32) (bs : list (bv 8)) (ts : list (option (list mobs)))
-       (cur nrd : nat) (st pd : list (list mobs * bv 8))
+       (cur nrd ndl : nat) (st pd : list (list mobs * bv 8))
        (hh : option (list mobs))
        (L0 : list LogEntryDefs.log_entry) (gp : bool),
        a_cons_r ↦₄ r ∗
@@ -2006,6 +2070,15 @@ Section ConsoleInv.
           to prove [ConsLog.read_ok] and what consoleintr's four
           transitions maintain. *)
        cons_logm cn L0 ∗ ⌜cons_log_ok L0 (st ++ pd) gp⌝ ∗
+       (* THE DELIVERED-COUNT BOUND (relax-d2, lane K2).  The reader's
+          position never runs ahead of the ring's own consumed count -- a
+          token-holding pop moves both, a tokenless one moves only [cur] --
+          and the boundary's delivered list is never longer than the
+          reader's position, because the only thing that grows it is that
+          same read's final release.  Together they are what a full-ring
+          drop spends: the ring's [cur + 128] echoed entries are at least
+          [128] beyond the [ndl] delivered ones. *)
+       cons_dlcnt cn ndl ∗ ⌜(nrd <= cur)%nat⌝ ∗ ⌜(ndl <= nrd)%nat⌝ ∗
        (⌜cur = nrd⌝ ∨ cons_dirty_lb cn))%I.
 
   (* WHAT A CONSOLE READ COSTS ITS CALLER, AND WHAT IT HANDS BACK.  One
@@ -2156,6 +2229,9 @@ Section ConsoleInv.
      (* the log's mirror, at the empty log: the ring's half of the pair the
         UART mint made (lane CONS-IO, milestone B) *)
      cons_logm cn [] ∗
+     (* ...and the delivered count at 0 (relax-d2, lane K2): the fifth row
+        from the same mint, the ring's half of [un_dlcnt]. *)
+     cons_dlcnt cn 0%nat ∗
      cons_reader cn 0%nat ∗ cons_clean_tok cn)%I.
 
   (* The [un_rxhi] half is spelled as its [ghost_var] rather than as
@@ -2171,10 +2247,11 @@ Section ConsoleInv.
   Lemma cons_ghosts_alloc (γu : uart_names) :
     ghost_var (un_rxhi γu) (1/2) (None : option (list mobs)) -∗
     ghost_var (un_deliv γu) (1/2) (@nil (list mobs * bv 8)) -∗
-    ghost_var (un_logm γu) (1/2) (@nil LogEntryDefs.log_entry) ==∗
+    ghost_var (un_logm γu) (1/2) (@nil LogEntryDefs.log_entry) -∗
+    ghost_var (un_dlcnt γu) (1/2) 0%nat ==∗
       ∃ cn : cons_names, ⌜cn_uart cn = γu⌝ ∗ cons_ghosts_boot cn.
   Proof using .
-    iIntros "Hhi Hdv Hlm".
+    iIntros "Hhi Hdv Hlm Hdc".
     iMod (own_alloc (●ML ([] : list (leibnizO (list mobs * bv 8)))))
       as (γl) "Hl"; [apply mono_list_auth_valid |].
     iEval (rewrite {1}mono_list_auth_lb_op) in "Hl".
@@ -2186,9 +2263,9 @@ Section ConsoleInv.
     iModIntro. iExists (ConsNames γu γl γr γk).
     iSplitR; [by iPureIntro |].
     rewrite /cons_ghosts_boot /cons_stored_auth /cons_cursor /cons_reader
-            /cons_rdtok /cons_dl /cons_deliv /cons_logm
+            /cons_rdtok /cons_dl /cons_deliv /cons_logm /cons_dlcnt
             /cons_stored_lb /cons_hi /cons_clean_tok /=.
-    iFrame "Hl Hr1 Hhi Hlm Hr2 Hk".
+    iFrame "Hl Hr1 Hhi Hlm Hdc Hr2 Hk".
     iExists []. iFrame "Hdv". iSplitR; [iExact "Hlb" |].
     iLeft. by iPureIntro.
   Qed.
@@ -2221,7 +2298,7 @@ Section ConsoleCtx.
   Definition cons_res_at (cn : cons_names)
       (ξ : CtxId) : iProp Σ :=
     (∃ (r w e : mword 32) (bs : list (bv 8)) (ts : list (option (list mobs)))
-       (cur nrd : nat) (st pd : list (list mobs * bv 8))
+       (cur nrd ndl : nat) (st pd : list (list mobs * bv 8))
        (hh : option (list mobs))
        (L0 : list LogEntryDefs.log_entry) (gp : bool),
        ctx_word4_pointsto ξ a_cons_r (DfracOwn 1) r ∗
@@ -2238,6 +2315,7 @@ Section ConsoleCtx.
        cons_data_at ξ bs ∗ cons_tags ts ∗
        cons_stored_auth cn st ∗ cons_cursor cn nrd ∗ cons_hi cn hh ∗
        cons_logm cn L0 ∗ ⌜cons_log_ok L0 (st ++ pd) gp⌝ ∗
+       cons_dlcnt cn ndl ∗ ⌜(nrd <= cur)%nat⌝ ∗ ⌜(ndl <= nrd)%nat⌝ ∗
        (⌜cur = nrd⌝ ∨ cons_dirty_lb cn))%I.
   Lemma cons_res_at_cur (cn : cons_names) :
     cons_res_at cn cur_ctx = cons_res cn.
@@ -2245,7 +2323,7 @@ Section ConsoleCtx.
   Global Instance cons_res_at_morph (cn : cons_names) :
     CtxMorph (cons_res_at cn).
   Proof using .
-    rewrite /cons_res_at /cons_data_at /cons_logm /cons_dirty_lb.
+    rewrite /cons_res_at /cons_data_at /cons_logm /cons_dlcnt /cons_dirty_lb.
     ctx_morph_solve.
   Qed.
 

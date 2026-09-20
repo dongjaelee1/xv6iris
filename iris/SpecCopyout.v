@@ -214,8 +214,8 @@ Definition wp_copyout_sconf_mem_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{C
     ⌜uptd_ext_sz szv P P'⌝ -∗
     ⌜ copyout_wrote P M dstva len src_bytes
         (mr !!! Regidx (mword_of_int 10)) M' ⌝ -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type COPYOUT.
   Parameter wp_copyout_sconf_mem :

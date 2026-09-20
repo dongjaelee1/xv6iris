@@ -316,8 +316,8 @@ Section SysExecBreakAU.
         bslots 3 -∗
         iref_slots 2 -∗
         proc_priv γf (proc_addr jp) pid U' -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using ufdG0.
     intros HK Hlb Hsp0 Hplen Hpcstr Hpof Hav Him Hnul Halp Hroot Hnib0
            Hlg Hsize Hbm0 Hbmc Hbml Hist0 Hcb Hireg Hjp Hgl Hbt Hebt.

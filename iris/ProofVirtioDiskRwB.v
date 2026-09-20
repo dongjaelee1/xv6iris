@@ -131,8 +131,8 @@ Section VdrwbFreeAt.
         pc_is (mword_of_int (KernelSyms.virtio_disk_rw + off + 8) : mword 64) -∗
         idxa ↦₄[KT1] (mword_of_int (Z.of_nat i) : mword 32) -∗
         free_bundles γd pd (fr_upd fr i true) -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hav Hi8 Hfri Hlen Haddr Hp4 Hjt Hjal Hret Hlkbelow.
     iIntros "Hcg Hown #Htext Hpc #Hpinv #Hdp Hi0 Hi4 Hidx Hbun [Hslot Hfrag] Hcont".
@@ -258,7 +258,7 @@ Section ProofVirtioDiskRwB.
        (free_slot_res pd t ∗ t ↪[dn_head γd] HInactive) -∗
        vdrw_idx (KTR := KT1) sp0 (mword_of_int (Z.of_nat h)) (mword_of_int (Z.of_nat m2))
                     (mword_of_int (Z.of_nat t)) -∗
-       WP (Loop : expr riscv_lang)))%I.
+       mWP (Loop : expr riscv_lang)))%I.
 
   (* the loop head at +0x0bc *)
   Definition vdrw_p2_loop (CID0 : CPU) (γk : gname)
@@ -281,7 +281,7 @@ Section ProofVirtioDiskRwB.
        disk_res γd pd pav pu -∗
        vdrw_scratch (KTR := KT1) sp0 -∗
        vdrw_p2_exit CID0 γk γs j γd pd pav pu K eb sp0 b wr sector m0 lks -∗
-       WP (Loop : expr riscv_lang)))%I.
+       mWP (Loop : expr riscv_lang)))%I.
 
   Lemma wp_vdrw_p2 (γk : gname)
       (γs : list gname) (j : nat) (γl : gname) (γd : disk_names)
@@ -311,7 +311,7 @@ Section ProofVirtioDiskRwB.
     disk_res γd pd pav pu -∗
     vdrw_scratch (KTR := KT1) sp0 -∗
     vdrw_p2_exit CID γk γs j γd pd pav pu K eb sp0 b wr sector m0 lks -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK Hj Hjl Hlen Hregs Hhi0 Hbelow.
     iIntros "Hcg Hown Htc Hclm #Htext Hpc #Hpinv
@@ -503,7 +503,7 @@ Section ProofVirtioDiskRwB.
                   free_bundles γd pd fr -∗
                   vdrw_scratch (KTR := KT1) sp0 -∗
                   vdrw_p2_exit CID γk γs j γd pd pav pu K eb sp0 b wr sector m0 lks -∗
-                  WP (Loop : expr riscv_lang))%I
+                  mWP (Loop : expr riscv_lang))%I
         with "[Hpub Hlb Hrd Hdfl Hstg Hcl Hrows Huidx Hring Havh IH]" as "Hsleep".
       { iIntros (Mz) "%Hcsz Hcg Hown Htc Hclm Hpc Htok Hbun Hscr Hexit".
         assert (Hhiz : vdrw_hi Mz m0)

@@ -610,8 +610,8 @@ Definition wp_sys_link_sconf_body
       (* ...and the legs' receipts, keyed on that answer *)
       link_arms (fs_gamma_L fsc_fs) Ftgt Fent Funt
         (mf !!! Regidx (mword_of_int 10 : mword 5)) -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type SYSLINK.
   Parameter wp_sys_link_sconf :

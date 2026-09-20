@@ -281,9 +281,22 @@ far are a sequence of ADMISSIBLE LINES and a partial one
 (`EchoDisc.disc_input`, read through the parser `LineWords.bodies_of` /
 `rest_of`: each complete line is `echo` plus alphanumeric words, fewer than
 ten, shorter than sh's buffer -- `EchoDisc.line_ok` -- and the partial one
-is body bytes), and each was typed only after the expected transcript for
-the bytes before it had appeared on the console wire (`EchoDisc.disc`: the
-content condition D3 and the positional rate bound D1/D2).  The transcript
+is body bytes), and every byte of a line was typed only after the expected
+transcript for the COMPLETED lines before it -- ending in the shell's
+`$ ` -- had appeared on the console wire (`EchoDisc.disc`: the content
+condition D3 and the positional condition D1, read at
+`LineWords.done_of`).  A line may be typed as a burst: nothing makes the
+user wait for a byte's echo, and `EchoDisc.demo_seg_burst` is the witness
+that the rule admits it.  What the per-byte wait used to buy the proof --
+that every earlier input has been echoed when the next echo goes out -- is
+the KERNEL's FIFO discipline, handed to the claim as `ConsLog.cons_ev_ok`'s
+log-completeness clause (the receive FIFO drains in arrival order, each
+popped byte's consoleintr arm files its entry before the next pop), and the
+claim itself refutes the full-ring drop: a block's first byte is written by
+a process that has consumed the line it answers (`EchoOut.inp_lb` is a
+bound on the DELIVERED input, so every write pins the delivered count), so
+the ring holds at most the line in progress, under `line_max` and so under
+the ring's 128 -- `EchoOutPure.drop_refuted`.  The transcript
 is a function of the INPUT, not of its length: each round's block is the
 raw body the console echoed, its newline, and the alternative computed from
 that body's words (`EchoDisc.sess`; design of record

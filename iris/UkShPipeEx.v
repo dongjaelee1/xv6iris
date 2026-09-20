@@ -37,17 +37,14 @@ Require Import Riscv.rv64d_types Riscv.rv64d Riscv.riscv_extras.
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.MachineWord.
 Require Import RiscvLang RiscvPtsto RiscvExtras RiscvModelBytes.
 Require Import RegFile.
-Require Import WpMmodeLeafBase.
-Require Import WpUmodeBranch.
 Require Import UmodeArith UmodeAbi.
-Require Import UserHeap UkRun UkRunLeaf UkRunMem.
+Require Import UserHeap UkRun UkRunLeaf.
 Require Import UCodeShP.
 Require Import CtxIdDefs.
 Require User.ShSyms User.ShInstrs.
 Require Import ChildTok.
 Require Import UserFd.
 Require Import UkShParse.
-Require Import UkShParseSym.
 Require Import UkShParseLex.
 Require Import UkShRedirLex.
 Require Import UkShPipeLex.
@@ -226,8 +223,8 @@ Section UkShPipeEx.
          ⌜ forall r : mword 5, ucallee_saved_idx r = true ->
              mc' !!! Regidx r = mc !!! Regidx r ⌝ -∗
          urun N h' mc' (mword_of_int 0x662) (24 + nn) -∗
-         WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+         mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hcur Hklt Hbar Hs0 Hs64 Hps0 Hps8 Hpssz Hs4v Hs5v Hs6v.
     iIntros "#Hcode #Hro Hcur Hstr Hws Hrun Hcont".

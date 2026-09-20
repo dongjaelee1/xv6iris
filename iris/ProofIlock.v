@@ -433,7 +433,7 @@ Section IlockDefs.
         (* ...AND THE LICENCE's PAYOUT, per RULING C' (SpecIlock's header) *)
         ireg_wd_back o g (bv_unsigned inum) -∗
         ⌜ilk_post o filled dn⌝ -∗
-        WP (Loop : expr riscv_lang))%I.
+        mWP (Loop : expr riscv_lang))%I.
 
 End IlockDefs.
 
@@ -478,7 +478,7 @@ Section IlockEpilogue.
     ireg_wd_back o g (bv_unsigned inum) -∗
     il_cont (CID0 := CID0) gisl s g lo d o k ip
  inum pidv dq dqs j m K eb b lks Upr -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK Hsp Hthr Hfr Hpost.
     pose proof HK as HK'. 
@@ -808,7 +808,7 @@ Section IlockLoad.
     ireg_wd_lic o g (bv_unsigned inum) -∗
     il_cont (CID0 := CID0) gisl s g lo d o k ip
  inum pidv dq dqs j m K eb b lks Upr -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK Hfills Hrdf Hsp Hthr HMs1 Hip Hk Hgeom Hst Hcov Hinlt Hj Hgl Hbelow.
     pose proof HK as HK'. 

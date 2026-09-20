@@ -61,25 +61,17 @@ Require Import UserFd.
 Require Import UkShParse.
 Require Import UkShParseSym.
 Require Import UkShParseLex.
-Require Import UkShParseTok.
-Require Import UkShParseRedir.
-Require Import UkShRedirLex.
-Require Import UkShRedirGtk.
 Require Import UkShRedirCmd.
 Require Import UkShRedirPr.
-Require Import UkShRedirEx.
-Require Import UkShRedirPex.
 
 Require Import UexecSG.   (* [uexecSG] / [uprogSG]: the ARM deposit class *)
 
-Require Import UkShRedirCm.
 Require Import UkShPipeLex.
 Require Import UkShPipeTok.
 Require Import UkShPipeParse.
 Require Import UkShPipeEx.
 Require Import UkShPipeCmd.
 Require Import UkShParseCmd.
-Require Import UkShRedirPc.
 Require Import UkShPipePex.
 Require Import UkShPipeRight.
 
@@ -205,8 +197,8 @@ Section UkShPipeCm.
               UM1 -∗
               Pex -∗
               urun N h' m' rpc av -∗
-              WP (Loop : expr riscv_lang)) -∗
-       WP (Loop : expr riscv_lang))%I.
+              mWP (Loop : expr riscv_lang)) -∗
+       mWP (Loop : expr riscv_lang))%I.
 
   (* (ii) [pipecmd] (0x260).  Stated as [UkShRedirCmd.wp_kshp_redircmd_n] is:
      the two subtrees ride through in an ABSTRACT [Sub], because the node
@@ -233,8 +225,8 @@ Section UkShPipeCm.
           UM3 -∗
           Pex -∗
           urun N h' m' rpc av -∗
-          WP (Loop : expr riscv_lang)) -∗
-       WP (Loop : expr riscv_lang))%I.
+          mWP (Loop : expr riscv_lang)) -∗
+       mWP (Loop : expr riscv_lang))%I.
 
   (* NON-VACUITY, for premise (i).  A premise nobody can satisfy is worse
      than no premise (durable-notes, Vacuity), so here is [ushq_pex_left]'s
@@ -361,8 +353,8 @@ Section UkShPipeCm.
            Pex -∗
            urun N h' m' (ret_pc (m !!! Regidx ra_idx))
              (6 + (16 + (24 + (8 + nn)))) -∗
-           WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+           mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using ushp_malloc_ok12.
     intros Ha0 Ha1 Hpq Hs0 Hs64 Hps0 Hps8 Hpssz.
     iIntros "#Hcode #Hro Hcur Hstr Hws Hsy HM0 #Hpx Hpay Hleft Hpipec Hrun Hcont".
@@ -1290,8 +1282,8 @@ Section UkShPipeCm.
            Pex -∗
            urun N h' m' (ret_pc (m !!! Regidx ra_idx))
              (6 + (16 + (24 + (8 + nn)))) -∗
-           WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+           mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using ushp_malloc_ok12.
     intros Hmal01 Hmal23 Ha0 Ha1 Hpq Htoks Hpos Hlen Hs0 Hs64 Hps0 Hps8 Hpssz.
     iIntros "#Hcode #Hro Hcur Hstr Hws Hsy HM0 #Hpx Hpay Hrun Hcont".
@@ -1358,8 +1350,8 @@ Section UkShPipeCm.
            Pex -∗
            urun N h' m' (ret_pc (m !!! Regidx ra_idx))
              (6 + (6 + (16 + (24 + (8 + nn))))) -∗
-           WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+           mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using ushp_malloc_ok12.
     intros Hmal01 Hmal23 Ha0 Ha1 Hpq Htoks Hpos Htlen Hs0 Hs64 Hps0 Hps8 Hpssz.
     assert (Hnend : (len < len)%nat -> ushp_is_sym (f len) = false)
@@ -2044,8 +2036,8 @@ Section UkShPipeCm.
            Pex -∗
            urun N h' m' (ret_pc (m !!! Regidx ra_idx))
              (8 + (6 + (6 + (16 + (24 + (8 + nn)))))) -∗
-           WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+           mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using ushp_malloc_ok12.
     intros Hmal01 Hmal23 Ha0 Hpq Htoks Hpos Htlen Hs0 Hs64.
     iIntros "#Hcode #Hro Hstr Hws Hsy HM #Hpx Hpay Hrun Hcont".
@@ -2925,8 +2917,8 @@ Section UkShPipeCm.
            Pex -∗
            urun N h' m' (ret_pc (m !!! Regidx ra_idx))
              (8 + (6 + (6 + (16 + (24 + (8 + nn)))))) -∗
-           WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+           mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using ushp_malloc_ok12.
     intros Hmal01 Hmal23 Ha0 Hpq Htoks Hpos Htlen Hs0 Hs64.
     iIntros "#Hcode #Hro Hstr Hws Hsy HM #Hpx Hpay Hrun Hcont".

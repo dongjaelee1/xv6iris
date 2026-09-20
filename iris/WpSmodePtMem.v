@@ -1051,8 +1051,8 @@ Section WpSmodePtMemLeaves.
       gpr_file (<[Regidx rd := regval_into_reg (sign_extend' 64 v)]> m) -∗
       TsoCtx.own_context XI -∗
       pa ↦₄[kt']{ dqm } v -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros ea a8 pa Hrd HSIE HMPRV HSXL Hmm HMXR Hpmm HPBMTE Hmenvval0.
     (* the three [let]s collapse: the engine spells the address as the term,
@@ -1327,8 +1327,8 @@ Section WpSmodePtMemLeaves.
       gpr_file (<[Regidx rd := regval_into_reg (sign_extend' 64 v)]> m) -∗
       TsoCtx.own_context XI -∗
       pa ↦₄{ dqm } v -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros ea a8 pa Hrd HSIE HMPRV HSXL Hmm HMXR Hpmm HPBMTE Hmenvval0.
     iPoseProof (sr_ktier_wit_KT0 R) as "#Hwit".
@@ -1400,8 +1400,8 @@ Section WpSmodePtMemLeaves.
       gpr_file (<[Regidx rd := regval_into_reg v]> m) -∗
       TsoCtx.own_context XI -∗
       pa ↦₈[kt']{ dqm } v -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros ea a8 pa Hrd HSIE HMPRV HSXL Hmm HMXR Hpmm HPBMTE Hmenvval0.
     (* the three [let]s collapse: the engine spells the address as the term,
@@ -1676,8 +1676,8 @@ Section WpSmodePtMemLeaves.
       gpr_file (<[Regidx rd := regval_into_reg v]> m) -∗
       TsoCtx.own_context XI -∗
       pa ↦₈{ dqm } v -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros ea a8 pa Hrd HSIE HMPRV HSXL Hmm HMXR Hpmm HPBMTE Hmenvval0.
     iPoseProof (sr_ktier_wit_KT0 R) as "#Hwit".
@@ -1748,8 +1748,8 @@ Section WpSmodePtMemLeaves.
       gpr_file m -∗
       TsoCtx.own_context XI -∗
       pa ↦₄[kt'] storeval -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros ea a8 pa storeval HSIE HMPRV HSXL Hmm HMXR Hpmm HPBMTE Hmenvval0.
     unfold pa, a8, ea, storeval in *. clear pa a8 ea storeval.
@@ -2007,8 +2007,8 @@ Section WpSmodePtMemLeaves.
       gpr_file m -∗
       TsoCtx.own_context XI -∗
       pa ↦₄ storeval -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros ea a8 pa storeval HSIE HMPRV HSXL Hmm HMXR Hpmm HPBMTE Hmenvval0.
     iPoseProof (sr_ktier_wit_KT0 R) as "#Hwit".
@@ -2080,8 +2080,8 @@ Section WpSmodePtMemLeaves.
       gpr_file m -∗
       TsoCtx.own_context XI -∗
       pa ↦₈[kt'] (m !!! Regidx rs2) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros ea a8 pa HSIE HMPRV HSXL Hmm HMXR Hpmm HPBMTE Hmenvval0.
     unfold pa, a8, ea in *. clear pa a8 ea.
@@ -2337,8 +2337,8 @@ Section WpSmodePtMemLeaves.
       gpr_file m -∗
       TsoCtx.own_context XI -∗
       pa ↦₈ (m !!! Regidx rs2) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros ea a8 pa HSIE HMPRV HSXL Hmm HMXR Hpmm HPBMTE Hmenvval0.
     iPoseProof (sr_ktier_wit_KT0 R) as "#Hwit".

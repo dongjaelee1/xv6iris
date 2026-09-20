@@ -551,8 +551,8 @@ Section UkShEcho.
                 (<[Regidx (mword_of_int 17 : mword 5)
                    := (mword_of_int 7 : mword 64)]> m))
              (ret_pc (m !!! Regidx (mword_of_int 1 : mword 5))) avail -∗
-           WP (Loop : expr riscv_lang)) -∗
-        WP (Loop : expr riscv_lang).
+           mWP (Loop : expr riscv_lang)) -∗
+        mWP (Loop : expr riscv_lang).
 
   (* =================================================================== *)
   (* THE SPECIALISED EXEC ARM.                                            *)
@@ -605,7 +605,7 @@ Section UkShEcho.
         Cr -∗
         urun N h m (mword_of_int ShSyms.runcmd)
           (6 + (2 + (UkShDiag.ush_Dg + n))) -∗
-        WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang).
 
   (* ...AND THE SAME ARM AT AN ABSTRACT fd-1 ROW (lane SH-CHILD-2), which
      is what the REDIRECT child runs: its fd 1 is the file the open
@@ -634,7 +634,7 @@ Section UkShEcho.
         Cr -∗
         urun N h m (mword_of_int ShSyms.runcmd)
           (6 + (2 + (UkShDiag.ush_Dg + n))) -∗
-        WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang).
 
   (* BOTH SEALED FOR TYPECLASS RESOLUTION (lane SH-CHILD-2; LINK-GEN-6's
      fourth hang shape).  A [Global Instance] whose head is one of these
@@ -955,7 +955,7 @@ Section UkShEcho.
         Cr -∗
         urun N h m (mword_of_int 0x9c0)
           (60 + (8 + (UkShDiag.ush_Dg + n))) -∗
-        WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang).
 
   Lemma wp_kshm_child_echo_holds (ws : list (list (bv 8)))
       (Q : Z -> iProp Σ) (Cr Cd : iProp Σ) :

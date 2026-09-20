@@ -31,7 +31,6 @@ Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.Mac
 Require Import RiscvLang RiscvPtsto RiscvExtras RiscvModelBytes.
 Require Import RegFile.
 Require Import WpMmodeLeafBase.
-Require Import WpUmodeBranch.
 Require Import UmodeArith UmodeAbi.
 Require Import UserHeap UkRun UkRunLeaf UkRunMem.
 Require Import UCodeShP.
@@ -42,17 +41,11 @@ Local Open Scope Z_scope.
 Import Defs.
 Require Import UserFd.
 Require Import UkShParse.
-Require Import UkShParseSym.
 Require Import UkShParseLex.
 Require Import UkShParseTok.
-Require Import UkShRedirLex.
-Require Import UkShRedirGtk.
-Require Import UkShRedirCmd.
 
 Require Import UexecSG.
 Require Import UkShRedirPr.
-Require Import UkShPipeLex.
-Require Import UkShPipeEx.
 
 Section UkShPipePr.
   Context `{!riscvGS Σ}.
@@ -132,8 +125,8 @@ Section UkShPipePr.
          ⌜ m' !!! Regidx a0_idx = mword_of_int cmd ⌝ -∗
          urun N h' m' (ret_pc (m !!! Regidx ra_idx))
            (14 + (8 + (2 + nn))) -∗
-         WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+         mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Ha0 Ha1 Ha2 Hoffle Hw0 Hpmiss Hs0 Hs64 Hps0 Hps8 Hpssz.
     iIntros "#Hcode #Hro Hcur Hstr Hws Hrun Hcont".

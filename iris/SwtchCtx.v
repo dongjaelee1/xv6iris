@@ -222,7 +222,7 @@ Section SwtchCtx.
      one continuation good at every hart.  Everything a resumption HANDS IN is
      spelled at the resuming hart [h] ([sie_cap_gpr],
      [cpu_own] and [pc_is] are ambient-instance predicates, instantiated here
-     at [CID := h]), and the conclusion is that hart's own [WP (LoopE h)].
+     at [CID := h]), and the conclusion is that hart's own [mWP (LoopE h)].
      The SIE ghost needs no binder of its own: it is [sie_name h], so
      rebinding [h] rebinds it -- and a MIGRATABLE record still names no
      hart, which is what lets [SchedCtx.procs_inv] store one. *)
@@ -322,7 +322,7 @@ Section SwtchCtx.
              then ∃ XIo : CtxId, park_tok_at XIp A' XIo ∗ ▷ rec A' cret p XIo
              else own_ctx (XI := XIp) cret) ∗
             P h A' c cret (rget (CID := h) m (mword_of_int 4 : mword 5)) p back XIp) -∗
-         WP (LoopE gen_id h : expr riscv_lang)))%I.
+         mWP (LoopE gen_id h : expr riscv_lang)))%I.
 
   Global Instance valid_context_pre_contractive
       (P : CPU -d> ctx_adm -d> mword 64 -d> mword 64 -d>

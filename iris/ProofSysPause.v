@@ -318,7 +318,7 @@ Section SpProps.
         sie_cap_gpr KT1 M (av - 8) true pj -∗
         cpu_own 0 eb pj true lks -∗
         pc_is (mword_of_int (KernelSyms.sys_pause + 0x8e)) -∗
-        WP (Loop : expr riscv_lang)))%I.
+        mWP (Loop : expr riscv_lang)))%I.
 
   (* +0x70 -- release(&tickslock); return 0. *)
   Definition sp_exit0 `{GEN : GenId} `{XI : CurCtx} (CID0 : CPU) (γt : gname) (j : nat)
@@ -335,7 +335,7 @@ Section SpProps.
         cpu_own 1 eb pj false ({["time"]} ∪ lks) -∗ arm_pay KT1 0 eb pj -∗
         pc_is (mword_of_int (KernelSyms.sys_pause + 0x80)) -∗
         sp_tail CID0 j m av eb sp0 pj lks -∗
-        WP (Loop : expr riscv_lang)))%I.
+        mWP (Loop : expr riscv_lang)))%I.
 
   (* +0x8c -- release(&tickslock); return -1.  Only the loop gets here, so the
      register shape is the loop's and slots 3/4/5 hold the spilled s1/s2/s3. *)
@@ -357,7 +357,7 @@ Section SpProps.
         cpu_own 1 eb pj false ({["time"]} ∪ lks) -∗ arm_pay KT1 0 eb pj -∗
         pc_is (mword_of_int (KernelSyms.sys_pause + 0x9c)) -∗
         sp_tail CID0 j m av eb sp0 pj lks -∗
-        WP (Loop : expr riscv_lang)))%I.
+        mWP (Loop : expr riscv_lang)))%I.
 
   (* +0x4a -- the wait loop's head. *)
   Definition sp_loop `{GEN : GenId} `{XI : CurCtx} (CID0 : CPU) (γt : gname) (j : nat)
@@ -380,7 +380,7 @@ Section SpProps.
         sp_exit0 CID0 γt j m av eb sp0 pj lks -∗
         sp_exitk CID0 γt j m av eb sp0 pj tk lks -∗
         sp_tail CID0 j m av eb sp0 pj lks -∗
-        WP (Loop : expr riscv_lang)))%I.
+        mWP (Loop : expr riscv_lang)))%I.
 
   (* +0x1a -- a0 := &tickslock, acquire, the [n == 0] dispatch, the loop set-up.
      Quantified over the [n] cell's value: BOTH the [blt]'s fall-through and
@@ -399,7 +399,7 @@ Section SpProps.
         cpu_own 0 eb pj true lks -∗
         pc_is (mword_of_int (KernelSyms.sys_pause + 0x1a)) -∗
         sp_tail CID0 j m av eb sp0 pj lks -∗
-        WP (Loop : expr riscv_lang)))%I.
+        mWP (Loop : expr riscv_lang)))%I.
 
 End SpProps.
 
@@ -455,8 +455,8 @@ Section SpBodies.
         pc_is ret_tgt -∗
         p_trapframe pj ↦₈{dqt} page_base tfp -∗
         tf_page tfp ws -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros ret_tgt Hav Hanch Hbase Hsav Hra0 Hrv Hsp0.
     destruct Hbase as (Hsp & Hs0M & Hhi).
@@ -603,7 +603,7 @@ Section SpBodies.
     cpu_own 1 eb pj false ({["time"]} ∪ lks) -∗ arm_pay KT1 0 eb pj -∗
     pc_is (mword_of_int (KernelSyms.sys_pause + 0x80)) -∗
     sp_tail CID0 j m av eb sp0 pj lks -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hav Heb Hanch Hbn Hsn Hfresh. subst eb.
     iIntros "#Htext #Hlkt Hx1 Hx2 Hfree Hx7 Htok HR Hcg Hown Hpay Hpc Htail".
@@ -726,7 +726,7 @@ Section SpBodies.
     cpu_own 1 eb pj false ({["time"]} ∪ lks) -∗ arm_pay KT1 0 eb pj -∗
     pc_is (mword_of_int (KernelSyms.sys_pause + 0x9c)) -∗
     sp_tail CID0 j m av eb sp0 pj lks -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hav Heb Hanch Hbn Hln Hfresh. subst eb.
     iIntros "#Htext #Hlkt Hy1 Hy2 Hy3 Hy4 Hy5 Hy6 Hy7 Hy8 Htok HR Hcg Hown Hpay Hpc Htail".
@@ -939,7 +939,7 @@ Section SpBodies.
     sie_cap_gpr KT1 M (trap_res true + (av - 8))%nat false pj -∗
     cpu_own 1 eb pj false ({["time"]} ∪ lks) -∗ arm_pay KT1 0 eb pj -∗
     pc_is (mword_of_int (KernelSyms.sys_pause + 0x6a)) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     (* NB: [eb] is deliberately NOT substituted here.  This body runs [iNext]
        over [cpu_own]; with [eb] literal [intr_count]'s [if eb] reduces,
@@ -1156,7 +1156,7 @@ Section SpBodies.
     sie_cap_gpr KT1 M (trap_res true + (av - 8))%nat false pj -∗
     cpu_own 1 eb pj false ({["time"]} ∪ lks) -∗ arm_pay KT1 0 eb pj -∗
     pc_is (mword_of_int (KernelSyms.sys_pause + 0x4a)) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using fileG0.
     (* [sleep]'s contract names the parking proc as [proc_addr j] literally, so
        the caller's [pj] has to be spelled that way before the crossing. *)
@@ -1531,7 +1531,7 @@ Section SpBodies.
     cpu_own 0 eb pj true lks -∗
     pc_is (mword_of_int (KernelSyms.sys_pause + 0x1a)) -∗
     sp_tail CID0 j m av eb sp0 pj lks -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using fileG0.
     intros Hav Heb Hj Hjl Hpjv Hanch Hb Hsv Hfresh.
     iIntros "#Htext #Hlkt #Hpinv Hs1 Hs2 Hfree Hnc Hjoin7

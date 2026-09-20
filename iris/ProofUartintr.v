@@ -312,7 +312,7 @@ Section UiCont.
          pc_is (ret_pc (m0 !!! Regidx Rra)) -∗
          (∃ (k' : nat) (hl' : option (list mobs)),
             uart_rx_writer i γu k' hl') -∗
-         WP (Loop : expr riscv_lang)))%I.
+         mWP (Loop : expr riscv_lang)))%I.
 
   (* re-anchor it at a hart reached mid-block.  Through the named definition
      [wp_next_shift]'s direct idiom cannot infer [K], so unfold first. *)
@@ -358,7 +358,7 @@ Section ProofUartintr.
     ui_frame sp0 m0 -∗
     (∃ (k' : nat) (hl' : option (list mobs)), uart_rx_writer i γu k' hl') -∗
     ui_ret_cont i γu m0 av lvl eb pme b lks -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hregs Hsp0 Hav.
     destruct Hregs as (Hsp & H18 & H19 & H20 & H21 & H22 & H23 & H24 & H25 & H26 & H27).
@@ -516,7 +516,7 @@ Section ProofUartintr.
       ui_frame sp0 m0 -∗
       (∃ (k : nat) (hl : option (list mobs)), uart_rx_writer i γu k hl) -∗
       ui_ret_cont (CID0 := CIDe) i γu m0 av lvl eb pme b lks -∗
-      WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hsp0 Hlen Hlvl Hav Hbelow.
     iIntros (CIDe M) "%Hregs %Hs1 %Ha4 %Ha3 #Ht #Huinv #Hpinv #Hdlab #Hbw #Hrw #Hcaps".
@@ -544,7 +544,7 @@ Section ProofUartintr.
       ui_frame sp0 m0 -∗
       (∃ (k : nat) (hl : option (list mobs)), uart_rx_writer i γu k hl) -∗
       ui_ret_cont (CID0 := CIDk) i γu m0 av lvl eb pme b lks -∗
-      WP (Loop : expr riscv_lang))%I with "[]" as "Loop".
+      mWP (Loop : expr riscv_lang))%I with "[]" as "Loop".
     { iLöb as "IH".
       iIntros (CIDk M1) "%Hregs1 %Hls1 %Hla4 %Hla3 Hcg Hcnt Hpc Hfr Htok Hcont".
       iDestruct "Htok" as (k hl) "[Htok Hmk]".
@@ -554,7 +554,8 @@ Section ProofUartintr.
          writer's payload, on the ring mark's mould exactly.  It goes to
          consoleintr with the byte and comes back at the byte's own
          history, because EVERY arm of the switch logs. *)
-      iDestruct "Hlgh" as (hg) "[Hlgh %Hgle]".
+      iDestruct "Hlgh" as (hg) "[Hlgh %Hgat]".
+      pose proof (uart_log_at_le i hg hl Hgat) as Hgle.
       assert (Hlsr : forall (CID' : CpuId), rget (CID := CID') M1 Ra3 = uart_pa i 5)
         by (intros CID'; rgne; exact Hla3).
       assert (Hrhr : forall (CID' : CpuId), rget (CID := CID') M1 Ra4 = uart_pa i 0)
@@ -598,7 +599,8 @@ Section ProofUartintr.
            by nothing at run time: [uart_rx_word] says what `u->rx` holds. *)
         iIntros (bt c) "_ Hcg Hpc Hh".
         iDestruct "Hh" as (h)
-          "(%Hlast & %Hanch & #Htg & #Hlbh & #Hwlb & %Hbts & Htok)".
+          "(%Hlast & %Hanch & #Htg & #Hlbh & #Hwlb & %Hbts & %Hnum & %Hanum
+            & %Hshh & Htok)".
         (* THE ORDER THE STORE NEEDS: the ring's mark is at or before the
            popper's anchor, and the byte just popped is strictly after that
            anchor, so the mark is strictly before the byte. *)
@@ -609,8 +611,17 @@ Section ProofUartintr.
            [Uart1] it re-anchors a mark that never moves. *)
         assert (Hgext : ObsTrace.ohist_ext hg h)
           by exact (ObsTrace.ohist_ext_le_ext hg hl h Hgle Hanch).
+        (* K1's RELAY (relax-d2): the popped byte is the input right after
+           the one the log's mark names.  At the console the payload's own
+           clause says the mark IS the anchor, and the column gave both
+           their input numbers, so the two are adjacent. *)
         destruct i.
         + (* ---------------- Uart0: the hook is [consoleintr] ------------ *)
+          (* ...and AT THE CONSOLE the payload's clause is an EQUALITY, so
+             the mark IS the anchor and the two numbers are adjacent. *)
+          assert (Hnext : k1_next hg h)
+            by exact (k1_next_of_log_at hg hl h k Hgat Hanum Hnum
+                        Hanch Hshh Hbts).
           iAssert (dev_inv γu γv ∗ console_caps γu)%I as "[#Hdinv #Hccaps]";
             [iExact "Hcaps"|].
           set (H0 := <[Regidx Ra0 := regval_into_reg (lsr_ldval_of c)]>
@@ -683,7 +694,7 @@ Section ProofUartintr.
           iDestruct (cpu_own_transport CIDk CIDj lvl eb pme b ltac:(wp_next_chain) with "Hcnt") as "Hcnt".
           iApply (Consoleintr.wp_consoleintr_sconf γu γv H2 γs pme lvl (av - 4)%nat eb b lks
                     h c hh hg
-                    ltac:(lia) HH2a0 Hlast Hbts Hhext Hgext
+                    ltac:(lia) HH2a0 Hlast Hbts Hhext Hgext Hshh Hnext
                     Hlen ltac:(lia) Hbelow
                     with "Hcg Hcnt Ht Hpc Hpinv Hdinv Hccaps Htg Hlbh Hwlb Hhi Hlgh
                           Harm").
@@ -748,7 +759,8 @@ Section ProofUartintr.
                (* the LOG's mark comes back at THIS byte on every arm (lane
                   CONS-IO): every arm of the switch logs. *)
                iSplitL "Hlgh";
-                 [ iExists (Some h); iFrame "Hlgh"; iPureIntro; cbn; reflexivity |].
+                 [ iExists (Some h); iFrame "Hlgh"; iPureIntro;
+                   cbn [uart_log_at]; by left |].
                (* ...AND THE ECHO WINDOW TOKEN, back into the payload (lane
                   CONS-IO milestone F): the append the arm fired returned
                   it, so the next byte's call has it again. *)
@@ -826,6 +838,7 @@ Section ProofUartintr.
                   F), and travels back unread. *)
                iSplitL "Hlgh";
                  [ iExists hg; iFrame "Hlgh"; iPureIntro;
+                   cbn [uart_log_at];
                    exact (ObsTrace.ohist_le_of_ext hg h Hgext) |].
                iExact "Harm". }
           * exact HH1regs.
@@ -864,7 +877,7 @@ Section ProofUartintr.
     ui_frame sp0 m0 -∗
     (∃ (k : nat) (hl : option (list mobs)), uart_rx_writer i γu k hl) -∗
     ui_ret_cont i γu m0 av lvl eb pme b lks -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hregs Hidx Hsp0 Hlen Hlvl Hav Hbelow.
     iIntros "#Ht #Huinv #Hpinv #Hdlab #Hbw #Hrw #Hcaps Hcg Hcnt Hpc Hfr Htok Hcont".

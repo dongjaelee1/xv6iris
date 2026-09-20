@@ -175,8 +175,8 @@ Definition wp_pipewrite_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslo
         (kill_shot (pv_gen (us_V U)) ∗ app_taint)%I (Z.to_nat n)
         (mf !!! Regidx (mword_of_int 10 : mword 5)) -∗
       proc_priv_core pj pid (us_upt U P') -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type PIPEWRITE.
   Parameter wp_pipewrite_sconf :

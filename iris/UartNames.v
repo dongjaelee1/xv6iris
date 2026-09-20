@@ -101,6 +101,18 @@ Record uart_names := UartNames {
                first is closed is refuted by the agreement, which is the
                kernel stating the exclusion cons.lock already provides. *)
   un_arm    : gname;
+  (* un_dlcnt  THE DELIVERED COUNT, AS A NUMBER THE RING CAN SEE (relax-d2,
+               lane K2).  [un_deliv] carries the delivered LIST, and its
+               kernel half travels with the reader's LEASE, not with the
+               ring -- so the ring cannot bound the boundary's [dl] from
+               above, which is exactly what a full-ring drop has to say.
+               This [ghost_var nat] pair is that bound: one half sits in
+               the Uart0 port invariant at [length (ch_dl H)], the other in
+               [ConsoleInv.cons_res] under [n <= cur].  It moves at ONE
+               site, consoleread's final release
+               ([WpUart.uart_inv_cons_read]), where both halves are in
+               hand.  APPENDED LAST. *)
+  un_dlcnt  : gname;
 }.
 
 (* THE CONSOLE RING'S GHOST NAMES, here and not in [ConsoleInv.v] for the

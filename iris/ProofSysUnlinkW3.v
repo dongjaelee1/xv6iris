@@ -232,7 +232,7 @@ Section ProofSysUnlinkW3.
        proc_priv_bare (proc_addr jx) pidv Upr -∗
        bslot -∗
        X -∗
-       WP (Loop : expr riscv_lang))%I.
+       mWP (Loop : expr riscv_lang))%I.
 
   (* the EMPTY exit: every record past the dots is dead, and the payload
      clause is [dir_dots_only] -- exactly what W5-DIR's re-park
@@ -261,7 +261,7 @@ Section ProofSysUnlinkW3.
        proc_priv_bare (proc_addr jx) pidv Upr -∗
        bslot -∗
        X -∗
-       WP (Loop : expr riscv_lang))%I.
+       mWP (Loop : expr riscv_lang))%I.
 
   (* THE ITERATION, by fuel over the remaining bytes.  Entry at +0x106
      with s3 = 16*jj, records 2..jj-1 known dead. *)
@@ -321,7 +321,7 @@ Section ProofSysUnlinkW3.
     su_w4_exitD jx ki dni bmi dati pidv dq
                 m sp0 dpv ipv K eb b lks X Upr -∗
     X -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Kre Hgeom Hj Hgl Heb Hlkempty Hsp0 Hal Hipv Hiok Hrl_dati Htyz
            Hnlz Hddix.
@@ -879,7 +879,7 @@ Section ProofSysUnlinkW3.
     su_w4_exitD jx ki dni bmi dati pidv dq
                 m sp0 dpv ipv K eb b lks X Upr -∗
     X -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Kre Hgeom Hj Hgl Heb Hlkempty Hsp0 Hal Hipv Hiok Hrl_dati Htyz
            Hnlz Hddix Hregs.
@@ -1210,7 +1210,7 @@ Section ProofSysUnlinkW3.
            (ret_pc (m !!! Regidx Rra : mword 64)) K eb b lks
            dqb dqs dqbs (unlink_arms (fs_gamma_L fsc_fs) fsc_fs (pv_cwi (us_V U)) P Pmiss
                         Phient Phitgt Phiex Phimiss (us_M U) v0)) -∗
-       WP (Loop : expr riscv_lang))%I.
+       mWP (Loop : expr riscv_lang))%I.
 
   Lemma su_w3_au `{GEN : GenId} `{CID0 : CpuId} `{XI : CurCtx}
       (gf : gname)
@@ -1380,7 +1380,7 @@ Section ProofSysUnlinkW3.
         (ret_pc (m !!! Regidx Rra : mword 64)) K eb b lks
         dqb dqs dqbs (unlink_arms (fs_gamma_L fsc_fs) fsc_fs (pv_cwi (us_V U)) P Pmiss
                         Phient Phitgt Phiex Phimiss (us_M U) v0)) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK Hnib0 Hgeom Hsize Hbm0 Hbmcov Hbmlog Hist0
            Hcovb Hiregb Hj Hgl Heb Hsp0 Hal Hn1 Hupt1 Hregs Hkd Hks Hdinb

@@ -836,8 +836,8 @@ Definition wp_writei_sconf_body
             proc_priv_bare pj pidv U) -∗
       bslots 3 -∗
       log_op icfg_log n' -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 (* ===================================================================== *)
 (*  THE SET-FORM CONTRACT (fs-icache.md section 18 clause 1)              *)
@@ -1150,8 +1150,8 @@ Definition wp_writei_gen_body
             proc_priv_bare pj pidv U) -∗
       bslots 3 -∗
       log_opS icfg_log n' Sb' -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type WRITEI.
   Parameter wp_writei_sconf :

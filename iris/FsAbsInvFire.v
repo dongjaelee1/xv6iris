@@ -215,7 +215,7 @@ Section FsAbsInvFire.
     app_sup -∗
     pf_at (uent_commit_at (fs_gamma_L γfs) appE Pd)
       (pfam_triv (fun _ _ _ _ => True%I)).
-  Proof.
+  Proof using .
     iIntros "#Hsup". iApply pf_at_triv.
     iApply (uent_commit_at_unit γfs appE Pd with "Hsup").
   Qed.
@@ -514,7 +514,7 @@ Section FsAbsInvFire.
     app_sup -∗
     unlink_au_at (fs_gamma_L γfs) γfs cw M pv (fun _ _ => True%I) (fun _ _ => True%I)
       (pfam_triv (fun _ _ _ _ => True%I)) (pfam_triv (fun _ _ => True%I)) (pfam_triv (fun _ _ _ _ => True%I)) (pfam_triv (fun _ _ _ => True%I)).
-  Proof.
+  Proof using .
     iIntros "#Hsup".
     iApply (unlink_au_at_of_all (fs_gamma_L γfs) γfs cw M pv
               with "[] [Hsup] [Hsup] [] []").

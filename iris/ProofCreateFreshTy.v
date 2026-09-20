@@ -329,8 +329,8 @@ Definition create_fresh_ty_body
          t ↪[ln_tx icfg_log]{#qt} tt ∗
          t ↪[ln_tx icfg_log]{#qc} tt ∗
          log_opS icfg_log (S u) Sb) -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 
 

@@ -309,8 +309,8 @@ Definition wp_copyin_sconf_mem_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ} `{GEN
     ⌜callee_saved mm mr⌝ -∗
     ⌜uptd_ext_sz szv P P'⌝ -∗
     ⌜ copyin_read P M srcva len dst_new (mr !!! Regidx (mword_of_int 10)) ⌝ -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type COPYIN.
   Parameter wp_copyin_sconf_mem :

@@ -167,7 +167,7 @@ Section UvResume.
   Definition uv_resume (Ψ : usys_protocol Σ) (M : gmap Z (bv 8))
       (m : regfile) (pc : mword 64) : iProp Σ :=
     (∀ (CID : CpuId) (XI : CtxIdDefs.CurCtx),
-       uv_run C pt M m pc -∗ WP (Loop : expr riscv_lang))%I.
+       uv_run C pt M m pc -∗ mWP (Loop : expr riscv_lang))%I.
 
 End UvResume.
 
@@ -231,7 +231,7 @@ Section UvEngine.
         hreg_frame rs3 u_Drw -∗ hreg_frame_ro (u_Df (uc_dqc C)) rs3 u_Dro -∗
         TsoCtx.own_context XI -∗
         resv_any cpu_id -∗ R -∗
-        WP (Loop : expr riscv_lang)))%I.
+        mWP (Loop : expr riscv_lang)))%I.
 
   Definition uv_arm_res (R : iProp Σ) (rs2 : regstate) : iProp Σ :=
     (hreg_frame rs2 u_Drw ∗ hreg_frame_ro (u_Df (uc_dqc C)) rs2 u_Dro ∗
@@ -333,7 +333,7 @@ Section UvObl.
       (m : regfile) (pc : mword 64) : iProp Σ :=
     (∀ (CID : CpuId) (XI : CtxIdDefs.CurCtx),
        uv_cap_gpr C pt Ψ M m -∗ pc_is pc -∗
-       uv_step_obl Kc Ψ M m pc -∗ ▷ Kc -∗ WP (Loop : expr riscv_lang))%I.
+       uv_step_obl Kc Ψ M m pc -∗ ▷ Kc -∗ mWP (Loop : expr riscv_lang))%I.
 
 End UvObl.
 
@@ -569,7 +569,7 @@ Section UvArms.
     uv_res pt M t usatp pcfg paddr -∗
     TsoCtx.own_context XI -∗
     (R -∗ ∀ (CID0 : CpuId) (XI0 : CtxIdDefs.CurCtx), uv_cap_gpr (CID := CID0) (XI := XI0) C pt Ψ M m' -∗
-       pc_is (CID := CID0) npc -∗ WP (Loop : expr riscv_lang)) -∗
+       pc_is (CID := CID0) npc -∗ mWP (Loop : expr riscv_lang)) -∗
     uv_psi C R rs2.
   Proof using .
     intros Lhs Lpriv Hmsok Lnpc Hgag Hx0 Lstvec Lmie Lmdl Lmedl Lmenv Lmste
@@ -623,7 +623,7 @@ Section UvArms.
     uv_res pt M t usatp pcfg paddr -∗
     TsoCtx.own_context XI -∗
     (uv_trap_frame C pt sc_v stv_v sep_v g M -∗ TsoCtx.own_context XI -∗ R -∗
-     WP (Loop : expr riscv_lang)) -∗
+     mWP (Loop : expr riscv_lang)) -∗
     uv_psi C R rs2.
   Proof using .
     intros Lsc Lstv Lsep.
@@ -1394,7 +1394,7 @@ Section UvFunnel.
   Lemma wp_uv_step (Kc : iProp Σ) (Ψ : usys_protocol Σ) (M : gmap Z (bv 8))
       (m : regfile) (pc : mword 64) :
     uv_cap_gpr C pt Ψ M m -∗ pc_is pc -∗ uv_step_obl C pt Kc Ψ M m pc -∗
-    ▷ Kc -∗ WP (Loop : expr riscv_lang).
+    ▷ Kc -∗ mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros "Hcg Hpc Hobl Hkc".
     iPoseProof (wp_uv_step_gen C pt Kc Ψ M m pc) as "H". rewrite /uv_ih.
@@ -1531,7 +1531,7 @@ Section UvFunnel.
     gen_cert -∗ uv_amb -∗ uv_cap C pt Ψ -∗
     (R -∗ ∀ (CID0 : CpuId) (XI0 : CtxIdDefs.CurCtx), uv_cap_gpr (CID := CID0) (XI := XI0) C pt Ψ M (uv_upd m wr) -∗
        pc_is (CID := CID0) (uv_next jt (add_vec_int pc k)) -∗
-       WP (Loop : expr riscv_lang)) -∗
+       mWP (Loop : expr riscv_lang)) -∗
     resv_any cpu_id -∗
     TsoCtx.own_context XI -∗
     uv_bytes pt M t' -∗
@@ -1698,7 +1698,7 @@ Section UvObligation.
     uv_fetch_bridge (uc_dqc C) pt M rsA t (F_Base w) -∗
     (R -∗ ∀ (CID0 : CpuId) (XI0 : CtxIdDefs.CurCtx), uv_cap_gpr (CID := CID0) (XI := XI0) C pt Ψ M (uv_upd m wr) -∗
        pc_is (CID := CID0) (uv_next jt (add_vec_int pc 4)) -∗
-       WP (Loop : expr riscv_lang)) -∗
+       mWP (Loop : expr riscv_lang)) -∗
     resv_any cpu_id -∗
     hreg_frame rsA u_Drw -∗ hreg_frame_ro (u_Df (uc_dqc C)) rsA u_Dro -∗
     TsoCtx.own_context XI -∗
@@ -1829,7 +1829,7 @@ Section UvObligation.
     uv_fetch_bridge (uc_dqc C) pt M rsA t (F_RVC h) -∗
     (R -∗ ∀ (CID0 : CpuId) (XI0 : CtxIdDefs.CurCtx), uv_cap_gpr (CID := CID0) (XI := XI0) C pt Ψ M (uv_upd m wr) -∗
        pc_is (CID := CID0) (uv_next jt (add_vec_int pc 2)) -∗
-       WP (Loop : expr riscv_lang)) -∗
+       mWP (Loop : expr riscv_lang)) -∗
     resv_any cpu_id -∗
     hreg_frame rsA u_Drw -∗ hreg_frame_ro (u_Df (uc_dqc C)) rsA u_Dro -∗
     TsoCtx.own_context XI -∗
@@ -2015,8 +2015,8 @@ Section UvRetire.
          uv_cap_gpr (CID := CID0) (XI := XI0) C pt Ψ M (uv_upd m wr) -∗
          pc_is (CID := CID0)
            (uv_next jt (add_vec_int pc (if is_rvc then 2 else 4))) -∗
-         WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+         mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hui Hred Hlpad Hwrok Hg1 Hg2 Hexec.
     iIntros "Hcg Hpc Hcont".
@@ -2094,8 +2094,8 @@ Section UvRetire.
        uv_cap_gpr (CID := CID0) (XI := XI0) C pt Ψ M (uv_upd m wr) -∗
        pc_is (CID := CID0)
          (uv_next jt (add_vec_int pc (if is_rvc then 2 else 4))) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hui Hred Hlpad Hwrok Hg1 Hg2 Hexec.
     iIntros "Hcg Hpc Hcont".
@@ -2369,7 +2369,7 @@ Section UvEcall.
     uv_cap_gpr C pt Ψ M m -∗
     pc_is pc -∗
     Ψ (uint (m !!! Regidx a7_idx)) m pc M -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hui Hg.
     destruct Hui as [Hal2 Hcanon Hleaf Hinpage Hcode Htext].

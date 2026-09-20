@@ -839,8 +839,8 @@ Section VdrwdLeaves.
       sie_cap_gpr KT1 (<[Regidx rd := regval_into_reg
           (zero_extend' 64 (wrap16 np : SailStdpp.Values.mword 16))]> m) n false pme -∗
       pc_is (add_vec_int pc 4) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hea Hrd Hrdsp.
     (* the class, consumed at [rs1] -- see [IntrDefs.SrcOk] *)
@@ -912,8 +912,8 @@ Section VdrwdLeaves.
       disk_pub γd np -∗ disk_stage γd (Some h) -∗
       (Z.to_nat (bv_unsigned h)) ↪[dn_head γd] HInactive -∗
       hcell_map cur_ctx (range_map (d_ring pav (np `mod` 8)) 2 (nth_byte h)) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hea Hsv.
     assert (Hea_all : forall hh : CpuId,
@@ -1033,8 +1033,8 @@ Section VdrwdLeaves.
       disk_pub γd (S np) -∗ disk_stage γd None -∗
       (Z.to_nat (bv_unsigned (vr_head (vs_req sl)))) ↪[dn_head γd] HActive dc -∗
       avail_half pav (S np) -∗ pin_back pin -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hea Hsv Hpinok Hdcsl Hdcpos Hdcpin Hwrbdom Hwrpin.
     assert (Hea_all : forall hh : CpuId,
@@ -1825,8 +1825,8 @@ Section VdrwdP4.
                                             (vdrwd_sldata wr bs_buf bs_disk))
                                        pin np) -∗
         vdrw_slot_rest m2 -∗ vdrw_slot_rest t -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Htok Hlenbuf Hlendisk Hbufkd Hoff Ha0 Ha5.
     destruct Htok as (Hhm & Hht & Hmt & Hh8 & Hm8 & Ht8). cbn in Hh8, Hm8, Ht8.

@@ -1044,8 +1044,8 @@ Section ProofDirlinkMain.
            ⌜mf !!! Regidx Ra0 = (Mt !!! Regidx Ra0 : mword 64)⌝ -∗
            sie_cap_gpr KT1 mf K b (proc_addr j) -∗
            pc_is ret_tgt -∗
-           WP (Loop : expr riscv_lang)) -∗
-       WP (Loop : expr riscv_lang))%I.
+           mWP (Loop : expr riscv_lang)) -∗
+       mWP (Loop : expr riscv_lang))%I.
   (* the exit continuation of [dl_after_body], named: inline it was
      3139 B, a third to a half of that block Delta at every
      step of the walk (optimization.md, fold block continuations). *)
@@ -1111,7 +1111,7 @@ Section ProofDirlinkMain.
                         \/ (mf !!! Regidx Ra0
                               = (mword_of_int (-1) : mword 64)
                            /\ (tot < 16)%nat))⌝ -∗
-             WP (Loop : expr riscv_lang))%I.
+             mWP (Loop : expr riscv_lang))%I.
 
 
   Definition dl_after_body
@@ -1164,7 +1164,7 @@ Section ProofDirlinkMain.
        (* the borrowed ticket list, riding to the continuation (§7.1) *)
        IcacheEscrow.dlinks fsc_fs (bv_unsigned dinum) dn bm data -∗
        wp_next (CID0 := CID) true (proc_addr j) (fun CIDc : CpuId => dl_after_exit j m ip nb dqd dqf dinum dn dn0 bm data dqn fn dqs dqbs dqb pidv ncount Sb tid qtx K b eb k0 inum nrec s ret_tgt lks Upr CIDc) -∗
-       WP (Loop : expr riscv_lang))%I.
+       mWP (Loop : expr riscv_lang))%I.
   (* the exit continuation of [dl_scan_body], named: inline it was
      3142 B, a third to a half of that block Delta at every
      step of the walk (optimization.md, fold block continuations). *)
@@ -1230,7 +1230,7 @@ Section ProofDirlinkMain.
                         \/ (mf !!! Regidx Ra0
                               = (mword_of_int (-1) : mword 64)
                            /\ (tot < 16)%nat))⌝ -∗
-             WP (Loop : expr riscv_lang))%I.
+             mWP (Loop : expr riscv_lang))%I.
 
 
   Definition dl_scan_body
@@ -1288,7 +1288,7 @@ Section ProofDirlinkMain.
        (* the borrowed ticket list, riding to the continuation (§7.1) *)
        IcacheEscrow.dlinks fsc_fs (bv_unsigned dinum) dn bm data -∗
        wp_next (CID0 := CID) true (proc_addr j) (fun CIDc : CpuId => dl_scan_exit j nrec dn data m ip nb inum K b eb dqf dinum bm dqn fn dqs dqbs dqb dn0 pidv ncount Sb tid qtx k0 s ret_tgt dqd lks Upr CIDc) -∗
-       WP (Loop : expr riscv_lang))%I.
+       mWP (Loop : expr riscv_lang))%I.
 
   (* THE CORE, in SET FORM (fs-icache.md section 18 clause 1).
      [wp_dirlink_sconf] below is this with the set forgotten. *)

@@ -42,7 +42,7 @@ From iris.program_logic Require Import language lifting adequacy.
 Require Import SailStdpp.Operators_mwords.
 Require Import Riscv.rv64d_types Riscv.rv64d.
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.MachineWord.
-Require Import RiscvLang ObsTrace RiscvPtsto.
+Require Import RiscvLang RiscvPtsto.
 Require Import FdSlots.
 Require Import FileInvDefs.
 Require Import WpUart.
@@ -68,7 +68,6 @@ Require Import App.                (* [xv6_app_adequacy] and the record *)
 Require Import InodeInv.           (* [ROOTINO] *)
 Require Import PipeDisc.           (* [pipe_phi] -- the conclusion, spelled out *)
 Require Import EchoOut.            (* [echoOutG] / [echoOutSigma] *)
-Require Import PipeOut.
 Require Import AppPipe.            (* [app_pipe] and its ten discharged laws *)
 
 Local Open Scope Z_scope.

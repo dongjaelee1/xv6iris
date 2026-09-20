@@ -584,7 +584,7 @@ Section UkObl.
           has stepped -- and a caller holding [UexecRet.ukcq] under a later
           hands it over verbatim. *)
        ▷ (my_pay gn Q ∗ Kc) -∗
-       WP (Loop : expr riscv_lang))%I.
+       mWP (Loop : expr riscv_lang))%I.
 
   (* the payload the wrapper hands the closer at the cycle's tail *)
   Definition uk_payload `{CID : CpuId} (sz : Z) (π : gmap (mword 27) uperm)
@@ -644,7 +644,7 @@ Section UkArms.
     uv_res pt Mp t usatp pcfg paddr -∗
     TsoCtx.own_context XI -∗
     (R -∗ (TsoCtx.own_context XI -∗ Rut pt) ∗ Rfd fdv ∗ ukb C pt Rfd Rut sz π fdv cw gn cs pidv false ∗
-          (uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m' npc -∗ WP (Loop : expr riscv_lang))) -∗
+          (uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m' npc -∗ mWP (Loop : expr riscv_lang))) -∗
     uv_psi C R rs2.
   Proof using .
     intros Lhs Lpriv Hmsok Lnpc Hgag Hx0 Lstvec Lmie Lmdl Lmedl Lmenv Lmste
@@ -1086,7 +1086,7 @@ Section UkFunnel.
   Lemma wp_uk_step (Kc : iProp Σ) (Q : Z -> iProp Σ) (M : gmap Z (bv 8)) (m : regfile) (pc : mword 64) (fdv : list fdstate) (cw : Z) (gn : gname) (cs : gset gname) (pidv : mword 32) :
     is_aligned_vaddr (Virtaddr pc) 2 = true ->
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗ □ uk_step_obl π Kc Q sz fdv cw gn cs pidv M m pc -∗
-    ▷ (my_pay gn Q ∗ Kc) -∗ WP (Loop : expr riscv_lang).
+    ▷ (my_pay gn Q ∗ Kc) -∗ mWP (Loop : expr riscv_lang).
   Proof using HRut Hlf0 Hlo Hpm.
     intros Hal2.
     iIntros "Hb #Hobl Hpay3".
@@ -1176,7 +1176,7 @@ Section UkPostFetch.
     gen_cert -∗ uv_amb -∗
     (R -∗ (TsoCtx.own_context XI -∗ Rut pt) ∗ Rfd fdv ∗ ukb C pt Rfd Rut sz π fdv cw gn cs pidv false ∗
           (uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M (uv_upd m wr) (uv_next jt (add_vec_int pc k)) -∗
-           WP (Loop : expr riscv_lang))) -∗
+           mWP (Loop : expr riscv_lang))) -∗
     resv_any cpu_id -∗
     TsoCtx.own_context XI -∗
     uv_bytes pt Mp t' -∗
@@ -1345,7 +1345,7 @@ Section UkObligation.
     uv_fetch_bridge (uc_dqc C) pt Mp rsA t (F_Base w) -∗
     (R -∗ (TsoCtx.own_context XI -∗ Rut pt) ∗ Rfd fdv ∗ ukb C pt Rfd Rut sz π fdv cw gn cs pidv false ∗
           (uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M (uv_upd m wr) (uv_next jt (add_vec_int pc 4)) -∗
-           WP (Loop : expr riscv_lang))) -∗
+           mWP (Loop : expr riscv_lang))) -∗
     resv_any cpu_id -∗
     hreg_frame rsA u_Drw -∗ hreg_frame_ro (u_Df (uc_dqc C)) rsA u_Dro -∗
     TsoCtx.own_context XI -∗
@@ -1478,7 +1478,7 @@ Section UkObligation.
     uv_fetch_bridge (uc_dqc C) pt Mp rsA t (F_RVC h) -∗
     (R -∗ (TsoCtx.own_context XI -∗ Rut pt) ∗ Rfd fdv ∗ ukb C pt Rfd Rut sz π fdv cw gn cs pidv false ∗
           (uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M (uv_upd m wr) (uv_next jt (add_vec_int pc 2)) -∗
-           WP (Loop : expr riscv_lang))) -∗
+           mWP (Loop : expr riscv_lang))) -∗
     resv_any cpu_id -∗
     hreg_frame rsA u_Drw -∗ hreg_frame_ro (u_Df (uc_dqc C)) rsA u_Dro -∗
     TsoCtx.own_context XI -∗
@@ -1647,7 +1647,7 @@ Section UkRetire.
          = Some (RETIRE_SUCCESS, uv_post s_pc jt wr)) ->
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ▷ ukcq Qp π M sz fdv cw gn cs pidv (uv_upd m wr) (uv_next jt (add_vec_int pc (if is_rvc then 2 else 4))) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Hred Hlpad Hwrok Hg1 Hg2 Hexec.
     pose proof (Hui pt sz (loop_ok_wf C pt Hlo) Hpm) as Hui0.
@@ -1676,7 +1676,7 @@ Section UkRetire.
              ukb C' pt' Rfd' Rut' sz π fdv cw gn cs pidv false ∗
              (uvb (CID := CIDo) C' pt' Rfd' Rut' sz π fdv cw gn cs pidv false M (uv_upd m wr)
                 (uv_next jt (add_vec_int pc (if is_rvc then 2 else 4))) -∗
-              WP (Loop : expr riscv_lang)))%I with "[Hk]" as "Hk".
+              mWP (Loop : expr riscv_lang)))%I with "[Hk]" as "Hk".
     { iIntros "HR". iDestruct ("Hk" with "HR") as "(Hbak & Hfdr & Hkb & Hkc)".
       (* the step RETIRED, so the continuation's OTHER side is the one to
          read: nothing was deposited and nothing comes back *)
@@ -1745,7 +1745,7 @@ Section UkRetire.
          = Some (RETIRE_SUCCESS, uv_post s_pc jt wr)) ->
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ukcq Qp π M sz fdv cw gn cs pidv (uv_upd m wr) (uv_next jt (add_vec_int pc (if is_rvc then 2 else 4))) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Hred Hlpad Hwrok Hg1 Hg2 Hexec.
     iIntros "Hb Hcont".
@@ -2044,7 +2044,7 @@ Section UkEcall.
        this very fact ([UexecRet.uexec_pay_dep]). *)
     my_pay gn Qp -∗
     uexec_ret uecall_scause (uvis_of_run m pc M π sz fdv cw gn cs pidv false) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Hg.
     pose proof (Hui pt sz (loop_ok_wf C pt Hlo) Hpm) as Hui0.

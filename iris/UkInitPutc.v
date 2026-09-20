@@ -126,8 +126,8 @@ Section UkInitPutc.
        ⌜ ucallee_saved m m' ⌝ -∗
        Co -∗
        urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (4 + n) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hfd Hb.
     iIntros "Hw1 #Hcode HCi Hrun Hcont".

@@ -361,7 +361,7 @@ Section ProofPipealloc.
         proc_priv_bare p pidv Upr -∗
         iref_slot -∗
         pipealloc_post γf γk on pf0 pf1 res -∗
-        WP (Loop : expr riscv_lang)))%I).
+        mWP (Loop : expr riscv_lang)))%I).
     iAssert EPI with "[Hcont Hr40 Hr32 Hr24 Hr0]" as "Hepi".
     { rewrite /EPI.
       iIntros (CIDe Hbe mj res) "(%Hjsp & %Hja0 & %Hjthr) Hcg Hpc Hcnt Hextc Hextm Hslots Hpbare Hiru Hpost".
@@ -566,7 +566,7 @@ Section ProofPipealloc.
         kalloc_avail γk on -∗
         proc_priv_bare p pidv Upr -∗
         iref_slot -∗
-        WP (Loop : expr riscv_lang)))%I).
+        mWP (Loop : expr riscv_lang)))%I).
     set (T4C := (wp_next (CID0 := CID) true p (fun (CIDu : CpuId) =>
         ∀ (Mt : regfile) (k0 : nat),
         (* the type conjunct is gone: the fileclose at +0xa4 wants an untyped
@@ -591,7 +591,7 @@ Section ProofPipealloc.
         kalloc_avail γk on -∗
         proc_priv_bare p pidv Upr -∗
         iref_slot -∗
-        WP (Loop : expr riscv_lang)))%I).
+        mWP (Loop : expr riscv_lang)))%I).
     iAssert (EPI ∧ T8)%I with "[Hepi]" as "HK1".
     { iSplit; [iExact "Hepi"|]. rewrite /T8.
       iIntros (CIDt Hbt Mt) "(%Htsp & %Hts4 & %Htthr) Hcg Hpc Hcnt Hextc Hextm Hslots Hcell0 Hunit0 Hcell1 Hav Hpbare Hiru".

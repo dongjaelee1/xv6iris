@@ -518,18 +518,28 @@ Section ParkCap.
     - destruct Hwf as (Hj & _). exists (un_j N). split; [reflexivity | exact Hj].
     - exact Hkav.
     - rewrite /park_pkg.
-      iFrame "Htext Hwire Hkmap Hmk Hstack".
-      (* [procs_inv] and the globals by [iExact], not [iFrame]: the persistent
-         [Hprocs] would otherwise be framed INTO the (transparent) globals
-         bundle's own first row and leave the bundle half-built *)
+      (* BUILT ROW BY ROW, in the goal's own conjunct order, never framed: a
+         named [iFrame] pays one [Frame] instance search per name over the
+         whole unfolded package -- whose last row is the closer, a [▷ ∀] wand
+         tower -- while an [iSplitR]/[iExact] chain uses no [Frame] instance
+         at all (claude-notes/optimization.md, "Framing: name the context
+         side, construct the goal side").  [procs_inv] and the globals needed
+         it anyway: framed, the persistent [Hprocs] lands INSIDE the
+         (transparent) globals bundle's own first row and leaves the bundle
+         half-built. *)
+      iSplitR; [iExact "Htext"|].
+      iSplitR; [iExact "Hwire"|].
+      iSplitR; [iExact "Hkmap"|].
       iSplitR; [iExact "Hprocs"|].
       iSplitR; [iExact "Hglobp"|].
+      iSplitR; [iExact "Hmk"|].
+      iSplitL "Hstack"; [iExact "Hstack"|].
       (* the mode row: this park is the one whose resume still runs the
          boot arm, so the package carries no run key and carries instead
          the bundle that arm spends *)
       (* ...AND THE READER TOKEN BESIDE IT (R3): the boot arm applies the
          bundle to it before spending the bundle. *)
-      iSplitL "Hbundle Hrdtok"; [iFrame "Hbundle Hrdtok"|].
+      iSplitL "Hbundle Hrdtok"; [iSplitL "Hbundle"; [iExact "Hbundle"|iExact "Hrdtok"]|].
       iNext.
       iDestruct ("Hclose" with "Henv Hown") as "Hclose'".
       iIntros (h Xc pt' U') "%Hupt %Hnorm %Hptwf %Hfg %Hcg %Hgenp %Hcwi _ #Hglob #Htfk #Hdone HW #Htc Htrap Hpriv Hfd Hiref".

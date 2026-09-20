@@ -1194,7 +1194,7 @@ Section KexecB2Loops.
                trap_csrs_ext KT1 eb -∗
                cpu_claim_ext eb (proc_addr jp) -∗
                pc_is (mword_of_int (KXB + 0x0da) : mword 64) -∗
-               WP (Loop : expr riscv_lang))%I
+               mWP (Loop : expr riscv_lang))%I
       with "[Hopen Hlog Hirs Hbm Hins Hbits Hbs Hpt Hpriv
              Hpath Hargv Hargs Helf Hframe Hcont Hc116]" as "AT0DA".
     {

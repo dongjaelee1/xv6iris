@@ -523,8 +523,8 @@ Definition wp_fsinit_sconf_body
       (* the boot-shelter token, handed back for the seal (fs-fragments.md
          §7.12) *)
       ireg_boot -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type FSINIT.
   Parameter wp_fsinit_sconf :

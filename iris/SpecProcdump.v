@@ -169,8 +169,8 @@ Definition wp_procdump_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ} `{GEN :
       ⌜ callee_saved m mf /\ mf !!! Regidx ra_idx = ra0 ⌝ -∗
       cpu_own 0%nat eb p b lks -∗
       procdump_view -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type PROCDUMP.
   Parameter wp_procdump_sconf :

@@ -321,8 +321,8 @@ Section ProofDirlookupMain.
            trap_csrs_ext KT1 eb -∗
            cpu_claim_ext eb pj -∗
            pc_is ret_tgt -∗
-           WP (Loop : expr riscv_lang)) -∗
-       WP (Loop : expr riscv_lang))%I.
+           mWP (Loop : expr riscv_lang)) -∗
+       mWP (Loop : expr riscv_lang))%I.
 
   (* the FOUND/EXHAUSTED continuation both [dl_loop_body] and
      [dl_latch_body] hand [wp_next] at their tail: identical in both, and
@@ -370,7 +370,7 @@ Section ProofDirlookupMain.
               /\ mf !!! Regidx Ra0 = (mword_of_int 0 : mword 64)⌝ ∗
              iref_slot ∗
              (if hasp then pf ↦₄[KT1] pofv else emp)) -∗
-       WP (Loop : expr riscv_lang))%I.
+       mWP (Loop : expr riscv_lang))%I.
 
   Definition dl_loop_body
       (nrec : nat) (dn : dinode) (data : nat -> list (bv 8)) (s : list (bv 8))
@@ -414,7 +414,7 @@ Section ProofDirlookupMain.
        wp_next (CID0 := CID) true pj (fun (CIDc : CpuId) =>
          dl_found_cont nrec dn data s m ip nb pf pj ret_tgt K b eb hasp lks Upr
            dq dqd dqn pofv pidv fn dinum dr bm CIDc) -∗
-       WP (Loop : expr riscv_lang))%I.
+       mWP (Loop : expr riscv_lang))%I.
 
   Definition dl_latch_body
       (nrec : nat) (dn : dinode) (data : nat -> list (bv 8)) (s : list (bv 8))
@@ -456,7 +456,7 @@ Section ProofDirlookupMain.
        wp_next (CID0 := CID) true pj (fun (CIDc : CpuId) =>
          dl_found_cont nrec dn data s m ip nb pf pj ret_tgt K b eb hasp lks Upr
            dq dqd dqn pofv pidv fn dinum dr bm CIDc) -∗
-       WP (Loop : expr riscv_lang))%I.
+       mWP (Loop : expr riscv_lang))%I.
 
   Lemma wp_dirlookup_sconf
       (gs : list gname) (j : nat) (gl : gname)
@@ -1967,8 +1967,8 @@ Section ProofDirlookupMain.
                        (if hasp
                         then pf ↦₄[KT1] (mword_of_int (Z.of_nat (16 * i)) : mword 32)
                         else emp) -∗
-                       WP (Loop : expr riscv_lang)) -∗
-                     WP (Loop : expr riscv_lang))%I with "[]" as "Hpoffst".
+                       mWP (Loop : expr riscv_lang)) -∗
+                     mWP (Loop : expr riscv_lang))%I with "[]" as "Hpoffst".
             { iIntros "Hcg Hpc Hpv Hk".
               destruct hasp.
               - iApply (wp_beqz_x0_fall_s_sconf (mword_of_int (DL + 0x7e))

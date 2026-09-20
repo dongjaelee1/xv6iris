@@ -560,8 +560,8 @@ Definition wp_sys_mkdir_sconf_body
       mkdir_arms (fs_gamma_L fsc_fs) fsc_fs (pv_cwi (us_V U))
         P Pmiss Farm Fdots Fun Fok Fex (us_M U) v
         (mf !!! Regidx (mword_of_int 10 : mword 5)) -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type SYSMKDIR.
   Parameter wp_sys_mkdir_sconf :

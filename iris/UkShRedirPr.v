@@ -43,7 +43,6 @@ Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.Mac
 Require Import RiscvLang RiscvPtsto RiscvExtras RiscvModelBytes.
 Require Import RegFile.
 Require Import WpMmodeLeafBase.
-Require Import WpUmodeBranch.
 Require Import UmodeArith UmodeAbi.
 Require Import UserHeap UkRun UkRunLeaf UkRunMem.
 Require Import UCodeShP.
@@ -163,8 +162,8 @@ Section UkShRedirPr.
                     (add_vec_int (m !!! Regidx csp_rs1)
                        (- (8 * Z.of_nat k)))]> m))
          (mword_of_int (pcs (length rs) + 2)) nn -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Ek Himm Hp0 Hpc Hoff.
     iIntros "#Hi0 #Hisp #Hifp Hrun Hcont".
@@ -310,8 +309,8 @@ Section UkShRedirPr.
          ⌜ m' !!! Regidx a0_idx = mword_of_int t ⌝ -∗
          urun N h' m' (ret_pc (m !!! Regidx ra_idx))
            (14 + (8 + (2 + (8 + nn)))) -∗
-         WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+         mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using ushp_malloc_ok.
     intros Ha0 Ha1 Ha2 Hoffle Hw0 Hred Hp Hs0 Hs64 Hps0 Hps8 Hpssz.
     iIntros "#Hcode #Hro HM #Hpx Hpay Hsub Hcur Hstr Hws Hsy Hrun Hcont".
@@ -1926,8 +1925,8 @@ Section UkShRedirPr.
          ⌜ m' !!! Regidx a0_idx = mword_of_int t ⌝ -∗
          urun N h' m' (ret_pc (m !!! Regidx ra_idx))
            (14 + (8 + (2 + (8 + nn)))) -∗
-         WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+         mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using ushp_malloc_ok.
     intros Ha0 Ha1 Ha2 Hoffle Hw0 Hred Hp Hs0 Hs64 Hps0 Hps8 Hpssz.
     iIntros "#Hcode #Hro HM #Hpx Hpay Hsub Hcur Hstr Hws Hsy Hrun Hcont".
@@ -1982,8 +1981,8 @@ Section UkShRedirPr.
          ⌜ m' !!! Regidx a0_idx = mword_of_int cmd ⌝ -∗
          urun N h' m' (ret_pc (m !!! Regidx ra_idx))
            (14 + (8 + (2 + nn))) -∗
-         WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+         mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Ha0 Ha1 Ha2 Hoffle Hw0 Hnsk Hs0 Hs64 Hps0 Hps8 Hpssz.
     iIntros "#Hcode #Hro Hcur Hstr Hws Hrun Hcont".

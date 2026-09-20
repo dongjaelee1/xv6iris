@@ -124,6 +124,13 @@ Definition wp_uartinitone_sconf_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{C
      sleep channel and, at +16, the transmit lock -- and a1 the name. *)
   m !!! Regidx (mword_of_int 10 : mword 5) = mword_of_int (uart_elt i) ->
   m !!! Regidx (mword_of_int 11 : mword 5) = nm_addr ->
+  (* ...AND NOTHING HAS BEEN ACCEPTED FOR TRANSMISSION YET (relax-d2, lane
+     K1).  uartinit is the FIRST thing main runs on this port, so the
+     transmitter has finished with nothing -- and that is what makes the
+     bytes the FCR FIFO-clear discards ACCOUNTABLE: no console output
+     preceded them, which is [ConsLog.flush_lost]'s witness.  Without it
+     the clear would drop input the console boundary could never explain. *)
+  l = [] ->
   sie_cap_gpr KT0 m K false p -∗
   kernel_text -∗ pc_is pcE -∗
   (* THE TWO IMMUTABLE FIELDS OF THIS ELEMENT, AT THE VA TIER.  [base] is
@@ -162,8 +169,13 @@ Definition wp_uartinitone_sconf_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{C
     ⌜ callee_saved m mr ⌝ -∗
     (* no THR write, so the accepted trace is untouched *)
     uart_tx_own γd l -∗ uart_sent γd l -∗
-    (* ...and the token back, at whatever the flush left the counter *)
-    (∃ (k' : nat) (hl' : option (list mobs)), uart_rx_tok γd k' hl') -∗
+    (* ...and the token back, at whatever the flush left the counter --
+       WITH WHAT THE CLEAR DISCARDED (relax-d2, lane K1): either the
+       receive FIFO was empty and the anchor did not move, or everything
+       the popper has removed went to this clear and no console output
+       preceded it ([WpUart.uart_flushed]). *)
+    (∃ (k' : nat) (hl' : option (list mobs)),
+       uart_rx_tok γd k' hl' ∗ ⌜hl' = hl \/ uart_flushed i hl'⌝) -∗
     (* the final LCR write cleared DLAB, so the half is frozen for good *)
     uart_dlab_off γd -∗
     (* THE TRANSMIT LOCK COMES BACK OUT, INITIALIZED -- the "newlock" ghost
@@ -172,8 +184,8 @@ Definition wp_uartinitone_sconf_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{C
        [lock_name]: [uarts[]] is a static global that is never freed, so
        nothing needs the field back owned. *)
     lk_fresh (a_tx_lock_at i) nm -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type UARTINITONE.
   Parameter wp_uartinitone_sconf :

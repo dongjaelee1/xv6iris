@@ -318,7 +318,7 @@ Section KforkB3Proof.
           proc_priv_nocwd γf npa pid_c (kfk_childU U0 (pv_ofile (us_V Up)) NOFILE) -∗
           fd_frags (pv_fdg (us_V Up)) stsP -∗
           fd_frags (pv_fdg (us_V U0)) stsP -∗
-          WP (Loop : expr riscv_lang)) -∗
+          mWP (Loop : expr riscv_lang)) -∗
       sie_cap_gpr KT1 M (rsv + (K - 8))%nat b pme -∗
       cpu_own n eb pme b lks -∗
       pc_is (mword_of_int (KF + 0x96) : mword 64) -∗
@@ -326,7 +326,7 @@ Section KforkB3Proof.
       proc_priv_nocwd γf npa pid_c (kfk_childU U0 (pv_ofile (us_V Up)) i) -∗
       fd_frags (pv_fdg (us_V Up)) stsP -∗
       fd_frags (pv_fdg (us_V U0)) (kfk_at stsP fdt0 i) -∗
-      WP (Loop : expr riscv_lang)).
+      mWP (Loop : expr riscv_lang)).
   Proof using .
     intros HK Hn HV0 Hbelow.
     iIntros "#Htext #Hft".
@@ -358,7 +358,7 @@ Section KforkB3Proof.
               proc_priv_nocwd γf npa pid_c (kfk_childU U0 (pv_ofile (us_V Up)) NOFILE) -∗
               fd_frags (pv_fdg (us_V Up)) stsP -∗
               fd_frags (pv_fdg (us_V U0)) stsP -∗
-              WP (Loop : expr riscv_lang)) -∗
+              mWP (Loop : expr riscv_lang)) -∗
           sie_cap_gpr KT1 M (rsv + (K - 8))%nat b pme -∗
           cpu_own n eb pme b lks -∗
           pc_is (mword_of_int (KF + 0x96) : mword 64) -∗
@@ -366,7 +366,7 @@ Section KforkB3Proof.
           proc_priv_nocwd γf npa pid_c (kfk_childU U0 (pv_ofile (us_V Up)) i) -∗
           fd_frags (pv_fdg (us_V Up)) stsP -∗
           fd_frags (pv_fdg (us_V U0)) (kfk_at stsP fdt0 i) -∗
-          WP (Loop : expr riscv_lang)))%I
+          mWP (Loop : expr riscv_lang)))%I
       with "[]" as "Hloop".
     { iIntros (fuel). iInduction fuel as [|fuel IHf] "IHf".
       { iIntros (CIDk Hsk i M) "%Hfuel %Hi %Hregs Hqx Hcg Hown Hpc Hpv Hpv2 Hpfrag Hcfrag".
@@ -390,7 +390,7 @@ Section KforkB3Proof.
           proc_priv_nocwd γf npa pid_c (kfk_childU U0 (pv_ofile (us_V Up)) (S i)) -∗
           fd_frags (pv_fdg (us_V Up)) stsP -∗
           fd_frags (pv_fdg (us_V U0)) (kfk_at stsP fdt0 (S i)) -∗
-          WP (Loop : expr riscv_lang)))%I
+          mWP (Loop : expr riscv_lang)))%I
         with "[Hqx]" as "Htail".
       { iIntros (CIDta Hsta Mt) "%Hregst Hcg Hown Hpc Hpv Hpv2 Hpfrag Hcfrag".
         destruct Hregst as (Ht0 & Ht0' & Ht1 & Ht2 & Ht3 & Ht4 & Ht5 & Htthr).

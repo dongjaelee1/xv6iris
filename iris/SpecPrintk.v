@@ -168,8 +168,8 @@ Definition wp_printk_sconf_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{CID : 
       /\ mf !!! Regidx a0_idx = zero_reg ⌝ -∗
     fmt ↦ₛ{ dqf } f -∗
     ([∗ list] j ↦ d ∈ descs, pk_desc_res (pk_vararg m0 j) d) -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type PRINTK.
   Parameter wp_printk_sconf :
@@ -307,8 +307,8 @@ Definition wp_printk_gen_sconf_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{CI
     cpu_own 0%nat eb pj b lks -∗
     fmt ↦ₛ{ dqf } f -∗
     ([∗ list] j ↦ d ∈ descs, pk_desc_res (pk_vararg m0 j) d) -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 
 Module Type PRINTK_GEN.

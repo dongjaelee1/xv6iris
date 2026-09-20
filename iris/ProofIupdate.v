@@ -388,7 +388,7 @@ Section IupdateDefs.
            the [ln_ep] auth, which is the one place in the system that can
            order the caller's anchor against a batch's epoch. *)
         (∃ e : nat, logged_at icfg_log e (IBLOCK inum icfg_ist) ∗ ⌜(v <= e)%nat⌝) -∗
-        WP (Loop : expr riscv_lang))%I.
+        mWP (Loop : expr riscv_lang))%I.
 
   
 End IupdateDefs.
@@ -479,7 +479,7 @@ Section IupdateTail.
             (if cru then S u else u)
             (Sb ∪ {[IBLOCK inum icfg_ist]}) v Pout
  pidv dq dqd dqn dqs j m K eb b lks Upr -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK Hsp Hthr Hs2 Hkk Hdswf Hdnwf Hbno Hcov Hlog Hbelow.
     pose proof HK as HK'.
@@ -989,8 +989,8 @@ Section ProofIupdateMain.
           bslots 2 -∗
           log_opS icfg_log (if cru then S u else u) (Sb ∪ {[IBLOCK inum icfg_ist]}) -∗
           (∃ e : nat, logged_at icfg_log e (IBLOCK inum icfg_ist) ∗ ⌜(v <= e)%nat⌝) -∗
-          WP (Loop : expr riscv_lang)) -∗
-      WP (Loop : expr riscv_lang).
+          mWP (Loop : expr riscv_lang)) -∗
+      mWP (Loop : expr riscv_lang).
   Proof using .
     intros pcE pj ret_tgt HK Hgeom Hst Hcov Hlog Hnib Hda Hdirlen Hj Hgl Ha0 Hbelow.
     pose proof HK as HK'. 
@@ -1392,7 +1392,7 @@ Section ProofIupdateMain.
        half riding in the handle's payload pins the region's parked bytes
        to the ones bread returned, and out comes the [ds] that the contract
        no longer takes.  A [={⊤}=∗] cannot be [iMod]-ed straight onto a
-       [WP (Loop)] goal -- [iApply fupd_wp] first, the tree's idiom
+       [mWP (Loop)] goal -- [iApply fupd_wp] first, the tree's idiom
        (ProofInitlog.v:664). *)
     iEval (rewrite /bio_locked) in "Hheld".
     iDestruct (iu_held_k with "Hheld") as %Hkk.

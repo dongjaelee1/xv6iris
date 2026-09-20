@@ -176,7 +176,7 @@ Section UInitBannerGen.
     UkInit.kinit_w1 N (mword_of_int 1 : mword 64) b
       (UserFd.ustd (ukn_fd N) l ∗ bnr_at v I i)
       (UserFd.ustd (ukn_fd N) l ∗ bnr_at v I (S i)).
-  Proof.
+  Proof using .
     intros Hli Hb.
     iIntros "#Hpin #Hlk" (h m avail) "%Ha0 %Ha2 #Hcode Hbuf [Hl Hbnd] Hrun Hcont".
     (* the two halves *)
@@ -281,9 +281,9 @@ Section UInitBannerGen.
        ∗ lk_owed L (S gen_id) v I)%I.
 
   Global Instance kinit_ban_timeless_at n : Timeless (kinit_ban_at n).
-  Proof. rewrite /kinit_ban_at. apply _. Qed.
+  Proof using . rewrite /kinit_ban_at. apply _. Qed.
   Global Instance kinit_own_timeless_at n : Timeless (kinit_own_at n).
-  Proof. rewrite /kinit_own_at. apply _. Qed.
+  Proof using . rewrite /kinit_own_at. apply _. Qed.
 
   (* ...AND THE READER'S HALF OF THE DELIVERED COUNT, SPLIT OFF HERE (lane
      IO-LEAF, M5).  [EchoOut.eturn] carries FIVE things and the banner
@@ -319,7 +319,7 @@ Section UInitBannerGen.
     lk_links L -∗
     □ (∀ (n : nat) (N : uk_names Σ),
          kinit_ban_at n -∗ UkInitMain.kinit_banner0 N stc_cons (kinit_own_at n)).
-  Proof.
+  Proof using .
     iIntros "#Hlk !>" (n N) "Hban".
     rewrite /UkInitMain.kinit_banner0 /UkInit.kinit_banner_pay.
     iIntros "Hl".
@@ -400,7 +400,7 @@ Section UInitBannerGen.
          UkInitMain.kinit_banner0 N stc_cons
            (∃ I : list (bv 8),
               ⌜length I = n⌝ ∗ lk_cred L (S gen_id) I 0%nat)).
-  Proof.
+  Proof using .
     iIntros "#Hlk". iDestruct (kinit_banner_law_holds_at with "Hlk") as "#Hlaw".
     iIntros "!>" (n N) "Hban".
     iApply (kinit_banner0_mono_at N (kinit_own_at n) with "[] [Hban]"); last first.

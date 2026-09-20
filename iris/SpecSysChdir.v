@@ -497,8 +497,8 @@ Definition wp_sys_chdir_frame
       (* the armed post on the final process state and the returned a0
          (implies [sys_chdir_post], through [chdir_arms_landed]) *)
       ARMS (us_upt U P') (mf !!! Regidx (mword_of_int 10 : mword 5)) -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 (* THE ONE BODY.  The abstract state is read at the LIVE Γ,
    [fs_gamma_L fsc_fs]; the walk starts at the block's own cwd inum. *)

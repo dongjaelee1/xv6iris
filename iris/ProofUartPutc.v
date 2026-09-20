@@ -302,8 +302,8 @@ Section ProofUartPutc.
       sie_cap_gpr kt (<[Regidx (mword_of_int 15) := regval_into_reg (lsr_masked bt)]> mentry) n b p -∗
       pc_is (mword_of_int (KernelSyms.uartputc_sync + 0x4a)) -∗
       uart_tx_own γd l -∗ uart_out_lb γd l -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Ha4e.
     iIntros "Hcg #Ht Hpc #Huinv Hown Hcont".
@@ -321,8 +321,8 @@ Section ProofUartPutc.
       wp_next (CID0:=CID1) b p (fun (CID : CpuId) =>
         ∀ bt : bv 8, sie_cap_gpr kt (<[Regidx (mword_of_int 15) := regval_into_reg (lsr_masked bt)]> mentry) n b p -∗
             pc_is (mword_of_int (KernelSyms.uartputc_sync + 0x4a)) -∗
-            uart_tx_own γd l -∗ uart_out_lb γd l -∗ WP (Loop : expr riscv_lang)) -∗
-      WP (Loop : expr riscv_lang))%I with "[]" as "Loop".
+            uart_tx_own γd l -∗ uart_out_lb γd l -∗ mWP (Loop : expr riscv_lang)) -∗
+      mWP (Loop : expr riscv_lang))%I with "[]" as "Loop".
     { iLöb as "IH". iIntros (CID1 m Ha4m Hagm) "Hcg Hpc Hown Hk".
       (* 0x40  lbu a5,0(a4) *)
       iApply (UAcc.wp_uart_lsr_read_s_sconf_at (CID:=CID1) i γd (mword_of_int (KernelSyms.uartputc_sync + 0x40)) (mword_of_int 15) (mword_of_int 14)
@@ -401,8 +401,8 @@ Section ProofUartPutc.
       ∀ bt : bv 8,
       sie_cap_gpr kt (ppc_f5' i m bt) n b p -∗ pc_is (mword_of_int (KernelSyms.uartputc_sync + 0x52)) -∗
       uart_tx_own γd (l ++ [sb]) -∗ uart_sent γd (l ++ [sb]) -∗ Φ -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros sb Hs4.
     iIntros "Hcg #Ht Hpc #Huinv #Hbw Hown #Hoff HΨ Hcont".

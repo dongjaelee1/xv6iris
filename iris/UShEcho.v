@@ -1615,7 +1615,7 @@ Section UShEcho.
         (∀ (h' : CpuId) (m' : regfile),
            tx N (bs ++ wl_line (drop 1 ws)) -∗
            urun N h' m' (mword_of_int EchoSyms.exit) n -∗
-           WP (Loop : expr riscv_lang)) -∗
-        WP (Loop : expr riscv_lang).
+           mWP (Loop : expr riscv_lang)) -∗
+        mWP (Loop : expr riscv_lang).
 
 End UShEcho.

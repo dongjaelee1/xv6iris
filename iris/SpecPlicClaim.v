@@ -127,8 +127,8 @@ Definition wp_plic_claim_sconf_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{CI
     (⌜ m' !!! Regidx a0_idx
        = (mword_of_int (Z.of_N (uart_irq_id Uart1)) : mword 64) ⌝ -∗
        plic_payload_uart Uart1 γd1) -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type PLIC_CLAIM.
   Parameter wp_plic_claim_sconf :

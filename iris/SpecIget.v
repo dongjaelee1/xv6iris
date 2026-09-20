@@ -286,8 +286,8 @@ Definition wp_iget_sconf_body
     inode_refb (is_claim l) k q icfg_dev inum -∗
     (* ...and BACK, unspent and at the SAME [l] *)
     iname fsc_ireg fsc_fs icfg_ist inum l -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type IGET.
   Parameter wp_iget_sconf :

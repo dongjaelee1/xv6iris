@@ -165,8 +165,8 @@ Lemma wp_sw_plic_pinv_s_sconf (γ γ1 : uart_names) (pc : mword 64) (is_rvc : bo
     sie_cap_gpr kt m n false p -∗
     pc_is (add_vec_int pc (if is_rvc then 2 else 4)) -∗
     S -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 Proof using .
   intros ea a8 storeword Hrange Halign Hcanon Hdevvpn Hwrite.
   (* the class, consumed at [rs1 / rs2] -- the one line the funnel change needs,
@@ -437,8 +437,8 @@ Lemma wp_sw_plic_dev_s_sconf (γd : uart_names) (γv : disk_names) (pc : mword 6
     sie_cap_gpr kt m n false p -∗
     pc_is (add_vec_int pc (if is_rvc then 2 else 4)) -∗
     S -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 Proof using .
   intros ea a8 storeword Hrange Halign Hcanon Hdevvpn Hwrite.
   (* the class, consumed at [rs1 / rs2] -- the one line the funnel change needs,
@@ -498,8 +498,8 @@ Lemma wp_lw_plic_pinv_s_sconf (γd γ1 : uart_names) (pc : mword 64) (is_rvc is_
       sie_cap_gpr kt (<[Regidx rd := regval_into_reg (ldval v)]> m) n false p -∗
       pc_is (add_vec_int pc (if is_rvc then 2 else 4)) -∗
       S v -∗
-      WP (Loop : expr riscv_lang))) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang))) -∗
+  mWP (Loop : expr riscv_lang).
 Proof using .
   intros ea a8 ldval Hrange Halign Hcanon Hdevvpn Hrd Hrdok Hread.
   (* the class, consumed at [rs1] -- the one line the funnel change needs,

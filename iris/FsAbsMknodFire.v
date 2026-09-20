@@ -722,7 +722,7 @@ Section CreateFire.
       ∗ ∃ av : aview,
           ⌜cre_pre av d nm (dir_entries np) (fn_nlink np) i (cf d i)⌝
           ∗ Fok.(pf_recv) av d nm i.
-  Proof.
+  Proof using .
     intros HE HNm Hloc Hdir Hnl Hnone Hpnm Habsp' Habsc.
     iIntros "#Hi #Hai Hcm Harm HPd Hfp Hfc".
     iDestruct (pf_at_au with "Hcm") as "Hcm".
@@ -803,7 +803,7 @@ Section CreateFire.
       ∗ ∃ av : aview,
           ⌜cre_pre av d nm (dir_entries np) (fn_nlink np) i (cf d i)⌝
           ∗ Fok.(pf_recv) av d nm i.
-  Proof.
+  Proof using .
     intros HE Hloc Hdir Hnl Hnone Hpnm Habsp' Habsc.
     iIntros "Hi Hai Hcm Harm HPd Hfp Hfc".
     iApply (caf_acre_fire_nm γfs E cf (fun _ => True) Pd Farm Fok d i nm dqc
@@ -841,7 +841,7 @@ Section CreateFire.
       ∗ ∃ av : aview,
           ⌜cre_pre av d nm (dir_entries np) (fn_nlink np) i (AFile [])⌝
           ∗ Fok.(pf_recv) av d nm i.
-  Proof.
+  Proof using .
     intros HE Hloc Hdir Hnl Hnone Hpnm Habsp' Habsc.
     iIntros "Hi Hai Hcm Harm HPd Hfp Hfc".
     iApply (caf_acre_fire γfs E (fun _ _ => AFile []) Pd Farm Fok d i nm dqc

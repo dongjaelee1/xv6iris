@@ -162,8 +162,8 @@ Definition wp_fetchaddr_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslo
       proc_priv γf p pid (us_upt U P') -∗
       fetchaddr_post (us_M U) ip oldv addr (pv_sz (us_V U))
         (mf !!! Regidx (mword_of_int 10 : mword 5)) -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type FETCHADDR.
   Parameter wp_fetchaddr_sconf :

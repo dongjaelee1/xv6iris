@@ -181,7 +181,7 @@ Section PanicSpin.
     ∀ (h : CpuId) (m : regfile) (K : nat) (b : bool) (p : mword 64),
       sie_cap_gpr kt m K b p -∗
       pc_is (mword_of_int (PA + 0x26)) -∗
-      WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang).
   Proof using .
     assert (Htgt : add_vec (mword_of_int (PA + 0x26) : mword 64)
                      (sign_extend' 64 (sign_extend' 21

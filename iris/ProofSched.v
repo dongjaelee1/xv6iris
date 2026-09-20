@@ -224,8 +224,8 @@ Section SchedPostSwtch.
         own_ctx (p_context pj) -∗
         hart_full j cpu_id -∗
         ▷ sched_vc_at γs cpu_id (a_cpu_ctx cid_word) pj -∗
-        WP (Loop : expr riscv_lang) ) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang) ) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros pj Hav Hspd Hsp0 Hsp_m' Hs2addr Hs3v
            Hm20 Hm21 Hm22 Hm23 Hm24 Hm25 Hm26 Hm27.

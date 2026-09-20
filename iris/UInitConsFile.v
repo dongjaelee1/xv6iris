@@ -44,8 +44,7 @@ From iris.program_logic Require Import language lifting.
 Require Import SailStdpp.ConcurrencyInterface SailStdpp.ConcurrencyInterfaceBuiltins SailStdpp.ConcurrencyInterfaceTypes SailStdpp.Operators_mwords.
 Require Import Riscv.rv64d_types Riscv.rv64d Riscv.riscv_extras.
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.MachineWord.
-Require Import RiscvLang RiscvPtsto RiscvExtras RiscvModelBytes.
-Require Import RegFile.
+Require Import RiscvLang RiscvPtsto RiscvModelBytes.
 (* THE GHOST BINDER LIST, each module IMPORTED and not merely required --
    naming a class without its defining module in scope introduces a FRESH
    Type variable and the kernel's [uexecSG] instance becomes invisible to
@@ -57,25 +56,14 @@ Require Import IrefSlots.
 Require Import ProcAvail.
 Require Import FileInvDefs.
 Require Import UserFd.
-Require Import UserHeap.
-Require Import UserPerm.        (* [uperm] *)
-Require Import UmodeAbi.           (* [uimg_sub] *)
-Require Import ProcGeom.           (* [NOFILE], [tf_arg_idx] *)
-Require Import UInitFd.            (* [ufd_l0] / [ufd_l1] / [ufd_alloc0] *)
-Require Import PieceFam.
 Require Import FsTree.             (* [fname] *)
-Require Import ArgPath.
-Require Import UexecSlot UexecRet UsysMemOk UexecSG.
-Require Import UkRun UkRunLeaf UkRunSys.
-Require Import UCodeInit UkInit.
+Require Import UkRun.
+Require Import UkInit.
 Require Import UexecExecInst.      (* THE INSTANCE: [uexecSG_xv6] *)
 Require Import AppCfg AppInv.
 Require Import FsCfg.
-Require Import FsBytesGamma.
 Require Import FsAbsDefs.
 Require Import FsAbsDelta.         (* [cre_pre] / [delta_arm] / [delta_unarm] *)
-Require Import SpecSysOpen.
-Require Import SysMknodDefs SpecSysMknod.
 Require Import ConsoleInv.         (* [CONSOLE] *)
 Require Import FsConsPin.
 Require Import FsImgCheck.        (* [fname_f] *)
@@ -92,7 +80,6 @@ Require Import EchoOut.            (* [echoOutG] *)
 Require Import UInitCons.
 Require Import UInitConsK.
 Require Import UShConsK.
-Require Import UConsOpen.
 Require Import CtxIdDefs.
 Require FsImg.
 Require User.InitSyms.

@@ -511,8 +511,8 @@ Definition wp_sys_read_sconf_body
          proved. ---- *)
       sys_read_arms (us_V U) v sts (sys_rw_count v2) F Rd Rin Rp Rpe P r
         (umem_wr (us_M U) v1 d bs) v1 -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 (* ONE MODULE TYPE: there is no parallel statement for the observation and
    no second walk against the code.  A STABLE form, when one is wanted, is a

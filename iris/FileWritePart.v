@@ -30,38 +30,20 @@ Require Import FdSlots.            (* [fdslotG] *)
 Require Import IrefSlots.          (* [irefslotG] *)
 Require Import ProcAvail.          (* [pavG] *)
 Require Import FileInvDefs.        (* [fileG], [file_app] *)
-Require Import FsImg.              (* [ROOTINO] *)
-Require Import FsImgCheck.         (* [fname_f] *)
 Require Import FsBlocks.           (* [fs_names], [fs_top], [blk_splice] *)
-Require Import FsNode.             (* [fs_node] *)
-Require Import FsTree.             (* [fname] *)
-Require Import FsAbsDefs.          (* [aview] / [astep] / [arow_at] *)
-Require Import FsAbsDelta.         (* [delta_write] *)
 Require Import FsBytesGamma.       (* [fs_gamma_L] *)
 Require Import SailStdpp.Operators_mwords.
 Require Import SailStdpp.Base SailStdpp.Values SailStdpp.MachineWord.
 Require Import SysWriteDefs.       (* [wri_pre], [FW_MAX] *)
-Require Import SpecCopyin.         (* [ubytes_at] *)
 Require Import OffGv.              (* [off_gv] *)
 Require Import AppCfg.
 Require Import AppInv.             (* [app_inv], [app_body], [app_step], [appE] *)
-Require Import FsInitPin.          (* [INIT_INO] *)
-Require Import FsInitPinBoot.      (* [era0_pins] *)
-Require Import FsShPin.            (* [SH_INO], [era0_sh_pins] *)
-Require Import FsEchoPin.          (* [ECHO_INO], [era0_echo_pins] *)
-Require Import FsCatPin.           (* [CAT_INO], [era0_cat_pins] *)
-Require Import FsConsPin.          (* [file_pin] and its family, [cons_state] *)
-Require Import EchoFsPure.         (* [echo_fs_pure] *)
-Require Import FileFsPure.         (* [file_fs_pure] *)
-Require Import FsFPin.             (* [f_absent] *)
 Require Import EchoDisc.           (* [line_ok] *)
 Require Import EchoOut.            (* [echoOutG] *)
 Require Import FileState.          (* [fst], [echo_chunks], [subseq], [sel_ok] *)
-Require Import AppEcho.
 Require Import AppFile.
 Require Import UserOff.            (* [uoff] -- THE PROGRAM'S HALF *)
 Require Import FsAbsWriteFire.     (* [awrite_full_adv] -- the advanced node *)
-Require Import FsAbs.              (* [γtop] (FsAbs's own rule: LAST but one) *)
 Local Open Scope Z_scope.
 Require Import FileWrite.
 Require Import FileDeltas.         (* [f_bytes_typed_short] *)

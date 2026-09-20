@@ -88,7 +88,7 @@ Definition wp_scheduler_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslo
      scheduler's level-0 SIE flip gets the handler out of the same bundle it
      already took the trap cells from. *)
   trap_csrs KT1 -∗
-  WP (Loop : expr riscv_lang).
+  mWP (Loop : expr riscv_lang).
 
 Module Type SCHEDULER.
   Parameter wp_scheduler_sconf :

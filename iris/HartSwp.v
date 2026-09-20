@@ -9,7 +9,7 @@
 
    THE CONTEXT-GENERIC FORM (a correction to the design doc's CPS shape,
    which quantified only over [K : X -> M unit] and concluded at
-   [WP (HartE (bind m K))]).  Three things go wrong with the bind-only form,
+   [mWP (HartE (bind m K))]).  Three things go wrong with the bind-only form,
    and one definition fixes all three:
 
      - ASSOCIATIVITY.  [swp_bind] against a bind-only [swp] needs
@@ -210,9 +210,9 @@ Section swp.
   Definition swp {X : Type} (m : M X) (Φ : X -> iProp Σ) : iProp Σ :=
     (∀ C : M X -> M unit,
        ⌜mctx C⌝ -∗
-       (∀ v : X, Φ v -∗ WP (HartE gen_id cpu_id (C (Interface.Ret v))
+       (∀ v : X, Φ v -∗ mWP (HartE gen_id cpu_id (C (Interface.Ret v))
                             : expr riscv_lang)) -∗
-       WP (HartE gen_id cpu_id (C m) : expr riscv_lang))%I.
+       mWP (HartE gen_id cpu_id (C m) : expr riscv_lang))%I.
 
   Global Instance swp_ne {X} (m : M X) n :
     Proper (pointwise_relation X (dist n) ==> dist n) (swp m).
@@ -233,9 +233,9 @@ Section swp.
   Lemma swp_use {X} (m : M X) (Φ : X -> iProp Σ) (C : M X -> M unit) :
     mctx C ->
     swp m Φ -∗
-    (∀ v : X, Φ v -∗ WP (HartE gen_id cpu_id (C (Interface.Ret v))
+    (∀ v : X, Φ v -∗ mWP (HartE gen_id cpu_id (C (Interface.Ret v))
                          : expr riscv_lang)) -∗
-    WP (HartE gen_id cpu_id (C m) : expr riscv_lang).
+    mWP (HartE gen_id cpu_id (C m) : expr riscv_lang).
   Proof using . iIntros (HC) "Hswp H". by iApply ("Hswp" $! C with "[%//]"). Qed.
 
   Lemma swp_mono {X} (m : M X) (Φ Ψ : X -> iProp Σ) :
@@ -274,8 +274,8 @@ Section swp.
      postcondition is the next boundary's WP is the leaf statement. *)
   Lemma swp_wp (m : M unit) (Φ : unit -> iProp Σ) :
     swp m Φ -∗
-    (∀ v : unit, Φ v -∗ WP (Loop : expr riscv_lang)) -∗
-    WP (HartE gen_id cpu_id m : expr riscv_lang).
+    (∀ v : unit, Φ v -∗ mWP (Loop : expr riscv_lang)) -∗
+    mWP (HartE gen_id cpu_id m : expr riscv_lang).
   Proof using .
     iIntros "Hswp H".
     iApply ("Hswp" $! (fun m' : M unit => m') with "[%] [H]");
@@ -285,13 +285,13 @@ Section swp.
 
   (* the same, specialised to the shape every leaf ends in *)
   Lemma swp_wp_loop (m : M unit) :
-    swp m (fun _ => WP (Loop : expr riscv_lang)) -∗
-    WP (HartE gen_id cpu_id m : expr riscv_lang).
+    swp m (fun _ => mWP (Loop : expr riscv_lang)) -∗
+    mWP (HartE gen_id cpu_id m : expr riscv_lang).
   Proof using . iIntros "Hswp". iApply (swp_wp with "Hswp"). by iIntros (v) "H". Qed.
 
   (* THE BOUNDARY, as the leaves see it: [wp_hart_restart] composed with
      [swp_wp_loop].  A leaf that proves [swp (riscv_step tick) (fun _ =>
-     WP Loop)] for BOTH ticks has proved [WP Loop -* WP Loop] -- so this is
+     WP Loop)] for BOTH ticks has proved [mWP Loop -* mWP Loop] -- so this is
      the whole-cycle rule of the pre-port semantics, restated over the
      per-node language.  The ∀-over-[tick] is the machine's choice, which
      is why it is here and not inside a leaf. *)
@@ -300,8 +300,8 @@ Section swp.
     resv_frag cpu_id rr -∗
     ▷ (∀ tick : bool,
          resv_frag cpu_id None -∗
-         swp (riscv_step tick) (fun _ => WP (Loop : expr riscv_lang))) -∗
-    WP (Loop : expr riscv_lang).
+         swp (riscv_step tick) (fun _ => mWP (Loop : expr riscv_lang))) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros "#Hcert Hfrag H". iApply (wp_hart_restart rr with "Hcert Hfrag").
     iNext. iIntros (tick) "Hfrag". iApply swp_wp_loop. iApply ("H" with "Hfrag").
@@ -338,9 +338,9 @@ Section swp.
     mctx C ->
     swp m Φ -∗
     (∀ v : X, Φ v -∗
-       WP (HartE gen_id cpu_id (C (Defs.catch_early_return (K v)))
+       mWP (HartE gen_id cpu_id (C (Defs.catch_early_return (K v)))
            : expr riscv_lang)) -∗
-    WP (HartE gen_id cpu_id
+    mWP (HartE gen_id cpu_id
           (C (Defs.catch_early_return (Defs.bind (Defs.liftR (R := R) m) K)))
         : expr riscv_lang).
   Proof using .
@@ -356,8 +356,8 @@ Section swp.
     mctx C ->
     swp m Φ -∗
     (∀ v : R, Φ v -∗
-       WP (HartE gen_id cpu_id (C (Interface.Ret v)) : expr riscv_lang)) -∗
-    WP (HartE gen_id cpu_id
+       mWP (HartE gen_id cpu_id (C (Interface.Ret v)) : expr riscv_lang)) -∗
+    mWP (HartE gen_id cpu_id
           (C (Defs.catch_early_return (Defs.liftR (R := R) m)))
         : expr riscv_lang).
   Proof using .
@@ -377,10 +377,10 @@ Section swp.
     mctx C ->
     swp m Φ -∗
     (∀ v : X, Φ v -∗
-       WP (HartE gen_id cpu_id
+       mWP (HartE gen_id cpu_id
              (C (Defs.catch_early_return (Defs.bind (K0 v) K1)))
            : expr riscv_lang)) -∗
-    WP (HartE gen_id cpu_id
+    mWP (HartE gen_id cpu_id
           (C (Defs.catch_early_return
                 (Defs.bind (Defs.bind (Defs.liftR (R := R) m) K0) K1)))
         : expr riscv_lang).
@@ -398,11 +398,11 @@ Section swp.
     mctx C ->
     swp m Φ -∗
     (∀ v : X, Φ v -∗
-       WP (HartE gen_id cpu_id
+       mWP (HartE gen_id cpu_id
              (C (Defs.catch_early_return
                    (Defs.bind (Defs.bind (K0 v) K1) K2)))
            : expr riscv_lang)) -∗
-    WP (HartE gen_id cpu_id
+    mWP (HartE gen_id cpu_id
           (C (Defs.catch_early_return
                 (Defs.bind (Defs.bind (Defs.bind (Defs.liftR (R := R) m) K0)
                               K1) K2)))
@@ -440,11 +440,11 @@ Section swp.
     mctx C ->
     swp m Φ -∗
     (∀ v : X, Φ v -∗
-       WP (HartE gen_id cpu_id
+       mWP (HartE gen_id cpu_id
              (C (Defs.catch_early_return
                    (Defs.bind (Defs.bind (Defs.bind (K0 v) K1) K2) K3)))
            : expr riscv_lang)) -∗
-    WP (HartE gen_id cpu_id
+    mWP (HartE gen_id cpu_id
           (C (Defs.catch_early_return
                 (Defs.bind (Defs.bind (Defs.bind
                    (Defs.bind (Defs.liftR (R := R) m) K0) K1) K2) K3)))

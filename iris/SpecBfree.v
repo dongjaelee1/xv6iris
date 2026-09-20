@@ -222,8 +222,8 @@ Definition wp_bfree_gen_body
       sb_bmapstart ↦₄{dqb} (mword_of_int bmapstart : mword 32) -∗
       bslots 2 -∗
       log_opSe γ (if cr then S u else u) (Sb ∪ {[bmapstart]}) e0 -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Definition wp_bfree_sconf_body
     `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, !irefslotG Σ, !pavG Σ, !wchG Σ} `{GEN : GenId} `{CID : CpuId} `{XI : CurCtx}
@@ -328,8 +328,8 @@ Definition wp_bfree_sconf_body
       sb_bmapstart ↦₄{dqb} (mword_of_int bmapstart : mword 32) -∗
       bslots 2 -∗
       log_op γ u -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type BFREE.
   (* THE CREDITED / GENERAL FORM; [wp_bfree_sconf] below is its

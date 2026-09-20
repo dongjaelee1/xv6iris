@@ -337,8 +337,8 @@ Section ProofCopyinstr.
         ⌜callee_saved m mf /\ mf !!! Regidx Ra0 = res⌝ -∗
         sie_cap_gpr KT1 mf av b pcur -∗
         pc_is (ret_pc ra0) -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hav Hsp0 Hra0 Hs00 Hs10 Hs20 Hs30 Hs40 Hs50 Hs60 Hs70 Hs80 Hs90
            Hmtsp Hmta0 Hmt10 Hmt11.
@@ -617,8 +617,8 @@ Section ProofCopyinstr.
         ⌜forall r : mword 5, r <> Ra0 -> r <> Ra5 -> Mo !!! Regidx r = M !!! Regidx r⌝ -∗
         sie_cap_gpr KT1 Mo Kv b pcur -∗
         pc_is (mword_of_int (KernelSyms.copyinstr + 0x4e) : mword 64) -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Ha5 Hcase.
     iIntros "Hcg #Htext Hpc Hcont".
@@ -726,7 +726,7 @@ Section ProofCopyinstr.
           pc_is (mword_of_int (KernelSyms.copyinstr + 0x40) : mword 64) -∗
           ([∗ list] j ∈ seq 0 n, (pa_add srcp j) ↦ₘ fsrc j) -∗
           ([∗ list] j ∈ seq 0 maxn, (pa_add dst j) ↦ₘ[ktb] g j) -∗
-          WP (Loop : expr riscv_lang))
+          mWP (Loop : expr riscv_lang))
         ∧
         ( ∀ (Mc : regfile) (g : nat -> bv 8),
           ⌜bb_nonul g (done + n)⌝ -∗
@@ -740,8 +740,8 @@ Section ProofCopyinstr.
           pc_is (mword_of_int (KernelSyms.copyinstr + 0x68) : mword 64) -∗
           ([∗ list] j ∈ seq 0 n, (pa_add srcp j) ↦ₘ fsrc j) -∗
           ([∗ list] j ∈ seq 0 maxn, (pa_add dst j) ↦ₘ[ktb] g j) -∗
-          WP (Loop : expr riscv_lang)) )) -∗
-    WP (Loop : expr riscv_lang).
+          mWP (Loop : expr riscv_lang)) )) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hdn Hmax64.
     assert (Hn64 : (Z.of_nat n < 18446744073709551616)%Z).
@@ -1004,8 +1004,8 @@ Section ProofCopyinstr.
       pc_is (mword_of_int (KernelSyms.copyinstr + 0x4e) : mword 64) -∗
       proc_ptm P' (uint szv) M -∗
       ([∗ list] j ∈ seq 0 maxn, (pa_add dst j) ↦ₘ[ktb] g j) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK Hmax64 Hszb Hlvl.
     intro fuel.
@@ -1034,7 +1034,7 @@ Section ProofCopyinstr.
       pc_is (mword_of_int (KernelSyms.copyinstr + 0x4e) : mword 64) -∗
       proc_ptm P' (uint szv) M -∗
       ([∗ list] j ∈ seq 0 maxn, (pa_add dst j) ↦ₘ[ktb] g j) -∗
-      WP (Loop : expr riscv_lang)))%I).
+      mWP (Loop : expr riscv_lang)))%I).
     (* the cursor, its page and its offset inside that page *)
     pose (cur := (m !!! Regidx Rs1 : mword 64)).
     pose (va0 := (and_vec cur (mword_of_int (-4096)) : mword 64)).
@@ -1188,7 +1188,7 @@ Section ProofCopyinstr.
            proc_ptm Pd (uint szv) M) -∗
         ([∗ list] j ∈ seq 0 maxn, (pa_add dst j) ↦ₘ[ktb] f j) -∗
         EXIT -∗
-        WP (Loop : expr riscv_lang))%I with "[]" as "CHUNK".
+        mWP (Loop : expr riscv_lang))%I with "[]" as "CHUNK".
     { iIntros (CIDc mc pa0 Pd fpg) "%Hanchorc %Hextd %Hva0b %Hpgm %Hza0 %Hzsp %Hz1 %Hz2 %Hz3
                             %Hz4 %Hz5 %Hz6 %Hz7 %Hz8 %Hz9 %Hz10 %Hz11
                             Hcg Hcnt Hpc Hpg Hback Hdst HEXIT".
@@ -1218,7 +1218,7 @@ Section ProofCopyinstr.
           ⌜mb !!! Regidx Rs11 = v11⌝ -∗
           sie_cap_gpr KT1 (CID:=CIDb) mb (K - 12)%nat b pcur -∗
           pc_is (CID:=CIDb) (mword_of_int (KernelSyms.copyinstr + 0x96) : mword 64) -∗
-          WP (Loop : expr riscv_lang))%I
+          mWP (Loop : expr riscv_lang))%I
         with "[Hdst Hpg Hback Hcnt HEXIT]" as "BODY".
       { iIntros (CIDb mb n) "%Hanchorb %Hn1 %Hnrem %Hnoff %Hnshape %Hba3 %Hba0 %Hbsp %Hbs1 %Hbs2 %Hbs3
                         %Hbs4 %Hbs5 %Hbs6 %Hbs7 %Hbs8 %Hbs9 %Hbs10 %Hbs11 Hcg Hpc".

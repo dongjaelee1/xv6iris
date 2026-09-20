@@ -293,8 +293,8 @@ Section ProofCopyin.
       pc_is (ret_pc (mm !!! Regidx Rra)) -∗
       ⌜callee_saved mm mf⌝ -∗
       ⌜mf !!! Regidx Ra0 = res⌝ -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros spr HK Hmmsp Hjsp Hja0 Hjs11.
     iIntros "Hcg Hcnt #Htext Hpc Hk1 Hk2 Hk3 Hk4 Hk5 Hk6 Hk7 Hk8 Hk9 Hk10 Hk11 Hk12 Hcont".
@@ -588,7 +588,7 @@ Section ProofCopyin.
      ⌜mc !!! Regidx Rs11 = v11⌝ -∗
      sie_cap_gpr KT1 mc (K - 12) b p -∗
      pc_is (mword_of_int (KernelSyms.copyin + 0x3c) : mword 64) -∗
-     WP (Loop : expr riscv_lang))%I.
+     mWP (Loop : expr riscv_lang))%I.
 
   Definition ci_chunk_body
       (b : bool) (p : mword 64) (CID0 : CpuId) (szv : mword 64) (Pc : uptd)
@@ -625,7 +625,7 @@ Section ProofCopyin.
         proc_ptm Pd (uint szv) M) -∗
      ([∗ list] j ∈ seq 0 len, (pa_add dst j) ↦ₘ[ktb] fd j) -∗
      EXIT -∗
-     WP (Loop : expr riscv_lang))%I.
+     mWP (Loop : expr riscv_lang))%I.
 
   (* ------------------------------------------------------------------ *)
   (* WHY THE -1 ARM FAILED, as a fact about the ENTRY table (lane          *)
@@ -747,8 +747,8 @@ Section ProofCopyin.
       pc_is (mword_of_int (KernelSyms.copyin + 0x7c) : mword 64) -∗
       proc_ptm P' (uint szv) M -∗
       ([∗ list] j ∈ seq 0 len, (pa_add dst j) ↦ₘ[ktb] g j) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using KtierLe0.
     intros HK Hlen64 Hszb Hlvl.
     change (2 ^ 64)%Z with 18446744073709551616%Z in Hlen64.
@@ -784,7 +784,7 @@ Section ProofCopyin.
       pc_is (mword_of_int (KernelSyms.copyin + 0x7c) : mword 64) -∗
       proc_ptm P' (uint szv) M -∗
       ([∗ list] j ∈ seq 0 len, (pa_add dst j) ↦ₘ[ktb] g j) -∗
-      WP (Loop : expr riscv_lang)))%I).
+      mWP (Loop : expr riscv_lang)))%I).
     (* the cursor, its page and its offset inside that page *)
     pose (cur := (m !!! Regidx Rs2 : mword 64)).
     assert (Hcureq : cur = add_vec_int srcva0 (Z.of_nat done))

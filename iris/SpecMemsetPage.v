@@ -44,8 +44,8 @@ Definition wp_memset_page_sconf_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{C
     pc_is ret_tgt -∗
     page_own p -∗
     ⌜ callee_saved m0 mfin ⌝ -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 (* THE VALUE-PRESERVING FORM.  [wp_memset_page_sconf] above weakens the
    written page back to [page_own] -- contents EXISTENTIAL -- which is right
@@ -82,8 +82,8 @@ Definition wp_memset_page_val_sconf_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId}
     pc_is ret_tgt -∗
     ([∗ list] j ∈ seq 0 4096, (pa_add p j) ↦ₘ cbyte) -∗
     ⌜ callee_saved m0 mfin ⌝ -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type MEMSETPAGE.
   Parameter wp_memset_page_val_sconf :

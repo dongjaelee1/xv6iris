@@ -366,7 +366,7 @@ Section UkShFork.
           Wc I 3%nat -∗
           urun N' h m (mword_of_int 0x9c0)
             (Dc + (8 + (UkShDiag.ush_Dg + n))) -∗
-          WP (Loop : expr riscv_lang)))%I.
+          mWP (Loop : expr riscv_lang)))%I.
 
   Definition ushf_child_law : iProp Σ :=
     ushf_child_law_at UkSh.ush_line_is 60.
@@ -482,7 +482,7 @@ Section UkShFork.
        Pex -∗
        urun N h' m' (mword_of_int ShSyms.panic)
          (UkShDiag.ush_Dg + (74 + n)) -∗
-       WP (Loop : expr riscv_lang)) -∗
+       mWP (Loop : expr riscv_lang)) -∗
     (* THE CHILD, at 0x9c0 *)
     (∀ (N' : uk_names Σ) (hB : CpuId) (mA : regfile) (γ' : gname),
        ⌜ ukn_pay N' = Q ⌝ -∗
@@ -505,7 +505,7 @@ Section UkShFork.
        UkShMalloc.ushm_fresh N' sz -∗
        urun N' hB mA (mword_of_int 0x9c0)
          (68 + (8 + (UkShDiag.ush_Dg + n))) -∗
-       WP (Loop : expr riscv_lang)) -∗
+       mWP (Loop : expr riscv_lang)) -∗
     (* THE PARENT'S RE-ENTRY: the head's slot out of what the fork and the
        wait left, and what fork1 borrowed back.  The fork went out at the
        EMPTY set and the wait's row is at sh's own pid, which is not
@@ -521,7 +521,7 @@ Section UkShFork.
     ushl_dat -∗ usz γs sz -∗
     ubytes γd sh_buf sh_nbuf f -∗
     urun N h m (mword_of_int 0x92c) (16 + (UkSh.ush_Dbody + n)) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using Hpay Hpsok_free.
     intros HQc Hregs Hs1 Hnn Hnul Hkl.
     iIntros "Hhead #Hcode #Hro #Hjt %Hfd0 Hustd Hcwd Hch Hpid HRc #Hkw
@@ -825,7 +825,7 @@ Section UkShFork.
     ushl_dat -∗ usz γs sz -∗
     ubytes γd sh_buf sh_nbuf f -∗
     urun N h m (mword_of_int 0x92c) (16 + (UkSh.ush_Dbody + n)) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using HT HWct Hpay Hpsok_free.
     intros HDc Hregs Hs1 Hnn Hnul Hkl Hline Hszlo Hszal Hszok
            Hpm1 Hpmwb Hwbl.
@@ -1026,7 +1026,7 @@ Section UkShFork.
     ushl_dat -∗ usz γs sz -∗
     ubytes γd sh_buf sh_nbuf f -∗
     urun N h m (mword_of_int 0x97a) (16 + (UkSh.ush_Dbody + n)) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using HT HWct Hpay Hpsok_free.
     intros HDc Hlp0 Hregs Hs1 Ha5 Hnn Hnul Hkl Hline Hszlo Hszal Hszok
            Hpm1 Hpmwb Hwbl.
@@ -1181,7 +1181,7 @@ Section UkShFork.
           ushl_dat -∗ usz γs sz -∗
           ubytes γd sh_buf sh_nbuf f -∗
           urun N h m (mword_of_int 0x97a) (16 + (UkSh.ush_Dbody + n)) -∗
-          WP (Loop : expr riscv_lang)))%I.
+          mWP (Loop : expr riscv_lang)))%I.
 
   Global Instance ushf_body_law_persistent D sz :
     Persistent (ushf_body_law D sz).

@@ -739,7 +739,7 @@ Section EndOpDefs.
         cpu_claim_ext eb (proc_addr j) -∗
         pc_is (ret_pc (m !!! Regidx Rra : mword 64)) -∗
         proc_priv_bare (proc_addr j) pidv Upr -∗
-        WP (Loop : expr riscv_lang))%I.
+        mWP (Loop : expr riscv_lang))%I.
 
   Lemma eo_cont_shift `{GEN : GenId} `{CIDa : CpuId} `{CIDb : CpuId}
        (j : nat) (pidv : mword 32) (dq : dfrac)
@@ -1189,7 +1189,7 @@ Section EndOpBlocks.
     eo_frame4 m -∗
     eo_frameJ m -∗
     eo_cont (CID0 := CID0)  j pidv dq m K eb b lks Upr -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using bioslotG0.
     intros HK Hregs.
     pose proof Hregs as (Hsp & Hthr).
@@ -1458,7 +1458,7 @@ Section EndOpBlocks.
        nothing to hand over and nothing to keep. *)
     fs_bank -∗
     eo_cont (CID0 := CID0)  j pidv dq m K eb eb lks Upr -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK Hregs Hbelow.
     pose proof (locks_below_not_elem _ _ Hbelow) as Hfresh.
@@ -2068,7 +2068,7 @@ Section EndOpBlocks.
     fs_crash_seam_at G cov logstart -∗
     snap_law_out G L (fs_home_set cov logstart) -∗
     eo_cont (CID0 := CID0)  j pidv dq m K eb eb lks Upr -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK Hgeom Hj Hgl Hshape Hnd Hwok HLw HMchdr HMcslot Hrow Hregs
            Hbelow.
@@ -2843,7 +2843,7 @@ Section EndOpBlocks.
     fs_crash_seam_at G cov logstart -∗
     snap_law_out G L (fs_home_set cov logstart) -∗
     eo_cont (CID0 := CID0)  j pidv dq m K eb eb lks Upr -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK Hgeom Hj Hgl Hshape Hnd Hwok Hbelow.
     destruct Hshape as [HnW Hn30].
@@ -4131,7 +4131,7 @@ Section EndOpBlocks.
     eo_frame4 m -∗
     eo_frameJ m -∗
     eo_cont (CID0 := CID0)  j pidv dq m K eb eb lks Upr -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK Hregs Hbelow.
     pose proof (locks_below_not_elem _ _ Hbelow) as Hfresh.

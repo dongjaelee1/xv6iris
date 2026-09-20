@@ -217,7 +217,7 @@ Definition wp_userret_closed_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslot
       (tf_resume_gpr0 (pv_tf (us_V U))) (ret_pc sepc0) -∗
   (* ---- the kernel-side bundle, at THIS hart ---- *)
   URes CID pt ksp U sts cs pidv -∗
-  WP (Loop : expr riscv_lang).
+  mWP (Loop : expr riscv_lang).
 
 
 Module Type USERRET_CLOSED.

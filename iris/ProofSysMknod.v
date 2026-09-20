@@ -684,8 +684,8 @@ Section ProofSysMknodEpilogue.
         ⌜(mf !!! Regidx Ra0 : mword 64) = (M !!! Regidx Ra0 : mword 64)⌝ -∗
         sie_cap_gpr KT1 mf K b pj -∗
         pc_is (ret_pc (m !!! Regidx Rra : mword 64)) -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK18 Kpop Hsp0 HMsp HMthr Hal.
     iIntros "Hcg #Htext Hpc Hf1 Hf2 Hf19 Hf20 Hbuf Hcont".
@@ -878,8 +878,8 @@ Section ProofSysMknodM1Tail.
         cpu_claim_ext eb (proc_addr jx) -∗
         pc_is (ret_pc (m !!! Regidx Rra : mword 64)) -∗
         proc_priv_bare (proc_addr jx) pidv Upr -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HKeo HK18 Kpop Hgeom Hj Hgl Hlkempty Hsp0 HMsp HMthr Hal.
     iIntros "Hcg Hown Htce Hcce #Htext #Hkd Hpc #Hpenv #Hbio #Hlog Hseam Hgen
@@ -2238,7 +2238,7 @@ Section MknodStable.
     arun avc root ps ds ->
     mkr_chain Γ avc ds ps -∗ acre_commit_at_nm Γ E c Nm Pd Farm Φ -∗
       acre_commit_at_nm Γ E c Nm Pd Farm (mkr_recv root ps ds Φ).
-  Proof.
+  Proof using .
     intros Hr. iIntros "#Hc Hcm".
     rewrite /acre_commit_at_nm /acre_commit_at_gen_nm.
     iIntros (I d i nm ents nl) "%Hpre %Hnm %HNm Harm HPd Ha".
@@ -2283,7 +2283,7 @@ Section MknodStable.
       (Φ : aview -> Z -> fname -> Z -> iProp Σ) :
     acre_commit_at_nm Γ E c Nm Pd Farm (mkr_recv root ps ds Φ) -∗
     acre_commit_at_nm Γ E c Nm Pd Farm Φ.
-  Proof.
+  Proof using .
     iIntros "Hcm". rewrite /acre_commit_at_nm /acre_commit_at_gen_nm.
     iIntros (I d i nm ents nl) "%Hpre %Hnm %HNm Harm HPd Ha".
     iMod ("Hcm" $! I d i nm ents nl with "[//] [//] [//] Harm HPd Ha")
@@ -2305,7 +2305,7 @@ Section MknodStable.
     arun avc root ps ds ->
     mkr_chain Γ avc ds ps -∗ pf_at (acre_commit_at_nm Γ E c Nm Pd Farm) F -∗
       pf_at (acre_commit_at_nm Γ E c Nm Pd Farm) (mkr_fam root ps ds F).
-  Proof.
+  Proof using .
     intros Hr. iIntros "#Hc Hcm".
     iApply (pf_at_mono_pair (acre_commit_at_nm Γ E c Nm Pd Farm)
               (acre_commit_at_nm Γ E c Nm Pd Farm)
@@ -2349,7 +2349,7 @@ Section MknodStable.
       (F : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ)) :
     pf_at (acre_commit_at_nm Γ E c Nm Pd Farm) (mkr_fam root ps ds F) -∗
     pf_at (acre_commit_at_nm Γ E c Nm Pd Farm) F.
-  Proof.
+  Proof using .
     iIntros "Hcm".
     iApply (pf_at_mono_pair (acre_commit_at_nm Γ E c Nm Pd Farm)
               (acre_commit_at_nm Γ E c Nm Pd Farm)

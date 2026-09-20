@@ -109,8 +109,8 @@ Section WpSconfBtype.
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt m n b p -∗
       pc_is(add_vec_int pc 4) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrs1 Hrs2 Hcmp) "Hcg Hpc Hinstr Hcont".
     (* the class, consumed at [rs1 / rs2]: [Hcmp] lifted to its ALL-HARTS form,
@@ -136,8 +136,8 @@ Section WpSconfBtype.
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt m n b p -∗
       pc_is(add_vec_int pc 4) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrs1 Hrs2 Hcmp) "Hcg Hpc Hinstr Hcont".
     (* the class, consumed at [rs1 / rs2]: [Hcmp] lifted to its ALL-HARTS form,
@@ -163,8 +163,8 @@ Section WpSconfBtype.
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt m n b p -∗
       pc_is(add_vec_int pc 4) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrs1 Hrs2 Hcmp) "Hcg Hpc Hinstr Hcont".
     (* the class, consumed at [rs1 / rs2]: [Hcmp] lifted to its ALL-HARTS form,
@@ -193,8 +193,8 @@ Section WpSconfBtype.
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt m n b p -∗
       pc_is (add_vec_int pc 4) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrs1 Hrs2 Hcmp) "Hcg Hpc Hinstr Hcont".
     (* the class, consumed at [rs1 / rs2]: [Hcmp] lifted to its ALL-HARTS form,
@@ -223,8 +223,8 @@ Section WpSconfBtype.
     ▷ wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt m n b p -∗
       pc_is (add_vec pc (sign_extend' 64 imm)) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrs1 Hrs2 Hcmp Hal0) "Hcg Hpc Hinstr Hcont".
     (* the class, consumed at [rs1 / rs2]: [Hcmp] lifted to its ALL-HARTS form,
@@ -252,8 +252,8 @@ Section WpSconfBtype.
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt m n b p -∗
       pc_is(add_vec_int pc 4) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrs1 Hrs2 Hcmp) "Hcg Hpc Hinstr Hcont".
     (* the class, consumed at [rs1 / rs2]: [Hcmp] lifted to its ALL-HARTS form,
@@ -282,8 +282,8 @@ Section WpSconfBtype.
     ▷ wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt m n b p -∗
       pc_is(add_vec pc (sign_extend' 64 imm)) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrs1 Hrs2 Hcmp Hal0) "Hcg Hpc Hinstr Hcont".
     (* the class, consumed at [rs1 / rs2]: [Hcmp] lifted to its ALL-HARTS form,
@@ -312,8 +312,8 @@ Section WpSconfBtype.
     ▷ wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt m n b p -∗
       pc_is(add_vec pc (sign_extend' 64 imm)) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrs1 Hrs2 Hcmp Hal0) "Hcg Hpc Hinstr Hcont".
     (* the class, consumed at [rs1 / rs2]: [Hcmp] lifted to its ALL-HARTS form,
@@ -345,8 +345,8 @@ Section WpSconfBtype.
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt m n b p -∗
       pc_is(add_vec_int pc 4) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrs1 Hrs2 Hcmp) "Hcg Hpc Hinstr Hcont".
     (* the class, consumed at [rs1 / rs2]: [Hcmp] lifted to its ALL-HARTS form,
@@ -373,8 +373,8 @@ Section WpSconfBtype.
     ▷ wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt m n b p -∗
       pc_is(add_vec pc (sign_extend' 64 imm)) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrs1 Hrs2 Hcmp Hal0) "Hcg Hpc Hinstr Hcont".
     (* the class, consumed at [rs1 / rs2]: [Hcmp] lifted to its ALL-HARTS form,
@@ -401,8 +401,8 @@ Section WpSconfBtype.
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt m n b p -∗
       pc_is(add_vec_int pc 4) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrs2 Hcmp) "Hcg Hpc Hinstr Hcont".
     (* the class, consumed at [rs2]: [Hcmp] lifted to its ALL-HARTS form,
@@ -435,8 +435,8 @@ Section WpSconfBtype.
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt m n b p -∗
       pc_is(add_vec_int pc 4) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrs1 Hcmp) "Hcg Hpc Hinstr Hcont".
     (* the class, consumed at [rs1]: [Hcmp] lifted to its ALL-HARTS form,
@@ -469,8 +469,8 @@ Section WpSconfBtype.
     ▷ wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt m n b p -∗
       pc_is (add_vec pc (sign_extend' 64 imm)) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrs1 Hcmp Hal0) "Hcg Hpc Hinstr Hcont".
     (* the class, consumed at [rs1]: [Hcmp] lifted to its ALL-HARTS form,
@@ -506,8 +506,8 @@ Section WpSconfBtype.
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt m n b p -∗
       pc_is (add_vec_int pc 4) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrs2 Hcmp) "Hcg Hpc Hinstr Hcont".
     (* the class, consumed at [rs2]: [Hcmp] lifted to its ALL-HARTS form,
@@ -537,8 +537,8 @@ Section WpSconfBtype.
     ▷ wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt m n b p -∗
       pc_is (add_vec pc (sign_extend' 64 imm)) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrs2 Hcmp Hal0) "Hcg Hpc Hinstr Hcont".
     (* the class, consumed at [rs2]: [Hcmp] lifted to its ALL-HARTS form,
@@ -575,8 +575,8 @@ Section WpSconfBtype.
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt m n b p -∗
       pc_is(add_vec_int pc 4) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrs1 Hcmp) "Hcg Hpc Hinstr Hcont".
     (* the class, consumed at [rs1]: [Hcmp] lifted to its ALL-HARTS form,
@@ -606,8 +606,8 @@ Section WpSconfBtype.
     ▷ wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt m n b p -∗
       pc_is (add_vec pc (sign_extend' 64 imm)) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrs1 Hcmp Hal0) "Hcg Hpc Hinstr Hcont".
     (* the class, consumed at [rs1]: [Hcmp] lifted to its ALL-HARTS form,
@@ -640,8 +640,8 @@ Section WpSconfBtype.
     ▷ wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt m n b p -∗
       pc_is (add_vec pc (sign_extend' 64 imm)) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrs2 Hcmp Hal0) "Hcg Hpc Hinstr Hcont".
     (* the class, consumed at [rs2]: [Hcmp] lifted to its ALL-HARTS form,
@@ -693,8 +693,8 @@ Section WpSconfBtype.
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt m n b p -∗
       pc_is(add_vec_int pc 2) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrs Hrd1 Hcmp) "Hcg Hpc Hinstr Hcont".
     (* THE CLASS, CONSUMED.  [Hcmp] is the caller's comparison, taken at the
@@ -776,8 +776,8 @@ Section WpSconfBtype.
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt m n b p -∗
       pc_is(add_vec_int pc 2) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrs Hrd1 Hcmp) "Hcg Hpc Hinstr Hcont".
     (* the class, consumed at [rd1]: [Hcmp] lifted to its ALL-HARTS form,
@@ -816,8 +816,8 @@ Section WpSconfBtype.
     ▷ wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt m n b p -∗
       pc_is(add_vec pc (sign_extend' 64 imm)) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrs1 Hrs2 Hcmp Hal0) "Hcg Hpc Hinstr Hcont".
     (* the class, consumed at [rs1 / rs2]: [Hcmp] lifted to its ALL-HARTS form,
@@ -845,8 +845,8 @@ Section WpSconfBtype.
     ▷ wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt m n b p -∗
       pc_is(add_vec pc (sign_extend' 64 imm)) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrs1 Hrs2 Hcmp Hal0) "Hcg Hpc Hinstr Hcont".
     (* the class, consumed at [rs1 / rs2]: [Hcmp] lifted to its ALL-HARTS form,
@@ -876,8 +876,8 @@ Section WpSconfBtype.
     ▷ wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt m n b p -∗
       pc_is(add_vec pc (sign_extend' 64 imm)) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros imm.
     iIntros (Hrs Hrd1 Hcmp Hal0) "Hcg Hpc Hinstr Hcont".
@@ -914,8 +914,8 @@ Section WpSconfBtype.
     ▷ wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt m n b p -∗
       pc_is(add_vec pc (sign_extend' 64 imm)) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros imm.
     iIntros (Hrs Hrd1 Hcmp Hal0) "Hcg Hpc Hinstr Hcont".
@@ -955,8 +955,8 @@ Section WpSconfBtype.
     ▷ wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt m n b p -∗
       pc_is(add_vec pc (sign_extend' 64 imm)) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrs1 Hcmp Hal0) "Hcg Hpc Hinstr Hcont".
     (* the class, consumed at [rs1]: [Hcmp] lifted to its ALL-HARTS form,
@@ -987,8 +987,8 @@ Section WpSconfBtype.
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt m n b p -∗
       pc_is(add_vec_int pc 4) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrs1 Hcmp) "Hcg Hpc Hinstr Hcont".
     (* the class, consumed at [rs1]: [Hcmp] lifted to its ALL-HARTS form,
@@ -1022,8 +1022,8 @@ Section WpSconfBtype.
     ▷ wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt m n b p -∗
       pc_is(add_vec pc (sign_extend' 64 imm)) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrs1 Hcmp Hal0) "Hcg Hpc Hinstr Hcont".
     (* the class, consumed at [rs1]: [Hcmp] lifted to its ALL-HARTS form,
@@ -1053,8 +1053,8 @@ Section WpSconfBtype.
     wp_next b p (fun (CID : CpuId) =>
       sie_cap_gpr kt m n b p -∗
       pc_is(add_vec_int pc 4) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hrs1 Hcmp) "Hcg Hpc Hinstr Hcont".
     (* the class, consumed at [rs1]: [Hcmp] lifted to its ALL-HARTS form,

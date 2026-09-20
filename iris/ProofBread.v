@@ -326,7 +326,7 @@ Section BreadDefs.
         pc_is (ret_pc (m !!! Regidx Rra)) -∗
         proc_priv_bare pj pidv Upr -∗
         bio_locked bn V k pidv dev bno bs bsd d -∗
-        WP (Loop : expr riscv_lang))%I.
+        mWP (Loop : expr riscv_lang))%I.
 
   (* Re-anchor [bd_cont] from the hart a block lemma entered at to the hart it
      hands the continuation on at.  [WpSconfVc.wp_next_shift] proves exactly
@@ -401,7 +401,7 @@ Section BreadBlocks.
     proc_priv_bare (proc_addr j) pidv Upr -∗
     bio_locked bn V k pidv dev bno bs_out bsd d -∗
     bd_cont (CID0 := CID0)  j bn V pidv dev bno dq m K eb (proc_addr j) lks Upr -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using bioslotG0.
     intros HK (HMsp & HMs2 & HMs3 & HMthr) HMs1.
     pose (sp0 := (m !!! Regidx csp_rs1 : mword 64)).
@@ -633,6 +633,33 @@ Section BreadBlocks.
   (*  that reads b->valid, the valid test, and the disk-read arm.         *)
   (* ================================================================== *)
 
+  (* THE CLAIM ALREADY UNDER THE BOX (optimization.md, "A [□]-bodied law is
+     one line").  The tail below reads its address claim off the points-to it
+     is about to hand to the atomic update, and takes it PERSISTENTLY.  Asked
+     for as [wordw_claim], that [#] intro runs [IntoPersistent] ->
+     [Persistent (wordw_claim ...)], and [Persistent] patterns are keyed
+     modulo delta: [wordw_claim] is transparent, so the search never reaches
+     its own instance and instead descends the body through the tree's
+     several hundred undiscriminated ones -- 2.8s in that one [iDestruct],
+     against 0.012s for the same sentence without the [#] (measured).
+     Delivered under a [□] the intro is [into_persistent_intuitionistically]
+     and no [Persistent] goal exists, so the search cannot happen; the one
+     search left is this lemma's own, at ABSTRACT [width]/[a].
+     [Typeclasses Opaque wordw_claim] is the other fix and is REFUTED: the
+     instance predates any seal that would survive its section, so the seal
+     makes it unreachable and every leaf that [iIntros "#"] a claim fails
+     (optimization.md, "A SEAL ADDED AFTER ITS OWN INSTANCE..."). *)
+  Local Lemma wordw_claim_of_box `{XI : CurCtx} `{KTR : !CurKtier}
+      (width : Z) (a : Arch.pa)
+      (dq : dfrac) (w : mword (8*width)) :
+    0 < width ->
+    wordw_pointsto width a dq w -∗ □ wordw_claim width a.
+  Proof using .
+    intros Hw0. iIntros "Hw".
+    iDestruct (wordw_claim_of width a dq w Hw0 with "Hw") as "#Hc".
+    iModIntro. iExact "Hc".
+  Qed.
+
   Local Lemma bread_tail `{GEN : GenId} `{CID0 : CpuId} `{XI : CurCtx}
       (γs : list gname) (j : nat) (γl : gname)
       (γu : uart_names) (γd : disk_names) (γk : gname)
@@ -670,7 +697,7 @@ Section BreadBlocks.
     bref_tok0 bn k -∗
     CtxBox.reference (X := bio_x) (bn_box bn k) (dev, bno) {[((dev, bno), t) := 1%Qp]} -∗
     bd_cont (CID0 := CID0)  j bn V pidv dev bno dq m K eb (proc_addr j) lks Upr -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK Hbno Hk Hgd Hcov Hdv Hj Hgl Hregs HMs1 HKt.
     pose proof Hregs as (HMsp & HMs2 & HMs3 & HMthr).
@@ -702,7 +729,7 @@ Section BreadBlocks.
        register half naming the parked unit *)
     iAssert (bstok bn k pidv dev bno) with "[Hstok Hbown Hbr0 Hhold]" as "Hstok".
     { rewrite /bstok. iFrame "Hstok Hbown Hbr0". iExists t. iExact "Hhold". }
-    iDestruct (wordw_claim_of (KTR := KT0) 4 (b_valid (bpa k)) (DfracOwn 1)
+    iDestruct (wordw_claim_of_box (KTR := KT0) 4 (b_valid (bpa k)) (DfracOwn 1)
                  (if vb0 then (mword_of_int 1 : mword 32)
                   else (mword_of_int 0 : mword 32)) ltac:(lia)
                  with "Hvld") as "#HclaimA".
@@ -1054,7 +1081,7 @@ Section BreadBlocks.
     disk_geom γd pd pav pu -∗
     is_lock γk d_lock "virtio_disk"%string (disk_res_at γd pd pav pu) -∗
     bd_cont (CID0 := CID0)  j bn V pidv dev bno dq m K eb (proc_addr j) lks Upr -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK Hbno Hk Hdevs Hbnos Hgd Hcov Hdv Hj Hgl Hregs HMs1 Hbelow.
     pose proof Hregs as (HMsp & HMs2 & HMs3 & HMthr).
@@ -1355,7 +1382,7 @@ Section BreadBlocks.
     disk_geom γd pd pav pu -∗
     is_lock γk d_lock "virtio_disk"%string (disk_res_at γd pd pav pu) -∗
     bd_cont (CID0 := CID0)  j bn V pidv dev bno dq m K eb (proc_addr j) lks Upr -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK Hbno Hk HMk Hgd Hcov Hdv Htie Ha0 Ha1 Hj Hgl Hregs HMs1 Hbelow.
     pose proof Hregs as (HMsp & HMs2 & HMs3 & HMthr).
@@ -1700,7 +1727,7 @@ Section BreadBlocks.
     disk_geom γd pd pav pu -∗
     is_lock γk d_lock "virtio_disk"%string (disk_res_at γd pd pav pu) -∗
     bd_cont (CID0 := CID0)  j bn V pidv dev bno dq m K eb (proc_addr j) lks Upr -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK Hbno Ha0 Ha1 Hj Hgl Hgd Hcov Hdv Htie Hbelow.
     induction n as [|n IH];
@@ -2004,7 +2031,7 @@ Section BreadBlocks.
     disk_geom γd pd pav pu -∗
     is_lock γk d_lock "virtio_disk"%string (disk_res_at γd pd pav pu) -∗
     bd_cont (CID0 := CID0)  j bn V pidv dev bno dq m K eb (proc_addr j) lks Upr -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK Hbno Ha0 Ha1 Hj Hgl Hgd Hcov Hdv Htie Hordp Hregs Hbelow.
     pose proof Hregs as (HMsp & HMs2 & HMs3 & HMthr).
@@ -2226,7 +2253,7 @@ Section BreadBlocks.
     disk_geom γd pd pav pu -∗
     is_lock γk d_lock "virtio_disk"%string (disk_res_at γd pd pav pu) -∗
     bd_cont (CID0 := CID0)  j bn V pidv dev bno dq m K eb (proc_addr j) lks Upr -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK Hbno Ha0 Ha1 Hj Hgl Hgd Hcov Hdv Hordp Hbelow.
     induction n as [|n IH];
@@ -2259,7 +2286,7 @@ Section BreadBlocks.
                bslot -∗
                proc_priv_bare (proc_addr j) pidv Upr -∗
                bd_cont (CID0 := CID0)  j bn V pidv dev bno dq m K eb (proc_addr j) lks Upr -∗
-               WP (Loop : expr riscv_lang))%I as "HADV".
+               mWP (Loop : expr riscv_lang))%I as "HADV".
     { iIntros (Mx (Hxregs & Hxs1 & Hxa4 & Hxne)).
       iIntros "Hcg Hpc Hframe Hcnt Hpay Hextc Hextm Htok #Hflx #Hllbtlx Hscan Hbslot Hppid Hcont".
       pose proof Hxregs as (Hxsp & Hxs2 & Hxs3 & Hxthr).

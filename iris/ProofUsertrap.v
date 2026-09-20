@@ -229,8 +229,8 @@ Section UtEntry.
           [ut_trap] and nothing outside can frame what the push carved. *)
        ut_frame ksp (m !!! Regidx Rra) (m !!! Regidx Rs0)
                     (m !!! Regidx Rs1) (m !!! Regidx Rs2) -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hentry Hav Hsp Htp Hmiev Hmask Hmenvv.
     destruct Hentry as (Htms & Hmsf & Hspie).
@@ -814,7 +814,7 @@ Section UtDispatch.
     wp_next true (un_pj N)
       (fun CID' => usertrap_post (CID := CID') (ut_res (CID := CID') SY.syscall_env) pt ksp m0
                      mie_v menvcfg0 U0 sts gn cs pid ep sc fdep Wk) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using ufdG0.
     intros Hgnq Hpro Hwf Hav Hnx Htfpe Hksp Hm0sp Hmsp Hms1 Hma0 Hcs Hmiev Hmenvv.
     pose proof (ut_nx_bound false av nx Hav Hnx) as Hks.

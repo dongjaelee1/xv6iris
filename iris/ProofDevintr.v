@@ -162,8 +162,8 @@ Section ProofDevintr.
         cpu_own lvl eb p false lks -∗
         scause ↦ᵣ{dq} sc -∗
         pc_is (ret_pc ra0) -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hm0sp Hm0ra Hm0s0 HMsp HMa0 Hthr.
     iIntros "Hcg Hcnt #Htext Hpc Hsc Hb1 Hb2 Hb3 Hb4 Hcont".
@@ -315,8 +315,8 @@ Section ProofDevintr.
         cpu_own lvl eb p false lks -∗
         scause ↦ᵣ{dq} sc -∗
         pc_is (ret_pc ra0) -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hk Hm0sp Hm0ra Hm0s0 Hm0s1 HMsp HMs1 Ha0ok Hthr Hret.
     iIntros "Hcg Hcnt #Htext Hpc Hsc #Hdev #Hplic1 #Hinit #Hinit1 Htok Htok1 Hb1 Hb2 Hb3 Hb4 Hcont".

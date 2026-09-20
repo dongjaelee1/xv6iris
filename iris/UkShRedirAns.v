@@ -42,10 +42,9 @@ Require Import Riscv.rv64d_types Riscv.rv64d Riscv.riscv_extras.
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.MachineWord.
 Require Import RiscvLang RiscvPtsto RiscvExtras RiscvModelBytes.
 Require Import RegFile.
-Require Import UmodeArith UmodeAbi.
-Require Import UsysMemOk.
+Require Import UmodeAbi.
 Require Import UexecSG.
-Require Import UserHeap UkRun UkRunLeaf UkRunMem UkRunSys UkRunBr.
+Require Import UserHeap UkRun.
 Require Import UCodeShK.
 Require Import CtxIdDefs.
 Require User.ShSyms.
@@ -151,8 +150,8 @@ Section UkShRedirAns.
           UserCwd.ucwd (ukn_cwd N) cwdv -∗
           ush_open_ans2 N l K (Kf a) r -∗
           urun N h' m' (ret_pc (m !!! Regidx ra_idx)) av -∗
-          WP (Loop : expr riscv_lang)) -∗
-       WP (Loop : expr riscv_lang))%I.
+          mWP (Loop : expr riscv_lang)) -∗
+       mWP (Loop : expr riscv_lang))%I.
 
   (* ------------------------------------------------------------------ *)
   (*  2.  THE TWO MOVES A CONSUMER NEEDS                                  *)

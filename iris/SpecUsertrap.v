@@ -1640,7 +1640,7 @@ Definition usertrap_post `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, !fi
        ut_sys_out n f sc_v (pv_tf (us_V U)) U sts gn cs pid
          (pv_tf (us_V U') !!! tf_arg_idx 0) (us_M U') sts'
          (pv_cwi (us_V U')) cs') -∗
-    WP (Loop : expr riscv_lang)).
+    mWP (Loop : expr riscv_lang)).
 
 (* [R] IS A HART-INDEXED FAMILY, AND IT HAS TO BE.  usertrap is handed the
    kernel-side bundle at the hart the TRAP came in on and gives it back at the
@@ -1745,7 +1745,7 @@ Definition wp_usertrap_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, 
   wp_next true pj (fun (CID' : CpuId) =>
     usertrap_post (CID := CID') (R CID') pt ksp m mie_v menvcfg0 U sts gn cs
       pid sepc_v sc_v f Wk) -∗
-  WP (Loop : expr riscv_lang).
+  mWP (Loop : expr riscv_lang).
 
 (* THE MODULE TYPE'S INSTANCE LIST IS THE UNION OF THE FIVE CONES', NOT THE
    BOUNDARY'S.  [wp_usertrap_body] above needs almost none of these -- its

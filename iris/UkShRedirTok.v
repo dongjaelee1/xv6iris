@@ -37,11 +37,10 @@ From iris.program_logic Require Import language lifting.
 Require Import SailStdpp.ConcurrencyInterface SailStdpp.ConcurrencyInterfaceBuiltins SailStdpp.ConcurrencyInterfaceTypes SailStdpp.Operators_mwords.
 Require Import Riscv.rv64d_types Riscv.rv64d Riscv.riscv_extras.
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.MachineWord.
-Require Import RiscvLang RiscvPtsto RiscvExtras RiscvModelBytes.
+Require Import RiscvLang RiscvPtsto RiscvModelBytes.
 Require Import RegFile.
-Require Import WpMmodeLeafBase.
 Require Import WpUmodeBranch.
-Require Import UmodeArith UmodeAbi.
+Require Import UmodeArith.
 Require Import UserHeap UkRun UkRunLeaf UkRunMem.
 Require Import UCodeShP.
 Require Import CtxIdDefs.
@@ -49,9 +48,7 @@ Require User.ShSyms User.ShInstrs.
 Require Import ChildTok.
 Require Import UserFd.
 Require Import UkShParse.
-Require Import UkShParseLex.
 Require Import UkShParseTok.
-Require Import UkShRedirLex.
 Require Import UexecSG.
 Local Open Scope Z_scope.
 Import Defs.
@@ -94,8 +91,8 @@ Section UkShRedirTok.
          ⌜ mc' !!! Regidx s5_idx = mword_of_int 62 ⌝ -∗
          ⌜ mc' !!! Regidx s1_idx = mword_of_int (s0 + Z.of_nat (S k)) ⌝ -∗
          urun N h' mc' (mword_of_int 0x388) (2 + nn) -∗
-         WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+         mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hk Hfk Hfk1 Hs0 Hs64 Hs1.
     iIntros "#Hcode Hstr Hrun Hcont".

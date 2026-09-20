@@ -196,7 +196,7 @@ the generic store rule is proved once by Löb: if σ carries a conflicting
 reservation, the only step is the self-loop → hand `state_interp σ` back
 unchanged and conclude from the IH with the caller's premise untouched;
 otherwise the only step is the real write → run the caller's fupd exactly
-as before.  The rule STATEMENT (`x ↦ v ∗ (x ↦ v' -∗ WP k) ⊢ WP store`)
+as before.  The rule STATEMENT (`x ↦ v ∗ (x ↦ v' -∗ mWP k) ⊢ mWP store`)
 does not change, and neither does any invariant, points-to, or device
 rule.  Same for the exclusive read's self-loop.
 
@@ -444,7 +444,7 @@ proof interface is:
    ```
 
    The obvious CPS form (∀ `K : X -> M unit`, concluding at
-   `WP (HartE (bind m K))`) fails on THREE counts, and the first is fatal:
+   `mWP (HartE (bind m K))`) fails on THREE counts, and the first is fatal:
 
    - **THE EARLY-RETURN REGION.**  `run_hart_active` — where the fetch,
      the decode and the execute all live — is
@@ -560,7 +560,7 @@ proof interface is:
    reg_agree_on (D ∖ clock3) rs2 rs1⌝ ∗ frames ∗ Ψ)` — for BOTH ticks, with
    no premise duplication and its characterization intact, weakened only
    off the clock cells.  Composed with `swp_loop`
-   (`▷ (∀ tick, swp (riscv_step tick) (λ _, WP Loop)) ⊢ WP Loop`, which is
+   (`▷ (∀ tick, swp (riscv_step tick) (λ _, mWP Loop)) ⊢ mWP Loop`, which is
    just `wp_hart_restart` after `swp_wp_loop`), that is the entire
    boundary story: a leaf never mentions `tick`.
 
@@ -599,7 +599,7 @@ proof interface is:
    `wp_value` for free, and — the real prize — **`Atomic`**: a focused
    `mem_read` sub-expression stepping to a value in one step makes `iInv`
    apply directly, lifting the standing constraint recorded in
-   durable-notes ("`WP Loop` is NOT `Atomic` — the fupd-flavoured step
+   durable-notes ("`mWP Loop` is NOT `Atomic` — the fupd-flavoured step
    rules are the only route to open an invariant across a step").  That
    matters for exactly the invariant-heavy leaves (locks, icache, FS).
    THE EVIDENCE THAT WOULD RE-OPEN IT: once B′ puts those leaves back in

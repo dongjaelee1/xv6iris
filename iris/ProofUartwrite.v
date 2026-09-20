@@ -538,7 +538,7 @@ Section UwProps.
        p_pid (proc_addr j) ↦₄{dqp} pidv -∗
        out_chain prt (S gen_id) (drop (S i) (uw_bytes f n)) Φ -∗
        uw_full sp0 m0 -∗ uw_buf buf dq f n -∗
-       WP (Loop : expr riscv_lang)))%I.
+       mWP (Loop : expr riscv_lang)))%I.
 
   (* the loop's exit: [i = n], control at the eight restores *)
   Definition uw_exit_cont `{CID0 : CpuId} `{XI : CurCtx} (prt : uart_id) (γu : uart_names)
@@ -554,7 +554,7 @@ Section UwProps.
        p_pid (proc_addr j) ↦₄{dqp} pidv -∗
        Φ -∗
        uw_full sp0 m0 -∗ uw_buf buf dq f n -∗
-       WP (Loop : expr riscv_lang)))%I.
+       mWP (Loop : expr riscv_lang)))%I.
 
   (* the loop head at +0x48, ENTERED at whatever hart the last park landed on *)
   Definition uw_head `{CID0 : CpuId} `{XI : CurCtx} (prt : uart_id) (γu : uart_names)
@@ -571,7 +571,7 @@ Section UwProps.
        out_chain prt (S gen_id) (drop i (uw_bytes f n)) Φ -∗
        uw_full sp0 m0 -∗ uw_buf buf dq f n -∗
        uw_exit_cont (CID0 := CID0) prt γu j m0 av eb sp0 buf n f dq pidv dqp Φ lks -∗
-       WP (Loop : expr riscv_lang)))%I.
+       mWP (Loop : expr riscv_lang)))%I.
 
   (* the tail's own continuation: uartwrite's postcondition, at ANY hart *)
   Definition uw_ret `{CID0 : CpuId} `{XI : CurCtx} (γu : uart_names)
@@ -586,7 +586,7 @@ Section UwProps.
          Rbuf -∗
          p_pid (proc_addr j) ↦₄{dqp} pidv -∗
          Φ -∗
-         WP (Loop : expr riscv_lang)))%I.
+         mWP (Loop : expr riscv_lang)))%I.
 
 End UwProps.
 (* ===================================================================== *)
@@ -656,7 +656,7 @@ Section UwBodies.
     uw_saved sp0 m0 -∗
     Rbuf -∗
     uw_ret (CID0 := CID0) γu j m0 av eb Φ Rbuf pidv dqp lks -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros pj Hregs Hsp0 Hav Heb Hanch. subst eb.
     destruct Hregs as (Hsp & H23 & H24 & H25 & H26 & H27).
@@ -918,7 +918,7 @@ Section UwBodies.
     uw_full sp0 m0 -∗ uw_buf buf dq f n -∗
     ( uw_next_cont (CID0 := CID0) prt γu j m0 av eb sp0 buf n f dq pidv dqp Φ i lks
       ∧ uw_exit_cont (CID0 := CID0) prt γu j m0 av eb sp0 buf n f dq pidv dqp Φ lks ) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros pj Hin Hn31 Hj Hjlp Hav Heb Hanch Hregs Hfresh. subst eb.
     assert (H231 : (2 ^ 31 = 2147483648)%Z) by (vm_compute; reflexivity).
@@ -983,7 +983,7 @@ Section UwBodies.
       uw_full sp0 m0 -∗ uw_buf buf dq f n -∗
       ( uw_next_cont (CID0 := CID0) prt γu j m0 av true sp0 buf n f dq pidv dqp Φ i lks
         ∧ uw_exit_cont (CID0 := CID0) prt γu j m0 av true sp0 buf n f dq pidv dqp Φ lks ) -∗
-      WP (Loop : expr riscv_lang)))%I with "[]" as "Turn".
+      mWP (Loop : expr riscv_lang)))%I with "[]" as "Turn".
     { iLöb as "IH".
       iIntros (CIDh Hsh M1) "%Hregs1 Hcg Hcnt Hpc Hpid Hch Hfull Hbuf Hcont".
       pose proof Hregs1 as Hregs1'.

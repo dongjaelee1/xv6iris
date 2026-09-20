@@ -702,7 +702,7 @@ Definition kxc_bad324_body `{XI : CurCtx}
     KexecOkQ.kexec_closer Q QF gf fsc_kalloc (proc_addr jp) pidv U m (ret_pc ra0) K
          eb eb lks dqb dqs fsc_bmapstart na alen plen pv dqpv pfun
          av dqa avf aslen dqas afun) -∗
-  WP (Loop : expr riscv_lang).
+  mWP (Loop : expr riscv_lang).
 
 (* ===================================================================== *)
 (*  [kxc_ls] -- THE INLINED loadseg PAGE LOOP.  Statement copied           *)
@@ -856,8 +856,8 @@ Definition kxc_ls_body `{XI : CurCtx}
         KexecOkQ.kexec_closer Q QF gf fsc_kalloc (proc_addr jp) pidv U m (ret_pc ra0) K
              eb eb lks dqb dqs fsc_bmapstart na alen plen pv dqpv
              pfun av dqa avf aslen dqas afun) -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type KEXECB2.
   Parameter kxc_bad324 :

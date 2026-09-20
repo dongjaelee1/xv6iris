@@ -103,8 +103,8 @@ Definition wp_freewalk_sconf_body `{!riscvGS Σ, !xv6G Σ} `{GEN : GenId} `{CID 
     cpu_own ilvl eb p b lks -∗
     pc_is ret_tgt -∗
     ⌜callee_saved mm mr⌝ -∗
-    WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type FREEWALK.
   Parameter wp_freewalk_sconf :

@@ -278,7 +278,7 @@ Section ProofSysOpenJoin.
     wp_next true (proc_addr jx)
       (so_cont_au omo gf nsj
                dqb dqs (proc_addr jx) pidv Mim pvv vom U sts P Pmiss Fo Ft m K eb b lks) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hqs HK Hkk Hinb Hipos Hgeom Hsize Hbm0 Hbmcov Hbmlog Hist0 Hiblk
            Hiblog Hcovb Hiu Hj Hgl Hlkempty Hdir Hpof Hom Hal23 Hsp0 HMsp HMthr

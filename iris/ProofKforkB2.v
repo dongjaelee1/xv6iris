@@ -199,8 +199,8 @@ Section KforkTfLoop.
         pc_is (mword_of_int (KF + 0x66) : mword 64) -∗
         tf_page tfsrc ws -∗
         tf_page tfdst ws -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hpvsrc Hpvdst Hwslen Hcur0len HM5 HM4 HM3.
     iIntros "Hcg #Htext Hpc Hsrcp Hdstp Hcont".
@@ -244,8 +244,8 @@ Section KforkTfLoop.
           pc_is (mword_of_int (KF + 0x66) : mword 64) -∗
           tf_page tfsrc ws -∗
           tf_page tfdst ws -∗
-          WP (Loop : expr riscv_lang)) -∗
-      WP (Loop : expr riscv_lang))%I
+          mWP (Loop : expr riscv_lang)) -∗
+      mWP (Loop : expr riscv_lang))%I
       with "[]" as "Hloop".
     { iIntros (fuel). iInduction fuel as [|fuel IHf] "IHf".
       { iIntros (k Mk cur) "%Hfuel %Hk9 %Hcurlen %Hagree %HMkregs Hcg Hpc Hsrcp Hdstp Hcont".

@@ -15,6 +15,10 @@ and is kept because it is the shape a reader of `EchoDisc.v` needs.
 
 ## What a caller owes now
 
+The per-byte rule D2 is gone: after the prompt a line may be typed as a
+burst (`EchoDisc.demo_seg_burst`); the design of record for the rule and
+for what replaced D2 in the proof is `design/applications.md` §5.
+
 A line is admissible (`EchoDisc.line_ok ws`) when it is `echo` followed by
 one to eight alphanumeric words and shorter than sh's hundred-byte buffer
 (`line_max = UkSh.sh_nbuf`).  `echo fork` and `echo exec echo failed` are

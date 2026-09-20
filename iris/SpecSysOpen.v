@@ -1823,8 +1823,8 @@ Definition wp_sys_open_frame
          (implies the landed [sys_open_post]) *)
       ARMS (us_upt U P')
         (mf !!! Regidx (mword_of_int 10 : mword 5)) -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 (* THE ONE BODY.  The abstract state is read at the LIVE Γ,
    [fs_gamma_L fsc_fs]; the mode readings are of the caller's own argument

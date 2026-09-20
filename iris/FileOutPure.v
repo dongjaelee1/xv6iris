@@ -647,7 +647,9 @@ Proof using.
   pose proof (sessf_length_step ps cs s I b). lia.
 Qed.
 
-(* F2, [EchoOutPure.D2_next_input]'s twin at the file session. *)
+(* F2 at the file session, under the per-byte rule D2 this application keeps
+   ([EchoOutPure.next_input_of_complete] is the echo application's, where
+   the count of echoed inputs is a kernel premise instead). *)
 Lemma D2_next_input_f (ps cs : list nat) (f0 : option fstate)
     (E : list (list mobs * bv 8)) (w W : list (bv 8)) (h : list mobs)
     (c : bv 8) (m : nat) :

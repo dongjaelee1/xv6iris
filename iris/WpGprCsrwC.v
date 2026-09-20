@@ -908,8 +908,8 @@ Section WpCsrwGprNewC.
       pmpcfg_n ↦ᵣ pmpcfg0 -∗
       pc_is (add_vec_int pc 4) -∗
       gpr_file m -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hpmp Hstat HmIE) "#Hhw #Hinv Hhs Hpriv Hms Hpmpc Hpc Hf Hinstr Hcont".
     assert (Hfresh : cw_fresh mstatus)
@@ -984,8 +984,8 @@ Section WpCsrwGprNewC.
       pmpcfg_n ↦ᵣ pmpcfg_written (m !!! Regidx rs1) pmpcfg0 -∗
       pc_is (add_vec_int pc 4) -∗
       gpr_file m -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hpmp Hstat HmIE) "#Hhw #Hinv Hhs Hpriv Hms Hpmpc Hpc Hf Hinstr Hcont".
     assert (Hfresh : cw_fresh pmpcfg_n)

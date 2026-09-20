@@ -78,9 +78,7 @@ Import Defs.
 Require Import UserFd.
 Require Import UkShParse.
 Require Import UkShParseSym.
-Require Import UkShParseLex.
 Require Import UkShParseTok.
-Require Import UkShRedirLex.
 Require Import UkShRedirTok.
 
 Require Import UexecSG.
@@ -158,8 +156,8 @@ Section UkShPipeTok.
          ⌜ mc' !!! Regidx s5_idx = mword_of_int 124 ⌝ -∗
          ⌜ mc' !!! Regidx s1_idx = mword_of_int (s0 + Z.of_nat (S k)) ⌝ -∗
          urun N h' mc' (mword_of_int 0x388) (2 + nn) -∗
-         WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+         mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hk Hfk Hs0 Hs64 Hs1.
     iIntros "#Hcode Hstr Hrun Hcont".
@@ -391,8 +389,8 @@ Section UkShPipeTok.
              = mword_of_int (bv_unsigned (f k)) ⌝ -∗
          ⌜ mc' !!! Regidx s1_idx = mword_of_int (s0 + Z.of_nat (S k)) ⌝ -∗
          urun N h' mc' (mword_of_int 0x388) (2 + nn) -∗
-         WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+         mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hk Hdisj Hs0 Hs64 Hs1.
     iIntros "#Hcode Hstr Hrun Hcont".
@@ -465,8 +463,8 @@ Section UkShPipeTok.
                     (off + ushp_skipws (len - off) off f)) ⌝ -∗
          urun N h' m' (ret_pc (m !!! Regidx ra_idx))
            (8 + (2 + nn)) -∗
-         WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+         mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Ha0 Ha1 Ha2 Ha3 Hoffle Hw0 Hsymok Hs0 Hs64 Hps0 Hps8 Hpssz.
     iIntros "#Hcode Hcur Hq Heq Hstr Hws Hsy Hrun Hcont".

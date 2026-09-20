@@ -671,7 +671,7 @@ Section stepfull.
   Qed.
 
   (* ================================================================== *)
-  (* 4. THE BOUNDARY RULE: [WP Loop] from [WP Loop], all six arms.        *)
+  (* 4. THE BOUNDARY RULE: [mWP Loop] from [mWP Loop], all six arms.      *)
   (*                                                                    *)
   (* [swp_exec_step_any]'s wrapper verbatim -- [wp_loop_cycle] over       *)
   (* [swp_tick_wrap] over the body -- with [tsf_post Q] as the post-file  *)
@@ -741,8 +741,8 @@ Section stepfull.
          ⌜∃ rsP : regstate, tsf_post Q rs2 rsP /\
             reg_agree_on ((Drw ∪ Dro) ∖ tk_clock3) rs3 rsP⌝ -∗
          hreg_frame rs3 Drw -∗ hreg_frame_ro Df rs3 Dro -∗ Psi rs2 -∗
-         WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+         mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros Hdisj HWcy HWti HWip HDpriv HWhart HDhart HDmc HDcfg HWmi HDmi
       HWms HDms HWpc HDpc HDnpc Hhart HQhart HQmi Hpre.
@@ -1048,8 +1048,8 @@ Section stepfull.
             reg_agree_on ((Drw ∪ Dro) ∖ tk_clock3) rs3 rsP⌝ -∗
          hreg_frame rs3 Drw -∗ hreg_frame_ro Df rs3 Dro -∗
          resv_any cpu_id -∗ Psi -∗
-         WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+         mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof.
     intros Hdisj HDr HDw Hip Hie Hhs HWcy HWti HWip HDpriv HDhart HDmc HDcfg
       HWmi HDmi HWms HDms HWpc HDpc HDnpc Hhart.

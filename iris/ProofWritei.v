@@ -593,7 +593,7 @@ Section WriteiDefs.
               proc_priv_bare (proc_addr j) pidv U) -∗
         bslots 3 -∗
         log_opS icfg_log n' Sb' -∗
-        WP (Loop : expr riscv_lang))%I.
+        mWP (Loop : expr riscv_lang))%I.
 
 End WriteiDefs.
 
@@ -704,7 +704,7 @@ Section WriteiRet.
             bm data dn dn0 user off n src_bytes U ncount Sb
             pidv dq dqd dqn dqs A j
             m K eb b lks -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK Hsp Hs1 Hs3 Hs8 Hs9 Hs10 Hs11
            Hwf' Hhz' Hadr' Hsz' Hcov' Hcap' Hsized' Hdb Hd0 Hdk Hwhy Hrange Hker Husr Harm
@@ -1120,7 +1120,7 @@ Section WriteiJoin.
             bm data dn dn0 user off n src_bytes U ncount Sb
             pidv dq dqd dqn dqs A j
             m K eb b lks -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK Hgeom Hist Hicov Hilog Hnib Hdtnz Hstab Hnlk Hadr Hwf' Hhz' Hsz' Hcov'
            Hrngt Hsized' Hoffle
@@ -1513,7 +1513,7 @@ Section WriteiSize.
             bm data dn dn0 user off n src_bytes U ncount Sb
             pidv dq dqd dqn dqs A j
             m K eb b lks -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK Hgeom Hist Hicov Hilog Hnib Hdtnz Hstab Hnlk Hwf' Hhz' HcovS HcovT Hszlt Hofflt
            Hrngt Hsized' Hoffle
@@ -2176,7 +2176,7 @@ Section WriteiLoop.
             bm data dn dn0 user off n src_bytes U ncount Sb
             pidv dq dqd dqn dqs A j
             m K eb b lks -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using KtierLe0.
     intros HK Hgeom Hist Hicov Hilog Hnib Hdtnz Hstab Hnlk Hszdn Hofflt Hnlt Hrng Hoffle
            Husv Hj Hgl.
@@ -2782,7 +2782,7 @@ Section WriteiLoop.
           ⌜Mb !!! Regidx Rs8 = (mword_of_int (-1) : mword 64)⌝ -∗
           sie_cap_gpr KT1 Mb (K - 14)%nat b (proc_addr j) -∗
           pc_is (mword_of_int (WI + 0x4c) : mword 64) -∗
-          WP (Loop : expr riscv_lang))%I
+          mWP (Loop : expr riscv_lang))%I
         with "[Hcnt Hextc Hextm Hcont Hframe Hidev Hinum Hmeta Hmap Hsb
                Hba Hdn Hsrc Hsl2 Hop Hbuf Hheldback Hfsb1 Hblback]" as "BODY".
       { iIntros (CIDb Mb mm) "%Hanch %Hmmd %Hbsp %Hbs10 %Hba5 %Hbs1 %Hbs4 %Hbs7

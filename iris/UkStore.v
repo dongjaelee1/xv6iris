@@ -481,7 +481,7 @@ Section UkStorePostFetch.
     gen_cert -∗ uv_amb -∗
     (R -∗ (TsoCtx.own_context XI -∗ Rut pt) ∗ Rfd fdv ∗ ukb C pt Rfd Rut sz π fdv cw gn cs pidv false ∗
           (uvb C pt Rfd Rut sz π fdv cw gn cs pidv false (uM_store M (uint va) kk wval) m (add_vec_int pc dpc) -∗
-           WP (Loop : expr riscv_lang))) -∗
+           mWP (Loop : expr riscv_lang))) -∗
     resv_any cpu_id -∗
     TsoCtx.own_context XI -∗
     uv_bytes pt Mp t' -∗
@@ -1184,7 +1184,7 @@ Section UkStoreObl.
     (R -∗ (TsoCtx.own_context XI -∗ Rut pt) ∗ Rfd fdv ∗ ukb C pt Rfd Rut sz π fdv cw gn cs pidv false ∗
           ((⌜uk_store_retires pt Mp va kk⌝ -∗
             uvb C pt Rfd Rut sz π fdv cw gn cs pidv false (uM_store M (uint va) kk wval) m (add_vec_int pc 4) -∗
-            WP (Loop : expr riscv_lang))
+            mWP (Loop : expr riscv_lang))
            ∧ UkStep.uk_paycont Qp gn
                (Kcx ∧ uslot (uvis_of_run m pc M π sz fdv cw gn cs pidv false)))) -∗
     resv_any cpu_id -∗
@@ -1359,7 +1359,7 @@ Section UkStoreObl.
     (R -∗ (TsoCtx.own_context XI -∗ Rut pt) ∗ Rfd fdv ∗ ukb C pt Rfd Rut sz π fdv cw gn cs pidv false ∗
           ((⌜uk_store_retires pt Mp va kk⌝ -∗
             uvb C pt Rfd Rut sz π fdv cw gn cs pidv false (uM_store M (uint va) kk wval) m (add_vec_int pc 2) -∗
-            WP (Loop : expr riscv_lang))
+            mWP (Loop : expr riscv_lang))
            ∧ UkStep.uk_paycont Qp gn
                (Kcx ∧ uslot (uvis_of_run m pc M π sz fdv cw gn cs pidv false)))) -∗
     resv_any cpu_id -∗
@@ -1549,7 +1549,7 @@ Section UkStore.
        exists bb : bv 8, M !! (uint va + Z.of_nat j) = Some bb) ->
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ▷ ukcq Qp π (uM_store M (uint va) k wval) sz fdv cw gn cs pidv m (add_vec_int pc (if is_rvc then 2 else 4)) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using HRut Hlf0 Hlo Hpm.
     intros Hkw Hui Hred Hg1 Hlpad Hexp Hva Hwval Hsok Hcanon Hpg Hal HMb.
     pose proof (Hui pt sz (loop_ok_wf C pt Hlo) Hpm) as Hui0.
@@ -1660,7 +1660,7 @@ Section UkStore.
              ((⌜uk_store_retires pt' Mp' va k⌝ -∗
                uvb (CID := CIDo) C' pt' Rfd' Rut' sz π fdv cw gn cs pidv false (uM_store M (uint va) k wval) m
                  (add_vec_int pc (if is_rvc then 2 else 4)) -∗
-               WP (Loop : expr riscv_lang))
+               mWP (Loop : expr riscv_lang))
               ∧ UkStep.uk_paycont Qp gn
                   (True ∧ uslot (uvis_of_run m pc M π sz fdv cw gn cs pidv false))))%I with "[Hk]" as "Hk".
     { iIntros "HR". iDestruct ("Hk" with "HR") as "(Hrut & Hfdr & Hkb & Hkc)".
@@ -1726,7 +1726,7 @@ Section UkStore.
        exists bb : bv 8, M !! (uint va + Z.of_nat j) = Some bb) ->
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ukcq Qp π (uM_store M (uint va) k wval) sz fdv cw gn cs pidv m (add_vec_int pc (if is_rvc then 2 else 4)) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using HRut Hlf0 Hlo Hpm.
     intros Hkw Hui Hred Hg1 Hlpad Hexp Hva Hwval Hsok Hcanon Hpg Hal HMb.
     iIntros "Hb Hcont".
@@ -1807,7 +1807,7 @@ Section UkStore.
        close payment per row of its table. *)
     sbundle_at uslot USYS_exit fx
       (uvis_of_run m pc M π sz fdv cw gn cs pidv false) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using HRut Hlf0 Hlo Hpm.
     intros Hfx Hkw Hui Hred Hg1 Hlpad Hexp Hva Hwval Hden Hcanon Hpg Hal.
     pose proof (Hui pt sz (loop_ok_wf C pt Hlo) Hpm) as Hui0.
@@ -1867,7 +1867,7 @@ Section UkStore.
              ((⌜uk_store_retires pt' Mp' va k⌝ -∗
                uvb (CID := CIDo) C' pt' Rfd' Rut' sz π fdv cw gn cs pidv false (uM_store M (uint va) k wval) m
                  (add_vec_int pc (if is_rvc then 2 else 4)) -∗
-               WP (Loop : expr riscv_lang))
+               mWP (Loop : expr riscv_lang))
               ∧ UkStep.uk_paycont Qp gn
                   ((Qp (-1) ∗ sbundle_at uslot USYS_exit fx
                                 (uvis_of_run m pc M π sz fdv cw gn cs pidv false))
@@ -1927,7 +1927,7 @@ Section UkStore.
     (forall j : nat, (j < 8)%nat -> exists bb : bv 8, M !! (uint va + Z.of_nat j) = Some bb) ->
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ukcq Qp π (uM_store8 M (uint va) wval) sz fdv cw gn cs pidv m (add_vec_int pc 4) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Hva Hwval Hsok Hcanon Hpg Hal HMb.
     iIntros "Hb Hcont".
@@ -1952,7 +1952,7 @@ Section UkStore.
     (forall j : nat, (j < 4)%nat -> exists bb : bv 8, M !! (uint va + Z.of_nat j) = Some bb) ->
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ukcq Qp π (uM_store M (uint va) 4 wval) sz fdv cw gn cs pidv m (add_vec_int pc 4) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Hva Hwval Hsok Hcanon Hpg Hal HMb.
     iIntros "Hb Hcont".
@@ -1975,7 +1975,7 @@ Section UkStore.
     M !! (uint va) = Some bb ->
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ukcq Qp π (uM_store M (uint va) 1 wval) sz fdv cw gn cs pidv m (add_vec_int pc 4) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Hva Hwval Hsok Hcanon Hbb.
     iIntros "Hb Hcont".
@@ -2012,7 +2012,7 @@ Section UkStore.
     (* ...and the tear-down's close payments (design/pipe.md) *)
     sbundle_at uslot USYS_exit fx
       (uvis_of_run m pc M π sz fdv cw gn cs pidv false) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using HRut Hlf0 Hlo Hpm.
     intros Hfx Hui Hva Hwval Hden Hcanon.
     iIntros "Hb Hmy Hpay Hrow".
@@ -2038,7 +2038,7 @@ Section UkStore.
     (forall j : nat, (j < 8)%nat -> exists bb : bv 8, M !! (uint tgt + Z.of_nat j) = Some bb) ->
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ukcq Qp π (uM_store8 M (uint tgt) wval) sz fdv cw gn cs pidv m (add_vec_int pc 2) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Htgt Hwval Hsok Hcanon Hpg Hal HMb.
     iIntros "Hb Hcont".
@@ -2071,7 +2071,7 @@ Section UkStore.
     (forall j : nat, (j < 8)%nat -> exists bb : bv 8, M !! (uint va + Z.of_nat j) = Some bb) ->
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ukcq Qp π (uM_store8 M (uint va) wval) sz fdv cw gn cs pidv m (add_vec_int pc 2) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Hcr1 Hcr2 Hva Hwval Hsok Hcanon Hpg Hal HMb.
     iIntros "Hb Hcont".
@@ -2108,7 +2108,7 @@ Section UkStore.
     (forall j : nat, (j < 4)%nat -> exists bb : bv 8, M !! (uint va + Z.of_nat j) = Some bb) ->
     uvb C pt Rfd Rut sz π fdv cw gn cs pidv false M m pc -∗
     ukcq Qp π (uM_store M (uint va) 4 wval) sz fdv cw gn cs pidv m (add_vec_int pc 2) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using HRut Hlf0 Hlo Hpm.
     intros Hui Hcr1 Hcr2 Hva Hwval Hsok Hcanon Hpg Hal HMb.
     iIntros "Hb Hcont".

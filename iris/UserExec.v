@@ -463,7 +463,7 @@ Section UserExec.
   (* the assumed kernel re-entry contract: the handler at stvec (uservec)
      handles ANY trapped-out-of-user machine *)
   Definition stvec_handler_wp  : iProp Σ :=
-    (user_trap_frame -∗ WP (Loop : expr riscv_lang))%I.
+    (user_trap_frame -∗ mWP (Loop : expr riscv_lang))%I.
 
   (* ------------------------------------------------------------------- *)
   (* The step obligation: ONE machine step from the invariant, with both   *)
@@ -473,9 +473,9 @@ Section UserExec.
   (* ------------------------------------------------------------------- *)
   Definition user_step_obligation  : iProp Σ :=
     (□ (user_inv -∗
-        ▷ ((user_inv -∗ WP (Loop : expr riscv_lang)) ∧
-           (user_trap_frame -∗ WP (Loop : expr riscv_lang))) -∗
-        WP (Loop : expr riscv_lang)))%I.
+        ▷ ((user_inv -∗ mWP (Loop : expr riscv_lang)) ∧
+           (user_trap_frame -∗ mWP (Loop : expr riscv_lang))) -∗
+        mWP (Loop : expr riscv_lang)))%I.
 
   (* the ACTIVE-hart residue of the step obligation: same contract, but the
      machine is handed over UNPACKED, with the hart pinned ACTIVE and the
@@ -490,9 +490,9 @@ Section UserExec.
         user_pt_any pt -∗
         user_cfg -∗
         Rut pt -∗
-        ▷ ((user_inv -∗ WP (Loop : expr riscv_lang)) ∧
-           (user_trap_frame -∗ WP (Loop : expr riscv_lang))) -∗
-        WP (Loop : expr riscv_lang)))%I.
+        ▷ ((user_inv -∗ mWP (Loop : expr riscv_lang)) ∧
+           (user_trap_frame -∗ mWP (Loop : expr riscv_lang))) -∗
+        mWP (Loop : expr riscv_lang)))%I.
 
   (* ------------------------------------------------------------------- *)
   (* The capstone: safety of arbitrary user-mode execution, by Löb.        *)
@@ -510,7 +510,7 @@ Section UserExec.
     user_step_obligation -∗
     user_inv -∗
     ▷ stvec_handler_wp -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros "#Hstep".
     iLöb as "IH".

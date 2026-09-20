@@ -563,8 +563,8 @@ Section WpCsrwStimecmp.
       pc_is (add_vec_int pc 4) -∗
       gpr_file m -∗
       stimecmp ↦ᵣ stimecmp_legalized stimecmp0 (m !!! Regidx rs1) -∗
-      WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros (Hpmp Hstat Hrs1) "Hmm Hpmpc Hpc Hf Hcsr Hinstr Hcont".
     assert (Hfresh : cw_fresh stimecmp)

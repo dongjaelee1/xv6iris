@@ -42,21 +42,16 @@ Require Import ProcAvail.
 Require Import FileInvDefs.
 Require Import UserFd.
 Require Import UserHeap.
-Require Import UserPerm.
 Require Import UserCwd.
 Require Import UmodeAbi.           (* [uimg_sub] *)
 Require Import ProcGeom.           (* [NOFILE] / [tf_arg_idx] *)
-Require Import VcGen.              (* [trunc32] *)
 Require Import PieceFam.
 Require Import UexecSlot UexecRet UsysMemOk UexecSG.
 Require Import UkRun UkRunSys.
 Require Import UexecExecInst.      (* THE INSTANCE: [uexecSG_xv6] *)
-Require Import UkReadRows.
-Require Import UkWriteFile.
 Require Import UConsOpen.          (* [xfam_open]'s two key-level rows *)
 Require Import UkTreeRead.         (* the read side: open, read, and the tie *)
 Require Import UkTreeWrite.        (* the write side: the deed moves *)
-Require Import SpecArgfd.
 Require Import SpecSysRead.        (* [sys_rw_count] *)
 Require Import SysReadDefs.        (* [ard_count] *)
 Require Import SysOpenDefs.
@@ -69,7 +64,6 @@ Require Import SpecDirlookup.      (* [T_DIR] *)
 Require Import ArgPath.
 Require Import AppCfg AppInv.
 Require Import FsCfg.
-Require Import FsBlocks.
 Require Import FsBytesGamma.
 Require Import FsImg.
 Require Import PathElems.
@@ -80,9 +74,7 @@ Require Import DirView.           (* [T_DIR_z] *)
 Require Import FsAbsCreateFire.
 Require Import TreeView.
 Require Import AppTree.
-Require Import TreeObs.
 Require Import TreeMove.           (* the owner's move at the create fires *)
-Require Import FsAbs.
 Require Import FsAbsDefs.
 Require Import CtxIdDefs.
 Import Defs.
@@ -296,7 +288,7 @@ Section UkTreeCreate.
     mknod_au_at (fs_gamma_L fsc_fs) fsc_fs cw M pv ma mi
       (nf_P f) (nf_Pmiss f) (nf_Farm f) (nf_Fun f) (nf_Fok f) (nf_Fex f) -∗
     sbundle_at X 17 f W.
-  Proof.
+  Proof using .
     intros Hc HM H0 H1 H2. iIntros "H".
     rewrite -Hc -HM -H0 -H1 -H2.
     rewrite /sbundle_at /= /xv6_sbundle /xk_a.
@@ -314,7 +306,7 @@ Section UkTreeCreate.
     spost_at X 17 f W r M' fdv' cw' cs' -∗
     mknod_arms (fs_gamma_L fsc_fs) fsc_fs cw M pv ma mi
       (nf_P f) (nf_Pmiss f) (nf_Farm f) (nf_Fun f) (nf_Fok f) (nf_Fex f) r.
-  Proof.
+  Proof using .
     intros Hc HM H0 H1 H2. iIntros "H".
     rewrite -Hc -HM -H0 -H1 -H2.
     rewrite /spost_at /= /xv6_spost /xk_a.
@@ -329,7 +321,7 @@ Section UkTreeCreate.
       (df_P f) (df_Pmiss f) (df_Farm f) (df_Fdots f) (df_Fun f)
       (df_Fok f) (df_Fex f) -∗
     sbundle_at X 20 f W.
-  Proof.
+  Proof using .
     intros Hc HM H0. iIntros "H".
     rewrite -Hc -HM -H0.
     rewrite /sbundle_at /= /xv6_sbundle /xk_a.
@@ -346,7 +338,7 @@ Section UkTreeCreate.
     mkdir_arms (fs_gamma_L fsc_fs) fsc_fs cw
       (df_P f) (df_Pmiss f) (df_Farm f) (df_Fdots f) (df_Fun f)
       (df_Fok f) (df_Fex f) M pv r.
-  Proof.
+  Proof using .
     intros Hc HM H0. iIntros "H".
     rewrite -Hc -HM -H0.
     rewrite /spost_at /= /xv6_spost /xk_a.
@@ -381,7 +373,7 @@ Section UkTreeCreate.
     FsImg.ROOTINO ∈ dom (tv_nodes t) ->
     app_inv fsc_fs -∗ utext_img (ukn_t N) Img -∗ tree_own r g FsImg.ROOTINO t -∗
     udepwf_at N m pc 17 (tree_mknod_fam c r g t ma mi (ukn_pay N)) cw.
-  Proof.
+  Proof using .
     intros Heq Hpath Ha0 Ha1 Ha2 Hnp Hstart Hdd.
     iIntros "#Hinv #Hro Hown".
     rewrite /udepwf_at. iSplitR; [ iPureIntro; reflexivity | ].
@@ -421,7 +413,7 @@ Section UkTreeCreate.
         tree_own r g FsImg.ROOTINO
           (top_ins FsImg.ROOTINO nm i (ADev ma mi) t))
      ∨ tree_taint c).
-  Proof.
+  Proof using .
     intros Hpath Hlast. rewrite /mknod_post_ok. iIntros "H".
     iDestruct "H" as (pl0 i) "(%Hpath0 & _ & H)".
     rewrite (arg_path_of_uniq M pv pl0 pl Hpath0 Hpath).
@@ -456,7 +448,7 @@ Section UkTreeCreate.
       (tree_acre_fam c r g t (fun _ _ => ADev ma mi))
       (pfam_triv (fun _ _ _ _ => True%I)) -∗
     (tree_own r g FsImg.ROOTINO t ∨ tree_taint c).
-  Proof.
+  Proof using .
     rewrite /mknod_post_fail /cre_child_unfired /cre_child_pair. iIntros "H".
     iDestruct "H" as "[Hau | Hf]".
     { rewrite /mknod_au_at. iDestruct "Hau" as "(_ & _ & _ & Harm & _)".
@@ -512,9 +504,9 @@ Section UkTreeCreate.
         ∨ tree_taint c) -∗
        UserCwd.ucwd (ukn_cwd N) cw -∗
        urun N h' (<[Regidx a0_idx := rv]> m) (add_vec_int pc 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
-  Proof.
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
+  Proof using .
     intros Heq Hn Hal4 Hpath Ha0 Ha1 Ha2 Hnp Hlast Hstart Hdd.
     iIntros "#Hi #Hro Hrun Hcwd Hown #Hinv Hcont".
     iDestruct (tree_mknod_sup N c r g t ma mi cw Img pv m pc pl Heq Hpath
@@ -564,7 +556,7 @@ Section UkTreeCreate.
      the dots, so a fresh directory is the EMPTY node map. *)
   Lemma tabs_of_cre_child_dir (ma mi d i : Z) :
     tabs_of (cre_child T_DIR_z ma mi d i) = ADir ∅.
-  Proof.
+  Proof using .
     rewrite cre_child_dir /tabs_of /dots_ents /hide_dots.
     rewrite (delete_insert_ne _ DOTDOT DOT);
       [| intros Hc; exact (dot_ne_dotdot (eq_sym Hc))].
@@ -592,7 +584,7 @@ Section UkTreeCreate.
     FsImg.ROOTINO ∈ dom (tv_nodes t) ->
     app_inv fsc_fs -∗ utext_img (ukn_t N) Img -∗ tree_own r g FsImg.ROOTINO t -∗
     udepwf_at N m pc 20 (tree_mkdir_fam c r g t (ukn_pay N)) cw.
-  Proof.
+  Proof using .
     intros Heq Hpath Ha0 Hnp Hstart Hdd.
     iIntros "#Hinv #Hro Hown".
     rewrite /udepwf_at. iSplitR; [ iPureIntro; reflexivity | ].
@@ -640,7 +632,7 @@ Section UkTreeCreate.
         tree_own r g FsImg.ROOTINO
           (top_ins FsImg.ROOTINO nm i (ADir ∅) t))
      ∨ tree_taint c).
-  Proof.
+  Proof using .
     rewrite /cre_ok_arms. iIntros "H".
     iDestruct "H" as (d nm) "(%Hlast & %Hd & _ & Hok & _ & _)".
     rewrite /tree_root_cur in Hd. subst d.
@@ -677,7 +669,7 @@ Section UkTreeCreate.
                  (bv_unsigned (mword_of_int 0 : mword 16))))
            (pfam_triv (fun _ _ _ _ => True%I)) pl) -∗
     (tree_own r g FsImg.ROOTINO t ∨ tree_taint c).
-  Proof.
+  Proof using .
     rewrite /mkdir_au_at /cre_fail_arms /cre_commits. iIntros "H".
     iDestruct "H" as "[Hau | Hf]".
     { iDestruct "Hau" as "(_ & _ & Harm & _)".
@@ -721,9 +713,9 @@ Section UkTreeCreate.
         ∨ tree_taint c) -∗
        UserCwd.ucwd (ukn_cwd N) cw -∗
        urun N h' (<[Regidx a0_idx := rv]> m) (add_vec_int pc 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
-  Proof.
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
+  Proof using .
     intros Heq Hn Hal4 Hpath Ha0 Hnp Hstart Hdd.
     iIntros "#Hi #Hro Hrun Hcwd Hown #Hinv Hcont".
     iDestruct (tree_mkdir_sup N c r g t cw Img pv m pc pl Heq Hpath
@@ -788,7 +780,7 @@ Section UkTreeCreate.
     FsImg.ROOTINO ∈ dom (tv_nodes t) ->
     app_inv fsc_fs -∗ utext_img (ukn_t N) Img -∗ tree_own r g FsImg.ROOTINO t -∗
     udepwf_at N m pc USYS_open (tree_opencreate_fam c r g t (ukn_pay N)) cw.
-  Proof.
+  Proof using .
     intros Heq Hpath Ha0 Hcr Htr Hnp Hstart Hdd.
     iIntros "#Hinv #Hro Hown".
     rewrite /udepwf_at. iSplitR; [ iPureIntro; reflexivity | ].
@@ -834,7 +826,7 @@ Section UkTreeCreate.
      ∨ (∃ i : Z, tree_own r g FsImg.ROOTINO
                    (top_ins FsImg.ROOTINO nm i (AFile []) t))
      ∨ tree_taint c).
-  Proof.
+  Proof using .
     intros Htr Hpath Hlast.
     rewrite /open_post_fail_create /open_au_create_at /cre_child_unfired
             /cre_child_pair /cre_cur_kept /cre_rcpt_kept /cre_fail_kept Htr.
@@ -928,9 +920,9 @@ Section UkTreeCreate.
           ∨ tree_taint c))) -∗
        UserCwd.ucwd (ukn_cwd N) cw -∗
        urun N h' (<[Regidx a0_idx := rv]> m) (add_vec_int pc 4) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
-  Proof.
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
+  Proof using .
     intros Heq Hn Hal4 Hpath Ha0 Hcr Htr Hnp Hlast Hstart Hdd.
     iIntros "#Hi #Hro Hrun Hcwd Hstd Hown #Hinv Hcont".
     iDestruct (tree_open_create_sup N c r g t cw Img pv m pc pl Heq Hpath
@@ -1052,8 +1044,8 @@ Section UkTreeCreate.
     (□ ∀ (h : CpuId) (m : regfile) (rv : mword 64),
         urun N h (<[Regidx a0_idx := rv]> m) (add_vec_int pc 4) avail -∗
         (∀ (h' : CpuId) (m' : regfile), ⌜Ψ m rv m'⌝ -∗
-           urun N h' m' pc' avail -∗ WP (Loop : expr riscv_lang)) -∗
-        WP (Loop : expr riscv_lang))%I.
+           urun N h' m' pc' avail -∗ mWP (Loop : expr riscv_lang)) -∗
+        mWP (Loop : expr riscv_lang))%I.
 
   (* ...AND ITS BAIL-OUT PATH.  The chain below continues through a FAILED
      mkdir and through a failed write -- neither costs the program its
@@ -1062,7 +1054,7 @@ Section UkTreeCreate.
      it can: a program with an [exit] to jump to. *)
   Definition ubail (N : uk_names Σ) (avail : nat) : iProp Σ :=
     (□ ∀ (h : CpuId) (m : regfile) (pc : mword 64),
-        urun N h m pc avail -∗ WP (Loop : expr riscv_lang))%I.
+        urun N h m pc avail -∗ mWP (Loop : expr riscv_lang))%I.
 
   (* ---- 6a.  THE FIRST HALF: the file is made and opened --------------
      Split from the second half for readability only -- the two halves
@@ -1129,9 +1121,9 @@ Section UkTreeCreate.
        tree_own r g FsImg.ROOTINO t2 -∗
        UserCwd.ucwd (ukn_cwd N) cw -∗
        urun N h' m' pc3 avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
-  Proof.
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
+  Proof using .
     intros Heq Hroot Hdd Hpathd Hpathf Hnpd Hnpf Hstd Hstf Hplf
       Hcr Htr Hrd Hwr Hlow Hn1 Ha01 Hal1 Hal2.
     iIntros "#Hi1 #Hi2 #Hro Hrun Hcwd Hstd Hown #Hinv #Hg1 #Hg2 #Hbail Hcont".
@@ -1255,9 +1247,9 @@ Section UkTreeCreate.
         ∨ tree_taint c) -∗
        urun N h' (<[Regidx a0_idx := rv]> m') (add_vec_int pc4 4) avail -∗
        ubytes (ukn_d N) (uint rbuf) k gb -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
-  Proof.
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
+  Proof using .
     intros Heq Hn3 Hfd3 Hfdlt Ha13 Ha23 Hfile Hres Hdd2 Hprop Hstf Hck
       Hal3 Hal4.
     iIntros "#Hi3 #Hi4 Hrun Hufd Hwbuf Hrbuf Hown #Hinv #Hg3 #Hbail Hcont".
@@ -1378,9 +1370,9 @@ Section UkTreeCreate.
         ∨ tree_taint c) -∗
        urun N h' (<[Regidx a0_idx := rv]> m') (add_vec_int pc4 4) avail -∗
        ubytes (ukn_d N) (uint rbuf) k gb -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
-  Proof.
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
+  Proof using .
     intros Heq Hroot Hdd Hpathd Hpathf Hnpd Hnpf Hstd Hstf Hplf Hprop
       Hcr Htr Hrd Hwr Hlow Hn1 Ha01 Hck Hal1 Hal2 Hal3 Hal4.
     iIntros "#Hi1 #Hi2 #Hi3 #Hi4 #Hro Hrun Hcwd Hstd Hown #Hinv Hwbuf Hrbuf".

@@ -191,8 +191,8 @@ Definition wp_namei_root_boot_body
       (* at ROOTINO -- [SpecNamei.wp_namei_root_body]'s row, verbatim; this
          is where userinit reads the inum it installs in [pv_cwi] *)
       inode_held_at ipv (bv_unsigned InodeInv.ROOTINO) -∗
-      WP (Loop : expr riscv_lang)) -∗
-  WP (Loop : expr riscv_lang).
+      mWP (Loop : expr riscv_lang)) -∗
+  mWP (Loop : expr riscv_lang).
 
 Module Type NAMEI_ROOT_BOOT.
   Parameter wp_namei_root_boot :

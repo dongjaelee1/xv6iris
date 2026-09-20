@@ -43,7 +43,6 @@ Require Import FileInvDefs.     (* [fileG], and its [appcfg] field [file_app] *)
 Require Import PathElems.       (* [path_elems] / [SLASH] *)
 Require Import FsTree.          (* [fname] / [fs_proper] *)
 Require Import FsBlocks.        (* [fs_names] *)
-Require Import FsBytesGamma.    (* [fs_gamma_L] *)
 Require Import FsImg.           (* [ROOTINO] *)
 Require Import AppCfg.          (* [app_pred] / [app_run] / [MkAppcfg] *)
 Require Import AppInv.          (* [app_inv] *)
@@ -142,7 +141,7 @@ Section TreeWalk.
     app_inv γfs -∗
     ep_start γfs cw (pobs_P (tree_taint c) (tres_hops t d0 (np_elems pl)))
       (pobs_Pmiss (tree_taint c)) pl.
-  Proof.
+  Proof using .
     intros Heq Hp Hstart Hd Hres. iIntros "#Hpin #Hinv".
     iDestruct (tree_pin_claim_law c r g root t Heq with "Hpin") as "#Hcl".
     iApply (pobs_pwalk γfs (fun v => subtree v root = Some t) (tree_taint c)
@@ -167,7 +166,7 @@ Section TreeWalk.
     pobs_P (tree_taint c) (tres_hops t d0 (np_elems pl))
       (length (np_elems pl)) d' -∗
     ⌜d' = dpar⌝ ∨ tree_taint c.
-  Proof.
+  Proof using .
     intros Hp Hstart Hd Hres.
     iApply (pobs_pterm (fun v => subtree v root = Some t) (tree_taint c)
               cw pl (tres_hops t d0 (np_elems pl)) dpar d'
@@ -190,7 +189,7 @@ Section TreeWalk.
     ep_start γfs cw
       (pobs_P (tree_taint c) (tres_hops t FsImg.ROOTINO (np_elems pl)))
       (pobs_Pmiss (tree_taint c)) pl.
-  Proof.
+  Proof using .
     intros Heq Hp Hsl Hd Hres.
     exact (tree_pwalk_of_own γfs c r g FsImg.ROOTINO FsImg.ROOTINO dpar t ents
              cw pl Heq Hp (um_start_of_slash cw pl Hsl) Hd Hres).
@@ -234,7 +233,7 @@ Section TreeWalk.
       (pobs_P_lin (tree_taint c) (tres_hops t d0 (np_elems pl))
          (tree_own r g root t))
       (pobs_Pmiss (tree_taint c)) pl.
-  Proof.
+  Proof using .
     intros Heq Hp Hstart Hd Hres. iIntros "#Hinv Hown".
     iDestruct (tree_own_claim_law c r Heq) as "#Hlaw".
     iApply (pobs_pwalk_lin γfs (fun v => subtree v root = Some t) (tree_taint c)
@@ -261,7 +260,7 @@ Section TreeWalk.
     pobs_P_lin (tree_taint c) (tres_hops t d0 (np_elems pl))
       (tree_own r g root t) (length (np_elems pl)) d' -∗
     (⌜d' = dpar⌝ ∗ tree_own r g root t) ∨ tree_taint c.
-  Proof.
+  Proof using .
     intros Hp Hstart Hd Hres.
     iApply (pobs_pterm_lin (fun v => subtree v root = Some t) (tree_taint c)
               (tree_own r g root t) cw pl (tres_hops t d0 (np_elems pl))

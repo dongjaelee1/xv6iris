@@ -108,7 +108,7 @@ Section UkSync.
   Lemma wp_ksync_exit (h : CpuId) (m : regfile) (avail : nat) :
     sync_code γt -∗
     urun N h m (mword_of_int SyncSyms.exit) avail -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using Hpay.
     iIntros "#Hcode Hrun".
     destruct sync_syms_pins as (Hsmain & Hsstart & Hsexit & Hssync).
@@ -156,8 +156,8 @@ Section UkSync.
          (<[Regidx a0_idx := ret]>
             (<[Regidx a7_idx := (mword_of_int 22 : mword 64)]> m))
          (m !!! Regidx ra_idx) avail -∗
-       WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using Hpsok_free.
     intros Hret2. iIntros "#Hcode Hrun Hcont".
     destruct sync_syms_pins as (Hsmain & Hsstart & Hsexit & Hssync).
@@ -239,7 +239,7 @@ Section UkSync.
     m !!! Regidx csp_rs1 = sp0 ->
     sync_code γt -∗
     urun N h m (mword_of_int SyncSyms.main) (2 + n) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using Hpay Hpsok_free.
     intros Hsp. iIntros "#Hcode Hrun".
     (* the free stack the run already owns says sp is aligned and has room *)
@@ -385,7 +385,7 @@ Section UkSync.
     m !!! Regidx csp_rs1 = sp0 ->
     sync_code γt -∗
     urun N h m (mword_of_int SyncSyms.start) (2 + (2 + n)) -∗
-    WP (Loop : expr riscv_lang).
+    mWP (Loop : expr riscv_lang).
   Proof using Hpay Hpsok_free.
     intros Hsp. iIntros "#Hcode Hrun".
     (* the free stack the run already owns says sp is aligned and has room *)

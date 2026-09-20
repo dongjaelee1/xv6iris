@@ -202,8 +202,8 @@ Section KforkB1Proof.
         pc_is (ret_pc ra0) -∗
         cpu_own lvl eb pme (match lvl with O => eb | S _ => false end) lks -∗
         kalloc_env_at γa γk None -∗
-        WP (Loop : expr riscv_lang)) -∗
-    WP (Loop : expr riscv_lang).
+        mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
   Proof using .
     intros HK Hlvl Hj Hb Hsp0 Hra0 Hs00 Hs10 Hs50 Hmtsp Hmts4 Hthr Hfresh.
     iIntros "Hcg Hcpu Hpay #Htext Hpc Hb1 Hb2 Hb3 Hb4 Hb5 Hb6 Hb7 Hb8

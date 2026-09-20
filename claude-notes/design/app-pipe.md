@@ -966,6 +966,41 @@ the claim so the boundary credential is timeless ghost halves — is the
 principled refactor of R2 and is NOT taken now; record it under §7 if
 ROUND-5 finds the read leaf at the terminal state unpayable.
 
+### 4.3j RULED (2026-09-22, after SH-PIPE-ROUND-5): the terminal payload goes into the CHILD LAW's definition; the pipe era gets its own body/fork re-entry twins
+
+ROUND-5 landed the round's resource layer (`UShPipeRound2.v`:
+`pipe_round_entry`/`pipe_round_exit` — the boundary credential in and out
+of the family, `pipe_round_unwind`, the four exit cases, the masks,
+`ep_pay_frame`) and stopped at a DEFINITION: `UShPipeRound.
+sh_pipe_child_law := UkShFork.ushf_child_law_at Wcf ushq_lp 68` fixes the
+child's exit payload at `ushf_wq I = Wcf I 3 ∨ Wcf I 0` on EVERY arm, and
+at `fork1` #2's panic the child holds `pwc_fork_exit … 5` — mechanised
+incompatible with every arm of the widened boundary family
+(`pipe_fork_exit_not_lpr`, `pipe_half_not_lpr`: three halves of one
+`mono_nat`; the stray holds the left half for ever).  §4.3i's repair is
+therefore NOT additive.  RULED: (1) `sh_pipe_child_law` is REDEFINED in
+`UShPipeRound.v` as the pipe-specific twin of `ushf_child_law_at` at
+`ukn_pay N' := fun _ => (ushf_wq I ∨ ∃ N v L gL gR gM XL YR, era_pin γ (S
+gen_id) v ∗ pwc_fork_exit N (S gen_id) v I L gL gR gM XL YR 5)` (the
+existential's exact shape is the lane's; the Timeless side conditions
+ride inside); (2) `ushq_body_law_pipe` is re-proved through NEW
+`UkShPipeFork.wp_kshm_body_pipe` / `wp_kshf_fork_pipe` — twins of
+upstream's `UkShFork.wp_kshm_body_at` / `wp_kshf_fork_at`, upstream's
+files untouched — whose re-entry at the third arm writes the prompt with
+`pprompt_dollar_fork` / `pprompt_space_fork` and enters `getcmd`'s read at
+the terminal state (§4.3i's dirty-credential route); (3)
+`sh_round_holds_pipe`'s STATEMENT, `UInitPipe.sh_pipe_child_law_all`,
+`UInitPipeAdequacy` and `PipeAssumptions` do not move — `sh_pipe_child_law`
+is a name they spend.  Also adopted from the lane: `Wq := emp` at the
+`pipe(2)` registrar (`ep_pay Wq ⊣⊢ ep_pay emp ∗ Wq`; the family is
+allocated BEFORE `pipe(2)` out of the very `Cr` the `panic("pipe")` tail
+is paid from, since `ush_pipe_ans`'s `-1` arm returns nothing of the
+registrar); the third paid diagnostic and a0 = `s0 + a` are already
+inside `wp_kshr_exec_cat_paid`'s premises (brief items 1 were
+unnecessary); `UCatPipe.pcat_image_entry` (vacuous, no caller) is
+RETIRED rather than restated — `UShCatPay.cat_image_entry_1w` is the
+entry.
+
 ## 5. Programs
 
 ### 5.1 sh: the PIPE arm (lanes SH-PARSE-PIPE, SH-PIPE)

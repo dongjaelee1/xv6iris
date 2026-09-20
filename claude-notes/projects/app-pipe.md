@@ -4957,7 +4957,13 @@ STEPS ARE CLOSED.**  `Print Assumptions` on `PipeOut.pecl_blk2_open`,
 `pecl_blk2_byte`, `pecl_blk2_file` and on `PipeBoth.pblk2_ecl_holds` (the
 three discharges together) prints **`Closed under the global context`**
 for all four: the round's ledger, `pe_cur` and the family's byte steps
-rest on nothing but the tree.  Everything in this block is
+rest on nothing but the tree.  The two campaign audits are UNMOVED at the
+standing list: **`audit-pipe-only` FOURTEEN**, **`audit-echo-only`
+FOURTEEN**, textually the same fourteen lines (1
+`functional_extensionality_dep` + the 2 `xv6iris_extras` reservation
+`Parameter`s + 11 PrimString/PrimInt63), and NO `Spec*`/`Link*` module
+`Parameter` — `pipeOutΣ` joining `pipeΣ` realises `pe_cur`'s camera by
+`subG` and adds nothing to the trusted base.  Everything in this block is
 machine-checked — `PipeOut.v` (`pe_cur` and all four
 claim steps), `PipeBothPure.v` (`pend2_prefix`), `PipeBoth.v` (the
 family's per-round ledger and the three discharges) and the whole

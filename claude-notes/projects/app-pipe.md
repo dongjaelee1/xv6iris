@@ -268,7 +268,7 @@ arm is the theorem's one named premise (`pipe_both_law`).
   See the Findings block.
 - [ ] **PIPE-MODEL-3 / PIPE-STAGE-3 / SH-PIPE-ROUND-5** (the strays, design
   §4.3g) — NOT launched; awaiting the owner's ruling.
-- [ ] **PIPE-CC** (in parallel with ROUND-4; ROUND-3's item 3): the pipe
+- [x] **PIPE-CC** (in parallel with ROUND-4; ROUND-3's item 3): the pipe
   era's `cons_cred` instance (`UInitPipe.v`, five `UShLine` `_at` twins),
   `pipe_prog_law` discharged modulo `sh_pipe_child_law`;
   `pipe_adequacy_pipeΣ` with the child law as its ONE hypothesis.  Brief
@@ -5841,3 +5841,228 @@ which is `UCatPipe.pcat_round_at_g` funded, and (iii)
 `UkShDiag.ush_execfail_law_at PipeDisc.alt_execR 16 Cr Cd` — a THIRD paid
 diagnostic beside `dg_pipe`'s 5 and `alt_panic`'s 5, which
 `UShPipeChild.wp_kshm_child_pipe_paid` does not yet carry.
+
+### PIPE-CC (2026-09-20) — the pipe era's `cons_cred` lands and `pipe_prog_law` IS DISCHARGED modulo the child law; the boundary credential's INPUT READING is not a `LinkRec` field and cannot be; the READ RECORD was a lane nobody had counted; and the pipeline audit's TARGET MOVED
+
+Branch `app-pipe/pipe-cc` off `d71159395` (main + SH-PIPE-ROUND-3 + the
+brief commit).  THREE code commits — `b08023878` (`UShLine` `_at` twins),
+`cc5e1373f` (`PipeReadInst.v`), `3ffd2f8c6` (`UInitPipe.v` +
+`UInitPipeAdequacy.v` + `PipeAssumptions.v` + `_CoqProject`) — plus this
+one.  THREE new files, four new lemmas in `UShLine.v` (nothing landed
+moved, `UInitBoot.v` untouched and not re-proved), three rows of
+`iris/_CoqProject`.  `UPipeBootAdequacy.v` is UNTOUCHED (see "what the
+brief got wrong", item 3).  Whole-tree `ec2-lane.sh cc build` **RC=0**;
+no `Admitted`; `Proof using` on every result.  Audits below.
+
+**THE THEOREM, verbatim** (`UInitPipeAdequacy.v`):
+
+```coq
+  Definition sh_pipe_child_law_all : Prop :=      (* UInitPipe.v *)
+    forall (HR : riscvGS Σ) (GEN : GenId)
+           (HBs : bioslotG Σ) (HFd : fdslotG Σ) (HIr : irefslotG Σ)
+           (HPav : pavG Σ) (HWc : wchG Σ) (HF : fileG Σ)
+           (c : pipe_gn),
+      ⊢ UShPipeRound.sh_pipe_child_law c.
+
+  Theorem pipe_prog_law_of_child :
+    sh_pipe_child_law_all -> pipe_prog_law (Σ := Σ).
+
+Corollary pipe_adequacy_pipeΣ_of_child
+    (Hchild : sh_pipe_child_law_all (Σ := pipeΣ))
+    (gst : gstate)
+    (Hgen0 : gst.(ggen) = 0%nat) (Hpow0 : gst.(gpow) = false)
+    (Hdisk : v_disk (gst.(gdev).(dvirtio)) = FsImgDisk.fsimg_dk) :
+  forall (n : nat) (κs : list mobs) t2 g2,
+    language.nsteps n ([PowerLoopE : language.expr riscv_lang], gst)
+      κs (t2, g2) ->
+    (forall e2, e2 ∈ t2 -> language.reducible (Λ := riscv_lang) e2 g2)
+    /\ PipeDisc.pipe_phi κs.
+```
+
+So the pipeline application's whole-system theorem now has ONE premise
+and it is a statement about sh's PIPE-arm child walk alone — no record
+equation, no `γp`, no `r`, no `CurCtx`, and nothing about /init.
+
+**WHAT LANDED.**
+
+**(1) `iris/UShLine.v` — the four lease laws at an ABSTRACT RESIDUE.**
+`ush_lease_of_at`, `ush_at_of_mid_taint_at`, `ush_at_of_mid_wb_at`,
+`ush_posb_of_lend_at`: `ush_mid_of_at` / `ush_at_of_mid_taint` /
+`ush_at_of_mid_wb` / `ush_posb_of_lend` with the residue one parameter up
+(`ush_mid_at Rres` / `ush_rd_x_at Rres` / `ush_rd_pin_at Rres` for the
+three `rd_res` spellings).  Same proofs, ONE change: the residue is
+threaded LINEARLY, because the landed four intro it as persistent and an
+abstract residue need not be.
+
+**(2) `iris/PipeReadInst.v` (NEW) — the READ RECORD.**
+`UInitSh.cons_cred_holds_at`'s FIRST conjunct is sh's read leaf, whose
+only discharge (`UShLine.ush_read_recv_leaf_holds_at`) takes a
+`ReadRec.ReadRec L` — the record `LinkRec` deliberately does NOT carry
+(`ReadRec.v`'s header).  `ReadRec.v` has the echo instance and
+`FileReadInst.v` the file one; there was NO pipeline instance, and it is
+none of the nine `UShLine` lemmas ROUND-3 counted.  ~220 lines and no new
+idea: `pipe_read_inst` is `ReadRec.echo_read_inst` at
+`PipeDisc.disc_input_p` / `PipeLinks.pread_ret` / `PipeLinksLine.pwc_rres`,
+because `pread_ret`'s trailing disjunct IS `EchoOut.read_ret`'s with
+`disc_input_p` / `rd_stage_p` / `proc_before_p` for echo's three.  It is
+SHORTER than `FileReadInst.v` for the file era's own reason: that arm has
+to read the typed line list's lower bound off the consumed bytes' TAGS,
+and the pipeline era reads nothing off a tag.
+
+**(3) `iris/UInitPipe.v` (NEW) — `pipe_cc`, its ten laws, the bundle.**
+
+```coq
+  Definition pipe_cc (HR : riscvGS Σ) (GEN : GenId)
+      `{HBs : !bioslotG Σ, HFd : !fdslotG Σ, HIr : !irefslotG Σ,
+        HPav : !pavG Σ, HWc : !wchG Σ, HF : !fileG Σ}
+      (g : pipe_gn) : cons_cred Σ :=
+    MkConsCred
+      (UShLine.ush_rd_pin_at (lk_rres (pipe_link_inst_at g)) (pgn_cl g))
+      (pipe_cc_rd_timeless HR GEN g)
+      (UShLine.ush_mid_at (lk_rres (pipe_link_inst_at g)) (pgn_cl g))
+      (pipe_Wcl_at g)
+      (pipe_Wbl_at g) (pipe_cc_wb_timeless HR GEN g)
+      (UInitDiag.kinit_pro_at (pipe_link_inst_at g)).
+```
+
+Every one of the five families is a READING OF THE RECORD and none is
+spelled out, which is what makes `pipe_cc_holds` ten APPLICATIONS rather
+than ten proofs: six are one landed `UShLine` `_at` lemma each, two are
+`PipeLinkInst.pipe_Hwbwc` / `pipe_Hwbl`, and two are this lane's.
+`pipe_cc_holds` is `cons_cred_holds_at` at `PipeDisc.disc_input_p` /
+`PipeUline.ush_line_pipe` with `UShPipeRound`'s three pure bridges
+(`ushq_disc_snoc_ncr`, `disc_input_p_rest_short`, `ushq_disc_line_pipe`)
+as its parameters.
+
+`pipe_Hinit_boot` is `UInitBoot.echo_Hinit_boot` line for line with FOUR
+substitutions and nothing else: the claim's accessors are `AppPipeCons`'s,
+the console dance is `UInitConsPipe`'s, the credential is `pipe_cc`, and
+the shell's TAIL is `UShPipeRound.sh_round_holds_pipe` where echo's was
+`UShRest.sh_rest_holds`.  Everything else — `init_deps_of_laws`,
+`init_boot_bundle_of_pinned`, `UInitKernel.init_boot_con`,
+`UInitBanner`/`UInitDiag`'s `_at` laws, `UShPanic.sh_prompt_law_holds_line_at`,
+`UShEcho.sh_echo_slot_of_fs_pure_holds` — is applied unchanged.
+
+**(4) `iris/UInitPipeAdequacy.v` (NEW)** — the two results above, split
+off for `UInitBootAdequacy.v`'s measured reason (see item 3 below).
+
+**THE TWO STOP RULES, ANSWERED: both NO.**  No `cons_cred_holds_at` law
+needs a fact of /init the pipe claim's laws fail to give — ROUND-3's
+measurement is confirmed.  And `sh_round_holds_pipe`'s
+`Wcf`/`ushq_lp`/`68` fit the seam exactly: its conclusion
+`UkSh.ush_rest_l_at N γp T (pipe_Wcl_at g) (pipe_Wbl_at g)
+(ush_mid_at (lk_rres PI) γ γp) ush_line_pipe (sh_Rsh …)` IS
+`UInitSh.sh_pay_at ush_line_pipe T pipe_cc sh_Rsh 0`'s second conjunct,
+character for character.
+
+**WHAT WAS REFUTED / WHAT THE MAP GOT WRONG.**
+
+1. **"three need only the residue as one more parameter" is FOUR.**
+   `ush_mid_of_at` is in the same boat as the other three; ROUND-3
+   counted it among the ready ones because its NAME ends in `_at` — but
+   that `_at` is `UkSh.ush_at`, not the residue.  Only THREE of the nine
+   were ready (`ush_read_recv_leaf_holds_at`, `ush_mid_wc_read_t_at`,
+   `ush_wb_read_holds_at`), and the first needs a record that did not
+   exist.  The twin is called `ush_lease_of_at` so that no name ends in
+   two `_at`s.
+2. **The `ReadRec` instance was not on the map at all** — not one of the
+   nine lemmas, not a `LinkRec` field, a file of its own, and the single
+   largest thing this lane built.  Any future "port the console seam to
+   era X" estimate must count `LinkRec` + `ReadRec` + `StageRec`.
+3. **`UPipeBootAdequacy.v` cannot be "edited for the final statement",
+   and should not be.**  It DEFINES `pipe_prog_law`, which this lane
+   discharges, so making it take the child law instead would need it to
+   `Require` its own discharger — a cycle.  Worse, its class binders are
+   `riscvGpreS` and the five `*GpreS`, so the file that states
+   `pipe_prog_law` must carry the ADEQUACY cone, and `UInitBoot.v`'s
+   header records what happens when that cone meets a proofmode-heavy
+   u-tier assembly (54 GB RSS).  Hence the split `UInitPipe.v` /
+   `UInitPipeAdequacy.v`, exactly `UInitBoot.v` / `UInitBootAdequacy.v`.
+   `iris/PipeAssumptions.v` now audits `pipe_adequacy_pipeΣ_of_child`,
+   whose cone is strictly LARGER than the old target's (it walks the
+   whole program tier as well).
+4. **The brief's "the exec of cat through `pipe_cat_pins_acc`" is not
+   this lane's.**  /cat's exec lives inside `sh_pipe_child_law`, which
+   this lane takes as a hypothesis, so `AppPipeCons.pipe_cat_pins_acc`
+   is ROUND-4's to spend and is not named in `UInitPipe.v` at all.
+5. **The boundary credential's input reading is NOT a `LinkRec` field
+   and cannot be.**  `lk_ban_inp` gives `ush_wb_inp` in one line, but
+   `lk_lcred` is an existential over `lk_lpr`, whose four indices are
+   four DIFFERENT families, so `ush_wc_inp` is a fact about the era's
+   spelling of them.  At the pipeline era all six arms (`pwc_pro`,
+   `pwc_blk`, `pwc_sp_t`, `pwc_open_t` and `pwc_line`'s two) are ONE
+   shape, so `pipe_wc_inp` is six copies of an eight-line proof.  **If a
+   third era needs it, add a `lk_lpr_inp` field** rather than a third
+   copy — echo's `ush_wc_inp_lcred` is already the same proof at
+   `ewc_lpr`'s four arms.  The tenth law is the mirror image: echo's
+   `Hpw` is spelled at `EchoLinksPro.ewc_pro`'s body, while the pipe
+   twin `pipe_wp_line` is `lk_pro_of_pban` ∘ `lk_line_of_pro` ∘
+   `lk_lpr_0` and belongs in `UInitBanner.v` beside
+   `kinit_own_is_cred_at` the day a third era wants it.
+
+**THREE OPERATIONAL FINDINGS, each measured, each commented at its site.**
+
+- **A bare `++` parses in `string_scope`, not `list_scope`, in any file
+  above `RiscvAdequacy`.**  `UInitSh.v`'s `Dsc (I ++ [b])` copied
+  verbatim fails with *"The term I has type bio_x while it is expected to
+  have type string"* — `bio_x` is `Xv6Cameras`' notation for `list (bv
+  8)`, so the message names the right type and the wrong scope.  The
+  cause is a NON-`Local` `Open Scope string.` in `ArchReset.v` /
+  `BootReset.v` / `ColdBoot.v`, which this cone reaches and `UInitSh.v`
+  does not.  Write `(I ++ [b])%list`.
+- **An `Ltac` body may not mention an identifier a tactic inside it
+  introduces** — `iDestruct "H" as (ps cs P) "…"; … iExists ps, cs, P`
+  fails with *"The reference ps was not found in the current
+  environment"*.  Six near-identical arm proofs therefore stay six
+  proofs.
+- **`iAssert P as "#H"` raises `Persistent P` ON ITS STATEMENT, and that
+  is a wedge for `init_sh_slot T (sh_pay_at …)`.**  The search descends
+  into `UkSh.ush_rest_l_at`'s wand tower and does not come back —
+  measured TWICE with the named priority-0 instance AND `#[local]
+  Typeclasses Opaque UInitSh.sh_pay_at` both in place.  The fix is not a
+  bigger hammer: the slot is SPENT ONCE, so take it LINEARLY
+  (`iAssert … with "[]" as "Hsh"`), and the persistence obligation never
+  arises.  Two corollaries worth keeping: `Typeclasses Opaque` on
+  `init_sh_slot` as well BREAKS `iDestruct "Hcore" as "(#Hinv & _)"`
+  ("No matching clauses for match" — `IntoSep` cannot see through a seal
+  either); and an `Instance` whose type mentions `riscvGS`/`GenId`
+  WEDGES IN ITS OWN STATEMENT in a section that binds neither
+  (`UInitBoot`'s `EchoInitBoot` takes `HR`/`GEN` as LEMMA binders), so
+  such instances must be declared in a section that has the full binder
+  list.  `Set Default Timeout 300.` found all three in minutes.
+
+**THE AUDITS, ALL FOUR, at the new target.**  `audit-pipe-only` =
+**FOURTEEN** and `audit-echo-only` = **FOURTEEN**, and the two lists are
+TEXTUALLY IDENTICAL; `audit-only` = **THIRTEEN**, `audit-tree-only` =
+**THIRTEEN** (the pipe/echo pair's extra entry over those two is
+`PrimString.length`).  The pipeline list, verbatim:
+
+```
+Axioms:
+PrimInt63.sub : PrimInt63.int -> PrimInt63.int -> PrimInt63.int
+PrimString.string : Set
+xv6iris_extras.resv_matches : forall n : BinNums.Z, Values.mword n -> bool
+xv6iris_extras.resv_is_valid : bool
+PrimInt63.lsr : PrimInt63.int -> PrimInt63.int -> PrimInt63.int
+PrimInt63.lsl : PrimInt63.int -> PrimInt63.int -> PrimInt63.int
+PrimInt63.lor : PrimInt63.int -> PrimInt63.int -> PrimInt63.int
+PrimString.length : PrimString.string -> PrimInt63.int
+PrimInt63.land : PrimInt63.int -> PrimInt63.int -> PrimInt63.int
+PrimInt63.int : Set
+PrimString.get : PrimString.string -> PrimInt63.int -> PrimString.char63
+FunctionalExtensionality.functional_extensionality_dep :
+  forall (A : Type) (B : A -> Type) (f g : forall x : A, B x),
+  (forall x : A, f x = g x) -> f = g
+PrimInt63.eqb : PrimInt63.int -> PrimInt63.int -> bool
+PrimString.cat : PrimString.string -> PrimString.string -> PrimString.string
+```
+
+i.e. 1 `functional_extensionality_dep` + the 2 `xv6iris_extras`
+reservation `Parameter`s + 11 `PrimString`/`PrimInt63` primitives, and NO
+`Spec*`/`Link*` module `Parameter`.  The count did NOT move although the
+audited cone GREW by the whole program tier.
+
+**THE ONE THING THE NEXT LANE NEEDS FIRST.**  ROUND-4 owes exactly
+`UInitPipe.sh_pipe_child_law_all` and nothing else.  The day it lands,
+`pipe_adequacy_pipeΣ_of_child` loses its only premise by application and
+no statement in these files moves.

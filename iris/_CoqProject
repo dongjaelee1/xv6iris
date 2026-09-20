@@ -1553,6 +1553,7 @@ UkShRun.v
 UkShDiag.v
 UkShRedir.v
 UkShPipe.v
+UShPipeCall.v
 
 UCodeShP.v
 UkShParse.v

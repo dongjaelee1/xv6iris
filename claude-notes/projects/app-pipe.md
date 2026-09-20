@@ -7446,7 +7446,9 @@ Branch continued off main (`58491bbd9`), one code commit (`64c0bb87c`),
 `iris/UShPipeRound2.v` one; **no landed statement moved**.  Whole-tree
 `ec2-lane.sh round5 build` **RC=0**; `Print Assumptions` on the lane's
 **twenty-five** results: **all twenty-five Closed under the global
-context**.
+context**; **all four audits at their baselines**, re-measured after the
+additions: `audit-only` **13**, `audit-echo-only` **14**,
+`audit-tree-only` **13**, `audit-pipe-only` **14**.
 
 **(1) THE MECHANISM WORKS, EXACTLY AS §4.3l RULED.**
 

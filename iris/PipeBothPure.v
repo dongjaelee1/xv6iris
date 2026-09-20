@@ -636,6 +636,60 @@ Proof using.
   by vm_compute.
 Qed.
 
+(* EVERY non-panic alternative's continuation ends with the prompt -- read
+   off the eight constructors, so a WRITER (who holds [palt_ok] but not
+   [pline_ok]) can spend it.  [PipeLinksLine.pcont_prompt] is the same
+   lemma one file up; the claim's steps are BELOW that file and need it
+   here. *)
+Lemma pcont_prompt_p (l : pline) (a : palt) :
+  palt_ok l a -> palt_panic a = false ->
+  exists u : list (bv 8), pcont l a = u ++ u_prompt.
+Proof using.
+  intros Hok Hp.
+  destruct a as [k | | | | sel | | |]; rewrite /pcont.
+  - assert (Hk : (k < 3)%nat).
+    { rewrite /palt_panic in Hp. apply bool_decide_eq_false in Hp.
+      destruct l as [ws | ws]; cbn [palt_ok] in Hok; lia. }
+    destruct k as [| [| [| k]]]; [| | | exfalso; lia].
+    + exists (wl_line (drop 1 (pline_ws l))). exact (line_alts_of_0 _).
+    + exists dg_execL. rewrite (line_alts_of_1 (pline_ws l)).
+      by rewrite -alt_execL_echo /alt_execL.
+    + exists []. rewrite (line_alts_of_2 (pline_ws l)). by rewrite app_nil_l.
+  - exists (wl_line (drop 1 (pline_ws l))). reflexivity.
+  - exists dg_execL. reflexivity.
+  - exists dg_execR. reflexivity.
+  - exists (pmerge sel dg_execL dg_execR). reflexivity.
+  - exists (wl_line dg_pipe). reflexivity.
+  - exists (wl_line dg_fork). reflexivity.
+  - exists []. by rewrite app_nil_l.
+Qed.
+
+(* ...so a `$`-FREE run can never be a whole block: the claim's ECHO step
+   refutes an open round with exactly this (the discipline wants the
+   round's block, prompt included, on the wire before the next input
+   byte). *)
+Lemma pcont_not_prefix_nodollar (l : pline) (a : palt) (u : list (bv 8)) :
+  palt_ok l a -> palt_panic a = false -> Forall nodollar u ->
+  ~ (pcont l a `prefix_of` u).
+Proof using.
+  intros Hok Hp Hnd Hpre.
+  destruct (pcont_prompt_p l a Hok Hp) as (z & Hz).
+  assert (Hlk : pcont l a !! length z = Some (Z_to_bv 8 36%Z)).
+  { rewrite Hz lookup_app_r; [| lia].
+    rewrite Nat.sub_diag. exact u_prompt_head. }
+  pose proof (prefix_lookup_Some _ _ _ _ Hlk Hpre) as Hlk'.
+  exact (nodollar_prompt_head (Forall_lookup_1 _ _ _ _ Hnd Hlk')).
+Qed.
+
+Lemma pcont_ne_nodollar (l : pline) (a : palt) (u : list (bv 8)) :
+  palt_ok l a -> palt_panic a = false -> Forall nodollar u ->
+  u <> pcont l a.
+Proof using.
+  intros Hok Hp Hnd Heq.
+  apply (pcont_not_prefix_nodollar l a u Hok Hp Hnd).
+  rewrite Heq. reflexivity.
+Qed.
+
 Lemma pcont_not_prefix_pend_both (l : pline) (a : palt) (sel : list bool) :
   pline_ok l -> palt_ok l a -> palt_panic a = false ->
   ~ (pcont l a `prefix_of` pend_both sel).
@@ -736,6 +790,40 @@ Lemma pend2_false (R : list (bv 8)) (sel : list bool) (b : bv 8) :
 Proof using.
   intros [H1 H2] Hb. rewrite /pend2 (pmerge_snoc_false sel _ _ H1 H2).
   by rewrite (pop_take1_drop_lookup R _ b Hb).
+Qed.
+
+(* A LONGER SELECTOR WRITES A LONGER BLOCK.  What a round has written so
+   far is a prefix of what it will have written when it files, which is
+   how a witness for the round's FINAL alternative (which the walk knows,
+   [pipe_round_lend_holds]'s [pblk2_code]) serves at every byte on the
+   way ([PipeBoth.pblk2_wit_mono]). *)
+Lemma pend2_prefix (R : list (bv 8)) (sel sel' : list bool) :
+  sel `prefix_of` sel' -> sel_wf2 R sel' ->
+  pend2 R sel `prefix_of` pend2 R sel'.
+Proof using.
+  intros [z ->]. revert sel.
+  induction z as [| x z IH] using rev_ind; intros sel Hwf.
+  - rewrite app_nil_r. done.
+  - rewrite app_assoc in Hwf |- *.
+    assert (Hwf1 : sel_wf2 R (sel ++ z))
+      by exact (sel_wf2_prefix R (sel ++ z) ((sel ++ z) ++ [x])
+                  ltac:(by eexists) Hwf).
+    assert (Hstep : exists b : bv 8,
+               pend2 R ((sel ++ z) ++ [x]) = pend2 R (sel ++ z) ++ [b]).
+    { destruct Hwf as [Ha Hb].
+      pose proof (count_true_le (sel ++ z)) as Hcle. destruct x.
+      - rewrite count_true_app in Ha. cbn [count_true] in Ha.
+        destruct (lookup_lt_is_Some_2 dg_execL (count_true (sel ++ z))
+                    ltac:(lia)) as [b Hlk].
+        exists b. exact (pend2_true R (sel ++ z) b Hwf1 Hlk).
+      - rewrite count_true_app length_app in Hb.
+        cbn [count_true length] in Hb.
+        destruct (lookup_lt_is_Some_2 R
+                    (length (sel ++ z) - count_true (sel ++ z))%nat
+                    ltac:(lia)) as [b Hlk].
+        exists b. exact (pend2_false R (sel ++ z) b Hwf1 Hlk). }
+    destruct Hstep as [b Hb]. rewrite Hb.
+    apply prefix_app_r. exact (IH sel Hwf1).
 Qed.
 
 (* the bytes a run of the two children emits, at the right child's own

@@ -4855,3 +4855,183 @@ as a type mismatch on `g` at the first use.  And `Hweq : o_w = pending_p
 …` does not rewrite a goal spelling `pending_at_p … (snd <$> E)`: the two
 are convertible, not syntactic, so the rewrite goes through
 `(_ : … = …); [| symmetry; exact Hweq]`.
+
+### PIPE-2W-3 (2026-09-19/20) — `pe_cur` landed, the round's ledger is PER-ROUND, and the three claim steps are PROVED: the family's byte steps and its filing are now theorems about `pecl`, not obligations
+
+Branch `app-pipe/pipe-2w-3` off main (= PIPE-2W-2 merged, fec9ad181).
+
+**0.  THE GATE'S TWO RED SITES, FIXED FIRST** (they were PIPE-2W-2's
+sweep, and both are the fixed part's type):
+
+- `AppPipe.v:343` — the anti-vacuity conversion lemmas still read
+  `app_pred app_pipe c = pipe_pred c` / `app_boot app_pipe c k =
+  pipe_boot c k`, but the record's fields are `fun c => pipe_pred
+  (pgn_cl c)` / `fun c => pipe_boot (pgn_cl c)` and `pipe_pred` takes an
+  `echo_fixed`.  Both statements now read `pipe_pred (pgn_cl c)` /
+  `pipe_boot (pgn_cl c) k` and stay `reflexivity` — the field really did
+  not move, only the wrapper's spelling had.
+- `UCatPipe.v:333` (and `:339`, `:349`) — three `PipeLinks` call sites
+  passed `γ` where the lemma's section variable is now `g : pipe_gn`;
+  and section `UCatPipe` itself still declared `Context (γ :
+  echo_fixed)` while its record equation had been swept to `pecl g`, so
+  `g` was unbound from line 393 on.  The section now declares `Context
+  (g : pipe_gn)` + `Local Notation γ := (pgn_cl g)`, exactly as
+  `PCatOut` above it, and the three call sites pass `g`.
+
+THE REST OF THAT SWEEP, found once the tree could be built to the end
+(see §6 -- before the wedge fix it could not): `PipeLinkInst.v`'s
+`pi_pin_epin` and its twelve step fields (`pban_step` ...
+`ppdiag_step`), whose lemmas live in `PipeLinksLine`'s section;
+`PipeLinkInst.v`'s SECOND section `sh_round_facing`, which still
+declared `Context (γ : echo_fixed)` while its body reads
+`pipe_link_inst_at g` -- `g` was unbound; `PipeStageInst.v:187`
+(`pblk_step γ`); `UCatPipe.v`'s seven `pcch γ`; `UShPipeRound.v`'s
+`pipe_Wcl_at`/`pipe_Wbl_at`/their `Timeless` leaves/`pipe_Hwbl`/
+`pipe_Hcltaint`/`pipe_inst_exfb_echo`; and `UPipeBootAdequacy.v`'s
+`pipeΣ`, which did not carry `pipeOutΣ`, so `pipeOutG pipeΣ` had no
+instance at the adequacy corollary.  TWO OF THEM ARE A DIFFERENT KIND OF
+BREAKAGE and worth naming: the new `Context (g : pipe_gn)` SHADOWS any
+local binder called `g`, and Rocq answers `g is already used` -- it hit
+`UCatPipe.v`'s `iIntros (h' r d g W ...)` (renamed `gW`), `PipeBoth.v`'s
+`wcur`'s gname (renamed `gc`) and `UShPipeRound.v`'s `ushq_lp`/`ushq_lp0`
+byte function (renamed `gf`).  A one-letter fixed part is cheap to write
+and expensive to land; if the campaign names another, name it `pg`.
+
+**1.  `pe_cur`, THE EXCLUSIVE CURRENT-ROUND GHOST** (design §4.3e, as
+ruled).  `pipe_era` is `MkPEra { pe_blk ; pe_cur }`, `pipeOutG` gains
+`ghost_varG Σ (nat * gname)`, and `cur_half w q r gb := ghost_var
+(pe_cur w) q (r, gb)`.  Between rounds the claim holds the WHOLE ghost
+(`cur_frac false = 1`); while a block is open it holds one half and the
+round's family the other.  That is what excludes a stale earlier-round
+family: `cur_half_agree` pins BOTH the round index and its ledger's
+gname, and `cur_half_excl` refutes the between-rounds state from a
+writer's half.
+
+**2.  THE CLAIM'S FOUR STEPS** (all in `PipeOut.v`, all green):
+`pecl_blk2_open` (the block's FIRST byte: mints the round's ledger with
+`rblk_alloc`, retargets and splits `pe_cur`, hands back the writer's
+half and `rblk_lb gb [b]`), `pecl_blk2_byte` (every further byte, left
+or right), `pecl_blk2_file` (the prompt's first byte: grows `cs` by the
+round's code, rejoins the two halves) and the era-wide `blk_auth` moves.
+
+**3.  WHAT CHANGED IN `PipeBoth.v`.**  The lane's parameter `gblk` is
+GONE.  The family carries the claim's own resources:
+
+    pblk_led k I R sel := ⌜sel = []⌝
+                          ∨ ∃ w gb, pera_pin g k w
+                              ∗ cur_half w (1/2) (nlines I - 1) gb
+                              ∗ rblk_lb gb (pend2 R sel)
+
+(the empty selector IS the state in which no round ledger exists yet),
+and `pwc_blk2` holds it in place of the old `blk_lb`.
+`pblk2_ecl_L`/`_R`/`_file` keep their shapes and are now DISCHARGED
+(`pblk2_ecl_L_holds`, `_R_holds`, `_file_holds`, `pblk2_ecl_holds`): the
+`sel = []` arm of the family goes through the OPENING step and every
+other byte through the byte step, which is why one obligation covers
+both the first byte and the rest.
+
+**4.  THREE PREMISES THE STEPS HONESTLY NEED, and where they come from.**
+
+- `Forall nodollar R` (the right-hand source).  The claim will not take a
+  `$` inside a block; `dg_execL` has `dg_execL_nodollar` and the
+  right-hand list is `dg_execR` or `wl_line (drop 1 ws)`, both of which
+  have it.
+- `pblk2_wit I R sel` — SOME admissible non-panicking alternative of the
+  round's line whose continuation the block so far is a prefix of.  This
+  is what the claim reads an unfiled block against, and mid-block the
+  round's own code is not decided yet.  `pblk2_wit_of_code` turns the
+  round's FINAL code into it and `pblk2_wit_mono` (over the new pure
+  `PipeBothPure.pend2_prefix`: a longer selector writes a longer block)
+  carries it back to every prefix, so `pipe_round_lend_holds` still asks
+  the walk for nothing but `pblk2_code I R sel a`.  For the CONCURRENT
+  steps, where the selector lives under the invariant's existential, the
+  premise is `∀ sel, sel_wf2 R sel → pblk2_wit I R sel`, and
+  `pblk2_wit_both` proves it for the real `PBoth` round by padding the
+  selector out with each side's remaining bytes.
+- `sel ≠ []` at the filing (a round that files must have written at
+  least one byte — otherwise the block never opened and the ordinary
+  `pwc_blk` path applies).
+
+**5.  VERIFICATION STATE: THE WHOLE TREE IS GREEN (`RC=0`), AND THE FOUR
+STEPS ARE CLOSED.**  `Print Assumptions` on `PipeOut.pecl_blk2_open`,
+`pecl_blk2_byte`, `pecl_blk2_file` and on `PipeBoth.pblk2_ecl_holds` (the
+three discharges together) prints **`Closed under the global context`**
+for all four: the round's ledger, `pe_cur` and the family's byte steps
+rest on nothing but the tree.  The two campaign audits are UNMOVED at the
+standing list: **`audit-pipe-only` FOURTEEN**, **`audit-echo-only`
+FOURTEEN**, textually the same fourteen lines (1
+`functional_extensionality_dep` + the 2 `xv6iris_extras` reservation
+`Parameter`s + 11 PrimString/PrimInt63), and NO `Spec*`/`Link*` module
+`Parameter` — `pipeOutΣ` joining `pipeΣ` realises `pe_cur`'s camera by
+`subG` and adds nothing to the trusted base.  Everything in this block is
+machine-checked — `PipeOut.v` (`pe_cur` and all four
+claim steps), `PipeBothPure.v` (`pend2_prefix`), `PipeBoth.v` (the
+family's per-round ledger and the three discharges) and the whole
+dependent cone.  With the wedge of §6 out of the way a whole-tree build
+takes MINUTES, which is what made the rest of the sweep findable at all:
+seven further consumers of the old fixed part surfaced only once the
+tree could be compiled to the end (§0 lists the first two).
+
+**6.  THE `PipeLinksLine.v` WEDGE, LOCALIZED AND FIXED** (the
+coordinator was right: it was NOT the box).  Before the fixed-part change
+that file took ~40 min; after it, 6+ CPU hours -- and the gate's build of
+`main` hung in the same file.
+
+*The sentence.*  `Set Default Timeout 300.` at the top of the file names
+the line: `PipeLinksLine.v:1401, characters 15-43: Error: Timeout!` --
+`pban_step`'s `intros Hb. iIntros "#Hpin #Hlk Hc HΦ".`  Splitting that
+one tactic into four sentences and rebuilding (the file reaches line 1401
+in about a minute, so each probe round costs ~6 min, not hours) named the
+half: `iIntros "#Hlk"`, i.e. the goal `Persistent (pipe_links g)`.  The
+coordinator's independent `rocq compile -time` run on `main` stopped at
+the same sentence.
+
+*The cause.*  `PipeLinks.pipe_links` is a six-fold `∗` of `□ ∀ ...` wand
+bundles and was left TRANSPARENT to the instance search, so resolution
+unfolded the name and descended into the wands instead of taking the
+named `pipe_links_persistent` -- the tree's documented "a bundle of wands
+hangs the `Persistent` search".  It was already minutes per site (nine
+sites in `PipeLinksLine.v`, six more in `UShPipeRound.v`: that was most
+of the old 40 min).  PIPE-2W-2 then put `pipeOutG`'s two cameras beside
+`echoOutG`'s five in the section's `Context`; every `own`-leaf of that
+descent gained branches, and one sentence went past 300 s.  NOTE what the
+cause is NOT: `pipeOutG` does not contain or re-export an `echoOutG`
+field, and there is no second instance of one class in scope -- the
+`Context` is not redundant (`PipeLinks`'s `Hcons : ... = pecl g` needs
+it).  The new instances did not conflict; they made an already-runaway
+search bigger.
+
+*The fix* (`PipeLinks.v`, at the source rather than in one consumer, so
+`UShPipeRound.v`'s six sites get it too): the seven named `Persistent`
+instances take priority `| 0`, and `#[global] Typeclasses Opaque
+pipe_links` shuts the generic search out of the bundle.  ONLY the bundle:
+making the six links opaque as well broke the next sentence --
+`PipeLinksLine.v:1406`, `iSpecialize: cannot instantiate
+(pipe_link_taint g) with k` -- because `iApply ("Ht" $! k b Φ)` must see
+the `∀` through the name.  Each link is `□ ...`, so its own `Persistent`
+is one step anyway.  After the fix the file reaches line 1406 in ~70 s.
+`EchoLinks.echo_links` has exactly the same shape and no `Typeclasses
+Opaque`; it is only tolerable because the echo cone has the five cameras
+and not seven.  RULE for the campaign: a bundle a proof `iIntros "#"` on
+must be `Typeclasses Opaque` with its instance named at priority 0.
+
+**7.  A COMMENT IN `PipeBoth.v` THAT IS NOW HALF-OBSOLETE.**  S5's header
+says the byte steps take `pipe_link_taint g` and NOT the whole
+`PipeLinks.pipe_links` bundle because introducing the bundle with `#`
+"does not return in THIS file's cone".  That was the §6 wedge, and it is
+fixed; the bundle is now instant everywhere.  The design still stands on
+its own merits (a step spends the taint link and nothing else, and a
+caller projects it with `pipe_links_taint`), so the lemmas are unchanged
+-- but the REASON in that comment should be reread as history, not as a
+live constraint.
+
+**8.  AN OPERATIONAL TRAP worth the note.**  Three `make`s were running
+in this lane's remote clone at once — my detached whole-tree build plus
+two ORPHANS from earlier wrapper timeouts — all compiling
+`PipeLinksLine.v` into the same directory and invalidating each other's
+`.vo`.  That is what turned a long file into a four-hour non-event.
+Kill strays BY PID after checking `readlink /proc/<pid>/cwd` (the gate's
+own make lives in `/shared/xv6iris/iris` and must be left alone), and
+run `ec2-lane.sh <lane> wait` rather than a locally-timed wrapper: a
+`timeout N ... | tail` wrapper prints NOTHING when it is killed, which
+reads exactly like a hang.

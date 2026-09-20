@@ -37,25 +37,24 @@
 (*  family carrying only the split could not be tied to the claim's own  *)
 (*  [o_w].  BOTH are needed, and each covers what the other cannot.      *)
 (*                                                                       *)
-(*  WHERE THE LEDGER'S NAME LIVES -- THE ONE THING THIS LANE DOES NOT    *)
-(*  LAND.  The claim and the two writers must MEAN THE SAME GHOST, so    *)
-(*  its gname has to come off something both sides already agree on,     *)
-(*  i.e. the era pin or the fixed part.  [EchoOut.era_pins] has five     *)
-(*  fields and all five are taken; a gname existentially bound inside    *)
-(*  the claim cannot be named by a writer; and allocating a SECOND       *)
-(*  camera at an existing gname is not available either ([own] can only  *)
-(*  be created fresh, so a second resource at [ep_go v] would have to be *)
-(*  allocated inside echo's era birth).  The route with a precedent is   *)
-(*  upstream's FILE application: [FileOut.file_gn] pairs                 *)
-(*  [AppFile.file_fixed] WITH a new gname and pins a second per-era      *)
-(*  record in a map of its own.  The pipeline's twin is a [pipe_gn] and  *)
-(*  a per-ROUND record (a [mono_list] cannot be reset, and the round     *)
-(*  index [nlines I - 1] is on both sides, so the ledger is INDEXED BY   *)
-(*  THE ROUND).  That moves [AppPipe.app_pipe]'s [app_fixed] field,      *)
-(*  which is outside this lane's brief -- so the ledger's name is a      *)
-(*  PARAMETER here ([gblk]) and the claim-side steps are stated, named   *)
-(*  and OWED ([pblk2_ecl_L] / [pblk2_ecl_R] / [pblk2_ecl_file]), not     *)
-(*  proved.  Nothing landed moves; everything above the claim is here.   *)
+(*  WHERE THE LEDGER'S NAME LIVES (lanes PIPE-2W-2 / PIPE-2W-3).  The   *)
+(*  claim and the two writers must MEAN THE SAME GHOST, so its gname     *)
+(*  comes off the FIXED PART: [AppPipe.app_pipe]'s [app_fixed] is        *)
+(*  [PipeOut.pipe_gn] -- echo's fixed part PAIRED with a gname of its    *)
+(*  own, upstream's FILE application ([FileOut.file_gn]) verbatim -- and  *)
+(*  the per-era record [PipeOut.pipe_era] carries the era's block ledger  *)
+(*  [pe_blk] and the CURRENT ROUND's exclusive ghost [pe_cur].  A round's *)
+(*  own ledger is minted when its block OPENS (a [mono_list] cannot be    *)
+(*  reset) and its gname is pinned by [pe_cur] in two halves: the claim's *)
+(*  non-taint arm holds one and the round's family the other, so a STALE  *)
+(*  family from an earlier round cannot step ([PipeOut.cur_half_agree]),  *)
+(*  and between rounds the claim holds the WHOLE ghost, which is what     *)
+(*  makes the opening step exclusive ([PipeOut.cur_half_excl]).  So the   *)
+(*  three claim-side steps are PROVED here ([pblk2_ecl_holds]), out of    *)
+(*  [PipeOut.pecl_blk2_open] (the block's first byte, which mints the     *)
+(*  round's ledger and splits the ghost), [_byte] (every further byte,    *)
+(*  left or right) and [_file] (the prompt's first byte, which files the  *)
+(*  round's code and rejoins the ghost).                                 *)
 (*                                                                       *)
 (*  THE LEDGER COSTS THE FUNCTOR LIST NOTHING: the bytes ride the era's  *)
 (*  own echoed-list camera ([EchoOut.echoOutG]'s [eo_El]), so no class   *)
@@ -206,6 +205,95 @@ Proof using.
   split_and!; [exact Hok | exact (palt_panic_both sel) | exact Hcont].
 Qed.
 
+(* THE WITNESS A BYTE IS WRITTEN AGAINST.  The claim reads an UNFILED
+   block against some admissible alternative of the round's line whose
+   continuation the block is a prefix of ([PipeOut.pblk_open]); mid-block
+   the round's own code is not decided yet -- that is the whole point of
+   the ledger -- so what a byte step spends is this existential.  The
+   walk knows the round's FINAL code ([pblk2_code]) and every prefix of
+   the block is covered by it, [pblk2_wit_mono]. *)
+Definition pblk2_wit (I R : list (bv 8)) (sel : list bool) : Prop :=
+  exists a : nat,
+    palt_ok (pline_at I) (palt_of a)
+    /\ palt_panic (palt_of a) = false
+    /\ pend2 R sel `prefix_of` pcont (pline_at I) (palt_of a).
+
+Lemma pblk2_wit_of_code (I R : list (bv 8)) (sel : list bool) (a : nat) :
+  pblk2_code I R sel a -> pblk2_wit I R sel.
+Proof using.
+  intros (Hok & Hpan & Hc). exists a.
+  split_and!; [exact Hok | exact Hpan |].
+  rewrite Hc. apply prefix_app_r. reflexivity.
+Qed.
+
+Lemma count_true_replicate_true (n : nat) :
+  count_true (replicate n true) = n.
+Proof using.
+  induction n as [| n IH]; [reflexivity |].
+  rewrite replicate_S. cbn [count_true]. by rewrite IH.
+Qed.
+
+Lemma count_true_replicate_false (n : nat) :
+  count_true (replicate n false) = 0%nat.
+Proof using.
+  induction n as [| n IH]; [reflexivity |].
+  rewrite replicate_S. cbn [count_true]. by rewrite IH.
+Qed.
+
+(* THE PADDED SELECTOR'S LENGTH, WITH THE TWO BOUNDS ABSTRACT.  [L] and
+   [R] must be VARIABLES here: with [length dg_execL] in the goal,
+   [rewrite !length_app] walks into [dg_execL = wl_line dg_exec] and
+   splits it into the lengths of its words, while the hypotheses keep
+   [length dg_execL] whole -- and then [lia] has two different atoms for
+   one number and answers "Cannot find witness". *)
+Lemma length_pad (sel : list bool) (L R : nat) :
+  (count_true sel <= L)%nat -> (length sel - count_true sel <= R)%nat ->
+  length (sel ++ replicate (L - count_true sel) true
+              ++ replicate (R - (length sel - count_true sel)) false)
+  = (L + R)%nat.
+Proof using.
+  intros H1 H2. pose proof (count_true_le sel) as Hcle.
+  rewrite !length_app !length_replicate. lia.
+Qed.
+
+Lemma pblk2_wit_mono (I R : list (bv 8)) (sel sel' : list bool) :
+  sel `prefix_of` sel' -> sel_wf2 R sel' ->
+  pblk2_wit I R sel' -> pblk2_wit I R sel.
+Proof using.
+  intros Hp Hwf (a & Hok & Hpan & Hpref). exists a.
+  split_and!; [exact Hok | exact Hpan |].
+  etrans; [exact (pend2_prefix R sel sel' Hp Hwf) | exact Hpref].
+Qed.
+
+(* THE [PBoth] ROUND'S WITNESS, AT EVERY WELL-FORMED SELECTOR: pad the
+   selector out with the left side's remaining bytes and then the right
+   side's, and the round's own [PBoth] code covers what has been written
+   so far.  This is what the CONCURRENT steps (S7) spend, where the
+   selector lives under the invariant's existential and no single writer
+   knows it. *)
+Lemma pblk2_wit_both (I : list (bv 8)) (ws : list (list (bv 8)))
+    (sel : list bool) :
+  pline_at I = LPipe ws -> sel_wf2 dg_execR sel ->
+  pblk2_wit I dg_execR sel.
+Proof using.
+  intros Hl [H1 H2].
+  pose proof (count_true_le sel) as Hcle.
+  set (sel' := sel ++ replicate (length dg_execL - count_true sel) true
+                   ++ replicate (length dg_execR
+                                 - (length sel - count_true sel)) false).
+  assert (Hc' : count_true sel' = length dg_execL).
+  { rewrite /sel' !count_true_app count_true_replicate_true
+      count_true_replicate_false. lia. }
+  assert (Hlen' : length sel'
+                  = (length dg_execL + length dg_execR)%nat).
+  { exact (length_pad sel (length dg_execL) (length dg_execR) H1 H2). }
+  apply (pblk2_wit_mono I dg_execR sel sel').
+  - rewrite /sel'. by eexists.
+  - rewrite /sel_wf2 Hc' Hlen'. lia.
+  - exact (pblk2_wit_of_code I dg_execR sel' (palt_code (PBoth sel'))
+             (pblk2_code_both I ws sel' Hl Hc' Hlen')).
+Qed.
+
 Section pipe_both.
   Context {Σ : gFunctors}.
   Context `{!echoOutG Σ}.
@@ -228,85 +316,12 @@ Section pipe_both.
   Proof using Hcons. rewrite /chist_at. by rewrite Hcons. Qed.
 
   (* ================================================================= *)
-  (*  S1  THE ROUND'S LEDGER: the block's BYTES                         *)
+  (*  S1  THE ROUND'S LEDGER lives at the CLAIM                         *)
+  (*                                                                   *)
+  (*  [PipeOut.rblk_auth] / [rblk_lb] at the gname minted when the      *)
+  (*  block opens, and [PipeOut.cur_half] for the round it belongs to.  *)
+  (*  Nothing is a parameter here any more: see the header.             *)
   (* ================================================================= *)
-
-  Context (gblk : gname).
-
-  Definition blk_enc (b : bv 8) : list mobs * bv 8 := ([], b).
-
-  Definition blk_auth (pre : list (bv 8)) : iProp Σ :=
-    own gblk (●ML ((blk_enc <$> pre) : list (leibnizO (list mobs * bv 8)))).
-  Definition blk_lb (pre : list (bv 8)) : iProp Σ :=
-    own gblk (◯ML ((blk_enc <$> pre) : list (leibnizO (list mobs * bv 8)))).
-
-  Global Instance blk_lb_persistent pre : Persistent (blk_lb pre).
-  Proof using . rewrite /blk_lb. apply _. Qed.
-  Global Instance blk_lb_timeless pre : Timeless (blk_lb pre).
-  Proof using . rewrite /blk_lb. apply _. Qed.
-  Global Instance blk_auth_timeless pre : Timeless (blk_auth pre).
-  Proof using . rewrite /blk_auth. apply _. Qed.
-
-  Lemma blk_enc_inj (b c : bv 8) : blk_enc b = blk_enc c -> b = c.
-  Proof using . rewrite /blk_enc. by intros [= <-]. Qed.
-
-  Lemma blk_fmap_prefix_inv (l1 l2 : list (bv 8)) :
-    (blk_enc <$> l1) `prefix_of` (blk_enc <$> l2) -> l1 `prefix_of` l2.
-  Proof using .
-    revert l2. induction l1 as [| b l1 IH]; intros l2 Hp; [apply prefix_nil |].
-    destruct l2 as [| c l2].
-    { exfalso. rewrite fmap_nil in Hp. apply prefix_length in Hp.
-      rewrite fmap_cons in Hp. cbn [length] in Hp. lia. }
-    rewrite !fmap_cons in Hp.
-    pose proof (prefix_cons_inv_1 _ _ _ _ Hp) as Hhd.
-    pose proof (prefix_cons_inv_2 _ _ _ _ Hp) as Htl.
-    rewrite (blk_enc_inj b c Hhd). by apply prefix_cons, IH.
-  Qed.
-
-  Lemma blk_lb_get pre : blk_auth pre -∗ blk_auth pre ∗ blk_lb pre.
-  Proof using .
-    rewrite /blk_auth /blk_lb. iIntros "H".
-    iDestruct (own_mono _ _ (◯ML ((blk_enc <$> pre)
-                                    : list (leibnizO (list mobs * bv 8))))
-                 with "H") as "#Hl"; [apply mono_list_included |].
-    iFrame "H Hl".
-  Qed.
-
-  Lemma blk_auth_grow pre b :
-    blk_auth pre ==∗ blk_auth (pre ++ [b]) ∗ blk_lb (pre ++ [b]).
-  Proof using .
-    rewrite /blk_auth /blk_lb. iIntros "H".
-    iMod (own_update _ _ (●ML ((blk_enc <$> (pre ++ [b]))
-                                 : list (leibnizO (list mobs * bv 8))))
-            with "H") as "H".
-    { apply mono_list_update. rewrite fmap_app. by eexists. }
-    iModIntro.
-    iDestruct (own_mono _ _ (◯ML ((blk_enc <$> (pre ++ [b]))
-                                    : list (leibnizO (list mobs * bv 8))))
-                 with "H") as "#Hl"; [apply mono_list_included |].
-    iFrame "H Hl".
-  Qed.
-
-  (* THE AGREEMENT THE CLAIM AND THE TWO WRITERS RUN ON: a writer's bound
-     is a PREFIX of the ledger, and at equal LENGTH -- which is exactly
-     what the era's cursor [turn] pins -- it IS the ledger. *)
-  Lemma blk_lb_prefix pre pre' :
-    blk_auth pre -∗ blk_lb pre' -∗ ⌜pre' `prefix_of` pre⌝.
-  Proof using .
-    rewrite /blk_auth /blk_lb. iIntros "Ha Hl".
-    iDestruct (own_valid_2 with "Ha Hl") as %Hv.
-    iPureIntro. apply mono_list_both_valid_L in Hv.
-    exact (blk_fmap_prefix_inv pre' pre Hv).
-  Qed.
-
-  Lemma blk_lb_agree pre pre' :
-    length pre = length pre' -> blk_auth pre -∗ blk_lb pre' -∗ ⌜pre' = pre⌝.
-  Proof using .
-    intros Hlen. iIntros "Ha Hl".
-    iDestruct (blk_lb_prefix with "Ha Hl") as %Hp. iPureIntro.
-    assert (Hle : (length pre <= length pre')%nat) by lia.
-    exact (prefix_length_eq pre' pre Hp Hle).
-  Qed.
 
   (* ================================================================= *)
   (*  S2  THE TWO CURSORS                                               *)
@@ -316,27 +331,27 @@ Section pipe_both.
   (*  child will write.                                                 *)
   (* ================================================================= *)
 
-  Definition wcur (g : gname) (q : Qp) (c : nat) : iProp Σ :=
-    ghost_var g q c.
+  Definition wcur (gc : gname) (q : Qp) (c : nat) : iProp Σ :=
+    ghost_var gc q c.
 
-  Global Instance wcur_timeless g q c : Timeless (wcur g q c).
+  Global Instance wcur_timeless gc q c : Timeless (wcur gc q c).
   Proof using . rewrite /wcur. apply _. Qed.
 
-  Lemma wcur_agree g q1 q2 c1 c2 :
-    wcur g q1 c1 -∗ wcur g q2 c2 -∗ ⌜c1 = c2⌝.
+  Lemma wcur_agree gc q1 q2 c1 c2 :
+    wcur gc q1 c1 -∗ wcur gc q2 c2 -∗ ⌜c1 = c2⌝.
   Proof using .
     rewrite /wcur. iIntros "H1 H2".
     by iDestruct (ghost_var_agree with "H1 H2") as %->.
   Qed.
 
-  Lemma wcur_update g c1 c2 m :
-    wcur g (1/2) c1 -∗ wcur g (1/2) c2 ==∗ wcur g (1/2) m ∗ wcur g (1/2) m.
+  Lemma wcur_update gc c1 c2 m :
+    wcur gc (1/2) c1 -∗ wcur gc (1/2) c2 ==∗ wcur gc (1/2) m ∗ wcur gc (1/2) m.
   Proof using .
     rewrite /wcur. iIntros "H1 H2".
     by iMod (ghost_var_update_halves m with "H1 H2") as "[$ $]".
   Qed.
 
-  Lemma wcur_excl g c1 c2 : wcur g 1 c1 -∗ wcur g 1 c2 -∗ False.
+  Lemma wcur_excl gc c1 c2 : wcur gc 1 c1 -∗ wcur gc 1 c2 -∗ False.
   Proof using .
     rewrite /wcur. iIntros "H1 H2".
     by iDestruct (ghost_var_valid_2 with "H1 H2") as %[Hq _].
@@ -346,12 +361,37 @@ Section pipe_both.
   (*  S3  THE FAMILY                                                    *)
   (* ================================================================= *)
 
+  (* WHAT TIES THE FAMILY TO THE CLAIM.  Before the block's first byte
+     there is no round ledger yet and the claim owns the WHOLE
+     current-round ghost; [sel = []] is exactly that state, and the first
+     byte's step is what mints the ledger and splits the ghost.  After
+     it, the family holds the writer's half AND the ledger's lower bound
+     on the bytes written so far -- the half is what makes it the CURRENT
+     round's family and not a stale one. *)
+  Definition pblk_led (k : nat) (I R : list (bv 8)) (sel : list bool)
+    : iProp Σ :=
+    (⌜sel = []⌝ ∨ ∃ (w : pipe_era) (gb : gname),
+        pera_pin g k w ∗ cur_half w (1/2) (nlines I - 1)%nat gb
+        ∗ rblk_lb gb (pend2 R sel))%I.
+
+  Global Instance pblk_led_timeless k I R sel :
+    Timeless (pblk_led k I R sel).
+  Proof using .
+    rewrite /pblk_led.
+    apply bi.or_timeless; [apply bi.pure_timeless |].
+    apply bi.exist_timeless; intro w.
+    apply bi.exist_timeless; intro gb.
+    apply bi.sep_timeless; [apply pera_pin_timeless |].
+    apply bi.sep_timeless;
+      [apply cur_half_timeless | apply rblk_lb_timeless].
+  Qed.
+
   Definition pwc_blk2 (k : nat) (v : era_pins) (I : list (bv 8))
       (R : list (bv 8)) (sel : list bool) (c1 c2 : nat) : iProp Σ :=
     ((∃ (ps cs : list nat) (P : nat),
         ⌜wr_blk2_p ps cs I P R sel c1 c2⌝ ∗ ⌜wr_tail_p ps cs⌝
         ∗ turn v (P + c1 + c2)%nat ∗ ps_lb v ps ∗ cs_lb v cs
-        ∗ blk_lb (pend2 R sel) ∗ inp_lb v I) ∨ PT)%I.
+        ∗ pblk_led k I R sel ∗ inp_lb v I) ∨ PT)%I.
 
   (* NAME THE LEAVES, do not search: the tree carries 455 [Timeless]
      instances under transparent definitions and one [apply _] at this
@@ -369,7 +409,7 @@ Section pipe_both.
     apply bi.sep_timeless; [apply turn_timeless |].
     apply bi.sep_timeless; [apply ps_lb_timeless |].
     apply bi.sep_timeless; [apply cs_lb_timeless |].
-    apply bi.sep_timeless; [apply blk_lb_timeless | apply inp_lb_timeless].
+    apply bi.sep_timeless; [apply pblk_led_timeless | apply inp_lb_timeless].
   Qed.
 
   Lemma pwc_blk2_taint k v I R sel c1 c2 : PT -∗ pwc_blk2 k v I R sel c1 c2.
@@ -382,15 +422,17 @@ Section pipe_both.
   Lemma pwc_blk2_of_lend (k : nat) (v : era_pins) (I : list (bv 8))
       (R : list (bv 8)) :
     pboth_line I ->
-    blk_lb [] -∗ pwc_lend g k v I -∗ pwc_blk2 k v I R [] 0%nat 0%nat.
+    pwc_lend g k v I -∗ pwc_blk2 k v I R [] 0%nat 0%nat.
   Proof using .
-    intros Hl. iIntros "#Hblk Hc". rewrite /pwc_lend /pwc_blk2.
+    intros Hl. iIntros "Hc". rewrite /pwc_lend /pwc_blk2.
     iDestruct "Hc" as "[Hx | #HT]"; last by iRight.
     iDestruct "Hx" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE)".
     iLeft. iExists ps, cs, P.
-    rewrite !Nat.add_0_r (pend2_nil R). iFrame "Htn Hps Hcs HE Hblk".
-    iPureIntro. split; [| exact (proj2 Hw)].
-    exact (wr_blk_p_blk2 ps cs I P R (proj1 Hw) Hl).
+    rewrite !Nat.add_0_r. iFrame "Htn Hps Hcs HE".
+    iSplitR;
+      [iPureIntro; exact (wr_blk_p_blk2 ps cs I P R (proj1 Hw) Hl) |].
+    iSplitR; [iPureIntro; exact (proj2 Hw) |].
+    rewrite /pblk_led. by iLeft.
   Qed.
 
   (* ================================================================= *)
@@ -407,26 +449,27 @@ Section pipe_both.
          (H : LogEntryDefs.cons_hist) (I R : list (bv 8)) (ps cs : list nat)
          (P : nat) (sel : list bool) (c1 c2 : nat) (b : bv 8),
         ⌜wr_blk2_p ps cs I P R sel c1 c2⌝ -∗ ⌜wr_tail_p ps cs⌝ -∗
-        ⌜dg_execL !! c1 = Some b⌝ -∗
+        ⌜dg_execL !! c1 = Some b⌝ -∗ ⌜pblk2_wit I R (sel ++ [true])⌝ -∗
         era_pin γ k v -∗ turn v (P + c1 + c2)%nat -∗ ps_lb v ps -∗
-        cs_lb v cs -∗ blk_lb (pend2 R sel) -∗ inp_lb v I -∗
+        cs_lb v cs -∗ pblk_led k I R sel -∗ inp_lb v I -∗
         pecl g k ho H ==∗
           pecl g k ho (ConsLog.cons_step H (ConsLog.EvOut b))
           ∗ ((turn v (S (P + c1 + c2))%nat
-              ∗ blk_lb (pend2 R (sel ++ [true]))) ∨ PT))%I.
+              ∗ pblk_led k I R (sel ++ [true])) ∨ PT))%I.
 
   Definition pblk2_ecl_R : iProp Σ :=
     (□ ∀ (k : nat) (v : era_pins) (ho : list mobs)
          (H : LogEntryDefs.cons_hist) (I R : list (bv 8)) (ps cs : list nat)
          (P : nat) (sel : list bool) (c1 c2 : nat) (b : bv 8),
         ⌜wr_blk2_p ps cs I P R sel c1 c2⌝ -∗ ⌜wr_tail_p ps cs⌝ -∗
-        ⌜R !! c2 = Some b⌝ -∗
+        ⌜R !! c2 = Some b⌝ -∗ ⌜Forall nodollar R⌝ -∗
+        ⌜pblk2_wit I R (sel ++ [false])⌝ -∗
         era_pin γ k v -∗ turn v (P + c1 + c2)%nat -∗ ps_lb v ps -∗
-        cs_lb v cs -∗ blk_lb (pend2 R sel) -∗ inp_lb v I -∗
+        cs_lb v cs -∗ pblk_led k I R sel -∗ inp_lb v I -∗
         pecl g k ho H ==∗
           pecl g k ho (ConsLog.cons_step H (ConsLog.EvOut b))
           ∗ ((turn v (S (P + c1 + c2))%nat
-              ∗ blk_lb (pend2 R (sel ++ [false]))) ∨ PT))%I.
+              ∗ pblk_led k I R (sel ++ [false])) ∨ PT))%I.
 
   (* ...AND THE FILING, at the prompt's own first byte: the only step
      that moves [cs], and the only place a round's code is built. *)
@@ -435,9 +478,10 @@ Section pipe_both.
          (H : LogEntryDefs.cons_hist) (I R : list (bv 8)) (ps cs : list nat)
          (P : nat) (sel : list bool) (c1 c2 : nat) (a : nat) (b : bv 8),
         ⌜wr_blk2_p ps cs I P R sel c1 c2⌝ -∗ ⌜wr_tail_p ps cs⌝ -∗
-        ⌜pblk2_code I R sel a⌝ -∗ ⌜b = u_prompt !!! 0%nat⌝ -∗
+        ⌜pblk2_code I R sel a⌝ -∗ ⌜sel <> []⌝ -∗
+        ⌜b = u_prompt !!! 0%nat⌝ -∗
         era_pin γ k v -∗ turn v (P + c1 + c2)%nat -∗ ps_lb v ps -∗
-        cs_lb v cs -∗ blk_lb (pend2 R sel) -∗ inp_lb v I -∗
+        cs_lb v cs -∗ pblk_led k I R sel -∗ inp_lb v I -∗
         pecl g k ho H ==∗
           pecl g k ho (ConsLog.cons_step H (ConsLog.EvOut b))
           ∗ ((turn v (S (P + c1 + c2))%nat ∗ cs_lb v (cs ++ [a])) ∨ PT))%I.
@@ -466,6 +510,158 @@ Section pipe_both.
   Lemma pblk2_ecl_f : pblk2_ecl -∗ pblk2_ecl_file.
   Proof using . by iIntros "(_ & _ & $)". Qed.
 
+  (* ----------------------------------------------------------------- *)
+  (*  ...AND WHAT THE CLAIM PAYS: the three steps, at [PipeOut]'s own    *)
+  (*  four.  The first byte of the block OPENS the round (mints its      *)
+  (*  ledger, splits [pe_cur]); every further byte appends to that       *)
+  (*  ledger under the writer's half; the prompt's first byte files the  *)
+  (*  round's code and rejoins the ghost.                                *)
+  (* ----------------------------------------------------------------- *)
+
+  Lemma pblk2_ecl_L_holds : ⊢ pblk2_ecl_L.
+  Proof using .
+    rewrite /pblk2_ecl_L. iModIntro.
+    iIntros (k v ho H I R ps cs P sel c1 c2 b).
+    iIntros "%Hw %Htl %Hb %Hwit #Hpin Htn #Hps #Hcs Hled #HE Hcl".
+    pose proof Hw as (Hne & Hr & Hq & Hline & Hpp & HP & Hlen & Hcnt & _ & _).
+    pose proof (nlines_pos_of_rest_nil I Hne Hr) as Hpos.
+    pose proof (wr_blk2_p_sel_wf ps cs I P R sel c1 c2 Hw) as Hwf.
+    destruct (wr_blk2_step_L ps cs I P R sel c1 c2 b Hw Hb) as (_ & Hstep).
+    assert (Hnd : nodollar b)
+      by exact (Forall_lookup_1 _ _ _ _ dg_execL_nodollar Hb).
+    destruct Hwit as (a & Hok & Hpan & Hpref).
+    rewrite /pline_at in Hok, Hpan, Hpref. rewrite Hstep in Hpref.
+    assert (Hlb : length (pend2 R sel) = (c1 + c2)%nat)
+      by (rewrite (pend2_length R sel Hwf); exact Hlen).
+    iDestruct "Hled" as "[%Hnil | Hled]".
+    - (* THE BLOCK'S FIRST BYTE: the round's ledger is minted here *)
+      subst sel.
+      assert (Hc10 : c1 = 0%nat) by (cbn [count_true] in Hcnt; lia).
+      assert (Hc20 : c2 = 0%nat) by (cbn [length] in Hlen; lia).
+      subst c1 c2.
+      rewrite (pend2_nil R) in Hpref. cbn [app] in Hpref.
+      assert (Hb0 : pcont (pline_of (bodies_of I !!! (nlines I - 1)%nat))
+                      (palt_of a) !! 0%nat = Some b).
+      { destruct Hpref as [z Hz]. rewrite Hz. reflexivity. }
+      assert (Hle : (nlines I <= S (length cs))%nat) by lia.
+      iMod (pecl_blk2_open g k v P a b ps cs I ho H Hne Hr Hle Hpp HP
+              Hok Hpan Hb0 Hnd with "Hpin [Htn] Hps Hcs HE Hcl")
+        as "(Hcl & Hret)".
+      (* [replace P with ...] would rewrite P inside [Htn] too -- the
+         Iris context is part of the Coq goal.  Convert the INDEX. *)
+      { cbn [count_true]. rewrite ?Nat.add_0_r. iExact "Htn". }
+      iModIntro. iFrame "Hcl".
+      iDestruct "Hret" as "[Hx | #HT]"; [| by iRight].
+      iDestruct "Hx" as (w gb) "(Htn & #Hpera & Hcur & #Hrlb & _ & _ & _)".
+      iLeft. cbn [count_true]. rewrite ?Nat.add_0_r. iFrame "Htn".
+      rewrite /pblk_led. iRight. iExists w, gb. iFrame "Hpera Hcur".
+      rewrite Hstep (pend2_nil R). cbn [app]. iFrame "Hrlb".
+    - (* A FURTHER BYTE: the round's own ledger, under the writer's half *)
+      iDestruct "Hled" as (w gb) "(#Hpera & Hcur & #Hrlb)".
+      iMod (pecl_blk2_byte g k v w gb P (nlines I - 1)%nat a b
+              (pend2 R sel) ps cs I ho H Hne Hr eq_refl Hq Hpp HP
+              Hok Hpan Hpref Hnd
+              with "Hpin Hpera [Htn] Hcur Hrlb Hps Hcs HE Hcl")
+        as "(Hcl & Hret)".
+      { replace (P + length (pend2 R sel))%nat with (P + c1 + c2)%nat
+          by (rewrite Hlb; lia). iExact "Htn". }
+      iModIntro. iFrame "Hcl".
+      iDestruct "Hret" as "[(Htn & Hcur & #Hrlb') | #HT]"; [| by iRight].
+      iLeft.
+      replace (S (P + c1 + c2))%nat
+        with (S (P + length (pend2 R sel)))%nat by (rewrite Hlb; lia).
+      iFrame "Htn". rewrite /pblk_led. iRight. iExists w, gb.
+      iFrame "Hpera Hcur". rewrite Hstep. iFrame "Hrlb'".
+  Qed.
+
+  Lemma pblk2_ecl_R_holds : ⊢ pblk2_ecl_R.
+  Proof using .
+    rewrite /pblk2_ecl_R. iModIntro.
+    iIntros (k v ho H I R ps cs P sel c1 c2 b).
+    iIntros "%Hw %Htl %Hb %HndR %Hwit #Hpin Htn #Hps #Hcs Hled #HE Hcl".
+    pose proof Hw as (Hne & Hr & Hq & Hline & Hpp & HP & Hlen & Hcnt & _ & _).
+    pose proof (nlines_pos_of_rest_nil I Hne Hr) as Hpos.
+    pose proof (wr_blk2_p_sel_wf ps cs I P R sel c1 c2 Hw) as Hwf.
+    destruct (wr_blk2_step_R ps cs I P R sel c1 c2 b Hw Hb) as (_ & Hstep).
+    assert (Hnd : nodollar b)
+      by exact (Forall_lookup_1 _ _ _ _ HndR Hb).
+    destruct Hwit as (a & Hok & Hpan & Hpref).
+    rewrite /pline_at in Hok, Hpan, Hpref. rewrite Hstep in Hpref.
+    assert (Hlb : length (pend2 R sel) = (c1 + c2)%nat)
+      by (rewrite (pend2_length R sel Hwf); exact Hlen).
+    iDestruct "Hled" as "[%Hnil | Hled]".
+    - subst sel.
+      assert (Hc10 : c1 = 0%nat) by (cbn [count_true] in Hcnt; lia).
+      assert (Hc20 : c2 = 0%nat) by (cbn [length] in Hlen; lia).
+      subst c1 c2.
+      rewrite (pend2_nil R) in Hpref. cbn [app] in Hpref.
+      assert (Hb0 : pcont (pline_of (bodies_of I !!! (nlines I - 1)%nat))
+                      (palt_of a) !! 0%nat = Some b).
+      { destruct Hpref as [z Hz]. rewrite Hz. reflexivity. }
+      assert (Hle : (nlines I <= S (length cs))%nat) by lia.
+      iMod (pecl_blk2_open g k v P a b ps cs I ho H Hne Hr Hle Hpp HP
+              Hok Hpan Hb0 Hnd with "Hpin [Htn] Hps Hcs HE Hcl")
+        as "(Hcl & Hret)".
+      { cbn [count_true]. rewrite ?Nat.add_0_r. iExact "Htn". }
+      iModIntro. iFrame "Hcl".
+      iDestruct "Hret" as "[Hx | #HT]"; [| by iRight].
+      iDestruct "Hx" as (w gb) "(Htn & #Hpera & Hcur & #Hrlb & _ & _ & _)".
+      iLeft. cbn [count_true]. rewrite ?Nat.add_0_r. iFrame "Htn".
+      rewrite /pblk_led. iRight. iExists w, gb. iFrame "Hpera Hcur".
+      rewrite Hstep (pend2_nil R). cbn [app]. iFrame "Hrlb".
+    - iDestruct "Hled" as (w gb) "(#Hpera & Hcur & #Hrlb)".
+      iMod (pecl_blk2_byte g k v w gb P (nlines I - 1)%nat a b
+              (pend2 R sel) ps cs I ho H Hne Hr eq_refl Hq Hpp HP
+              Hok Hpan Hpref Hnd
+              with "Hpin Hpera [Htn] Hcur Hrlb Hps Hcs HE Hcl")
+        as "(Hcl & Hret)".
+      { replace (P + length (pend2 R sel))%nat with (P + c1 + c2)%nat
+          by (rewrite Hlb; lia). iExact "Htn". }
+      iModIntro. iFrame "Hcl".
+      iDestruct "Hret" as "[(Htn & Hcur & #Hrlb') | #HT]"; [| by iRight].
+      iLeft.
+      replace (S (P + c1 + c2))%nat
+        with (S (P + length (pend2 R sel)))%nat by (rewrite Hlb; lia).
+      iFrame "Htn". rewrite /pblk_led. iRight. iExists w, gb.
+      iFrame "Hpera Hcur". rewrite Hstep. iFrame "Hrlb'".
+  Qed.
+
+  Lemma pblk2_ecl_file_holds : ⊢ pblk2_ecl_file.
+  Proof using .
+    rewrite /pblk2_ecl_file. iModIntro.
+    iIntros (k v ho H I R ps cs P sel c1 c2 a b).
+    iIntros "%Hw %Htl %Hcode %Hnn %Hbv #Hpin Htn #Hps #Hcs Hled #HE Hcl".
+    pose proof Hw as (Hne & Hr & Hq & Hline & Hpp & HP & Hlen & Hcnt & _ & _).
+    pose proof (wr_blk2_p_sel_wf ps cs I P R sel c1 c2 Hw) as Hwf.
+    pose proof Hcode as (Hok & Hpan & Hcont).
+    rewrite /pline_at in Hok, Hpan, Hcont.
+    assert (Hlb : length (pend2 R sel) = (c1 + c2)%nat)
+      by (rewrite (pend2_length R sel Hwf); exact Hlen).
+    iDestruct "Hled" as "[%Hnil | Hled]"; [by destruct (Hnn Hnil) |].
+    iDestruct "Hled" as (w gb) "(#Hpera & Hcur & #Hrlb)".
+    iMod (pecl_blk2_file g k v w gb P (nlines I - 1)%nat a b
+            (pend2 R sel) ps cs I ho H Hne Hr eq_refl Hq Hpp HP
+            Hok Hpan Hcont Hbv
+            with "Hpin Hpera [Htn] Hcur Hrlb Hps Hcs HE Hcl")
+      as "(Hcl & Hret)".
+    { replace (P + length (pend2 R sel))%nat with (P + c1 + c2)%nat
+        by (rewrite Hlb; lia). iExact "Htn". }
+    iModIntro. iFrame "Hcl".
+    iDestruct "Hret" as "[(Htn & _ & #Hcs' & _) | #HT]"; [| by iRight].
+    iLeft.
+    replace (S (P + c1 + c2))%nat
+      with (S (P + length (pend2 R sel)))%nat by (rewrite Hlb; lia).
+    iFrame "Htn Hcs'".
+  Qed.
+
+  (* THE LANE'S DEBT, PAID *)
+  Lemma pblk2_ecl_holds : ⊢ pblk2_ecl.
+  Proof using .
+    rewrite /pblk2_ecl.
+    iSplit; [iApply pblk2_ecl_L_holds |].
+    iSplit; [iApply pblk2_ecl_R_holds | iApply pblk2_ecl_file_holds].
+  Qed.
+
   (* ================================================================= *)
   (*  S5  THE TWO BYTE STEPS, at the family held LINEARLY               *)
   (*                                                                   *)
@@ -483,26 +679,27 @@ Section pipe_both.
   Lemma pblk2_step_L (k : nat) (v : era_pins) (I R : list (bv 8))
       (sel : list bool) (c1 c2 : nat) (b : bv 8) (Φ : iProp Σ) :
     dg_execL !! c1 = Some b ->
+    pblk2_wit I R (sel ++ [true]) ->
     pblk2_ecl_L -∗ pipe_link_taint g -∗ era_pin γ k v -∗
     pwc_blk2 k v I R sel c1 c2 -∗
     (pwc_blk2 k v I R (sel ++ [true]) (S c1) c2 -∗ Φ) -∗
     out_link Uart0 k b Φ.
   Proof using Hcons.
-    intros Hb. iIntros "#HL #Ht #Hpin Hc HΦ".
+    intros Hb Hwit. iIntros "#HL #Ht #Hpin Hc HΦ".
     rewrite {1}/pwc_blk2. iDestruct "Hc" as "[Hx | #HT]"; last first.
     { iApply ("Ht" $! k b Φ with "HT [HΦ]").
       iIntros "#HT'". iApply "HΦ". by iApply pwc_blk2_taint. }
     iDestruct "Hx"
-      as (ps cs P) "(%Hw & %Htl & Htn & #Hps & #Hcs & #Hblk & #HE)".
+      as (ps cs P) "(%Hw & %Htl & Htn & #Hps & #Hcs & Hled & #HE)".
     destruct (wr_blk2_step_L ps cs I P R sel c1 c2 b Hw Hb) as (Hw' & _).
     rewrite /out_link. iIntros (o H) "#Hlb Hres". rewrite !pbchist_at0.
     iMod ("HL" $! k v (default [] o) H I R ps cs P sel c1 c2 b
-            with "[//] [//] [//] Hpin Htn Hps Hcs Hblk HE Hres")
+            with "[//] [//] [//] [//] Hpin Htn Hps Hcs Hled HE Hres")
       as "(Hres & Hret)".
     iModIntro. iExists o. rewrite pbchist_at0. iFrame "Hlb Hres".
     iApply "HΦ". rewrite /pwc_blk2.
-    iDestruct "Hret" as "[[Htn #Hblk'] | #HT]"; [| by iRight].
-    iLeft. iExists ps, cs, P. iFrame "Hps Hcs HE Hblk'".
+    iDestruct "Hret" as "[[Htn Hled'] | #HT]"; [| by iRight].
+    iLeft. iExists ps, cs, P. iFrame "Hps Hcs HE Hled'".
     replace (P + S c1 + c2)%nat with (S (P + c1 + c2))%nat by lia.
     iFrame "Htn". iPureIntro. by split.
   Qed.
@@ -510,26 +707,28 @@ Section pipe_both.
   Lemma pblk2_step_R (k : nat) (v : era_pins) (I R : list (bv 8))
       (sel : list bool) (c1 c2 : nat) (b : bv 8) (Φ : iProp Σ) :
     R !! c2 = Some b ->
+    Forall nodollar R ->
+    pblk2_wit I R (sel ++ [false]) ->
     pblk2_ecl_R -∗ pipe_link_taint g -∗ era_pin γ k v -∗
     pwc_blk2 k v I R sel c1 c2 -∗
     (pwc_blk2 k v I R (sel ++ [false]) c1 (S c2) -∗ Φ) -∗
     out_link Uart0 k b Φ.
   Proof using Hcons.
-    intros Hb. iIntros "#HR #Ht #Hpin Hc HΦ".
+    intros Hb HndR Hwit. iIntros "#HR #Ht #Hpin Hc HΦ".
     rewrite {1}/pwc_blk2. iDestruct "Hc" as "[Hx | #HT]"; last first.
     { iApply ("Ht" $! k b Φ with "HT [HΦ]").
       iIntros "#HT'". iApply "HΦ". by iApply pwc_blk2_taint. }
     iDestruct "Hx"
-      as (ps cs P) "(%Hw & %Htl & Htn & #Hps & #Hcs & #Hblk & #HE)".
+      as (ps cs P) "(%Hw & %Htl & Htn & #Hps & #Hcs & Hled & #HE)".
     destruct (wr_blk2_step_R ps cs I P R sel c1 c2 b Hw Hb) as (Hw' & _).
     rewrite /out_link. iIntros (o H) "#Hlb Hres". rewrite !pbchist_at0.
     iMod ("HR" $! k v (default [] o) H I R ps cs P sel c1 c2 b
-            with "[//] [//] [//] Hpin Htn Hps Hcs Hblk HE Hres")
+            with "[//] [//] [//] [//] [//] Hpin Htn Hps Hcs Hled HE Hres")
       as "(Hres & Hret)".
     iModIntro. iExists o. rewrite pbchist_at0. iFrame "Hlb Hres".
     iApply "HΦ". rewrite /pwc_blk2.
-    iDestruct "Hret" as "[[Htn #Hblk'] | #HT]"; [| by iRight].
-    iLeft. iExists ps, cs, P. iFrame "Hps Hcs HE Hblk'".
+    iDestruct "Hret" as "[[Htn Hled'] | #HT]"; [| by iRight].
+    iLeft. iExists ps, cs, P. iFrame "Hps Hcs HE Hled'".
     replace (P + c1 + S c2)%nat with (S (P + c1 + c2))%nat by lia.
     iFrame "Htn". iPureIntro. by split.
   Qed.
@@ -547,18 +746,19 @@ Section pipe_both.
   Lemma pblk2_exit (k : nat) (v : era_pins) (I R : list (bv 8))
       (sel : list bool) (c1 c2 : nat) (a : nat) (b : bv 8) (Φ : iProp Σ) :
     pblk2_code I R sel a ->
+    sel <> [] ->
     b = u_prompt !!! 0%nat ->
     pblk2_ecl_file -∗ pipe_link_taint g -∗ era_pin γ k v -∗
     pwc_blk2 k v I R sel c1 c2 -∗
     (pwc_sp_t g k v I -∗ Φ) -∗
     out_link Uart0 k b Φ.
   Proof using Hcons.
-    intros Hcode Hb. iIntros "#HF #Ht #Hpin Hc HΦ".
+    intros Hcode Hnn Hb. iIntros "#HF #Ht #Hpin Hc HΦ".
     rewrite {1}/pwc_blk2. iDestruct "Hc" as "[Hx | #HT]"; last first.
     { iApply ("Ht" $! k b Φ with "HT [HΦ]").
       iIntros "#HT'". iApply "HΦ". rewrite /pwc_sp_t. by iRight. }
     iDestruct "Hx"
-      as (ps cs P) "(%Hw & %Htl & Htn & #Hps & #Hcs & #Hblk & #HE)".
+      as (ps cs P) "(%Hw & %Htl & Htn & #Hps & #Hcs & Hled & #HE)".
     pose proof (wr_blk2_p_sel_wf ps cs I P R sel c1 c2 Hw) as Hwf.
     pose proof Hw as (_ & _ & _ & _ & _ & _ & Hlen & _).
     assert (Hpapr : papr I a) by exact (pblk2_code_papr I R sel a Hcode).
@@ -566,7 +766,7 @@ Section pipe_both.
       by exact (pblk2_code_len I R sel a c1 c2 Hwf Hlen Hcode).
     rewrite /out_link. iIntros (o H) "#Hlb Hres". rewrite !pbchist_at0.
     iMod ("HF" $! k v (default [] o) H I R ps cs P sel c1 c2 a b
-            with "[//] [//] [//] [//] Hpin Htn Hps Hcs Hblk HE Hres")
+            with "[//] [//] [//] [//] [//] Hpin Htn Hps Hcs Hled HE Hres")
       as "(Hres & Hret)".
     iModIntro. iExists o. rewrite pbchist_at0. iFrame "Hlb Hres".
     iApply "HΦ".
@@ -617,12 +817,13 @@ Section pipe_both.
       (Φ : iProp Σ) :
     (↑N : coPset) ## (↑uartN Uart0 : coPset) ->
     dg_execL !! c1 = Some b ->
+    (forall sel : list bool, sel_wf2 R sel -> pblk2_wit I R sel) ->
     pblk2_ecl_L -∗ pipe_link_taint g -∗ era_pin γ k v -∗
     blk2_inv N k v I R gL gR -∗ wcur gL (1/2) c1 -∗
     (wcur gL (1/2) (S c1) -∗ Φ) -∗
     out_link Uart0 k b Φ.
   Proof using Hcons.
-    intros Hns Hb. iIntros "#HL #Ht #Hpin #Hinv HcL HΦ".
+    intros Hns Hb Hwit. iIntros "#HL #Ht #Hpin #Hinv HcL HΦ".
     rewrite /out_link. iIntros (o H) "#Hlb Hres". rewrite !pbchist_at0.
     assert (Hsub : (↑N : coPset) ⊆ (⊤ ∖ ↑uartN Uart0 : coPset)).
     { apply subseteq_difference_r; [exact Hns | apply top_subseteq]. }
@@ -641,17 +842,20 @@ Section pipe_both.
       iModIntro. iExists o. rewrite pbchist_at0. iFrame "Hlb Hres".
       by iApply "HΦ". }
     iDestruct "Hx"
-      as (ps cs P) "(%Hw & %Htl & Htn & #Hps & #Hcs & #Hblk & #HE)".
+      as (ps cs P) "(%Hw & %Htl & Htn & #Hps & #Hcs & Hled & #HE)".
     destruct (wr_blk2_step_L ps cs I P R sel c1 c2 b Hw Hb) as (Hw' & _).
+    pose proof (Hwit (sel ++ [true])
+                  (wr_blk2_p_sel_wf ps cs I P R (sel ++ [true]) (S c1) c2 Hw'))
+      as Hwit'.
     iMod ("HL" $! k v (default [] o) H I R ps cs P sel c1 c2 b
-            with "[//] [//] [//] Hpin Htn Hps Hcs Hblk HE Hres")
+            with "[//] [//] [//] [//] Hpin Htn Hps Hcs Hled HE Hres")
       as "(Hres & Hret)".
     iMod (wcur_update gL c1 c1 (S c1) with "HcL HgL") as "[HcL HgL]".
     iMod ("Hclose" with "[Hret HgL HgR]") as "_".
     { iNext. iExists (sel ++ [true]), (S c1), c2. iFrame "HgL HgR".
       rewrite /pwc_blk2.
-      iDestruct "Hret" as "[[Htn #Hblk'] | #HT]"; [| by iRight].
-      iLeft. iExists ps, cs, P. iFrame "Hps Hcs HE Hblk'".
+      iDestruct "Hret" as "[[Htn Hled'] | #HT]"; [| by iRight].
+      iLeft. iExists ps, cs, P. iFrame "Hps Hcs HE Hled'".
       replace (P + S c1 + c2)%nat with (S (P + c1 + c2))%nat by lia.
       iFrame "Htn". iPureIntro. by split. }
     iModIntro. iExists o. rewrite pbchist_at0. iFrame "Hlb Hres".
@@ -663,12 +867,14 @@ Section pipe_both.
       (Φ : iProp Σ) :
     (↑N : coPset) ## (↑uartN Uart0 : coPset) ->
     R !! c2 = Some b ->
+    Forall nodollar R ->
+    (forall sel : list bool, sel_wf2 R sel -> pblk2_wit I R sel) ->
     pblk2_ecl_R -∗ pipe_link_taint g -∗ era_pin γ k v -∗
     blk2_inv N k v I R gL gR -∗ wcur gR (1/2) c2 -∗
     (wcur gR (1/2) (S c2) -∗ Φ) -∗
     out_link Uart0 k b Φ.
   Proof using Hcons.
-    intros Hns Hb. iIntros "#HR #Ht #Hpin #Hinv HcR HΦ".
+    intros Hns Hb HndR Hwit. iIntros "#HR #Ht #Hpin #Hinv HcR HΦ".
     rewrite /out_link. iIntros (o H) "#Hlb Hres". rewrite !pbchist_at0.
     assert (Hsub : (↑N : coPset) ⊆ (⊤ ∖ ↑uartN Uart0 : coPset)).
     { apply subseteq_difference_r; [exact Hns | apply top_subseteq]. }
@@ -685,17 +891,20 @@ Section pipe_both.
       iModIntro. iExists o. rewrite pbchist_at0. iFrame "Hlb Hres".
       by iApply "HΦ". }
     iDestruct "Hx"
-      as (ps cs P) "(%Hw & %Htl & Htn & #Hps & #Hcs & #Hblk & #HE)".
+      as (ps cs P) "(%Hw & %Htl & Htn & #Hps & #Hcs & Hled & #HE)".
     destruct (wr_blk2_step_R ps cs I P R sel c1 c2 b Hw Hb) as (Hw' & _).
+    pose proof (Hwit (sel ++ [false])
+                  (wr_blk2_p_sel_wf ps cs I P R (sel ++ [false]) c1 (S c2) Hw'))
+      as Hwit'.
     iMod ("HR" $! k v (default [] o) H I R ps cs P sel c1 c2 b
-            with "[//] [//] [//] Hpin Htn Hps Hcs Hblk HE Hres")
+            with "[//] [//] [//] [//] [//] Hpin Htn Hps Hcs Hled HE Hres")
       as "(Hres & Hret)".
     iMod (wcur_update gR c2 c2 (S c2) with "HcR HgR") as "[HcR HgR]".
     iMod ("Hclose" with "[Hret HgL HgR]") as "_".
     { iNext. iExists (sel ++ [false]), c1, (S c2). iFrame "HgL HgR".
       rewrite /pwc_blk2.
-      iDestruct "Hret" as "[[Htn #Hblk'] | #HT]"; [| by iRight].
-      iLeft. iExists ps, cs, P. iFrame "Hps Hcs HE Hblk'".
+      iDestruct "Hret" as "[[Htn Hled'] | #HT]"; [| by iRight].
+      iLeft. iExists ps, cs, P. iFrame "Hps Hcs HE Hled'".
       replace (P + c1 + S c2)%nat with (S (P + c1 + c2))%nat by lia.
       iFrame "Htn". iPureIntro. by split. }
     iModIntro. iExists o. rewrite pbchist_at0. iFrame "Hlb Hres".
@@ -725,6 +934,7 @@ Section pipe_both.
     (c1 + count_true tail <= length dg_execL)%nat ->
     (c2 + (length tail - count_true tail) <= length R)%nat ->
     (length sel = c1 + c2)%nat -> count_true sel = c1 ->
+    Forall nodollar R -> pblk2_wit I R (sel ++ tail) ->
     pblk2_ecl_L -∗ pblk2_ecl_R -∗ pipe_link_taint g -∗ era_pin γ k v -∗
     pwc_blk2 k v I R sel c1 c2 -∗
     (pwc_blk2 k v I R (sel ++ tail) (c1 + count_true tail)%nat
@@ -732,7 +942,8 @@ Section pipe_both.
     out_chain Uart0 k (both_bytes2 R sel tail) Φ.
   Proof using Hcons.
     revert sel c1 c2 Φ.
-    induction tail as [| [|] t IH]; intros sel c1 c2 Φ H1 H2 Hlen Hcnt;
+    induction tail as [| [|] t IH];
+      intros sel c1 c2 Φ H1 H2 Hlen Hcnt HndR Hwit;
       iIntros "#HL #HR #Ht #Hpin Hc HΦ".
     - (* nothing left to write: [sel ++ []] is not CONVERTIBLE to [sel],
          so the empty tail is closed on the continuation's own argument *)
@@ -749,7 +960,14 @@ Section pipe_both.
       destruct (lookup_lt_is_Some_2 dg_execL c1 Hlt) as [b Hb].
       rewrite Hcnt (list_lookup_total_correct dg_execL c1 b Hb).
       cbn [out_chain].
-      iApply (pblk2_step_L k v I R sel c1 c2 b _ Hb with "HL Ht Hpin Hc").
+      assert (Hwf' : sel_wf2 R (sel ++ true :: t)).
+      { rewrite /sel_wf2 count_true_app length_app Hcnt Hlen.
+        cbn [count_true length]. lia. }
+      assert (HW1 : pblk2_wit I R (sel ++ [true])).
+      { apply (pblk2_wit_mono I R (sel ++ [true]) (sel ++ true :: t));
+          [exists t; by rewrite -app_assoc | exact Hwf' | exact Hwit]. }
+      iApply (pblk2_step_L k v I R sel c1 c2 b _ Hb HW1
+               with "HL Ht Hpin Hc").
       iIntros "Hc".
       (* the four premises are HOISTED, never spliced as [ltac:] into an
          application the proofmode still has evars in
@@ -762,7 +980,9 @@ Section pipe_both.
         by (rewrite length_app Hlen; cbn [length]; lia).
       assert (HD : count_true (sel ++ [true]) = S c1)
         by (rewrite count_true_app Hcnt; cbn [count_true]; lia).
-      iApply (IH (sel ++ [true]) (S c1) c2 Φ HA HB HC HD
+      assert (HE2 : pblk2_wit I R ((sel ++ [true]) ++ t))
+        by (rewrite -app_assoc; exact Hwit).
+      iApply (IH (sel ++ [true]) (S c1) c2 Φ HA HB HC HD HndR HE2
              with "HL HR Ht Hpin Hc [HΦ]").
       iIntros "Hc". iApply "HΦ". cbn [count_true length].
       replace (sel ++ true :: t) with ((sel ++ [true]) ++ t)
@@ -780,7 +1000,14 @@ Section pipe_both.
       replace (length sel - count_true sel)%nat with c2 by lia.
       rewrite (list_lookup_total_correct R c2 b Hb).
       cbn [out_chain].
-      iApply (pblk2_step_R k v I R sel c1 c2 b _ Hb with "HR Ht Hpin Hc").
+      assert (Hwf' : sel_wf2 R (sel ++ false :: t)).
+      { rewrite /sel_wf2 count_true_app length_app Hcnt Hlen.
+        cbn [count_true length]. lia. }
+      assert (HW1 : pblk2_wit I R (sel ++ [false])).
+      { apply (pblk2_wit_mono I R (sel ++ [false]) (sel ++ false :: t));
+          [exists t; by rewrite -app_assoc | exact Hwf' | exact Hwit]. }
+      iApply (pblk2_step_R k v I R sel c1 c2 b _ Hb HndR HW1
+               with "HR Ht Hpin Hc").
       iIntros "Hc".
       assert (HA : (c1 + count_true t <= length dg_execL)%nat) by lia.
       assert (HB : (S c2 + (length t - count_true t) <= length R)%nat) by lia.
@@ -788,7 +1015,9 @@ Section pipe_both.
         by (rewrite length_app Hlen; cbn [length]; lia).
       assert (HD : count_true (sel ++ [false]) = c1)
         by (rewrite count_true_app Hcnt; cbn [count_true]; lia).
-      iApply (IH (sel ++ [false]) c1 (S c2) Φ HA HB HC HD
+      assert (HE2 : pblk2_wit I R ((sel ++ [false]) ++ t))
+        by (rewrite -app_assoc; exact Hwit).
+      iApply (IH (sel ++ [false]) c1 (S c2) Φ HA HB HC HD HndR HE2
              with "HL HR Ht Hpin Hc [HΦ]").
       iIntros "Hc". iApply "HΦ". cbn [count_true length].
       replace (sel ++ false :: t) with ((sel ++ [false]) ++ t)
@@ -816,7 +1045,7 @@ Section pipe_both.
   Definition pipe_round_lend (k : nat) (v : era_pins) (I R : list (bv 8))
       (sel : list bool) : iProp Σ :=
     (∀ Φ : iProp Σ,
-       blk_lb [] -∗ pwc_lend g k v I -∗ (pwc_sp_t g k v I -∗ Φ) -∗
+       pwc_lend g k v I -∗ (pwc_sp_t g k v I -∗ Φ) -∗
        out_chain Uart0 k (pend2 R sel ++ [u_prompt !!! 0%nat]) Φ)%I.
 
   Lemma pipe_round_lend_holds (k : nat) (v : era_pins) (I R : list (bv 8))
@@ -824,16 +1053,18 @@ Section pipe_both.
     pboth_line I ->
     (count_true sel <= length dg_execL)%nat ->
     (length sel - count_true sel <= length R)%nat ->
+    Forall nodollar R ->
+    sel <> [] ->
     pblk2_code I R sel a ->
     pblk2_ecl -∗ pipe_link_taint g -∗ era_pin γ k v -∗
     pipe_round_lend k v I R sel.
   Proof using Hcons.
-    intros Hline H1 H2 Hcode.
-    iIntros "#Hecl #Ht #Hpin" (Φ) "#Hblk0 Hlend HΦ".
+    intros Hline H1 H2 HndR Hnn Hcode.
+    iIntros "#Hecl #Ht #Hpin" (Φ) "Hlend HΦ".
     iDestruct (pblk2_ecl_l with "Hecl") as "#HL".
     iDestruct (pblk2_ecl_r with "Hecl") as "#HR".
     iDestruct (pblk2_ecl_f with "Hecl") as "#HF".
-    iDestruct (pwc_blk2_of_lend k v I R Hline with "Hblk0 Hlend") as "Hc".
+    iDestruct (pwc_blk2_of_lend k v I R Hline with "Hlend") as "Hc".
     assert (Hb : pend2 R sel = both_bytes2 R [] sel).
     { rewrite -{1}(app_nil_l sel) (both_bytes2_app R [] sel);
         [by rewrite (pend2_nil R)
@@ -842,13 +1073,15 @@ Section pipe_both.
                   [u_prompt !!! 0%nat] Φ).
     assert (HA : (0 + count_true sel <= length dg_execL)%nat) by lia.
     assert (HB : (0 + (length sel - count_true sel) <= length R)%nat) by lia.
+    assert (HW : pblk2_wit I R ([] ++ sel))
+      by (rewrite app_nil_l; exact (pblk2_wit_of_code I R sel a Hcode)).
     iApply (pblk2_chain k v I R sel [] 0%nat 0%nat _ HA HB eq_refl eq_refl
-             with "HL HR Ht Hpin Hc").
+              HndR HW with "HL HR Ht Hpin Hc").
     iIntros "Hc". cbn [out_chain].
     rewrite app_nil_l !Nat.add_0_l.
     iApply (pblk2_exit k v I R sel (count_true sel)
               (length sel - count_true sel)%nat a (u_prompt !!! 0%nat) Φ
-              Hcode eq_refl with "HF Ht Hpin Hc HΦ").
+              Hcode Hnn eq_refl with "HF Ht Hpin Hc HΦ").
   Qed.
 
 End pipe_both.

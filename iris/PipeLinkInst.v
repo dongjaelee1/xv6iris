@@ -91,7 +91,7 @@ Section pipe_link_inst.
        lk_epin_pers := era_pin_persistent γ;
        lk_epin_tl := era_pin_timeless γ;
        lk_epin_agr := era_pin_agree γ;
-       lk_pin_epin := pi_pin_epin γ;
+       lk_pin_epin := pi_pin_epin g;
        lk_ban_tl := pwc_ban_timeless g;
        lk_owed_tl := pwc_owed_timeless g;
        lk_sp_tl := pwc_sp_timeless g;
@@ -136,33 +136,33 @@ Section pipe_link_inst.
        lk_line_of_pro := pwc_line_of_pro g;
        lk_lend_of_blk0 := pwc_lend_of_blk0 g;
 
-       lk_ban_step := pban_step γ;
+       lk_ban_step := pban_step g;
        lk_ban_owed := pwc_ban_owed g;
        lk_ban_pro := pwc_ban_pro g;
        lk_ban_done := pwc_ban_done g;
        lk_ban_done_line := pwc_ban_done_line g;
        lk_ban_inp := pwc_ban_inp g;
 
-       lk_prompt_dollar := pprompt_dollar γ;
-       lk_prompt_space := pprompt_space γ;
-       lk_prompt_dollar_ban := pprompt_dollar_ban γ;
+       lk_prompt_dollar := pprompt_dollar g;
+       lk_prompt_space := pprompt_space g;
+       lk_prompt_dollar_ban := pprompt_dollar_ban g;
        lk_read := pwc_read g;
-       lk_owed_read_taint := powed_read_taint γ;
+       lk_owed_read_taint := powed_read_taint g;
 
-       lk_blk_step := pblk_step γ;
+       lk_blk_step := pblk_step g;
        lk_blk_sp := pwc_blk_sp g;
 
-       lk_prompt_dollar_post := pprompt_dollar_post γ;
-       lk_prompt_space_t := pprompt_space_t γ;
-       lk_prompt_dollar_line := pprompt_dollar_line γ;
+       lk_prompt_dollar_post := pprompt_dollar_post g;
+       lk_prompt_space_t := pprompt_space_t g;
+       lk_prompt_dollar_line := pprompt_dollar_line g;
        lk_read_t := pwc_read_t g;
 
        lk_ab_pan := fun I => pab_pan I;
        lk_ab_exf := fun I => pab_exf I;
        lk_apr_exf := fun I => papr_exf I;
 
-       lk_ban_read_taint := pban_read_taint γ;
-       lk_turn0 := pturn0 γ;
+       lk_ban_read_taint := pban_read_taint g;
+       lk_turn0 := pturn0 g;
        lk_panic_done := pwc_panic_done g;
 
        lk_pban := pwc_pban g;
@@ -174,7 +174,7 @@ Section pipe_link_inst.
        lk_pdiag_0 := pwc_pdiag_0 g;
        lk_pban_of_ban_done := pwc_pban_of_ban_done g;
        lk_pro_of_pban := pwc_pro_of_pban g;
-       lk_pdiag_step := ppdiag_step γ;
+       lk_pdiag_step := ppdiag_step g;
        lk_pdiag_done_1 := pwc_pdiag_done_1 g;
     |}.
 
@@ -264,7 +264,12 @@ End pipe_link_inst.
 Section sh_round_facing.
   Context {Σ : gFunctors}.
   Context `{!echoOutG Σ}.
-  Context (γ : echo_fixed).
+  (* THE FIXED PART IS [PipeOut.pipe_gn] (lane PIPE-2W-2): the echo half
+     is [pgn_cl g], so every statement below names [γ] as it did -- and
+     [pipe_link_inst_at] takes the WHOLE fixed part. *)
+  Context `{!pipeOutG Σ}.
+  Context (g : pipe_gn).
+  Local Notation γ := (pgn_cl g).
   Context `{HRg : !riscvGS Σ}.
   Context `{GEN : GenId}.
 

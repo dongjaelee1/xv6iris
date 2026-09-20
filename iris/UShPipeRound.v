@@ -294,8 +294,8 @@ Section UShPipeRound.
   (*  [UShRound]-facing pair), and the generic laws below are applied at  *)
   (*  [Hold := emp] with the unit spliced in at the seam.                 *)
   (* =================================================================== *)
-  Local Notation Wcf := (pipe_Wcl_at γ).
-  Local Notation Wbf := (pipe_Wbl_at γ).
+  Local Notation Wcf := (pipe_Wcl_at g).
+  Local Notation Wbf := (pipe_Wbl_at g).
 
   (* ===================================================================== *)
   (*  NAME THE LEAF, DO NOT SEARCH.                                        *)
@@ -319,9 +319,9 @@ Section UShPipeRound.
   #[local] Instance pipe_T_pers0 : Persistent T | 0 := echo_taint_persistent γ.
   #[local] Instance pipe_T_tl0 : Timeless T | 0 := echo_taint_timeless γ.
   #[local] Instance pipe_Wcf_tl0 (I : list (bv 8)) (p : nat) :
-    Timeless (Wcf I p) | 0 := pipe_Wcl_at_timeless γ I p.
+    Timeless (Wcf I p) | 0 := pipe_Wcl_at_timeless g I p.
   #[local] Instance pipe_Wbf_tl0 (I : list (bv 8)) :
-    Timeless (Wbf I) | 0 := pipe_Wbl_at_timeless γ I.
+    Timeless (Wbf I) | 0 := pipe_Wbl_at_timeless g I.
 
   Local Lemma pipe_Wcf_pair (I : list (bv 8)) (p : nat) :
     Wcf I p ⊣⊢ (lk_lcred PI (S gen_id) I p ∗ emp)%I.
@@ -371,7 +371,7 @@ Section UShPipeRound.
     pipe_D I ->
     lk_exfb PI I = alt_execfail
     /\ (length (lk_exfb PI I) - 2)%nat = 17%nat.
-  Proof using . intros _. exact (pipe_inst_exfb_echo γ I). Qed.
+  Proof using . intros _. exact (pipe_inst_exfb_echo g I). Qed.
 
   (* ---- the four [Wc] laws [UShEchoPay]'s supply takes, at [Hold := emp] *)
   Local Lemma pwc3 (I0 : list (bv 8)) :
@@ -483,7 +483,7 @@ Section UShPipeRound.
     iIntros "#Hpin". rewrite /UkShFork.ushf_kill_law.
     iIntros "!>" (I) "#Hk".
     iAssert T as "#HT"; [ iApply pipe_Hktaint; iExact "Hk" | ].
-    iApply (pipe_Hcltaint γ I 0%nat v with "Hpin HT").
+    iApply (pipe_Hcltaint g I 0%nat v with "Hpin HT").
   Qed.
 
 
@@ -546,17 +546,17 @@ Section UShPipeRound.
   (*  is [FileDisc.uline_ws (LPipe ws)] -- the WHOLE body's parse, five   *)
   (*  words at `echo a b | cat' -- and not the left command's three.      *)
   (* =================================================================== *)
-  Definition ushq_lp (wsf : list (list (bv 8))) (g : nat -> bv 8)
+  Definition ushq_lp (wsf : list (list (bv 8))) (gf : nat -> bv 8)
       (k len : nat) : Prop :=
     exists ws : list (list (bv 8)),
       wsf = ws ++ [FileDisc.fd_w_bar; FileDisc.fd_w_cat]
-      /\ UkShPipeRound.ushq_line_at ws g k len.
+      /\ UkShPipeRound.ushq_line_at ws gf k len.
 
   (* the body walk's ONE reading of the line: its first byte is 'e'.  The
      same fact at either shape, because both run /echo -- the pipeline
      line is an echo line with six bytes glued on the end. *)
-  Lemma ushq_lp0 (wsf : list (list (bv 8))) (g : nat -> bv 8) (k len : nat) :
-    ushq_lp wsf g k len -> bv_unsigned (g k) = 101%Z.
+  Lemma ushq_lp0 (wsf : list (list (bv 8))) (gf : nat -> bv 8) (k len : nat) :
+    ushq_lp wsf gf k len -> bv_unsigned (gf k) = 101%Z.
   Proof using .
     intros (ws & _ & Hok & Hlen & Hby).
     assert (Hok' : line_ok ws) by exact (proj1 Hok).
@@ -643,7 +643,7 @@ Section UShPipeRound.
     iIntros "#Hkl #Hchl #Hchq #Hplaw".
     iPoseProof (UkShFork.ushf_body_law_echo (PS := uprogSG_free)
                   (SG := uexecSG_xv6) N γp T Wcf Wbf Pm
-                  (fun k H => H) sz Hszlo Hszal Hszok (pipe_Hwbl γ)
+                  (fun k H => H) sz Hszlo Hszal Hszok (pipe_Hwbl g)
                   with "Hkl Hchl Hplaw") as "#Hecho".
     rewrite /UkShFork.ushf_body_law.
     iIntros "!>" (lu h m f k len l n)
@@ -666,7 +666,7 @@ Section UShPipeRound.
                 ltac:(lia) ushq_lp0
                 Hregs Hs1 Ha5 Hnn Hnul Hkl2
                 (ushq_lp_of_at ws f k len Hlat)
-                Hszlo Hszal Hszok Hpm1 Hpmwb (pipe_Hwbl γ)
+                Hszlo Hszal Hszok Hpm1 Hpmwb (pipe_Hwbl g)
                 with "Hgen Hhead Hcode Hro [] Hjt Hkl Hchq Hplaw [%] Hstd
                       Hdat Hsz Hbuf Hrun").
       + iApply (UkShFork.ushf_code_shp (ukn_t N) with "Hcode").
@@ -700,7 +700,7 @@ Section UShPipeRound.
                   (fun k H => H) PipeUline.ush_line_pipe
                   (kexec_sz ElfUser.sh_elf)
                   UShRest.sh_sz_lo UShRest.sh_sz_al UShRest.sh_sz_ok
-                  (pipe_Hwbl γ) with "Hbody") as "Hb".
+                  (pipe_Hwbl g) with "Hbody") as "Hb".
     rewrite /UkSh.ush_rest_l_at.
     iDestruct ("Hb" $! l with "[%]") as "Hb'"; [ exact Hc | iExact "Hb'" ].
   Qed.

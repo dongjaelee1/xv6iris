@@ -79,6 +79,10 @@ Section PipeAdequacy.
             !fdslotGpreS Σ, !irefslotGpreS Σ, !bioslotGpreS Σ, !wchGpreS Σ}.
   Context `{!ufdG Σ}.
   Context `{!echoOutG Σ, !inG Σ (mono_listR (leibnizO Z))}.
+  (* the pipeline application's own class (lane PIPE-2W-2): [app_pipe]'s
+     fixed part is [PipeOut.pipe_gn] and its claim is [pecl], so the
+     record does not even elaborate without it. *)
+  Context `{!pipeOutG Σ}.
 
   (* =================================================================== *)
   (*  1.  THE ONE LAW THAT IS OWED, NAMED                                 *)
@@ -182,6 +186,7 @@ Definition pipeΣ : gFunctors :=
   #[ xv6Σ                (* the system theorem's own list                  *)
    ; bioslotΣ            (* not in [xv6Σ]: the bio escrow's slot camera    *)
    ; echoOutΣ            (* the console stage's ghosts -- echo's, verbatim *)
+   ; pipeOutΣ            (* the pipeline's own: the era map and [pe_cur]     *)
    ; pipeLineΣ           (* the shell's line-choice list                   *)
    ].
 

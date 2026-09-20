@@ -330,13 +330,13 @@ Section PCatOut.
     - destruct p as [| p']; cbn [pcatcs].
       + (* THE BLOCK-FIRST BYTE *)
         rewrite Nat.add_0_r.
-        iApply (pipe_write_link_blk γ Hcons k v P a b ps0 cs0 I0 Φ
+        iApply (pipe_write_link_blk g Hcons k v P a b ps0 cs0 I0 Φ
                   Hne Hr ltac:(lia) Hpin HP Hok Hb
                   with "Hpin Htn Hps Hcs Hilb [HΦ]").
         iIntros "Hres". iApply "HΦ". cbn [pcatcs].
         replace (P + 1)%nat with (S P) by lia. iExact "Hres".
       + (* every byte after it *)
-        iApply (pipe_write_link γ Hcons k v (P + S p')%nat b ps0
+        iApply (pipe_write_link g Hcons k v (P + S p')%nat b ps0
                   (cs0 ++ [a]) I0 Φ
                   ltac:(rewrite length_app; cbn [length]; lia)
                   Hpin1
@@ -346,7 +346,7 @@ Section PCatOut.
         replace (P + S (S p'))%nat with (S (P + S p')) by lia.
         iExact "Hres".
     - (* THE TAINT ARM continues the tower on its own *)
-      iApply (pipe_write_link_taint γ Hcons k b Φ with "HT [HΦ]").
+      iApply (pipe_write_link_taint g Hcons k b Φ with "HT [HΦ]").
       iIntros "#HT'". iApply "HΦ". by iRight.
   Qed.
 
@@ -384,12 +384,16 @@ Section UCatPipe.
      [UkReadPipe], and a standalone [ctokG] here would make the same
      proposition a different term.  [UCatKernel] omits it for the same
      reason. *)
-  Context `{!echoOutG Σ, !pipeProtoG Σ}.
+  Context `{!echoOutG Σ, !pipeProtoG Σ, !pipeOutG Σ}.
   (* NO [uexecSG] AND NO [uprogSG] SECTION VARIABLE, for [UCatKernel]'s
      reason (lane CAT-WALK-2, K2): a variable of either class here would be
      a SECOND instance whose [UkRun.urun] prints identically and does not
      unify with the one [UkReadPipe]'s leaf and [UkCatCat]'s walk run at. *)
-  Context (γ : echo_fixed).
+  (* THE FIXED PART IS [PipeOut.pipe_gn] (lane PIPE-2W-2): the echo half
+     is [pgn_cl g], so every statement below names [γ] as it did, and the
+     record equation is at the pipeline application's own claim. *)
+  Context (g : pipe_gn).
+  Local Notation γ := (pgn_cl g).
   Context (Hcons : @riscv_cons_res Σ (@riscv_fixedGS Σ HRg) = pecl g).
   (* the record's kill equation, [UShRound]'s [Hkill] at this claim: the
      pipeline application's kill credential IS the echo taint
@@ -498,7 +502,7 @@ Section UCatPipe.
               with "Hi Hrun [Hsb] Hstd Hbuf").
     { iApply (udepwf_K_std N m pc USYS_read
                 (UkReadPipe.read_pipe_fam (ukn_pay N) Rp Rpe) l with "Hsb"). }
-    iIntros (h' r d g W M' fdv' cw' cs')
+    iIntros (h' r d gW W M' fdv' cw' cs')
       "%Hd %Hgf %Hlin %Himg %Hnf %H0 %H1 %H2 %Htake %Hlz %Hlive
        Hstd Hpost Hrun Hbuf".
     iDestruct (spost_at_read_elim uslot
@@ -523,7 +527,7 @@ Section UCatPipe.
               uva_wmapped P
                 (uint (add_vec_int (m !!! Regidx a1_idx) (Z.of_nat j))))
       by (intros j Hj; exact (Hnf P j Hwfp Hpmp (Hlzp Hlz) Hj)).
-    iApply ("Hcont" $! h' r d g M' P (uvis_gen W)
+    iApply ("Hcont" $! h' r d gW M' P (uvis_gen W)
               with "[%] [%] [%] [%] [%] [%] Hrp Hstd Hrun Hbuf");
       [ exact Hd | exact Hgf
       | exact (UkReadPipe.uread_pipe_ans_of_ret cap r Hret)
@@ -716,7 +720,7 @@ Section UCatPipe.
 
   Definition pcat_round_inv (pn : pnames) (l : list fdstate) (v : era_pins)
       (ps0 cs0 : list nat) (I0 : list (bv 8)) (P : nat) : iProp Σ :=
-    (∃ c : nat, pcat_hold pn l c ∗ pcch γ v ps0 cs0 I0 pcat_alt P c)%I.
+    (∃ c : nat, pcat_hold pn l c ∗ pcch g v ps0 cs0 I0 pcat_alt P c)%I.
 
   Lemma pcat_round_at (pn : pnames) (γp : pipe_names) (L : list (bv 8))
       (l : list fdstate) (wb : bool) (v : era_pins)
@@ -755,13 +759,13 @@ Section UCatPipe.
                 = Some (fbb j)⌝
           ∨ T) -∗
          UserFd.ustd γfd l -∗
-         pcch γ v ps0 cs0 I0 pcat_alt P c -∗
+         pcch g v ps0 cs0 I0 pcat_alt P c -∗
          UkCat.kcat_wr N (mword_of_int 1) (mword_of_int CatSyms.buf) nb
            (ubytes γd CatSyms.buf 512 fbb)
            (fun wret : mword 64 =>
               (⌜wret = (mword_of_int (Z.of_nat nb) : mword 64)⌝
                ∗ UserFd.ustd γfd l
-               ∗ pcch γ v ps0 cs0 I0 pcat_alt P
+               ∗ pcch g v ps0 cs0 I0 pcat_alt P
                    (c + Z.to_nat (bv_unsigned rv))%nat
                ∗ ubytes γd CatSyms.buf 512 fbb))) -∗
     (* [Hend]: the loop's NORMAL exit, which is END OF FILE -- the read
@@ -770,7 +774,7 @@ Section UCatPipe.
     □ (∀ c : nat,
          (eof_shot pn (take c L) ∨ T) -∗
          pcat_hold pn l c -∗
-         pcch γ v ps0 cs0 I0 pcat_alt P c -∗ Cend) -∗
+         pcch g v ps0 cs0 I0 pcat_alt P c -∗ Cend) -∗
     cat_code γt -∗
     UkCatCat.kcat_round N (mword_of_int 0)
       (pcat_round_inv pn l v ps0 cs0 I0 P) Cend.
@@ -814,7 +818,7 @@ Section UCatPipe.
                   (fun wret : mword 64 =>
                      (⌜wret = (mword_of_int (Z.of_nat nb) : mword 64)⌝
                       ∗ UserFd.ustd γfd l
-                      ∗ pcch γ v ps0 cs0 I0 pcat_alt P
+                      ∗ pcch g v ps0 cs0 I0 pcat_alt P
                           (c + Z.to_nat (bv_unsigned rv))%nat
                       ∗ ubytes γd CatSyms.buf 512 gb)%I)
                   _ with "[] [Hstd Hc]").
@@ -859,7 +863,7 @@ Section UCatPipe.
                   (fun wret : mword 64 =>
                      (⌜wret = (mword_of_int (Z.of_nat nb) : mword 64)⌝
                       ∗ UserFd.ustd γfd l
-                      ∗ pcch γ v ps0 cs0 I0 pcat_alt P
+                      ∗ pcch g v ps0 cs0 I0 pcat_alt P
                           (c + Z.to_nat (bv_unsigned rv))%nat
                       ∗ ubytes γd CatSyms.buf 512 gb)%I)
                   _ with "[] [Hstd Hc]").
@@ -899,7 +903,7 @@ Section UCatPipe.
                 (fun wret : mword 64 =>
                    (⌜wret = (mword_of_int (Z.of_nat nb) : mword 64)⌝
                     ∗ UserFd.ustd γfd l
-                    ∗ pcch γ v ps0 cs0 I0 pcat_alt P
+                    ∗ pcch g v ps0 cs0 I0 pcat_alt P
                         (c + Z.to_nat (bv_unsigned rv))%nat
                     ∗ ubytes γd CatSyms.buf 512 gb)%I)
                 _ with "[Hr] [Hstd Hc]").

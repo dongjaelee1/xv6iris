@@ -320,20 +320,20 @@ Section pipe_links.
     (pipe_link_w ∗ pipe_link_blk ∗ pipe_link_pro ∗ pipe_link_taint
      ∗ pipe_link_rd ∗ pipe_link_rd_taint)%I.
 
-  Global Instance pipe_link_w_persistent : Persistent pipe_link_w.
+  Global Instance pipe_link_w_persistent : Persistent pipe_link_w | 0.
   Proof using . rewrite /pipe_link_w. apply _. Qed.
-  Global Instance pipe_link_blk_persistent : Persistent pipe_link_blk.
+  Global Instance pipe_link_blk_persistent : Persistent pipe_link_blk | 0.
   Proof using . rewrite /pipe_link_blk. apply _. Qed.
-  Global Instance pipe_link_pro_persistent : Persistent pipe_link_pro.
+  Global Instance pipe_link_pro_persistent : Persistent pipe_link_pro | 0.
   Proof using . rewrite /pipe_link_pro. apply _. Qed.
-  Global Instance pipe_link_taint_persistent : Persistent pipe_link_taint.
+  Global Instance pipe_link_taint_persistent : Persistent pipe_link_taint | 0.
   Proof using . rewrite /pipe_link_taint. apply _. Qed.
-  Global Instance pipe_link_rd_persistent : Persistent pipe_link_rd.
+  Global Instance pipe_link_rd_persistent : Persistent pipe_link_rd | 0.
   Proof using . rewrite /pipe_link_rd. apply _. Qed.
   Global Instance pipe_link_rd_taint_persistent :
-    Persistent pipe_link_rd_taint.
+    Persistent pipe_link_rd_taint | 0.
   Proof using . rewrite /pipe_link_rd_taint. apply _. Qed.
-  Global Instance pipe_links_persistent : Persistent pipe_links.
+  Global Instance pipe_links_persistent : Persistent pipe_links | 0.
   Proof using . rewrite /pipe_links. apply _. Qed.
 
   (* ---- the six projections, which is all a consumer ever uses ---- *)
@@ -408,3 +408,17 @@ Section pipe_links.
   Qed.
 
 End pipe_links.
+
+(* PIPE-2W-3: THE BUNDLE IS OPAQUE TO THE INSTANCE SEARCH.  [pipe_links] is
+   a six-fold [∗] of wand bundles; left transparent, the [Persistent] search
+   UNFOLDS it instead of taking [pipe_links_persistent], and then descends
+   into the wands -- the tree's documented "a bundle of wands hangs the
+   [Persistent] search".  It was already minutes per site; when the fixed
+   part grew ([pipeOutG]'s two cameras beside [echoOutG]'s five) every
+   [own]-leaf of that descent gained branches and one [iIntros "#Hlk"] went
+   past 300 s (PipeLinksLine.v:1401 -- the whole file went from ~40 min to
+   6+ CPU hours).  The seven leaves above are named at priority 0 and the
+   constants are opaque to the search, so a [Persistent (pipe_links _)] goal
+   is settled by its own instance and nothing else is tried. *)
+#[global] Typeclasses Opaque pipe_link_w pipe_link_blk pipe_link_pro
+  pipe_link_taint pipe_link_rd pipe_link_rd_taint pipe_links.

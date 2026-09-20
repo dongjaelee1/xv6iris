@@ -4932,3 +4932,26 @@ both the first byte and the rest.
 - `sel ≠ []` at the filing (a round that files must have written at
   least one byte — otherwise the block never opened and the ordinary
   `pwc_blk` path applies).
+
+**5.  VERIFICATION STATE AT HAND-OFF (be precise about this).**
+`PipeOut.v` — the file that carries `pe_cur` and all four claim steps
+(`pecl_blk2_open`/`_byte`/`_file` and the era-wide moves) — is **green
+on its own (`RC=0`)**, and so is `PipeBothPure.v` with `pend2_prefix`.
+`PipeBoth.v`'s discharge and the three fixed-part fixes are written and
+committed but **not yet machine-checked**: the whole-tree build is stuck
+in `PipeLinksLine.v`, which on the current mirror takes **about six CPU
+hours** (the coordinator's own gate build of `main`, in
+`/shared/xv6iris/iris`, was 6h17m into the same file at the same time).
+So no audit/`Print Assumptions` numbers are reported here — they would
+be guesses.
+
+**6.  AN OPERATIONAL TRAP worth the note.**  Three `make`s were running
+in this lane's remote clone at once — my detached whole-tree build plus
+two ORPHANS from earlier wrapper timeouts — all compiling
+`PipeLinksLine.v` into the same directory and invalidating each other's
+`.vo`.  That is what turned a long file into a four-hour non-event.
+Kill strays BY PID after checking `readlink /proc/<pid>/cwd` (the gate's
+own make lives in `/shared/xv6iris/iris` and must be left alone), and
+run `ec2-lane.sh <lane> wait` rather than a locally-timed wrapper: a
+`timeout N ... | tail` wrapper prints NOTHING when it is killed, which
+reads exactly like a hang.

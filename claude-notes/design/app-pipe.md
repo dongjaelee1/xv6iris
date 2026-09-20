@@ -1026,6 +1026,38 @@ statement-shape only, every landed proof re-discharged by a one-token
 change.  Route (β) — the family into the claim — stays the recorded
 alternative (§7) and is not taken: it is a lane, (α) is an afternoon.
 
+### 4.3l RULED (2026-09-22, after SH-PIPE-ROUND-5 part 3): FREEZE the resolution at the terminal round — the read leaf refutes a later line purely
+
+Route (α) landed (`ush_wc_read` is a `={⊤}=∗`; kept) and does not reach
+the claim: `chist_at` (= `pecl`) lives in `uart_inv`, which only a link
+step opens, and every claim fragment a read site holds (`cs_lb`, `ps_lb`,
+`inp_lb`, `turn_lb`) is MONOTONE — a longer resolution cannot be refuted
+by a lower bound.  It can by a FROZEN AUTH.  RULED, route (γ): the
+resolution ghost `EchoOut.cs_auth v cs = own (ep_gcs v) (●ML cs)` is
+PERSISTED at the terminal round (`mono_list_auth_persist : ●ML{dq} l ~~>
+●ML□ l`; `●ML□` is `CoreId`): the claim's terminal byte step
+(`pecl_blk2_byte_t`'s first firing, `palt_isforkS = true`) turns `cs_auth
+v cs` into `cs_frozen v cs := own (ep_gcs v) (●ML□ cs)`, keeps it in
+`pecl`'s terminal arm (a round that is never filed never grows `cs`; the
+filing steps stay in the non-terminal arms, which is where they are) and
+hands a copy to the writer, so `pwc_fork_exit` carries `cs_frozen v cs`
+with `length cs = nlines I - 1`.  The clean read residue already carries
+the contradiction's other half: `PipeLinksLine.pwc_rres v I' = ∃ ps0 cs0,
+⌜rd_stage_p ps0 cs0 I'⌝ ∗ … ∗ cs_lb v cs0` with `nlines (removelast I') <=
+length cs0`; at `I' = I ++ l ++ [wl_nl]` that is `length cs0 >= nlines I
+> length cs`, and `●ML□ cs ⋅ ◯ML cs0` is valid only if `cs0 prefix_of cs`
+(`mono_list_both_dfrac_valid_L`) — `False`, purely, at the read leaf,
+under no mask.  So `pterm_read_law`'s terminal arm is a pure contradiction
+and nothing else in §4.3j/§4.3k moves: `pterm_pay`, `pterm_wc`, the
+redefinition of `sh_pipe_child_law`, the assembly.  The claim's input
+step at a terminal round (D4 spent → the dirty arm) is unchanged: it is
+what happens in a REAL run; the frozen auth is what lets the loop's
+universally quantified read hypothesis be discharged at the shape a real
+run never reaches.  Route (β) — the family into the claim — is the
+pre-authorised fallback ONLY if `pecl`'s terminal arm cannot hold the
+frozen auth (some landed claim step at a terminal round needs `cs_auth`
+at fraction 1): the lane reports the step and proceeds with (β).
+
 ## 5. Programs
 
 ### 5.1 sh: the PIPE arm (lanes SH-PARSE-PIPE, SH-PIPE)

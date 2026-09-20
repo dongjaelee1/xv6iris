@@ -31,3 +31,4 @@ Print Assumptions UCatPipe.pcat_round_at.
 
 (* H4: the model's gap at the second fork's panic *)
 Print Assumptions PipeForkGap.pfork_execL_gap.
+Print Assumptions PipeForkGap.gap_mixed_no_wit.

@@ -5362,7 +5362,21 @@ new), `iris/PipeLinkInst.v` (ten fields re-pointed), `iris/UCatPipe.v`
 `UShPipeExit.v` and `UShPipeRound.v` are untouched, and so is
 `UPipeBootAdequacy.v`.
 Whole-tree `ec2-lane.sh round4 build` **RC=0**; no `Admitted`;
-`Proof using` on every result; **`audit-pipe-only` = FOURTEEN**, echo's
+`Proof using` on every result.
+
+`Print Assumptions` on the lane's thirteen headline results
+(`iris/PipeRound4Assumptions.v`, a report file, not a `_CoqProject`
+row): **eleven are Closed under the global context** —
+`pwc_line2`, `pprompt_dollar_line2`, `pblk2_exit_lk`,
+`pipe_link_inst_at`, `blk2_inv_alloc`, `blk2_mode_fire`,
+`pblk2_cstep_L`, `pblk2_cstep_R`, `blk2_inv_close`,
+`pfork_execL_gap`, `gap_mixed_no_wit` — and the two that are not are
+cat's rounds (`pcat_round_at_g` and its byte-identical instance
+`pcat_round_at`), at the STANDING primitives only
+(`functional_extensionality_dep` + the two `xv6iris_extras` reservation
+`Parameter`s), which is what the landed `pcat_round_at` already carried.
+
+**`audit-pipe-only` = FOURTEEN**, echo's
 list exactly (1 `functional_extensionality_dep` + the 2 `xv6iris_extras`
 reservation `Parameter`s + 11 PrimString/PrimInt63), measured after the
 changes.  `audit-echo-only` is unmoved BY CONSTRUCTION and the

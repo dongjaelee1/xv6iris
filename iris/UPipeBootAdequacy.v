@@ -68,6 +68,10 @@ Require Import App.                (* [xv6_app_adequacy] and the record *)
 Require Import InodeInv.           (* [ROOTINO] *)
 Require Import PipeDisc.           (* [pipe_phi] -- the conclusion, spelled out *)
 Require Import EchoOut.            (* [echoOutG] / [echoOutSigma] *)
+Require Import PipeOut.            (* [pipeOutG] / [pipeOutSigma] -- NOT dead:
+                                      the section below generalises over
+                                      [pipeOutG] and a missing import makes it
+                                      an unbound variable, not an error *)
 Require Import AppPipe.            (* [app_pipe] and its ten discharged laws *)
 
 Local Open Scope Z_scope.

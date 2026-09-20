@@ -659,12 +659,13 @@ Section EchoInitBoot.
     assert (Hsh_wc :
       forall (γp : gname) (I l : list (bv 8)), wl_nl ∉ l ->
         ⊢ UShLine.ush_mid γ γp (I ++ l ++ [wl_nl]) -∗
-          EchoLinksLine.ewc_lcred (echo_taint γ) γ (S gen_id) I 2%nat -∗
+          EchoLinksLine.ewc_lcred (echo_taint γ) γ (S gen_id) I 2%nat ={⊤}=∗
           UShLine.ush_mid γ γp (I ++ l ++ [wl_nl])
           ∗ EchoLinksLine.ewc_lcred (echo_taint γ) γ (S gen_id)
               (I ++ l ++ [wl_nl]) 3%nat)
-      by (intros γp I l Hnl;
-          exact (UShLine.ush_mid_wc_read_t γ (echo_taint γ) γp I l Hnl)).
+      by (intros γp I l Hnl; iIntros "Hm Hc"; iModIntro;
+          iApply (UShLine.ush_mid_wc_read_t γ (echo_taint γ) γp I l Hnl
+                    with "Hm Hc")).
     assert (Hsh_bd :
       forall (γp : gname) (N : uk_names Σ) (l : list fdstate) (i : nat),
         ukn_pay N = ucons_pay fsc_cons γp (echo_taint γ)

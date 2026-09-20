@@ -266,7 +266,7 @@ Section UkShPipeFork.
   Definition pterm_read_law : Prop :=
     forall I l : list (bv 8),
       wl_nl ∉ l ->
-      ⊢ Pm (I ++ l ++ [wl_nl])%list -∗ pterm_shape I 7%nat -∗
+      ⊢ Pm (I ++ l ++ [wl_nl])%list -∗ pterm_shape I 7%nat ={⊤}=∗
         Pm (I ++ l ++ [wl_nl])%list ∗ T.
 
   (* ...AND WITH IT, [UkSh]'s FOURTH AND LAST [Wc] HYPOTHESIS IS ONE
@@ -276,20 +276,20 @@ Section UkShPipeFork.
     pterm_read_law ->
     (forall I l : list (bv 8),
        wl_nl ∉ l ->
-       ⊢ Pm (I ++ l ++ [wl_nl])%list -∗ Wcf I 2%nat -∗
+       ⊢ Pm (I ++ l ++ [wl_nl])%list -∗ Wcf I 2%nat ={⊤}=∗
          Pm (I ++ l ++ [wl_nl])%list ∗ Wcf (I ++ l ++ [wl_nl])%list 3%nat) ->
     forall I l : list (bv 8),
       wl_nl ∉ l ->
-      ⊢ Pm (I ++ l ++ [wl_nl])%list -∗ pterm_wc I 2%nat -∗
+      ⊢ Pm (I ++ l ++ [wl_nl])%list -∗ pterm_wc I 2%nat ={⊤}=∗
         Pm (I ++ l ++ [wl_nl])%list ∗ pterm_wc (I ++ l ++ [wl_nl])%list 3%nat.
   Proof using .
     intros Hterm Hlanded I l Hnl. iIntros "Hpm Hc".
     rewrite {1}/pterm_wc. iDestruct "Hc" as "[Hc | [_ Hsh]]".
-    - iDestruct (Hlanded I l Hnl with "Hpm Hc") as "[$ Hw]".
+    - iMod (Hlanded I l Hnl with "Hpm Hc") as "[$ Hw]". iModIntro.
       iApply (pterm_wc_of _ 3%nat with "Hw").
     - iDestruct (pterm_shape_pin I 7%nat with "Hsh") as "[Hpv Hsh]".
       iDestruct "Hpv" as (v) "#Hpin".
-      iDestruct (Hterm I l Hnl with "Hpm Hsh") as "[$ #HT]".
+      iMod (Hterm I l Hnl with "Hpm Hsh") as "[$ #HT]". iModIntro.
       iApply (pterm_wc_of _ 3%nat).
       iApply (pipe_Hcltaint g (I ++ l ++ [wl_nl])%list 3%nat v
                 with "Hpin HT").

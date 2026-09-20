@@ -2005,11 +2005,24 @@ Section UkSh.
      M6a(3)): the one the prompt left at boundary [I] is the block-owed
      credential at [I ++ l ++ "\n"] once the line is read, on the pieces the
      read leaves -- and the pieces come back untouched.
-     [UShLine.ush_mid_wc_read] is the one discharge. *)
+     [UShLine.ush_mid_wc_read] is the one discharge.
+     ...AND IT IS A FANCY UPDATE AT [top] (design claude-notes/design/
+     app-pipe.md SS4.3k, lane SH-PIPE-ROUND-5 part 3).  Every era but one
+     discharges it as the landed ENTAILMENT under [iModIntro]; the
+     PIPELINE era's terminal arm cannot, and the reason is not a missing
+     lemma: what it has to refute is `a line was delivered AFTER a
+     fork-failure round', which is the input discipline's D4 -- a fact
+     about the era's CLAIM, reachable only by opening the console
+     invariant (and the round's own).  Both live at [top], which is why
+     the mask is [top] and not a parameter: the step is taken at the
+     read's return, a WP point, where [top] is the ambient mask
+     ([RiscvPtsto]'s [mWP e := wp_triv top e]).  The ONE consumer inside
+     this file is [ush_gets_done_line_at], which carries the update out
+     to [wp_ksh_gets_loop]. *)
   Hypothesis ush_wc_read :
     forall (I l : list (bv 8)),
       wl_nl ∉ l ->
-      ⊢ Pm (I ++ l ++ [wl_nl]) -∗ Wc I 2%nat -∗
+      ⊢ Pm (I ++ l ++ [wl_nl]) -∗ Wc I 2%nat ={⊤}=∗
         Pm (I ++ l ++ [wl_nl]) ∗ Wc (I ++ l ++ [wl_nl]) 3%nat.
 
   Lemma ush_pos_of_pm (I : list (bv 8)) : T -∗ Pm I -∗ ush_pos.
@@ -2541,7 +2554,7 @@ Section UkSh.
     ush_line_at lu f 0%nat (S (length J)) ->
     f (length J) = wl_nl ->
     ush_wcp l I0 2%nat -∗
-    Pm (I0 ++ J ++ [wl_nl]) -∗
+    Pm (I0 ++ J ++ [wl_nl]) ={⊤}=∗
     ush_gets_done_at Dl l (S (length J)) f.
   Proof using HT ush_at_of_pm_taint ush_wb_read ush_wc_read.
     intros (Hr0 & Hnl & Hlt & Hfdc & Hby & _) HD Hws Hlen Hli Hfnl.
@@ -2590,17 +2603,17 @@ Section UkSh.
     rewrite /ush_gets_done_at.
     iIntros "Hwc H".
     iDestruct "Hwc" as "[[%Hrow Hc] | [%Hcl Hb]]".
-    - iRight. iLeft. iExists lu.
+    - iMod (ush_wc_read I0 J Hnl with "H Hc") as "[H Hc]".
+      iModIntro. iRight. iLeft. iExists lu.
       iSplitR;
         [ iPureIntro; split; [ exact HD | split; [ by rewrite Hlen | exact Hli ] ] | ].
-      iDestruct (ush_wc_read I0 J Hnl with "H Hc") as "[H Hc]".
       rewrite /ush_posw. iLeft. iExists (I0 ++ J ++ [wl_nl]).
       iSplitR;
         [ iPureIntro; split;
           [ exact Hrnl | split; [ exact Hlast | exact Hfbk ] ] | ].
       iFrame "H". rewrite /ush_wcp. iLeft. iFrame "Hc". by iPureIntro.
     - iDestruct (ush_wb_read I0 J Hnl with "H Hb") as "[H #HT]".
-      iRight. iRight. iFrame "HT".
+      iModIntro. iRight. iRight. iFrame "HT".
       iApply (ush_pos_of_pm (I0 ++ J ++ [wl_nl]) with "HT H").
   Qed.
 
@@ -4485,7 +4498,7 @@ Section UkSh.
       rewrite Eafe. iIntros (h16) "Hrun".
       iApply ("Hcont" $! h16 _ (i + 1)%nat
                 (ush_set f i (nth_byte (m9 !!! Regidx a5_idx) 0))
-                (g1 0%nat) with "[] [] [] Hbs Hb Hstd [Hans Hwc] Hrun").
+                (g1 0%nat) with "[] [] [] Hbs Hb Hstd [>Hans Hwc] Hrun").
       { iPureIntro. lia. }
       { iPureIntro.
         replace (Z.of_nat (i + 1)) with (Z.of_nat i + 1) by lia.
@@ -4508,9 +4521,10 @@ Section UkSh.
         by (symmetry in Htk8v; apply Z.eqb_eq in Htk8v; exact Htk8v).
       assert (Hnlb : g1 0%nat = wl_nl) by (apply ush_nl_of_val; exact Hb10).
       iDestruct "Hans" as "[(%Hdisc & %Hfdc & Hpm) | [#HT Hp]]"; last first.
-      { iApply (ush_gets_done_taint_at Dl l (i + 1)%nat _ with "HT Hp"). }
+      { iModIntro. iApply (ush_gets_done_taint_at Dl l (i + 1)%nat _ with "HT Hp"). }
       iDestruct "Hrows" as "[%Hp | #HT]"; last first.
-      { iApply (ush_gets_done_taint_at Dl l (i + 1)%nat _ with "HT [Hpm]").
+      { iModIntro.
+        iApply (ush_gets_done_taint_at Dl l (i + 1)%nat _ with "HT [Hpm]").
         iApply (ush_pos_of_pm ((I0 ++ J) ++ [g1 0%nat]) with "HT Hpm"). }
       destruct Hp as (Hr0 & Hnlj & Hltj & Hfdc' & Hbytes & Hdj).
       rewrite Hnlb in Hdisc.
@@ -4540,6 +4554,7 @@ Section UkSh.
       { iApply (ush_gets_done_line_at Dsc Dl l I0 J lu
                   (ush_set f i (g1 0%nat)) Hp' HDlu Hwslu Hlenlu Hlilu Hfnl
                   with "Hwc Hpm"). }
+      iModIntro.
       iApply (ush_gets_done_line_t_at Dl l (I0 ++ J ++ [wl_nl]) _
                 (ush_set f i (g1 0%nat)) with "HT' Hpm"). }
     assert (Eaf8 : add_vec_int (mword_of_int 0xaf8 : mword 64) 2

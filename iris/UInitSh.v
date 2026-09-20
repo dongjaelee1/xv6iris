@@ -590,9 +590,10 @@ Section UInitSh.
     (* the loop's step on the era's write credential, AT THE LINE THE READ
        DELIVERED (project echo-any-line): the boundary is the era's input
        and the step is its extension by one body and its newline *)
+    (* ...AS A FANCY UPDATE AT [top] (design SS4.3k) *)
     /\ (forall (γp : gname) (I l : list (bv 8)), wl_nl ∉ l ->
           ⊢ cc_mid Cr γp (I ++ l ++ [wl_nl]) -∗
-            cc_wc Cr I 2%nat -∗
+            cc_wc Cr I 2%nat ={⊤}=∗
             cc_mid Cr γp (I ++ l ++ [wl_nl])
             ∗ cc_wc Cr (I ++ l ++ [wl_nl]) 3%nat)
     (* the three conversions of step 4 *)

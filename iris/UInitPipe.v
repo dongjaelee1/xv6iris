@@ -600,9 +600,9 @@ Section PipeInitBoot.
                (pgn_cl g) (echo_taint (pgn_cl g)) (pipe_Wbl_at g) N γp I
                Hpeq Hwbi).
     (* (5) the write credential's step at the read *)
-    - intros γp I l Hnl.
-      exact (UShLine.ush_mid_wc_read_t_at (pipe_link_inst_at g) (pgn_cl g)
-               γp (S gen_id) I l Hnl (pipe_ep_refl g)).
+    - intros γp I l Hnl. iIntros "Hm Hc". iModIntro.
+      iApply (UShLine.ush_mid_wc_read_t_at (pipe_link_inst_at g) (pgn_cl g)
+                γp (S gen_id) I l Hnl (pipe_ep_refl g) with "Hm Hc").
     (* (6) the banner-owed credential is a boundary credential *)
     - intros I. exact (pipe_Hwbwc g I).
     (* (7) a block owed is one too *)

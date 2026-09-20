@@ -925,14 +925,17 @@ Section UShRound.
   (* [UkSh]'s [Hwc] at the family -- INIT-FILE's conjunct 5: the read that
      completed a line moves the credential from 2 at the old input to the
      lend at the new one, and the deed from DONE to PRE ((i) of the ruling) *)
+  (* ...AS A FANCY UPDATE AT [top] (design SS4.3k): the FILE era needs
+     none of it, so the whole of the landed proof sits under one
+     [iModIntro]. *)
   Lemma Hwc_f : forall I l : list (bv 8), wl_nl ∉ l ->
     ⊢ UShLine.ush_mid_at (lk_rres FI) (fgn_echo g) γp
-        (I ++ l ++ [wl_nl]) -∗ Wcf I 2%nat -∗
+        (I ++ l ++ [wl_nl]) -∗ Wcf I 2%nat ={⊤}=∗
       UShLine.ush_mid_at (lk_rres FI) (fgn_echo g) γp
         (I ++ l ++ [wl_nl])
       ∗ Wcf (I ++ l ++ [wl_nl]) 3%nat.
   Proof using .
-    intros I l Hl. rewrite Wcf_2 Wcf_S3. iIntros "Hmid [Hc Hd]".
+    intros I l Hl. rewrite Wcf_2 Wcf_S3. iIntros "Hmid [Hc Hd]". iModIntro.
     iDestruct (mid_flw (I ++ l ++ [wl_nl]) with "Hmid") as "[Hmid #Hw]".
     iDestruct (Wcl2_rest I with "Hc") as "[Hc Hr]".
     iDestruct (Hwc I l Hl with "Hmid Hc") as "[$ $]".

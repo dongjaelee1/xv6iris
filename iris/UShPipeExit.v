@@ -15,7 +15,7 @@
 (*       at no other byte, and it is the ONLY step that appends the      *)
 (*       round's code to [cs] -- and it leaves                           *)
 (*       [PipeLinksLine.pwc_sp_t], which through                         *)
-(*       [PipeLinkInst.pipe_inst_lcred_at] is [Wcf I 1].                 *)
+(*       [PipeLinkInst.pipe_inst_lcred] is [Wcf I 1].                 *)
 (*                                                                       *)
 (*   (b) WHAT THE SHELL WANTS.  sh's runcmd child hands its parent       *)
 (*       [UkShFork.ushf_wq I = Wcf I 3 \/ Wcf I 0], and the fork arm     *)
@@ -37,8 +37,8 @@
 (*  That is [pipe_open_not_post] / [pipe_open_not_line] below, and the   *)
 (*  taint is the only state in which the two coexist.  The family        *)
 (*  carries that half whenever its selector is non-empty, so the         *)
-(*  corollaries [pipe_blk2_not_post] / [pipe_blk2_not_line] are the same *)
-(*  fact at the round's own end state.                                   *)
+(*  corollary [pipe_blk2_not_line] is the same fact at the round's own   *)
+(*  end state, at exactly the premises [pblk2_exit] takes.               *)
 (*                                                                       *)
 (*  THE LEMMAS ARE STATED WITHOUT THE FAMILY ON PURPOSE.  Holding the    *)
 (*  family AND a block credential at once is refuted by the turn alone   *)
@@ -143,7 +143,7 @@ Section pipe_exit.
   (*  S1b  THE ENTRY, WHICH IS FINE -- the other half of the STOP rule    *)
   (*                                                                     *)
   (*  [lk_lcred]'s owed arm at an [LPipe] line IS the family at the empty *)
-  (*  selector.  [PipeLinkInst.pipe_inst_lcred_at] reads [Wcf I 3] as     *)
+  (*  selector.  [PipeLinkInst.pipe_inst_lcred] reads [Wcf I 3] as     *)
   (*  [exists v, era_pin * pwc_lpr g k v I 3] and [pwc_lpr _ _ _ 3] is    *)
   (*  [pwc_blk k v I 0 0] by [lk_lpr_S3]'s [eq_refl]; the two steps below *)
   (*  are landed ([pwc_lend_of_blk0], [pwc_blk2_of_lend]).  The ONE thing *)
@@ -252,6 +252,69 @@ Section pipe_exit.
                 with "Hpin Hpera Hcw Hpro Hcl").
     - iApply (pipe_open_not_post k v w gb I a ho H Hlen
                 with "Hpin Hpera Hcw Hpost Hcl").
+  Qed.
+
+  (* =================================================================== *)
+  (*  S2b  THE DEGENERATE ALTERNATIVE, which S2 does not cover             *)
+  (*                                                                     *)
+  (*  [pwc_line] DOES have one unfiled state: the NO-OUTPUT alternative   *)
+  (*  ([PipeLinksLine.pwc_line_of_blk0] at [pnoc_of], whose whole block   *)
+  (*  is the prompt, so [pwc_post]'s index is 0 and [blkcs_p cs a 0 =     *)
+  (*  cs]).  S2's premise [2 < length (pab I a)] excludes it, and what    *)
+  (*  excludes it in fact is the TURN and not the choice list: that state *)
+  (*  stands at the block's START, and a round that has written [c1 + c2] *)
+  (*  bytes has moved the turn by that much.  Below is the resource half  *)
+  (*  of it -- three halves of one [mono_nat] authority, the claim's      *)
+  (*  included ([UShPipeRound.pipe_turn_one_writer]'s idiom) -- which     *)
+  (*  covers EVERY alternative but only in the hold-both form.            *)
+  (*                                                                     *)
+  (*  The trade form of the degenerate case is not a theorem here, and    *)
+  (*  the reason it needs none: a trade cannot move the turn (the other   *)
+  (*  half is the claim's), so it would have to DROP the round's          *)
+  (*  [cur_half] -- and then the claim is stuck in its open arm for ever, *)
+  (*  where the ONLY step that can put the prompt's `$' on the wire is    *)
+  (*  [PipeOut.pecl_blk2_file], which asks for the very half that was     *)
+  (*  dropped.                                                           *)
+  (* =================================================================== *)
+  (* [UShPipeRound.pipe_turn_one_writer] restated here (that file is the
+     round's, far above this one): [EchoOut.turn] is HALF a [mono_nat]
+     authority, so two writers beside the claim are three halves. *)
+  Lemma pipe_turn_three (v : era_pins) (P1 P2 P3 : nat) :
+    turn v P1 -∗ turn v P2 -∗ turn_auth v P3 -∗ False.
+  Proof using .
+    rewrite /turn /turn_auth. iIntros "H1 H2 H3".
+    iDestruct (mono_nat_auth_own_agree with "H1 H2") as %[_ <-].
+    (* the two halves are COMBINED, not split out of a rewritten [1]:
+       [iEval (rewrite -Qp.half_half)] + [iSplitL] is the landed idiom
+       ([EchoOut.turn_update]) and it does not fire in this file's
+       scopes. *)
+    iCombine "H1 H2" as "H".
+    iDestruct (mono_nat_auth_own_agree with "H H3") as %[Hq _].
+    iPureIntro. rewrite ?Qp.half_half in Hq.
+    exact (Qp.not_add_le_l 1%Qp (1/2)%Qp Hq).
+  Qed.
+
+  Lemma pipe_blk2_not_blk0 (k : nat) (v : era_pins) (I R : list (bv 8))
+      (sel : list bool) (c1 c2 a i : nat)
+      (ho : list mobs) (H : LogEntryDefs.cons_hist) :
+    era_pin γ k v -∗
+    pwc_blk2 g k v I R sel c1 c2 -∗ pwc_blk g k v I a i -∗
+    pecl g k ho H -∗ PT.
+  Proof using .
+    iIntros "#Hpin Hfam Hblk Hcl".
+    rewrite /pecl. iDestruct "Hcl" as "[#HT | Hc]"; [iExact "HT" |].
+    rewrite /pwc_blk2. iDestruct "Hfam" as "[Hf | #HT]"; [| iExact "HT"].
+    rewrite /pwc_blk. iDestruct "Hblk" as "[Hb | #HT]"; [| iExact "HT"].
+    iDestruct "Hf" as (ps cs P) "(_ & _ & Htn1 & _)".
+    iDestruct "Hb" as (ps' cs' P') "(_ & Htn2 & _)".
+    iDestruct "Hc"
+      as (v2 w so r gb pre opn)
+         "(#Hpin2 & _ & _ & _ & _ & Hta & _)".
+    iDestruct (era_pin_agree with "Hpin2 Hpin") as %->.
+    iExFalso.
+    iApply (pipe_turn_three v (P + c1 + c2)%nat (P' + i)%nat
+              (pcount_p (o_ps so) (o_cs so) (o_E so) (o_w so))
+              with "Htn1 Htn2 Hta").
   Qed.
 
   (* =================================================================== *)

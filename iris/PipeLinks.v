@@ -420,5 +420,9 @@ End pipe_links.
    6+ CPU hours).  The seven leaves above are named at priority 0 and the
    constants are opaque to the search, so a [Persistent (pipe_links _)] goal
    is settled by its own instance and nothing else is tried. *)
-#[global] Typeclasses Opaque pipe_link_w pipe_link_blk pipe_link_pro
-  pipe_link_taint pipe_link_rd pipe_link_rd_taint pipe_links.
+#[global] Typeclasses Opaque pipe_links.
+(* ONLY THE BUNDLE.  The six links themselves stay transparent: each is
+   [□ ∀ ...], so its own [Persistent] is one step, and [iSpecialize] /
+   [iApply ("Ht" $! k b Φ)] must be able to see the [∀] through the name
+   (made them opaque once -- PipeLinksLine.v:1406 answered with
+   "iSpecialize: cannot instantiate (pipe_link_taint g) with k"). *)

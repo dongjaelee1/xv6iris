@@ -4945,7 +4945,50 @@ hours** (the coordinator's own gate build of `main`, in
 So no audit/`Print Assumptions` numbers are reported here — they would
 be guesses.
 
-**6.  AN OPERATIONAL TRAP worth the note.**  Three `make`s were running
+**6.  THE `PipeLinksLine.v` WEDGE, LOCALIZED AND FIXED** (the
+coordinator was right: it was NOT the box).  Before the fixed-part change
+that file took ~40 min; after it, 6+ CPU hours -- and the gate's build of
+`main` hung in the same file.
+
+*The sentence.*  `Set Default Timeout 300.` at the top of the file names
+the line: `PipeLinksLine.v:1401, characters 15-43: Error: Timeout!` --
+`pban_step`'s `intros Hb. iIntros "#Hpin #Hlk Hc HΦ".`  Splitting that
+one tactic into four sentences and rebuilding (the file reaches line 1401
+in about a minute, so each probe round costs ~6 min, not hours) named the
+half: `iIntros "#Hlk"`, i.e. the goal `Persistent (pipe_links g)`.  The
+coordinator's independent `rocq compile -time` run on `main` stopped at
+the same sentence.
+
+*The cause.*  `PipeLinks.pipe_links` is a six-fold `∗` of `□ ∀ ...` wand
+bundles and was left TRANSPARENT to the instance search, so resolution
+unfolded the name and descended into the wands instead of taking the
+named `pipe_links_persistent` -- the tree's documented "a bundle of wands
+hangs the `Persistent` search".  It was already minutes per site (nine
+sites in `PipeLinksLine.v`, six more in `UShPipeRound.v`: that was most
+of the old 40 min).  PIPE-2W-2 then put `pipeOutG`'s two cameras beside
+`echoOutG`'s five in the section's `Context`; every `own`-leaf of that
+descent gained branches, and one sentence went past 300 s.  NOTE what the
+cause is NOT: `pipeOutG` does not contain or re-export an `echoOutG`
+field, and there is no second instance of one class in scope -- the
+`Context` is not redundant (`PipeLinks`'s `Hcons : ... = pecl g` needs
+it).  The new instances did not conflict; they made an already-runaway
+search bigger.
+
+*The fix* (`PipeLinks.v`, at the source rather than in one consumer, so
+`UShPipeRound.v`'s six sites get it too): the seven named `Persistent`
+instances take priority `| 0`, and `#[global] Typeclasses Opaque
+pipe_links` shuts the generic search out of the bundle.  ONLY the bundle:
+making the six links opaque as well broke the next sentence --
+`PipeLinksLine.v:1406`, `iSpecialize: cannot instantiate
+(pipe_link_taint g) with k` -- because `iApply ("Ht" $! k b Φ)` must see
+the `∀` through the name.  Each link is `□ ...`, so its own `Persistent`
+is one step anyway.  After the fix the file reaches line 1406 in ~70 s.
+`EchoLinks.echo_links` has exactly the same shape and no `Typeclasses
+Opaque`; it is only tolerable because the echo cone has the five cameras
+and not seven.  RULE for the campaign: a bundle a proof `iIntros "#"` on
+must be `Typeclasses Opaque` with its instance named at priority 0.
+
+**7.  AN OPERATIONAL TRAP worth the note.**  Three `make`s were running
 in this lane's remote clone at once — my detached whole-tree build plus
 two ORPHANS from earlier wrapper timeouts — all compiling
 `PipeLinksLine.v` into the same directory and invalidating each other's

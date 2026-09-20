@@ -305,7 +305,15 @@ arm is the theorem's one named premise (`pipe_both_law`).
   credential step holds `uart_inv`), and the fragment-only route dies at
   `d4_ambiguous`.  **Route (β) — the family into the claim — is
   required**, and it retires `UkShPipeFork` and §4.3j's redefinition
-  with it.
+  with it.  PART 4 (route (γ) of §4.3l): the FREEZE MECHANISM is landed
+  and works (`PipeOut.cs_frozen` / `cs_freeze` / `cs_frozen_prefix` /
+  `cs_frozen_lb_absurd`), but **`pecl` cannot carry it** — the fallback
+  condition is met and the step is `PipeOut.pecl_blk2_file` (with
+  `pecl_step_write_blk`), whose four pure premises hold at the
+  NON-TERMINAL `PRan` at a terminal round's own block
+  (`UShPipeRound2.pterm_gamma_witness`, off PIPE-MODEL-3's
+  `d4_ambiguous_bytes`).  (β) stands, and parts 1–4 are all reusable
+  inside it.
   LANDED (`iris/UShPipeRound2.v`, tree RC=0, all four audits at their
   baselines): the round's ENTRY, EXIT, UNWIND and code at the resource
   level, and `ep_pay`'s separable frame.  **STOPPED at the terminal
@@ -7430,3 +7438,86 @@ twice, at two different shapes.
 
 **THE ONE THING THE NEXT LANE NEEDS FIRST.**  The owner's word on (β).
 Everything else is landed, green and Closed.
+
+### SH-PIPE-ROUND-5 — PART 4 (2026-09-22, route (γ) of §4.3l) — the FREEZE MECHANISM works and is landed; `pecl` CANNOT CARRY IT, and the named step is `pecl_blk2_file` (the fallback condition is met)
+
+Branch continued off main (`58491bbd9`), one code commit (`64c0bb87c`),
+**additive only** — `iris/PipeOut.v` gains four results and
+`iris/UShPipeRound2.v` one; **no landed statement moved**.  Whole-tree
+`ec2-lane.sh round5 build` **RC=0**; `Print Assumptions` on the lane's
+**twenty-five** results: **all twenty-five Closed under the global
+context**.
+
+**(1) THE MECHANISM WORKS, EXACTLY AS §4.3l RULED.**
+
+```coq
+  Definition cs_frozen (v : era_pins) (l : list nat) : iProp Σ :=
+    own (ep_gcs v) (●ML□ (l : list (leibnizO nat))).
+
+  Lemma cs_freeze v l : cs_auth v l ==∗ cs_frozen v l.          (* mono_list_auth_persist *)
+  Lemma cs_frozen_prefix v l l' :
+    cs_frozen v l -∗ cs_lb v l' -∗ ⌜l' `prefix_of` l⌝.          (* mono_list_both_dfrac_valid_L *)
+  Lemma cs_frozen_lb_absurd v l l' :
+    (length l < length l')%nat -> cs_frozen v l -∗ cs_lb v l' -∗ False.
+```
+
+`●ML□` is `CoreId`, so `cs_frozen` is persistent AND timeless; the
+update and the validity read both go through on the first try.  **This
+is the one thing a read site can hold that is not monotone**, and
+`cs_frozen_lb_absurd` IS the terminal arm's contradiction — given the
+claim can be frozen.
+
+**(2) IT CANNOT.  The fallback condition of §4.3l is MET, and the step
+is `PipeOut.pecl_blk2_file` (with `pecl_step_write_blk` beside it).**
+For `pecl` to carry the frozen authority, no landed claim step that can
+still fire at a terminal round may GROW `cs`.  Two can, and the witness
+is PIPE-MODEL-3's own — `PipeDisc.d4_ambiguous_bytes`:
+`pcont (LPipe pd_ws3) PRan = pcont (LPipe pd_ws3) (PForkS sel_forkc)`.
+At `echo fork | cat` the fork-failure round and the GOOD round print the
+same bytes, so whatever block `pre0` the terminal round has written up
+to the prompt, **all four of `pecl_blk2_file`'s pure premises hold at the
+NON-TERMINAL alternative `PRan`** (`UShPipeRound2.pterm_gamma_witness`):
+
+```coq
+  Lemma pterm_gamma_witness (pre0 : list (bv 8)) :
+    pcont (LPipe pd_ws3) (PForkS sel_forkc) = (pre0 ++ u_prompt)%list ->
+    palt_ok (LPipe pd_ws3) PRan
+    /\ palt_panic PRan = false
+    /\ palt_isforkS PRan = false
+    /\ pcont (LPipe pd_ws3) PRan = (pre0 ++ u_prompt)%list.
+```
+
+A claim that had frozen `cs` could not answer that step, so `pecl` must
+keep `cs_auth` at fraction 1 at a terminal round.  The freeze is not
+"unsound"; it is simply **premature**: the claim cannot tell a terminal
+round from an ambiguous good one, which is the same wall as parts 2 and
+3 and, before them, `d4_ambiguous` itself.  **No pure or fractional
+discriminator exists on the claim side; only a GHOST one does — and the
+only ghost that knows is the family's mode.**
+
+**(3) WHAT IS KEPT.**  Everything: (α)'s fancy update (part 3), the
+frozen authority (part 4) and its three laws.  Route (β) wants both —
+the frozen authority is exactly the non-monotone reading the read site
+will hold once the cursors and the mode are claim-side, and the fancy
+update is exactly the shape a claim-side step has.
+
+**(4) ROUTE (β), AND THE ONE-LINE REASON IT IS THE LAST ONE.**  The
+discriminator between a terminal round and an ambiguous good one is the
+family's MODE ghost (`wcur gM _ 3`), and it is the only thing in the
+system that knows.  (β) moves the two cursors, the mode and the
+exclusion into the claim (`pblk_led` / `pe_cur`'s precedent,
+PIPE-2W-3's own move), and then: the mode is claim-side, so
+`pecl_blk2_file` can take `⌜mode ≠ 3⌝` from the filer (who holds the
+half) and the freeze becomes answerable; the boundary credential is
+timeless ghost halves, so STAGE-3's `Timeless` obstruction goes and
+`pwc_line2`'s third arm carries the terminal round — `lk_line` /
+`lk_sp_t` / `lk_open_t` take it and **`UkShPipeFork`, `pterm_wc` and
+§4.3j's redefinition of `sh_pipe_child_law` all become unnecessary**;
+and the terminal refutation happens in `pecl_step_echo`'s terminal case,
+which PIPE-MODEL-3 landed.  Part 1's `pipe_round_entry` /
+`pipe_round_exit` remain the round's two ends.
+
+**WHAT THE NEXT LANE NEEDS FIRST.**  Nothing but the go-ahead on (β).
+Three routes have now been measured to the leaf and each named its own
+successor; (β) is the only one left and every part of this lane's work
+(parts 1–4) is reusable inside it.

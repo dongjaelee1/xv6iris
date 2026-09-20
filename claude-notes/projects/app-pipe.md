@@ -277,9 +277,11 @@ arm is the theorem's one named premise (`pipe_both_law`).
   `echo fork | cat` the good run prints `alt_forkc` byte for byte, so
   the ambiguity has to be read off the BYTES.  One ruling asked for (D4
   also ends the session at a main-loop panic).  See the Findings block.
-- [ ] **PIPE-STAGE-3** (after MODEL-3): mode `alt_forkc` pinned by the
-  runcmd child; `pwc_line2`'s third arm's second shape; the main loop's
-  `$ ` as two right steps; the stray's steps.
+- [ ] **PIPE-STAGE-3** (after MODEL-3, merged 62981b282): the terminal
+  claim steps, mode `alt_forkc` (3) pinned by the runcmd child,
+  `pwc_line2`'s third arm's second shape, the main loop's `$ ` as two
+  right steps, the stray's steps, the fork #1 corollary, a test.  Brief
+  `brief-pipe-stage-3.md`.
 - [ ] **SH-PIPE-ROUND-5** (after STAGE-3): the assembly; `pcat_image_entry`
   restated; the third paid diagnostic; `sh_pipe_child_law_all` proved →
   `pipe_adequacy_pipeΣ_of_child` premise-free.

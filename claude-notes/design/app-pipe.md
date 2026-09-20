@@ -906,6 +906,36 @@ after that.  This is strictly stronger than "pipeline line last" (a
 pipeline line may appear anywhere; only a fork FAILURE ends coverage)
 and it is the only stray model whose premise is a fact about the wire.
 
+### 4.3h AS LANDED (PIPE-MODEL-3, 2026-09-21) and RULED
+
+Three corrections from the lane, all adopted: (1) the sources in
+`PForkS`'s continuation are in the STAGE's convention — `pcont (LPipe ws)
+(PForkS sel) = pmerge sel dg_execL alt_forkc`, `true` = the stray, `false`
+= `alt_forkc`, so every `pend2`/`pblk2_*` law applies at `R := alt_forkc`
+verbatim; the old `PFork` is `PForkS (replicate (length alt_forkc)
+false)`, not `PForkS []` (refused by `palt_ok`).  (2) **D4 is read off the
+BYTES, not the alternative** (`PipeDisc.d4_ambiguous`): at `echo fork |
+cat` the good run's block is `alt_forkc` byte for byte, so a resolution
+can read a failed-fork round as `PRan` and an alternative-shaped D4 is
+vacuous; landed `d4_p cs I := ∀ i < nlines I, pmergeable (pcont (line i)
+(palt_at cs i)) → nlines I = S i ∧ rest_of I = []` with `pmergeable u :=
+shufb u dg_execL alt_forkc = true`, in `disc_seg_p'` ONLY (never in
+`good_out_p`, which is the conclusion).  (3) `sessp_prefix_det` KEPT, at
+two D4 premises, with a fourth conclusion (the blocks round by round).
+RULED on the lane's question: D4 as landed also ends the covered session
+at sh's MAIN-LOOP fork panic at an echo line (`alt_panic` + a bare prompt
+is a shuffle prefix of `alt_forkc`); narrowing it would make `d4_p`
+depend on `ps` and break `PipeDiscDec`'s prologue canonicalisation.
+Accepted: coverage ends at ANY fork failure, uniformly — a resource
+exhaustion ends what the theorem promises.  Landed also: `pblk_open`'s
+terminal arm (`palt_isforkS` true ⇒ the prompt may sit inside the open
+block), `pecl_step_echo`'s terminal case spends D4, `pab`/`papr` guard on
+the flag, `PipeForkGap.pfork_execL_admitted` + `pfork_execL_only_forkS`.
+STAGE-3's first item: the terminal twins of `pecl_blk2_byte`/
+`pecl_blk2_open` (they carry `palt_isforkS = false` and `nodollar b`),
+reconstructing `pblk_open`'s right arm; the family's `R = L` branch must
+be unreachable at mode fork.
+
 ## 5. Programs
 
 ### 5.1 sh: the PIPE arm (lanes SH-PARSE-PIPE, SH-PIPE)

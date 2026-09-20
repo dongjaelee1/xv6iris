@@ -289,7 +289,16 @@ arm is the theorem's one named premise (`pipe_both_law`).
   the terminal round at the pipe fork arm's re-entry): the assembly;
   `pcat_image_entry` restated; the third paid diagnostic;
   `sh_pipe_child_law_all` proved → `pipe_adequacy_pipeΣ_final` with no
-  premise.  Brief `brief-sh-pipe-round-5.md`.
+  premise.  Brief `brief-sh-pipe-round-5.md`.  PART 2 (after §4.3j):
+  `UkShPipeFork.v` lands the terminal payload `pterm_pay`, the widened
+  credential `pterm_wc` and the four state transfers, and MEASURES that
+  the terminal re-entry is the SAME loop walk at `pterm_wc` (which
+  collapses to `Wcf` at index 3) — no new walk; `UCatPipe.
+  pcat_image_entry` retired.  **STOPPED at the one remaining obligation,
+  `ush_wc_read` at the terminal arm**: `UkSh.ush_wc_read` is a PLAIN
+  entailment and the terminal fact is a CLAIM fact (D4), so it cannot be
+  reached without a fupd — §4.3i's own fallback (move the cursors into
+  the claim) is the repair.
   LANDED (`iris/UShPipeRound2.v`, tree RC=0, all four audits at their
   baselines): the round's ENTRY, EXIT, UNWIND and code at the resource
   level, and `ep_pay`'s separable frame.  **STOPPED at the terminal
@@ -7158,3 +7167,150 @@ statement, `UInitPipe.sh_pipe_child_law_all` and
 needs is landed and Closed: this lane's five resource lemmas, STAGE-3's
 terminal steps, PIPE-EXEC-ECHO's H1/H3, EXEC-CAT's H2, and PIPE-CC's
 credential.
+
+### SH-PIPE-ROUND-5 — PART 2 (2026-09-22, after the ruling §4.3j) — the terminal re-entry needs NO new loop walk, and it reduces to ONE obligation; that obligation is NOT PAYABLE AT `UkSh.ush_wc_read`'s SHAPE, and §4.3i's own fallback is the repair
+
+Branch `app-pipe/sh-pipe-round-5` continued off main (`8892ec8ad`), one
+code commit (`852c713d4`).  ONE new file `iris/UkShPipeFork.v` (+ one
+`iris/_CoqProject` row) and ONE change to `iris/UCatPipe.v` (the
+retirement).  `UShPipeRound.v` is UNTOUCHED — see "why the definition
+did not move".  Whole-tree `ec2-lane.sh round5 build` **RC=0**; no
+`Admitted`, no `Axiom`; `Proof using` on every result.  `Print
+Assumptions` on the lane's **twenty-one** results (parts 1 + 2,
+`iris/PipeRound5Assumptions.v`): **all twenty-one Closed under the
+global context**.  **ALL FOUR AUDITS AT THEIR BASELINES**, re-measured
+on the mirror after the retirement: `audit-only` **13**,
+`audit-echo-only` **14**, `audit-tree-only` **13**, `audit-pipe-only`
+**14**.
+
+**(0) `UCatPipe.pcat_image_entry` IS RETIRED**, as §4.3j directs: it had
+no caller anywhere in the tree and its premises were jointly
+unsatisfiable (`EchoDisc.line_ok ws` contains `2 <= length ws`, the
+statement also fixes `length ws = 1`).  A note in its place names
+`UShCatPay.cat_image_entry_1w` as the entry to use and records why the
+restatement cannot live in `UCatPipe.v` (its premises are in `UkShCat.v`
+and `UShCatPay.v`, both of which are ABOVE it).  `pcat_pay_at` and
+`pcat_pay_at_of_round` are untouched, so the landed composition is
+unaffected.
+
+**(1) THE MEASUREMENT: §4.3i's re-entry needs NO new loop walk.**  This
+is the part-2 finding and it makes the remaining work small and precise.
+`UkSh`'s command loop is GENERIC in the era's write credential: it reads
+`Wc` through exactly THREE pure section hypotheses (`ush_wb_wc`,
+`ush_wc_blk_line`, `ush_wc_read`) and ONE resource (`ush_prompt_law`),
+and — the load-bearing observation — the loop's **BODY** names it at
+index 3 ALONE (`UkSh.ush_posw` is stated at `ush_wcp _ _ _ _ 3%nat`, and
+`ush_bstate` is `ush_posw`).  So the terminal arm is the SAME walk at a
+WIDENED credential
+
+```coq
+  Definition pterm_wc (I : list (bv 8)) (p : nat) : iProp Σ :=
+    (Wcf I p ∨ (⌜(p < 3)%nat⌝ ∗ pterm_shape I (5 + p)%nat))%I.
+```
+
+(`p` is the prompt bytes out; the terminal round's right cursor stands at
+`5 + p` — 5 is the runcmd child's `fork\n`, 6 the loop's `$`, 7 its
+space, by `PipeBoth.alt_forkc_dollar`/`alt_forkc_space`), which
+**collapses to `Wcf` at index 3** (`pterm_wc_3`, one `lia`).  Landed with
+it in `iris/UkShPipeFork.v`:
+
+- `pterm_shape I c2` — PIPE-STAGE-3's second shape with `v`, `L`, the
+  three gnames and the two abstract witnesses bound and the two
+  `Timeless` side conditions riding inside as `⌜⌝`; the namespace is
+  part 1's `blk2N`, NOT existential (an existential one puts a `coPset`
+  disjointness under the binder at every use).
+- `pterm_pay I := UkShFork.ushf_wq Wcf I ∨ pterm_shape I 5` — **the
+  child law's exit payload, §4.3j (1)** — with `pterm_pay_of_wq`,
+  `pterm_pay_of_shape`, `pterm_pay_taint` (the kill law's arm, at the
+  era's pin as `UShPipeRound.pipe_kill_law` takes it) and
+  `pterm_shape_pin`.
+- the three pure laws at `pterm_wc`: `pterm_wb_wc`, `pterm_wc_blk_line`,
+  `pterm_wc_3`.
+- the four state transfers: `pterm_wcp_3` / `pterm_wcp_of` (the only
+  place the loop reads `Wc`), `pterm_posw_3` (**the BODY's state comes
+  back to the landed credential**, which is why the body, the fork arm
+  and the child law all transfer for free) and `pterm_posb_of` (the
+  HEAD's state goes out to the widened one).
+- `pterm_posb_of_shape` — **the terminal arm read as a HEAD state**,
+  which is exactly what the fork twin's third arm hands
+  `UkSh.wp_ksh_getcmd`.
+
+With those, the twin's terminal re-entry is: two `c.mv`s (0x938,
+0x93a), `UkSh.wp_ksh_getcmd` at `pterm_wc` — which writes the prompt
+itself out of `ush_prompt_law` and does the read — and then the LANDED
+body at `Wcf`, because after the read the credential is `Wcf I' 3`
+again.  No second loop, no `ush_gen_run`, no re-walk of `getcmd`.
+
+**(2) WHY THE DEFINITION DID NOT MOVE.**  Redefining
+`UShPipeRound.sh_pipe_child_law` (§4.3j (1)) reds `ushq_body_law_pipe`
+until the twins exist, and the twins are blocked on (3).  The tree is
+kept GREEN and the payload is landed in `UkShPipeFork.pterm_pay`, ready
+to be spliced: `sh_pipe_child_law` becomes `ushf_child_law_at`'s twin at
+`ukn_pay N' := fun _ => pterm_pay I` and nothing above it moves.
+
+**(3) THE STOP, AND IT IS THE ONE THE RULING NAMED.**  After (1) exactly
+one new obligation remains, and it is `ush_wc_read` at the terminal arm:
+
+```coq
+  Definition pterm_read_law : Prop :=
+    forall I l : list (bv 8),
+      wl_nl ∉ l ->
+      ⊢ Pm (I ++ l ++ [wl_nl])%list -∗ pterm_shape I 7%nat -∗
+        Pm (I ++ l ++ [wl_nl])%list ∗ T.
+```
+
+(`pterm_wc_read_of` reduces `UkSh`'s fourth `Wc` hypothesis to it in one
+line, through `PipeLinkInst.pipe_Hcltaint` at the pin `pterm_shape`
+carries.)  **IT IS NOT PAYABLE AT THAT SHAPE**, and the reason is the
+shape and not a missing lemma:
+
+- `UkSh.ush_wc_read` is a PLAIN ENTAILMENT — no fancy update, no mask,
+  no claim:
+  `forall I l, wl_nl ∉ l -> ⊢ Pm (I ++ l ++ [wl_nl]) -∗ Wc I 2%nat -∗
+  Pm (I ++ l ++ [wl_nl]) ∗ Wc (I ++ l ++ [wl_nl]) 3%nat`.
+- What the terminal arm has to derive is "a line was delivered AFTER a
+  fork-failure round", which is D4 — and D4 is a fact about the CLAIM's
+  resolution.  The two sides carry only fragments: `Pm I'` is
+  `UShLine.ush_mid_at`, i.e. `upos ∗ upos_a ∗ ucons_reader ∗ ∃ v,
+  era_pin ∗ dl_cnt v (1/2) (length I') ∗ inp_lb v I' ∗ pwc_rres v I'`,
+  and `pterm_shape` is `era_pin ∗ blk2_inv ∗ wcur gR (1/2) 7 ∗ wcur gM
+  (1/2) 3`.  The contradiction exists — the family's `pblk_led` pins the
+  claim's OPEN round at `nlines I - 1` (`cur_half`), while `inp_lb v I'`
+  forces the claim's input to have `nlines I + 1` lines and therefore its
+  open round at `nlines I`, which `UShPipeExit.pecl_open_cs_len` reads
+  off `pblk_open` — but EVERY step of it needs `pecl`, and reaching
+  `pecl` means opening `blk2_inv` and the console invariant, i.e. a
+  `={E}=∗`.  A plain wand cannot.
+- Nor can the pure route: `UkSh.ush_read_ans_at`'s clean arm DOES carry
+  `⌜Dsc (I ++ J)⌝` (the input so far is disciplined) — but (i) that fact
+  is in scope inside `UkSh`'s `wp_ksh_gets_loop`, not at `ush_wc_read`,
+  and (ii) no pure predicate on `I` expresses "the round at `I`'s last
+  line was terminal": at `echo hello | cat` the good run and the
+  fork-failure run have the SAME line and differ only in what the
+  machine did, which is precisely why PIPE-MODEL-3 had to read D4 off
+  the BYTES and why the terminal fact is inherently GHOST.
+
+**THE TWO REPAIRS, and §4.3i pre-authorised the second.**
+(α) give `UkSh.ush_wc_read` a fancy update and the console mask — an
+upstream `UkSh.v` hypothesis-shape change that every era would have to
+re-discharge (echo's and the file era's included), for one era's arm.
+(β) **STAGE-3's own recommendation, which §4.3i recorded as the fallback
+for exactly this finding**: move the two cursors, the mode and the
+exclusion INTO THE CLAIM, `PipeOut.pblk_led`/`pe_cur`'s precedent.  Then
+the boundary credential is timeless ghost halves, `pterm_wc`'s terminal
+arm is a claim-side fact, and the terminal round's refutation happens
+where every other D4 refutation already happens — in `pecl_step_echo`'s
+terminal case, which PIPE-MODEL-3 landed.  It is one lane, it is the
+same move `pe_cur` already made, and it also retires the `Timeless`
+obstruction STAGE-3 found (`lk_line`/`lk_sp_t`/`lk_open_t` could then
+carry the terminal round and no twin of `UkShFork` would be needed at
+all).
+
+**WHAT THE NEXT LANE NEEDS FIRST.**  The owner's/coordinator's choice
+between (α) and (β).  Everything else is landed and Closed: part 1's
+round entry/exit/unwind and the two stop theorems, part 2's payload,
+widened credential and four transfers, PIPE-STAGE-3's terminal steps,
+PIPE-EXEC-ECHO's H1/H3, EXEC-CAT's H2 and PIPE-CC's credential.  On
+route (β) the round's own assembly (brief item 3) is then the only
+remaining work and its two ends are already theorems
+(`UShPipeRound2.pipe_round_entry` / `pipe_round_exit`).

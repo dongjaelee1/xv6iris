@@ -5353,7 +5353,8 @@ widened payloads).  Item 3 is a SEPARATE lane and it is upstream's
 ### SH-PIPE-ROUND-4 (2026-09-20) — the RULING R1/R2/R3 lands whole and the tree is green; R2 as ruled is INCOMPLETE (the two children's participation has to be exclusive, and the file says so in two abstract witnesses); and the ROUND stops before its first instruction, at three measured holes and one MODEL hole that makes the theorem FALSE as it stands
 
 Branch `app-pipe/sh-pipe-round-4` off main (`5302bc081` + `d71159395`),
-two code commits (`ebb6342d1`, `39dcea3b2`) plus this one.  Files moved:
+three code commits (`ebb6342d1`, `39dcea3b2`, `84ec2cfb8`) beside the
+notes.  Files moved:
 `iris/PipeLinks.v` (the seventh leaf), `iris/PipeBoth.v` (S7 rebuilt, S10
 new), `iris/PipeLinkInst.v` (ten fields re-pointed), `iris/UCatPipe.v`
 (the generic round), plus ONE new file `iris/PipeForkGap.v` (+ one

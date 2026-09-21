@@ -192,6 +192,10 @@ Section UkShPipeForkTwin.
        UserFd.ustd (ukn_fd N') l -∗
        UserCwd.ucwd (ukn_cwd N') FsImg.ROOTINO -∗
        UserChildren.uch (ukn_ch N') ∅ -∗
+       (* ...and its own pid, not <init>'s (design app-pipe SS4.3w,
+          purchase 1's relay): [UkShRun.wp_kshr_fork1]'s row, in the shape
+          [UkSh.ush_pid] names it *)
+       UkSh.ush_pid N' -∗
        UkShMalloc.ushm_fresh N' sz -∗
        urun N' hB mA (mword_of_int 0x9c0)
          (68 + (8 + (UkShDiag.ush_Dg + n))) -∗
@@ -440,7 +444,7 @@ Section UkShPipeForkTwin.
         with (68 + (8 + (UkShDiag.ush_Dg + n)))%nat
         by (unfold UkShDiag.ush_Dg; lia).
       iApply ("Hchild" $! N' hB mA γ' with "[%] [%] Hmy HRc Hcode' Hro' Hjt'
-                Hline Hws Hsy Hustd Hcwd Hch Hfresh Hrun");
+                Hline Hws Hsy Hustd Hcwd Hch Hpid' Hfresh Hrun");
         [ exact Hpeq' | exact Hs1_A ].
   Qed.
 
@@ -557,7 +561,8 @@ Section UkShPipeForkTwin.
           exact (ushf_pid_sext_ne_m1 pidv Hrng (eq_trans (eq_sym Hpv) Hr1)).
       + (* the child, on the paid entry *)
         iIntros (N' hB mA γ') "%Hpeq' %Hs1A Hmy HRc #Hcode' #Hro' #Hjt'
-                               Hline' Hws Hsy Hustd' Hcwd' Hch' Hfresh Hrun'".
+                               Hline' Hws Hsy Hustd' Hcwd' Hch' Hpid' Hfresh
+                               Hrun'".
         (* THE CHILD'S ROOM, AS ITS OWN LAW ASKS FOR IT (lane SH-CHILD-2):
            the core hands [68 + (8 + (ush_Dg + n))] -- the body's
            [ush_Dbody] less its own frames -- and a law that spends [Dc] of
@@ -571,7 +576,8 @@ Section UkShPipeForkTwin.
                   sz l (68 - Dc + n)%nat np
                   with "[%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%]
                         Hcode' [] []
-                        Hjt' Hline' Hws Hsy Hustd' Hcwd' [Hch'] Hfresh HRc Hrun'").
+                        Hjt' Hline' Hws Hsy Hustd' Hcwd' Hch' Hpid' Hfresh HRc
+                        Hrun'").
         * exact Hpeq'.
         * exact Hs1A.
         * exact Hline.
@@ -586,7 +592,6 @@ Section UkShPipeForkTwin.
         * exact Hrow.
         * iApply (ushf_code_shp with "Hcode'").
         * iApply (ushf_rodata_shp with "Hro'").
-        * iApply (UserChildren.uch_any_of with "Hch'").
       + (* the re-entry, with the pieces back in hand *)
         iIntros (Sw Sw' ret pidv) "%Hpv1 %Hm1 Hfans Hans Hpm".
         rewrite /ushf_fans. iDestruct "Hfans" as "[[%HSw HRc] | Hfans]".

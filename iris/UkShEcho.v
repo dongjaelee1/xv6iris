@@ -1240,7 +1240,11 @@ Section UkShEcho.
     rewrite /UkShFork.ushf_child_law /UkShFork.ushf_child_law_at.
     iIntros "!>" (N' h m dw dv s0 len ws g sz ld n I)
       "%Hpeq %Hs1 %Hline %Hlws %Hfbk %Hs0 %Hs64 %Hs38 %Hszlo %Hszal %Hszok %Hrows
-       #Hcode #Hpcode #Hpro #Hjt Hline Hws Hsy Hstd Hcwd Hch HM Hcr Hrun".
+       #Hcode #Hpcode #Hpro #Hjt Hline Hws Hsy Hstd Hcwd Hch _ HM Hcr Hrun".
+    (* the two rows design app-pipe SS4.3w bought (purchase 2) are FREE for
+       this prover: the echo child's walk does not read its own pid, and
+       the set it takes is [UserChildren.uch_any]. *)
+    iDestruct (UserChildren.uch_any_of with "Hch") as "Hch".
     pose proof (HD I ws (proj1 Hline) Hlws Hfbk) as HDI.
     destruct (Hdg I HDI) as [Hdg1 Hdg2].
     subst ws.

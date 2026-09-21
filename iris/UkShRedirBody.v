@@ -290,7 +290,16 @@ Section UkShRedirBody.
           ustr (ukn_d N') dv ushp_symbols 7 ushp_sym_f -∗
           UserFd.ustd (ukn_fd N') ld -∗
           UserCwd.ucwd (ukn_cwd N') FsImg.ROOTINO -∗
-          UserChildren.uch_any (ukn_ch N') -∗
+          (* THE TWO ROWS [UkShFork.ushf_child_law_at] BOUGHT (design
+             app-pipe SS4.3w, purchase 2), MIRRORED HERE so that the two
+             shapes stay INTERDERIVABLE.  [sh_redir_child_law_of_at] below
+             is the direction that needs them: it has to FEED the generic
+             law's premises, and at [uch_any] it could not.  Free for this
+             law's provers -- it has none in the tree, and the redirect
+             child's walk reads neither row -- and owed by its consumers,
+             which are the two conversions in this section. *)
+          UserChildren.uch (ukn_ch N') ∅ -∗
+          UkSh.ush_pid N' -∗
           UkShMalloc.ushm_fresh N' sz -∗
           Wc I 3%nat -∗
           (* EIGHT MORE THAN ECHO'S: the redirect parse is that much
@@ -317,11 +326,12 @@ Section UkShRedirBody.
     iIntros "#Hl". rewrite /UkShFork.ushf_child_law_at.
     iIntros "!>" (N' h m dw dv s0 len wsf g sz ld n I)
       "%Hpeq %Hs1 %Hline %Hlws %Hfbk %Hs0 %Hs64 %Hs38 %Hszlo %Hszal %Hszok
-       %Hrows #Hcode #Hpcode #Hpro #Hjt Hstr Hws Hsy Hstd Hcwd Hch HM Hcr Hrun".
+       %Hrows #Hcode #Hpcode #Hpro #Hjt Hstr Hws Hsy Hstd Hcwd Hch Hpid HM
+       Hcr Hrun".
     destruct Hline as (ws & file & -> & Hline).
     iApply ("Hl" $! N' h m dw dv s0 len ws file g sz ld n I
               with "[%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%]
-                    Hcode Hpcode Hpro Hjt Hstr Hws Hsy Hstd Hcwd Hch HM
+                    Hcode Hpcode Hpro Hjt Hstr Hws Hsy Hstd Hcwd Hch Hpid HM
                     Hcr Hrun");
       [ exact Hpeq | exact Hs1 | exact Hline | exact Hlws | exact Hfbk
       | exact Hs0 | exact Hs64 | exact Hs38 | exact Hszlo | exact Hszal
@@ -336,11 +346,12 @@ Section UkShRedirBody.
     iIntros "#Hl". rewrite /sh_redir_child_law.
     iIntros "!>" (N' h m dw dv s0 len ws file g sz ld n I)
       "%Hpeq %Hs1 %Hline %Hlws %Hfbk %Hs0 %Hs64 %Hs38 %Hszlo %Hszal %Hszok
-       %Hrows #Hcode #Hpcode #Hpro #Hjt Hstr Hws Hsy Hstd Hcwd Hch HM Hcr Hrun".
+       %Hrows #Hcode #Hpcode #Hpro #Hjt Hstr Hws Hsy Hstd Hcwd Hch Hpid HM
+       Hcr Hrun".
     iApply ("Hl" $! N' h m dw dv s0 len (ws ++ [FileDisc.fd_w_gt; file])
                     g sz ld n I
               with "[%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%]
-                    Hcode Hpcode Hpro Hjt Hstr Hws Hsy Hstd Hcwd Hch HM
+                    Hcode Hpcode Hpro Hjt Hstr Hws Hsy Hstd Hcwd Hch Hpid HM
                     Hcr Hrun");
       [ exact Hpeq | exact Hs1 | by exists ws, file | exact Hlws | exact Hfbk
       | exact Hs0 | exact Hs64 | exact Hs38 | exact Hszlo | exact Hszal

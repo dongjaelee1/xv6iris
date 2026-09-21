@@ -361,7 +361,25 @@ Section UkShFork.
           ustr (ukn_d N') dv ushp_symbols 7 ushp_sym_f -∗
           UserFd.ustd (ukn_fd N') ld -∗
           UserCwd.ucwd (ukn_cwd N') FsImg.ROOTINO -∗
-          UserChildren.uch_any (ukn_ch N') -∗
+          (* ...AND ITS CHILDREN SET IS EMPTY, ON THE NOSE (design
+             app-pipe SS4.3w, purchase 2), where the law used to take
+             [UserChildren.uch_any].  The fork arm HAS the stronger row --
+             [UkShRun.wp_kshr_fork1]'s child arm is at [∅] and was
+             weakening it here -- and a child that cannot say its own set
+             is empty cannot tell its own two forks apart later: the
+             pipeline round needs [Sc = ∅] at the runcmd child, which IS
+             this law's [N'] ([UShPipeRound.sh_pipe_child_law] is this
+             statement at [ushq_lp]). *)
+          UserChildren.uch (ukn_ch N') ∅ -∗
+          (* ...AND ITS OWN PID, NOT <init>'s (purchase 1's relay, spent
+             here).  A premise on a [□ ∀] law is FREE for its provers --
+             the echo and file eras introduce it and drop it -- and owed
+             by its ONE consumer, [wp_kshf_fork_core]'s child arm below,
+             which now has it.  What it buys is the pid-carrying wait
+             ([UkShRun.wp_kshr_wait_pid]): a process holding it can refute
+             [UserChildren.wait_ans]'s [pidv = 1] disjunct and so say
+             WHICH of its children a reap reaped. *)
+          UkSh.ush_pid N' -∗
           UkShMalloc.ushm_fresh N' sz -∗
           Wc I 3%nat -∗
           urun N' h m (mword_of_int 0x9c0)
@@ -502,6 +520,10 @@ Section UkShFork.
        UserFd.ustd (ukn_fd N') l -∗
        UserCwd.ucwd (ukn_cwd N') FsImg.ROOTINO -∗
        UserChildren.uch (ukn_ch N') ∅ -∗
+       (* ...and its own pid, not <init>'s (design app-pipe SS4.3w,
+          purchase 1's relay): [UkShRun.wp_kshr_fork1]'s row, in the shape
+          [UkSh.ush_pid] names it *)
+       UkSh.ush_pid N' -∗
        UkShMalloc.ushm_fresh N' sz -∗
        urun N' hB mA (mword_of_int 0x9c0)
          (68 + (8 + (UkShDiag.ush_Dg + n))) -∗
@@ -745,7 +767,7 @@ Section UkShFork.
         with (68 + (8 + (UkShDiag.ush_Dg + n)))%nat
         by (unfold UkShDiag.ush_Dg; lia).
       iApply ("Hchild" $! N' hB mA γ' with "[%] [%] Hmy HRc Hcode' Hro' Hjt'
-                Hline Hws Hsy Hustd Hcwd Hch Hfresh Hrun");
+                Hline Hws Hsy Hustd Hcwd Hch Hpid' Hfresh Hrun");
         [ exact Hpeq' | exact Hs1_A ].
   Qed.
 
@@ -886,7 +908,8 @@ Section UkShFork.
           exact (ushf_pid_sext_ne_m1 pidv Hrng (eq_trans (eq_sym Hpv) Hr1)).
       + (* the child, on the paid entry *)
         iIntros (N' hB mA γ') "%Hpeq' %Hs1A Hmy HRc #Hcode' #Hro' #Hjt'
-                               Hline' Hws Hsy Hustd' Hcwd' Hch' Hfresh Hrun'".
+                               Hline' Hws Hsy Hustd' Hcwd' Hch' Hpid' Hfresh
+                               Hrun'".
         (* THE CHILD'S ROOM, AS ITS OWN LAW ASKS FOR IT (lane SH-CHILD-2):
            the core hands [68 + (8 + (ush_Dg + n))] -- the body's
            [ush_Dbody] less its own frames -- and a law that spends [Dc] of
@@ -900,7 +923,8 @@ Section UkShFork.
                   sz l (68 - Dc + n)%nat np
                   with "[%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%]
                         Hcode' [] []
-                        Hjt' Hline' Hws Hsy Hustd' Hcwd' [Hch'] Hfresh HRc Hrun'").
+                        Hjt' Hline' Hws Hsy Hustd' Hcwd' Hch' Hpid' Hfresh HRc
+                        Hrun'").
         * exact Hpeq'.
         * exact Hs1A.
         * exact Hline.
@@ -915,7 +939,6 @@ Section UkShFork.
         * exact Hrow.
         * iApply (ushf_code_shp with "Hcode'").
         * iApply (ushf_rodata_shp with "Hro'").
-        * iApply (UserChildren.uch_any_of with "Hch'").
       + (* the re-entry, with the pieces back in hand *)
         iIntros (Sw Sw' ret pidv) "%Hpv1 %Hm1 Hfans Hans Hpm".
         rewrite /ushf_fans. iDestruct "Hfans" as "[[%HSw HRc] | Hfans]".

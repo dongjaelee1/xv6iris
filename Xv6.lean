@@ -79,6 +79,7 @@ import Xv6.SpecMemset
 import Xv6.ProofMemset
 import Xv6.LinkMemset
 import Xv6.KallocDefs
+import Xv6.PipeInvDefs
 import Xv6.SpecKfree
 import Xv6.SpecKalloc
 import Xv6.SpecFreerange

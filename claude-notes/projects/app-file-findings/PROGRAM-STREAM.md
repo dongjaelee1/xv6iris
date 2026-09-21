@@ -1808,3 +1808,40 @@ BOTH slots (`UShEcho.sh_echo_slot T` for the echo and redirect children,
 `UShCatPay.sh_cat_slot T` for cat's) — one slot at
 `FileFsPure.file_fs_pure` projects to both
 (`sh_echo_slot_of_fs_pure_holds`-style, `sh_cat_slot_of_fs_pure_holds`).
+
+### Stretch 13: DEFECT 4 — cat's deed tier is pinned to the GENERIC deposit instance, whose `udep` only an out-of-spec run can supply
+
+The cat child's law compiled up to its LAST premise and stopped there:
+`UCatKernel.cat_child_of_entry … -∗ udep -∗ image_entry …` wants `udep` at the
+AMBIENT instance `UexecExecInst.uprogSG_gen`, and sh's child holds
+`udep (PS := uprogSG_free)`.  They are different propositions, and
+`uprogSG_gen`'s is obtainable only as `UexecExecMint.udep_gen : app_sup -∗
+app_taint -∗ udep` — i.e. OUT OF SPEC.  So as landed, cat can only ever be
+exec'd by a tainted shell; this is a third reason (after the `app_taint`
+antecedent and `line_ok`) the old `Hchild_cat` was an out-of-spec statement.
+
+WHY: `UkCatDeed.v`, `UShCat.v` §6 and `UCatKernel.v` declare NO `uprogSG`
+binder ON PURPOSE (their headers; durable-notes "A section variable of a class
+type is a LOCAL INSTANCE"): the leaves they apply — `UkFileOpen`'s read-open
+and miss corollaries, `UkReadFile`'s held read — are in sections with no
+`uprogSG` either, so every `urun` there is at the ambient `uprogSG_gen`, and
+a local binder would have been a second instance.  RULING CAT-DEED (09-18)
+already met this for the CREATE open and fixed it per lemma
+(`UkFileOpen.wp_uk_ecall_open_create_deed_{v,d} \`{PSx : uprogSG Σ}`, "a landed
+caller that resolves ambiently gets `uprogSG_gen` exactly as before"); echo's
+file tier (`UEchoFile`) names `(PS := uprogSG_free)` per lemma.  cat's chain
+never got the treatment.
+
+THE FIX (same method, nothing landed moves): thread `\`{PSx : uprogSG Σ}`
+through cat's chain bottom-up — `UkFileOpen.wp_uk_ecall_open_{read,miss}_deed*`,
+`UkReadFile`'s held read (and the write leaf cat's console output uses),
+`UkCatDeed.{wp_kcat_open_read_deed, wp_kcat_open_miss_deed, kcat_o_of_deed,
+kcat_o_of_deed_miss, kcat_r_of_deed_held, …}`, `UShCat.{cat_entry_run,
+cat_uexec_slot, cat_slot_of_kexec}`, and `UCatKernel` whole — so that
+`cat_child_of_entry` takes `udep (PS := PSx)`.  `UkCat`, `UkCatCat`,
+`UkCatMain`, `UkRunSys` are ALREADY generic (section binders).
+
+THE cat CHILD'S DRAFT IS PARKED as
+`claude-notes/projects/app-file-findings/UShRound-cat-child.patch` (439 lines
+against `UShRound.v` at `app-file/cat-walk`): everything in it elaborates and
+checks up to that one `udep`; re-apply it once the chain is generic.

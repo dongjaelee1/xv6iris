@@ -1820,7 +1820,9 @@ Section UShRound.
              [UkSh.ush_line_is], and [UkShRedirLine.ushs_line_is_nosym]
              proves no such line can carry the [>] byte. *)
           ⌜ UkShRedirLine.ushs_line_is ws file fb 0%nat len ⌝ -∗
-          ⌜ ws = last_ws I ⌝ -∗
+          (* the fork assertion's words are the WHOLE body's (RULING
+             SLOT-WS, option B; [UkShRedirBody.sh_redir_child_law]) *)
+          ⌜ ws ++ [FileDisc.fd_w_gt; file] = last_ws I ⌝ -∗
           ⌜ 0 < sa ⌝ -∗ ⌜ sa + Z.of_nat len + 1 < Z64 ⌝ -∗
           ⌜ sa + Z.of_nat len < 2 ^ 38 ⌝ -∗
           ⌜ 8344 <= sz ⌝ -∗ ⌜ UserPtTree.pgroundup sz = sz ⌝ -∗

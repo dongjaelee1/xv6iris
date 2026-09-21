@@ -196,6 +196,28 @@ Section UkShPipeFork.
     rewrite /pterm_wc. iIntros "[H | [%Hlt _]]"; [ iExact "H" | lia ].
   Qed.
 
+  (* ---- ...AND THE CHILD LAW'S PAYLOAD AT THE WIDENED CREDENTIAL IS
+          EXACTLY [pterm_pay], so SS4.3j (1)'s REDEFINITION NEEDS NO NEW
+          DEFINITION: [UkShFork.ushf_child_law_at] AT [pterm_wc] already
+          IS the twin the ruling asks for (lane SH-PIPE-ROUND-6).  What
+          it also needs -- and what this lane REFUTES -- is
+          [UkShFork]'s [HWct], i.e. [Timeless (pterm_wc I p)]; see S5. ---- *)
+  Lemma pterm_wq_pay (I : list (bv 8)) :
+    UkShFork.ushf_wq pterm_wc I ⊣⊢ pterm_pay I.
+  Proof using .
+    rewrite /pterm_pay /UkShFork.ushf_wq /pterm_wc. iSplit.
+    - iIntros "[[H | [%Hlt _]] | [H | [_ H]]]".
+      + iLeft. by iLeft.
+      + exfalso. lia.
+      + iLeft. by iRight.
+      + iRight. rewrite Nat.add_0_r. iExact "H".
+    - iIntros "[[H | H] | H]".
+      + iLeft. by iLeft.
+      + iRight. by iLeft.
+      + iRight. iRight. iSplitR; [ iPureIntro; lia | ].
+        rewrite Nat.add_0_r. iExact "H".
+  Qed.
+
   (* ---- [UkSh]'s three pure [Wc] laws, at the widened credential ---- *)
   Lemma pterm_wb_wc (I : list (bv 8)) : ⊢ Wbf I -∗ pterm_wc I 0%nat.
   Proof using .

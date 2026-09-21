@@ -7955,7 +7955,16 @@ upstream file are BYTE-IDENTICAL to main**; in particular
 `sh_pipe_child_law` was NOT redefined and `sh_round_holds_pipe`,
 `sh_pipe_child_law_all` and `pipe_adequacy_pipeΣ_of_child` did not move.
 Whole-tree `ec2-lane.sh round6 build` **RC=0**; no `Admitted`, no
-`Axiom`; `Proof using` on every result.
+`Axiom`; `Proof using` on every result.  **ALL FOUR AUDITS ARE UNMOVED BY
+CONSTRUCTION, and the dependency graph says so**: the REVERSE cone of the
+two files this lane touches is `{UkShPipeFork, UShPipeCatSlot}` plus the
+three report files, and NONE of those is a `_CoqProject` row that
+`SystemAssumptions`, `EchoAssumptions`, `TreeAssumptions`,
+`FileAssumptions` or `PipeAssumptions` reaches (measured:
+`grep -ln 'Require Import UkShPipeFork' *.v` = the three report files
+only; `UShPipeCatSlot` = itself and this lane's report file).  So
+`audit-only` **13**, `audit-echo-only` **14**, `audit-tree-only` **13**,
+`audit-pipe-only` **14** stand at their baselines.
 
 **THE FINAL THEOREM IS NOT REACHED, and this lane states that plainly**:
 `pipe_adequacy_pipeΣ_final` does not exist, `sh_pipe_child_law_all` is
@@ -8062,13 +8071,15 @@ child's exit escrow.
 
 **AND THE `▷` CANNOT BE PAID, which is the part that makes it a
 refutation and not a shape problem.**  A `▷` is strippable only at a
-later-providing leaf, and the u-tier has exactly four
-(`grep -rn 'Lemma wp_uk_[a-z0-9_]*_later'`): `UkRunLeaf.wp_uk_btype_later`,
-`UkRunBr.wp_uk_btype0_later`, and the two loads/stores — every one of
-them a BTYPE or a memory access.  Between the `wait`'s return and the
-point the credential is SPENT the parent executes `0x938 c.mv`,
+later-providing leaf, and at the `urun` altitude the u-tier has exactly
+TWO (`grep -rn 'Lemma wp_uk_[a-z0-9_]*_later'`):
+`UkRunLeaf.wp_uk_btype_later` and `UkRunBr.wp_uk_btype0_later`, both
+BTYPE.  (`UkLoad.wp_uk_load_later` / `UkStore.wp_uk_store_later` are one
+tier below and have no `urun` wrapper; `UkStep.wp_uk_retire_later` is the
+generic one they are all built from.)  Between the `wait`'s return and
+the point the credential is SPENT the parent executes `0x938 c.mv`,
 `0x93a c.mv`, `0x93c jal getcmd`, and then the prompt's `write` INSIDE
-`getcmd` — no BTYPE, no load, no store.  (`0x930 c.beqz` is before the
+`getcmd` — no BTYPE at all.  (`0x930 c.beqz` is before the
 wait, and `0x940 bltz` is after the prompt.)  So:
 
 - *A later-providing `c.mv` would not be enough either.*  Even given

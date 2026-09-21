@@ -51,3 +51,10 @@ Print Assumptions pipe_round_entry.
 Print Assumptions pipe_round_exit.
 Print Assumptions pipe_round_unwind.
 Print Assumptions pipe_fork_exit_not_lpr.
+
+(* ...and SH-PIPE-ROUND-5 part 2's ONE remaining obligation, DISCHARGED *)
+Print Assumptions PipeBoth.pwc_fork_exit_nlines.
+Print Assumptions PipeBoth.pterm_fork_exit_read_fupd.
+Require Import UkShPipeFork.
+Print Assumptions pterm_read_law_of.
+Print Assumptions pterm_wc_read_of.

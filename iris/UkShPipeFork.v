@@ -45,8 +45,14 @@
 (*       instructions, [UkSh.wp_ksh_getcmd] at [pterm_wc], and the LANDED *)
 (*       body at [Wcf] -- because after the read the credential is        *)
 (*       [Wcf I' 3] again.  Without it the re-entry has no continuation.  *)
-(*       S3 states it and reduces [ush_wc_read] to it; the lane does NOT  *)
-(*       prove it (see the report).                                      *)
+(*       S3 states it and reduces [ush_wc_read] to it.                    *)
+(*                                                                       *)
+(*  (B) IS DISCHARGED (lane PIPE-STAGE-4, design SS4.3m as amended):      *)
+(*  [pterm_shape] carries the round's FROZEN resolution, which is the one *)
+(*  non-monotone reading a read site can hold, and the read residue       *)
+(*  inside [Pm] carries a LONGER lower bound of the same list.            *)
+(*  [pterm_read_law_of] below is that, at one premise about [Pm] -- the   *)
+(*  era's own [UShLine.ush_mid_at] hands out [PipeLinksLine.pwc_rres].    *)
 (* ===================================================================== *)
 From Stdlib Require Import ZArith Lia List.
 From stdpp Require Import gmap list bitvector.definitions.
@@ -272,6 +278,34 @@ Section UkShPipeFork.
   (* ...AND WITH IT, [UkSh]'s FOURTH AND LAST [Wc] HYPOTHESIS IS ONE
      LINE.  This is the reduction: everything else the terminal re-entry
      needs is landed. *)
+  (* ...AND ITS DISCHARGE (lane PIPE-STAGE-4).  What refutes `a line was
+     delivered after a fork-failure round' is neither pure nor monotone:
+     the terminal round FREEZES the claim's resolution at [nlines I - 1]
+     ([PipeOut.cs_frozen_at], carried by [pwc_fork_exit]), while the read
+     residue of the delivered line forces [length cs0 >= nlines I].
+     [PipeBoth.pterm_read_absurd] is the contradiction; the fancy update
+     is spent only to read [1 <= nlines I] back out of the family's
+     invariant ([pwc_fork_exit_nlines]).  The ONE premise is the era's
+     reading of [Pm], which is [UShLine.ush_mid_at]'s fourth conjunct. *)
+  Lemma pterm_read_law_of :
+    (forall I' : list (bv 8),
+       ⊢ Pm I' -∗ Pm I'
+         ∗ (∃ v : era_pins, era_pin γ (S gen_id) v ∗ pwc_rres v I')) ->
+    pterm_read_law.
+  Proof using .
+    intros Hpm I l Hnl. iIntros "Hpm Hsh".
+    iDestruct (Hpm (I ++ l ++ [wl_nl])%list with "Hpm") as "[Hpm Hv]".
+    iDestruct "Hv" as (v') "[#Hpin' #Hres]".
+    rewrite /pterm_shape.
+    iDestruct "Hsh" as (v L gL gR gM XL YR) "(%Htl & #Hpin & Hfe)".
+    destruct Htl as [HTX HTY].
+    iDestruct (era_pin_agree with "Hpin' Hpin") as %->.
+    iMod (pterm_fork_exit_read_fupd g ⊤ blk2N (S gen_id) v I L l
+            gL gR gM XL YR 7%nat HTX HTY ltac:(apply top_subseteq)
+            with "Hfe Hres") as "[_ #HT]".
+    iModIntro. by iFrame "Hpm HT".
+  Qed.
+
   Lemma pterm_wc_read_of :
     pterm_read_law ->
     (forall I l : list (bv 8),

@@ -2488,6 +2488,62 @@ Section pipe_both.
     iApply (pterm_read_absurd v I l Hpos with "Hfz Hres").
   Qed.
 
+  (* ...AND THE ONE PREMISE IT ASKS FOR IS INSIDE THE SHAPE.  A terminal
+     round HAS a line ([wr_blk2_p]'s [I <> []] and [rest_of I = []]), and
+     the family's invariant is where that fact lives; the right cursor
+     half refutes the DONE arm, so the shape can always read it back --
+     at a fancy update, which is what [UkSh.ush_wc_read] is since
+     SH-PIPE-ROUND-5 part 3. *)
+  Lemma pwc_fork_exit_nlines (E : coPset) (N : namespace) (k : nat)
+      (v : era_pins) (I L : list (bv 8)) (gL gR gM : gname)
+      (XL YR : iProp Σ) (c2 : nat) :
+    Timeless XL -> Timeless YR ->
+    (↑N : coPset) ⊆ E ->
+    pwc_fork_exit N k v I L gL gR gM XL YR c2 ={E}=∗
+    pwc_fork_exit N k v I L gL gR gM XL YR c2
+    ∗ (⌜(1 <= nlines I)%nat⌝ ∨ PT).
+  Proof using .
+    intros HTX HTY HN. iIntros "(#Hinv & HcR & HcM & #Hfz)".
+    iMod (inv_acc E N _ HN with "Hinv") as "[Hin Hclose]".
+    iDestruct "Hin" as ">Hin". rewrite {1}/blk2_body.
+    iDestruct "Hin" as "[Hfam | Hdone]"; last first.
+    { iDestruct (blk2_done_not_R gL gR c2 with "HcR Hdone") as %[]. }
+    iDestruct "Hfam" as (R sel c1 c2' tm) "(Hf & HgL & HgR & Hxl & Hrm)".
+    iAssert (⌜(1 <= nlines I)%nat⌝ ∨ PT)%I as "#Hn".
+    { rewrite {1}/pwc_blk2. iDestruct "Hf" as "[Hx | #HT]";
+        [| by iRight].
+      iDestruct "Hx" as (ps cs P) "(%Hw & _)".
+      iLeft. iPureIntro.
+      destruct Hw as (Hne & Hr & _).
+      exact (nlines_pos_of_rest_nil I Hne Hr). }
+    iMod ("Hclose" with "[Hf HgL HgR Hxl Hrm]") as "_".
+    { iNext. rewrite /blk2_body. iLeft. iExists R, sel, c1, c2', tm.
+      by iFrame "Hf HgL HgR Hxl Hrm". }
+    iModIntro. iFrame "Hn". rewrite /pwc_fork_exit.
+    by iFrame "Hinv HcR HcM Hfz".
+  Qed.
+
+  (* THE WHOLE OBLIGATION, at one fancy update: design SS4.3i's DIRTY
+     CREDENTIAL, i.e. SH-PIPE-ROUND-5 part 2's [pterm_read_law] once the
+     shape carries the frozen resolution. *)
+  Lemma pterm_fork_exit_read_fupd (E : coPset) (N : namespace) (k : nat)
+      (v : era_pins) (I L l : list (bv 8)) (gL gR gM : gname)
+      (XL YR : iProp Σ) (c2 : nat) :
+    Timeless XL -> Timeless YR ->
+    (↑N : coPset) ⊆ E ->
+    pwc_fork_exit N k v I L gL gR gM XL YR c2 -∗
+    pwc_rres v (I ++ l ++ [wl_nl]) ={E}=∗
+    pwc_fork_exit N k v I L gL gR gM XL YR c2 ∗ PT.
+  Proof using .
+    intros HTX HTY HN. iIntros "Hfe #Hres".
+    iMod (pwc_fork_exit_nlines E N k v I L gL gR gM XL YR c2 HTX HTY HN
+            with "Hfe") as "[Hfe [%Hpos | #HT]]"; last by iFrame "Hfe HT".
+    iAssert PT as "#HT".
+    { iApply (pterm_fork_exit_read N k v I L l gL gR gM XL YR c2 Hpos
+                with "Hfe Hres"). }
+    iModIntro. by iFrame "Hfe HT".
+  Qed.
+
   (* ---- (ITEM 5) THE TEST: [fork1] #2 fails; the runcmd child prints
      `fork\n' through the family and exits with the second shape; sh's
      main loop prints `$ '; the STRAY prints its whole diagnostic after

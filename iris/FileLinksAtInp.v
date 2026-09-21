@@ -84,7 +84,7 @@ Section file_links_at_inp.
              ∗ (inp_lb v I ∨ FT))%I with "[Hc]" as "[Hc #Hi]".
     { destruct p as [| [| [| p']]]; cbn [FileLinksAt.fwc_lpr_at].
       - rewrite /FileLinksAt.fwc_line_at /FileLinksAt.fwc_pro_at
-                /FileLinksAt.fwc_blk_at /FileLinksAt.fhead_at
+                /FileLinksAt.fwc_post_at /FileLinksAt.fhead_at
                 /FileLinksLine.fcur.
         iDestruct "Hc" as "[[Hl | [Hh | #HT]] | Hq]".
         + iDestruct "Hl" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE & #Hf)".

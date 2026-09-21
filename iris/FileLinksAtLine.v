@@ -313,6 +313,71 @@ Section file_links_at_line.
     rewrite /f0w. iSplitR; [by iPureIntro |]. iExists vf. by iFrame "Hvf Hf0'".
   Qed.
 
+  (* THE PROMPT'S DOLLAR AT THE STATE-AWARE POST ([FileLinksLine.
+     fprompt_dollar_posts] at the named state): [fblk_step_at]'s two arms at
+     the block's last-but-one byte, read off [fabs] at the credential's own
+     choice list. *)
+  Lemma fprompt_dollar_posts_at (s0 : fstate) (k : nat) (v : era_pins)
+      (I : list (bv 8)) (a : nat) (b : bv 8) (Φ : iProp Σ) :
+    faprs I a -> b = u_prompt !!! 0%nat ->
+    FPIN k v -∗ file_links g -∗ fwc_post_at g s0 k v I a -∗
+    (fwc_sp_t_at g s0 k v I -∗ Φ) -∗ out_link Uart0 k b Φ.
+  Proof using .
+    intros Ha Hb. iIntros "#Hpin #Hlk Hc HΦ".
+    iDestruct (file_links_w with "Hlk") as "#Hw".
+    iDestruct (file_links_blk with "Hlk") as "#Hblk".
+    iDestruct (file_links_taint with "Hlk") as "#Ht".
+    pose proof Ha as [Hok Hnp].
+    rewrite {1}/fwc_post_at. iDestruct "Hc" as "[Hl | #HT]"; last first.
+    { iApply ("Ht" $! k b Φ with "HT [HΦ]").
+      iIntros "#HT'". iApply "HΦ". by iApply fwc_sp_t_at_taint. }
+    iDestruct "Hl" as (ps cs P)
+      "(%Hw & Htn & #Hps & #Hcs & #HE & #Hf)".
+    pose proof (proj1 Hw) as Hwb.
+    pose proof Hwb as (Hpin0 & Hr & Hn & HP).
+    pose proof (wr_blk_nonnil_f ps cs s0 I P Hwb) as Hne.
+    pose proof (fabs_len_ge2 s0 cs I a Ha) as Hlen.
+    pose proof (fabs_dollar s0 cs I a Ha) as Hby. rewrite -Hb in Hby.
+    pose proof (wr_blk_sp_fs ps cs s0 I P a Hw Ha) as Hsp.
+    rewrite /f0w. iDestruct "Hf" as "[%Hk Hvf]".
+    iDestruct "Hvf" as (vf) "[#Hvf #Hf0]".
+    destruct (length (fabs s0 cs I a) - 2)%nat as [| i'] eqn:Hi.
+    - (* the prompt IS the block's first byte: it files the alternative *)
+      cbn [blkcs_f]. rewrite Nat.add_0_r.
+      iApply ("Hblk" $! k v vf P a b ps cs s0 I Φ
+                with "[%] [%] [%] [%] [%] [%] [%] Hpin Hvf Htn Hps Hcs HE Hf0 [HΦ]").
+      { exact Hne. }
+      { exact Hr. }
+      { rewrite Hn. lia. }
+      { exact Hpin0. }
+      { exact HP. }
+      { rewrite -/(fline I). exact Hok. }
+      { rewrite -/(fline I). exact Hby. }
+      iIntros "Hres". iApply "HΦ". rewrite /fwc_sp_t_at.
+      iDestruct "Hres" as "[(Htn' & Hps' & Hcs' & HE' & Hf0') | #HT]";
+        last by iRight.
+      iLeft. iExists ps, (cs ++ [a]), (S P).
+      replace (P + (length (fabs s0 cs I a) - 1))%nat with (S P) in Hsp by lia.
+      replace (P + 1)%nat with (S P) by lia.
+      rewrite /fcur. iFrame "Htn' Hps' Hcs' HE'". iSplitR; [by iPureIntro |].
+      rewrite /f0w. iSplitR; [by iPureIntro |]. iExists vf. by iFrame "Hvf Hf0'".
+    - (* an ordinary byte of a block already filed *)
+      cbn [blkcs_f].
+      iApply ("Hw" $! k v vf (P + S i')%nat b ps (cs ++ [a]) s0 I Φ
+                with "[%] [%] [%] Hpin Hvf Htn Hps Hcs HE Hf0 [HΦ]").
+      { rewrite length_app Hn. cbn [length]. lia. }
+      { exact (wr_blk_pin_snoc_f ps cs s0 I P a Hwb). }
+      { exact (wr_blk_byte_fs ps cs s0 I P a (S i') b Hwb Hnp Hby). }
+      iIntros "Hres". iApply "HΦ". rewrite /fwc_sp_t_at.
+      iDestruct "Hres" as "[(Htn' & Hps' & Hcs' & HE' & Hf0') | #HT]";
+        last by iRight.
+      iLeft. iExists ps, (cs ++ [a]), (S (P + S i')).
+      replace (P + (length (fabs s0 cs I a) - 1))%nat
+        with (S (P + S i')) in Hsp by lia.
+      rewrite /fcur. iFrame "Htn' Hps' Hcs' HE'". iSplitR; [by iPureIntro |].
+      rewrite /f0w. iSplitR; [by iPureIntro |]. iExists vf. by iFrame "Hvf Hf0'".
+  Qed.
+
   Lemma fprompt_dollar_line_at (s0 : fstate) (k : nat) (v : era_pins)
       (I : list (bv 8)) (b : bv 8) (Φ : iProp Σ) :
     b = u_prompt !!! 0%nat ->
@@ -322,7 +387,7 @@ Section file_links_at_line.
     intros Hb. iIntros "#Hpin #Hlk Hc HΦ".
     rewrite {1}/fwc_line_at. iDestruct "Hc" as "[Hc | Hc]"; last first.
     { iDestruct "Hc" as (a) "[%Ha Hc]".
-      iApply (fprompt_dollar_post_at s0 k v I a b Φ Ha Hb
+      iApply (fprompt_dollar_posts_at s0 k v I a b Φ Ha Hb
                 with "Hpin Hlk Hc HΦ"). }
     iDestruct (file_links_pro with "Hlk") as "#Hpro".
     iDestruct (file_links_first with "Hlk") as "#Hfst".

@@ -107,7 +107,9 @@ Section file_links_at_ban.
     fwc_blk_at g s0 k v I a 0%nat -∗ fwc_line_at g s0 k v I.
   Proof using .
     iIntros "Hc". rewrite /fwc_line_at. iRight.
-    iExists (fnoc_of (fline I)). iSplitR; [iPureIntro; exact (fapr_noc I) |].
+    iExists (fnoc_of (fline I)).
+    iSplitR; [iPureIntro; exact (fapr_faprs _ _ (fapr_noc I)) |].
+    iApply (fwc_post_at_of_blk g s0 k v I _ (fapr_noc I)).
     rewrite (fab_noc I) EchoLinks.wr_prompt_len.
     cbn [Nat.sub]. iApply (fwc_blk_0_at with "Hc").
   Qed.
@@ -116,6 +118,15 @@ Section file_links_at_ban.
     fapr I a ->
     fwc_blk_at g s0 k v I a (length (fab I a) - 2)%nat -∗
     fwc_line_at g s0 k v I.
+  Proof using .
+    intros Ha. iIntros "Hc". rewrite /fwc_line_at. iRight. iExists a.
+    iSplitR; [iPureIntro; exact (fapr_faprs I a Ha) |].
+    iApply (fwc_post_at_of_blk g s0 k v I a Ha with "Hc").
+  Qed.
+
+  (* ...and the state-aware producer (a round whose bytes are the file's) *)
+  Lemma fwc_line_of_posts_at (s0 : fstate) k v I a :
+    faprs I a -> fwc_post_at g s0 k v I a -∗ fwc_line_at g s0 k v I.
   Proof using .
     intros Ha. iIntros "Hc". rewrite /fwc_line_at. iRight. iExists a.
     iSplitR; [by iPureIntro |]. iExact "Hc".

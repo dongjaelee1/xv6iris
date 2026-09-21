@@ -210,11 +210,23 @@ Section file_links_at.
         ∗ f0w g k s0)
      ∨ (⌜i = 0%nat⌝ ∗ fhead_at s0 k v I) ∨ FT)%I.
 
+  (* [FileLinksLine.fwc_post] at the named state: a block written up to its
+     prompt, its length computed from the credential's OWN choice list
+     ([FileLinksLine.fabs]) -- so it can be the block whose bytes are the
+     file's ([RCRan]), which the [fab]-indexed shape could not. *)
+  Definition fwc_post_at (s0 : fstate) (k : nat) (v : era_pins)
+      (I : list (bv 8)) (a : nat) : iProp Σ :=
+    ((∃ (ps cs : list nat) (P : nat),
+        ⌜wr_blk_t_f ps cs s0 I P⌝
+        ∗ turn v (P + (length (fabs s0 cs I a) - 2))%nat ∗ ps_lb v ps
+        ∗ cs_lb v (blkcs_f cs a (length (fabs s0 cs I a) - 2)%nat)
+        ∗ inp_lb v I ∗ f0w g k s0)
+     ∨ FT)%I.
+
   Definition fwc_line_at (s0 : fstate) (k : nat) (v : era_pins)
       (I : list (bv 8)) : iProp Σ :=
     (fwc_pro_at s0 k v I
-     ∨ ∃ a : nat, ⌜fapr I a⌝
-         ∗ fwc_blk_at s0 k v I a (length (fab I a) - 2)%nat)%I.
+     ∨ ∃ a : nat, ⌜faprs I a⌝ ∗ fwc_post_at s0 k v I a)%I.
 
   Definition fwc_pr_at (s0 : fstate) (k : nat) (v : era_pins)
       (I : list (bv 8)) (p : nat) : iProp Σ :=
@@ -262,12 +274,15 @@ Section file_links_at.
   Global Instance fwc_ban_at_timeless s0 k v I i :
     Timeless (fwc_ban_at s0 k v I i).
   Proof using . rewrite /fwc_ban_at. tl_at. Qed.
+  Global Instance fwc_post_at_timeless s0 k v I a :
+    Timeless (fwc_post_at s0 k v I a).
+  Proof using . rewrite /fwc_post_at. tl_at. Qed.
   Global Instance fwc_line_at_timeless s0 k v I : Timeless (fwc_line_at s0 k v I).
   Proof using .
     rewrite /fwc_line_at.
     apply bi.or_timeless; [apply fwc_pro_at_timeless |].
     apply bi.exist_timeless; intro.
-    apply bi.sep_timeless; [apply bi.pure_timeless | apply fwc_blk_at_timeless].
+    apply bi.sep_timeless; [apply bi.pure_timeless | apply fwc_post_at_timeless].
   Qed.
   Global Instance fwc_pr_at_timeless s0 k v I p : Timeless (fwc_pr_at s0 k v I p).
   Proof using .
@@ -307,6 +322,20 @@ Section file_links_at.
   Proof using . iIntros "H". rewrite /fwc_blk_at. by iRight. Qed.
   Lemma fwc_ban_at_taint s0 k v I i : FT -∗ fwc_ban_at s0 k v I i.
   Proof using . iIntros "H". rewrite /fwc_ban_at. iRight. by iRight. Qed.
+  Lemma fwc_post_at_taint s0 k v I a : FT -∗ fwc_post_at s0 k v I a.
+  Proof using . iIntros "H". rewrite /fwc_post_at. by iRight. Qed.
+
+  (* the landed shape is the instance at a state-free alternative *)
+  Lemma fwc_post_at_of_blk s0 k v I a :
+    fapr I a ->
+    fwc_blk_at s0 k v I a (length (fab I a) - 2)%nat -∗ fwc_post_at s0 k v I a.
+  Proof using .
+    intros Ha. rewrite /fwc_blk_at /fwc_post_at. iIntros "[H | H]"; [| by iRight].
+    iDestruct "H" as (ps cs P) "(%Hw & Htn & Hps & Hcs & HE & Hf)".
+    iLeft. iExists ps, cs, P. rewrite (fabs_fab s0 cs I a Ha).
+    iFrame "Htn Hps Hcs HE Hf". by iPureIntro.
+  Qed.
+
   Lemma fwc_line_at_taint s0 k v I : FT -∗ fwc_line_at s0 k v I.
   Proof using .
     iIntros "H". rewrite /fwc_line_at. iLeft.
@@ -494,13 +523,31 @@ Section file_links_at.
       iRight. iLeft. iSplitR; [ by iPureIntro | ]. iExact "H".
   Qed.
 
+  Lemma fwc_post_at_pack s0 k v I a :
+    fwc_post_at s0 k v I a -∗ fwc_post g k v I a.
+  Proof using .
+    rewrite /fwc_post_at /FileLinksLine.fwc_post. iIntros "[H | H]"; [| by iRight].
+    iDestruct "H" as (ps cs P) "(%Hw & Ht & Hps & Hcs & HE & Hf)".
+    iLeft. iExists ps, cs, s0, P. iFrame "Ht Hps Hcs HE Hf". by iPureIntro.
+  Qed.
+
+  Lemma fwc_post_unpack k v I a :
+    fwc_post g k v I a -∗ ∃ s0 : fstate, fwc_post_at s0 k v I a.
+  Proof using .
+    rewrite /FileLinksLine.fwc_post /fwc_post_at. iIntros "[H | H]".
+    - iDestruct "H" as (ps cs s0 P) "(%Hw & Ht & Hps & Hcs & HE & Hf)".
+      iExists s0. iLeft. iExists ps, cs, P. iFrame "Ht Hps Hcs HE Hf".
+      by iPureIntro.
+    - iExists None. by iRight.
+  Qed.
+
   Lemma fwc_line_at_pack s0 k v I : fwc_line_at s0 k v I -∗ fwc_line g k v I.
   Proof using .
     rewrite /fwc_line_at /FileLinksLine.fwc_line.
     iIntros "[H | H]".
     - iLeft. iApply (fwc_pro_at_pack with "H").
     - iRight. iDestruct "H" as (a) "[%Ha H]". iExists a.
-      iSplitR; [ by iPureIntro | ]. iApply (fwc_blk_at_pack with "H").
+      iSplitR; [ by iPureIntro | ]. iApply (fwc_post_at_pack with "H").
   Qed.
 
   Lemma fwc_line_unpack k v I :
@@ -510,7 +557,7 @@ Section file_links_at.
     iIntros "[H | H]".
     - iDestruct (fwc_pro_unpack with "H") as (s0) "H". iExists s0. by iLeft.
     - iDestruct "H" as (a) "[%Ha H]".
-      iDestruct (fwc_blk_unpack with "H") as (s0) "H". iExists s0.
+      iDestruct (fwc_post_unpack with "H") as (s0) "H". iExists s0.
       iRight. iExists a. iSplitR; [ by iPureIntro | ]. iExact "H".
   Qed.
 

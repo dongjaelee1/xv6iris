@@ -91,6 +91,8 @@ Require Import UCodeShK.     (* [shk_rodata] *)
 Require Import UShPanic.     (* [prompt_step] / [ksh_w_of_link_prompt_fam] *)
 Require Import RiscvPtsto.
 Require Import WpUart.
+Require Import UexecExecInst.  (* [uprogSG_free] -- the era's ARM instance; the
+                                 two-instances wedge, durable-notes *)
 Require Import CtxIdDefs.
 Local Open Scope list_scope.
 
@@ -435,6 +437,21 @@ Section UkShPipeFork.
 
 End UkShPipeFork.
 
+(* NAME THE LEAF, DO NOT UNFOLD IT (durable-notes, the instance-search
+   wedge; [UInitPipe]'s own header has the measurement).  The terminal
+   shape carries the family's [inv] and the widened credential is a
+   disjunction over it, so ANY [Persistent]/[Timeless]/[IntoWand] search
+   that is allowed to unfold [pterm_wc] walks into the two-writer body and
+   does not come back -- measured at [UInitPipe.v]'s prompt law, where the
+   era's credential became [pterm_wc] (design SS4.3p): one [iApply] ran
+   for 1h28m before this.  Every consumer either names its instance or
+   rewrites the definition by hand. *)
+#[global] Typeclasses Opaque PipeLinkInst.pipe_Wcl_at.
+#[global] Typeclasses Opaque PipeLinkInst.pipe_Wbl_at.
+#[global] Typeclasses Opaque pterm_shape.
+#[global] Typeclasses Opaque pterm_pay.
+#[global] Typeclasses Opaque pterm_wc.
+
 Section UkShPipeForkPrompt.
   (* [UShPanic.v]'s binder list, which is what makes the call's classes
      resolve here as they resolve there, plus the pipeline era's two. *)
@@ -519,14 +536,14 @@ Section UkShPipeForkPrompt.
       (l : list fdstate) (rb : bool) :
     l !! 2%nat = Some (FdOpen rb true (FdDevice CONSOLE)) ->
     pipe_link_taint g -∗ shk_rodata (ukn_t Np) -∗
-    UkSh.ksh_w Np (mword_of_int 2 : mword 64)
+    UkSh.ksh_w (PS := uprogSG_free) Np (mword_of_int 2 : mword 64)
       (mword_of_int UkSh.sh_prompt_pv) 2%nat
       (UserFd.ustd (ukn_fd Np) l ∗ pterm_shape g I 5%nat)
       (UserFd.ustd (ukn_fd Np) l ∗ pterm_shape g I 7%nat).
   Proof using Hcons.
     intros Hl2. iIntros "#Ht #Hro".
     iPoseProof (pterm_prompt_step I with "Ht") as "#Hst".
-    iApply (UShPanic.ksh_w_of_link_prompt_fam Np
+    iApply (UShPanic.ksh_w_of_link_prompt_fam (PS := uprogSG_free) Np
               (fun p : nat => pterm_shape g I (5 + p)%nat) l rb Hl2
               with "Hst Hro").
   Qed.
@@ -536,8 +553,8 @@ Section UkShPipeForkPrompt.
      the LANDED law on the left arm and (A) on the right. *)
   Lemma pterm_prompt_law (Np : uk_names Σ) :
     pipe_link_taint g -∗ shk_rodata (ukn_t Np) -∗
-    UkSh.ush_prompt_law Np Wcf -∗
-    UkSh.ush_prompt_law Np (pterm_wc g).
+    UkSh.ush_prompt_law (PS := uprogSG_free) Np Wcf -∗
+    UkSh.ush_prompt_law (PS := uprogSG_free) Np (pterm_wc g).
   Proof using Hcons.
     iIntros "#Ht #Hro #Hlaw".
     rewrite {1}/UkSh.ush_prompt_law.

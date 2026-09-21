@@ -126,6 +126,7 @@ Require Import AppPipeClaim.
 Require Import AppPipeCons.
 Require Import UInitConsPipe.
 Require Import UShPipeRound.
+Require Import UkShPipeFork.   (* [pterm_wc] -- design SS4.3p's WIDENED era credential *)
 Require Import UShPipeCatSlot.  (* [pipe_sh_cat_slot] -- the /cat pin, off
                                    the era equation (lane SH-PIPE-ROUND-6) *)
 Require Import AppPipe.
@@ -141,6 +142,7 @@ Local Open Scope Z_scope.
 (*         the elaboration explodes -- that file's own note) plus the      *)
 (*         pipeline class.                                                 *)
 (* ===================================================================== *)
+
 Section UInitPipeSeam.
   Context `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, !fileG Σ,
             !irefslotG Σ, !pavG Σ, !wchG Σ, !ufdG Σ}.
@@ -335,6 +337,26 @@ Section UInitPipeSeam.
   Lemma pipe_pin_refl (v : era_pins) :
     ⊢ era_pin γ (S gen_id) v -∗ lk_pin PI (S gen_id) v.
   Proof using . by iIntros "$". Qed.
+
+  (* ...AND THE READ LAW AT THE WIDENED CREDENTIAL (design SS4.3p): the
+     era runs at [UkShPipeFork.pterm_wc g], whose terminal arm a delivered
+     line REFUTES -- [pterm_wc_read_of] on the landed law and the pipeline
+     era's own [pterm_read_law] ([UShPipeRound.pipe_pterm_read_law], off
+     the mid-line pieces' reader residue). *)
+  Lemma pipe_wc_read_t (γp : gname) :
+    forall I l : list (bv 8), wl_nl ∉ l ->
+      ⊢ UShLine.ush_mid_at (lk_rres PI) γ γp (I ++ l ++ [wl_nl])%list -∗
+        UkShPipeFork.pterm_wc g I 2%nat ={⊤}=∗
+        UShLine.ush_mid_at (lk_rres PI) γ γp (I ++ l ++ [wl_nl])%list
+        ∗ UkShPipeFork.pterm_wc g (I ++ l ++ [wl_nl])%list 3%nat.
+  Proof using .
+    apply (UkShPipeFork.pterm_wc_read_of g
+             (UShLine.ush_mid_at (lk_rres PI) γ γp)
+             (UShPipeRound.pipe_pterm_read_law g γp)).
+    intros I l Hnl. iIntros "Hm Hc". iModIntro.
+    iApply (UShLine.ush_mid_wc_read_t_at PI γ γp (S gen_id) I l Hnl
+              pipe_ep_refl with "Hm Hc").
+  Qed.
 
   (* =================================================================== *)
   (*  S2  THE SEAM SH-OPEN CONSUMES, and the supply as a wand              *)
@@ -546,7 +568,18 @@ Section PipeInitBoot.
       (UShLine.ush_rd_pin_at (lk_rres (pipe_link_inst_at g)) (pgn_cl g))
       (pipe_cc_rd_timeless HR GEN g)
       (UShLine.ush_mid_at (lk_rres (pipe_link_inst_at g)) (pgn_cl g))
-      (pipe_Wcl_at g)
+      (* THE ERA'S WRITE CREDENTIAL IS THE WIDENED ONE (design SS4.3p;
+         lane SH-PIPE-ROUND-7).  The terminal round of a pipeline line --
+         a [fork1] that failed inside runcmd -- comes back to sh in the
+         child's exit payload and can only reach the prompt inside the
+         LOOP'S OWN credential, because the fork arm's re-entry at 0x938
+         has no continuation but [UkShLoop.ushl_head].  No arm of
+         [lk_lcred] can carry it (PIPE-STAGE-3, PIPE-STAGE-5 SS3), so the
+         credential the era runs at is [pterm_wc] and not [pipe_Wcl_at]:
+         they agree at index 3 -- the only index the loop's BODY sees
+         ([UkShPipeFork.pterm_wc_3]) -- and differ at 0, 1, 2, where the
+         prompt is written. *)
+      (UkShPipeFork.pterm_wc g)
       (pipe_Wbl_at g) (pipe_cc_wb_timeless HR GEN g)
       (UInitDiag.kinit_pro_at (pipe_link_inst_at g)).
 
@@ -601,25 +634,32 @@ Section PipeInitBoot.
       exact (UShLine.ush_at_of_mid_wb_at (lk_rres (pipe_link_inst_at g))
                (pgn_cl g) (echo_taint (pgn_cl g)) (pipe_Wbl_at g) N γp I
                Hpeq Hwbi).
-    (* (5) the write credential's step at the read *)
-    - intros γp I l Hnl. iIntros "Hm Hc". iModIntro.
-      iApply (UShLine.ush_mid_wc_read_t_at (pipe_link_inst_at g) (pgn_cl g)
-                γp (S gen_id) I l Hnl (pipe_ep_refl g) with "Hm Hc").
+    (* (5) the write credential's step at the read, AT THE WIDENED
+       CREDENTIAL (design SS4.3p): the terminal arm is refuted by the
+       round's frozen resolution against the reader's own residue. *)
+    - intros γp I l Hnl. exact (pipe_wc_read_t g γp I l Hnl).
     (* (6) the banner-owed credential is a boundary credential *)
-    - intros I. exact (pipe_Hwbwc g I).
+    - intros I. exact (UkShPipeFork.pterm_wb_wc g I).
     (* (7) a block owed is one too *)
-    - intros I. exact (pipe_Hwbl g I).
+    - intros I. exact (UkShPipeFork.pterm_wc_blk_line g I).
     (* (8) a line read at an unwritten prompt is the taint *)
     - intros γp I l Hnl.
       exact (UShLine.ush_wb_read_holds_at (pipe_link_inst_at g) (pgn_cl g)
                γp (S gen_id) I l Hnl (pipe_ep_refl g)).
-    (* (9) the cursor's boundary *)
+    (* (9) the cursor's boundary, at the widened credential: the reading
+       [UShLine.ush_wc_inp] is the ONE of the ten that does not transfer
+       for free, and [UkShPipeFork.pterm_wc_inp_of] pays it out of the
+       [inp_lb] conjunct [pterm_shape] carries (design SS4.3p (a)). *)
     - intros γp N l i Hpeq.
       exact (UShLine.ush_posb_of_lend_at (lk_rres (pipe_link_inst_at g))
                (pgn_cl g) (echo_taint (pgn_cl g)) N γp
-               (pipe_Wcl_at g) (pipe_Wbl_at g) l i Hpeq Hwci Hwbi).
+               (UkShPipeFork.pterm_wc g) (pipe_Wbl_at g) l i Hpeq
+               (UkShPipeFork.pterm_wc_inp_of g Hwci) Hwbi).
     (* (10) the lend's conversion at the shell's entry *)
-    - intros n. exact (pipe_wp_line g n).
+    - intros n. iIntros "H".
+      iDestruct (pipe_wp_line g n with "H") as (I) "[%Hlen Hc]".
+      iExists I. iSplitR; [ by iPureIntro | ].
+      iApply (UkShPipeFork.pterm_wc_of g I 0%nat with "Hc").
   Qed.
 
   (* =================================================================== *)
@@ -771,10 +811,18 @@ Section PipeInitBoot.
       - iApply (udep_free).
       - iApply Hchild. }
     (* ...AND THE PROMPT'S LAW AT EVERY LINE BOUNDARY, off the links *)
+    (* ...AT THE WIDENED CREDENTIAL (design SS4.3p): the landed law on the
+       left arm and the terminal round's two prompt bytes on the right
+       ([UkShPipeFork.pterm_prompt_law], off PIPE-STAGE-3's steps). *)
+    (* ...AT THE WIDENED CREDENTIAL (design SS4.3p).  The law is built one
+       file down ([UShPipeRound.pipe_sh_prompt_law_t]), where the section
+       carries ONE instance set beside the record equation; at THIS lemma,
+       which takes [HR] and [GEN] explicitly, the wand's two sides are
+       elaborated at different [uprogSG] instances and the proofmode's
+       [IntoWand] does not come back (measured: 1h28m). *)
     iAssert (UShKernel.sh_prompt_law (PS := uprogSG_free)
-               (pipe_Wcl_at g))%I as "#Hplaw".
-    { iApply (UShPanic.sh_prompt_law_holds_line_at (pipe_link_inst_at g)
-                (PS := uprogSG_free) with "Hlks"). }
+               (UkShPipeFork.pterm_wc g))%I as "#Hplaw".
+    { iApply (UShPipeRound.pipe_sh_prompt_law_t g Hcons with "Hlks"). }
     (* ---- the supply as a wand from the console credential ---- *)
     iAssert (UkInit.init_cons_sup fsc_cons (echo_taint (pgn_cl g))
                (init_cons_cred (echo_taint (pgn_cl g)) r) init_cons_fd

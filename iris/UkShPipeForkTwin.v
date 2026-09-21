@@ -121,6 +121,8 @@ Section UkShPipeForkTwin.
   Local Notation ushf_fans := (UkShFork.ushf_fans).
   Local Notation ushf_kill_law := (UkShFork.ushf_kill_law Wc).
   Local Notation ushf_child_law_at := (UkShFork.ushf_child_law_at Wc).
+  Local Notation ushf_child_law := (UkShFork.ushf_child_law Wc).
+  Local Notation ushf_body_law := (UkShFork.ushf_body_law N γp T Wc Wb Pm).
   Local Notation ushf_code_shp := (UkShFork.ushf_code_shp).
   Local Notation ushf_rodata_shp := (UkShFork.ushf_rodata_shp).
   Local Notation ushf_eqv_false := (UkShFork.ushf_eqv_false).
@@ -724,6 +726,87 @@ Section UkShPipeForkTwin.
               with "Hgen Hhead Hcode Hro Hjt Hkl Hchl Hplaw [%] Hstd Hdat
                     Hsz Hbuf Hrun").
     exact Hfd0.
+  Qed.
+
+  Lemma ushf_body_law_echo_pipe (sz : Z) :
+    8344 <= sz ->
+    UserPtTree.pgroundup sz = sz ->
+    usz_ok (sz + 65536) ->
+    (forall I : list (bv 8), ⊢ Wc I 3%nat -∗ Wc I 0%nat) ->
+    ushf_kill_law -∗
+    ushf_child_law -∗
+    UkShDiag.ush_panic_law Wc Wb -∗
+    ushf_body_law UkSh.ush_line_echo sz.
+  Proof using HT Hpay Hpsok_free.
+    intros Hszlo Hszal Hszok Hwbl.
+    iIntros "#Hkl #Hchl #Hplaw !>" (lu h m f k len l n)
+      "%Hd %Hlat %Hregs %Hs1 %Ha5 %Hnn %Hnul %Hkl2 %Hpm1 %Hpmwb %Hfd0
+       #Hgen #Hcode #Hjt Hhead Hstd Hdat Hsz Hbuf Hrun".
+    destruct Hd as [ ws -> ].
+    iDestruct (ush_jtab_ro γt with "Hjt") as "#Hro".
+    iApply (wp_kshm_body_pipe UkSh.ush_line_is 60 h m f k len ws sz l n
+              ltac:(lia) UkShFork.ushf_lp0_echo Hregs Hs1 Ha5 Hnn Hnul Hkl2 Hlat
+              Hszlo Hszal Hszok Hpm1 Hpmwb Hwbl
+              with "Hgen Hhead Hcode Hro [] Hjt Hkl Hchl Hplaw [%] Hstd
+                    Hdat Hsz Hbuf Hrun").
+    - iApply (ushf_code_shp with "Hcode").
+    - exact Hfd0.
+  Qed.
+
+  Lemma ushf_rest_of_body_at_pipe
+      (D : FileDisc.uline -> Prop) (sz : Z) :
+    (* the break, as [exec] leaves it *)
+    8344 <= sz ->
+    UserPtTree.pgroundup sz = sz ->
+    usz_ok (sz + 65536) ->
+    (* the credential's conversion at a fork that failed (step 4) *)
+    (forall I : list (bv 8), ⊢ Wc I 3%nat -∗ Wc I 0%nat) ->
+    (* THE PAYLOAD'S OWN ASSEMBLER AND THE TAINT'S CONTINUATION ARE NOT
+       PREMISES HERE ANY MORE (lane R3): both are facts about the RECORD
+       the kernel minted -- the assembler is guarded by [ukn_pay N], the
+       generic slot IS [ukn_pay N] at an arbitrary key -- so they come out
+       of the obligation's own box below, exactly as sh's text, its jump
+       table and the constancy of its payload do.  THE FREE WRITE LAW AND
+       THE EXEC SUPPLY ARE GONE with the fork's taint arm. *)
+    (* ...AND THE BODY, PER LINE THE ERA ADMITS (lane SH-CHILD).  The two
+       child laws and sh's panic are inside it now -- which is what lets
+       one era spend [ushf_child_law] and another spend that AND the
+       redirect child's AND cat's. *)
+    ushf_body_law D sz -∗
+    UkSh.ush_rest_l_at N γp T Wc Wb Pm D (UkShLoop.ushl_R N sz).
+  Proof using HT Hpay Hpsok_free.
+    intros Hszlo Hszal Hszok Hwbl.
+    iIntros "#Hbody".
+    (* THE RECORD'S OWN THREE COME OUT OF THE OBLIGATION now (lane SH-LINE
+       2b, (b)): sh's text, its jump table and the constancy of its exit
+       payload are facts about the record the KERNEL minted, so the entry
+       pays them and the discharger no longer takes them as premises --
+       which is what makes [UInitSh.sh_pay_rest], a [∀] over every record,
+       provable at all.  [.rodata] rides in with the table. *)
+    iModIntro. iIntros (l) "%Hc %Hpm1 %Hpmwb #Hcode #Hjt #Hgen Hhead".
+    iDestruct (ush_jtab_ro γt with "Hjt") as "#Hro".
+    iIntros (h m f k i2 n ws)
+      "%Hregs %Hs1 %Ha5 %Hi2 %Hfd0 Hline Hstd [Hdat Hsz] Hbuf Hrun".
+    destruct Hi2 as [[Hki2 Hi2n] Hnul2].
+    destruct (UkShFork.ushf_first_nul f k i2 Hki2 Hnul2) as (len & Hle & Hnn & Hnul).
+    (* THE LINE, OR THE TAINT *)
+    iEval (rewrite /UkSh.ush_rest_line_at) in "Hline".
+    iDestruct "Hline" as "[Hl | HT]"; last first.
+    { assert (Halo : is_aligned_vaddr
+                       (Virtaddr (mword_of_int 0x97a : mword 64)) 2 = true)
+        by (vm_compute; reflexivity).
+      iApply (UkSh.ush_gen_run N T h m (mword_of_int 0x97a)
+                (16 + (UkSh.ush_Dbody + n)) Halo with "Hgen HT Hrun"). }
+    iDestruct ("Hl" $! len with "[%] [%]") as %Hline;
+      [ exact Hnn | exact Hnul | ].
+    destruct Hline as (lu & Hd & Hws & Hlat). subst ws.
+    iApply ("Hbody" $! lu h m f k len l n with
+              "[%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] Hgen Hcode Hjt
+               [Hhead] Hstd Hdat Hsz Hbuf Hrun");
+      [ exact Hd | exact Hlat | exact Hregs | exact Hs1 | exact Ha5
+      | exact Hnn | exact Hnul | lia | exact Hpm1 | exact Hpmwb
+      | exact Hfd0 | ].
+    iApply (UkShLoop.ushl_head_of_R N γp with "Hhead").
   Qed.
 
 End UkShPipeForkTwin.

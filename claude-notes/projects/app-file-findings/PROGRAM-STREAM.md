@@ -1727,3 +1727,40 @@ new file `UkShDiagAt.v` below it, and `UkShCat`'s lemma keeps its statement and
 is `exact` the moved one.  Echo's arm and walk become `exact` the general ones
 at `alt_execfail` after `rewrite (ws !!! 0 = cmd_echo)` — by CONVERSION, as that
 file's own note demands (the proofmode route costs tens of minutes there).
+
+### Stretch 12, continued: defect 1 LANDED whole; defect 3 (the state-aware credential) checks file by file
+
+**Defect 1, step 2 LANDED on `main`** (29 files rebuilt, zero errors, `make -n`
+empty, audits identical): the exec arm and the child's walk at any exec'able
+line, `UkShDiagAt.v`.  Both steps compiled on the first try once the two
+missing node lemmas (`echo_cmd_str`, `echo_cmd_word`) joined the set.
+
+**Defect 3** (branch `app-file/fabs`, `.vok`-checked, not yet a whole-tree
+build):
+
+* PURE (`FileLinksLine.v`): `fabs s0 cs I a := cont (fstate_upto cs s0
+  (bodies_of I) (nlines I - 1)) (fline I) (ralt_dec a)` — definitionally
+  `cont (UCatOut.cat_st cs s0 I) …`; `faprs` (`fapr` without state-freedom);
+  `fabs_fab` (the instance at a state-free alternative); **`fabs_prompt`: every
+  non-panic admissible block ENDS WITH THE PROMPT at every state** (`RCRan` at
+  `Some bs` is `bs ++ u_prompt`), from which `fabs_{len_ge2,dollar,space}` are
+  three lines each; `wr_blk_{pending,byte,open,sp}_fs`.  The landed
+  `wr_blk_{pending,byte,open,sp}_f` keep their statements and are rewrites
+  through `fabs_fab`.
+* THE CREDENTIAL: `fwc_post` / `fwc_post_at s0` — a block written up to its
+  prompt whose length is computed INSIDE, from the credential's own choice
+  list — REPLACES the `fab`-indexed block arm of `fwc_line` / `fwc_line_at`
+  (it does not sit beside it: the old arm is its instance,
+  `fwc_post{,_at}_of_blk`).  The record's type did not move: the producers
+  (`fwc_line_of_blk0`, `fwc_line_of_post` and their `_at` twins, hence
+  `LinkRec`'s fields) keep their statements and go through the instance
+  lemma; `fwc_line_of_posts{,_at}` is the new state-aware producer.
+* THE ONE CONSUMER: `fprompt_dollar_posts{,_at}` — `fblk_step`'s two arms at
+  the block's last-but-one byte, the byte read off `fabs_dollar` and
+  `wr_blk_byte_fs`.  The underlying links (`file_links_blk`, `file_links_w`)
+  were state-aware all along; the byte premise matched SYNTACTICALLY.
+* `UShRound`: `Wcf0_of_posts_alt` is the fold at the state-aware post, and
+  it needs NO side premise for the PEND case — a two-byte block that ends with
+  the prompt IS the prompt (`fabs_prompt`).  `Wcf0_of_post_alt` is its
+  corollary and LOST that premise; the three redirect exits got shorter and
+  `fab_openfail_long` is deleted.

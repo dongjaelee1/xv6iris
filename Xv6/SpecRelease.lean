@@ -54,4 +54,30 @@ structure RELEASE : Prop where
     (γ : GName) (s : String) (R : CtxId → IProp GF) [CtxMorph R] hsie hnoff hK reen hreen hon,
     wp_release_body (hlc := hlc) (GF := GF) cpu k γ s R hsie hnoff hK reen hreen hon
 
+/-- **Cancellable-lock form of `wp_release_body`.**  Opens through
+`lockOpenable γ lk s R D`, ruling out the dead ownership-check branch with
+a credential `Tc` that refutes `D`; `Tc` is threaded through the holding
+check, the two clears and pop_off, and handed back in the continuation.
+The `D := False`, `Tc := emp` case recovers `wp_release_body`. -/
+def wp_release_gen_body {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF] [CurCtx]
+    (cpu : CPU) (k : KCtx) (γ : GName) (s : String) (R : CtxId → IProp GF) [CtxMorph R]
+    (D : IProp GF) [Timeless D] (Tc : IProp GF) (hrefute : ⊢ Tc -∗ D -∗ (False : IProp GF))
+    (hsie : k.sie = false)
+    (hnoff : 1 ≤ k.noff) (hK : 10 ≤ k.avail)
+    (reen : Bool) (hreen : reen = (decide (k.noff = 1) && k.intena))
+    (hon : reen = true → k.tier = .kpt ∧ trapRes true + 6 ≤ k.avail) : Prop :=
+  kctx cpu k ∗ pcIs cpu releaseAddr ∗ lockOpenable γ (k.regs 10#5) s R D ∗ Tc ∗
+  locked γ cpu ∗ R curCtx ∗ popArm cpu k reen ∗
+  wpNext (k.popExit reen).sie k.proc cpu (fun cpu' => iprop(∀ R' : RegMap,
+    kctx cpu' (((k.popExit reen).withRegs R').withLocks (k.locks.filter (fun x => x ≠ s))) -∗
+    pcIs cpu' (jumpPc (k.regs 1#5)) -∗ ⌜calleeSaved k.regs R'⌝ -∗ Tc -∗ wpLoop cpu'))
+  ⊢ wpLoop (GF := GF) cpu
+
+/-- The cancellable-lock interface of `release`. -/
+structure RELEASE_GEN : Prop where
+  wp_release_gen : ∀ {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF] [CurCtx] (cpu : CPU) (k : KCtx)
+    (γ : GName) (s : String) (R : CtxId → IProp GF) [CtxMorph R] (D : IProp GF) [Timeless D] (Tc : IProp GF)
+    hrefute hsie hnoff hK reen hreen hon,
+    wp_release_gen_body (hlc := hlc) (GF := GF) cpu k γ s R D Tc hrefute hsie hnoff hK reen hreen hon
+
 end Xv6

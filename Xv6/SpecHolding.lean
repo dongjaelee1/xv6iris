@@ -69,6 +69,21 @@ def wp_holding_locked_body {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF]
     ⌜calleeSaved k.regs R' ∧ R' 10#5 = 1#64⌝ -∗ locked γ cpu -∗ wpLoop cpu)
   ⊢ wpLoop (GF := GF) cpu
 
+/-- **Cancellable-lock form of `wp_holding_locked_body`.**  Opens through
+`lockOpenable γ lk s R D`, ruling out the dead branch with a credential
+`Tc` that refutes `D`; the holder token `locked γ cpu` and `Tc` both come
+back in the continuation.  The `D := False`, `Tc := emp` case recovers
+`wp_holding_locked_body`. -/
+def wp_holding_locked_gen_body {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF] [CurCtx]
+    (cpu : CPU) (k : KCtx) (γ : GName) (s : String) (R : CtxId → IProp GF)
+    (D : IProp GF) [Timeless D] (Tc : IProp GF) (hrefute : ⊢ Tc -∗ D -∗ (False : IProp GF))
+    (hsie : k.sie = false) (hK : 6 ≤ k.avail) : Prop :=
+  kctx cpu k ∗ pcIs cpu holdingAddr ∗ lockOpenable γ (k.regs 10#5) s R D ∗ Tc ∗
+  locked γ cpu ∗
+  (∀ R' : RegMap, kctx cpu (k.withRegs R') -∗ pcIs cpu (jumpPc (k.regs 1#5)) -∗
+    ⌜calleeSaved k.regs R' ∧ R' 10#5 = 1#64⌝ -∗ locked γ cpu -∗ Tc -∗ wpLoop cpu)
+  ⊢ wpLoop (GF := GF) cpu
+
 /-- The interface of `holding`. -/
 structure HOLDING : Prop where
   wp_holding_notheld : ∀ {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF] [CurCtx] (cpu : CPU) (k : KCtx)
@@ -80,5 +95,8 @@ structure HOLDING : Prop where
   wp_holding_notheld_gen : ∀ {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF] [CurCtx] (cpu : CPU) (k : KCtx)
     (γ : GName) (s : String) (R : CtxId → IProp GF) (D : IProp GF) [Timeless D] (Tc : IProp GF) hrefute hsie hK hs,
     wp_holding_notheld_gen_body (hlc := hlc) (GF := GF) cpu k γ s R D Tc hrefute hsie hK hs
+  wp_holding_locked_gen : ∀ {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF] [CurCtx] (cpu : CPU) (k : KCtx)
+    (γ : GName) (s : String) (R : CtxId → IProp GF) (D : IProp GF) [Timeless D] (Tc : IProp GF) hrefute hsie hK,
+    wp_holding_locked_gen_body (hlc := hlc) (GF := GF) cpu k γ s R D Tc hrefute hsie hK
 
 end Xv6

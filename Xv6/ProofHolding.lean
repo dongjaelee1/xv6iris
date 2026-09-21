@@ -357,10 +357,79 @@ theorem holding_locked_proof (MC : MYCPU) {hlc : HasLC} {GF : BundledGFunctors} 
     · ipureintro; exact sltiu_diff_eq (cpuAddr cpu)
     · ipureintro; rfl
 
+set_option maxHeartbeats 4000000 in
+/-- Cancellable-lock form of `holding_locked_proof`: opens through
+`lockOpenable γ lk s R D`, threading the credential `Tc` (which refutes the
+dead branch `D`) through the holder read of the word and the owner-word
+load, and handing it back alongside the holder token in the continuation.
+`holding_tail` is generic in its `P`/`Q` and needs no change. -/
+theorem holding_locked_gen_proof (MC : MYCPU) {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF] [CurCtx]
+    (cpu : CPU) (k : KCtx) (γ : GName) (s : String) (R : CtxId → IProp GF)
+    (D : IProp GF) [Timeless D] (Tc : IProp GF) (hrefute : ⊢ Tc -∗ D -∗ (False : IProp GF))
+    (hsie : k.sie = false) (hK : 6 ≤ k.avail) :
+    wp_holding_locked_gen_body (hlc := hlc) (GF := GF) cpu k γ s R D Tc hrefute hsie hK := by
+  unfold wp_holding_locked_gen_body
+  iintro ⟨Hk, Hpc, #Hlk, Hcred, Hlocked, HΦ⟩
+  icases kctx_kernelText _ _ $$ Hk with ⟨#Htext, Hk⟩
+  icases kctx_wf _ _ $$ Hk with ⟨%hwf, Hk⟩
+  ihave Hk := (show kctx cpu k ⊢ kctx cpu (k.withRegs k.regs) from by rw [KCtx.withRegs_self]) $$ Hk
+  icases locked_cases γ cpu $$ Hlocked with ⟨Hlc, Hheld⟩
+  simp only [holdingAddr, KernelSyms.«holding»]
+  -- lw a5,0(a0): 1 for the holder
+  k_step (wp_s_lw_lockword_locked_gen cpu _ ?hs 0x80000b54#64 true 0#12 15#5 10#5 (by decide) γ (k.regs 10#5) s R D Tc hrefute ?haddr) from (text_instr _ _ _ _ rfl rfl) Htext
+    $$ [- $Hk $Hpc $Hcred $Hlc]
+  case haddr => k_norm
+  iintro %w Hk Hpc %hw Hlc Hcred
+  subst hw
+  k_step (wp_s_branch cpu _ 0x80000b56#64 true 6#13 15#5 0#5 (by decide) bop.BNE) from (text_instr _ _ _ _ rfl rfl) Htext
+    $$ [- $Hk $Hpc] with [bcond_bne_one]
+  iintro Hk Hpc
+  iapply (holding_tail MC cpu (k.withRegs (k.regs.set 15#5 (BitVec.signExtend 64 lkOne))) hsie hK
+    iprop(lockOpenable γ (k.regs 10#5) s R D ∗ lockedCore γ cpu ∗ Tc)
+    (fun w' => iprop(⌜w' = cpuAddr cpu⌝ ∗ lockedCore γ cpu ∗ Tc))
+    1#64 ?hld ?hans)
+  rotate_right 1
+  · iframe Hk Hpc Hlc Hcred
+    iframe #
+    iintro %R' %w' Hk Hpc %hcs ⟨%_, Hlc, Hcred⟩
+    k_norm
+    ihave Hlk2 := locked_intro γ cpu $$ [Hlc Hheld]
+    case' _ => iframe
+    iapply HΦ $$ %_ Hk Hpc [] Hlk2 Hcred
+    ipureintro
+    obtain ⟨hcs, h10⟩ := hcs
+    refine ⟨?_, h10⟩
+    unfold calleeSaved at hcs ⊢
+    simp only [KCtx.withRegs_regs, RegMap.set_apply, BitVec.reduceEq, ite_false] at hcs
+    exact hcs
+  case hld =>
+    iintro ⟨#Hi, Hk, Hpc, ⟨#Hlk, Hlc, Hcred⟩, HΦ'⟩
+    iapply (wp_s_ld_lkcpu_locked_gen cpu (holdingFrameCtx (k.withRegs (k.regs.set 15#5 (BitVec.signExtend 64 lkOne))))
+      (by k_norm [holdingFrameCtx]) 0x80000b66#64 true 16#12 15#5 10#5 (by decide) γ
+      (k.regs 10#5) s R D Tc hrefute (by k_norm [holdingFrameCtx]))
+    iframe Hk Hpc Hlc Hcred
+    iframe #
+    inext
+    iapply wpNext_mono $$ HΦ'
+    iintro %cpu' HK Hk Hpc Hlc Hcred
+    iapply HK $$ %(cpuAddr cpu) Hk Hpc
+    iframe Hlc Hcred
+    ipureintro; rfl
+  case hans =>
+    intro w'
+    iintro ⟨%heq, Hlc, Hcred⟩
+    subst heq
+    iframe Hlc Hcred
+    isplit
+    · ipureintro; exact sltiu_diff_eq (cpuAddr cpu)
+    · ipureintro; rfl
+
 theorem holding_proof (MC : MYCPU) : HOLDING :=
   ⟨fun {_ _} _ _ cpu k γ s R hsie hK hs => holding_notheld_proof MC cpu k γ s R hsie hK hs,
    fun {_ _} _ _ cpu k γ s R hsie hK => holding_locked_proof MC cpu k γ s R hsie hK,
    fun {_ _} _ _ cpu k γ s R D _ Tc hrefute hsie hK hs =>
-     holding_notheld_gen_proof MC cpu k γ s R D Tc hrefute hsie hK hs⟩
+     holding_notheld_gen_proof MC cpu k γ s R D Tc hrefute hsie hK hs,
+   fun {_ _} _ _ cpu k γ s R D _ Tc hrefute hsie hK =>
+     holding_locked_gen_proof MC cpu k γ s R D Tc hrefute hsie hK⟩
 
 end Xv6

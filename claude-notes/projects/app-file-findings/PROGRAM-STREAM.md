@@ -1472,3 +1472,21 @@ THE ASSEMBLY, as it will be written (new file, after `UShRound`, so that
   the diagnostic: destruct it first and run the law at the matching
   alternative, and `redir_openfail_exit`'s `∧` becomes a plain premise
   (simplify the lemma then).
+
+### Stretch 10: A STATEMENT GAP FOUND WHILE PLANNING THE ASSEMBLY — the round never receives `cons_made`
+
+`UShRound.Hopen_hand` takes `cons_made (fn_cons r) jc` (the persistent fact
+"/init's mknod made the console at inum `jc`"), and so does cat's held read
+(`UCatKernel.cat_held_read_of_deed`).  NOTHING in `UShRound.v` supplies it:
+`sh_round_holds_file`'s premises are `udep`, the slot and the two era pins,
+and `Hchild_cat`'s statement does not name it either.  /init has it
+(`UInitConsFile`), and it is persistent, so the fix is a premise and not a
+resource: `(∃ jc, cons_made (fn_cons r) jc) -∗` on both child lemmas and on
+`sh_round_holds_file`, discharged by item 4 (INIT-FILE) where sh is exec'd.
+Do it WITH the assembly, not before — it is one antecedent on statements the
+assembly restates anyway.
+
+Also landed on the branch: `FileLinksLine.fline_echof_in` (`0 < nlines I ->
+fline I = LEchoF ws -> ws ∈ echof_lines_in I`), which is what turns PRE's
+`line_wit` into the `ws ∈ ls` the open and the write credential ask for; and
+`redir_openfail_exit` is now two lemmas (`_u`, `_m`), as the plan above said.

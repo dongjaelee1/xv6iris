@@ -1118,6 +1118,21 @@ Section UkShRun.
         UserFd.ustd (ukn_fd N') l -∗
         UserCwd.ucwd (ukn_cwd N') cw -∗
         UserChildren.uch (ukn_ch N') ∅ -∗
+        (* ...AND ITS OWN PID, AS A HANDLE, WITH THE ONE FACT THAT MAKES IT
+           WORTH HAVING (design app-pipe SS4.3w, purchase 1).  The leaf
+           MINTS it -- [UkFork.wp_uk_ecall_fork]'s child arm hands out
+           [∃ p, ⌜p <> 1⌝ ∗ upid (ukn_pid N') p], "a forked child is the
+           one process that can PROVE it is not <init>" -- and this stub
+           used to DROP it on the floor.  That drop is what left a
+           pipeline round's two reaps PID-ERASED: [UexecRet.uwait_ans]
+           quantifies the caller's pid, so the reaping arm's
+           [γ' ∈ cs \/ pidv = 1] is satisfied by its right disjunct and
+           names nobody (lane SH-PIPE-ROUND-10, witness
+           [UShPipeAssembly.uwait_ans_orphan_arm]).  The pid-carrying wait
+           ([wp_kshr_wait_pid] above) is what refutes it, and it asks for
+           exactly this fragment.  Relayed VERBATIM: a caller that does
+           not want it introduces it and drops it. *)
+        (∃ p : Z, ⌜p <> 1⌝ ∗ UserChildren.upid (ukn_pid N') p) -∗
         ([∗ map] fd ↦ st ∈ D, UserFd.ufd (ukn_fd N') fd st) -∗
         urun N' h'
           (<[Regidx a0_idx := (mword_of_int 0 : mword 64)]>
@@ -1182,7 +1197,7 @@ Section UkShRun.
       iIntros (hp2) "Hrun".
       iApply ("Hpar" $! hp2 r with "[%] Hans HP Hsz Hstd Hcwd HD Hrun").
       exact Hr.
-    - iIntros (N' hc γ') "%Hpeq Hmy HRc [#Hck HP] Hsz Hstd HD Hcwd Hch _ Hrun".
+    - iIntros (N' hc γ') "%Hpeq Hmy HRc [#Hck HP] Hsz Hstd HD Hcwd Hch Hpid Hrun".
       (* the weaker class the rest of sh's walk is stated at: the record
          the arm minted is keyed at [Q], and [Q] does not read the status *)
       pose proof (ukn_const_of_eq N' Q Hpeq HQc) as Hcst'.
@@ -1196,7 +1211,7 @@ Section UkShRun.
       { iApply (uis_shk_c84 with "Hck"). }
       iIntros (hc2) "Hrun".
       iApply ("Hchi" $! N' hc2 γ'
-                with "[%] Hmy HRc Hck HP Hsz Hstd Hcwd Hch HD Hrun").
+                with "[%] Hmy HRc Hck HP Hsz Hstd Hcwd Hch Hpid HD Hrun").
       exact Hpeq.
   Qed.
 
@@ -1673,6 +1688,9 @@ Section UkShRun.
         UserFd.ustd (ukn_fd N') l -∗
         UserCwd.ucwd (ukn_cwd N') cw -∗
         UserChildren.uch (ukn_ch N') ∅ -∗
+        (* ...AND ITS OWN PID, AS A HANDLE (design app-pipe SS4.3w,
+           purchase 1): [wp_kshr_fork]'s row, relayed. *)
+        (∃ p : Z, ⌜p <> 1⌝ ∗ UserChildren.upid (ukn_pid N') p) -∗
         ([∗ map] fd ↦ st ∈ D, UserFd.ufd (ukn_fd N') fd st) -∗
         urun N' h' m' (ret_pc (m !!! Regidx ra_idx)) (2 + (Dg + n)) -∗
         mWP (Loop : expr riscv_lang))) -∗
@@ -1923,7 +1941,7 @@ Section UkShRun.
       + iExact "Hrun".
     - (* ---- THE CHILD, under fresh names ---- *)
       iIntros (N' hc γ') "%Hpeq Hmy HRc #Hck (#Hcro & HP & Hw8 & Hw0) Hsz Hstd
-                          Hcwd Hch HD Hrun".
+                          Hcwd Hch Hpid HD Hrun".
       pose proof (ukn_const_of_eq N' Q Hpeq HQc) as Hcst'.
       (* THE CHILD NEVER PANICS: its a0 is 0 on the nose, which is what
          stands in for the trivial record's free payload. *)
@@ -1941,7 +1959,8 @@ Section UkShRun.
         discriminate Hneg. }
       iIntros (hc2 m') "%Hq %Hra %Hs0 %Hsps _ Hrun".
       iApply ("Hchi" $! N' hc2 m' γ'
-                with "[%] [%] [%] Hmy HRc Hck HP Hsz Hstd Hcwd Hch HD [Hrun]").
+                with "[%] [%] [%] Hmy HRc Hck HP Hsz Hstd Hcwd Hch Hpid HD
+                      [Hrun]").
       + exact Hpeq.
       + exact (fun q => Hback (mword_of_int 0 : mword 64) m' q Hq Hra Hs0 Hsps).
       + rewrite (Hq a0_idx ltac:(vm_compute; lia) ltac:(vm_compute; lia)
@@ -2047,7 +2066,7 @@ Section UkShRun.
                 with "[%] [%] [%] HP Hsz Hstd [Hcwd] Hch HD Hpayv Hrun");
         [ exact Hr | exact Hcs | exact Ha0
         | iApply (ucwd_any_of with "Hcwd") ].
-    - iIntros (N' h' m' γ') "%Hpeq %Hcs %Ha0 _ _ #Hck HP Hsz Hstd Hcwd Hch HD
+    - iIntros (N' h' m' γ') "%Hpeq %Hcs %Ha0 _ _ #Hck HP Hsz Hstd Hcwd Hch _ HD
                              Hrun".
       iApply ("Hchi" $! N' h' m'
                 with "[%] [%] [%] Hck HP Hsz Hstd [Hcwd] [Hch] HD Hrun");

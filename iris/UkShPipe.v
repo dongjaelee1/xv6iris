@@ -1368,7 +1368,7 @@ Section UkShPipe.
       + (* ================== THE RIGHT CHILD: fd 0 = the READ end ========= *)
         iIntros (N' hD mD γ')
           "%Hpeq %HcsD %Ha0_D Hmy HRcR #Hck (#Hjt3 & #Ht3 & Hb0 & Hb1)
-           Hsz Hstd Hcwd Hch HD Hrun".
+           Hsz Hstd Hcwd Hch Hpid' HD Hrun".
         pose proof (ukn_const_of_eq N' Qc Hpeq HQc) as Hcst'.
         pose proof (UkShRun.ush_st_cs f2 mD sp0 t Hst_f2 HcsD) as Hst_mD.
         iDestruct (ushpi_hs_out (ukn_fd N') a b _ _ Hab with "HD")
@@ -1634,7 +1634,7 @@ Section UkShPipe.
     - (* =================== THE LEFT CHILD: fd 1 = the WRITE end ========= *)
       iIntros (N' h7 m7 γ')
         "%Hpeq %Hcs7 %Ha0_7 Hmy HRcL #Hck (#Hjt2 & #Ht2 & Hb0 & Hb1)
-         Hsz Hstd Hcwd Hch HD Hrun".
+         Hsz Hstd Hcwd Hch Hpid' HD Hrun".
       pose proof (ukn_const_of_eq N' Qc Hpeq HQc) as Hcst'.
       pose proof (UkShRun.ush_st_cs f1 m7 sp0 t Hst_f1 Hcs7) as Hst_m7.
       iDestruct (ushpi_hs_out (ukn_fd N') a b _ _ Hab with "HD")

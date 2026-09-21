@@ -9030,6 +9030,9 @@ Section UkShDiagLeaf.
         UserFd.ustd (ukn_fd N') l -∗
         UserCwd.ucwd (ukn_cwd N') cw -∗
         UserChildren.uch (ukn_ch N') ∅ -∗
+        (* ...and its own pid, as a handle (design app-pipe SS4.3w,
+           purchase 1): [UkShRun.wp_kshr_fork1]'s row, relayed *)
+        (∃ p : Z, ⌜p <> 1⌝ ∗ UserChildren.upid (ukn_pid N') p) -∗
         ([∗ map] fd ↦ st ∈ D, UserFd.ufd (ukn_fd N') fd st) -∗
         urun N' h' m'
           (ret_pc (m !!! Regidx (mword_of_int 1 : mword 5)))

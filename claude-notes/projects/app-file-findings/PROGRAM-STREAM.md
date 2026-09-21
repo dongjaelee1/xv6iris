@@ -1661,3 +1661,22 @@ is computable (`UCatOut.cat_st cs s0 I`).  A third arm of `fwc_line_at` —
 and `Wcf0_of_post_alt` gain a case).  The state-free arm is then its instance,
 which is a simplification worth checking before adding a third arm beside it.
 File tier only (`FileLinksAt`, `FileLinkInst`, `FileLinksAtInp`, `UShRound`).
+
+**Defect 3, SIZED (2026-09-21).**  One law CONSUMES the position-0 credential:
+`FileLinksAtLine.fprompt_dollar_line_at` (the prompt's `$`), whose block arm is
+`fprompt_dollar_post_at` = `fblk_step_at` at byte `length (fab I a) - 2` plus
+the pure `FileLinksLine.wr_blk_sp_f ps cs s0 I P a Hw Ha`.  The PURE side is
+already state-aware underneath -- `wr_sp_f` / `wr_blk_f` speak
+`proc_stream_f ps cs (Some s0) I`, the full transcript with `fsm`/`cont` at the
+running state -- and `fab` reaches it only through `cont_state_free`.  So the
+fix is a state-aware byte function beside `fab`,
+`fabs s0 cs I a := cont (cat_st cs s0 I) (fline I) (ralt_dec a)` (guarded by
+`ralt_ok` and non-panic), with `fab_len_ge2` / `fab_dollar` / `wr_blk_sp_f` /
+the block step's pure premise restated at it (`fab I a = fabs s0 cs I a` when
+`fstate_free`, by `cont_state_free`), and `fwc_line_at`'s block arm indexed by
+`length (fabs s0 cs I a) - 2` with `cs` from its own existential.  The
+producers (`fwc_line_at_of_post`, `lk_blk_line`-shaped record fields) keep
+their `fab` statements as instances.  Files: `FileLinksLine` (pure),
+`FileLinksAt`, `FileLinksAtLine`, `FileLinksAtBan`, `FileLinksAtInp`,
+`FileLinkInst`, then `UShRound` (`Wcf0_of_pre_line_id`, `Wcf0_of_post_alt`).
+NOT STARTED.

@@ -9174,8 +9174,13 @@ Branch `app-pipe/sh-pipe-round-9` off main (`5d1ad00e3`).  Three commits:
 `UShPipeRound.v` (the antecedent, and one token in
 `sh_round_holds_pipe`), `UShPipeAssembly.v` (everything new).  **Whole
 tree `ec2-lane.sh round9 build` RC=0**; no `Admitted`, no `Axiom`;
-`Proof using` on every result.  **All four audits at their baselines**
-(see below).
+`Proof using` on every result.  **All four audits re-measured on the
+mirror and at their baselines: `audit-only` 13, `audit-echo-only` 14,
+`audit-tree-only` 13, `audit-pipe-only` 14** — and unmovable by
+construction as well, since nothing in `_CoqProject` imports
+`UShPipeAssembly.v` (only `iris/PipeRound8Assumptions.v` does, and that
+file is out of the build; upstream's `ONE assumption-audit file per
+application` sweep has not reached it).
 
 **(0) RULING 1 — `UkShDiag.ush_execfail_law_at`'S BYTE STEP IS GUARDED BY
 `⌜p < n⌝`, AND NOTHING ELSE IN THE TREE MOVED.**  ROUND-8 predicted the

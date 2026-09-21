@@ -2093,8 +2093,15 @@ Section FileOpen.
     open_receipt_plain omo (fs_gamma_L γfs) γfs cw M pv vom
       (pobs_P_lin (file_taint c) [ROOTINO; i] (fdq r q1 (Some (i, bs))))
       (pobs_Pmiss (file_taint c))
-      (file_open_recv c r q2 (Some (i, bs))) Ft sts rv fdv' -∗
-      ((⌜rv = (mword_of_int (-1) : mword 64)⌝ ∗ ⌜fdv' = sts⌝)
+      (file_open_recv c r q2 (Some (i, bs))) Ft sts rv fdv' ={⊤}=∗
+      ((* THE FAILED CALL REFUNDS BOTH FRACTIONS (PROGRAM-STREAM stretch 9,
+          item 3 (i)): the receipt's failure fold carries the whole bundle
+          back ([SpecSysOpen.open_post_fail_plain]) and each of its three
+          arms holds the walk's cursor and the observation piece's refund.
+          The one [={⊤}=>] is the fold's first arm, as in
+          [PinnedOpen.pinned_open_dead_lin]. *)
+       (⌜rv = (mword_of_int (-1) : mword 64)⌝ ∗ ⌜fdv' = sts⌝
+        ∗ fdq r q1 (Some (i, bs)) ∗ fdq r q2 (Some (i, bs)))
        ∨ (∃ γo : gname,
             ⌜open_fd_rcpt (om_readable vom) (om_writable vom)
                (FdInode i γo omo) sts rv fdv'⌝
@@ -2109,8 +2116,46 @@ Section FileOpen.
     pose proof (f_pin_resolves i bs cw pl Hel Hst) as Hres.
     pose proof Hres as [(_ & Hfin & _) Hpinr].
     rewrite /open_receipt_plain.
-    iDestruct "Hrc" as "[(%Hr & %Hfd & _) | Hok]".
-    { iLeft. iPureIntro. exact (conj Hr Hfd). }
+    iDestruct "Hrc" as "[(%Hr & %Hfd & Hfail) | Hok]".
+    { rewrite /open_post_fail_plain.
+      iAssert (|={⊤}=> (fdq r q1 (Some (i, bs)) ∗ fdq r q2 (Some (i, bs)))
+                       ∨ file_taint c)%I with "[Hfail]" as ">Hc".
+      { iDestruct "Hfail" as "[Hpre | Hrest]".
+        - (* the AU never fired: the walk one-shot at its own start, and
+             the observation piece's refund *)
+          rewrite /open_au_plain_at. iDestruct "Hpre" as "(Hw & Hpf & _)".
+          iDestruct ("Hw" $! pl with "[%]") as "Hst0"; [ exact Hpath | ].
+          rewrite /ex_start.
+          iMod ("Hst0" $! (um_start_of cw pl) with "[//]") as "[HP _]".
+          iModIntro. rewrite /pobs_P_lin.
+          iDestruct "HP" as "[[_ Hd1] | #HT]"; [ | by iRight ].
+          rewrite /pf_at. iDestruct "Hpf" as "[_ Hd2]".
+          rewrite /file_open_recv. cbn [pf_refund]. iLeft. iFrame "Hd1 Hd2".
+        - iDestruct "Hrest" as (pl') "(%Hpath' & Hr2)". iModIntro.
+          iDestruct "Hr2" as "[Hdead | Hpost]".
+          + (* the walk died: the cursor at the hop it died at (a MISS at a
+               present [f] is the taint), the piece unfired *)
+            iDestruct "Hdead" as "(Hde & Hpf & _)".
+            rewrite /namei_walk_dead_era.
+            iDestruct "Hde" as (k d) "(_ & Harm)".
+            iDestruct "Harm" as "[[HP _] | [HPm _]]"; last first.
+            { iRight. rewrite /pobs_Pmiss. iExact "HPm". }
+            rewrite /pobs_P_lin.
+            iDestruct "HP" as "[[_ Hd1] | #HT]"; [ | by iRight ].
+            rewrite /pf_at. iDestruct "Hpf" as "[_ Hd2]".
+            rewrite /file_open_recv. cbn [pf_refund]. iLeft.
+            iFrame "Hd1 Hd2".
+          + (* the inode was reached: the terminal cursor and the piece's
+               RECEIPT *)
+            iDestruct "Hpost" as (i0) "(HP & Hrv & _)".
+            rewrite /pobs_P_lin.
+            iDestruct "HP" as "[[_ Hd1] | #HT]"; [ | by iRight ].
+            iDestruct "Hrv" as (av a) "[_ Hrecv]".
+            rewrite /file_open_recv. cbn [pf_recv].
+            iDestruct "Hrecv" as "(_ & Hd2 & _)". iLeft. iFrame "Hd1 Hd2". }
+      iModIntro. iDestruct "Hc" as "[[Hd1 Hd2] | #HT]"; [ | by iRight; iRight ].
+      iLeft. iFrame "Hd1 Hd2". iPureIntro. exact (conj Hr Hfd). }
+    iModIntro.
     iDestruct "Hok" as (pl' av j) "(%Hpath' & HP & Harm)".
     rewrite (arg_path_of_uniq M pv pl' pl Hpath' Hpath).
     (* the terminal cursor names the deed's inum and hands the walk's

@@ -1759,7 +1759,10 @@ Section UCatEntry.
        ∗ fdq r q1 (Some (i, bs)) ∗ fdq r q2 (Some (i, bs)))
       (fun ret : mword 64 =>
          ((⌜ret = (mword_of_int (-1) : mword 64)⌝
-           ∗ UserFd.ustd (ukn_fd N') l)
+           ∗ UserFd.ustd (ukn_fd N') l
+           (* the failed open REFUNDS the deed (PROGRAM-STREAM stretch 9,
+              item 3 (i)) *)
+           ∗ fdq r q1 (Some (i, bs)) ∗ fdq r q2 (Some (i, bs)))
           ∨ (∃ (fd : nat) (gamo : gname),
                ⌜ret = (mword_of_int (Z.of_nat fd) : mword 64)
                 /\ (fd < NOFILE)%nat⌝
@@ -1947,7 +1950,7 @@ Section UCatEntry.
       iIntros "%Hneg".
       iAssert (UserFd.ustd (ukn_fd N') (take NSTD (uvis_fd W)))%I
         with "[Harm]" as "Hstd".
-      { iDestruct "Harm" as "[[_ $] | [Hok | [Hf _]]]"; last first.
+      { iDestruct "Harm" as "[(_ & $ & _) | [Hok | [Hf _]]]"; last first.
         { iApply (UkFileOpen.uk_open_taint_fd_std (ukn_fd N')
                     (take NSTD (uvis_fd W)) ret Hnone with "Hf"). }
         iDestruct "Hok" as (fd gamo) "([%Hr1 %Hlt1] & $ & _)". }

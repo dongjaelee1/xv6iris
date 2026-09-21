@@ -1249,6 +1249,36 @@ Lane **SH-PIPE-ROUND-7**: (a)'s two leaves, the twins, the child law at
 `pipe_round_entry`/`pipe_round_exit`, `sh_pipe_child_law_all`,
 `pipe_adequacy_pipeΣ_final`.
 
+### 4.3p RULED (2026-09-23, after SH-PIPE-ROUND-7 part 1): the pipe era's loop credential IS the widened one — `cc_wc := pterm_wc g`
+
+ROUND-7 landed the later repair's mechanism: the escrow token rides the
+wait's answer, delivered at `0xc90`, and one instruction (`0xc94 c.jr ra`)
+stands between the redemption and `0x938` — `UkRunLeaf.wp_uk_cjr_later` +
+`UkShPipeWait.wp_kshr_wait_pid_later` pay the `▷` (ROUND-6's "cannot be
+paid" was wrong: it looked after `0x938`, not before).  §4.3o's second
+addition does not exist as stated (`ushl_head` has no entry at `0x93a`;
+the head's own first instruction is the later-providing one) and is not
+needed.  What remains is a statement this lane did not own: with the
+later paid the parent holds `pterm_pay I` at `0x938` and must enter the
+loop at the loop's `Wc`, which is `cc_wc` of the era's `cons_cred`
+(`UInitPipe.pipe_cc`), currently `pipe_Wcl_at g` — which cannot carry the
+terminal round (STAGE-3, STAGE-5).  RULED: **`UInitPipe.pipe_cc`'s `cc_wc
+:= UkShPipeFork.pterm_wc g`** (`= Wcf` at index 3 and beyond, `Wcf ∨ the
+terminal shape` below), `pterm_shape` gains the persistent `inp_lb v I`
+conjunct (the one new obligation of `pipe_cc_holds`'s ten laws —
+`pterm_wc_inp_of`, landed; the others are landed `pterm_*` lemmas or
+generic in `Wc`), `sh_prompt_law` at `pterm_wc` is `pterm_prompt_law`,
+and `UShPipeRound`'s five `Wcf`-stated ingredients are re-derived at
+`pterm_wc` (they read `Wc` at index 3, where it collapses, or at 0/taint,
+where `pterm_wc_of` injects).  Then the fork twin is
+`UkShFork.wp_kshf_fork_core`'s tail (reachable by qualified name; it
+names no `HWct`) with `wp_kshr_wait_pid_later` and `ChildTok.gen_pay` in
+place of the landed wait and `gen_pay_timeless`; then the round; then
+the theorem.  Order: (a) `pterm_shape`'s conjunct; (b) `pipe_cc`,
+`pipe_cc_holds`, `Hplaw`; (c) `UShPipeRound` at `pterm_wc`; (d) the fork
+twin; (e) the round at `pipe_round_entry`/`pipe_round_exit`; (f)
+`sh_pipe_child_law_all`, `pipe_adequacy_pipeΣ_final`.
+
 ## 5. Programs
 
 ### 5.1 sh: the PIPE arm (lanes SH-PARSE-PIPE, SH-PIPE)

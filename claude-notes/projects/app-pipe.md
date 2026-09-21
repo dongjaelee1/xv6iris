@@ -423,9 +423,11 @@ arm is the theorem's one named premise (`pipe_both_law`).
   pid-erased, so the round gets no payload at all.  Item 7 not reached;
   whole tree RC=0, four audits at their baselines.**  See the Findings
   block for the five-item purchase list.
-- [ ] **PIPE-PID** (design §4.3w purchases 1–4: the pid route through sh's
+- [x] **PIPE-PID** (design §4.3w purchases 1–4: the pid route through sh's
   fork/wait — `UkShRun`, `UkShFork`, `UkShPipe*`, `UexecRet`/`UkFork`).
-  Brief `brief-pipe-pid.md`.
+  Brief `brief-pipe-pid.md`.  **(1)(2)(3) LANDED, whole tree RC=0, four
+  audits at their baselines; (4) STOPPED at its discharge site** — see the
+  Findings block.
 - [ ] **PIPE-RO** (design §4.3w purchase 5: the read end published open —
   `SpecPiperead`, `PipeQueue`, `PipeProto.pipe_no_short`, the fd layer's
   complementary ends).  Brief `brief-pipe-ro.md`.
@@ -9843,3 +9845,206 @@ and which no amount of work inside the pipe files can replace.  Item 6
 and item 7 are assembly once they land; `pipe_no_short` (purchase 5) can
 be bought independently and is the only one that touches the kernel's
 file layer.
+
+### PIPE-PID (2026-09-21, design §4.3w purchases 1–4) — the pid route LANDS end to end (fork → the child law → the pipe arm's two waits → the round's own entry); purchase (4) is REFUTED AT THE SITE THE DESIGN NAMES, and the kernel fact it needs is ONE PREMISE `ProofKforkB5` does not carry
+
+Branch `app-pipe/pipe-pid` off main (`411248d0a`).  Three code commits,
+one per purchase: `c6f7a2039` (1), `a0c6f0075` (2), `0cccd228b` (3).
+Nine files moved, every one of them this lane's or a consumer of a
+statement it changed: `iris/UkShRun.v`, `iris/UkShDiag.v`,
+`iris/UkShFork.v`, `iris/UkShEcho.v`, `iris/UkShRedirBody.v`,
+`iris/UkShPipe.v`, `iris/UkShPipeForkTwin.v`, `iris/UkShPipePaid.v`,
+`iris/UShPipeChild.v`.  **Whole-tree `ec2-lane.sh pid build` RC=0 after
+each commit**; no `Admitted`, no `Axiom`, `Proof using` on every new
+result.  **All four audits re-measured on the mirror at this tree and at
+their baselines (distinct axiom names): `audit-only` 13,
+`audit-echo-only` 14, `audit-tree-only` 13, `audit-pipe-only` 14** — and
+the echo and system cones DO contain `UkShRun`/`UkShFork`/`UkShEcho`, so
+that is a measurement and not an inference.
+
+**(1) LANDED.**  `UkFork.wp_uk_ecall_fork`'s child arm mints
+`(∃ p : Z, ⌜p <> 1⌝ ∗ UserChildren.upid (ukn_pid N') p)` and
+`UkShRun.wp_kshr_fork` was DROPPING it (the `_` in its child-arm intro).
+Both stubs now relay it verbatim, between `uch (ukn_ch N') ∅` and the
+descriptor map:
+
+```coq
+        (∃ p : Z, ⌜p <> 1⌝ ∗ UserChildren.upid (ukn_pid N') p) -∗
+```
+
+in `UkShRun.wp_kshr_fork`, `UkShRun.wp_kshr_fork1` and
+`UkShDiag.wp_kshr_fork1_final` (the verbatim restatement at that file's
+stack need, proved by `exact`).  Additive: the row is in the CHILD
+CONTINUATION, which the caller receives.
+**Consumers, one token each:** `UkShFork.wp_kshf_fork_core`,
+`UkShPipeForkTwin.wp_kshf_fork_core`, `UkShPipe.wp_kshr_pipe_arm_g`
+(both `fork1` sites) — `"Hch _ Hrun"` becomes `"Hch Hpid' _ Hrun"`; and
+`UkShRun.wp_kshr_fork1_any`, the index-free corollary, which DROPS it
+(`"Hch _ HD"`): its child arm is stated at `uch_any` and has no pid row
+to put it in.
+
+**(2) LANDED.**  `UkShFork.ushf_child_law_at` — the law a forked sh
+child's whole walk is, and the one the PIPELINE's runcmd child is served
+by (`UShPipeRound.sh_pipe_child_law` IS this statement at `ushq_lp`) —
+took `UserChildren.uch_any (ukn_ch N')` where the fork arm had `uch _ ∅`
+in hand, and said nothing about the child's pid.  Both rows are premises
+of the law now:
+
+```coq
+          UserChildren.uch (ukn_ch N') ∅ -∗
+          UkSh.ush_pid N' -∗
+```
+
+(`UkSh.ush_pid N'`, not the design's `UkSh.ush_pid (ukn_pid N')`: the
+definition takes the RECORD.)  `wp_kshf_fork_core`'s child continuation
+relays `UkSh.ush_pid N'` (purchase 1's row, in the shape that name gives
+it) and `UkShPipeForkTwin`'s twin with it.
+**Consumers, measured with `grep -rn` — there are exactly TWO provers of
+this law in the tree:** `UkShEcho.ushf_child_law_holds_at_D` (a `_` for
+the pid and one `uch_any_of` line — the echo child reads neither row) and
+`UkShRedirBody.ushf_child_law_at_of_redir`; the two applications are
+`UkShFork.wp_kshf_fork_at` and `UkShPipeForkTwin.wp_kshf_fork_pipe`,
+where the `iApply (UserChildren.uch_any_of …)` bullet is DELETED and
+`Hpid'` handed over.
+
+**...AND ONE CONSUMER THAT COST MORE THAN A TOKEN, reported and not
+hidden (STOP rule 2's subject).**  `UkShRedirBody.sh_redir_child_law` —
+the redirect shape of the same law, with the file name bound outside —
+gains the SAME two rows in its own DEFINITION, because
+`sh_redir_child_law_of_at` runs the other way (it FEEDS the generic law's
+premises) and at `uch_any` it is not provable at all.  Measured before
+the edit: that law has **no prover anywhere in the tree** (it is a
+premise in `UkShRedirBody` and a `Hypothesis` in `UShRound`, whose own
+copy did NOT have to move), so the mirror is free for provers and owed
+only by the two conversions beside it.  `UShRound.sh_redir_child_law`,
+`UkShRedirChild.v` and every `uch_any`-taking walk lemma
+(`UkShCat`, `UShCatPay`, `UkShRedir`, `UkShMain`, `UkInitMain`) are
+untouched.
+
+**(3) LANDED, and the ARM IS GENERIC IN THE WAIT rather than duplicated.**
+Four pieces, all in `UkShPipe.v`:
+
+| result | what it is |
+|---|---|
+| `wp_kshpi_wait0_pid` | `wait(0)` over `UkShRun.wp_kshr_wait_pid`: `uwait_ans_pid rw Sc Sc' pidv`, `⌜bv_unsigned pidv = p⌝`, the kernel's `⌜rw = -1 -> Sc' = ∅⌝`, and the pid fragment back |
+| `ush_wait0_law N Wr Pw` | `wait(0)` AS A CALL LAW at an abstract answer — `Wr` the credential it spends and returns, `Pw` what a reap answers — with `ush_wait0_law_free` (`emp` / `UexecRet.uwait_ans`) and `ush_wait0_law_pid` (`UkSh.ush_pid N` / `ush_wait_pid_ans`) |
+| `ush_wait_pid_ans rw Sc Sc'` | `∃ pidv, ⌜pidv <> 1⌝ ∗ ⌜rw = -1 -> Sc' = ∅⌝ ∗ uwait_ans_pid rw Sc Sc' pidv` |
+| `ush_wait_pid_reap` | THE CONSUMER TEST: at that answer a reap that did not return -1 NAMES the generation it reaped, out of the caller's OWN set, with `ChildTok.gen_uniq` beside it — which is exactly what `UShPipeAssembly.uwait_ans_orphan_arm` refutes at the free answer.  `Closed under the global context` |
+
+The ARM is generic in the pair because the two readings are BOTH wanted
+and differ in two of its six hundred instructions: the free arm (and the
+generic runner under the taint) has no pid handle to spend, a paid round
+has.  `wp_kshr_pipe_arm_g` takes `Wr`/`Pw` and `ush_wait0_law N Wr Pw`,
+and its parent continuation at 0xea now carries
+
+```coq
+       ⌜ r1 <> (mword_of_int (-1) : mword 64) ⌝ -∗
+       ⌜ r2 <> (mword_of_int (-1) : mword 64) ⌝ -∗
+       ush_fork_ans Sc S1 (RcL γp) Qc r1 -∗
+       ush_fork_ans S1 S2 (RcR γp) Qc r2 -∗
+       Pw rw1 S2 S3 -∗
+       Pw rw2 S3 S4 -∗
+       … Rk γp -∗ Cx γp -∗ Wr -∗
+```
+
+**The two `⌜r <> -1⌝` rows are NOT derivable at the pipe walk** — the
+design said "the walk holds all of them at 0xea" and it does not: the
+walk sees `a0 <> 0` off its `c.bnez` and nothing more.  They come from
+`UkShRun.wp_kshr_fork1`'s RETURNING arm, which now carries
+`⌜ r <> (mword_of_int (-1) : mword 64) ⌝` (and `wp_kshr_fork1_tail`'s,
+`⌜ mt !!! a0 <> -1 ⌝`).  fork1's whole body is the `beq a0,a5` at 0x76 —
+the taken branch panics — so the fact is free there and derivable
+NOWHERE ELSE.
+
+**RELAYED TO THE ROUND'S OWN ENTRY**: `UkShPipePaid.wp_kshr_pipe_arm_paid`
+and all four `UShPipeChild` wrappers (`wp_kshm_child_pipe_paid_at`,
+`_paid`, `_paid_line`, `_paid_line_at`) take `Wr`/`Pw` and carry the four
+rows.  Nothing outside consumes those four yet, so **SH-PIPE-ROUND-11
+instantiates them at `(UkSh.ush_pid N, ush_wait_pid_ans)` with
+`ush_wait0_law_pid` and needs no further plumbing.**
+`UkShPipe.wp_kshr_pipe_arm` (the free arm) is that instantiation at
+`(emp, uwait_ans)` with `ush_wait0_law_free`: **its statement, and every
+statement above it (`wp_kshr_runcmd_pipe`, `_ptop`, the two `_closed`,
+`UkShPipeRound`), is byte-identical.**
+
+**(4) STOPPED, and the design's discharge site is the WRONG SITE.**
+§4.3w says `UexecRet.ufork_ans` gains `⌜γ ∉ cs⌝` "discharged where the
+generation is allocated (`wp_uk_ecall_fork`'s parent arm, from the
+generation map as `ChildTok.gen_uniq` does)".  Measured BEFORE editing
+anything, as the brief required:
+
+- **`ufork_ans` is a PREMISE at `wp_uk_ecall_fork`, not a conclusion.**
+  It sits inside `UexecRet.uexec_fork_parent_F`, which the PROGRAM
+  consumes; adding a conjunct there makes that arm STRONGER for every
+  program and lands the obligation on its PRODUCER.  There is exactly
+  one: `ProofSyscall.v:5109–5122`, the fork arm's `sysc_fork_out`.
+- **Nothing at `wp_uk_ecall_fork`'s parent arm can supply it.**  The arm
+  holds `uch_auth (ukn_ch N) cs` and `child_tok γ pidv Q` and no
+  per-generation registry; `ChildTok.gen_uniq` is not an analogue, it is
+  MINTED in the kernel under `<wait_lock>` (`WaitInv.children_inv_pid`)
+  and relayed.  `ChildTok.gen_alloc` uses plain `saved_anything_alloc`,
+  which has no `⌜γ ∉ E⌝`.
+- **The relay chain is five landed statements in files no pipe lane
+  owns**: `UexecRet.ufork_ans` (def) → `SpecSyscall.sysc_fork_out` /
+  `SpecUsertrap.ut_fork_out` (both literally `ufork_ans`, so they follow)
+  → `ProofSyscall.v`'s fork arm → `SpecSysFork.wp_sys_fork_sconf_body`
+  (def) + `ProofSysFork.v` → `SpecKfork.kfork_post` (def) +
+  `ProofKfork*.v`.
+
+**WHAT THE MAP LACKS, exactly — and the fact IS there.**  The freshness
+is a consequence of the wait-lock invariant AT THE SITE THAT INSERTS THE
+CHILD'S GENERATION (`ProofKforkB5.v:569`, `WaitInv.children_inv_fork`):
+`inv_rows` says every member of a row's set is the generation of an
+OCCUPIED slot whose parent cell holds that row's address, and
+`WaitInv.gen_halves_gen_uniq` against the fresh child's `gen_slot` says
+no occupied slot carries it.  **Mechanised and compiled on the mirror**
+(as a scratch probe, not committed — `WaitInv.v` is not this lane's):
+
+```coq
+  Lemma probe_row_fresh (ps : list (mword 64)) (gs : list gname)
+      (m : gmap gname (mword 64 * gset gname)) (O : orph_map)
+      (j : nat) (pa : mword 64) (g γ0 : gname) (cs : gset gname) :
+    ps !! j = Some (zero_reg : mword 64) ->
+    m !! γ0 = Some (pa, cs) ->
+    pa <> (zero_reg : mword 64) ->        (* <-- THE PREMISE THAT IS MISSING *)
+    children_inv ps gs m O -∗ gen_slot g (proc_addr j) -∗ ⌜ g ∉ cs ⌝.
+```
+
+and the missing premise is named by `ProofKforkB5`'s OWN comment at that
+line: *"THE PARENT'S ADDRESS IS A PROC SLOT'S and hence nonzero, but this
+block is stated at an opaque `pme` and nothing on the route carries the
+fact; at `pme = 0` the entry is `emp`, the deposit is dropped and every
+tie of the invariant is guarded away."*  At `pme = 0` the row's members
+are constrained by nothing and `g ∉ cs` is FALSE, so the purchase is:
+carry `pme <> zero_reg` into kfork's park block (the caller holds
+`proc_priv γf pme pid U`; no `proc_priv` lemma in `ProcInv.v` publishes
+it today), then the four statements above.
+
+**AND THE ROUND STILL NEEDS IT** — this is not a purchase that (1)–(3)
+made redundant, and the measurement is one line of set arithmetic.  With
+`Sc = ∅` (purchase 2) the two forks leave `S2 = {γ1} ∪ {γ2}`.  If
+`γ1 = γ2` then `S2 = {γ1}`, the first reap empties it, and the second
+wait's `-1` arm is CONSISTENT (its row is `S4 = ∅`, which holds) — so the
+round gets ONE payload and cannot pay its exit.  If `γ1 <> γ2` both waits
+must reap: a `-1` second wait would force `S3 = ∅` against `γ2 ∈ S3`
+(`UkShFork.ushf_wait_empty`'s trick).  And the U tier cannot refute
+`γ1 = γ2` on its own: two `child_tok`s are two QUARTERS of one
+generation, `DfracOwn (1/2) ⋅ DfracDiscarded` is valid, and they agree on
+the pid rather than clashing.
+
+**WHAT THE DESIGN GOT WRONG, in three lines.**
+1. §4.3w (4)'s discharge site: `wp_uk_ecall_fork`'s parent arm CONSUMES
+   `ufork_ans`; the producer is `ProofSyscall`'s fork arm and the fact
+   has to come from `ProofKfork`.
+2. §4.3w (2)'s `UkSh.ush_pid (ukn_pid N')`: `ush_pid` takes the RECORD.
+3. §4.3w (3)'s "the walk holds all of them at 0xea": it does not hold
+   `r <> -1`; that row had to be bought from `wp_kshr_fork1` first.
+
+**THE ONE THING THE NEXT LANE NEEDS FIRST.**  The owner's ruling on
+purchase (4) now that its price is exact: ONE premise (`pme <> 0`) into
+`ProofKforkB5`'s park block, one pure conjunct through four landed
+kernel statements, and the `WaitInv` lemma above (already proved).
+Until it is bought, SH-PIPE-ROUND-11 can assemble everything else — the
+four-way split, the registrar, the five laws, `pipe_round_parent` — but
+`UShPipeAssembly.pipe_round_answers`'s `S1 <> S2` premise has no
+supplier, so the round still receives one payload instead of two.

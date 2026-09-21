@@ -735,6 +735,27 @@ unowned critical item (WRITE-RELAY-3's `TB` guard).  RULES, replacing
   unprovable pair at the prompt), the deed inside the link families (the
   record's `i = 0` phantom alternative cannot commit), a new `RFNone`
   alternative (weakens the theorem where RFSilent's effect is free).
+- RULING CAT-DEED, AMENDED (2026-09-21, the owner).  The essence: sh lends
+  cat its ownership of `f`'s ghost state and expects EXACTLY THE SAME back
+  when cat exits -- cat only reads.  The 09-18 text returned a bare
+  `fown r (Some (i, bs))`, which cat cannot prove on an exit it reaches
+  through a syscall spec's out-of-spec disjunct (those return no ownership).
+  RULED: `∨ file_taint c` ON BOTH SIDES -- the lend is
+  `(fdq r q1 s ∗ fdq r q2 s) ∨ file_taint c` and the exit payload returns
+  `(fdq r q1 s ∗ fdq r q2 s) ∨ file_taint c`, which is the shape
+  `UShRound.sh_deed_at` already has, so the round absorbs it with no
+  conversion premise.  The failed read-open's refund (landed the same day)
+  is what makes the `cannot open` exit payable.
+  **A CLEANER ALTERNATIVE, NOT TAKEN, worth revisiting:** the ownership is
+  only ever "lost" because `PinnedObs.pobs_P_lin T hops K k d` is
+  `(⌜d = hops !!! k⌝ ∗ K) ∨ T` -- the resource sits INSIDE the in-spec
+  disjunct, and `pobs_phop_lin`'s proof has `K` in hand in the `T` branch and
+  drops it.  At `K ∗ (⌜d = hops !!! k⌝ ∨ T)` (and `pobs_Pmiss_ref := K ∗ T`)
+  every file-tier spec returns the caller's ownership unconditionally, only
+  the FACTS carry `∨ T`, and cat's payload is literally what was lent.  It
+  touches the linear cursor's lemmas and the wrappers above it (`FileOpen`,
+  `UkFileOpen`, `UkCatDeed`, `UCatKernel`, `FileWrite.file_cur`), not the
+  kernel syscall specs, which are parametric in the cursor family.
 - RULING SLOT-WS (2026-09-21, the owner: option B, WITH A CLEANUP OWED).
   The defect: the generic sh loop (`UkSh.v`) hands the forked child the
   pure fact `last_ws I = ws` -- the last input line split at blanks -- and

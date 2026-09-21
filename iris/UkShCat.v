@@ -65,6 +65,7 @@ Require Import LineWords.
 Require Import UkShWords.
 Require Import UkShRun.
 Require Import UkShDiag.
+Require Import UkShDiagAt.        (* the diagnostic at any command name (moved from here) *)
 Require Import UkShMain.
 Require Import UkShEcho.
 Require Import EchoDisc.
@@ -384,94 +385,8 @@ Section UkShCatDiag.
     urun N h m (mword_of_int 0xda) (UkShDiag.ush_Dg + n) -∗
     mWP (Loop : expr riscv_lang).
   Proof using .
-    intros Hfd2 Hal Hc2 Hxlen Hxb Hdglk Hw1 Harg Hw2.
-    iIntros "#Hlaw #Hcode #Hro #Hw [%Hxr #Hxs] Hstd Hc Hpay Hrun".
-    iDestruct ("Hlaw" $! N l with "[%] Hc") as (Pf) "(HPf & #Hstep & #Hdone)";
-      [ exact Hfd2 | ].
-    replace (UkShDiag.ush_Dg + n)%nat with (10 + (12 + (4 + (n + 2))))%nat
-      by (unfold UkShDiag.ush_Dg; lia).
-    (* ---- 0xda  c.ld a2,8(s1) -- ecmd->argv[0] ---- *)
-    iApply (UkShRun.wp_uk_cldq N h m (mword_of_int 0xda)
-              (mword_of_int 1 : mword 5) (mword_of_int 1 : mword 3)
-              (mword_of_int 4 : mword 3) s1_idx a2_idx DfracDiscarded
-              (uint (m !!! Regidx s1_idx) + 8) (mword_of_int (ua_ptr x))
-              (10 + (12 + (4 + (n + 2))))
-              ltac:(unfold unot_sp; vm_compute; discriminate)
-              ltac:(vm_compute; reflexivity) ltac:(vm_compute; reflexivity)
-              ltac:(vm_compute uoff_c8; lia)
-              ltac:(rewrite Zplus_mod Hal; reflexivity)
-              ltac:(vm_compute; discriminate)
-              with "[] Hw Hrun").
-    { iApply (uis_shk_da with "Hcode"). }
-    iIntros "_".
-    assert (Eda : add_vec_int (mword_of_int 0xda : mword 64) 2
-                  = mword_of_int 0xdc)
-      by (apply bv_eq; vm_compute; reflexivity).
-    rewrite Eda. iIntros (h1) "Hrun".
-    set (m1 := <[Regidx a2_idx
-                 := regval_into_reg
-                      (mword_of_int (ua_ptr x) : mword 64)]> m).
-    iDestruct (UkShDiag.shd_str_of_ustr (ukn_t N) (ukn_d N) DfracDiscarded
-                 (ua_ptr x) (ua_len x) (ua_bytes x)
-                 with "Hxs") as "#Hs".
-    assert (Hlitsdc : UkShDiag.shd_die_lits 0xdc 0xe0 0xe4 0xe6 0xea 0xec
-                      (mword_of_int 1 : mword 20) (mword_of_int 460 : mword 12)
-                      (mword_of_int 4036 : mword 21) (mword_of_int 2970 : mword 21)
-                      (mword_of_int 0 : mword 6)
-                      0x12a8 15%nat 5%nat)
-      by shd_die_solve.
-    set (C1 := (fun p : nat => UserFd.ustd (ukn_fd N) l ∗ Pf p)%I).
-    set (C2 := (fun p : nat => UserFd.ustd (ukn_fd N) l ∗ Pf (5 + p)%nat)%I).
-    set (C3 := (fun p : nat =>
-                  UserFd.ustd (ukn_fd N) l
-                  ∗ Pf (p + (length cmd - 2))%nat)%I).
-    assert (E12 : C1 5%nat = C2 0%nat) by reflexivity.
-    assert (E23 : C2 (ua_len x) = C3 (S (S 5%nat))).
-    { rewrite /C2 /C3 Hxlen.
-      replace (5 + length cmd)%nat with (S (S 5%nat) + (length cmd - 2))%nat
-        by lia.
-      reflexivity. }
-    iApply (UkShDiag.wp_kshd_die_chain N false DfracDiscarded
-              0xdc 0xe0 0xe4 0xe6 0xea 0xec
-              (mword_of_int 1 : mword 20) (mword_of_int 460 : mword 12)
-              (mword_of_int 4036 : mword 21) (mword_of_int 2970 : mword 21)
-              (mword_of_int 0 : mword 6)
-              0x12a8 15%nat 5%nat
-              (ua_ptr x) (ua_len x) (ua_bytes x) C1 C2 C3 h1 m1 (n + 2)
-              Hlitsdc
-              ltac:(lia)
-              ltac:(exact (upd_eq m (Regidx a2_idx) (regval_into_reg _)))
-              E12 E23
-              with "[] [] [] [Hstd HPf] Hcode Hro Hs [] [] [] [] [] [] [Hpay] Hrun").
-    { iModIntro. iIntros (p) "%Hp". rewrite /C1.
-      rewrite (Hw1 p ltac:(lia)).
-      iApply ("Hstep" $! p (dg !!! p) with "[%] [%]").
-      { apply Hdglk. lia. }
-      { lia. } }
-    { iModIntro. iIntros (p) "%Hp". rewrite /C2. rewrite Hxlen in Hp.
-      rewrite (Hxb p Hp) (Harg p Hp).
-      replace (5 + S p)%nat with (S (5 + p))%nat by lia.
-      iApply ("Hstep" $! (5 + p)%nat (dg !!! (5 + p)%nat) with "[%] [%]").
-      { apply Hdglk. lia. }
-      { lia. } }
-    { iModIntro. iIntros (p) "%Hp". rewrite /C3.
-      rewrite (Hw2 p ltac:(lia)).
-      replace (S p + (length cmd - 2))%nat
-        with (S (p + (length cmd - 2)))%nat by lia.
-      iApply ("Hstep" $! (p + (length cmd - 2))%nat
-                (dg !!! (p + (length cmd - 2))%nat) with "[%] [%]").
-      { apply Hdglk. lia. }
-      { lia. } }
-    { rewrite /C1. iFrame "Hstd HPf". }
-    { iApply (uis_shk_dc with "Hcode"). }
-    { iApply (uis_shk_e0 with "Hcode"). }
-    { iApply (uis_shk_e4 with "Hcode"). }
-    { iApply (uis_shk_e6 with "Hcode"). }
-    { iApply (uis_shk_ea with "Hcode"). }
-    { iApply (uis_shk_ec with "Hcode"). }
-    { rewrite /C3. iIntros "[Hstd HPf]".
-      replace (15 + (length cmd - 2))%nat with (13 + length cmd)%nat by lia.
-      iApply ("Hpay" with "Hstd"). iApply ("Hdone" with "HPf"). }
+    (* MOVED to [UkShDiagAt] so that [UkShEcho] can use it; this is it. *)
+    exact (UkShDiagAt.wp_kshd_execfail_paid_at N dg cmd Cr Cd l h m n x).
   Qed.
 
   (* ...AND THE ECHO INSTANCE, as the ANTI-VACUITY witness of the three

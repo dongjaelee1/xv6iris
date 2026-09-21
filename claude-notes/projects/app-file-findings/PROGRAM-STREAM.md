@@ -1490,3 +1490,277 @@ Also landed on the branch: `FileLinksLine.fline_echof_in` (`0 < nlines I ->
 fline I = LEchoF ws -> ws ∈ echof_lines_in I`), which is what turns PRE's
 `line_wit` into the `ws ∈ ls` the open and the write credential ask for; and
 `redir_openfail_exit` is now two lemmas (`_u`, `_m`), as the plan above said.
+
+### Stretch 10: 2d CLOSES — `UShRound.Hchild_redir` is a lemma
+
+`Hchild_redir` is PROVED at `UkShRedirBody.sh_redir_child_law Wcf`
+(`.vok`-checked; whole-tree build pending at the time of writing).  The section
+hypothesis and `UShRound`'s stale twin definition are deleted.  New on the way:
+`UShRound.redir_exec_sup` (+ `redir_K'`), `FileDisc.fline_ok_redir_words`,
+`ush_execfail_law_at_wand` and `fab_redir_alts` (local).  The plan above held
+as written, with three corrections:
+
+* the open-failed law needs NO pair of blocks: `redir_Kf`'s arm is destructed
+  inside the law (the law's `Cr` comes in before its `∃ Pf`), and the matching
+  alternative's law is applied there; its taint arm runs the law at
+  `Hold := emp` and ends by `Wcf_taint`.
+* `fline_ok` is `∃ l, uline_ok l ∧ b = line_body l` — NOT `uline_of b = l` and
+  NOT pipe-free — so identifying the line from the fork's words is a four-way
+  case split on the constructor (`fline_ok_redir_words`), refuting `LEcho` by
+  `wl_alnum` at `>`, `LCat` by length and `LPipe` at the bar.  This is the
+  fact option B made learnable.
+* `sh_round_holds_file` (still `Admitted`) will need `(∃ jc, cons_made
+  (fn_cons r) jc)` as a premise to apply `Hchild_redir`; the statement is NOT
+  yet changed (item 5 restates it anyway).
+
+**A KNOWN HANG SHAPE (durable-notes, "A section variable of a class type is a LOCAL INSTANCE" -- its last sentences name exactly this `ghost_varG` case), met four times in one lemma.**  `UShRound`'s
+section has its own `ghost_varG Σ Z`, and `Hopen_hand` (hence the walk, hence
+the child law) is at `offbox_offG`.  Every lemma applied inside the proof that
+mentions `ucwd`/`urun` — `UkRun.urun_gen`, `ExecRun.udepw_at_refR_of_sup`,
+`UEchoFile.efile_image_entry`, `UShPanic.ush_diag_law_hold_at_alt`,
+`UkShEcho.sh_exec_sup_echo_at` in a statement — resolves its `ghost_varG0`
+to the SECTION VARIABLE unless told otherwise, the two print identically, and
+the `iApply` does not fail: it unifies two `urun`-sized terms through their
+definitions and never returns.  Remedy: `(ghost_varG0 := offbox_offG)` on
+every one of them (and `(PS := uprogSG_free) (SG := uexecSG_xv6)` where the
+lemma has those names).  The tell that a lemma took the wrong one is Rocq's
+`Proof using` complaint naming `ghost_varG0` at `Qed`.  Localise with
+`rocq compile -vok -time` under `timeout` (scratchpad `tcheck.sh`): the last
+`Chars` line is the sentence BEFORE the hang.  THE CLEAN FIX, which durable-notes
+prescribes ("Drop the binders"), is to delete the
+section's `Context \`{!ghost_varG Σ Z}` from `UShRound` (and `UShRest`'s
+binder list it copies) so there is one instance in scope — not done here
+because the binder list is copied verbatim for an elaboration-cost reason
+(`UShRound`'s header); worth measuring.
+
+## PROGRAM STREAM, stretch 11 (2026-09-21) — cat's interface: one fraction in, the same one out; and two defects in what sh would apply
+
+RULING CAT-DEED was amended by the owner (design §3): sh passes cat ONE `fdq`
+and gets THAT SAME `fdq` back in cat's exit predicate, with `∨ file_taint c`
+on both sides.  `UCatKernel.v` (branch `app-file/cat-child`, `.vok`-checked):
+
+* `catq_cat c r q s …` carries `(fdq r q s ∨ file_taint c)`.
+  `cat_pay_absent` / `cat_pay_present` hand the fraction(s) to their payload
+  wands on every in-spec exit (the failed open's refund of stretch 10 is what
+  makes `RCNoOpen` payable; the round's held fraction the other), and take
+  `□ (file_taint c -∗ Q (-1))` for the rest.
+* THE TWO FRACTIONS WERE AN IMPLEMENTATION DETAIL LEAKING.  `open`'s
+  precondition is a separating conjunction of two independently-fired ghost
+  obligations (the path walk's cursor and the final observation), each of
+  which compares a fraction against the invariant's half, so each carries its
+  own.  `cat_pay_filed_some` SPLITS the one fraction (`q/2`, `q/2`) and JOINS
+  at the exit; nothing above it sees two.
+* THE LEND IS `cat_lend r q s := fdq r q s ∗ cch … 0`, at EITHER state of `f`,
+  and `cat_child_of_entry` is ONE lemma over `s`.  The two "rows" sh used to
+  lend (`cat_open_hand`, `cat_held_read`) are built by cat from
+  `cat_open_hand_of_deed` / `cat_held_read_of_deed`: the first spends the
+  PROCESS's `ucwd`, which only the payer has (it arrives inside
+  `cat_pay_at`), so a lender could never have supplied it `∀ N'`.
+* `cat_taint_open_of_taint` took `app_taint` OUTRIGHT — i.e. the out-of-spec
+  flag as a premise — which made `cat_child_of_entry`, and `Hchild_cat` above
+  it, statements about out-of-spec runs only.  It takes
+  `□ (file_taint c -∗ app_taint)` now (the sub-arm is entered with the flag in
+  hand).
+* `cat_child_of_entry` takes the fork's payload `Q` as a PARAMETER with
+  `□ (catq_cat … (-1) -∗ Q (-1))` (`ChildTok.my_pay_agree` makes the entry's
+  `Q` rigid; K1's `efile_image_entry` learned the same thing).
+
+TWO DEFECTS FOUND, both upstream of `Hchild_cat` becoming a lemma (they are
+written into `UShRound.v` at the hypothesis):
+
+1. **`EchoDisc.line_ok ws` is FALSE at `cat f`.**  `line_ok` demands
+   `ws !! 0 = Some cmd_echo`.  `UCatKernel.cat_image_entry` (hence
+   `cat_child_of_entry`, hence `Hchild_cat`) takes `line_ok ws` because it
+   reads sh's exec node through the ECHO tier's lemmas
+   (`UShEcho.echo_args_det_holds`, `echo_node_img_of_cmd`, `line_nonul`,
+   `UkShEcho.echo_off_lt`, `echo_cmd_args_lookup`, …).  Those are facts about
+   THE NODE SH BUILT FOR AN EXEC and use `line_ok` for `wl_wf` and the length
+   bounds only.  THE CLEAN FIX: a predicate for "an exec'able word list"
+   (`wl_wf ws ∧ 0 < length ws < 10 ∧ length (wl_line ws) < line_max`) under
+   those lemmas, `line_ok` its instance at `echo`, the cat line another.  The
+   pipe campaign hit the same wall and twinned the lemmas at its one-word
+   `cat` (`UShCatPay.cat_args_det_1w`, `cat_image_entry_1w`,
+   `sh_exec_sup_cat_wq_holds_at`) — a third copy for `cat f` is the wrong
+   direction.  This touches `UkShEcho`/`UShEcho` (echo, file AND pipe cones),
+   so it is the owner's call when to take it.
+2. **The lend is not all the child must return.**  The fork's payload is
+   `ushf_wq Wcf I`, the whole position-0 credential; its deed conjunct is
+   `fown r s = fdeed r s ∗ ftkt r s` with the tie, the typing and the pins.
+   cat takes and returns `fdq r q s` only, so the rest of `PRE I` must cross
+   cat's entry as a FRAME — echo's entry has one
+   (`UShEchoPay.echo_slot_of_kexec_at_at`'s `Hold`), cat's has none.  It goes
+   in `cat_pay_present`'s `Ci` on the no-open exits and in the round's hold
+   family (`cat_hold_at`, already a parameter of `cat_round_at`) on the ran
+   exit.
+
+### Stretch 11, continued: defect 2 CLOSED in `UCatKernel` — a frame crosses cat's entry
+
+Branch `app-file/cat-frame` (`.vok`-checked): `kcat_r_frame_in` and
+`cat_held_read_frame` (the read's law is boxed over the cursor, so a linear
+frame goes IN the hold it is stated at and comes back in it, on both arms);
+`cat_pay_present` / `cat_pay_absent` / `cat_pay_filed_{some,none}` /
+`cat_child_of_entry` take `F : iProp`.  It rides beside the cursor across the
+open (`kcat_o_frame` at `cch ∗ F`) and inside the hold across the read loop
+(`cat_round_at` at `fun p => cat_hold_at … p ∗ F` — the hold was already a
+parameter there), and the in-spec exits hand it to the payload wand:
+`□ (catq_cat … (-1) -∗ F -∗ Q (-1))`.  THE OUT-OF-SPEC PAYLOAD IS ITS OWN
+PREMISE, `□ (file_taint c -∗ Q (-1))`: those exits do not hold `F` (it went
+into a syscall whose out-of-spec disjunct returns nothing), so they cannot use
+the wand at `F`.  The entry's payment is `cat_lend r q s … ∗ F`.
+
+WHAT IS LEFT OF `Hchild_cat`, in order:
+
+1. **defect 1** — `line_ok` is false at `cat f` (above); the owner's call.
+2. **the round's two conversions**, which `Hchild_cat` used to take as a
+   premise and now owes: OPEN the lend — `Wcl I 3` to `cat_stage ps0 cs0 s0 I P`
+   and `cch … 0` — and CLOSE it — `catq_cat … ∗ F` to `Wcf I 0`.  `cch` is
+   `FileLinksAt.fwc_blk_at`'s body with the stage pure fact pulled out
+   (`turn v (P + p) ∗ ps_lb ∗ cs_lb (catcs cs0 a p) ∗ inp_lb ∗ f0_lb`), so the
+   open is a reading of `lk_blk … 0 0`.  THE CLOSE IS NOT
+   `Wcf0_of_post_alt`: `RCRan` is the one alternative that is NOT
+   `fstate_free`, so `FileLinksLine.fab I (ralt_enc RCRan) = []` and
+   `fwc_line_at`'s block arm (`fapr`) cannot hold it.  How the line credential
+   represents a filed `RCRan` block has to be read out of `FileLinksLine` /
+   `FileLinkInst` (`sh_prompt_alt_of_deed` is where the prompt law reads the
+   deed to pick the alternative) before the close can be stated.  `F` is
+   `ftkt r s` beside PRE's persistent facts, at `q := 1/2`
+   (`FileOpen.fdq_deed`: `fdeed r s ⊣⊢ fdq r (1/2) s`).
+3. the child's walk at the `cat f` line (parse, exec `/cat`) with the supply
+   built from `cat_child_of_entry` — `redir_exec_sup`'s shape, the walk pin at
+   `FsCatPin`, the generic slot for a tainted PRE.
+
+### Stretch 11: DEFECT 3, read out of `FileLinksAt` — the line credential cannot hold a filed `RCRan` block
+
+Item 2's CLOSE (`catq_cat … ∗ F` to `Wcf I 0`) has no target when cat printed
+a NON-EMPTY file.  `Wcf I 0` is `(Wcl I 0 ∗ DONE I) ∨ (Wcl I 3 ∗ PEND I)`:
+
+* EMPTY content (`bs = []`): cat printed nothing, the cursor is still at 0 and
+  unfiled (`UCatOut.cch_0_alt`), so the exit is `Wcl I 3 ∗ PEND I` at
+  `a := ralt_enc RCRan`, whose continuation is the bare prompt — this case is
+  fine, and is `redir_ran_exit`'s shape.
+* NON-EMPTY content: the console has FILED `RCRan` (`cs0 ++ [a]`) and the turn
+  is at `P + length bs`, so the exit must be `Wcl I 0 ∗ DONE I`.  But
+  `Wcl I 0 = FileLinksAt.fwc_line_at` has two arms — the panic prologue
+  (`wr_pro_f`, which demands the last alternative be a PANIC) and
+  `∃ a, ⌜fapr I a⌝ ∗ fwc_blk_at … a (length (fab I a) - 2)` — and
+  `fapr I a` demands `fstate_free (ralt_dec a)`, which `RCRan` is not;
+  `fab I (ralt_enc RCRan) = []`.  NEITHER ARM HOLDS IT.  The same is true of
+  `RCNoOpen`?  No: `RCNoOpen` IS state-free (`alt_catopen`), so the
+  `cannot open` exit closes by `Wcf0_of_post_alt`.
+
+THE CAUSE is the record's type: `LinkRec.lk_ab : list (bv 8) -> nat -> list
+(bv 8)` gives an alternative's bytes from the INPUT alone, and cat's output is
+a function of the FILE's state.  THE FIX IS IN THE FILE INSTANCE, not the
+generic record: `lk_line` is abstract to the sh loop, and the `_at` families
+are already indexed by the era's boot state `s0`, from which the round's state
+is computable (`UCatOut.cat_st cs s0 I`).  A third arm of `fwc_line_at` —
+`∃ a ps cs P, ⌜wr_blk_t_f ps cs s0 I P⌝ ∗ ⌜ralt_ok (fline I) (ralt_dec a) ∧
+¬ panic⌝ ∗ turn v (P + (length (cont (cat_st cs s0 I) (fline I) (ralt_dec a))
+- 2)) ∗ cs_lb v (cs ++ [a]) ∗ …` — with the record's line laws re-proved at it
+(the prompt's two bytes from that arm: `lk_blk_sp`-shaped; `Wcf0_of_pre_line_id`
+and `Wcf0_of_post_alt` gain a case).  The state-free arm is then its instance,
+which is a simplification worth checking before adding a third arm beside it.
+File tier only (`FileLinksAt`, `FileLinkInst`, `FileLinksAtInp`, `UShRound`).
+
+**Defect 3, SIZED (2026-09-21).**  One law CONSUMES the position-0 credential:
+`FileLinksAtLine.fprompt_dollar_line_at` (the prompt's `$`), whose block arm is
+`fprompt_dollar_post_at` = `fblk_step_at` at byte `length (fab I a) - 2` plus
+the pure `FileLinksLine.wr_blk_sp_f ps cs s0 I P a Hw Ha`.  The PURE side is
+already state-aware underneath -- `wr_sp_f` / `wr_blk_f` speak
+`proc_stream_f ps cs (Some s0) I`, the full transcript with `fsm`/`cont` at the
+running state -- and `fab` reaches it only through `cont_state_free`.  So the
+fix is a state-aware byte function beside `fab`,
+`fabs s0 cs I a := cont (cat_st cs s0 I) (fline I) (ralt_dec a)` (guarded by
+`ralt_ok` and non-panic), with `fab_len_ge2` / `fab_dollar` / `wr_blk_sp_f` /
+the block step's pure premise restated at it (`fab I a = fabs s0 cs I a` when
+`fstate_free`, by `cont_state_free`), and `fwc_line_at`'s block arm indexed by
+`length (fabs s0 cs I a) - 2` with `cs` from its own existential.  The
+producers (`fwc_line_at_of_post`, `lk_blk_line`-shaped record fields) keep
+their `fab` statements as instances.  Files: `FileLinksLine` (pure),
+`FileLinksAt`, `FileLinksAtLine`, `FileLinksAtBan`, `FileLinksAtInp`,
+`FileLinkInst`, then `UShRound` (`Wcf0_of_pre_line_id`, `Wcf0_of_post_alt`).
+NOT STARTED.
+
+## PROGRAM STREAM, stretch 12 (2026-09-21) — defect 1: `exec_ok`, and how to generalise without breaking a consumer
+
+The owner approved both remaining defects, with one condition: DO NOT BREAK THE
+EXISTING PROOFS.  The method that meets it, and that the next generalisation
+should reuse:
+
+* **a new LEAF file for the predicate** (`iris/ExecWords.v`: `exec_ok ws :=
+  wl_wf ws ∧ 0 < length ws < 10 ∧ length (wl_line ws) < line_max`, its five
+  projections mirroring `line_ok_{wf,pos,lt10,len,at}`, and
+  `line_ok_exec_ok`), so `EchoDisc` — under every application — does not move;
+* **the general lemma is named `<lemma>_x` and CARRIES THE PROOF; the `line_ok`
+  lemma keeps its statement and its `Proof using` VERBATIM and its body becomes
+  `intro H. exact (<lemma>_x binders (line_ok_exec_ok _ H)).`**  Same type, same
+  argument list (the `Proof using` clause is what fixes a section lemma's
+  arguments), so no consumer, positional application or `Module Type` moves.
+  Scratchpad `genx.py` does this mechanically for a lemma whose FIRST premise is
+  `line_ok ws` and whose binders are explicit; `fixx.py` re-applies the name
+  substitution inside the `_x` proofs when the set grows (the compile error
+  "Hok has type exec_ok ws … expected line_ok ws" names the next lemma to add).
+* `Prop`-valued definitions with a `_holds` lemma (`echo_args_det`,
+  `ush_line_toks`, `echo_argv_bytes_of_line`) are done by hand the same way.
+
+STEP 1 LANDED on `main` (whole tree: the 29 files above `UkShEcho` rebuilt, zero
+errors, `make -n` empty; audits identical): the exec-NODE lemmas
+(`UkShEcho.{echo_toks_lt10, echo_off_lt, echo_toks_lookup, echo_cmd_args_lookup,
+echo_cmd_str, echo_cmd_word, echo_cmd_argv0}`, `UShEcho.{line_nonul,
+echo_argv_fits_of_ok, echo_node_row{,s}_of_cmd, echo_node_img_of_cmd,
+echo_uargv_shape, echo_node_img_s0_pos, echo_uargv_img, echo_uargv_exec_of_cmd,
+echo_room_of_det, echo_args_det{,_holds}}`, `UShCat.{cat_argv_fits_of_ok,
+cat_room_of_det}`); `UShCat.cat_args_det`, `UCatKernel.cat_image_entry` /
+`cat_child_of_entry` and `UShRound`'s `Hchild_cat` are AT `exec_ok`, which
+`cat f` meets.
+
+STEP 2 (in flight, branch `app-file/exec-ok`): the child's WALK.
+`UkShEcho.ush_xline_is` (the buffer's line at `exec_ok`), `ush_line_toks_x`,
+`echo_argv_bytes_of_line_x`, `echo_line_word0`; the exec arm
+`wp_kshr_exec_x_at{,_holds}` and the walk `wp_kshm_child_x{,_holds}` take the
+failed-exec alternative's bytes as ONE premise
+(`UkShDiagAt.ush_execfail_bytes dg (ws !!! 0)`) and the law at
+`ush_execfail_law_at dg (13 + length (ws !!! 0))` — the diagnostic was the only
+place the arm read the command.  THE GENERAL DIAGNOSTIC WAS THE PIPE CAMPAIGN'S
+(`UkShCat.wp_kshd_execfail_paid_at`) and sat ABOVE `UkShEcho`; it is moved to a
+new file `UkShDiagAt.v` below it, and `UkShCat`'s lemma keeps its statement and
+is `exact` the moved one.  Echo's arm and walk become `exact` the general ones
+at `alt_execfail` after `rewrite (ws !!! 0 = cmd_echo)` — by CONVERSION, as that
+file's own note demands (the proofmode route costs tens of minutes there).
+
+### Stretch 12, continued: defect 1 LANDED whole; defect 3 (the state-aware credential) checks file by file
+
+**Defect 1, step 2 LANDED on `main`** (29 files rebuilt, zero errors, `make -n`
+empty, audits identical): the exec arm and the child's walk at any exec'able
+line, `UkShDiagAt.v`.  Both steps compiled on the first try once the two
+missing node lemmas (`echo_cmd_str`, `echo_cmd_word`) joined the set.
+
+**Defect 3** (branch `app-file/fabs`, `.vok`-checked, not yet a whole-tree
+build):
+
+* PURE (`FileLinksLine.v`): `fabs s0 cs I a := cont (fstate_upto cs s0
+  (bodies_of I) (nlines I - 1)) (fline I) (ralt_dec a)` — definitionally
+  `cont (UCatOut.cat_st cs s0 I) …`; `faprs` (`fapr` without state-freedom);
+  `fabs_fab` (the instance at a state-free alternative); **`fabs_prompt`: every
+  non-panic admissible block ENDS WITH THE PROMPT at every state** (`RCRan` at
+  `Some bs` is `bs ++ u_prompt`), from which `fabs_{len_ge2,dollar,space}` are
+  three lines each; `wr_blk_{pending,byte,open,sp}_fs`.  The landed
+  `wr_blk_{pending,byte,open,sp}_f` keep their statements and are rewrites
+  through `fabs_fab`.
+* THE CREDENTIAL: `fwc_post` / `fwc_post_at s0` — a block written up to its
+  prompt whose length is computed INSIDE, from the credential's own choice
+  list — REPLACES the `fab`-indexed block arm of `fwc_line` / `fwc_line_at`
+  (it does not sit beside it: the old arm is its instance,
+  `fwc_post{,_at}_of_blk`).  The record's type did not move: the producers
+  (`fwc_line_of_blk0`, `fwc_line_of_post` and their `_at` twins, hence
+  `LinkRec`'s fields) keep their statements and go through the instance
+  lemma; `fwc_line_of_posts{,_at}` is the new state-aware producer.
+* THE ONE CONSUMER: `fprompt_dollar_posts{,_at}` — `fblk_step`'s two arms at
+  the block's last-but-one byte, the byte read off `fabs_dollar` and
+  `wr_blk_byte_fs`.  The underlying links (`file_links_blk`, `file_links_w`)
+  were state-aware all along; the byte premise matched SYNTACTICALLY.
+* `UShRound`: `Wcf0_of_posts_alt` is the fold at the state-aware post, and
+  it needs NO side premise for the PEND case — a two-byte block that ends with
+  the prompt IS the prompt (`fabs_prompt`).  `Wcf0_of_post_alt` is its
+  corollary and LOST that premise; the three redirect exits got shorter and
+  `fab_openfail_long` is deleted.

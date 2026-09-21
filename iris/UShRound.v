@@ -94,6 +94,11 @@ Require Import FileOut.
 Require Import FileLinks.
 Require Import FileOpen.                 (* [fdq], [file_open_pay] *)
 Require Import FileWrite.                (* [file_wq]: what the ran exit reads back *)
+Require Import UEchoFile.                (* K1: [efile_image_entry], echo at a file *)
+Require Import FsAbsDefs.                (* [anode] / [MkAnode] / [AFile] *)
+Require Import ExecRun.                  (* [udepw_at_refR_of_sup]: the U-tier exec rule *)
+Require Import UkShRedirBody.            (* [ushs_fd1f], [sh_redir_child_law] *)
+Require Import UkShRedirChild.           (* the redirect child's walk, 0x9c0 to its exits *)
 Require Import UserOff.
 Require Import ElfUser.
 Require Import UserHeap.
@@ -839,14 +844,14 @@ Section UShRound.
           [ iApply (Hcltaint I 0%nat v with "Hpin HT")
           | iApply (sh_deed_taint with "HT") ].
     - (* a block written up to its prompt, at some alternative *)
-      iDestruct "Hblk" as (a) "[%Hapr Hblk]". rewrite /fwc_blk_at.
+      iDestruct "Hblk" as (a) "[%Hapr Hblk]". rewrite /fwc_post_at.
       iDestruct "Hblk" as "[Hblk | #HT]"; last first.
       { iLeft. iSplitL "";
           [ iApply (Hcltaint I 0%nat v with "Hpin HT")
           | iApply (sh_deed_taint with "HT") ]. }
       iDestruct "Hblk" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE & #Hf)".
       pose proof Hw as [(_ & _ & Hn & _) _].
-      destruct (length (fab I a) - 2)%nat as [| i] eqn:Hi.
+      destruct (length (fabs s0 cs I a) - 2)%nat as [| i] eqn:Hi.
       + (* the prompt is the block's first byte: still owed, deed PEND *)
         cbn [blkcs_f]. rewrite Nat.add_0_r.
         iDestruct (cs_lb_agree_len v cs cs' ltac:(lia) with "Hcs Hcs'") as %<-.
@@ -863,7 +868,8 @@ Section UShRound.
                      with "Hcs Hcs'") as %Hpre.
         iLeft. iSplitL "Htn".
         * iExists v. iFrame "Hpin". iRight. iExists a.
-          iSplitR; [ by iPureIntro | ]. iLeft. iExists ps, cs, P.
+          iSplitR; [ by iPureIntro | ]. rewrite /fwc_post_at. iLeft.
+          iExists ps, cs, P.
           rewrite Hi. cbn [blkcs_f]. iFrame "Htn Hps Hcs HE Hf". by iPureIntro.
         * iApply ("Hdone" $! (cs ++ [a]) with "[%] [%] Hcs Hd");
             [ rewrite length_app; cbn [length]; lia | exact Hpre ].
@@ -880,44 +886,58 @@ Section UShRound.
      state.  The block's choice list and the deed's agree by length
      ([cs_lb_agree_len]); past its first byte the block has FILED [a]
      (DONE, by [done_tie_snoc]), and a block whose prompt is its first
-     byte is still owed (PEND at [a] itself, which is why that case asks
-     for [a]'s continuation to be the bare prompt). *)
-  Lemma Wcf0_of_post_alt (I : list (bv 8)) (a : nat) (v v' : era_pins)
+     byte is still owed (PEND at [a] itself: a two-byte block that ends
+     with the prompt IS the prompt, [FileLinksLine.fabs_prompt]).
+     STATED AT THE STATE-AWARE POST ([FileLinksAt.fwc_post_at]), so it
+     serves the round whose bytes are the file's too ([RCRan]); the
+     record's own block is the corollary below. *)
+  Lemma Wcf0_of_posts_alt (I : list (bv 8)) (a : nat) (v v' : era_pins)
       (cs' : list nat) (s : dst) :
-    fapr I a ->
+    faprs I a ->
     length cs' = (nlines I - 1)%nat -> (0 < nlines I)%nat ->
     dst_content s
       = fsm (UCatOut.cat_st cs' s0 I) (fline I) (ralt_dec a) ->
-    ((length (fab I a) - 2)%nat = 0%nat ->
-     cont (UCatOut.cat_st cs' s0 I) (fline I) (ralt_dec a) = u_prompt) ->
-    lk_pin FI (S gen_id) v -∗ lk_post FI (S gen_id) v I a -∗
+    lk_pin FI (S gen_id) v -∗
+    FileLinksAt.fwc_post_at g s0 (S gen_id) v I a -∗
     fown r s -∗ f_typed (fgn_cl g) s -∗
     era_pin (fgn_echo g) (S gen_id) v' -∗ cs_lb v' cs' -∗
     Wcf I 0%nat.
   Proof using .
-    intros Hapr Hlen Hpos Hc Hpr.
+    intros Hapr Hlen Hpos Hc.
     iIntros "#Hpin Hblk Hd #Hty #Hpin' #Hcs'". rewrite Wcf_0.
     cbn [lk_pin FileLinkInst.file_link_inst_at].
     iDestruct (era_pin_agree (fgn_echo g) (S gen_id) v v' with "Hpin Hpin'")
       as %<-.
-    rewrite /lk_post. cbn [lk_blk lk_ab FileLinkInst.file_link_inst_at].
-    rewrite /fwc_blk_at. iDestruct "Hblk" as "[Hblk | #HT]"; last first.
+    rewrite /FileLinksAt.fwc_post_at.
+    iDestruct "Hblk" as "[Hblk | #HT]"; last first.
     { iLeft. iSplitL "";
         [ iApply (Hcltaint I 0%nat v with "Hpin HT")
         | iApply (sh_deed_taint with "HT") ]. }
     iDestruct "Hblk" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE & #Hf)".
     pose proof Hw as [(_ & _ & Hn & _) _].
-    destruct (length (fab I a) - 2)%nat as [| i] eqn:Hi.
-    - (* the prompt is the block's first byte: still owed, deed PEND at [a] *)
+    destruct (length (fabs s0 cs I a) - 2)%nat as [| i] eqn:Hi.
+    - (* the prompt is the block's first byte: still owed, deed PEND at [a].
+         The block IS the bare prompt: it ends with it ([fabs_prompt]) and
+         is two bytes long. *)
       cbn [blkcs_f]. rewrite Nat.add_0_r.
       iDestruct (cs_lb_agree_len v cs cs' ltac:(lia) with "Hcs Hcs'") as %<-.
+      assert (Hpr : cont (UCatOut.cat_st cs s0 I) (fline I) (ralt_dec a)
+                    = u_prompt).
+      { destruct (fabs_prompt s0 cs I a Hapr) as [pre Hpre].
+        pose proof (fabs_len_ge2 s0 cs I a Hapr) as Hge.
+        change (cont (UCatOut.cat_st cs s0 I) (fline I) (ralt_dec a))
+          with (fabs s0 cs I a).
+        rewrite Hpre length_app in Hi Hge.
+        assert (Hp0 : length pre = 0%nat)
+          by (revert Hi Hge; vm_compute (length u_prompt); lia).
+        apply nil_length_inv in Hp0. rewrite Hpre Hp0. reflexivity. }
       iRight. iSplitL "Htn".
       + iApply (Wcl3_close I v ps cs P Hw with "Hpin [Htn]").
         rewrite /FileLinksLine.fcur. iFrame "Htn Hps Hcs HE Hf".
       + rewrite /sh_pend_at /sh_deed_at. iLeft. iExists cs, s, v.
         iFrame "Hd Hty Hpin Hcs". iPureIntro. exists a.
         split_and!; [ exact Hlen | exact Hpos | exact (proj1 Hapr)
-                    | exact (Hpr eq_refl) | exact Hc ].
+                    | exact Hpr | exact Hc ].
     - (* a byte before the prompt: [a] is filed, deed DONE *)
       cbn [blkcs_f].
       iDestruct (cs_lb_prefix_len v (cs ++ [a]) cs'
@@ -935,12 +955,33 @@ Section UShRound.
       + iExists v. iFrame "Hpin".
         cbn [lk_lpr FileLinkInst.file_link_inst_at fwc_lpr_at].
         rewrite /fwc_line_at. iRight. iExists a.
-        iSplitR; [ by iPureIntro | ]. rewrite /fwc_blk_at. iLeft.
+        iSplitR; [ by iPureIntro | ]. rewrite /FileLinksAt.fwc_post_at. iLeft.
         iExists ps, cs, P.
         rewrite Hi. cbn [blkcs_f]. iFrame "Htn Hps Hcs HE Hf". by iPureIntro.
       + rewrite /sh_done_at /sh_deed_at. iLeft. iExists (cs ++ [a]), s, v.
         iFrame "Hd Hty Hpin Hcs". iPureIntro.
         exact (done_tie_snoc cs a s0 I _ Hlen Hpos Hc).
+  Qed.
+
+  (* ...and at the record's own block ([lk_post], a state-free alternative):
+     the instance. *)
+  Lemma Wcf0_of_post_alt (I : list (bv 8)) (a : nat) (v v' : era_pins)
+      (cs' : list nat) (s : dst) :
+    fapr I a ->
+    length cs' = (nlines I - 1)%nat -> (0 < nlines I)%nat ->
+    dst_content s
+      = fsm (UCatOut.cat_st cs' s0 I) (fline I) (ralt_dec a) ->
+    lk_pin FI (S gen_id) v -∗ lk_post FI (S gen_id) v I a -∗
+    fown r s -∗ f_typed (fgn_cl g) s -∗
+    era_pin (fgn_echo g) (S gen_id) v' -∗ cs_lb v' cs' -∗
+    Wcf I 0%nat.
+  Proof using .
+    intros Hapr Hlen Hpos Hc. iIntros "#Hpin Hblk Hd #Hty #Hpin' #Hcs'".
+    iApply (Wcf0_of_posts_alt I a v v' cs' s (fapr_faprs I a Hapr) Hlen Hpos Hc
+              with "Hpin [Hblk] Hd Hty Hpin' Hcs'").
+    rewrite /lk_post. cbn [lk_blk lk_ab FileLinkInst.file_link_inst_at].
+    iApply (FileLinksAt.fwc_post_at_of_blk g s0 (S gen_id) v I a Hapr
+              with "Hblk").
   Qed.
 
   (* ---- THE LOOP'S LAWS AT [Wcf] / [Wbf] ---- *)
@@ -1410,12 +1451,7 @@ Section UShRound.
       [ rewrite /fapr ralt_dec_enc Hfl; split_and!; [ exact Logic.I | | ];
         reflexivity
       | exact Hlen | exact Hpos
-      | rewrite ralt_dec_enc Hfl; reflexivity
-      | ].
-    intro Hz. exfalso. revert Hz.
-    rewrite (fab_of_apr I (ralt_enc RFExec));
-      [ | rewrite ralt_dec_enc Hfl; split; [ exact Logic.I | reflexivity ] ].
-    rewrite ralt_dec_enc Hfl. vm_compute. discriminate.
+      | rewrite ralt_dec_enc Hfl; reflexivity ].
   Qed.
 
   (* the open FAILED: `f` is as the round found it ([RFOpenU]), or the
@@ -1424,18 +1460,6 @@ Section UShRound.
      and not one over [redir_Kf]: which arm the call returned is known
      BEFORE the diagnostic is written, and the diagnostic's law is run at
      the matching alternative, so its end state holds ONE block. *)
-  Local Lemma fab_openfail_long (I : list (bv 8)) (ws : wordline) (a : ralt) :
-    fline I = LEchoF ws -> a = RFOpenU \/ a = RFOpenM ->
-    (length (fab I (ralt_enc a)) - 2)%nat = 0%nat -> False.
-  Proof using .
-    intros Hfl Ha.
-    rewrite (fab_of_apr I (ralt_enc a));
-      [ | rewrite ralt_dec_enc Hfl; destruct Ha as [-> | ->]; split;
-          first [ exact Logic.I | reflexivity ] ].
-    rewrite ralt_dec_enc Hfl.
-    destruct Ha as [-> | ->]; vm_compute; discriminate.
-  Qed.
-
   Lemma redir_openfail_exit_u (I : list (bv 8)) (ws : wordline) (s : dst)
       (v v' : era_pins) (cs : list nat) :
     fline I = LEchoF ws ->
@@ -1452,9 +1476,7 @@ Section UShRound.
       [ rewrite /fapr ralt_dec_enc Hfl; split_and!; [ exact Logic.I | | ];
         reflexivity
       | exact Hlen | exact Hpos
-      | rewrite ralt_dec_enc Hfl; exact Hc
-      | intro Hz;
-        destruct (fab_openfail_long I ws RFOpenU Hfl (or_introl eq_refl) Hz) ].
+      | rewrite ralt_dec_enc Hfl; exact Hc ].
   Qed.
 
   Lemma redir_openfail_exit_m (I : list (bv 8)) (ws : wordline) (i : Z)
@@ -1473,9 +1495,7 @@ Section UShRound.
       [ rewrite /fapr ralt_dec_enc Hfl; split_and!; [ exact Logic.I | | ];
         reflexivity
       | exact Hlen | exact Hpos
-      | rewrite ralt_dec_enc Hfl -Hc; reflexivity
-      | intro Hz;
-        destruct (fab_openfail_long I ws RFOpenM Hfl (or_intror eq_refl) Hz) ].
+      | rewrite ralt_dec_enc Hfl -Hc; reflexivity ].
   Qed.
 
   (* ---- WHAT THE OPEN'S RECEIPT SAYS ABOUT THE INODE (the PROGRAM
@@ -1833,6 +1853,129 @@ Section UShRound.
              (fun I0 H => proj1 H) (fun I0 H => proj2 H)).
   Qed.
 
+  (* =================================================================== *)
+  (*  THE REDIRECT CHILD'S EXEC SUPPLY (item 2d): [exec /echo] with fd 1   *)
+  (*  on `f`.                                                             *)
+  (*                                                                     *)
+  (*  [UShEchoPay.sh_exec_sup_echo_wq_holds_at_D]'s body -- the same rule  *)
+  (*  ([ExecRun.udepw_at_refR_of_sup]), the same walk pin, the same taint  *)
+  (*  slot -- with K1's entry ([UEchoFile.efile_image_entry]) in the image *)
+  (*  slot.  The lend is what is left of the round's credential after the  *)
+  (*  open took the deed ([Wcl I 3]) beside the open's RECEIPT, read       *)
+  (*  ([redir_K']: the deed at `f` present and empty, the program's half   *)
+  (*  of the offset at 0, and the claim's fact that `f`'s inode is none of *)
+  (*  the image's).  The entry's payment is built INSIDE the image slot,   *)
+  (*  off the payload the rule hands in, because the inode and the offset  *)
+  (*  name are existential in the receipt; a TAINTED receipt buys the      *)
+  (*  generic slot instead.  The refund is the lend, whole.                *)
+  (* =================================================================== *)
+  Definition redir_K' (ty : fdtype) : iProp Σ :=
+    (redir_K ty
+     ∗ ((∃ (i : Z) (γo : gname),
+           ⌜ty = FdInode i γo OffHeld⌝
+           ∗ ⌜i <> INIT_INO /\ i <> SH_INO /\ i <> ECHO_INO
+              /\ i <> CAT_INO⌝)
+        ∨ T))%I.
+
+  Lemma redir_exec_sup (I : list (bv 8)) (ws : wordline) (v' : era_pins)
+      (cs : list nat) (ls : list wordline) :
+    fline I = LEchoF ws -> EchoDisc.line_ok ws -> ws ∈ ls ->
+    length cs = (nlines I - 1)%nat -> (0 < nlines I)%nat ->
+    ⊢ udep (SG := uexecSG_xv6) (PS := uprogSG_free) -∗
+      UShEcho.sh_echo_slot T -∗
+      era_pin (fgn_echo g) (S gen_id) v' -∗ cs_lb v' cs -∗
+      fl_lb (fgn_cl g) ls -∗
+      ∀ ty : fdtype,
+        UkShEcho.sh_exec_sup_echo_at (SG := uexecSG_xv6)
+          (ghost_varG0 := offbox_offG)
+          (UkShRedirBody.ushs_fd1f ty) ws
+          (fun _ : Z => UkShFork.ushf_wq Wcf I)
+          (Wcl I 3%nat ∗ redir_K' ty).
+  Proof using Heq Hkill.
+    intros Hfl Hokws Hin Hlen Hpos.
+    iIntros "#Hdep (#Hinv & #Hcl & #Hgen) #Hpin' #Hcs #Hlb" (ty).
+    rewrite /UkShEcho.sh_exec_sup_echo_at.
+    iIntros "!>" (N' m pc sa t gb ld)
+      "%Hpeq %Ha0 %Ha1 %Hbytes %Hfd1 Hstd #Hcmd Hcr".
+    (* the taint slot at the chosen payload *)
+    iAssert (image_entry_taint T
+               (fun _ : Z => UkShFork.ushf_wq Wcf I) uslot)%I as "#Hgen'".
+    { rewrite /image_entry_taint. iModIntro. iIntros (W') "#HT #Hmp".
+      iApply ("Hgen" $! (UkShFork.ushf_wq Wcf I) W' with "HT Hmp []").
+      iIntros "!> #Hk". rewrite /UkShFork.ushf_wq. iRight.
+      iApply (Wcf_taint I 0%nat v' with "Hpin'"). iApply Hktaint.
+      iExact "Hk". }
+    iApply (udepw_at_refR_of_sup (ghost_varG0 := offbox_offG) N' m pc
+              (mword_of_int sa) (mword_of_int (t + 8))
+              FsImg.ROOTINO T UShEcho.echo_pl ElfUser.echo_elf 1%nat
+              (UserFd.ustd (ukn_fd N') ld ∗ Wcl I 3%nat ∗ redir_K' ty)%I
+              _ UShEcho.echo_elf_loadable Ha0 Ha1 with "[] [] [Hstd Hcr]").
+    (* THE REFUND IS THE LEND, WHOLE *)
+    { iIntros "!> H". iExact "H". }
+    { rewrite Hpeq. iExact "Hgen'". }
+    rewrite /uexec_sup_run.
+    iIntros (M pm sz fdv chs pidv) "#Hnpw Hheap Hufd".
+    iDestruct (UkRun.urun_rows_nopipe _ _ with "Hnpw") as "#Hnp0".
+    iAssert (⌜ UShEcho.echo_node_img ws M sa t gb ⌝)%I as %Himg.
+    { iApply (UShEcho.echo_node_img_of_cmd ws _ _ _ M pm sz sa t gb Hokws
+                with "Hheap Hcmd"). }
+    iDestruct (ufd_auth_len with "Hufd") as %Hflen.
+    iDestruct (ustd_agree (ukn_fd N') fdv ld with "Hufd Hstd") as %Hl.
+    iFrame "Hheap Hufd".
+    iSplitR "Hstd Hcr".
+    { iPureIntro.
+      exact (UShEcho.sh_echo_path_of_holds ws Hokws M sa t gb Himg Hbytes). }
+    iSplitR "Hstd Hcr".
+    { iApply (exec_walk_of_pin FsEchoPin.era0_echo_pins T FsImg.ROOTINO
+                UShEcho.echo_pl [FsImg.ROOTINO; FsEchoPin.ECHO_INO]
+                FsEchoPin.ECHO_INO
+                (MkAnode (AFile ElfUser.echo_elf) 1%nat)
+                UShEcho.sh_echo_pin_resolves with "Hcl Hinv"). }
+    iSplitR "Hstd Hcr"; [ | iFrame "Hstd Hcr" ].
+    rewrite Hpeq. rewrite /image_entry. iModIntro.
+    iIntros (na alen afun W') "%Hok %Hcwd0 %Hlzf %Hch0 %Hpid0 %Hargs Hmp
+                               (Hstd & Hc & HK & Hino)".
+    (* a tainted receipt buys the generic slot *)
+    iDestruct "Hino" as "[Hino | #HT]"; last first.
+    { iApply ("Hgen'" $! W' with "HT Hmp"). }
+    iDestruct "Hino" as (i γo) "(%Hty & %Hi)".
+    destruct Hi as (Hi1 & Hi2 & Hi3 & Hi4).
+    rewrite /redir_K /UkFileOpen.redir_K /FileOpen.file_open_fd_K.
+    iDestruct "HK" as "[HK | #HT]"; last first.
+    { iApply ("Hgen'" $! W' with "HT Hmp"). }
+    iDestruct "HK" as (i1 γo1) "(%Hty1 & Hd & Hpub)".
+    rewrite Hty in Hty1. injection Hty1 as <- <-.
+    iDestruct (UserOff.foff_pub_of_held with "Hpub") as "Hu".
+    (* K1's entry, at what is left of the lend *)
+    iPoseProof (UEchoFile.efile_image_entry (ghost_varG0 := offbox_offG)
+                  (fgn_cl g) r Heq
+                  (UserFd.ustd (ukn_fd N') ld ∗ Wcl I 3%nat)%I
+                  ws M sa t gb fdv FsImg.ROOTINO chs pidv i γo false
+                  (fun _ : Z => UkShFork.ushf_wq Wcf I)
+                  (fun _ _ => eq_refl) Hokws Himg Hbytes Hflen
+                  ltac:(rewrite Hl -Hty; exact Hfd1) Hi1 Hi2 Hi3 Hi4
+                  with "[] [] Hinv Hnp0 Hdep") as "#He".
+    { (* echo RAN: the exit pays the round's payload *)
+      iIntros "!> [[_ Hc] Hex]". iDestruct "Hex" as (sel) "Hcur".
+      rewrite /UkShFork.ushf_wq. iRight.
+      rewrite /UEchoFile.efq /FileWrite.file_cur.
+      iDestruct "Hcur" as "[[Hq _] | [#HT _]]".
+      - iApply (redir_ran_exit I ws i sel v' cs Hfl Hlen Hpos
+                  with "Hc Hpin' Hcs Hq").
+      - iApply (Wcf_taint I 0%nat v' with "Hpin' HT"). }
+    { iIntros "!> Hk". iApply Hktaint. iExact "Hk". }
+    rewrite /image_entry.
+    iApply ("He" $! na alen afun W' with "[%] [%] [%] [%] [%] [%] Hmp
+                                          [Hstd Hc Hd Hu]");
+      [ exact Hok | exact Hcwd0 | exact Hlzf | exact Hch0 | exact Hpid0
+      | exact Hargs | ].
+    rewrite /UEchoFile.ef_pay /UEchoFile.efq. iFrame "Hstd Hc".
+    iApply (FileWrite.file_cur_fired (fgn_cl g) r i ws [] γo with "[Hd] Hu").
+    rewrite /FileWrite.file_wq. iLeft. iExists ls. iFrame "Hd Hlb".
+    iPureIntro. split_and!;
+      [ reflexivity | exact Hokws | exact (sel_ok_nil _) | exact Hin ].
+  Qed.
+
   (* ---- THE EXEC-FAILED DIAGNOSTIC'S LAW at the file families, AT THE
           PARAMETERIZED CARRIER (lane LINK-GEN-4) AND UNDER THE ERA'S GUARD
           (lane HOLD-POS).  [UkShEcho.ush_execfail_law_wq_at] was stated at
@@ -1951,25 +2094,40 @@ Section UShRound.
      linear resource, and [Pay] is what the entry hands over per
      invocation.  [om] is a PARAMETER throughout -- never [OffParked],
      never [OffHeld] literally. *)
-  Definition cat_pay (I : list (bv 8)) (q1 q2 : Qp) (om : offmode)
-      (sts : list fdstate) (v : era_pins) (vf : file_era)
+  Definition cat_pay (I : list (bv 8)) (q : Qp)
+      (v : era_pins) (vf : file_era)
       (ps0 : list nat) (P : nat) : iProp Σ :=
     (Wcl I 3%nat
-     ∗ (∃ (cs0 : list nat) (i : Z) (bs : list (bv 8)),
-          ⌜UCatOut.cat_tie cs0 s0 I (Some (i, bs))⌝
-          ∗ UCatKernel.cat_lend g (fgn_cl g) r q1 q2 i bs om sts
-              FsImg.ROOTINO v vf ps0 cs0 s0 I P))%I.
+     ∗ (∃ (cs0 : list nat) (s : dst),
+          ⌜UCatOut.cat_tie cs0 s0 I s⌝
+          ∗ UCatKernel.cat_lend g r q s v vf ps0 cs0 s0 I P))%I.
 
-  (* THE ENTRY, AT THE NODE SH BUILT (lane CAT-GEOM-2).  This used to
-     quantify [M] and [av] FREE, and that was WRONG: cat's diagnostic
-     names `f` ([FileDisc.alt_catopen]), so an entry owed at EVERY
-     argument vector is a claim cat cannot make.  The five premises below
-     are the ones [UCatKernel.cat_image_entry] takes, and every one of
-     them is a fact SH HAS -- it built the node ([UkShEcho.echo_cmd] at
-     [t]) and it parsed the line -- so [Hchild_cat] is ONE application of
-     that lemma. *)
+  (* THE ENTRY, AT THE NODE SH BUILT (lane CAT-GEOM-2) -- STILL A HYPOTHESIS,
+     AND THIS IS WHAT WAS WRONG WITH IT
+     (PROGRAM-STREAM stretch 11):
+
+     (1) FIXED (2026-09-21): the line premise is [ExecWords.exec_ok ws]
+         -- [EchoDisc.line_ok] without the command -- which `cat f` meets;
+         it was [line_ok ws], which demands [ws !! 0 = Some cmd_echo] and is
+         FALSE there.  [UCatKernel.cat_image_entry] reads sh's exec node
+         through the [_x] lemmas of [UkShEcho] / [UShEcho].
+
+     (2) THE LEND IS NOT ALL OF WHAT THE CHILD MUST RETURN.  The fork's
+         payload is [ushf_wq Wcf I] -- the WHOLE position-0 credential,
+         whose deed conjunct is [fown r s = fdeed r s ∗ ftkt r s] with the
+         tie, the typing and the pins.  cat takes [fdq r q s] and returns
+         it (RULING CAT-DEED, amended), so the REST of [PRE I] has to ride
+         across cat's entry as a FRAME, the way [Hold] rides echo's
+         ([UShEchoPay.echo_slot_of_kexec_at_at]); [UCatKernel.cat_pay_present]
+         has no frame yet (its round's hold family [cat_hold_at] is where
+         one goes).
+
+     What IS right now: one fraction in, the same one out
+     ([UCatKernel.catq_cat]); no [app_taint] antecedent; the payload
+     conversion is cat's entry's own premise and no longer this
+     hypothesis's. *)
   Hypothesis Hchild_cat :
-    forall (I : list (bv 8)) (q1 q2 : Qp) (om : offmode)
+    forall (I : list (bv 8)) (q : Qp)
            (ws : list (list (bv 8)))
            (M : gmap Z (bv 8)) (sv t : Z) (gn : nat -> bv 8)
            (sts : list fdstate) (cw : Z) (cs : gset gname)
@@ -1978,8 +2136,7 @@ Section UShRound.
            (rb : bool),
       length sts = NOFILE ->
       cw = FsImg.ROOTINO ->
-      (* ...and the line is `cat f`, read off sh's own node *)
-      EchoDisc.line_ok ws ->
+      ExecWords.exec_ok ws ->
       UShEcho.echo_node_img ws M sv t gn ->
       UkShEcho.echo_argv_bytes ws gn ->
       length ws = 2%nat ->
@@ -1987,70 +2144,232 @@ Section UShRound.
       (forall j : nat, (j < 1)%nat ->
          LineWords.wl_line ws !!! (UkShEcho.echo_off ws 1%nat + j)%nat
          = FsImgCheck.fname_f !!! j) ->
-      (* ...and the child's standard streams, which are sh's own *)
       take NSTD sts !! 1%nat = Some (FdOpen rb true (FdDevice ConsoleInv.CONSOLE)) ->
       take NSTD sts !! 2%nat = Some (FdOpen rb true (FdDevice ConsoleInv.CONSOLE)) ->
       fd_lowest_closed (take NSTD sts) = None ->
-      (* THE PAYLOAD CONVERSION, and it is SH's: what cat's exit files is
-         one of its OWN two alternatives ([UCatKernel.catq_cat], at cat's
-         own end cursor); what the fork chose is [ushf_wq Wcf I].  The
-         wand between them is a fact about the era's links, so it belongs
-         to the round and not to cat's entry -- which is why
-         [UCatKernel.cat_child_of_entry] takes [Q] as a parameter. *)
-      ⊢ □ (∀ cs0 : list nat,
-             UCatKernel.catq_cat g v vf ps0 cs0 s0 I P (-1)
-             -∗ UkShFork.ushf_wq Wcf I) -∗
-        app_taint -∗
-        image_entry ElfUser.cat_elf M (mword_of_int (t + 8) : mword 64) sts
+      ⊢ image_entry ElfUser.cat_elf M (mword_of_int (t + 8) : mword 64) sts
           cw cs pidv
           (fun _ : Z => UkShFork.ushf_wq Wcf I)
-          (cat_pay I q1 q2 om sts v vf ps0 P) uslot.
+          (cat_pay I q v vf ps0 P) uslot.
 
-  (* ---- HYPOTHESIS: the redirect child's own walk, from 0x9c0 to its
-          exit, at the payload sh's fork chose.  [UkShFork.ushf_child_law]
-          is the ECHO shape (its line premise is [UkSh.ush_line_is]); this
-          is the same statement at [UkShRedirLine.ushs_line_is], assembled
-          from [UkShRedirSeam.wp_kshm_child_alloc_redir] (the open as a
-          call premise, [Hopen_hand]), K1's entry after [exec /echo], and
-          [Hexecfail] on the failing arm. ---- *)
-  Definition sh_redir_child_law : iProp Σ :=
-    (□ (∀ (N' : uk_names Σ) (h : CpuId) (m : regfile) (dw dv : dfrac)
-          (sa : Z) (len : nat) (ws : wordline) (file : list (bv 8))
-          (fb : nat -> bv 8) (sz : Z) (ld : list fdstate) (n : nat)
-          (I : list (bv 8)),
-          ⌜ ukn_pay N' = (fun _ : Z => UkShFork.ushf_wq Wcf I) ⌝ -∗
-          ⌜ m !!! Regidx (mword_of_int 9 : mword 5)
-              = (mword_of_int sa : mword 64) ⌝ -∗
-          (* THE LINE IS THE REDIRECT SHAPE, which is where this law and
-             [UkShFork.ushf_child_law] part company: that one's premise is
-             [UkSh.ush_line_is], and [UkShRedirLine.ushs_line_is_nosym]
-             proves no such line can carry the [>] byte. *)
-          ⌜ UkShRedirLine.ushs_line_is ws file fb 0%nat len ⌝ -∗
-          (* the fork assertion's words are the WHOLE body's (RULING
-             SLOT-WS, option B; [UkShRedirBody.sh_redir_child_law]) *)
-          ⌜ ws ++ [FileDisc.fd_w_gt; file] = last_ws I ⌝ -∗
-          ⌜ 0 < sa ⌝ -∗ ⌜ sa + Z.of_nat len + 1 < Z64 ⌝ -∗
-          ⌜ sa + Z.of_nat len < 2 ^ 38 ⌝ -∗
-          ⌜ 8344 <= sz ⌝ -∗ ⌜ UserPtTree.pgroundup sz = sz ⌝ -∗
-          ⌜ usz_ok (sz + 65536) ⌝ -∗
-          ⌜ UkSh.ush_fd0c ld /\ UkSh.ush_fd1p ld /\ UkSh.ush_fd2p ld ⌝ -∗
-          UCodeShK.shk_code (ukn_t N') -∗
-          UCodeShP.shp_code (ukn_t N') -∗
-          UCodeShP.shp_rodata (ukn_t N') -∗
-          UkSh.ush_jtab (ukn_t N') -∗
-          ustr (ukn_d N') (DfracOwn 1) sa len fb -∗
-          ustr (ukn_d N') dw ushp_whitespace 5 ushp_ws_f -∗
-          ustr (ukn_d N') dv ushp_symbols 7 ushp_sym_f -∗
-          UserFd.ustd (ukn_fd N') ld -∗
-          UserCwd.ucwd (ukn_cwd N') FsImg.ROOTINO -∗
-          UserChildren.uch_any (ukn_ch N') -∗
-          UkShMalloc.ushm_fresh N' sz -∗
-          Wcf I 3%nat -∗
-          urun N' h m (mword_of_int 0x9c0)
-            (60 + (8 + (UkShDiag.ush_Dg + n))) -∗
-          mWP (Loop : expr riscv_lang)))%I.
+  (* ---- THE REDIRECT CHILD'S LAW (item 2d; it was a section hypothesis at
+          a stale twin of [UkShRedirBody.sh_redir_child_law] -- 60 steps
+          for 68, no [fline_ok] -- and is a LEMMA at that statement now).
 
-  Hypothesis Hchild_redir : ⊢ sh_redir_child_law.
+          The walk is [UkShRedirChild.wp_kshm_child_file_redir]; what this
+          supplies is the file application's reading of its pieces:
+            the lend          [Wcf I 3 = Wcl I 3 ∗ PRE I], OPENED FIRST, so
+                              the deed's state is known before the walk is
+                              applied -- a tainted PRE does not walk, it
+                              hands the run to the generic slot
+                              ([UkRun.urun_gen]);
+            the line          the fork's words identify it
+                              ([FileDisc.fline_ok_redir_words]: the typed
+                              line is [LEchoF ws] and the file is `f`);
+            the open          [Hopen_hand], the deed its hand, the line's
+                              witness from PRE;
+            the receipt       read by [redir_K_inum];
+            exec /echo        [redir_exec_sup];
+            the diagnostics   [UShPanic.ush_diag_law_hold_at_alt] at the
+                              alternative the child is in, closed by the
+                              three exits above.
+          [cons_made] is a PREMISE: the open needs it, /init has it, and
+          nothing in the round did (PROGRAM-STREAM stretch 10). ---- *)
+  Local Lemma ush_execfail_law_at_wand (dg : list (bv 8)) (n : nat)
+      (Cr Cd Cd' : iProp Σ) :
+    UkShDiag.ush_execfail_law_at (PS := uprogSG_free)
+      (ghost_varG0 := offbox_offG) dg n Cr Cd -∗
+    □ (Cd -∗ Cd') -∗
+    UkShDiag.ush_execfail_law_at (PS := uprogSG_free)
+      (ghost_varG0 := offbox_offG) dg n Cr Cd'.
+  Proof using .
+    iIntros "#Hl #Hw". rewrite /UkShDiag.ush_execfail_law_at.
+    iIntros "!>" (N l) "%Hfd Hc".
+    iDestruct ("Hl" $! N l with "[%] Hc") as (Pf) "(H0 & #Hs & #He)";
+      [ exact Hfd | ].
+    iExists Pf. iFrame "H0 Hs". iIntros "!> Hp". iApply "Hw". iApply "He".
+    iExact "Hp".
+  Qed.
+
+  Local Lemma fab_redir_alts (I : list (bv 8)) (ws : wordline) :
+    fline I = LEchoF ws ->
+    fab I (ralt_enc RFExec) = alt_execfail
+    /\ fab I (ralt_enc RFOpenU) = alt_openfail
+    /\ fab I (ralt_enc RFOpenM) = alt_openfail.
+  Proof using .
+    intro Hfl. split_and!;
+      (rewrite fab_of_apr;
+         [ rewrite ralt_dec_enc Hfl; reflexivity
+         | rewrite ralt_dec_enc Hfl; split; [ exact Logic.I | reflexivity ] ]).
+  Qed.
+
+  Lemma Hchild_redir :
+    ⊢ FileLinks.file_links g -∗
+      udep (SG := uexecSG_xv6) (PS := uprogSG_free) -∗
+      UShEcho.sh_echo_slot T -∗
+      (∃ jc : Z, cons_made (fn_cons r) jc) -∗
+      UkShRedirBody.sh_redir_child_law (PS := uprogSG_free)
+        (SG := uexecSG_xv6) (ghost_varG0 := offbox_offG) Wcf.
+  Proof using Heq Hkill.
+    iIntros "#Hlk #Hdep #Hslot #Hmade". iDestruct "Hmade" as (jc) "#Hmade".
+    iPoseProof "Hslot" as "(#Hinv & _ & #Hgen)".
+    rewrite /UkShRedirBody.sh_redir_child_law.
+    iIntros "!>" (N' h m dw dv sa len ws file fb sz ld n I)
+      "%Hpeq %Hs1 %Hline %Hlws %Hfok %Hsa %Hs64 %Hs38 %Hszlo %Hszal %Hszok
+       %Hrows #Hcode #Hpcode #Hpro #Hjt Hstr Hwsp Hsy Hstd Hcwd Hch HM Hcr
+       Hrun".
+    pose proof (proj1 Hline) as Hokws.
+    (* ---- the line, off the fork's words ---- *)
+    assert (Hpos : (0 < nlines I)%nat).
+    { destruct (nlines I) as [| k] eqn:Hn; [ | lia ]. exfalso.
+      rewrite /last_ws in Hlws. rewrite /nlines in Hn.
+      apply nil_length_inv in Hn. rewrite Hn in Hlws. cbn in Hlws.
+      destruct ws; discriminate Hlws. }
+    assert (Hlb : last_ws I = wl_words (UkSh.ush_lastbody I)).
+    { rewrite (last_ws_lastbody I). reflexivity. }
+    destruct (FileDisc.fline_ok_redir_words (UkSh.ush_lastbody I) ws file
+                Hfok Hokws ltac:(rewrite -Hlb; symmetry; exact Hlws))
+      as [Hfl ->].
+    change (uline_of (UkSh.ush_lastbody I)) with (fline I) in Hfl.
+    destruct (fab_redir_alts I ws Hfl) as (Hax & Hau & Ham).
+    (* ---- the lend, opened ---- *)
+    rewrite Wcf_S3. iDestruct "Hcr" as "[Hc [Hpre #Hwit]]".
+    iAssert (∃ v0 : era_pins, era_pin (fgn_echo g) (S gen_id) v0)%I
+      as (v0) "#Hpin0".
+    { rewrite /FileLinkInst.file_Wcl_at /lk_lcred.
+      iDestruct "Hc" as (v0) "[#Hp _]". iExists v0.
+      cbn [lk_pin FileLinkInst.file_link_inst_at]. iExact "Hp". }
+    iAssert (□ (app_taint -∗ UkShFork.ushf_wq Wcf I))%I as "#Hkillq".
+    { iIntros "!> #Hk". rewrite /UkShFork.ushf_wq. iRight.
+      iApply (Wcf_taint I 0%nat v0 with "Hpin0"). iApply Hktaint.
+      iExact "Hk". }
+    (* a TAINTED lend does not walk: the run goes to the generic slot *)
+    iAssert (□ (∀ W : UexecSlot.uvis,
+                  T -∗ ChildTok.my_pay (UexecSlot.uvis_gen W) (ukn_pay N') -∗
+                  UexecRet.uslot (SG := uexecSG_xv6) W))%I
+      as "#Hgenw".
+    { iIntros "!>" (W) "#HT' #Hmy". rewrite Hpeq.
+      iApply ("Hgen" $! (UkShFork.ushf_wq Wcf I) W with "HT' Hmy Hkillq"). }
+    rewrite {1}/sh_deed_at. iDestruct "Hpre" as "[Hpre | #HT]"; last first.
+    { iApply (urun_gen (PS := uprogSG_free) (SG := uexecSG_xv6)
+                (ghost_varG0 := offbox_offG) N' T h m
+                (mword_of_int 0x9c0) _ ltac:(vm_compute; reflexivity)
+                with "Hgenw HT Hrun"). }
+    iDestruct "Hpre" as (cs s v') "(Hd & %Htie & #Hty & #Hpin' & #Hcs)".
+    pose proof Htie as [Hlen Hcon].
+    rewrite /line_wit. iDestruct "Hwit" as "[Hwit | #HT]"; last first.
+    { iApply (urun_gen (PS := uprogSG_free) (SG := uexecSG_xv6)
+                (ghost_varG0 := offbox_offG) N' T h m
+                (mword_of_int 0x9c0) _ ltac:(vm_compute; reflexivity)
+                with "Hgenw HT Hrun"). }
+    pose proof (fline_echof_in I ws Hpos Hfl) as Hinl.
+    rewrite /FileLinksLine.flw. iDestruct "Hwit" as "[%Hnil | Hwit]".
+    { exfalso. rewrite Hnil in Hinl. by apply elem_of_nil in Hinl. }
+    iDestruct "Hwit" as (ls) "[#Hfl %Hall]".
+    pose proof (Hall ws Hinl) as Hin.
+    iAssert (∀ i : Z, f_typed (fgn_cl g) (Some (i, [])))%I as "#Hty0".
+    { iIntros (i). rewrite /f_typed. iExists ls. iFrame "Hfl". iPureIntro.
+      exists ws, []. split_and!;
+        [ exact Hin | exact Hokws | exact (sel_ok_nil _) | reflexivity ]. }
+    (* ---- the fd rows ---- *)
+    destruct Hrows as ([wr0 Hr0] & [rb1 Hr1] & Hfd2).
+    (* ---- THE WALK ---- *)
+    iApply (UkShRedirChild.wp_kshm_child_file_redir (PS := uprogSG_free)
+              (SG := uexecSG_xv6) (ghost_varG0 := offbox_offG)
+              (fun k H => H) (A := dst) N'
+              (ukn_const_of_eq N' _ Hpeq (fun _ _ => eq_refl))
+              h m dw dv sa len ws FsImgCheck.fname_f fb sz ld
+              _ n
+              (fun _ : Z => UkShFork.ushf_wq Wcf I)
+              redir_K redir_K' (fun s1 : dst => fown r s1) redir_Kf s
+              (Wcl I 3%nat ∗ fown r s)%I (Wcl I 3%nat)
+              (Wcf I 0%nat) (Wcf I 0%nat)
+              Hpeq Hs1 Hline eq_refl eq_refl Hsa Hs64 Hs38 Hszlo Hszal
+              Hszok Hr1 ltac:(discriminate)
+              ltac:(intros ? ? ?; discriminate) Hfd2
+              ltac:(destruct ld as [| y0 [| y1 l2]];
+                    [ discriminate Hr0 | discriminate Hr1 | ];
+                    cbn in Hr0; injection Hr0 as ->; reflexivity)
+              with "Hcode Hjt Hpcode Hpro Hstr Hwsp Hsy Hstd Hcwd Hch HM
+                    [] [] [] [] [] [] [] [] [] [Hc Hd] Hrun").
+    - (* the open *)
+      iApply (Hopen_hand N' _ _ ls ws jc Hin Hokws with "Hinv Hmade Hfl").
+    - (* the receipt, read *)
+      iIntros "!>" (ty) "HK".
+      iMod (redir_K_inum ty ⊤ ltac:(set_solver) with "Hinv HK") as "[HK Hi]".
+      iModIntro. rewrite /redir_K'. iFrame "HK Hi".
+    - (* exec /echo at the file *)
+      iApply (redir_exec_sup I ws v' cs ls Hfl Hokws Hin Hlen Hpos
+                with "Hdep Hslot Hpin' Hcs Hfl").
+    - (* exec failed *)
+      iIntros (ty).
+      iPoseProof (UShPanic.ush_diag_law_hold_at_alt (PS := uprogSG_free)
+                      (ghost_varG0 := offbox_offG) FI
+                    (redir_K' ty) I (ralt_enc RFExec) with "[]") as "#Hx".
+      { cbn [lk_links FileLinkInst.file_link_inst_at]. iExact "Hlk". }
+      iEval (cbn [lk_ab FileLinkInst.file_link_inst_at]; rewrite Hax)
+        in "Hx".
+      iApply (ush_execfail_law_at_wand with "Hx").
+      iIntros "!> H". iDestruct "H" as (v) "(#Hp & Hblk & [HK _])".
+      rewrite /redir_K /UkFileOpen.redir_K /FileOpen.file_open_fd_K.
+      iDestruct "HK" as "[HK | #HT]"; last first.
+      { iApply (Wcf_taint I 0%nat v' with "Hpin' HT"). }
+      iDestruct "HK" as (i γo) "(_ & Hd & _)".
+      iApply (redir_execfail_exit I ws i v v' cs Hfl Hlen Hpos
+                with "Hp Hblk Hd Hty0 Hpin' Hcs").
+    - iIntros "!> H". rewrite /UkShFork.ushf_wq. iRight. iExact "H".
+    - (* open failed *)
+      rewrite /UkShDiag.ush_execfail_law_at.
+      iIntros "!>" (N l) "%Hfd [HK Hc]".
+      iAssert (FileLinks.file_links g -∗ lk_links FI)%I as "Hlkw".
+      { cbn [lk_links FileLinkInst.file_link_inst_at]. iIntros "$". }
+      iDestruct ("Hlkw" with "Hlk") as "#Hlk'".
+      rewrite /redir_Kf. iDestruct "HK" as "[Hd | [[%Hs Hd] | #HT]]".
+      + iPoseProof (UShPanic.ush_diag_law_hold_at_alt (PS := uprogSG_free)
+                      (ghost_varG0 := offbox_offG)
+                      FI (fown r s) I (ralt_enc RFOpenU) with "Hlk'") as "#Hx".
+        iEval (cbn [lk_ab FileLinkInst.file_link_inst_at]; rewrite Hau)
+          in "Hx".
+        iDestruct ("Hx" $! N l with "[%] [Hc Hd]") as (Pf) "(H0 & #Hs & #He)";
+          [ exact Hfd | iFrame "Hc Hd" | ].
+        iExists Pf. iFrame "H0 Hs". iIntros "!> Hp".
+        iDestruct ("He" with "Hp") as (v) "(#Hp' & Hblk & Hd)".
+        iApply (redir_openfail_exit_u I ws s v v' cs Hfl Htie Hpos
+                  with "Hp' Hblk Hd Hty Hpin' Hcs").
+      + iDestruct "Hd" as (i) "Hd".
+        iPoseProof (UShPanic.ush_diag_law_hold_at_alt (PS := uprogSG_free)
+                      (ghost_varG0 := offbox_offG)
+                      FI (fown r (Some (i, []))) I (ralt_enc RFOpenM)
+                      with "Hlk'") as "#Hx".
+        iEval (cbn [lk_ab FileLinkInst.file_link_inst_at]; rewrite Ham)
+          in "Hx".
+        iDestruct ("Hx" $! N l with "[%] [Hc Hd]") as (Pf) "(H0 & #Hs & #He)";
+          [ exact Hfd | iFrame "Hc Hd" | ].
+        iExists Pf. iFrame "H0 Hs". iIntros "!> Hp".
+        iDestruct ("He" with "Hp") as (v) "(#Hp' & Hblk & Hd)".
+        iApply (redir_openfail_exit_m I ws i v v' cs Hfl
+                  ltac:(rewrite Hs in Htie; exact Htie) Hpos
+                  with "Hp' Hblk Hd Hty0 Hpin' Hcs").
+      + iPoseProof (UShPanic.ush_diag_law_hold_at_alt (PS := uprogSG_free)
+                      (ghost_varG0 := offbox_offG)
+                      FI emp%I I (ralt_enc RFOpenU) with "Hlk'") as "#Hx".
+        iEval (cbn [lk_ab FileLinkInst.file_link_inst_at]; rewrite Hau)
+          in "Hx".
+        iDestruct ("Hx" $! N l with "[%] [Hc]") as (Pf) "(H0 & #Hs & _)";
+          [ exact Hfd | iFrame "Hc" | ].
+        iExists Pf. iFrame "H0 Hs". iIntros "!> _".
+        iApply (Wcf_taint I 0%nat v' with "Hpin' HT").
+    - iIntros "!> H". rewrite /UkShFork.ushf_wq. iRight. iExact "H".
+    - (* the child died before the open: the lend, whole *)
+      iIntros "!> [Hc Hd]". rewrite /UkShFork.ushf_wq. iRight.
+      iApply (Hwbl_f I). rewrite Wcf_S3. iFrame "Hc".
+      rewrite /sh_pre_at /sh_deed_at /line_wit. iSplitL.
+      + iLeft. iExists cs, s, v'. iFrame "Hd Hty Hpin' Hcs". by iPureIntro.
+      + iLeft. rewrite /FileLinksLine.flw. iRight. iExists ls.
+        iFrame "Hfl". by iPureIntro.
+    - iIntros "[$ $]".
+    - iFrame "Hc Hd".
+  Qed.
 
   (* ...AND THE DISPATCH ITSELF: the three shapes assembled into the one
      law [UkShFork.ushf_rest_of_body] takes.  The case is PURE -- on
@@ -2126,7 +2445,7 @@ Section UShRound.
       UkSh.ush_rest_l (PS := uprogSG_free) N γp T Wcf Wbf
         (UShLine.ush_mid_at (lk_rres FI) (fgn_echo g) γp)
         (UInitSh.sh_Rsh (ukn_t N) (ukn_d N) (ukn_s N)).
-  Proof using Hchild_cat Hchild_redir Hcons Hkill Htag.
+  Proof using Hchild_cat Hcons Hkill Htag Heq.
   Admitted.
 
 End UShRound.

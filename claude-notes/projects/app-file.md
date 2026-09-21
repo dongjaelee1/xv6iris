@@ -19,8 +19,8 @@ tier is GREEN at current `main` (whole tree `--proofs -k`, 2026-09-21), after
 the pipe campaign's changes to the generic sh statements.
 
 What is open in `iris/`: `UShRound.sh_round_holds_file` and
-`UInitFile.file_Hinit_boot` are `Admitted`; `UShRound`'s section hypotheses
-`Hchild_redir` and `Hchild_cat` are undischarged.
+`UInitFile.file_Hinit_boot` are `Admitted`; `UShRound`'s section hypothesis
+`Hchild_cat` is undischarged (`Hchild_redir` is proved, 2026-09-21).
 
 Landed 2026-09-21:
 - **SLOT-WS, option B** (item 2¾ below; ruled by the owner, WITH A CLEANUP
@@ -35,9 +35,25 @@ Landed 2026-09-21:
   confirming the amendment to RULING CAT-DEED (the conjunct needs `∨
   file_taint c`; cat's taint exits hold no deed).
 
-NEXT: 2d (`Hchild_redir`, stated at `UkShRedirBody.sh_redir_child_law Wcf` --
-`UShRound`'s own copy is a stale twin, 60 vs 68 and no `fline_ok`, delete it);
-then 3 (iii)-(iv), 5, 4, the adequacy close.
+- **2d** (`UShRound.Hchild_redir` is a LEMMA at
+  `UkShRedirBody.sh_redir_child_law Wcf`; the stale twin is deleted; it takes
+  `(∃ jc, cons_made (fn_cons r) jc)`, which `sh_round_holds_file` must gain).
+  PROGRAM-STREAM.md stretch 10 has every name, and the `ghost_varG` instance
+  hang it met four times (a known shape; the clean fix is to drop `UShRound`'s
+  own `ghost_varG Σ Z` binder -- not yet measured).
+
+- **3 (iii)** (RULING CAT-DEED amended by the owner: ONE `fdq` to cat, the SAME
+  `fdq` back, `∨ file_taint c` on both sides): `UCatKernel.catq_cat`,
+  `cat_lend r q s := fdq r q s ∗ cch`, one `cat_child_of_entry` over `s` with
+  the fork's payload and a FRAME as parameters; the `app_taint` antecedent that
+  made cat's entry out-of-spec-only is gone.  PROGRAM-STREAM.md stretch 11.
+
+NEXT: 3 (iv) `Hchild_cat` -- BLOCKED FIRST on `line_ok` being FALSE at `cat f`
+(the exec-node lemmas in `UkShEcho`/`UShEcho` are stated at `line_ok`, which
+demands the first word be `echo`; the owner's call whether to generalise them
+now), then the round's open/close conversions (the close is not
+`Wcf0_of_post_alt`: `RCRan` is not state-free) and the child's walk; then 5
+(`sh_round_holds_file`, with the `cons_made` premise), 4, the adequacy close.
 
 THE OWNER'S PRIORITY (2026-09-21): good intermediate abstractions and specs
 over time-to-theorem.  A shortcut taken is recorded as a named cleanup item

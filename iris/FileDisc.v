@@ -554,6 +554,60 @@ Definition fline_ok (b : list (bv 8)) : Prop :=
 Lemma fline_ok_of l : uline_ok l -> fline_ok (line_body l).
 Proof using. intro H. by exists l. Qed.
 
+(* WHICH LINE A REDIRECT WORD LIST IS (RULING SLOT-WS, option B): an
+   admissible body whose words are a command's, then `>', then a file name,
+   is THE redirect line of that command, and the file is `f`.  This is what
+   the forked child reads off the sh loop's fork assertion ([last_ws I]):
+   the other three constructors are refuted by their words -- an echo
+   line's are all alphanumeric, [cat f] has two, a pipeline's last but one
+   is the bar. *)
+Lemma fline_ok_redir_words (b : list (bv 8)) (ws : list (list (bv 8)))
+    (file : list (bv 8)) :
+  fline_ok b -> line_ok ws -> wl_words b = ws ++ [fd_w_gt; file] ->
+  uline_of b = LEchoF ws /\ file = fname_f.
+Proof using.
+  intros (l & Hok & ->) Hws Hw.
+  destruct l as [ws' | ws' | | ws'].
+  - (* LEcho: its words are alphanumeric, and `>' is not *)
+    exfalso. cbn [line_body] in Hw.
+    rewrite (wl_words_body ws' (line_ok_wf _ Hok)) in Hw.
+    pose proof (line_ok_wf _ Hok) as Hwf. rewrite Hw in Hwf.
+    apply Forall_app in Hwf as [_ Hwf].
+    apply Forall_cons_1 in Hwf as [[_ Hgt] _].
+    apply Forall_cons_1 in Hgt as [Hgt _].
+    revert Hgt. rewrite /wl_alnum. vm_compute. intros [H | [H | H]];
+      destruct H as [H1 H2]; first [ by apply H1 | by apply H2 ].
+  - (* LEchoF: the two suffixes line up *)
+    destruct Hok as [Hok' Hlen].
+    rewrite (uline_ws_gtf ws' Hok') in Hw. cbn [uline_ws] in Hw.
+    replace (ws' ++ [fd_w_gt; fname_f])
+      with ((ws' ++ [fd_w_gt]) ++ [fname_f]) in Hw
+      by (rewrite -app_assoc; reflexivity).
+    replace (ws ++ [fd_w_gt; file])
+      with ((ws ++ [fd_w_gt]) ++ [file]) in Hw
+      by (rewrite -app_assoc; reflexivity).
+    apply app_inj_tail in Hw as [Hw ->].
+    apply app_inj_tail in Hw as [-> _].
+    split; [ | reflexivity ].
+    apply uline_of_body; [ intros w Hp; discriminate Hp | by split ].
+  - (* LCat: two words, so the command would have none *)
+    exfalso. cbn [line_body] in Hw.
+    apply (f_equal length) in Hw. rewrite length_app in Hw.
+    pose proof (line_ok_pos ws Hws) as Hp.
+    revert Hw. vm_compute (length (wl_words cmd_cat_f)). cbn [length]. lia.
+  - (* LPipe: the word before the last is the bar *)
+    exfalso. destruct Hok as [Hok' _].
+    rewrite (uline_ws_pipe ws' Hok') in Hw. cbn [uline_ws] in Hw.
+    replace (ws' ++ [fd_w_bar; fd_w_cat])
+      with ((ws' ++ [fd_w_bar]) ++ [fd_w_cat]) in Hw
+      by (rewrite -app_assoc; reflexivity).
+    replace (ws ++ [fd_w_gt; file])
+      with ((ws ++ [fd_w_gt]) ++ [file]) in Hw
+      by (rewrite -app_assoc; reflexivity).
+    apply app_inj_tail in Hw as [Hw _].
+    apply app_inj_tail in Hw as [_ Hbar]. discriminate Hbar.
+Qed.
+
 Lemma fline_ok_of_body b : fbody_ok b -> fline_ok b.
 Proof using.
   intro Hb. destruct (fbody_ok_line b Hb) as [Hok Heq]. by exists (uline_of b).

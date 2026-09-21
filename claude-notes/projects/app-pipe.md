@@ -8242,4 +8242,9 @@ handle.  Everything else §7 needs is landed: this lane's (A) and the
 timeless core, STAGE-4's flag, freeze, two terminal byte steps, two
 chains and pure read refutation, ROUND-5's `pipe_round_entry` /
 `_exit` / `_unwind`, PIPE-EXEC-ECHO's H1/H3, EXEC-CAT's H2, PIPE-CC's
-credential, and (§5) `UShPipeCatSlot.pipe_sh_cat_slot`.
+credential, and (§5) `UShPipeCatSlot.pipe_sh_cat_slot`.  And
+`pterm_wq_pay` says what (B) then costs: NOTHING, because
+`UkShFork.ushf_wq (pterm_wc g) I ⊣⊢ pterm_pay I` — §4.3j (1)'s
+redefinition is `ushf_child_law_at (pterm_wc g) ushq_lp 68`, one
+instantiation of the landed definition, and its argument list after the
+section closes is still `(g : pipe_gn)`.

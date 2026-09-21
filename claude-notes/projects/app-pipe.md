@@ -7529,3 +7529,338 @@ which PIPE-MODEL-3 landed.  Part 1's `pipe_round_entry` /
 Three routes have now been measured to the leaf and each named its own
 successor; (β) is the only one left and every part of this lane's work
 (parts 1–4) is reusable inside it.
+
+### PIPE-STAGE-4 (2026-09-22, design §4.3m route (β)) — the MODE reaches the claim, the freeze is SOUND and the read after a terminal prompt refutes purely; but the FAMILY cannot follow it, and the reason is a DEPOSIT that has no link step
+
+Branch `app-pipe/pipe-stage-4` off main (`946f3c8c8`), four code commits
+(`846c5f89d`, `b5401a2e0`, `665131e97`, `eee3c0de4`).  Files moved:
+`iris/PipeOut.v`, `iris/PipeBoth.v`, `iris/PipeLinks.v`,
+`iris/UShPipeExit.v`, `iris/UShPipeRound2.v`, `iris/UInitPipe.v`, plus
+the report file `iris/PipeStage4Assumptions.v` (NOT a `_CoqProject`
+row).  `PipeLinksLine.v`, `PipeLinkInst.v`, `UShPipeRound.v`,
+`UkShPipeFork.v`, `UCatPipe.v`, `UShPipeChild.v` are UNTOUCHED, and so
+is every GENERIC file (`LinkRec.v`, `UkSh.v`): **no generic law moved**.
+Whole-tree `ec2-lane.sh stage4 build` **RC=0**; no `Admitted`, no
+`Axiom`; `Proof using` on every result.  `Print Assumptions` on the
+lane's **thirty-four** headline results: **all thirty-four Closed under
+the global context**.
+
+**(0) WHAT THE LANE LANDED, IN ONE SENTENCE.**  §4.3m's second and
+fourth bullets are theorems — the terminal round FREEZES the claim's
+resolution and the read after a terminal prompt refutes any later line
+PURELY — and they cost neither the family's move nor one generic edit;
+its first, third and fifth bullets (the family into the claim,
+`blk2_inv` retired, the record carrying the terminal round,
+`UkShPipeFork` retired) are REFUTED, at a wall that is one level below
+the three walls parts 2–4 found.
+
+**(1) THE DISCRIMINATOR THE CLAIM NEEDED IS NOT THE MODE GHOST — IT IS
+ONE BIT OF `pe_cur`, WHICH IS ALREADY CLAIM-SIDE AND ALREADY
+WRITER-SHARED.**  Part 4's finding was that `pecl_blk2_file` can fire at
+a terminal round because the claim has no discriminator, and that "the
+only ghost that knows is the family's MODE".  Measured: the claim does
+not need the mode, it needs the mode's *readable consequence*, and
+`pe_cur` — the current-round ghost the claim holds one half of and every
+writer of the round holds the other half of, inside `PipeBoth.pblk_led`
+— is exactly the place for it.
+
+```coq
+  Definition cur_half (w : pipe_era) (q : Qp) (r : nat) (gb : gname)
+      (tm : bool) : iProp Σ := ghost_var (pe_cur w) q (r, gb, tm).
+
+  Definition pcs (v : era_pins) (l : list nat) (fz : bool) : iProp Σ :=
+    (if fz then cs_frozen v l else cs_auth v l)%I.
+```
+
+and `pecl`'s open-round arm, VERBATIM (the two changed lines):
+
+```coq
+    ( T
+    ∨ ∃ (v : era_pins) (w : pipe_era) (so : postage)
+        (r : nat) (gb : gname) (pre : list (bv 8)) (opn : bool) (tm : bool),
+        era_pin γ k v ∗ pera_pin g k w ∗ blk_auth w (pstream so)
+        ∗ cur_half w (cur_frac opn) r gb tm ∗ rblk_auth gb pre
+        ∗ turn_auth v (pcount_p (o_ps so) (o_cs so) (o_E so) (o_w so))
+        ∗ pcs v (o_cs so) (opn && tm)
+        ∗ ps_auth v (o_ps so) ∗ Elist_auth v (o_E so)
+        ∗ dl_cnt v (1/2) (length (LogEntryDefs.ch_dl H))
+        ∗ dl_list_auth v (LogEntryDefs.ch_dl H)
+        ∗ ⌜pcl_pure2 k ho so r pre opn H⌝)%I
+```
+
+Nothing else in `pecl` moves — `pblk_open`, `pcl_pure_o` and `pcl_pure2`
+are UNTOUCHED, because the flag is a resource-level bit and not a fact
+about the wire.  Its whole content is the two laws below.
+
+**(2) THE TERMINAL FIRE, AND THE FILING REFUTED.**  Exactly two landed
+steps grow `cs` (measured: `grep cs_auth_grow PipeOut.v` is two lines).
+`pecl_step_write_blk` is at the BETWEEN-ROUNDS arm and already refutes an
+open round, so `opn && tm = false` there by construction.  The other is
+`pecl_blk2_file`, and it now takes the filer's own half at the flag:
+
+```coq
+  Lemma pecl_blk2_file ... :
+    ...
+    era_pin γ k v -∗ pera_pin g k w -∗
+    turn v (P + length pre0)%nat -∗ cur_half w (1/2) r gb false -∗
+    rblk_lb gb pre0 -∗ ps_lb v ps0 -∗ cs_lb v cs0 -∗ inp_lb v I0 -∗
+    pecl k ho H ==∗ ... (the landed conclusion, unchanged)
+```
+
+`cur_half_agree` forces the CLAIM's flag to `false` too, so the
+authority there is the landed `cs_auth` and never the frozen one.  The
+terminal twins are the other side:
+
+```coq
+  Lemma pecl_blk2_open_t ... palt_isforkS (palt_of a) = true -> ... ==∗
+      pecl k ho (ConsLog.cons_step H (ConsLog.EvOut b))
+      ∗ ((∃ (w : pipe_era) (gb : gname),
+            turn v (S P) ∗ pera_pin g k w
+            ∗ cur_half w (1/2) (nlines I0 - 1)%nat gb true ∗ rblk_lb gb [b]
+            ∗ cs_frozen_at v (nlines I0 - 1)%nat
+            ∗ ps_lb v ps0 ∗ cs_lb v cs0 ∗ inp_lb v I0) ∨ T).
+
+  Lemma pecl_blk2_byte_t ... (tmi : bool) ... ==∗ ...
+      ∗ ((turn v (S (P + length pre0))%nat ∗ cur_half w (1/2) r gb true
+          ∗ rblk_lb gb (pre0 ++ [b]) ∗ cs_frozen_at v r) ∨ T).
+```
+
+`cs_frozen_at v n := ∃ l, ⌜length l = n⌝ ∗ cs_frozen v l` — persistent
+AND timeless, so a `LinkRec` boundary field may hold it.  The byte twin
+takes ANY incoming flag and leaves `true`: the fire is idempotent, which
+is what lets the STRAY write first (at the landed, non-terminal
+obligation) and the runcmd child's first panic byte flip the flag after
+it.  `pecl_blk2_open`/`pecl_blk2_byte` keep their landed statements with
+`false` appended to their `cur_half`s.
+
+**(3) WHERE THE MODE STILL DECIDES: `tmb`.**  The family's body has to
+hand `pwc_blk2` a flag, so `rmode` carries it and the tie is a function
+of the mode and the right cursor:
+
+```coq
+  Definition tmb (n c2 : nat) : bool :=
+    match n, c2 with 3%nat, S _ => true | _, _ => false end.
+
+  Definition rmode (gM : gname) (L R : list (bv 8)) (c2 : nat)
+      (tm : bool) (YR : iProp Σ) : iProp Σ :=
+    (∃ n : nat, wcur gM (1/2) n ∗ ⌜tm = tmb n c2⌝ ∗ (… the four arms …))%I.
+
+  Definition blk2_body … :=
+    ((∃ R sel c1 c2 (tm : bool),
+        pwc_blk2 k v I R sel c1 c2 tm
+        ∗ wcur gL (1/2) c1 ∗ wcur gR (1/2) c2
+        ∗ (⌜c1 = 0%nat⌝ ∨ XL) ∗ rmode gM L R c2 tm YR)
+     ∨ blk2_done gL gR)%I.
+```
+
+`c2 = 0` is NOT yet terminal, and that is load-bearing rather than
+cosmetic: `blk2_mode_fire` at `n := 3` happens BEFORE the child's first
+panic byte, and at `c2 = 0` the family does not read `R` at all
+(`pwc_blk2_R_indep`), so a STRAY writing between the fire and that byte
+is served by the LANDED obligation at the `PExecL` witness —
+`pblk2_cstep_L`'s mode-3 arm now splits on `c2` and reuses the unset-mode
+argument verbatim.  `pblk2_cstep_L` chooses its obligation BY THE FLAG
+and not by the witness:
+
+```coq
+      ⌜(tm = false /\ pblk2_wit I R (sel ++ [true])
+                   /\ Forall nodollar (pend2 R sel))
+       \/ (tm = true /\ pblk2_wit_t I R (sel ++ [true]))⌝
+```
+
+**(4) THE READ AFTER A TERMINAL PROMPT, VERBATIM — route (γ)'s lemma at
+its TRUE site, and it is a PLAIN entailment.**
+
+```coq
+  Lemma pterm_read_absurd (v : era_pins) (I l : list (bv 8)) :
+    (1 <= nlines I)%nat ->
+    cs_frozen_at v (nlines I - 1)%nat -∗
+    pwc_rres v (I ++ l ++ [wl_nl]) -∗ False.
+
+  Lemma pterm_fork_exit_read (N : namespace) (k : nat) (v : era_pins)
+      (I L l : list (bv 8)) (gL gR gM : gname) (XL YR : iProp Σ)
+      (c2 : nat) :
+    (1 <= nlines I)%nat ->
+    pwc_fork_exit N k v I L gL gR gM XL YR c2 -∗
+    pwc_rres v (I ++ l ++ [wl_nl]) -∗ PT.
+```
+
+`pwc_rres`'s `rd_stage_p` gives `nlines (removelast (I ++ l ++ [wl_nl]))
+<= length cs0`, i.e. `length cs0 >= nlines I` (`epu_removelast_snoc`,
+`nlines_app_le`); the writer's frozen authority has length `nlines I - 1`;
+`cs_frozen_at_lb_absurd`.  **No mask, no fancy update, no claim in the
+room** — which is exactly the shape `UkSh.ush_wc_read` had BEFORE part
+3's route (α), so (α)'s edit is not needed by this route either (it is
+kept: it costs nothing and is strictly more permissive).
+
+**(5) THE SECOND SHAPE NOW CARRIES IT, AND THE END-TO-END TEST RUNS.**
+
+```coq
+  Definition pwc_fork_exit (N : namespace) (k : nat) (v : era_pins)
+      (I L : list (bv 8)) (gL gR gM : gname) (XL YR : iProp Σ)
+      (c2 : nat) : iProp Σ :=
+    (blk2_inv N k v I L gL gR gM XL YR
+     ∗ wcur gR (1/2) c2 ∗ wcur gM (1/2) 3%nat
+     ∗ (cs_frozen_at v (nlines I - 1)%nat ∨ PT))%I.
+```
+
+and `pterm_round_read_test` is PIPE-STAGE-3's test with the read at its
+end: out of `pwc_lend` — the credential sh's round lends — the family is
+allocated, the mode fires at 3, the whole of `alt_forkc` goes out at the
+right cursor and the whole of `dg_execL` at the left one, every byte
+through `pecl`, and what the writers hold at the end refutes
+`pwc_rres v (I ++ l ++ [wl_nl])` for EVERY `l`.  Beside it:
+`pblk2_cstep_R_t` hands `(cs_frozen_at v (nlines I - 1) ∨ PT)` to its
+continuation, `pblk2_cterm_chain_fz` (a NON-EMPTY terminal chain; the
+empty one cannot produce the reading and keeps its landed statement) and
+`pblk2_fork1_chain` carry it on.
+
+**(6) THE REFUTATION — WHY THE FAMILY CANNOT FOLLOW THE FLAG INTO THE
+CLAIM, AND IT IS NOT A MISSING LEMMA.**  §4.3m's first bullet asks for
+the two cursors, the mode and the `(⌜c1 = 0⌝ ∨ XL)` witness to join
+`pecl`'s open-round arm and for `blk2_inv` to be RETIRED, with
+`blk2_inv_alloc`/`_close`, `blk2_mode_fire` and the three `cstep`s
+becoming "basic updates on `pecl` inside `out_link`'s fupd".  Measured,
+at the statement:
+
+- **The claim is reachable ONLY at a byte.**  This is part 3's own
+  finding, read the other way round: `chist_at Uart0 k ho H` is owned by
+  `uart_inv Uart0 γ`'s body and a writer never opens that invariant — it
+  RECEIVES the claim, because `out_link i k b Φ` is a wand TAKING it.
+  So every "claim step" is, by construction, a step that writes a
+  console byte.
+- **The family must exist before the round's first byte, and it must be
+  reachable by BOTH children.**  `blk2_inv_alloc` runs at the round's
+  start, out of `pwc_lend`, BEFORE the two `fork1`s: each child is lent
+  half of its own cursor there, and it is not decided which of them
+  writes the block's first byte (`pround_case`'s `PBoth` arm has both
+  children writing, and at a terminal round the stray and the runcmd
+  child are both live writers).  So the claim-side half of each cursor
+  would have to be deposited into `pecl` at a moment when no byte is
+  being written.  **There is no such moment.**
+- **And it cannot be made lazy.**  Handing the deposit bundle to ONE
+  child is a choice that has to be made before either outcome is known
+  (SH-PIPE-ROUND-4's H4, the same linear conflict); handing a
+  DISJUNCTION ("either you hold the deposit or the claim already has
+  it") to both is shared mutable state, i.e. an invariant — the very
+  thing (β) was retiring.
+- **The exclusive resource that forces this is the TURN**, not the
+  cursors.  Every claim byte step advances `turn v n`, half of one
+  `mono_nat` authority whose other half is the claim's; it cannot be
+  co-held by two writers (a 1/4+1/4 split agrees but can never be
+  updated), so at a two-writer round it must live in something both
+  children can open.  `blk2_inv` IS that thing.  The cursors are a
+  coordination device on top of it; the claim itself never needed them
+  (it reads the block off `rblk_auth`/`rblk_lb`, which is why the flag
+  alone sufficed).
+- **The identification problem, for the record.**  Even granting the
+  deposit, a claim-side family is existential in `gL`, `gR`, `gM`, and a
+  second writer presenting `wcur gL' (1/2) c` cannot prove `gL' = gL`:
+  `ghost_var` at two gnames is consistent.  Pinning them needs either
+  `pe_cur`'s value (one half — one holder, so it does not reach the
+  second writer) or a PERSISTENT per-round registry anchored in the era
+  record `pipe_era`, whose authority must itself be reachable before the
+  first byte — the same wall again.
+
+**CONSEQUENCE: §4.3m's third and fifth bullets do not follow.**  With
+`blk2_inv` alive, `pwc_fork_exit` still carries an `inv`, so
+PIPE-STAGE-3's `Timeless` obstruction stands verbatim (`lk_line_tl`,
+`lk_sp_t_tl`, `lk_open_t_tl`), `pwc_line2`'s third arm cannot hold the
+terminal round, `lk_prompt_dollar_line` cannot write the terminal `$`,
+and `UkShPipeFork` cannot be retired.  `pwc_line2`'s third arm is
+therefore at the flag `false` and every landed record field is
+BYTE-IDENTICAL; `PipeLinkInst.v` and `PipeLinksLine.v` did not move.
+
+**(7) THE SUCCESSOR DESIGN, measured while refuting (β).**  The family
+does not have to be in the CLAIM for the credential to be timeless — it
+has to be somewhere the record's consumer already has.  `lk_links` (the
+era's fixed persistent bundle) is that place, and it can hold an
+ERA-FIXED invariant if the per-round data is behind a registry:
+
+  (i) `pipe_era` gains `pe_fam : gname` (a `mono_list` of per-round
+      records `(gL, gR, gM)`), whose LOWER BOUNDS are persistent and
+      therefore reach BOTH children;
+  (ii) `PipeLinks.pipe_links` gains an eighth leaf `inv pipefamN
+      (∃ recs, own (pe_fam w) (●ML recs) ∗ the current round's
+      blk2_body)`; the ROUND registers its three gnames by opening it (a
+      plain fupd — it holds the bundle) BEFORE the forks, which is the
+      moment (β) could not reach because it wanted the CLAIM;
+  (iii) the boundary credential is then the persistent registry fragment
+      plus timeless ghost halves plus `cs_frozen_at`, so `pwc_line2`'s
+      third arm can carry the terminal round and `lk_prompt_dollar_line`
+      writes the terminal `$` at it — STAGE-3's obstruction gone,
+      `UkShPipeFork` retired, §4.3j's redefinition of
+      `sh_pipe_child_law` unnecessary, exactly as (β) promised.
+  The one cost is `XL`/`YR`: they are per-round `iProp`s, so the shared
+  body has to name them through `saved_prop` (discarded, hence
+  persistent) or the exclusion has to be re-cut as a fact about
+  `PipeProto` that both children can restate.  That is the one piece
+  this lane did not measure to its leaf.
+
+**(8) ONE LANDED STATEMENT MOVED, AND IT IS A FINDING.**
+`UShPipeRound2.pipe_round_exit` gains a premise `n <> 3%nat` and the
+resource `PipeBoth.wcur gM (1/2) n` (returned unchanged):
+
+```coq
+  Lemma pipe_round_exit (E : coPset) (I L : list (bv 8))
+      (gL gR gM : gname) (XL YR : iProp Σ) (v : era_pins) (c1 c2 n : nat) :
+    … -> (0 < c1 + c2)%nat -> n <> 3%nat -> … ->
+    era_pin γ (S gen_id) v -∗
+    blk2_inv g blk2N (S gen_id) v I L gL gR gM XL YR -∗
+    PipeBoth.wcur gL (1/2) c1 -∗ PipeBoth.wcur gR (1/2) c2 -∗
+    PipeBoth.wcur gM (1/2) n ={E}=∗
+    pipe_Wcl_at g I 0%nat ∗ PipeBoth.wcur gM (1/2) n.
+```
+
+Why it is forced, and why it is right: the loop's boundary credential's
+third arm is at the flag `false`, so the round has to show at its exit
+that its round was NOT the runcmd child's own panic — and the only thing
+in the system that knows that is the MODE, which is §4.3m's own thesis.
+`pblk2_code` does not settle it (at `echo fork | cat` the terminal and
+the good round print the same bytes — `PipeDisc.d4_ambiguous_bytes`,
+`UShPipeRound2.pterm_gamma_witness`), so no pure premise can replace it.
+**The consequence for SH-PIPE-ROUND-6: the RIGHT CHILD must hand its
+mode half back in its exit payload** (today `UShPipeChild`/`UCatPipe`'s
+continuation returns no `wcur gM`), and the round collects it at the
+second `wait` before `pipe_round_exit`.  The new
+`PipeBoth.blk2_inv_close_nt` is the close at that premise;
+`blk2_inv_close` keeps its landed role and its conclusion gains the
+flag and `⌜tm = true -> R = alt_forkc⌝`.  `pipe_round_entry` and
+`pipe_round_unwind` did NOT move.
+
+**WHAT THE DESIGN GOT WRONG.**
+1. §4.3m bullet 1 ("`blk2_inv` is RETIRED; `blk2_inv_alloc` … become
+   CLAIM STEPS (basic updates on `pecl` inside `out_link`'s fupd)") is
+   impossible: `blk2_inv_alloc` is not at a byte, and the family must be
+   installed before the block's first byte because either child may
+   write it.  §6 above.
+2. §4.3m bullet 2's "`pecl_blk2_file` takes the filer's MODE half at
+   `n ≠ 3`" names the wrong ghost, and the STOP rule the brief wrote for
+   it is the reason: **the filer legitimately holds no mode half** — the
+   filer is sh's MAIN LOOP one process later, and the mode's other half
+   died with the right child.  The flag in `pe_cur` is the repair, and
+   it is strictly cheaper (the filer already holds that half, inside
+   `pblk_led`).
+3. §4.3m bullets 3 and 5 follow from bullet 1 and fall with it.
+4. §4.3m bullet 4 is RIGHT and is landed — and it did not need bullet 1:
+   the frozen reading is all the read site wants, and the claim can
+   freeze on the flag alone.
+
+**STOP RULES.**  Rule 1 FIRED, in the sharper form of §2 above (every
+filer holds no mode half, not only a one-writer round's), and the lane
+proceeded with the flag rather than stopping, because the flag is the
+same discriminator at a ghost the filer already carries — the report
+names it.  Rule 2 did NOT fire: no generic law was touched, because the
+record never sees the terminal round under this repair.
+
+**THE ONE THING THE NEXT LANE NEEDS FIRST.**  The coordinator's ruling
+on §7 — the ERA-FIXED family invariant with a per-round registry in
+`pipe_era` — which is (β)'s goal reached at the only anchor that is
+reachable before the forks.  Everything the terminal round needs on the
+CLAIM side is now landed and Closed: the flag, the freeze, the two
+terminal byte steps, the two chains, the second shape with the frozen
+reading, the pure read refutation and the end-to-end test.  After the
+ruling the order is: the registry + the eighth link leaf, then
+`pwc_line2`'s terminal arm and `lk_prompt_dollar_line` at it, then the
+mode half in the right child's exit payload (§8), then ROUND-6's
+assembly.

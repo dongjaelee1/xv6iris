@@ -94,6 +94,11 @@ Require Import FileOut.
 Require Import FileLinks.
 Require Import FileOpen.                 (* [fdq], [file_open_pay] *)
 Require Import FileWrite.                (* [file_wq]: what the ran exit reads back *)
+Require Import UEchoFile.                (* K1: [efile_image_entry], echo at a file *)
+Require Import FsAbsDefs.                (* [anode] / [MkAnode] / [AFile] *)
+Require Import ExecRun.                  (* [udepw_at_refR_of_sup]: the U-tier exec rule *)
+Require Import UkShRedirBody.            (* [ushs_fd1f], [sh_redir_child_law] *)
+Require Import UkShRedirChild.           (* the redirect child's walk, 0x9c0 to its exits *)
 Require Import UserOff.
 Require Import ElfUser.
 Require Import UserHeap.
@@ -1831,6 +1836,127 @@ Section UShRound.
              (fun I0 => sh_pre_at_timeless s0 I0)
              fwc3 fwc3b fwc0 fwct Hktaint
              (fun I0 H => proj1 H) (fun I0 H => proj2 H)).
+  Qed.
+
+  (* =================================================================== *)
+  (*  THE REDIRECT CHILD'S EXEC SUPPLY (item 2d): [exec /echo] with fd 1   *)
+  (*  on `f`.                                                             *)
+  (*                                                                     *)
+  (*  [UShEchoPay.sh_exec_sup_echo_wq_holds_at_D]'s body -- the same rule  *)
+  (*  ([ExecRun.udepw_at_refR_of_sup]), the same walk pin, the same taint  *)
+  (*  slot -- with K1's entry ([UEchoFile.efile_image_entry]) in the image *)
+  (*  slot.  The lend is what is left of the round's credential after the  *)
+  (*  open took the deed ([Wcl I 3]) beside the open's RECEIPT, read       *)
+  (*  ([redir_K']: the deed at `f` present and empty, the program's half   *)
+  (*  of the offset at 0, and the claim's fact that `f`'s inode is none of *)
+  (*  the image's).  The entry's payment is built INSIDE the image slot,   *)
+  (*  off the payload the rule hands in, because the inode and the offset  *)
+  (*  name are existential in the receipt; a TAINTED receipt buys the      *)
+  (*  generic slot instead.  The refund is the lend, whole.                *)
+  (* =================================================================== *)
+  Definition redir_K' (ty : fdtype) : iProp Σ :=
+    (redir_K ty
+     ∗ ((∃ (i : Z) (γo : gname),
+           ⌜ty = FdInode i γo OffHeld⌝
+           ∗ ⌜i <> INIT_INO /\ i <> SH_INO /\ i <> ECHO_INO
+              /\ i <> CAT_INO⌝)
+        ∨ T))%I.
+
+  Lemma redir_exec_sup (I : list (bv 8)) (ws : wordline) (v' : era_pins)
+      (cs : list nat) (ls : list wordline) :
+    fline I = LEchoF ws -> EchoDisc.line_ok ws -> ws ∈ ls ->
+    length cs = (nlines I - 1)%nat -> (0 < nlines I)%nat ->
+    ⊢ udep (SG := uexecSG_xv6) (PS := uprogSG_free) -∗
+      UShEcho.sh_echo_slot T -∗
+      era_pin (fgn_echo g) (S gen_id) v' -∗ cs_lb v' cs -∗
+      fl_lb (fgn_cl g) ls -∗
+      ∀ ty : fdtype,
+        UkShEcho.sh_exec_sup_echo_at (SG := uexecSG_xv6)
+          (UkShRedirBody.ushs_fd1f ty) ws
+          (fun _ : Z => UkShFork.ushf_wq Wcf I)
+          (Wcl I 3%nat ∗ redir_K' ty).
+  Proof using Heq Hkill.
+    intros Hfl Hokws Hin Hlen Hpos.
+    iIntros "#Hdep (#Hinv & #Hcl & #Hgen) #Hpin' #Hcs #Hlb" (ty).
+    rewrite /UkShEcho.sh_exec_sup_echo_at.
+    iIntros "!>" (N' m pc sa t gb ld)
+      "%Hpeq %Ha0 %Ha1 %Hbytes %Hfd1 Hstd #Hcmd Hcr".
+    (* the taint slot at the chosen payload *)
+    iAssert (image_entry_taint T
+               (fun _ : Z => UkShFork.ushf_wq Wcf I) uslot)%I as "#Hgen'".
+    { rewrite /image_entry_taint. iModIntro. iIntros (W') "#HT #Hmp".
+      iApply ("Hgen" $! (UkShFork.ushf_wq Wcf I) W' with "HT Hmp []").
+      iIntros "!> #Hk". rewrite /UkShFork.ushf_wq. iRight.
+      iApply (Wcf_taint I 0%nat v' with "Hpin'"). iApply Hktaint.
+      iExact "Hk". }
+    iApply (udepw_at_refR_of_sup N' m pc
+              (mword_of_int sa) (mword_of_int (t + 8))
+              FsImg.ROOTINO T UShEcho.echo_pl ElfUser.echo_elf 1%nat
+              (UserFd.ustd (ukn_fd N') ld ∗ Wcl I 3%nat ∗ redir_K' ty)%I
+              _ UShEcho.echo_elf_loadable Ha0 Ha1 with "[] [] [Hstd Hcr]").
+    (* THE REFUND IS THE LEND, WHOLE *)
+    { iIntros "!> H". iExact "H". }
+    { rewrite Hpeq. iExact "Hgen'". }
+    rewrite /uexec_sup_run.
+    iIntros (M pm sz fdv chs pidv) "#Hnpw Hheap Hufd".
+    iDestruct (UkRun.urun_rows_nopipe _ _ with "Hnpw") as "#Hnp0".
+    iAssert (⌜ UShEcho.echo_node_img ws M sa t gb ⌝)%I as %Himg.
+    { iApply (UShEcho.echo_node_img_of_cmd ws _ _ _ M pm sz sa t gb Hokws
+                with "Hheap Hcmd"). }
+    iDestruct (ufd_auth_len with "Hufd") as %Hflen.
+    iDestruct (ustd_agree (ukn_fd N') fdv ld with "Hufd Hstd") as %Hl.
+    iFrame "Hheap Hufd".
+    iSplitR "Hstd Hcr".
+    { iPureIntro.
+      exact (UShEcho.sh_echo_path_of_holds ws Hokws M sa t gb Himg Hbytes). }
+    iSplitR "Hstd Hcr".
+    { iApply (exec_walk_of_pin FsEchoPin.era0_echo_pins T FsImg.ROOTINO
+                UShEcho.echo_pl [FsImg.ROOTINO; FsEchoPin.ECHO_INO]
+                FsEchoPin.ECHO_INO
+                (MkAnode (AFile ElfUser.echo_elf) 1%nat)
+                UShEcho.sh_echo_pin_resolves with "Hcl Hinv"). }
+    iSplitR "Hstd Hcr"; [ | iFrame "Hstd Hcr" ].
+    rewrite Hpeq. rewrite /image_entry. iModIntro.
+    iIntros (na alen afun W') "%Hok %Hcwd0 %Hlzf %Hch0 %Hpid0 %Hargs Hmp
+                               (Hstd & Hc & HK & Hino)".
+    (* a tainted receipt buys the generic slot *)
+    iDestruct "Hino" as "[Hino | #HT]"; last first.
+    { iApply ("Hgen'" $! W' with "HT Hmp"). }
+    iDestruct "Hino" as (i γo) "(%Hty & %Hi)".
+    destruct Hi as (Hi1 & Hi2 & Hi3 & Hi4).
+    rewrite /redir_K /UkFileOpen.redir_K /FileOpen.file_open_fd_K.
+    iDestruct "HK" as "[HK | #HT]"; last first.
+    { iApply ("Hgen'" $! W' with "HT Hmp"). }
+    iDestruct "HK" as (i1 γo1) "(%Hty1 & Hd & Hpub)".
+    rewrite Hty in Hty1. injection Hty1 as <- <-.
+    iDestruct (UserOff.foff_pub_of_held with "Hpub") as "Hu".
+    (* K1's entry, at what is left of the lend *)
+    iPoseProof (UEchoFile.efile_image_entry (fgn_cl g) r Heq
+                  (UserFd.ustd (ukn_fd N') ld ∗ Wcl I 3%nat)%I
+                  ws M sa t gb fdv FsImg.ROOTINO chs pidv i γo false
+                  (fun _ : Z => UkShFork.ushf_wq Wcf I)
+                  (fun _ _ => eq_refl) Hokws Himg Hbytes Hflen
+                  ltac:(rewrite Hl -Hty; exact Hfd1) Hi1 Hi2 Hi3 Hi4
+                  with "[] [] Hinv Hnp0 Hdep") as "#He".
+    { (* echo RAN: the exit pays the round's payload *)
+      iIntros "!> [[_ Hc] Hex]". iDestruct "Hex" as (sel) "Hcur".
+      rewrite /UkShFork.ushf_wq. iRight.
+      rewrite /UEchoFile.efq /FileWrite.file_cur.
+      iDestruct "Hcur" as "[[Hq _] | [#HT _]]".
+      - iApply (redir_ran_exit I ws i sel v' cs Hfl Hlen Hpos
+                  with "Hc Hpin' Hcs Hq").
+      - iApply (Wcf_taint I 0%nat v' with "Hpin' HT"). }
+    { iIntros "!> Hk". iApply Hktaint. iExact "Hk". }
+    rewrite /image_entry.
+    iApply ("He" $! na alen afun W' with "[%] [%] [%] [%] [%] [%] Hmp
+                                          [Hstd Hc Hd Hu]");
+      [ exact Hok | exact Hcwd0 | exact Hlzf | exact Hch0 | exact Hpid0
+      | exact Hargs | ].
+    rewrite /UEchoFile.ef_pay /UEchoFile.efq. iFrame "Hstd Hc".
+    iApply (FileWrite.file_cur_fired (fgn_cl g) r i ws [] γo with "[Hd] Hu").
+    rewrite /FileWrite.file_wq. iLeft. iExists ls. iFrame "Hd Hlb".
+    iPureIntro. split_and!;
+      [ reflexivity | exact Hokws | exact (sel_ok_nil _) | exact Hin ].
   Qed.
 
   (* ---- THE EXEC-FAILED DIAGNOSTIC'S LAW at the file families, AT THE

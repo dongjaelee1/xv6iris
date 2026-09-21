@@ -1492,10 +1492,25 @@ Section file_links_line.
         ∗ f0w k s0)
      ∨ (⌜i = 0%nat⌝ ∗ fhead k v I) ∨ FT)%I.
 
+  (* A BLOCK WRITTEN UP TO ITS PROMPT, AT THE ROUND'S OWN STATE (stretch 11,
+     defect 3).  [fwc_blk _ _ _ a (length (fab I a) - 2)] said this at an
+     index computed from the INPUT, which cannot name a block whose bytes
+     are the file's ([RCRan]).  The index here is computed INSIDE, from the
+     choice list the credential itself holds ([fabs s0 cs I a]); the old
+     shape is its instance at a state-free alternative
+     ([fwc_post_of_blk]). *)
+  Definition fwc_post (k : nat) (v : era_pins) (I : list (bv 8)) (a : nat)
+    : iProp Σ :=
+    ((∃ (ps cs : list nat) (s0 : fstate) (P : nat),
+        ⌜wr_blk_t_f ps cs s0 I P⌝
+        ∗ turn v (P + (length (fabs s0 cs I a) - 2))%nat ∗ ps_lb v ps
+        ∗ cs_lb v (blkcs_f cs a (length (fabs s0 cs I a) - 2)%nat)
+        ∗ inp_lb v I ∗ f0w k s0)
+     ∨ FT)%I.
+
   Definition fwc_line (k : nat) (v : era_pins) (I : list (bv 8)) : iProp Σ :=
     (fwc_pro k v I
-     ∨ ∃ a : nat, ⌜fapr I a⌝
-         ∗ fwc_blk k v I a (length (fab I a) - 2)%nat)%I.
+     ∨ ∃ a : nat, ⌜faprs I a⌝ ∗ fwc_post k v I a)%I.
 
   Definition fwc_lend (k : nat) (v : era_pins) (I : list (bv 8)) : iProp Σ :=
     ((∃ (ps cs : list nat) (s0 : fstate) (P : nat),
@@ -1572,12 +1587,14 @@ Section file_links_line.
   Proof using . rewrite /fwc_open_t. tl_leaf. Qed.
   Global Instance fwc_ban_timeless k v I i : Timeless (fwc_ban k v I i).
   Proof using . rewrite /fwc_ban. tl_leaf. Qed.
+  Global Instance fwc_post_timeless k v I a : Timeless (fwc_post k v I a).
+  Proof using . rewrite /fwc_post. tl_leaf. Qed.
   Global Instance fwc_line_timeless k v I : Timeless (fwc_line k v I).
   Proof using .
     rewrite /fwc_line.
     apply bi.or_timeless; [apply fwc_pro_timeless |].
     apply bi.exist_timeless; intro.
-    apply bi.sep_timeless; [apply bi.pure_timeless | apply fwc_blk_timeless].
+    apply bi.sep_timeless; [apply bi.pure_timeless | apply fwc_post_timeless].
   Qed.
   Global Instance fwc_lend_timeless k v I : Timeless (fwc_lend k v I).
   Proof using . rewrite /fwc_lend. tl_leaf. Qed.
@@ -1653,16 +1670,41 @@ Section file_links_line.
     fwc_blk k v I a 0%nat -∗ fwc_blk k v I a' 0%nat.
   Proof using . rewrite /fwc_blk. cbn [blkcs_f]. iIntros "H". iExact "H". Qed.
 
+  Lemma fwc_post_taint k v I a : FT -∗ fwc_post k v I a.
+  Proof using . iIntros "H". rewrite /fwc_post. by iRight. Qed.
+
+  (* the landed shape is the instance at a state-free alternative *)
+  Lemma fwc_post_of_blk k v I a :
+    fapr I a -> fwc_blk k v I a (length (fab I a) - 2)%nat -∗ fwc_post k v I a.
+  Proof using .
+    intros Ha. rewrite /fwc_blk /fwc_post. iIntros "[H | H]"; [| by iRight].
+    iDestruct "H" as (ps cs s0 P) "(%Hw & Htn & Hps & Hcs & HE & Hf)".
+    iLeft. iExists ps, cs, s0, P. rewrite (fabs_fab s0 cs I a Ha).
+    iFrame "Htn Hps Hcs HE Hf". by iPureIntro.
+  Qed.
+
   Lemma fwc_line_of_blk0 k v I a : fwc_blk k v I a 0%nat -∗ fwc_line k v I.
   Proof using .
     iIntros "Hc". rewrite /fwc_line. iRight.
-    iExists (fnoc_of (fline I)). iSplitR; [iPureIntro; exact (fapr_noc I) |].
+    iExists (fnoc_of (fline I)).
+    iSplitR; [iPureIntro; exact (fapr_faprs _ _ (fapr_noc I)) |].
+    iApply (fwc_post_of_blk k v I _ (fapr_noc I)).
     rewrite (fab_noc I) EchoLinks.wr_prompt_len.
     cbn [Nat.sub]. iApply (fwc_blk_0 with "Hc").
   Qed.
 
   Lemma fwc_line_of_post k v I a :
     fapr I a -> fwc_blk k v I a (length (fab I a) - 2)%nat -∗ fwc_line k v I.
+  Proof using .
+    intros Ha. iIntros "Hc". rewrite /fwc_line. iRight. iExists a.
+    iSplitR; [iPureIntro; exact (fapr_faprs I a Ha) |].
+    iApply (fwc_post_of_blk k v I a Ha with "Hc").
+  Qed.
+
+  (* ...and the state-aware producer, which is what a round whose bytes are
+     the file's closes on *)
+  Lemma fwc_line_of_posts k v I a :
+    faprs I a -> fwc_post k v I a -∗ fwc_line k v I.
   Proof using .
     intros Ha. iIntros "Hc". rewrite /fwc_line. iRight. iExists a.
     iSplitR; [by iPureIntro |]. iExact "Hc".
@@ -2154,6 +2196,70 @@ Section file_links_line.
     rewrite /f0w. iSplitR; [by iPureIntro |]. iExists vf. by iFrame "Hvf Hf0'".
   Qed.
 
+  (* THE PROMPT'S DOLLAR AT THE STATE-AWARE POST.  [fblk_step]'s two arms at
+     the one index that matters here -- the block's last-but-one byte -- with
+     the byte read off [fabs] at the credential's OWN choice list. *)
+  Lemma fprompt_dollar_posts (k : nat) (v : era_pins) (I : list (bv 8))
+      (a : nat) (b : bv 8) (Φ : iProp Σ) :
+    faprs I a -> b = u_prompt !!! 0%nat ->
+    FPIN k v -∗ file_links g -∗ fwc_post k v I a -∗
+    (fwc_sp_t k v I -∗ Φ) -∗ out_link Uart0 k b Φ.
+  Proof using .
+    intros Ha Hb. iIntros "#Hpin #Hlk Hc HΦ".
+    iDestruct (file_links_w with "Hlk") as "#Hw".
+    iDestruct (file_links_blk with "Hlk") as "#Hblk".
+    iDestruct (file_links_taint with "Hlk") as "#Ht".
+    pose proof Ha as [Hok Hnp].
+    rewrite {1}/fwc_post. iDestruct "Hc" as "[Hl | #HT]"; last first.
+    { iApply ("Ht" $! k b Φ with "HT [HΦ]").
+      iIntros "#HT'". iApply "HΦ". rewrite /fwc_sp_t. by iRight. }
+    iDestruct "Hl" as (ps cs s0 P)
+      "(%Hw & Htn & #Hps & #Hcs & #HE & #Hf)".
+    pose proof (proj1 Hw) as Hwb.
+    pose proof Hwb as (Hpin0 & Hr & Hn & HP).
+    pose proof (wr_blk_nonnil_f ps cs s0 I P Hwb) as Hne.
+    pose proof (fabs_len_ge2 s0 cs I a Ha) as Hlen.
+    pose proof (fabs_dollar s0 cs I a Ha) as Hby. rewrite -Hb in Hby.
+    pose proof (wr_blk_sp_fs ps cs s0 I P a Hw Ha) as Hsp.
+    rewrite /f0w. iDestruct "Hf" as "[%Hk Hvf]".
+    iDestruct "Hvf" as (vf) "[#Hvf #Hf0]".
+    destruct (length (fabs s0 cs I a) - 2)%nat as [| i'] eqn:Hi.
+    - (* the prompt IS the block's first byte: it files the alternative *)
+      cbn [blkcs_f]. rewrite Nat.add_0_r.
+      iApply ("Hblk" $! k v vf P a b ps cs s0 I Φ
+                with "[%] [%] [%] [%] [%] [%] [%] Hpin Hvf Htn Hps Hcs HE Hf0 [HΦ]").
+      { exact Hne. }
+      { exact Hr. }
+      { rewrite Hn. lia. }
+      { exact Hpin0. }
+      { exact HP. }
+      { rewrite -/(fline I). exact Hok. }
+      { rewrite -/(fline I). exact Hby. }
+      iIntros "Hres". iApply "HΦ". rewrite /fwc_sp_t.
+      iDestruct "Hres" as "[(Htn' & Hps' & Hcs' & HE' & Hf0') | #HT]";
+        last by iRight.
+      iLeft. iExists ps, (cs ++ [a]), s0, (S P).
+      replace (P + (length (fabs s0 cs I a) - 1))%nat with (S P) in Hsp by lia.
+      replace (P + 1)%nat with (S P) by lia.
+      rewrite /fcur. iFrame "Htn' Hps' Hcs' HE'". iSplitR; [by iPureIntro |].
+      rewrite /f0w. iSplitR; [by iPureIntro |]. iExists vf. by iFrame "Hvf Hf0'".
+    - (* an ordinary byte of a block already filed *)
+      cbn [blkcs_f].
+      iApply ("Hw" $! k v vf (P + S i')%nat b ps (cs ++ [a]) s0 I Φ
+                with "[%] [%] [%] Hpin Hvf Htn Hps Hcs HE Hf0 [HΦ]").
+      { rewrite length_app Hn. cbn [length]. lia. }
+      { exact (wr_blk_pin_snoc_f ps cs s0 I P a Hwb). }
+      { exact (wr_blk_byte_fs ps cs s0 I P a (S i') b Hwb Hnp Hby). }
+      iIntros "Hres". iApply "HΦ". rewrite /fwc_sp_t.
+      iDestruct "Hres" as "[(Htn' & Hps' & Hcs' & HE' & Hf0') | #HT]";
+        last by iRight.
+      iLeft. iExists ps, (cs ++ [a]), s0, (S (P + S i')).
+      replace (P + (length (fabs s0 cs I a) - 1))%nat
+        with (S (P + S i')) in Hsp by lia.
+      rewrite /fcur. iFrame "Htn' Hps' Hcs' HE'". iSplitR; [by iPureIntro |].
+      rewrite /f0w. iSplitR; [by iPureIntro |]. iExists vf. by iFrame "Hvf Hf0'".
+  Qed.
+
   Lemma fprompt_dollar_line (k : nat) (v : era_pins) (I : list (bv 8))
       (b : bv 8) (Φ : iProp Σ) :
     b = u_prompt !!! 0%nat ->
@@ -2163,7 +2269,7 @@ Section file_links_line.
     intros Hb. iIntros "#Hpin #Hlk Hc HΦ".
     rewrite {1}/fwc_line. iDestruct "Hc" as "[Hc | Hc]"; last first.
     { iDestruct "Hc" as (a) "[%Ha Hc]".
-      iApply (fprompt_dollar_post k v I a b Φ Ha Hb with "Hpin Hlk Hc HΦ"). }
+      iApply (fprompt_dollar_posts k v I a b Φ Ha Hb with "Hpin Hlk Hc HΦ"). }
     iDestruct (file_links_pro with "Hlk") as "#Hpro".
     iDestruct (file_links_first with "Hlk") as "#Hfst".
     iDestruct (file_links_taint with "Hlk") as "#Ht".

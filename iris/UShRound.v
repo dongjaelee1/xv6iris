@@ -93,6 +93,7 @@ Require Import AppFile.
 Require Import FileOut.
 Require Import FileLinks.
 Require Import FileOpen.                 (* [fdq], [file_open_pay] *)
+Require Import FileWrite.                (* [file_wq]: what the ran exit reads back *)
 Require Import UserOff.
 Require Import ElfUser.
 Require Import UserHeap.
@@ -1345,6 +1346,124 @@ Section UShRound.
      no deed, and a [Kf] without that arm cannot be produced. *)
   Definition redir_Kf (s : dst) : iProp Σ :=
     (fown r s ∨ (⌜s = None⌝ ∗ ∃ i : Z, fown r (Some (i, []))) ∨ T)%I.
+
+  (* [fab] at an admissible, state-free alternative IS its continuation
+     (the guard in [FileLinksLine.fab] discharged once, so no consumer
+     rewrites under a [decide]) *)
+  Local Lemma fab_of_apr (I : list (bv 8)) (a : nat) :
+    ralt_ok (fline I) (ralt_dec a) /\ fstate_free (ralt_dec a) = true ->
+    fab I a = cont None (fline I) (ralt_dec a).
+  Proof using . intro H. rewrite /fab. by case_decide. Qed.
+
+  (* ---- THE REDIRECT CHILD'S THREE PRINTING-OR-SILENT EXITS, each closing
+          at the loop's position-0 credential.  The entry facts are PRE's
+          own ([pre_tie]: the deed's choice list is one short of the
+          input's lines, and the content is the round's entry state); what
+          differs is what the child did to `f` and what it printed. ---- *)
+
+  (* echo RAN: it prints nothing on the console (fd 1 is `f`), so the block
+     is still owed whole and the deed is PEND at [RFRan sel] -- whose
+     continuation is the bare prompt by computation.  [sel] is whichever
+     chunks landed (design SS0, limit 1), read off the write credential. *)
+  Lemma redir_ran_exit (I : list (bv 8)) (ws : wordline) (i : Z)
+      (sel : list nat) (v' : era_pins) (cs : list nat) :
+    fline I = LEchoF ws ->
+    length cs = (nlines I - 1)%nat -> (0 < nlines I)%nat ->
+    Wcl I 3%nat -∗
+    era_pin (fgn_echo g) (S gen_id) v' -∗ cs_lb v' cs -∗
+    FileWrite.file_wq (fgn_cl g) r i ws sel
+      (length (subseq (echo_chunks ws) sel)) -∗
+    Wcf I 0%nat.
+  Proof using .
+    intros Hfl Hlen Hpos. iIntros "Hc #Hpin #Hcs Hq".
+    rewrite /FileWrite.file_wq. iDestruct "Hq" as "[Hq | #HT]"; last first.
+    { iApply (Wcf_taint I 0%nat v' with "Hpin HT"). }
+    iDestruct "Hq" as (ls) "(Hd & _ & %Hok & %Hsel & #Hlb & %Hin)".
+    rewrite Wcf_0. iRight. iFrame "Hc".
+    rewrite /sh_pend_at /sh_deed_at. iLeft.
+    iExists cs, (Some (i, subseq (echo_chunks ws) sel)), v'.
+    iFrame "Hd Hpin Hcs". iSplit.
+    - iPureIntro. exists (ralt_enc (RFRan sel)).
+      rewrite /pend_tie_at ralt_dec_enc Hfl.
+      split_and!; [ exact Hlen | exact Hpos | exact Hsel | reflexivity
+                  | reflexivity ].
+    - rewrite /f_typed. iExists ls. iFrame "Hlb". iPureIntro.
+      exists ws, sel. split_and!; [ exact Hin | exact Hok | exact Hsel
+                                  | reflexivity ].
+  Qed.
+
+  (* the exec FAILED after the open truncated: the diagnostic is written,
+     `f` is empty *)
+  Lemma redir_execfail_exit (I : list (bv 8)) (ws : wordline) (i : Z)
+      (v v' : era_pins) (cs : list nat) :
+    fline I = LEchoF ws ->
+    length cs = (nlines I - 1)%nat -> (0 < nlines I)%nat ->
+    lk_pin FI (S gen_id) v -∗
+    lk_post FI (S gen_id) v I (ralt_enc RFExec) -∗
+    fown r (Some (i, [])) -∗ f_typed (fgn_cl g) (Some (i, [])) -∗
+    era_pin (fgn_echo g) (S gen_id) v' -∗ cs_lb v' cs -∗
+    Wcf I 0%nat.
+  Proof using .
+    intros Hfl Hlen Hpos. iIntros "#Hp Hblk Hd #Hty #Hpin' #Hcs".
+    iApply (Wcf0_of_post_alt I (ralt_enc RFExec) v v' cs (Some (i, []))
+              with "Hp Hblk Hd Hty Hpin' Hcs");
+      [ rewrite /fapr ralt_dec_enc Hfl; split_and!; [ exact Logic.I | | ];
+        reflexivity
+      | exact Hlen | exact Hpos
+      | rewrite ralt_dec_enc Hfl; reflexivity
+      | ].
+    intro Hz. exfalso. revert Hz.
+    rewrite (fab_of_apr I (ralt_enc RFExec));
+      [ | rewrite ralt_dec_enc Hfl; split; [ exact Logic.I | reflexivity ] ].
+    rewrite ralt_dec_enc Hfl. vm_compute. discriminate.
+  Qed.
+
+  (* the open FAILED: `f` is as the round found it ([RFOpenU]), or the
+     create had fired before the failure and left it empty ([RFOpenM], at
+     an absent `f` only -- [redir_Kf]'s second arm says so) *)
+  Lemma redir_openfail_exit (I : list (bv 8)) (ws : wordline) (s : dst)
+      (v v' : era_pins) (cs : list nat) :
+    fline I = LEchoF ws ->
+    pre_tie cs s0 I (dst_content s) -> (0 < nlines I)%nat ->
+    lk_pin FI (S gen_id) v -∗
+    (lk_post FI (S gen_id) v I (ralt_enc RFOpenU)
+     ∧ lk_post FI (S gen_id) v I (ralt_enc RFOpenM)) -∗
+    redir_Kf s -∗ f_typed (fgn_cl g) s -∗
+    (∀ i : Z, f_typed (fgn_cl g) (Some (i, []))) -∗
+    era_pin (fgn_echo g) (S gen_id) v' -∗ cs_lb v' cs -∗
+    Wcf I 0%nat.
+  Proof using .
+    intros Hfl [Hlen Hc] Hpos.
+    iIntros "#Hp Hblk HK #Hty #Hty0 #Hpin' #Hcs".
+    assert (Hlong : forall a : ralt,
+              a = RFOpenU \/ a = RFOpenM ->
+              (length (fab I (ralt_enc a)) - 2)%nat = 0%nat -> False).
+    { intros a Ha.
+      rewrite (fab_of_apr I (ralt_enc a));
+        [ | rewrite ralt_dec_enc Hfl; destruct Ha as [-> | ->]; split;
+            first [ exact Logic.I | reflexivity ] ].
+      rewrite ralt_dec_enc Hfl.
+      destruct Ha as [-> | ->]; vm_compute; discriminate. }
+    iDestruct "HK" as "[Hd | [[%Hs Hd] | #HT]]".
+    - iDestruct "Hblk" as "[Hblk _]".
+      iApply (Wcf0_of_post_alt I (ralt_enc RFOpenU) v v' cs s
+                with "Hp Hblk Hd Hty Hpin' Hcs");
+        [ rewrite /fapr ralt_dec_enc Hfl; split_and!; [ exact Logic.I | | ];
+          reflexivity
+        | exact Hlen | exact Hpos
+        | rewrite ralt_dec_enc Hfl; exact Hc
+        | intro Hz; destruct (Hlong RFOpenU (or_introl eq_refl) Hz) ].
+    - iDestruct "Hblk" as "[_ Hblk]". iDestruct "Hd" as (i) "Hd".
+      iApply (Wcf0_of_post_alt I (ralt_enc RFOpenM) v v' cs (Some (i, []))
+                with "Hp Hblk Hd [] Hpin' Hcs");
+        [ rewrite /fapr ralt_dec_enc Hfl; split_and!; [ exact Logic.I | | ];
+          reflexivity
+        | exact Hlen | exact Hpos
+        | rewrite ralt_dec_enc Hfl -Hc Hs; reflexivity
+        | intro Hz; destruct (Hlong RFOpenM (or_intror eq_refl) Hz)
+        | iApply "Hty0" ].
+    - iApply (Wcf_taint I 0%nat v' with "Hpin' HT").
+  Qed.
 
   (* ---- WHAT THE OPEN'S RECEIPT SAYS ABOUT THE INODE (the PROGRAM
           STREAM, item (3)'s first premise).  K1's entry takes four

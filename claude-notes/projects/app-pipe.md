@@ -426,9 +426,11 @@ arm is the theorem's one named premise (`pipe_both_law`).
 - [ ] **PIPE-PID** (design §4.3w purchases 1–4: the pid route through sh's
   fork/wait — `UkShRun`, `UkShFork`, `UkShPipe*`, `UexecRet`/`UkFork`).
   Brief `brief-pipe-pid.md`.
-- [ ] **PIPE-RO** (design §4.3w purchase 5: the read end published open —
+- [x] **PIPE-RO** (design §4.3w purchase 5: the read end published open —
   `SpecPiperead`, `PipeQueue`, `PipeProto.pipe_no_short`, the fd layer's
-  complementary ends).  Brief `brief-pipe-ro.md`.
+  complementary ends).  Brief `brief-pipe-ro.md`.  LANDED whole, and it
+  cost a SIXTH purchase the ruling did not name: the write-side
+  OBSERVATION publishes its end too (Findings `### PIPE-RO`).
 - [ ] **SH-PIPE-ROUND-11** (after both): the split, the instantiation,
   `sh_pipe_child_law_all`, `pipe_adequacy_pipeΣ_final`.
 ## Findings (append as lanes report)## Findings (append as lanes report)## Findings (append as lanes report)
@@ -9843,3 +9845,170 @@ and which no amount of work inside the pipe files can replace.  Item 6
 and item 7 are assembly once they land; `pipe_no_short` (purchase 5) can
 be bought independently and is the only one that touches the kernel's
 file layer.
+
+### PIPE-RO (2026-09-21, design §4.3w's purchase 5) — the read end IS publishable, `pipe_no_short` is DISCHARGED, and purchase 5 as briefed is INCOMPLETE BY ONE: the WRITE-side observation has to publish its end too
+
+Branch `app-pipe/pipe-ro` off main (`411248d0a`).  Three code commits:
+`507ee8638` (the fd layer), `18a90621d` (the links, the two kernel specs'
+sides), `f77d17986` (the protocol).  Seven files, every one of them a
+kernel-tier or protocol file; **no `Admitted`, no `Axiom`, `Proof using`
+on every new result**, and every landed statement outside the three
+retirements below is byte-identical.
+
+**BUILD AND AUDITS, re-measured on the mirror over the rebuilt tree.**
+`ec2-lane.sh ro build` (whole `iris` tree) **RC=0** — 341 files recompiled
+above `FileInvDefs.v`, zero errors — and the tree is QUIESCENT afterwards
+(`make -n` leaves 0 targets).  **`audit-only` 13, `audit-echo-only` 14,
+`audit-tree-only` 13, `audit-pipe-only` 14**, all at their baselines and
+all the same distinct names: `functional_extensionality_dep`, the seven
+`PrimInt63` primitives, `PrimString.{string,get,cat}` (+ `.length` in the
+echo and pipe cones), `xv6iris_extras.resv_matches`,
+`xv6iris_extras.resv_is_valid`.  The system and tree cones DO contain the
+two kernel specs this lane changed, which is why they were re-measured.
+`Print Assumptions`: `pipe_no_short_of_inv`, `pipe_body_P6`,
+`pipe_short_round_not_realisable`, `pipe_rpay_of_inv`,
+`pipe_rlink_of_uncond`, `fdstate_ok_pipe_rd` — **Closed under the global
+context**; `Piperead.wp_piperead_sconf`, `Pipewrite.wp_pipewrite_sconf`,
+`Fileread.wp_fileread_sconf` — the standing three (`resv_matches`,
+`resv_is_valid`, `functional_extensionality_dep`), textually unmoved.
+
+**WHAT LANDED, in the order it has to be bought.**
+
+1. **The fd fact** (`iris/FileInvDefs.v`), verbatim:
+
+        Definition fdpipe_ends (r w : bool) : Prop := w = negb r.
+
+        | FdPipe g => fc_type C = FD_PIPE /\ g = γp /\ fdpipe_ends r w
+
+   one conjunct on `fdstate_ok`'s pipe arm.  A NAMED definition and not an
+   inline conjunction, on PIPE-NEG1's measured lesson (a row in one of
+   these tables is on the conversion path of every `Qed` that takes it as
+   a premise, so each branch stays one head symbol wide).  Readings:
+   `fdstate_ok_pipe_ends`, and `fdstate_ok_pipe_rd` at the key the WALK
+   holds — past `f->type == FD_PIPE` and `f->readable <> 0` the row is
+   `FdOpen true false (FdPipe γp)` and `f->writable` is zero; with
+   `fc_wbool_zero` that is `fc_wbool C = false`, which is the end
+   `file_core_noff`'s pipe arm holds its `pipe_ref` at.  **The publisher
+   is pipealloc and it costs one `eq_refl` per end** (`ProofPipealloc`'s
+   two `file_pay_st` builds go from four to five): the stores write 1/0
+   and 0/1, so the fact was in the code all along — PQ-FLAG's "true of
+   pipealloc, dropped at the store".  Nothing else supplies a pipe row;
+   every other consumer destructs at most the arm's first three conjuncts.
+
+2. **The read link** (`iris/PipeQueue.v`), verbatim:
+
+        Definition pipe_rlink (γ : gname) (Φ : bv 8 -> iProp Σ) : iProp Σ :=
+          (∀ (s : pipe_st) (b : bv 8),
+             ⌜ps_ro s = true⌝ -∗ ⌜pst_next s = Some b⌝ -∗ pipe_qauth γ s
+             ={⊤}=∗ pipe_qauth γ (pst_read s) ∗ Φ b)%I.
+
+   two stacked premises, the file's idiom, the mirror of `pipe_wlink`.
+   **And the two END-KEYED OBSERVATIONS** beside the unconditional
+   `pipe_olink`, which is what the chains now use:
+   `pipe_wolink` carries `⌜ps_wo s = true⌝` (used by `pipe_wchain`),
+   `pipe_rolink` carries `⌜ps_ro s = true⌝` (used by `pipe_rchain`).
+   Every chain / payment / post lemma is unchanged in statement AND in
+   proof — none of them looks inside a link.  Sanity, the only direction
+   that is true: `pipe_rlink_of_uncond`, `pipe_wolink_of_olink`,
+   `pipe_rolink_of_olink` (+ `_of_frag` and `_mono` for the two new ones).
+
+   `SpecPiperead.wp_piperead_sconf_body` gains ONE pure premise,
+   `w = false`, between `eb = true` and `locks_below` — the exact mirror
+   of `SpecPipewrite`'s `w = true`.  `ProofPiperead`: `pr_ro_open` (the
+   mirror of `pw_wo_open`) reads `readopen <> 0` off the caller's share
+   once per copy-loop round, and `pr_rlink_apply` / `pr_rolink_apply` /
+   `pr_post_dry` / `pr_qres_pop` carry the flag, bridged by `pipe_qres`'s
+   coupled arm exactly as PQ-FLAG-2 did for the write flag.
+   `ProofFileread` supplies `fc_wbool Cf = false` at the call in two
+   `assert`s off the arm's own `f->readable` branch fact.
+
+3. **The law, discharged** (`iris/PipeProto.v`).  `pipe_no_short`'s
+   statement did not move:
+
+        Definition pipe_no_short (pn : pnames) (L : list (bv 8)) : iProp Σ :=
+          (□ (∀ c : nat, ⌜(0 < c)%nat /\ (c < length L)%nat⌝ -∗
+                ro_shot pn -∗ eof_shot pn (take c L) ={⊤}=∗ False))%I.
+
+        Lemma pipe_no_short_of_inv (pn : pnames) (γp : pipe_names)
+            (L : list (bv 8)) :
+          pipe_inv pn γp L -∗ pipe_no_short pn L.
+
+   ONE invariant access, and **the bound on `c` is not used**: the two
+   enders are exclusive at every cursor (`pipe_body_P6`, which needs no
+   authority at all).
+
+**HOW THE ORDER IS RECORDED — the body's two clauses, and why (P4) grew a
+third arm.**  With both observations end-keyed each ender refutes the
+other's PRIOR occurrence at its own fire, so the body can record which one
+happened by MOVING a token:
+
+        (P3)  eof_pending ∨ ∃ w, eof_shot w ∗ ⌜w = ps_ws s ∧ ps_wo s = false⌝
+                                   ∗ ro_pending
+        (P4)  ro_pending ∨ (ro_shot ∗ ⌜ps_ro s = false⌝) ∨ (∃ w, eof_shot w)
+
+The reader's end-of-file fires at `ps_ro s = true`, which refutes (P4)'s
+shot arm — so at that instant (P4) is PENDING and the node takes its token
+into (P3).  (P4)'s third arm is where that clause then stands: PERSISTENT,
+so nothing can be taken out of it, which is what makes a later `ro_shot`
+unmintable.  The writer's observation fires at `ps_wo s = true`, which
+refutes (P3)'s snapshot arm, so the token is never there to be taken back.
+`pipe_body_P1..P5` keep their statements byte for byte (P4 now reads its
+third arm back through (P3)); the body is still `Timeless`;
+`pipe_proto_alloc` and `UShPipeAssembly.pipe_inv_alloc_at` both still open
+at the two LEFT arms and **`UShPipeAssembly.v` did not have to move**.
+
+**WHAT THE DESIGN GOT WRONG: purchase 5 is incomplete by one, and the
+missing half is the WRITE side.**  §4.3w says the purchase is "`SpecPiperead`
+entered at the READ end … the read LINK carrying `⌜ps_ro s = true⌝` …
+and `pipe_no_short` discharged by one invariant access".  The first two
+are exactly right; the third does NOT follow from them.  Evidence, at the
+statement: `ps_ro` is monotone, so with only the read end published the
+short round's trace merely REORDERS — cat's end-of-file first (at
+`ps_ro = true`, now legal), then the read-end close (free, `PipeReg`),
+then the writer's observation at `ps_ro = false` — and the landed
+`pipe_olink` was a premise-free `∀ s`, so `ro_shot` was still mintable
+there.  No arrangement of `pipe_body` can refuse it: an observation node
+must be producible at every state its premises admit, and the only
+resource the writer's builder holds is its own cursor, which says nothing
+about `ps_wo`.  **So the writer's observation must carry `⌜ps_wo s = true⌝`**
+— the same fact PQ-FLAG put on the write LINK, one node over.  It costs
+nothing: `pipewrite` runs on behalf of a holder of the write end and
+`ProofPipewrite` already derives `pw_wo_open` per loop round, so the fire
+site had it in hand and the change is `pw_post_ro` taking one more premise
+(and `pw_olink_apply`/`pw_chain_olink` becoming `pw_wolink_apply`/
+`pw_chain_wolink`).  **This is the one place this lane moved a statement
+outside its brief's file list** (`iris/ProofPipewrite.v`, three local
+helper lemmas, no exported contract): `SpecPipewrite`'s own statement did
+NOT move — it already had `w = true`.
+
+**WHAT WAS RETIRED, by deletion, because each is now FALSE**
+(SH-PIPE-ROUND-10 §2(a), all three inside `PipeProto.v` §8 and named by
+nothing outside it): `pipe_short_round_realisable`,
+`pipe_short_round_payloads`, `pipe_no_short_not_of_inv`.  In their place:
+`pipe_short_round_not_realisable` (the first one restated as its own
+refutation: `pipe_inv -∗ ro_shot -∗ eof_shot (take c L) ={⊤}=∗ False`) and
+`pipe_short_trace_refuted`.  **`pipe_short_trace` stays byte-identical** —
+it is a pure fact about the states, and it is now what NAMES the step that
+can no longer fire: its last conjunct, `ps_ro (MkPipeSt (take c L) c false
+false) = false`, is exactly the negation of `pipe_rolink`'s premise.
+
+**ANTI-VACUITY, not a scratch lemma but the fire sites themselves** (PQ-FLAG-2's
+standard): both new premises are met at real states on the paths that move
+bytes — `ProofPiperead` fires the read link and the reader's observation at
+`pflag_open ro`, `ProofPipewrite` fires its observation at `pflag_open wo` —
+so neither contract went vacuous, and the whole-tree build checks it.
+
+**ONE MEASUREMENT WORTH KEEPING.**  "piperead never loads `pi->readopen`"
+(PQ-FLAG's, and the reason the fact has to come from the credential) is
+checkable without reading C at the pin: `grep -c "mword_of_int 544"`
+(= `a_popen pi false`'s offset) is **0** in `CodePiperead.v` and **2** in
+`CodePipewrite.v`.  The generated code layer is the pinned image, so this
+is the instruction-level form of the claim.
+
+**THE ONE THING THE NEXT LANE NEEDS FIRST** (SH-PIPE-ROUND-11):
+`PipeProto.pipe_no_short_of_inv` is the discharge — take
+`pipe_round_reading_code`'s `pipe_no_short pn L` antecedent straight off
+the handle the round already holds, no new resource and no new premise.
+The four-way split and the instantiation are then assembly at landed
+leaves, and the only wall left in item 6 is lane PIPE-PID's (the reaps at
+`0xea` are pid-erased).

@@ -7964,7 +7964,21 @@ three report files, and NONE of those is a `_CoqProject` row that
 `grep -ln 'Require Import UkShPipeFork' *.v` = the three report files
 only; `UShPipeCatSlot` = itself and this lane's report file).  So
 `audit-only` **13**, `audit-echo-only` **14**, `audit-tree-only` **13**,
-`audit-pipe-only` **14** stand at their baselines.
+`audit-pipe-only` **14** stand at their baselines — and they were
+MEASURED on the mirror after the changes all the same, and are exactly
+that: **13 / 14 / 13 / 14**, each list verbatim the standing one.
+`Print Assumptions` on the lane's **eight** results
+(`iris/PipeRound6Assumptions.v`): six **Closed under the global
+context** (`pterm_wq_pay`, `pterm_prompt_step`,
+`pterm_cursors_timeless`, `pterm_tcore_read`, `pterm_shape_tcore`, and
+— see below — nothing else); `pterm_prompt_arm` and `pterm_prompt_law`
+carry THREE (`resv_matches`, `resv_is_valid`,
+`functional_extensionality_dep`) because they walk the `write` syscall
+through the Sail model; `UShPipeCatSlot.pipe_sh_cat_slot` carries
+THIRTEEN (the 11 `PrimString`/`PrimInt63` primitives + the two
+`xv6iris_extras` reservation `Parameter`s), because the /cat pin is read
+off the imported disk image.  **Every one of those is inside the
+campaign's standing FOURTEEN; nothing new appears.**
 
 **THE FINAL THEOREM IS NOT REACHED, and this lane states that plainly**:
 `pipe_adequacy_pipeΣ_final` does not exist, `sh_pipe_child_law_all` is

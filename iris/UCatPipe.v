@@ -757,12 +757,24 @@ Section UCatPipe.
        at a tainted era the cursor is the credential's right arm at every
        index, so a cursor that moves by a nonsense count is still a
        cursor. *)
+    (* ...AND ITS PURE FACT IS A LOOKUP INTO [L] (design SS4.3s, lane
+       SH-PIPE-ROUND-9).  It used to be a lookup into the ALTERNATIVE
+       [pcont (pcat_line I0) (palt_of pcat_alt)], which is [L ++
+       u_prompt] -- and that is strictly weaker, because at [c + j =
+       length L] it is satisfied by the PROMPT's '$'.  The file era's
+       block family steps every byte of the alternative and never
+       noticed; the PIPELINE round's two-writer family steps
+       [PipeBoth.rsrc L 1 = L] and nothing else, and its own [nodollar]
+       premise excludes that byte ([UShPipeAssembly.pcat_hw_gap] is the
+       witness).  The content arm below HAS the [L] form
+       ([pcat_acc_line]) and used to weaken it here; it now passes it
+       straight through, and the landed instance [pcat_round_at] weakens
+       it back with [pcat_round_line], statement byte-identical. *)
     □ (∀ (c nb : nat) (rv : mword 64) (fbb : nat -> bv 8),
          ⌜rv = (mword_of_int (Z.of_nat nb) : mword 64)⌝ -∗
          (⌜(Z.to_nat (bv_unsigned rv) <= 512)%nat
            /\ forall j : nat, (j < Z.to_nat (bv_unsigned rv))%nat ->
-                pcont (pcat_line I0) (palt_of pcat_alt) !! (c + j)%nat
-                = Some (fbb j)⌝
+                L !! (c + j)%nat = Some (fbb j)⌝
           ∨ T) -∗
          UserFd.ustd γfd l -∗
          Ch c -∗
@@ -924,8 +936,7 @@ Section UCatPipe.
         rewrite Hto -Hd. iExact "Hr". }
       iApply ("Hw" $! c nb rv gb with "[%] [] Hstd Hc"); [ exact Hret | ].
       iLeft. iPureIntro. rewrite Hto. split; [ exact Hd512 | ].
-      intros j Hj.
-      exact (pcat_round_line I0 L c d gb HL Hbytes j Hj).
+      exact Hbytes.
   Qed.
 
 
@@ -989,10 +1000,23 @@ Section UCatPipe.
     cat_code γt -∗
     UkCatCat.kcat_round N (mword_of_int 0)
       (pcat_round_inv pn l v ps0 cs0 I0 P) Cend.
+  (* THE STATEMENT ABOVE IS BYTE-IDENTICAL (design SS4.3s): its [Hw] keeps
+     the ALTERNATIVE's lookup, which is what the file-era consumer
+     supplies.  Only the proof moved -- the generic round now asks for
+     the [L] form and [pcat_round_line] is the weakening, applied here
+     where it used to be applied inside. *)
   Proof using Hcons Hkill.
-    intros Hst HL Hl0.
-    exact (pcat_round_at_g pn γp L l wb I0
-             (pcch g v ps0 cs0 I0 pcat_alt P) Cend HL Hl0).
+    intros Hst HL Hl0. iIntros "#Hinv #Hdg #Hw #Hend #Hcode".
+    iApply (pcat_round_at_g pn γp L l wb I0
+              (pcch g v ps0 cs0 I0 pcat_alt P) Cend HL Hl0
+              with "Hinv Hdg [] Hend Hcode").
+    iIntros "!>" (c nb rv fbb) "%Hrv Hjust Hstd Hc".
+    iApply ("Hw" $! c nb rv fbb with "[%] [Hjust] Hstd Hc");
+      [ exact Hrv | ].
+    iDestruct "Hjust" as "[%Hp | #HT]"; [ | by iRight ].
+    destruct Hp as [Hle Hlk]. iLeft. iPureIntro.
+    split; [ exact Hle | ].
+    exact (pcat_round_line I0 L c (Z.to_nat (bv_unsigned rv)) fbb HL Hlk).
   Qed.
 
   (* =================================================================== *)

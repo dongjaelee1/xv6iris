@@ -200,9 +200,16 @@ Section UShPipeChild.
     UkShPipe.ush_pipe_call N ld R -∗
     UkShDiag.ush_execfail_law_at (wl_line PipeDisc.dg_pipe) 5%nat Cr Bp -∗
     □ (UserFd.ustd γfd ld -∗ Bp -∗ ukn_pay N (-1)) -∗
+    (* SS4.3u (lane SH-PIPE-ROUND-9): the fork tails' credential is
+       [RcR γp ∗ Cx γp] and not [Cx γp] -- the family's RIGHT chain is
+       ONE resource, shared by design between cat's output (mode 1) and
+       a [panic("fork")] (mode 3), and the arm's single up-front split
+       cannot give it to both.  It does not have to: the right child's
+       lend is in sh's hand at BOTH tails and was being dropped.  This
+       file only forwards the law. *)
     □ (∀ γp : pipe_names,
          UkShDiag.ush_execfail_law_at EchoDisc.alt_panic 5%nat
-           (Cx γp) (Bx γp)) -∗
+           (RcR γp ∗ Cx γp) (Bx γp)) -∗
     □ (∀ γp : pipe_names,
          UserFd.ustd γfd ld -∗ Bx γp -∗ ukn_pay N (-1)) -∗
     urun N h m (mword_of_int 0x9c0)
@@ -423,9 +430,16 @@ Section UShPipeChild.
     (* ---- THE THREE DIAGNOSTICS, PAID ---- *)
     UkShDiag.ush_execfail_law_at (wl_line PipeDisc.dg_pipe) 5%nat Cr Bp -∗
     □ (UserFd.ustd γfd ld -∗ Bp -∗ ukn_pay N (-1)) -∗
+    (* SS4.3u (lane SH-PIPE-ROUND-9): the fork tails' credential is
+       [RcR γp ∗ Cx γp] and not [Cx γp] -- the family's RIGHT chain is
+       ONE resource, shared by design between cat's output (mode 1) and
+       a [panic("fork")] (mode 3), and the arm's single up-front split
+       cannot give it to both.  It does not have to: the right child's
+       lend is in sh's hand at BOTH tails and was being dropped.  This
+       file only forwards the law. *)
     □ (∀ γp : pipe_names,
          UkShDiag.ush_execfail_law_at EchoDisc.alt_panic 5%nat
-           (Cx γp) (Bx γp)) -∗
+           (RcR γp ∗ Cx γp) (Bx γp)) -∗
     □ (∀ γp : pipe_names,
          UserFd.ustd γfd ld -∗ Bx γp -∗ ukn_pay N (-1)) -∗
     urun N h m (mword_of_int 0x9c0)
@@ -551,9 +565,16 @@ Section UShPipeChild.
     UkShPipe.ush_pipe_call N ld R -∗
     UkShDiag.ush_execfail_law_at (wl_line PipeDisc.dg_pipe) 5%nat Cr Bp -∗
     □ (UserFd.ustd γfd ld -∗ Bp -∗ ukn_pay N (-1)) -∗
+    (* SS4.3u (lane SH-PIPE-ROUND-9): the fork tails' credential is
+       [RcR γp ∗ Cx γp] and not [Cx γp] -- the family's RIGHT chain is
+       ONE resource, shared by design between cat's output (mode 1) and
+       a [panic("fork")] (mode 3), and the arm's single up-front split
+       cannot give it to both.  It does not have to: the right child's
+       lend is in sh's hand at BOTH tails and was being dropped.  This
+       file only forwards the law. *)
     □ (∀ γp : pipe_names,
          UkShDiag.ush_execfail_law_at EchoDisc.alt_panic 5%nat
-           (Cx γp) (Bx γp)) -∗
+           (RcR γp ∗ Cx γp) (Bx γp)) -∗
     □ (∀ γp : pipe_names,
          UserFd.ustd γfd ld -∗ Bx γp -∗ ukn_pay N (-1)) -∗
     urun N h m (mword_of_int 0x9c0)
@@ -686,9 +707,16 @@ Section UShPipeChild.
     UkShPipe.ush_pipe_call N ld R -∗
     UkShDiag.ush_execfail_law_at (wl_line PipeDisc.dg_pipe) 5%nat Cr Bp -∗
     □ (UserFd.ustd γfd ld -∗ Bp -∗ ukn_pay N (-1)) -∗
+    (* SS4.3u (lane SH-PIPE-ROUND-9): the fork tails' credential is
+       [RcR γp ∗ Cx γp] and not [Cx γp] -- the family's RIGHT chain is
+       ONE resource, shared by design between cat's output (mode 1) and
+       a [panic("fork")] (mode 3), and the arm's single up-front split
+       cannot give it to both.  It does not have to: the right child's
+       lend is in sh's hand at BOTH tails and was being dropped.  This
+       file only forwards the law. *)
     □ (∀ γp : pipe_names,
          UkShDiag.ush_execfail_law_at EchoDisc.alt_panic 5%nat
-           (Cx γp) (Bx γp)) -∗
+           (RcR γp ∗ Cx γp) (Bx γp)) -∗
     □ (∀ γp : pipe_names,
          UserFd.ustd γfd ld -∗ Bx γp -∗ ukn_pay N (-1)) -∗
     urun N h m (mword_of_int 0x9c0)

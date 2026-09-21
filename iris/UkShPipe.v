@@ -785,6 +785,17 @@ Section UkShPipe.
          urun N h' m' (mword_of_int ShSyms.panic)
            (UkShDiag.ush_Dg + (2 + av)) -∗
          mWP (Loop : expr riscv_lang)) -∗
+    (* ...AND IT ALSO CARRIES [RcR γp] (design SS4.3u, lane
+       SH-PIPE-ROUND-9).  ADDITIVE: the walk holds the RIGHT child's lend
+       unspent at the FIRST [fork1] -- it is only handed over at the
+       SECOND one -- and used to drop it here.  It is the round's only
+       console credential for the family's RIGHT chain
+       ([PipeBoth.rsrc L 3 = alt_forkc], mode 3), which is what a
+       [panic("fork")] tail has to write on; the second tail already
+       received it, inside its own fork answer's [-1] arm.  The walk
+       below hands it over by BORROWING it through [wp_kshr_fork1]'s
+       [Pex] slot, so the returning arm gets it back unchanged and the
+       second [fork1] is entered exactly as before. *)
     □ (∀ (h' : CpuId) (m' : regfile) (r : mword 64) (γp : pipe_names),
          ⌜ uint (m' !!! Regidx a0_idx) = 0x1298 ⌝ -∗
          ⌜ r = (mword_of_int (-1) : mword 64) ⌝ -∗
@@ -796,6 +807,7 @@ Section UkShPipe.
               ∗ child_tok γ pidv Qc
               ∗ UserChildren.uch (ukn_ch N) (Sc ∪ {[γ]})) -∗
          UserFd.ustd (ukn_fd N) ld -∗
+         RcR γp -∗
          Cx γp -∗
          urun N h' m' (mword_of_int ShSyms.panic) (UkShDiag.ush_Dg + av) -∗
          mWP (Loop : expr riscv_lang)) -∗
@@ -1098,21 +1110,24 @@ Section UkShPipe.
               szv ld
               (<[a := FdOpen true false (FdPipe γp)]>
                  {[b := FdOpen false true (FdPipe γp)]})
-              h6 f1 av cwdv Sc Qc (RcL γp) (Cx γp) HQc
+              h6 f1 av cwdv Sc Qc (RcL γp) (RcR γp ∗ Cx γp)%I HQc
               with "Hcode Hro [Hjt Htree Hb0 Hb1] Hsz Hstd Hcwd Hch
-                    [Hha Hhb] HRcL Hkw Hpay Hrun").
+                    [Hha Hhb] HRcL Hkw [HRcR Hpay] Hrun").
     { iFrame "Hjt Htree Hb0 Hb1". }
     { iApply (ushpi_hs_in (ukn_fd N) a b _ _ Hab with "Hha Hhb"). }
+    { iFrame "HRcR Hpay". }
     rewrite Hra_f1.
-    iSplitR "Hpar HcL HcR HRcR HRk".
+    iSplitR "Hpar HcL HcR HRk".
     { (* ---- fork1's -1 arm: panic("fork") ---- *)
-      iIntros (hA mA rA) "%HmsgA %HrA Hans Hstd Hpayv Hrun".
-      iApply ("Hpanf1" $! hA mA rA γp with "[%] [%] Hans Hstd Hpayv Hrun");
+      (* SS4.3u: the borrowed pair is [RcR γp ∗ Cx γp] *)
+      iIntros (hA mA rA) "%HmsgA %HrA Hans Hstd [HRcR Hpayv] Hrun".
+      iApply ("Hpanf1" $! hA mA rA γp
+                with "[%] [%] Hans Hstd HRcR Hpayv Hrun");
         [ exact HmsgA | exact HrA ]. }
-    iSplitL "Hpar HcR HRcR HRk".
+    iSplitL "Hpar HcR HRk".
     - (* ===================== THE PARENT: fork1 AGAIN ==================== *)
       iIntros (hA mA rA) "%HrA %HcsA %Ha0_A Hans1 (#Hjt2 & #Ht2 & Hb0 & Hb1)
-                          Hsz Hstd Hcwd HD Hpayv Hrun".
+                          Hsz Hstd Hcwd HD [HRcR Hpayv] Hrun".
       iAssert (∃ S1 : gset gname,
                  ush_fork_ans Sc S1 (RcL γp) Qc rA
                  ∗ UserChildren.uch (ukn_ch N) S1)%I
@@ -2021,7 +2036,9 @@ Section UkShPipe.
                 with "Hdp Hcode Hro [] Hpay Hrun'").
       rewrite UkShRun.ush_diag_res_panic. done.
     - (* the first fork1's panic("fork") *)
-      iIntros "!>" (h' m' r γp) "%Ha0' %Hr' _ Hstd' Hpayv Hrun'".
+      (* SS4.3u's [RcR γp] is dropped here: the FREE arm pays its tails
+         out of [UkSh.sh_deps] and needs no console credential. *)
+      iIntros "!>" (h' m' r γp) "%Ha0' %Hr' _ Hstd' _ Hpayv Hrun'".
       iApply (UkShDiag.ush_diag_leaf_holds N h' m' ShSyms.panic av
                 ltac:(left; split; [ reflexivity | left; exact Ha0' ])
                 with "Hdp Hcode Hro [] Hpayv Hrun'").

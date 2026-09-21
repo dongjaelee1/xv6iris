@@ -30,30 +30,18 @@ Require Import SailStdpp.Operators_mwords.
 Require Import Riscv.rv64d_types Riscv.rv64d.
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values
         SailStdpp.MachineWord.
-Require Import RiscvLang ObsTrace RiscvPtsto.
+Require Import RiscvLang.
 Require Import FdSlots.
 Require Import FileInvDefs.
-Require Import WpUart.
-Require Import FsCfgBoot.
 Require Import RiscvAdequacy.
-Require Import FsCrash.
 Require Import VirtioModel.
 Require Import IrefSlots.
 Require Import Xv6Cameras.
-Require Import FsImg.
 Require Import ProcAvail.
 Require Import Xv6G.
 Require Import UserFd.
-Require Import AppCfg.
-Require Import AppInv.
-Require Import FsCfg.
-Require Import InitBoot.
-Require Import SystemAdequacy.
-Require Import FsBootParams.
-Require Import FsImgCheck.
 Require Import FsImgDisk.
 Require Import App.
-Require Import InodeInv.
 Require Import PipeDisc.
 Require Import EchoOut.
 Require Import PipeOut.

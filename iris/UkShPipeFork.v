@@ -58,29 +58,19 @@ Require Import SailStdpp.Operators_mwords.
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values
         SailStdpp.MachineWord.
 Require Import RiscvLang.
-Require Import ObsTrace.
 Require Import LineWords.
-Require Import EchoDisc.
-Require Import ConsLog.
-Require Import EchoOutPure.
-Require Import PipeDisc.
-Require Import PipeOutPure.
-Require Import PipeBothPure.
 Require Import EchoOut.
 Require Import AppEcho.
 Require Import PipeOut.
-Require Import PipeLinks.
-Require Import PipeLinksLine.
 Require Import PipeBoth.
 Require Import PipeLinkInst.
 Require Import UShPipeRound2.     (* [blk2N] and its two mask facts *)
-Require Import FdSlots UserFd.
+Require Import FdSlots.
 Require Import UkRun.
 Require Import UkSh.
 Require Import UkShFork.
 Require Import RiscvPtsto.
 Require Import WpUart.
-Require Import CtxIdDefs.
 Local Open Scope list_scope.
 
 Section UkShPipeFork.

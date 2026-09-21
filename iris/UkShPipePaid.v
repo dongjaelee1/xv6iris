@@ -51,11 +51,10 @@ From iris.program_logic Require Import language lifting.
 Require Import SailStdpp.ConcurrencyInterface SailStdpp.ConcurrencyInterfaceBuiltins SailStdpp.ConcurrencyInterfaceTypes SailStdpp.Operators_mwords.
 Require Import Riscv.rv64d_types Riscv.rv64d Riscv.riscv_extras.
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.MachineWord.
-Require Import RiscvLang RiscvPtsto RiscvExtras RiscvModelBytes.
+Require Import RiscvLang RiscvPtsto RiscvModelBytes.
 Require Import RegFile.
-Require Import UmodeArith UmodeAbi.
-Require Import ProcGeom.
-Require Import UserHeap UkRun UkRunLeaf UkRunMem UkRunSys UkRunBr.
+Require Import UmodeArith.
+Require Import UserHeap UkRun.
 Require Import UCodeShK.
 Require Import UkSh.
 Require Import UkShRun.

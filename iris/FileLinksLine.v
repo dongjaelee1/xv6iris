@@ -60,6 +60,21 @@ Local Open Scope list_scope.
 Definition fline (I : list (bv 8)) : uline :=
   uline_of (bodies_of I !!! (nlines I - 1)%nat).
 
+(* ...and when that line is a redirect, its words are among the input's
+   redirect lines -- which is what turns the read's witness
+   ([flw]: every [echof_lines_in I] word list is in the claim's ledger)
+   into the [ws ∈ ls] the open and the write credential ask for. *)
+Lemma fline_echof_in (I : list (bv 8)) (ws : list (list (bv 8))) :
+  (0 < nlines I)%nat -> fline I = LEchoF ws -> ws ∈ echof_lines_in I.
+Proof using.
+  intros Hp Hf. rewrite /echof_lines_in. apply elem_of_list_omap.
+  exists (LEchoF ws). split; [ | reflexivity ].
+  rewrite /lines_of -Hf /fline. apply elem_of_list_fmap.
+  eexists. split; [ reflexivity | ].
+  apply elem_of_list_lookup. exists (nlines I - 1)%nat.
+  apply list_lookup_lookup_total_lt. rewrite /nlines in Hp |- *. lia.
+Qed.
+
 (* the alternatives whose console output is a function of the LINE alone.
    [RCRan] is the only one that reads the file's state, and it is cat's
    own round. *)

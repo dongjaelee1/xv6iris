@@ -1372,3 +1372,121 @@ unfired `pf_at … (file_open_recv c r q2 s)`, whose refund is `fdq r q2 s`)
 and the reached inode (`P` at the end, `Fo`'s receipt).  The absent-deed twin
 already does this refund (`UkFileOpen.file_open_miss_recv`, lane F-OPEN-2's
 seam 2, a fupd) and is the mould.
+
+## PROGRAM STREAM, stretch 10 (2026-09-21) — SLOT-WS ruled (option B), the read-open refund, and 2d's first two pieces
+
+Landed on `main` (whole tree green, the five audits unchanged — 13/14/13/14/14):
+
+* **SLOT-WS, option B** (`9295803ea`; design §3, RULING SLOT-WS, with the
+  cleanup it owes): `uline_ws (LEchoF ws) := ws ++ [fd_w_gt; fname_f]`,
+  `FileDisc.uline_ws_gtf` / `uline_ws_words`; `FileReadInst.file_disc_line` and
+  `file_gets_holds` lose the false premise `Hws`; `UkShRedirBody.ushs_lp`,
+  `wp_kshm_body_redir`, `sh_redir_child_law` (and `UShRound`'s copy) speak the
+  whole body's words, exactly as `UShPipeRound.ushq_lp` does.  Nothing else in
+  the tree moved — 109 files rebuilt, zero errors, first try.
+* **item 3 (i)–(ii)** (`abeb5149d`): `FileOpen.file_open_recv_file` is a fupd
+  whose `-1` arm returns both fractions (the unfired walk one-shot fired at
+  its own start; the dead walk's cursor; the reached inode's terminal cursor —
+  and the observation piece's refund or receipt each time); `UkFileOpen`'s
+  three read-open leaves, `UkCatDeed`'s two statements and
+  `UCatKernel.cat_open_hand` carry them.  `cat_pay_present` still drops them.
+
+On branch `app-file/redir-child` (`.vok`-checked, not a whole-tree build):
+
+* `UShPanic.ush_diag_law_hold_at_alt` — the diagnostic law at ANY
+  alternative's bytes (`lk_ab L I a`), closing on `∃ v, lk_pin ∗ lk_post v I a
+  ∗ Hold` instead of on the line credential that hides `a`.  Serves both the
+  exec-failed and the open-failed walks.
+* `UShRound.Wcf0_of_post_alt` — stretch 9's "ONE new lemma": `lk_post v I a`
+  beside a deed whose content is `fsm (cat_st cs s0 I) (fline I) (ralt_dec a)`
+  is `Wcf I 0` (DONE by `done_tie_snoc` once the block has filed; PEND at `a`
+  itself while the prompt is still owed, which is why that case takes
+  `cont … = u_prompt` as a premise — `reflexivity` at `RFRan`, a length
+  contradiction at the three diagnostics).
+
+WHAT IS LEFT OF 2d, in order:
+
+1. **the exec supply at the file** — `∀ ty, sh_exec_sup_echo_at (ushs_fd1f ty)
+   ws Q (Cr' ∗ K' ty)`: `UShEchoPay.sh_exec_sup_echo_wq_holds_at_D`'s body
+   (`udepw_at_refR_of_sup`, the same walk pin, the same taint arm) with
+   `UEchoFile.efile_image_entry` in the image slot — `Wq := ` what is left of
+   the lend, `efq i γo ws []` built from the receipt `K' ty` (the deed at
+   `Some (i, [])`, `uoff γo 0`) and PRE's `line_wit`; the four inum
+   inequalities are `redir_K_inum`'s, already in `K'`.
+2. **the ran exit** — `ef_exit i γo ws -∗ Q (-1)`: `file_cur … sel` read back
+   to `fown r (Some (i, subseq (echo_chunks ws) sel))`, then
+   `Wcf0_of_post_alt` at `ralt_enc (RFRan sel)`'s PEND arm (echo prints
+   nothing, so the block is at 0).
+3. **the two diagnostics** — `ush_diag_law_hold_at_alt` at `RFExec`
+   (deed `Some (i, [])`) and at `RFOpenU` / `RFOpenM` (`redir_Kf`'s two
+   arms), each folded by `Wcf0_of_post_alt`.
+4. **the taint arm and the assembly** into
+   `UkShRedirChild.wp_kshm_child_file_redir`, stated at
+   `UkShRedirBody.sh_redir_child_law Wcf`; delete `UShRound`'s stale copy.
+
+### Stretch 10, continued: the three exits landed on the branch, and 2d's ASSEMBLY PLAN
+
+`UShRound.v` (branch `app-file/redir-child`, `.vok`-checked): `redir_ran_exit`
+(echo ran — the block is still owed whole, the deed PEND at `RFRan sel`, `sel`
+read off `FileWrite.file_wq`; NOT through `Wcf0_of_post_alt`, there is no
+block to read), `redir_execfail_exit` and `redir_openfail_exit` (through
+`Wcf0_of_post_alt`; the open-failed one takes the two blocks as an ADDITIVE
+pair `∧`, because which alternative was filed is decided by `redir_Kf`'s arm
+and that is read after the diagnostic is written).  `fab_of_apr` discharges
+`FileLinksLine.fab`'s `decide` guard once — `rewrite decide_True` does not
+match under it.
+
+THE ASSEMBLY, as it will be written (new file, after `UShRound`, so that
+`Hchild_redir` stops being a section hypothesis):
+
+* **Open the lend BEFORE applying the walk.**  `wp_kshm_child_file_redir`
+  takes `a : A` up front, and the deed's state `s` is existential inside
+  `Wcf I 3 = Wcl I 3 ∗ PRE I`.  So: destruct `PRE` first; then the walk at
+  `A := dst`, `a := s`, `Cr := Wcl I 3 ∗ fown r s`, `Dd := fun s => fown r s`
+  (`Hopen_hand`'s own), `Cr' := Wcl I 3`, with `pre_tie`, `f_typed`,
+  `era_pin`, `cs_lb` and `line_wit` in the persistent context.
+* **PRE's taint arm does not walk**: `UkRun.urun_gen` at `0x9c0` (aligned by
+  `vm_compute`), its `□ ∀ W` premise from `sh_echo_slot`'s third conjunct at
+  `R := ushf_wq Wcf I` through `Hpeq`, and `□ (app_taint -∗ R)` from
+  `sh_kill_law_file` at the pin `Wcl I 3` carries.
+* `□ (Cr -∗ Q (-1))` (the child died before the open): re-fold PRE and apply
+  `Hwbl_f`.
+* `K' ty := redir_K ty ∗ (inum facts ∨ T)`, the fupd is `redir_K_inum`.
+* **the exec supply** `∀ ty, sh_exec_sup_echo_at (ushs_fd1f ty) ws Q
+  (Wcl I 3 ∗ K' ty)`: `UShEchoPay.sh_exec_sup_echo_wq_holds_at_D`'s body with
+  `UEchoFile.efile_image_entry` (at `Wq := Wcl I 3`) in the image slot;
+  `Pay := Wcl I 3 ∗ efq i γo ws []`, built from `K' ty` by
+  `FileWrite.file_cur_fired` (the deed at `Some (i, [])`, `uoff γo 0`, the
+  line's witness from `line_wit` — `ws ∈ echof_lines_in I`) or
+  `file_cur_taint`; the REFUND `□ (Pay -∗ ustd ∗ Cr' ∗ K' ty)` reads
+  `file_cur … []` back the same way.  Its `□ (ef_exit -∗ Q (-1))` is
+  `redir_ran_exit`.  Its taint arm is `sh_exec_sup_echo_wq_holds_at_D`'s own.
+* the exec-failed law: `ush_diag_law_hold_at_alt` at `ralt_enc RFExec`
+  (`fab I _ = alt_execfail` by `fab_of_apr`, length 17 + 2) with
+  `Hold := K' ty`, then `redir_execfail_exit` (the deed `Some (i, [])` out of
+  `redir_K`).  The open-failed law the same at `Hold := redir_Kf s`, where
+  the law's END must offer both blocks: state it at `RFOpenU` and convert the
+  block to `RFOpenM`'s by `lk_blk_0`-style re-indexing ONLY at position 0 —
+  so the diagnostic must be run at an alternative chosen BEFORE the bytes are
+  written.  `redir_Kf`'s arm is known when the call returns, which is before
+  the diagnostic: destruct it first and run the law at the matching
+  alternative, and `redir_openfail_exit`'s `∧` becomes a plain premise
+  (simplify the lemma then).
+
+### Stretch 10: A STATEMENT GAP FOUND WHILE PLANNING THE ASSEMBLY — the round never receives `cons_made`
+
+`UShRound.Hopen_hand` takes `cons_made (fn_cons r) jc` (the persistent fact
+"/init's mknod made the console at inum `jc`"), and so does cat's held read
+(`UCatKernel.cat_held_read_of_deed`).  NOTHING in `UShRound.v` supplies it:
+`sh_round_holds_file`'s premises are `udep`, the slot and the two era pins,
+and `Hchild_cat`'s statement does not name it either.  /init has it
+(`UInitConsFile`), and it is persistent, so the fix is a premise and not a
+resource: `(∃ jc, cons_made (fn_cons r) jc) -∗` on both child lemmas and on
+`sh_round_holds_file`, discharged by item 4 (INIT-FILE) where sh is exec'd.
+Do it WITH the assembly, not before — it is one antecedent on statements the
+assembly restates anyway.
+
+Also landed on the branch: `FileLinksLine.fline_echof_in` (`0 < nlines I ->
+fline I = LEchoF ws -> ws ∈ echof_lines_in I`), which is what turns PRE's
+`line_wit` into the `ws ∈ ls` the open and the write credential ask for; and
+`redir_openfail_exit` is now two lemmas (`_u`, `_m`), as the plan above said.

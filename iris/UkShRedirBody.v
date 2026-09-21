@@ -109,23 +109,31 @@ Section UkShRedirBody.
   (*  reads it is the child, off its own copy of the line.  At the file   *)
   (*  application it is [FileDisc.fname_f] and [ushs_lp_of_at] says so.   *)
   (* =================================================================== *)
-  Definition ushs_lp (ws : list (list (bv 8))) (g : nat -> bv 8)
+  (* THE WORDS ARE THE WHOLE BODY'S (RULING SLOT-WS, option B;
+     [UShPipeRound.ushq_lp] is the same shape one constructor over): what
+     the body walk is handed is [FileDisc.uline_ws (LEchoF ws)], which is
+     what the line LEXES to -- four words at `echo a > f' -- and the
+     existential binds the command's own. *)
+  Definition ushs_lp (wsf : list (list (bv 8))) (g : nat -> bv 8)
       (k len : nat) : Prop :=
-    exists file : list (bv 8), UkShRedirLine.ushs_line_is ws file g k len.
+    exists (ws : list (list (bv 8))) (file : list (bv 8)),
+      wsf = ws ++ [FileDisc.fd_w_gt; file]
+      /\ UkShRedirLine.ushs_line_is ws file g k len.
 
   Lemma ushs_lp0 (ws : list (list (bv 8))) (g : nat -> bv 8) (k len : nat) :
     ushs_lp ws g k len -> bv_unsigned (g k) = 101%Z.
   Proof using .
-    intros [ file Hl ].
-    exact (UkShRedirLine.ushs_line_is_byte0 ws file g k len Hl).
+    intros (ws0 & file & _ & Hl).
+    exact (UkShRedirLine.ushs_line_is_byte0 ws0 file g k len Hl).
   Qed.
 
   Lemma ushs_lp_of_at (ws : list (list (bv 8))) (f : nat -> bv 8)
       (k len : nat) :
     UkSh.ush_line_at (LEchoF ws) f k len ->
-    ushs_lp ws (fun j : nat => f (k + j)%nat) 0%nat len.
+    ushs_lp (FileDisc.uline_ws (LEchoF ws))
+      (fun j : nat => f (k + j)%nat) 0%nat len.
   Proof using .
-    intro H. exists fname_f.
+    intro H. exists ws, fname_f. split; [ reflexivity | ].
     exact (UkShRedirLine.ushs_line_is_shift ws fname_f f k len
              (UkShRedirLine.ushs_line_is_of_at ws f k len H)).
   Qed.
@@ -170,7 +178,7 @@ Section UkShRedirBody.
     UkShFork.ushf_child_law_at Wc ushs_lp 68 -∗
     UkShDiag.ush_panic_law Wc Wb -∗
     ⌜ UkSh.ush_fd0p l ⌝ -∗
-    UkSh.ush_bstate N γp T Wc Wb Pm l ws -∗
+    UkSh.ush_bstate N γp T Wc Wb Pm l (ws ++ [FileDisc.fd_w_gt; file]) -∗
     ushl_dat -∗ usz γs sz -∗
     ubytes γd sh_buf sh_nbuf f -∗
     urun N h m (mword_of_int 0x97a) (16 + (UkSh.ush_Dbody + n)) -∗
@@ -178,9 +186,11 @@ Section UkShRedirBody.
   Proof using HT HWct Hpay Hpsok_free.
     intros Hregs Hs1 Ha5 Hnn Hnul Hkl Hline Hszlo Hszal Hszok Hpm1 Hpmwb Hwbl.
     exact (UkShFork.wp_kshm_body_at N γp T Wc Wb Pm Hpsok_free ushs_lp 68
-             h m f k len ws sz l n ltac:(lia) ushs_lp0
+             h m f k len (ws ++ [FileDisc.fd_w_gt; file]) sz l n
+             ltac:(lia) ushs_lp0
              Hregs Hs1 Ha5 Hnn Hnul Hkl
-             (ex_intro _ file Hline) Hszlo Hszal Hszok Hpm1 Hpmwb Hwbl).
+             (ex_intro _ ws (ex_intro _ file (conj eq_refl Hline)))
+             Hszlo Hszal Hszok Hpm1 Hpmwb Hwbl).
   Qed.
 
   (* =================================================================== *)
@@ -259,7 +269,10 @@ Section UkShRedirBody.
           ⌜ ukn_pay N' = (fun _ : Z => UkShFork.ushf_wq Wc I) ⌝ -∗
           ⌜ m !!! Regidx s1_idx = (mword_of_int s0 : mword 64) ⌝ -∗
           ⌜ UkShRedirLine.ushs_line_is ws file fb 0%nat len ⌝ -∗
-          ⌜ ws = last_ws I ⌝ -∗
+          (* the fork assertion's words are the WHOLE body's (RULING
+             SLOT-WS, option B): the command's own, then `>', then the
+             file name *)
+          ⌜ ws ++ [FileDisc.fd_w_gt; file] = last_ws I ⌝ -∗
           (* the era's own line at that input (the PROGRAM STREAM): the
              slot the loop left says the input's last body PARSES *)
           ⌜ FileDisc.fline_ok (UkSh.ush_lastbody I) ⌝ -∗
@@ -302,10 +315,10 @@ Section UkShRedirBody.
     sh_redir_child_law -∗ UkShFork.ushf_child_law_at Wc ushs_lp 68.
   Proof using .
     iIntros "#Hl". rewrite /UkShFork.ushf_child_law_at.
-    iIntros "!>" (N' h m dw dv s0 len ws g sz ld n I)
+    iIntros "!>" (N' h m dw dv s0 len wsf g sz ld n I)
       "%Hpeq %Hs1 %Hline %Hlws %Hfbk %Hs0 %Hs64 %Hs38 %Hszlo %Hszal %Hszok
        %Hrows #Hcode #Hpcode #Hpro #Hjt Hstr Hws Hsy Hstd Hcwd Hch HM Hcr Hrun".
-    destruct Hline as [ file Hline ].
+    destruct Hline as (ws & file & -> & Hline).
     iApply ("Hl" $! N' h m dw dv s0 len ws file g sz ld n I
               with "[%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%]
                     Hcode Hpcode Hpro Hjt Hstr Hws Hsy Hstd Hcwd Hch HM
@@ -324,11 +337,12 @@ Section UkShRedirBody.
     iIntros "!>" (N' h m dw dv s0 len ws file g sz ld n I)
       "%Hpeq %Hs1 %Hline %Hlws %Hfbk %Hs0 %Hs64 %Hs38 %Hszlo %Hszal %Hszok
        %Hrows #Hcode #Hpcode #Hpro #Hjt Hstr Hws Hsy Hstd Hcwd Hch HM Hcr Hrun".
-    iApply ("Hl" $! N' h m dw dv s0 len ws g sz ld n I
+    iApply ("Hl" $! N' h m dw dv s0 len (ws ++ [FileDisc.fd_w_gt; file])
+                    g sz ld n I
               with "[%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%]
                     Hcode Hpcode Hpro Hjt Hstr Hws Hsy Hstd Hcwd Hch HM
                     Hcr Hrun");
-      [ exact Hpeq | exact Hs1 | by exists file | exact Hlws | exact Hfbk
+      [ exact Hpeq | exact Hs1 | by exists ws, file | exact Hlws | exact Hfbk
       | exact Hs0 | exact Hs64 | exact Hs38 | exact Hszlo | exact Hszal
       | exact Hszok | exact Hrows ].
   Qed.
@@ -638,7 +652,8 @@ Section UkShRedirBody.
     - (* [echo a b > f] -- the SAME walk at the redirect child's law *)
       iDestruct (UkSh.ush_jtab_ro γt with "Hjt") as "#Hro".
       iApply (UkShFork.wp_kshm_body_at N γp T Wc Wb Pm Hpsok_free ushs_lp 68
-                h m f k len ws sz l n ltac:(lia) ushs_lp0
+                h m f k len (FileDisc.uline_ws (LEchoF ws)) sz l n
+                ltac:(lia) ushs_lp0
                 Hregs Hs1 Ha5 Hnn Hnul Hkl2
                 (ushs_lp_of_at ws f k len Hlat)
                 Hszlo Hszal Hszok Hpm1 Hpmwb Hwbl

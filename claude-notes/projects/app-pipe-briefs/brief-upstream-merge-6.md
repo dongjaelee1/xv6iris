@@ -18,7 +18,7 @@ rebuilds — that is expected, upstream touched 688 files).  Read
   since 2026-09-17 — `Pipe*.v`, `UkShPipe*.v`, `UShPipe*.v`, `UkReadPipe.v`,
   `UkWritePipe.v`, `UEchoPipe.v`, `UCatPipe.v`, `AppPipe*.v`,
   `UInitConsPipe.v`, `UPipeBootAdequacy.v`, `UkShCat.v`, `UShCatPay.v`, `UShPipeCall.v`, `UShEchoPipePay.v`, `PipeReadInst.v`, `UInitPipe*.v`,
-  `PipeForkGap.v`, `PipeRound4Assumptions.v`, …) were NOT in upstream's
+  `PipeForkGap.v`, …) were NOT in upstream's
   tree at that commit and still say `WP (… : expr riscv_lang)`: apply the
   SAME rename to them (`WP (` → `mWP (` for the riscv_lang shorthand
   only — NOT Iris's `WP e @ s; E {{ Φ }}` if any of ours uses it; check

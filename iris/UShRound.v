@@ -93,6 +93,7 @@ Require Import AppFile.
 Require Import FileOut.
 Require Import FileLinks.
 Require Import FileOpen.                 (* [fdq], [file_open_pay] *)
+Require Import FileWrite.                (* [file_wq]: what the ran exit reads back *)
 Require Import UserOff.
 Require Import ElfUser.
 Require Import UserHeap.
@@ -868,6 +869,80 @@ Section UShRound.
             [ rewrite length_app; cbn [length]; lia | exact Hpre ].
   Qed.
 
+  (* THE FOLD AT AN ALTERNATIVE THAT MOVES `f` (the redirect child's
+     printing exits; [Wcf0_of_pre_line_id]'s twin).  There the line
+     credential hid which alternative it filed and that was harmless,
+     because every alternative left `f` alone.  Here the holder HAS moved
+     the file -- a failed exec after the open truncated it, a round that
+     wrote its chunks -- so it must present the block at the alternative
+     [a] it took ([UShPanic.ush_diag_law_hold_at_alt] ends there), beside
+     a deed whose content is [a]'s own f-effect on the round's entry
+     state.  The block's choice list and the deed's agree by length
+     ([cs_lb_agree_len]); past its first byte the block has FILED [a]
+     (DONE, by [done_tie_snoc]), and a block whose prompt is its first
+     byte is still owed (PEND at [a] itself, which is why that case asks
+     for [a]'s continuation to be the bare prompt). *)
+  Lemma Wcf0_of_post_alt (I : list (bv 8)) (a : nat) (v v' : era_pins)
+      (cs' : list nat) (s : dst) :
+    fapr I a ->
+    length cs' = (nlines I - 1)%nat -> (0 < nlines I)%nat ->
+    dst_content s
+      = fsm (UCatOut.cat_st cs' s0 I) (fline I) (ralt_dec a) ->
+    ((length (fab I a) - 2)%nat = 0%nat ->
+     cont (UCatOut.cat_st cs' s0 I) (fline I) (ralt_dec a) = u_prompt) ->
+    lk_pin FI (S gen_id) v -∗ lk_post FI (S gen_id) v I a -∗
+    fown r s -∗ f_typed (fgn_cl g) s -∗
+    era_pin (fgn_echo g) (S gen_id) v' -∗ cs_lb v' cs' -∗
+    Wcf I 0%nat.
+  Proof using .
+    intros Hapr Hlen Hpos Hc Hpr.
+    iIntros "#Hpin Hblk Hd #Hty #Hpin' #Hcs'". rewrite Wcf_0.
+    cbn [lk_pin FileLinkInst.file_link_inst_at].
+    iDestruct (era_pin_agree (fgn_echo g) (S gen_id) v v' with "Hpin Hpin'")
+      as %<-.
+    rewrite /lk_post. cbn [lk_blk lk_ab FileLinkInst.file_link_inst_at].
+    rewrite /fwc_blk_at. iDestruct "Hblk" as "[Hblk | #HT]"; last first.
+    { iLeft. iSplitL "";
+        [ iApply (Hcltaint I 0%nat v with "Hpin HT")
+        | iApply (sh_deed_taint with "HT") ]. }
+    iDestruct "Hblk" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE & #Hf)".
+    pose proof Hw as [(_ & _ & Hn & _) _].
+    destruct (length (fab I a) - 2)%nat as [| i] eqn:Hi.
+    - (* the prompt is the block's first byte: still owed, deed PEND at [a] *)
+      cbn [blkcs_f]. rewrite Nat.add_0_r.
+      iDestruct (cs_lb_agree_len v cs cs' ltac:(lia) with "Hcs Hcs'") as %<-.
+      iRight. iSplitL "Htn".
+      + iApply (Wcl3_close I v ps cs P Hw with "Hpin [Htn]").
+        rewrite /FileLinksLine.fcur. iFrame "Htn Hps Hcs HE Hf".
+      + rewrite /sh_pend_at /sh_deed_at. iLeft. iExists cs, s, v.
+        iFrame "Hd Hty Hpin Hcs". iPureIntro. exists a.
+        split_and!; [ exact Hlen | exact Hpos | exact (proj1 Hapr)
+                    | exact (Hpr eq_refl) | exact Hc ].
+    - (* a byte before the prompt: [a] is filed, deed DONE *)
+      cbn [blkcs_f].
+      iDestruct (cs_lb_prefix_len v (cs ++ [a]) cs'
+                   ltac:(rewrite length_app; cbn [length]; lia)
+                   with "Hcs Hcs'") as %Hpre.
+      assert (Hcseq : cs = cs').
+      { destruct Hpre as [k Hk].
+        assert (Hkl : length k = 1%nat).
+        { apply (f_equal length) in Hk.
+          rewrite !length_app in Hk. cbn [length] in Hk. lia. }
+        destruct k as [| x [| y k]]; cbn [length] in Hkl; try lia.
+        apply app_inj_tail in Hk. exact (proj1 Hk). }
+      subst cs'.
+      iLeft. iSplitL "Htn".
+      + iExists v. iFrame "Hpin".
+        cbn [lk_lpr FileLinkInst.file_link_inst_at fwc_lpr_at].
+        rewrite /fwc_line_at. iRight. iExists a.
+        iSplitR; [ by iPureIntro | ]. rewrite /fwc_blk_at. iLeft.
+        iExists ps, cs, P.
+        rewrite Hi. cbn [blkcs_f]. iFrame "Htn Hps Hcs HE Hf". by iPureIntro.
+      + rewrite /sh_done_at /sh_deed_at. iLeft. iExists (cs ++ [a]), s, v.
+        iFrame "Hd Hty Hpin Hcs". iPureIntro.
+        exact (done_tie_snoc cs a s0 I _ Hlen Hpos Hc).
+  Qed.
+
   (* ---- THE LOOP'S LAWS AT [Wcf] / [Wbf] ---- *)
 
   (* [UkShFork]'s [Hwbl]: a fork that failed re-enters at the boundary --
@@ -1271,6 +1346,137 @@ Section UShRound.
      no deed, and a [Kf] without that arm cannot be produced. *)
   Definition redir_Kf (s : dst) : iProp Σ :=
     (fown r s ∨ (⌜s = None⌝ ∗ ∃ i : Z, fown r (Some (i, []))) ∨ T)%I.
+
+  (* [fab] at an admissible, state-free alternative IS its continuation
+     (the guard in [FileLinksLine.fab] discharged once, so no consumer
+     rewrites under a [decide]) *)
+  Local Lemma fab_of_apr (I : list (bv 8)) (a : nat) :
+    ralt_ok (fline I) (ralt_dec a) /\ fstate_free (ralt_dec a) = true ->
+    fab I a = cont None (fline I) (ralt_dec a).
+  Proof using . intro H. rewrite /fab. by case_decide. Qed.
+
+  (* ---- THE REDIRECT CHILD'S THREE PRINTING-OR-SILENT EXITS, each closing
+          at the loop's position-0 credential.  The entry facts are PRE's
+          own ([pre_tie]: the deed's choice list is one short of the
+          input's lines, and the content is the round's entry state); what
+          differs is what the child did to `f` and what it printed. ---- *)
+
+  (* echo RAN: it prints nothing on the console (fd 1 is `f`), so the block
+     is still owed whole and the deed is PEND at [RFRan sel] -- whose
+     continuation is the bare prompt by computation.  [sel] is whichever
+     chunks landed (design SS0, limit 1), read off the write credential. *)
+  Lemma redir_ran_exit (I : list (bv 8)) (ws : wordline) (i : Z)
+      (sel : list nat) (v' : era_pins) (cs : list nat) :
+    fline I = LEchoF ws ->
+    length cs = (nlines I - 1)%nat -> (0 < nlines I)%nat ->
+    Wcl I 3%nat -∗
+    era_pin (fgn_echo g) (S gen_id) v' -∗ cs_lb v' cs -∗
+    FileWrite.file_wq (fgn_cl g) r i ws sel
+      (length (subseq (echo_chunks ws) sel)) -∗
+    Wcf I 0%nat.
+  Proof using .
+    intros Hfl Hlen Hpos. iIntros "Hc #Hpin #Hcs Hq".
+    rewrite /FileWrite.file_wq. iDestruct "Hq" as "[Hq | #HT]"; last first.
+    { iApply (Wcf_taint I 0%nat v' with "Hpin HT"). }
+    iDestruct "Hq" as (ls) "(Hd & _ & %Hok & %Hsel & #Hlb & %Hin)".
+    rewrite Wcf_0. iRight. iFrame "Hc".
+    rewrite /sh_pend_at /sh_deed_at. iLeft.
+    iExists cs, (Some (i, subseq (echo_chunks ws) sel)), v'.
+    iFrame "Hd Hpin Hcs". iSplit.
+    - iPureIntro. exists (ralt_enc (RFRan sel)).
+      rewrite /pend_tie_at ralt_dec_enc Hfl.
+      split_and!; [ exact Hlen | exact Hpos | exact Hsel | reflexivity
+                  | reflexivity ].
+    - rewrite /f_typed. iExists ls. iFrame "Hlb". iPureIntro.
+      exists ws, sel. split_and!; [ exact Hin | exact Hok | exact Hsel
+                                  | reflexivity ].
+  Qed.
+
+  (* the exec FAILED after the open truncated: the diagnostic is written,
+     `f` is empty *)
+  Lemma redir_execfail_exit (I : list (bv 8)) (ws : wordline) (i : Z)
+      (v v' : era_pins) (cs : list nat) :
+    fline I = LEchoF ws ->
+    length cs = (nlines I - 1)%nat -> (0 < nlines I)%nat ->
+    lk_pin FI (S gen_id) v -∗
+    lk_post FI (S gen_id) v I (ralt_enc RFExec) -∗
+    fown r (Some (i, [])) -∗ f_typed (fgn_cl g) (Some (i, [])) -∗
+    era_pin (fgn_echo g) (S gen_id) v' -∗ cs_lb v' cs -∗
+    Wcf I 0%nat.
+  Proof using .
+    intros Hfl Hlen Hpos. iIntros "#Hp Hblk Hd #Hty #Hpin' #Hcs".
+    iApply (Wcf0_of_post_alt I (ralt_enc RFExec) v v' cs (Some (i, []))
+              with "Hp Hblk Hd Hty Hpin' Hcs");
+      [ rewrite /fapr ralt_dec_enc Hfl; split_and!; [ exact Logic.I | | ];
+        reflexivity
+      | exact Hlen | exact Hpos
+      | rewrite ralt_dec_enc Hfl; reflexivity
+      | ].
+    intro Hz. exfalso. revert Hz.
+    rewrite (fab_of_apr I (ralt_enc RFExec));
+      [ | rewrite ralt_dec_enc Hfl; split; [ exact Logic.I | reflexivity ] ].
+    rewrite ralt_dec_enc Hfl. vm_compute. discriminate.
+  Qed.
+
+  (* the open FAILED: `f` is as the round found it ([RFOpenU]), or the
+     create had fired before the failure and left it empty ([RFOpenM], at
+     an absent `f` only -- [redir_Kf]'s second arm says so).  TWO lemmas
+     and not one over [redir_Kf]: which arm the call returned is known
+     BEFORE the diagnostic is written, and the diagnostic's law is run at
+     the matching alternative, so its end state holds ONE block. *)
+  Local Lemma fab_openfail_long (I : list (bv 8)) (ws : wordline) (a : ralt) :
+    fline I = LEchoF ws -> a = RFOpenU \/ a = RFOpenM ->
+    (length (fab I (ralt_enc a)) - 2)%nat = 0%nat -> False.
+  Proof using .
+    intros Hfl Ha.
+    rewrite (fab_of_apr I (ralt_enc a));
+      [ | rewrite ralt_dec_enc Hfl; destruct Ha as [-> | ->]; split;
+          first [ exact Logic.I | reflexivity ] ].
+    rewrite ralt_dec_enc Hfl.
+    destruct Ha as [-> | ->]; vm_compute; discriminate.
+  Qed.
+
+  Lemma redir_openfail_exit_u (I : list (bv 8)) (ws : wordline) (s : dst)
+      (v v' : era_pins) (cs : list nat) :
+    fline I = LEchoF ws ->
+    pre_tie cs s0 I (dst_content s) -> (0 < nlines I)%nat ->
+    lk_pin FI (S gen_id) v -∗
+    lk_post FI (S gen_id) v I (ralt_enc RFOpenU) -∗
+    fown r s -∗ f_typed (fgn_cl g) s -∗
+    era_pin (fgn_echo g) (S gen_id) v' -∗ cs_lb v' cs -∗
+    Wcf I 0%nat.
+  Proof using .
+    intros Hfl [Hlen Hc] Hpos. iIntros "#Hp Hblk Hd #Hty #Hpin' #Hcs".
+    iApply (Wcf0_of_post_alt I (ralt_enc RFOpenU) v v' cs s
+              with "Hp Hblk Hd Hty Hpin' Hcs");
+      [ rewrite /fapr ralt_dec_enc Hfl; split_and!; [ exact Logic.I | | ];
+        reflexivity
+      | exact Hlen | exact Hpos
+      | rewrite ralt_dec_enc Hfl; exact Hc
+      | intro Hz;
+        destruct (fab_openfail_long I ws RFOpenU Hfl (or_introl eq_refl) Hz) ].
+  Qed.
+
+  Lemma redir_openfail_exit_m (I : list (bv 8)) (ws : wordline) (i : Z)
+      (v v' : era_pins) (cs : list nat) :
+    fline I = LEchoF ws ->
+    pre_tie cs s0 I None -> (0 < nlines I)%nat ->
+    lk_pin FI (S gen_id) v -∗
+    lk_post FI (S gen_id) v I (ralt_enc RFOpenM) -∗
+    fown r (Some (i, [])) -∗ f_typed (fgn_cl g) (Some (i, [])) -∗
+    era_pin (fgn_echo g) (S gen_id) v' -∗ cs_lb v' cs -∗
+    Wcf I 0%nat.
+  Proof using .
+    intros Hfl [Hlen Hc] Hpos. iIntros "#Hp Hblk Hd #Hty #Hpin' #Hcs".
+    iApply (Wcf0_of_post_alt I (ralt_enc RFOpenM) v v' cs (Some (i, []))
+              with "Hp Hblk Hd Hty Hpin' Hcs");
+      [ rewrite /fapr ralt_dec_enc Hfl; split_and!; [ exact Logic.I | | ];
+        reflexivity
+      | exact Hlen | exact Hpos
+      | rewrite ralt_dec_enc Hfl -Hc; reflexivity
+      | intro Hz;
+        destruct (fab_openfail_long I ws RFOpenM Hfl (or_intror eq_refl) Hz) ].
+  Qed.
 
   (* ---- WHAT THE OPEN'S RECEIPT SAYS ABOUT THE INODE (the PROGRAM
           STREAM, item (3)'s first premise).  K1's entry takes four
@@ -1820,7 +2026,9 @@ Section UShRound.
              [UkSh.ush_line_is], and [UkShRedirLine.ushs_line_is_nosym]
              proves no such line can carry the [>] byte. *)
           ⌜ UkShRedirLine.ushs_line_is ws file fb 0%nat len ⌝ -∗
-          ⌜ ws = last_ws I ⌝ -∗
+          (* the fork assertion's words are the WHOLE body's (RULING
+             SLOT-WS, option B; [UkShRedirBody.sh_redir_child_law]) *)
+          ⌜ ws ++ [FileDisc.fd_w_gt; file] = last_ws I ⌝ -∗
           ⌜ 0 < sa ⌝ -∗ ⌜ sa + Z.of_nat len + 1 < Z64 ⌝ -∗
           ⌜ sa + Z.of_nat len < 2 ^ 38 ⌝ -∗
           ⌜ 8344 <= sz ⌝ -∗ ⌜ UserPtTree.pgroundup sz = sz ⌝ -∗

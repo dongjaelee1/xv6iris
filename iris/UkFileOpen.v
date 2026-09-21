@@ -223,7 +223,8 @@ Section UkFileOpen.
     (∀ (h' : CpuId) (rv : mword 64),
        ((* the call failed: the ledger is back untouched, and so are both
            fractions *)
-        (⌜rv = (mword_of_int (-1) : mword 64)⌝ ∗ ustd (ukn_fd N) l)
+        (⌜rv = (mword_of_int (-1) : mword 64)⌝ ∗ ustd (ukn_fd N) l
+         ∗ fdq r q1 (Some (i, bs)) ∗ fdq r q2 (Some (i, bs)))
         (* ...OR THE HANDLE, ON THE DEED'S OWN INUM *)
         ∨ (∃ (fd : nat) (γo : gname),
              ⌜rv = (mword_of_int (Z.of_nat fd) : mword 64)
@@ -264,11 +265,13 @@ Section UkFileOpen.
     iEval (rewrite /open_receipt Hcr) in "Hrc".
     iEval (cbn [file_open_fam xfam_open of_P of_Pmiss of_Farm of_Fun
                 of_Fok of_Fex of_Fo of_Ft]) in "Hrc".
-    iDestruct (file_open_recv_file fsc_fs c r omo q1 q2 i bs cw (uvis_M W) pv
-                 (m !!! Regidx a1_idx) pl _ (uvis_fd W) rv fdv'
-                 (Hpath (uvis_M W) Himg) Hel Hst with "Hrc") as "Hans".
+    iApply fupd_wp.
+    iMod (file_open_recv_file fsc_fs c r omo q1 q2 i bs cw (uvis_M W) pv
+            (m !!! Regidx a1_idx) pl _ (uvis_fd W) rv fdv'
+            (Hpath (uvis_M W) Himg) Hel Hst with "Hrc") as "Hans".
+    iModIntro.
     iApply ("Hcont" $! h' rv with "[Hfd Hans] Hcwd Hrun").
-    iDestruct "Hans" as "[[%Hr %Hfdv] | [Hok | #HT]]"; last first.
+    iDestruct "Hans" as "[(%Hr & %Hfdv & Hd1 & Hd2) | [Hok | #HT]]"; last first.
     { iRight. iRight. iFrame "HT".
       iApply (uk_open_taint_fd_of_arm (ukn_fd N) l (uvis_fd W) fdv' rv
                 with "[Hfd]").
@@ -288,7 +291,7 @@ Section UkFileOpen.
                  Hlen Hr1 Hlt1 Hfdv1 Hrcpt).
       iRight. iLeft. iExists fd, γo. iFrame "Hal Hpub Hd1 Hd2". iPureIntro.
       exact (conj Hr1 Hlt1).
-    - iLeft. iSplitR; [ by iPureIntro | ].
+    - iLeft. iFrame "Hd1 Hd2". iSplitR; [ by iPureIntro | ].
       iApply (init_cons_fail_std (ukn_fd N) l (uvis_fd W) fdv' rv Hr
                 with "[Hfd]").
       rewrite /uk_open_fd_arm. iExact "Hfd".
@@ -1099,7 +1102,8 @@ Section UkFileOpen.
     (∀ (h' : CpuId) (rv : mword 64),
        ((* the call failed: the ledger is back untouched, and so are both
            fractions *)
-        (⌜rv = (mword_of_int (-1) : mword 64)⌝ ∗ ustd (ukn_fd N) l)
+        (⌜rv = (mword_of_int (-1) : mword 64)⌝ ∗ ustd (ukn_fd N) l
+         ∗ fdq r q1 (Some (i, bs)) ∗ fdq r q2 (Some (i, bs)))
         (* ...OR THE HANDLE, ON THE DEED'S OWN INUM *)
         ∨ (∃ (fd : nat) (γo : gname),
              ⌜rv = (mword_of_int (Z.of_nat fd) : mword 64)
@@ -1140,11 +1144,13 @@ Section UkFileOpen.
     iEval (rewrite /open_receipt Hcr) in "Hrc".
     iEval (cbn [file_open_fam xfam_open of_P of_Pmiss of_Farm of_Fun
                 of_Fok of_Fex of_Fo of_Ft]) in "Hrc".
-    iDestruct (file_open_recv_file fsc_fs c r omo q1 q2 i bs cw (uvis_M W) pv
-                 (m !!! Regidx a1_idx) pl _ (uvis_fd W) rv fdv'
-                 (Hpath (uvis_M W) Himg) Hel Hst with "Hrc") as "Hans".
+    iApply fupd_wp.
+    iMod (file_open_recv_file fsc_fs c r omo q1 q2 i bs cw (uvis_M W) pv
+            (m !!! Regidx a1_idx) pl _ (uvis_fd W) rv fdv'
+            (Hpath (uvis_M W) Himg) Hel Hst with "Hrc") as "Hans".
+    iModIntro.
     iApply ("Hcont" $! h' rv with "[Hfd Hans] Hcwd Hrun").
-    iDestruct "Hans" as "[[%Hr %Hfdv] | [Hok | #HT]]"; last first.
+    iDestruct "Hans" as "[(%Hr & %Hfdv & Hd1 & Hd2) | [Hok | #HT]]"; last first.
     { iRight. iRight. iFrame "HT".
       iApply (uk_open_taint_fd_of_arm (ukn_fd N) l (uvis_fd W) fdv' rv
                 with "[Hfd]").
@@ -1164,7 +1170,7 @@ Section UkFileOpen.
                  Hlen Hr1 Hlt1 Hfdv1 Hrcpt).
       iRight. iLeft. iExists fd, γo. iFrame "Hal Hpub Hd1 Hd2". iPureIntro.
       exact (conj Hr1 Hlt1).
-    - iLeft. iSplitR; [ by iPureIntro | ].
+    - iLeft. iFrame "Hd1 Hd2". iSplitR; [ by iPureIntro | ].
       iApply (init_cons_fail_std (ukn_fd N) l (uvis_fd W) fdv' rv Hr
                 with "[Hfd]").
       rewrite /uk_open_fd_arm. iExact "Hfd".
@@ -1378,7 +1384,8 @@ Section UkFileOpen.
     (∀ (h' : CpuId) (rv : mword 64),
        ((* the call failed: the ledger is back untouched, and so are both
            fractions *)
-        (⌜rv = (mword_of_int (-1) : mword 64)⌝ ∗ ustd (ukn_fd N) l)
+        (⌜rv = (mword_of_int (-1) : mword 64)⌝ ∗ ustd (ukn_fd N) l
+         ∗ fdq r q1 (Some (i, bs)) ∗ fdq r q2 (Some (i, bs)))
         (* ...OR THE HANDLE, ON THE DEED'S OWN INUM *)
         ∨ (∃ (fd : nat) (γo : gname),
              ⌜rv = (mword_of_int (Z.of_nat fd) : mword 64)

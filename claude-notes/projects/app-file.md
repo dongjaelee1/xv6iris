@@ -9,7 +9,41 @@ literal image (`UFileBootAdequacy.file_adequacy_fileΣ`), with
 `make audit-file-only` beside the echo and tree audits, and the
 conclusion `FileDisc.file_phi`.
 
-## RESUME HERE (2026-09-18, after the kernel stream closed)
+## RESUME HERE (2026-09-21)
+
+Work is on branch `app-file/cat-refund` in `/shared/xv6iris-2` (the lane
+checkouts under `/shared/xv6iris-3-lanes` are all merged or stale -- `sh-redir`
+is 274 behind `main` with nothing of its own; `program-tier` still holds the
+UNCOMMITTED `iris/UInitFileCC.v`, 553 lines, which item 4 needs).  The file
+tier is GREEN at current `main` (whole tree `--proofs -k`, 2026-09-21), after
+the pipe campaign's changes to the generic sh statements.
+
+What is open in `iris/`: `UShRound.sh_round_holds_file` and
+`UInitFile.file_Hinit_boot` are `Admitted`; `UShRound`'s section hypotheses
+`Hchild_redir` and `Hchild_cat` are undischarged.
+
+Landed 2026-09-21:
+- **SLOT-WS, option B** (item 2¾ below; ruled by the owner, WITH A CLEANUP
+  OWED -- design §3, RULING SLOT-WS): `uline_ws (LEchoF ws)` is the whole
+  body's words; `FileDisc.uline_ws_words` replaces the false premise `Hws`;
+  `UkShRedirBody.ushs_lp` / `wp_kshm_body_redir` / `sh_redir_child_law` follow.
+  2d is unblocked.
+- **item 3 (i)-(ii)**: the failed read-open of a present `f` refunds both
+  fractions (`FileOpen.file_open_recv_file` is a fupd; `UkFileOpen`,
+  `UkCatDeed`, `UCatKernel.cat_open_hand` carry them).  `cat_pay_present`
+  still DROPS them: (iii), the payload's deed conjunct, waits on the owner
+  confirming the amendment to RULING CAT-DEED (the conjunct needs `∨
+  file_taint c`; cat's taint exits hold no deed).
+
+NEXT: 2d (`Hchild_redir`, stated at `UkShRedirBody.sh_redir_child_law Wcf` --
+`UShRound`'s own copy is a stale twin, 60 vs 68 and no `fline_ok`, delete it);
+then 3 (iii)-(iv), 5, 4, the adequacy close.
+
+THE OWNER'S PRIORITY (2026-09-21): good intermediate abstractions and specs
+over time-to-theorem.  A shortcut taken is recorded as a named cleanup item
+on the design page, not only in a commit message.
+
+## State as of 2026-09-18 (after the kernel stream closed)
 
 Metric 7 = `UEchoFile.v` 1 (header only) + `UShRound.v` 5 + `UInitFile.v` 1,
 at `main` = the merge of `app-file/off-hand` (KERNEL-STREAM item 4).  Audits
@@ -64,7 +98,8 @@ The blocker for the whole program tier WAS the deed's hold: RULING HOLD-POS
    `FileWritePart.file_awrite_part_adv` (a fired cursor agrees the offset to
    the content's length, a line's worth — refuted; a tainted one pays).  What
    the chain takes instead is `nb ≤ EchoDisc.line_max`.
-2¾. **SLOT-WS** (generic sh tier, NEW, needs the owner's ruling): the fork
+2¾. [x] **SLOT-WS** -- RULED option B and LANDED 2026-09-21 (see RESUME HERE;
+   what follows is the defect as measured).  The fork
    slot says `last_ws I = ws` and at `echo a > f` the body has FOUR words
    while the typed line has TWO (`vm_compute`d).  So
    `FileReadInst.file_disc_line`'s `Hws` is false at `LEchoF`, the loop

@@ -49,7 +49,8 @@
 (* inside the child law, where the round names it, and lane PIPE-2W        *)
 (* discharges it there.  See the SH-PIPE-ROUND findings block.             *)
 (*                                                                        *)
-(* EXPECT AT MOST THE ECHO THEOREM'S FOURTEEN, and the same split:         *)
+(* EXPECT AT MOST THE ECHO THEOREM'S FOURTEEN -- FOR EACH LIST THIS FILE   *)
+(* PRINTS, the anchor's and every frontier one's -- and the same split:    *)
 (*                                                                        *)
 (*   1  [functional_extensionality_dep]                                    *)
 (*   2  [xv6iris_extras.resv_matches] / [_is_valid] -- the LR/SC           *)
@@ -77,7 +78,40 @@
 (* [palt_ok], [pcont] and [pipe_phi] ARE the specification, and a [Print   *)
 (* Assumptions] of a theorem about the wrong predicate is worth nothing.   *)
 (* See tools/tcb/ and claude-notes/design/app-pipe.md.                     *)
+(*                                                                        *)
+(* THE FRONTIER GOES IN THIS FILE TOO, and it is the second half of what   *)
+(* the target above cannot see.  [Hchild] is a premise, so the print       *)
+(* below it says nothing about the lemmas a round lands ON THE WAY to      *)
+(* discharging it: those sit outside the corollary's cone until the day    *)
+(* the law is applied.  Auditing them is a real need and it is THIS        *)
+(* file's job -- ONE audit file per application, as for the other four.    *)
+(* A lane does NOT add a [<Lane>Assumptions.v] of its own; it edits the    *)
+(* FRONTIER block below, and drops a line from it once the lemma enters    *)
+(* the corollary's cone (at which point the print above covers it).        *)
+(*                                                                        *)
+(* AUDIT THE TOP OF THE FRONTIER, NOT EACH LEMMA UNDER IT.  [Print         *)
+(* Assumptions] walks a whole cone, so printing the round law subsumes     *)
+(* printing the hundred lemmas its proof uses; a list of those is a lane   *)
+(* journal, not a check.  Keep this block to the few statements the open   *)
+(* premise is actually being built out of.                                 *)
 (* ====================================================================== *)
 Require Import UInitPipeAdequacy.
 
 Print Assumptions pipe_adequacy_pipeΣ_of_child.
+
+(* ---- THE FRONTIER: what [Hchild] is being built out of ---- *)
+Require Import UShPipeRound.
+Require Import UShPipeCatSlot.
+Require Import UInitPipe.
+
+(* the round law, the child law's core *)
+Goal True. idtac "---- UShPipeRound.sh_round_holds_pipe". Abort.
+Print Assumptions UShPipeRound.sh_round_holds_pipe.
+
+(* the /cat pin the round law takes as a premise *)
+Goal True. idtac "---- UShPipeCatSlot.pipe_sh_cat_slot". Abort.
+Print Assumptions UShPipeCatSlot.pipe_sh_cat_slot.
+
+(* the boot that supplies it *)
+Goal True. idtac "---- UInitPipe.pipe_Hinit_boot". Abort.
+Print Assumptions UInitPipe.pipe_Hinit_boot.

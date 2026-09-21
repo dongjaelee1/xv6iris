@@ -735,6 +735,38 @@ unowned critical item (WRITE-RELAY-3's `TB` guard).  RULES, replacing
   unprovable pair at the prompt), the deed inside the link families (the
   record's `i = 0` phantom alternative cannot commit), a new `RFNone`
   alternative (weakens the theorem where RFSilent's effect is free).
+- RULING SLOT-WS (2026-09-21, the owner: option B, WITH A CLEANUP OWED).
+  The defect: the generic sh loop (`UkSh.v`) hands the forked child the
+  pure fact `last_ws I = ws` -- the last input line split at blanks -- and
+  asks each application for `uline_ws lu = wl_words (line)`.
+  `uline_ws (LEchoF ws)` was `ws`, the echo command's words alone, while
+  `echo a > f` splits into FOUR words; so the equation was false at every
+  redirect line, `FileReadInst.file_disc_line` carried it as an
+  undischargeable premise `Hws`, and `sh_redir_child_law` assumed both
+  `line_ok ws` (no `>`) and `ws = last_ws I` (a `>` in it) -- vacuous.
+  RULED: `uline_ws (LEchoF ws) := ws ++ [fd_w_gt; fname_f]`, the shape the
+  pipe campaign had already taken at `LPipe`; `FileDisc.uline_ws_gtf` and
+  `uline_ws_words` are the equations, `Hws` is gone, and
+  `UkShRedirBody.ushs_lp` / `wp_kshm_body_redir` / `sh_redir_child_law`
+  (and `UShRound`'s copy) speak the whole body's words, as
+  `UShPipeRound.ushq_lp` does.  The theorem's conclusion is unchanged:
+  `uline_ws` is read only by `cont`'s `REcho` arm, which `ralt_ok` admits
+  at `LEcho` lines alone.
+  **CLEANUP OWED (the owner, same day: the project's goal is good
+  intermediate abstractions, not the fastest route to this theorem).**
+  Option B makes a MODEL function mirror the LEXER: `uline_ws` now exists
+  to agree with "split at blanks", one suffix per constructor
+  (`LEchoF`, `LCat`, `LPipe`), and every new line shape will add another.
+  The cleaner interface is option A's: the fork assertion `UkSh.ush_posw`
+  and `UkShFork.ushf_child_law_at` speak the PARSED line
+  (`uline_of (ush_lastbody I) = lu`), the per-application obligation
+  becomes "the typed line is the parse of the bytes"
+  (`FileDisc.fbody_ok_line` already proves it), each child law takes its
+  own constructor instead of re-deriving it from a word list, and
+  `uline_ws` leaves the generic tier.  It was not taken now only because
+  the pipe campaign is mid-flight on the word-list form.  Do it when both
+  application theorems are closed, or earlier if a third line shape is
+  added.
 - TWO SERIAL STREAMS, at most two lanes on `iris/` at once: the KERNEL
   stream (OFF-LINK-6 + L5 + the `TB` guard, exit criterion: `Hopen_hand`,
   cat's lend and `UEchoFile.ef_chain` compile as `Definition`s; then

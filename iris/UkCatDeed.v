@@ -654,7 +654,8 @@ Section UkCatDeed.
     fdq r q1 (Some (i, bs)) -∗ fdq r q2 (Some (i, bs)) -∗
     (∀ (h' : CpuId) (ret : mword 64),
        UserCwd.ucwd (ukn_cwd N) cw -∗
-       ((⌜ret = (mword_of_int (-1) : mword 64)⌝ ∗ ustd γfd l)
+       ((⌜ret = (mword_of_int (-1) : mword 64)⌝ ∗ ustd γfd l
+         ∗ fdq r q1 (Some (i, bs)) ∗ fdq r q2 (Some (i, bs)))
         ∨ (∃ (fd : nat) (γo : gname),
              ⌜ret = (mword_of_int (Z.of_nat fd) : mword 64)
               /\ (fd < NOFILE)%nat⌝ ∗
@@ -889,7 +890,8 @@ Section UkCatDeed.
        ∗ fdq r q1 (Some (i, bs)) ∗ fdq r q2 (Some (i, bs)))
       (fun ret : mword 64 =>
          (UserCwd.ucwd (ukn_cwd N) cw
-          ∗ ((⌜ret = (mword_of_int (-1) : mword 64)⌝ ∗ ustd γfd l)
+          ∗ ((⌜ret = (mword_of_int (-1) : mword 64)⌝ ∗ ustd γfd l
+              ∗ fdq r q1 (Some (i, bs)) ∗ fdq r q2 (Some (i, bs)))
              ∨ (∃ (fd : nat) (γo : gname),
                   ⌜ret = (mword_of_int (Z.of_nat fd) : mword 64)
                    /\ (fd < NOFILE)%nat⌝ ∗

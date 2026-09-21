@@ -144,6 +144,7 @@ Definition cmd_cat_f : list (bv 8) := sb "cat f"%string.
    model's lines ARE the parser's range and are therefore false at a
    constructor outside it. *)
 Definition fd_bar : bv 8 := Z_to_bv 8 124%Z.
+Definition fd_w_gt : list (bv 8) := sb ">"%string.
 Definition fd_w_bar : list (bv 8) := sb "|"%string.
 Definition fd_w_cat : list (bv 8) := sb "cat"%string.
 Definition suf_barcat : list (bv 8) := sb " | cat"%string.
@@ -169,7 +170,15 @@ Global Instance uline_inhabited : Inhabited uline := populate (LEcho []).
 Definition uline_ws (l : uline) : list (list (bv 8)) :=
   match l with
   | LEcho ws => ws
-  | LEchoF ws => ws
+  (* the WHOLE body's words, as at [LPipe] below (RULING SLOT-WS, option
+     B): the arm used to be [ws], which is not what the line lexes to --
+     [echo a > f] is FOUR blank-separated words -- so [UkSh]'s
+     [Hdsc_line] was unprovable at a redirect line.  [uline_ws_gtf] is
+     the equation.  A CLEANUP IS OWED (design/app-file.md, RULING
+     SLOT-WS): the better interface has the sh loop's fork assertion
+     speak the PARSED line, and then this function need not mirror the
+     lexer at all. *)
+  | LEchoF ws => ws ++ [fd_w_gt; fname_f]
   | LCat => wl_words cmd_cat_f
   (* the WHOLE body's words, which is what [UkSh]'s [Hdsc_line] demands
      ([uline_ws lu = wl_words (rest_of I)]); [PipeDisc.pline_ws] is the
@@ -249,6 +258,21 @@ Proof using.
     destruct ws as [| w r]; [cbn [length] in Hp; lia | discriminate]. }
   exact (fd_wl_words_body_app ws suf_barcat [fd_w_bar; fd_w_cat]
            (line_ok_wf _ Hok) Hne wl_words_barcat).
+Qed.
+
+(* ...and the redirect line's, the same way (RULING SLOT-WS, option B) *)
+Lemma wl_words_gtf : wl_words suf_gtf = [] :: [fd_w_gt; fname_f].
+Proof using. apply (bool_decide_unpack _). vm_compute. exact I. Qed.
+
+Lemma uline_ws_gtf (ws : list (list (bv 8))) :
+  line_ok ws -> wl_words (line_body (LEchoF ws)) = uline_ws (LEchoF ws).
+Proof using.
+  intro Hok.
+  assert (Hne : ws <> []).
+  { pose proof (line_ok_pos ws Hok) as Hp.
+    destruct ws as [| w r]; [cbn [length] in Hp; lia | discriminate]. }
+  exact (fd_wl_words_body_app ws suf_gtf [fd_w_gt; fname_f]
+           (line_ok_wf _ Hok) Hne wl_words_gtf).
 Qed.
 
 (* ---- the redirect suffix, and the bytes a line body may carry -------- *)
@@ -490,6 +514,25 @@ Lemma fbody_ok_line b : fbody_ok b -> uline_ok (uline_of b) /\ b = line_body (ul
 Proof using.
   intros [l Hl]. rewrite /uline_of Hl /=.
   split; [exact (parse_line_ok b l Hl) | exact (line_body_parse b l Hl)].
+Qed.
+
+(* THE TYPED LINE'S WORDS ARE THE BODY'S PARSE, at every constructor
+   (RULING SLOT-WS, option B).  This is the equation [UkSh]'s [Hdsc_line]
+   asks of an era's line read; it was a PREMISE of
+   [FileReadInst.file_disc_line] while [uline_ws (LEchoF ws)] was [ws],
+   and false there. *)
+Lemma uline_ws_words (b : list (bv 8)) :
+  fbody_ok b -> uline_ws (uline_of b) = wl_words b.
+Proof using.
+  intro Hfb. destruct (fbody_ok_line b Hfb) as [Hok Hb].
+  transitivity (wl_words (line_body (uline_of b)));
+    [ | exact (f_equal wl_words (eq_sym Hb)) ].
+  revert Hok. generalize (uline_of b). intros [ws | ws | | ws] Hok.
+  - cbn [uline_ws line_body]. symmetry.
+    exact (wl_words_body ws (line_ok_wf _ Hok)).
+  - symmetry. exact (uline_ws_gtf ws (proj1 Hok)).
+  - reflexivity.
+  - symmetry. exact (uline_ws_pipe ws (proj1 Hok)).
 Qed.
 
 Lemma fbody_ok_of l : uline_nopipe l -> uline_ok l -> fbody_ok (line_body l).

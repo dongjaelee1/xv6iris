@@ -161,16 +161,12 @@ Qed.
 (*  1b. THE FILE ERA'S [Hdsc_line] -- sh's loop leaf at the FILE          *)
 (*      discipline, ending in a typed line the era admits.                *)
 (*                                                                       *)
-(*  [Hws] IS THE ONE MODEL FACT IT TAKES, and it is the lane's open item: *)
-(*  [UkSh.ush_posw]'s index is [LineWords.last_ws] of the input, so the   *)
-(*  loop's line has to answer [FileDisc.uline_ws lu = wl_words J].  That  *)
-(*  holds at [LEcho] and [LEchoF] (whose [uline_ws] IS the parse) and NOT *)
-(*  at [LCat], whose [uline_ws] is [[]] while a [cat f] line's words are  *)
-(*  [wl_words cmd_cat_f].  See this lane's findings.                      *)
+(*  THE ONE MODEL FACT IT TAKES IS A LEMMA NOW (RULING SLOT-WS, option   *)
+(*  B): [UkSh.ush_posw]'s index is [LineWords.last_ws] of the input, so   *)
+(*  the loop's line has to answer [FileDisc.uline_ws lu = wl_words J],    *)
+(*  and [FileDisc.uline_ws_words] says so at every constructor.           *)
 (* ===================================================================== *)
 Lemma file_disc_line
-    (Hws : forall J : list (bv 8),
-       fbody_ok J -> uline_ws (uline_of J) = wl_words J)
     (I : list (bv 8)) (f : nat -> bv 8) :
   disc_input_f (I ++ [wl_nl]) ->
   (forall j : nat, (j < length (rest_of I))%nat -> f j = rest_of I !!! j) ->
@@ -189,7 +185,7 @@ Proof using.
     by (rewrite line_bytes_body -Hbody; reflexivity).
   exists (uline_of J).
   split; [ exact (uline_of_nopipe J) | ].
-  split; [ exact (Hws J Hok) | ].
+  split; [ exact (uline_ws_words J Hok) | ].
   split; [ rewrite Hlb length_app; cbn [length]; lia | ].
   rewrite /UkSh.ush_line_at Hlb. split_and!.
   - exact Huok.
@@ -206,9 +202,7 @@ Qed.
 
 (* ...AND THE THREE, BUNDLED: exactly what [UShKernel.sh_image_entry_at]
    takes of an era's line read, in its own order. *)
-Lemma file_gets_holds
-    (Hws : forall J : list (bv 8),
-       fbody_ok J -> uline_ws (uline_of J) = wl_words J) :
+Lemma file_gets_holds :
   (forall (I : list (bv 8)) (b : bv 8),
      disc_input_f (I ++ [b]) -> bv_unsigned b <> 13%Z)
   /\ (forall I : list (bv 8),
@@ -225,7 +219,7 @@ Lemma file_gets_holds
           /\ UkSh.ush_line_at lu f 0%nat (S (length (rest_of I)))).
 Proof using.
   split; [ exact disc_input_f_snoc_ncr | ].
-  split; [ exact disc_input_f_rest_short | exact (file_disc_line Hws) ].
+  split; [ exact disc_input_f_rest_short | exact file_disc_line ].
 Qed.
 
 (* ===================================================================== *)

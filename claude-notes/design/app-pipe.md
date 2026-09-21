@@ -1387,6 +1387,33 @@ antecedent on `pcat_round_at_g`'s `Hw` (or on `pcat_pay_at`'s `Pay`) that
 keeps `pcat_round_at`'s statement byte-identical is pre-authorised — say
 what and why in the report, do not stop for it.
 
+### 4.3u RULED (2026-09-25, after SH-PIPE-ROUND-9 part 3): the pipe arm hands the right-chain writer resource to BOTH fork-panic tails
+
+Items 1–5 of the round's bill are landed.  Item 6 stopped at the arm's
+split: `UkShPipe.wp_kshr_pipe_arm_g` splits the runcmd child's lend ONCE,
+before either `fork1`, into `RcL ∗ (RcR ∗ (Rk ∗ Cx))` and pays both
+`panic("fork")` tails from `Cx` alone; but the family's right chain is
+shared by design (`rsrc L 1 = L` for cat, `rsrc L 3 = alt_forkc` for the
+fork panic), its writer resource `wcur gR (1/2) ∗ wcur gM (1/2)` exists
+once, and it is needed by cat (`RcR`) AND by the fork panic
+(`pipe_fork_panic_law` is stated at exactly that pair).  Both panic sites
+hold `RcR` and drop it.  RULED: (1) `wp_kshr_pipe_arm_g`'s FIRST
+fork-panic continuation gains `RcR γp` (the second already passes the
+fork answer whose `-1` arm carries it); (2) `UkShPipePaid.wp_kshr_pipe_arm_paid`
+and its relays `UShPipeChild.wp_kshm_child_pipe_paid_at`/`_line_at` state
+the fork-panic law at `RcR γp ∗ Cx γp`.  Then `Cx := emp`, `RcR` carries
+the two halves, `pipe_fork_panic_law` applies verbatim at both panics.
+Also adopted: `sh_pipe_child_law` takes `∃ v, era_pin γ (S gen_id) v` as
+a third antecedent (the family's gnames and `pn` are allocated at the
+child law's own `mWP` entry, before the walk, and passed into the linear
+`Cp ={⊤}=∗ Cr`); `Qc := app_taint ∨ pipe_Qc pn PL PR` with the halves in
+`PL`/`PR` as the lane measured.  STANDING GRANT extended: any ADDITIVE
+change to the pipe arm's continuations or laws in `UkShPipe.v`,
+`UkShPipePaid.v`, `UShPipeChild.v` that keeps every landed statement's
+meaning and re-derives the landed forms is pre-authorised; likewise
+additive antecedents on `sh_pipe_child_law` (with `sh_round_holds_pipe`
+supplying them) — report, do not stop.
+
 ## 5. Programs
 
 ### 5.1 sh: the PIPE arm (lanes SH-PARSE-PIPE, SH-PIPE)

@@ -7556,6 +7556,18 @@ NOT retired — it is FINISHED**.  Whole-tree `ec2-lane.sh stage4 build`
 **RC=0**; no `Admitted`, no `Axiom`; `Proof using` on every result.
 `Print Assumptions` on the lane's **thirty-eight** headline results:
 **all thirty-eight Closed under the global context**.
+**`audit-pipe-only` = FOURTEEN**, measured on the mirror after the
+changes and verbatim the standing list (1
+`functional_extensionality_dep` + the 2 `xv6iris_extras` reservation
+`Parameter`s + 11 `PrimString`/`PrimInt63` primitives).  The other three
+audits are unmoved BY CONSTRUCTION, and the dependency graph says so:
+the REVERSE cone of the seven changed files is **22 modules**
+(`AppPipe`, `Pipe*`, `U*Pipe*`, `UCatPipe`, `UShCatPay`,
+`UInitPipeAdequacy`, `UPipeBootAdequacy` and the four report files), and
+`SystemAssumptions`, `EchoAssumptions`, `TreeAssumptions` and
+`FileAssumptions` are NONE of them — only `PipeAssumptions` is.  So
+`audit-only` **13**, `audit-echo-only` **14**, `audit-tree-only` **13**
+stand at their baselines.
 
 **(0) WHAT THE LANE LANDED, IN ONE SENTENCE.**  §4.3m's second and
 fourth bullets are theorems — the terminal round FREEZES the claim's

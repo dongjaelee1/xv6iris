@@ -8521,7 +8521,13 @@ routes §2 and §3 leave, because they are the only two:
      been measured and refuted (the record — STAGE-3 and §3 above; the
      claim's deposit — STAGE-4 §6; the child's escrow — ROUND-6 §2; an
      application-allocated era-fixed invariant — §2 above).  Two generic
-     additions, no application file moves.
+     additions, no application file moves.  And the second of them need
+     not be a new entry point: ROUND-6 priced "a loop head at `0x93a`"
+     because stripping the later at `0x938` consumes that instruction,
+     but a `▷`-ACCEPTING VARIANT OF THE LOOP HEAD ITSELF
+     (`UkShLoop.ushl_head` taking `▷ P` and stripping it at its own first
+     instruction) needs no second entry point at all — the arm re-enters
+     at `0x938` exactly as it does today.
  (b) **the family into `AppInv.app_inv`'s own body**, i.e. into
      `AppPipeClaim.pipe_pred`, with `app_pred app_pipe` taking the whole
      `pipe_gn`.  No generic file moves and the credential becomes

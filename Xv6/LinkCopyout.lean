@@ -18,13 +18,6 @@ theorem Copyout (WA : WALKADDR) (VF : VMFAULT) (W : WALK_NOALLOC) (MM : MEMMOVE)
     COPYOUT :=
   copyout_proof WA VF W MM
 
-/-- The proved `copyin` interface.  `copyin` calls `walkaddr`, `vmfault`
-(no-alloc's job is done by `walkaddr` here) and `memmove`; it does not call
-`walk`. -/
-theorem Copyin (WA : WALKADDR) (VF : VMFAULT) (MM : MEMMOVE) :
-    COPYIN :=
-  copyin_proof WA VF MM
-
 /-- The proved `copyinstr` interface.  `copyinstr` calls `walkaddr` and
 `vmfault`; it copies byte-by-byte (with `lbu`/`sb`) rather than through
 `memmove`, so it needs neither `walk` nor `memmove`. -/

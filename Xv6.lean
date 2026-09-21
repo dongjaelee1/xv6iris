@@ -173,6 +173,7 @@ import Xv6.SpecUvmalloc
 import Xv6.SpecVmfault
 import Xv6.UMem
 import Xv6.SpecCopyout
+import Xv6.SpecCopyin
 import Xv6.SpecUvmcopy
 
 import Xv6.UPtFaultLemmas
@@ -225,8 +226,11 @@ import Xv6.ProofUvmcopy
 import Xv6.LinkUvmcopy
 import Xv6.ProofVmfault
 import Xv6.LinkVmfault
+import Xv6.CopyLemmas
 import Xv6.ProofCopyout
 import Xv6.LinkCopyout
+import Xv6.ProofCopyin
+import Xv6.LinkCopyin
 import Xv6.ProofFreeproc
 import Xv6.LinkFreeproc
 import Xv6.ProofUvmalloc

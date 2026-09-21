@@ -14,6 +14,7 @@ import MachCSL.Lock
 import Xv6.SpecEither
 import Xv6.SpecMyproc
 import Xv6.SpecCopyout
+import Xv6.SpecCopyin
 import Xv6.SpecMemmove
 import Xv6.CodeTactics
 

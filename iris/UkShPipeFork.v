@@ -255,6 +255,52 @@ Section UkShPipeFork.
     - iRight. iFrame "Hb". by iPureIntro.
   Qed.
 
+  (* =================================================================== *)
+  (*  S2b  THE ERA-LEVEL READING OF THE WIDENED CREDENTIAL, AND THE ONE    *)
+  (*       CONJUNCT THE TERMINAL SHAPE STILL OWES IT (lane                 *)
+  (*       SH-PIPE-ROUND-7, finding (3)).                                  *)
+  (*                                                                       *)
+  (*  The lane's finding is that the terminal round can only ever reach    *)
+  (*  the prompt inside the LOOP'S OWN credential -- the parent's only     *)
+  (*  continuation at 0x938 is [UkShLoop.ushl_head], and [getcmd] is out   *)
+  (*  of reach of a body law ([UkSh.wp_ksh_getcmd] spends                  *)
+  (*  [UkSh.ush_read_leaf], which needs the era's [ukn_pay N =             *)
+  (*  ucons_pay ...] equation, and [UkSh.ush_rest_l_at] carries only       *)
+  (*  [ukn_const N]).  So the era's own credential -- [UInitPipe.pipe_cc]'s*)
+  (*  [cc_wc] field -- has to BE [pterm_wc], and the ten laws of           *)
+  (*  [UInitSh.cons_cred_holds_at] have to hold at it.  Measured: five of  *)
+  (*  them mention [Wc] and FOUR are landed above ([pterm_wb_wc] (6),      *)
+  (*  [pterm_wc_blk_line] (7), [pterm_wc_read_of] (5), [pterm_wc_of] with  *)
+  (*  [UInitPipe.pipe_wp_line] (10), and (9) is                            *)
+  (*  [UShLine.ush_posb_of_lend_at] AT [pterm_wc], which is generic in     *)
+  (*  [Wc]).  The ONE that does not transfer for free is                   *)
+  (*  [UShLine.ush_wc_inp] -- the credential carries the era's delivered   *)
+  (*  input -- because it is a PURE entailment and the terminal shape's    *)
+  (*  only input fact sits inside [blk2_inv].  This is that law, at the    *)
+  (*  landed one plus exactly the reading the terminal shape owes; the     *)
+  (*  round (which mints the shape at a boundary whose line it has just    *)
+  (*  read) can supply it as one more persistent conjunct of               *)
+  (*  [pterm_shape].                                                       *)
+  (* =================================================================== *)
+  Lemma pterm_wc_inp_of
+      (Hwcf : forall (I : list (bv 8)) (p : nat),
+         ⊢ Wcf I p -∗ Wcf I p
+           ∗ ((∃ v : era_pins, era_pin γ (S gen_id) v ∗ inp_lb v I) ∨ T))
+      (Hlb : forall (I : list (bv 8)) (c2 : nat),
+         ⊢ pterm_shape I c2 -∗ pterm_shape I c2
+           ∗ (∃ v : era_pins, era_pin γ (S gen_id) v ∗ inp_lb v I))
+      (I : list (bv 8)) (p : nat) :
+    ⊢ pterm_wc I p -∗ pterm_wc I p
+      ∗ ((∃ v : era_pins, era_pin γ (S gen_id) v ∗ inp_lb v I) ∨ T).
+  Proof using .
+    rewrite {1}/pterm_wc. iIntros "[Hc | [%Hlt Hsh]]".
+    - iDestruct (Hwcf I p with "Hc") as "[Hc $]".
+      iApply (pterm_wc_of I p with "Hc").
+    - iDestruct (Hlb I (5 + p)%nat with "Hsh") as "[Hsh Hi]".
+      iSplitR "Hi"; [ | by iLeft ].
+      rewrite /pterm_wc. iRight. iSplitR; [ by iPureIntro | ]. iExact "Hsh".
+  Qed.
+
   Context (N : uk_names Σ).
   Context (γp : gname).
   Context (Pm : list (bv 8) -> iProp Σ).

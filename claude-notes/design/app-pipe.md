@@ -1279,6 +1279,27 @@ the theorem.  Order: (a) `pterm_shape`'s conjunct; (b) `pipe_cc`,
 twin; (e) the round at `pipe_round_entry`/`pipe_round_exit`; (f)
 `sh_pipe_child_law_all`, `pipe_adequacy_pipeΣ_final`.
 
+### 4.3q RULED (2026-09-24, after SH-PIPE-ROUND-7 part 2): the paid child walk's exit payment is a fancy update
+
+§4.3p landed in full: the pipe era runs at `pterm_wc`, the fork twin
+(`UkShPipeForkTwin`, upstream's core/fork/body verbatim with the later
+wait, `▷ ush_posb` and `gen_pay`) compiled first try — the timeless
+credential had only ever bought one `iMod`.  The round (e) stopped at one
+token: `UShPipeChild.wp_kshm_child_pipe_paid_line` takes `□ (Cr -∗ ukn_pay
+N (-1))` and the four-way split as PURE wands, while the family must
+exist before both forks and is born by a fancy update
+(`pipe_round_entry` = `blk2_inv_alloc`); every fupd site before the forks
+was measured and refuted (before the walk: `family -∗ pterm_pay I` is
+false; the registrar: its `-1` arm returns nothing; the split: pure).
+RULED: `□ (Cr -∗ ukn_pay N (-1))` becomes `□ (Cr ={⊤}=∗ ukn_pay N (-1))` in
+`UShPipeChild.v` (both forms) and in `UkShPipePaid.v` if forwarded — its
+own comment says it pays the parse's exits, every one a WP point.  Then
+(e) is an assembly with no measured hole and (f) the theorem.  Two
+operational rules from the lane, now standing: the widened credential
+(and `pipe_Wcl_at`/`pipe_Wbl_at`) is `Typeclasses Opaque`; the prompt
+lemmas are pinned at `uprogSG_free` and `pipe_sh_prompt_law_t` inlines
+`pterm_prompt_law`'s body (applying it as a wand wedges `IntoWand`).
+
 ## 5. Programs
 
 ### 5.1 sh: the PIPE arm (lanes SH-PARSE-PIPE, SH-PIPE)

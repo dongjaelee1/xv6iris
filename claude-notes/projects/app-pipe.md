@@ -397,6 +397,9 @@ arm is the theorem's one named premise (`pipe_both_law`).
   third site (the registrar's resources are lost on `pipe(2)`'s `-1` arm,
   and the split is pure) — one-token repair in a file this lane does not
   own.  (f) not reached.**  See the Findings blocks.
+- [ ] **SH-PIPE-ROUND-8** (design §4.3q: the one-token fancy update on the
+  paid child walk's exit payment; THE ROUND; `sh_pipe_child_law_all`;
+  `pipe_adequacy_pipeΣ_final`).  Brief `brief-sh-pipe-round-8.md`.
 ## Findings (append as lanes report)## Findings (append as lanes report)## Findings (append as lanes report)
 
 ### PQ-FLAG-2 (2026-09-18) — the write link's second premise, paid by the CODE

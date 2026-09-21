@@ -8,6 +8,7 @@ Require Import UkShPipeFork.
 Require Import UShPipeCatSlot.
 
 (* obligation (A): the two prompt bytes at the terminal arm *)
+Print Assumptions UkShPipeFork.pterm_wq_pay.
 Print Assumptions UkShPipeFork.pterm_prompt_step.
 Print Assumptions UkShPipeFork.pterm_prompt_arm.
 Print Assumptions UkShPipeFork.pterm_prompt_law.

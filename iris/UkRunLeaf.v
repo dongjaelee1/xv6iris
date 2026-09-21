@@ -1269,4 +1269,78 @@ Section UkRunLeaf.
     rewrite H2. reflexivity.
   Qed.
 
+
+  (* ===================================================================== *)
+  (* ...AND THE [c.jr] LEAF THAT HANDS THE STEP'S OWN LATER OUT (lane      *)
+  (* SH-PIPE-ROUND-7, finding (2)).                                        *)
+  (*                                                                       *)
+  (* THIS IS THE LEAF THE LATER REPAIR ACTUALLY NEEDS, and the one         *)
+  (* SH-PIPE-ROUND-6's measurement missed.  ROUND-6 looked for a           *)
+  (* later-providing step BETWEEN THE WAIT'S RETURN (0x938) AND THE        *)
+  (* PROMPT and found none; but the resource whose later has to be         *)
+  (* stripped -- the child's exit payload, redeemed out of the escrow with *)
+  (* [ChildTok.gen_pay] -- becomes available one instruction EARLIER, at   *)
+  (* the [wait] ECALL's return (0xc90), and the [c.jr ra] at 0xc94 that    *)
+  (* returns from [wait] stands between that point and 0x938              *)
+  (* ([UkShRun.wp_kshr_wait_pid] is [c.li a7,3 ; ecall ; c.jr ra]).  So    *)
+  (* the later CAN be paid -- by a wait twin that hands its answer at      *)
+  (* 0xc94 and this leaf -- and the parent re-enters the command loop at   *)
+  (* 0x938 with the payload LATER-FREE, which is the only shape the loop   *)
+  (* head accepts (see the lane's report: stripping at 0x938 instead       *)
+  (* consumes the head's own first instruction and there is no re-entry    *)
+  (* at 0x93a).                                                            *)
+  (* ===================================================================== *)
+  Lemma wp_uk_cjr_later (N : uk_names Σ) (h : CpuId) (m : regfile)
+      (pc : mword 64) (rs1 : mword 5) (tgt : mword 64) (avail : nat) :
+    uint rs1 <> 0 ->
+    tgt = ret_pc (m !!! Regidx rs1) ->
+    uinstr_is (ukn_t N) pc true (C_JR (Regidx rs1)) -∗
+    urun N h m pc avail -∗
+    ▷ (∀ h' : CpuId,
+         urun N h' m tgt avail -∗ mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
+  Proof using .
+    intros H1 H2. iIntros "#Hi Hrun Hcont".
+    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
+    iDestruct (uinstr_is_uk_instr with "Hheap Hi") as %Hui.
+    iApply (UkStep.wp_uk_retire_later C pt Rfd Rut pm sz Hlo Hpm HRut Hlzf
+              M m pc fdv cw gn cs pidv true (C_JR (Regidx rs1))
+              (Some (JALR (zeros' 12, Regidx rs1, zreg)))
+              (Some tgt) None Hui
+              ltac:(intro s; apply exec_execute_C_JR)
+              eq_refl I
+              (fun s _ _ _ _ _ =>
+                 UserTotalU.goodmb_execute_C_JR UserFrame.Du_r UserFrame.Du_w
+                   (Regidx rs1) s)
+              ltac:(intros s _ _ _ Hag _;
+                    exact (UserExecFacts.goodmb_execute_JALR_total
+                             UserFrame.Du_r UserFrame.Du_w (zeros' 12) rs1
+                             (zero_extend' 5 ('b"00")) s
+                             UserTotalU.Du_r_nPC UserTotalU.Du_w_nPC
+                             (UserFrame.Du_gpr_of_Z_r rs1)
+                             (UserFrame.Du_gpr_of_Z (zero_extend' 5 ('b"00")))
+                             (UserTotalU.u_gm_zicfilp s Hag)
+                             (agree_u_zicfilp s Hag)
+                             (UserTotalU.u_gm_zca s Hag) (agree_u_zca s Hag)))
+              with "Hb [Hheap Hstk Hufd Hcwda Hcha Hcont]").
+    2:{ iNext.
+        iApply (urun_close with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep Hnpx Hcont"). }
+    intros s_pc _ _ _ Hag Hvals.
+    cbn [uv_exp uv_post uv_jmp uv_wr uv_upd].
+    assert (Hrsv : register_lookup (R_bitvector_64 (WpGpr.gpr_of_Z (uint rs1)))
+                     s_pc.(sregs) = m !!! Regidx rs1).
+    { pose proof (Hvals rs1) as Hv.
+      replace (Z.eqb (uint rs1) 0) with false in Hv
+        by (symmetry; apply Z.eqb_neq; exact H1).
+      exact Hv. }
+    change (execute (JALR (zeros' 12, Regidx rs1, zreg)))
+      with (execute_JALR (zeros' 12) (Regidx rs1) zreg).
+    change zreg with (Regidx cli_rs1).
+    rewrite (exec_execute_JALR_ret_zca (zeros' 12) rs1 cli_rs1 s_pc H1
+               ltac:(vm_compute; reflexivity)
+               (agree_u_zicfilp s_pc Hag) (agree_u_zca s_pc Hag)
+               ltac:(apply UserBits.bit0_update0_64)).
+    rewrite Hrsv. rewrite ret_pc_jalr. rewrite H2. reflexivity.
+  Qed.
+
 End UkRunLeaf.

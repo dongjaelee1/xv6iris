@@ -84,6 +84,11 @@ Require Import FdSlots UserFd.
 Require Import UkRun.
 Require Import UkSh.
 Require Import UkShFork.
+Require Import Xv6G.         (* the backtick-[Context] trap: name the class *)
+Require Import IrefSlots ProcAvail FileInvDefs.
+Require Import ConsoleInv.   (* [CONSOLE] *)
+Require Import UCodeShK.     (* [shk_rodata] *)
+Require Import UShPanic.     (* [prompt_step] / [ksh_w_of_link_prompt_fam] *)
 Require Import RiscvPtsto.
 Require Import WpUart.
 Require Import CtxIdDefs.
@@ -118,10 +123,18 @@ Section UkShPipeFork.
      two mask facts are closed ([blk2N_uart], [blk2N_pipeN]), and an
      existential one would put a [coPset] disjointness under the binder
      at every use. *)
+  (* ...AND THE THIRD PURE CONJUNCT (lane SH-PIPE-ROUND-6, obligation
+     (A)): the round's line IS a pipeline line.  The two terminal prompt
+     steps ([PipeBoth.pprompt_dollar_fork] / [pprompt_space_fork]) ask
+     for [forall sel, sel_wf2 alt_forkc sel -> pblk2_wit_t I alt_forkc
+     sel], which is FREE at an [LPipe] line ([PipeBoth.pblk2_wit_t_forkc])
+     and at no other; the shape has to carry it because [UkSh.
+     ush_prompt_law] quantifies over EVERY input [I] and the loop knows
+     nothing about the round's line. *)
   Definition pterm_shape (I : list (bv 8)) (c2 : nat) : iProp Σ :=
     (∃ (v : era_pins) (L : list (bv 8)) (gL gR gM : gname)
        (XL YR : iProp Σ),
-       ⌜Timeless XL /\ Timeless YR⌝
+       ⌜Timeless XL /\ Timeless YR /\ pboth_line I⌝
        ∗ era_pin γ (S gen_id) v
        ∗ pwc_fork_exit g blk2N (S gen_id) v I L gL gR gM XL YR c2)%I.
 
@@ -150,7 +163,8 @@ Section UkShPipeFork.
     rewrite /pterm_shape. iIntros "H".
     iDestruct "H" as (v L gL gR gM XL YR) "(%Htl & #Hpin & Hfe)".
     iSplitR; [ by iExists v; iFrame "Hpin" | ].
-    iExists v, L, gL, gR, gM, XL, YR. by iFrame "Hpin Hfe".
+    iExists v, L, gL, gR, gM, XL, YR. iSplitR; [ by iPureIntro | ].
+    by iFrame "Hpin Hfe".
   Qed.
 
   (* a KILLED child pays the payload with the taint, exactly as
@@ -180,6 +194,28 @@ Section UkShPipeFork.
   Lemma pterm_wc_3 (I : list (bv 8)) : pterm_wc I 3%nat -∗ Wcf I 3%nat.
   Proof using .
     rewrite /pterm_wc. iIntros "[H | [%Hlt _]]"; [ iExact "H" | lia ].
+  Qed.
+
+  (* ---- ...AND THE CHILD LAW'S PAYLOAD AT THE WIDENED CREDENTIAL IS
+          EXACTLY [pterm_pay], so SS4.3j (1)'s REDEFINITION NEEDS NO NEW
+          DEFINITION: [UkShFork.ushf_child_law_at] AT [pterm_wc] already
+          IS the twin the ruling asks for (lane SH-PIPE-ROUND-6).  What
+          it also needs -- and what this lane REFUTES -- is
+          [UkShFork]'s [HWct], i.e. [Timeless (pterm_wc I p)]; see S5. ---- *)
+  Lemma pterm_wq_pay (I : list (bv 8)) :
+    UkShFork.ushf_wq pterm_wc I ⊣⊢ pterm_pay I.
+  Proof using .
+    rewrite /pterm_pay /UkShFork.ushf_wq /pterm_wc. iSplit.
+    - iIntros "[[H | [%Hlt _]] | [H | [_ H]]]".
+      + iLeft. by iLeft.
+      + exfalso. lia.
+      + iLeft. by iRight.
+      + iRight. rewrite Nat.add_0_r. iExact "H".
+    - iIntros "[[H | H] | H]".
+      + iLeft. by iLeft.
+      + iRight. by iLeft.
+      + iRight. iRight. iSplitR; [ iPureIntro; lia | ].
+        rewrite Nat.add_0_r. iExact "H".
   Qed.
 
   (* ---- [UkSh]'s three pure [Wc] laws, at the widened credential ---- *)
@@ -298,7 +334,7 @@ Section UkShPipeFork.
     iDestruct "Hv" as (v') "[#Hpin' #Hres]".
     rewrite /pterm_shape.
     iDestruct "Hsh" as (v L gL gR gM XL YR) "(%Htl & #Hpin & Hfe)".
-    destruct Htl as [HTX HTY].
+    destruct Htl as (HTX & HTY & _).
     iDestruct (era_pin_agree with "Hpin' Hpin") as %->.
     iMod (pterm_fork_exit_read_fupd g ⊤ blk2N (S gen_id) v I L l
             gL gR gM XL YR 7%nat HTX HTY ltac:(apply top_subseteq)
@@ -329,4 +365,231 @@ Section UkShPipeFork.
                 with "Hpin HT").
   Qed.
 
+
 End UkShPipeFork.
+
+Section UkShPipeForkPrompt.
+  (* [UShPanic.v]'s binder list, which is what makes the call's classes
+     resolve here as they resolve there, plus the pipeline era's two. *)
+  Context {Σ : gFunctors}.
+  Context `{HRg : !riscvGS Σ}.
+  Context `{!xv6G Σ, !bioslotG Σ, !fdslotG Σ, !fileG Σ,
+            !irefslotG Σ, !pavG Σ, !wchG Σ, !ufdG Σ}.
+  Context `{GEN : GenId} `{XI : CurCtx}.
+  Context `{!ghost_varG Σ Z}.
+  Context `{!ghost_varG Σ (gset gname)}.
+  Context `{!echoOutG Σ}.
+  Context `{!pipeOutG Σ}.
+  Context `{PS : uprogSG Σ}.
+  Context (g : pipe_gn).
+  Local Notation γ := (pgn_cl g).
+  Context `{!uartGhostG Σ}.
+
+  Local Notation Wcf := (pipe_Wcl_at g).
+
+  (* =================================================================== *)
+  (*  S4  OBLIGATION (A): THE TWO PROMPT BYTES AT THE TERMINAL ARM,       *)
+  (*      PACKAGED AS [UkSh.ksh_w] (lane SH-PIPE-ROUND-6, order A;        *)
+  (*      design SS4.3m AS LANDED).                                       *)
+  (*                                                                     *)
+  (*  The loop's prompt is ONE [write(2, "$ ", 2)] and [UShPanic.        *)
+  (*  ksh_w_of_link_prompt_fam] is that call at an ABSTRACT byte family   *)
+  (*  [F] with a per-byte link step as its only premise.  So obligation   *)
+  (*  (A) is exactly a [UShPanic.prompt_step] at                          *)
+  (*  [F p := pterm_shape g I (5 + p)], whose two instances are             *)
+  (*  PIPE-STAGE-3's landed steps ([PipeBoth.pprompt_dollar_fork] at      *)
+  (*  position 5, [pprompt_space_fork] at 6 -- 5 is the runcmd child's    *)
+  (*  own `fork\n').  Nothing else about the terminal arm is needed here: *)
+  (*  the call is the SAME one the landed arm makes, at a different       *)
+  (*  family.                                                            *)
+  (*                                                                     *)
+  (*  [Hcons] IS A HYPOTHESIS AND THAT IS A FINDING (see the lane's       *)
+  (*  report): the terminal byte steps turn a CLAIM step into an          *)
+  (*  [out_link], which every other era-level byte law reaches through    *)
+  (*  the RESOURCE bundle [PipeLinks.pipe_links] instead                  *)
+  (*  ([pipe_links_holds] is itself [Proof using Hcons]).  The pipeline's *)
+  (*  record has no eighth leaf for the TERMINAL byte, so this lane       *)
+  (*  carries the equation the way [PipeBoth] does.                       *)
+  (* =================================================================== *)
+  Context (Hcons : @riscv_cons_res Σ (@riscv_fixedGS Σ HRg) = pecl g).
+
+  Lemma pterm_prompt_step (I : list (bv 8)) :
+    pipe_link_taint g -∗
+    UShPanic.prompt_step (fun p : nat => pterm_shape g I (5 + p)%nat).
+  Proof using Hcons.
+    iIntros "#Ht". rewrite /UShPanic.prompt_step.
+    iIntros "!>" (p b Φ) "%Hb %Hp Hsh HΦ".
+    assert (Hbt : b = u_prompt !!! p)
+      by (symmetry; exact (list_lookup_total_correct u_prompt p b Hb)).
+    rewrite /pterm_shape.
+    iDestruct "Hsh" as (v L gL gR gM XL YR) "(%Htl & #Hpin & Hfe)".
+    destruct Htl as (HTX & HTY & Hbl).
+    assert (Hwitt : forall sel : list bool,
+              sel_wf2 alt_forkc sel -> pblk2_wit_t I alt_forkc sel).
+    { destruct Hbl as (ws & Hws). intros sel Hs.
+      exact (pblk2_wit_t_forkc I ws sel Hws Hs). }
+    destruct p as [| [| p]]; [ | | exfalso; lia ].
+    - (* the `$' at position 5 *)
+      iApply (pprompt_dollar_fork g Hcons blk2N (S gen_id) v I L gL gR gM
+                XL YR b Φ HTX HTY blk2N_uart Hbt Hwitt
+                with "[] Ht Hpin Hfe [HΦ]").
+      { iApply pblk2_ecl_R_t_holds. }
+      iIntros "Hfe". iApply "HΦ".
+      iExists v, L, gL, gR, gM, XL, YR. iSplitR; [ by iPureIntro | ].
+      by iFrame "Hpin Hfe".
+    - (* the space at position 6 *)
+      iApply (pprompt_space_fork g Hcons blk2N (S gen_id) v I L gL gR gM
+                XL YR b Φ HTX HTY blk2N_uart Hbt Hwitt
+                with "[] Ht Hpin Hfe [HΦ]").
+      { iApply pblk2_ecl_R_t_holds. }
+      iIntros "Hfe". iApply "HΦ".
+      iExists v, L, gL, gR, gM, XL, YR. iSplitR; [ by iPureIntro | ].
+      by iFrame "Hpin Hfe".
+  Qed.
+
+  (* ...AND THE CALL ITSELF: obligation (A), verbatim. *)
+  Lemma pterm_prompt_arm (Np : uk_names Σ) (I : list (bv 8))
+      (l : list fdstate) (rb : bool) :
+    l !! 2%nat = Some (FdOpen rb true (FdDevice CONSOLE)) ->
+    pipe_link_taint g -∗ shk_rodata (ukn_t Np) -∗
+    UkSh.ksh_w Np (mword_of_int 2 : mword 64)
+      (mword_of_int UkSh.sh_prompt_pv) 2%nat
+      (UserFd.ustd (ukn_fd Np) l ∗ pterm_shape g I 5%nat)
+      (UserFd.ustd (ukn_fd Np) l ∗ pterm_shape g I 7%nat).
+  Proof using Hcons.
+    intros Hl2. iIntros "#Ht #Hro".
+    iPoseProof (pterm_prompt_step I with "Ht") as "#Hst".
+    iApply (UShPanic.ksh_w_of_link_prompt_fam Np
+              (fun p : nat => pterm_shape g I (5 + p)%nat) l rb Hl2
+              with "Hst Hro").
+  Qed.
+
+  (* ...AND THE LOOP'S PROMPT LAW AT THE WIDENED CREDENTIAL.  This is
+     what [UkSh.wp_ksh_getcmd] spends at the terminal re-entry, and it is
+     the LANDED law on the left arm and (A) on the right. *)
+  Lemma pterm_prompt_law (Np : uk_names Σ) :
+    pipe_link_taint g -∗ shk_rodata (ukn_t Np) -∗
+    UkSh.ush_prompt_law Np Wcf -∗
+    UkSh.ush_prompt_law Np (pterm_wc g).
+  Proof using Hcons.
+    iIntros "#Ht #Hro #Hlaw".
+    rewrite {1}/UkSh.ush_prompt_law.
+    iDestruct "Hlaw" as "[#Hplaw #Hclaw]".
+    rewrite /UkSh.ush_prompt_law. iModIntro. iSplitR "".
+    - iIntros (I l) "%Hfd2". destruct Hfd2 as [rb Hl2].
+      iPoseProof (pterm_prompt_arm Np I l rb Hl2 with "Ht Hro") as "Hta".
+      iIntros (h m avail) "%Ha0 %Ha1 %Ha2 #Hcode [Hstd Hc] Hrun Hcont".
+      rewrite {1}/pterm_wc. iDestruct "Hc" as "[Hc | [_ Hsh]]".
+      + iApply ("Hplaw" $! I l with "[%] [%] [%] [%] Hcode [$Hstd $Hc] Hrun
+                 [Hcont]");
+          [ by exists rb | exact Ha0 | exact Ha1 | exact Ha2 | ].
+        iIntros (h' ret) "[Hstd Hw] Hrun".
+        iApply ("Hcont" $! h' ret with "[$Hstd Hw] Hrun").
+        iApply (pterm_wc_of g I 2%nat with "Hw").
+      + iApply ("Hta" $! h m avail with "[%] [%] [%] Hcode [$Hstd Hsh]
+                 Hrun [Hcont]");
+          [ exact Ha0 | exact Ha1 | exact Ha2 | | ].
+        { rewrite Nat.add_0_r. iExact "Hsh". }
+        iIntros (h' ret) "[Hstd Hsh'] Hrun".
+        iApply ("Hcont" $! h' ret with "[$Hstd Hsh'] Hrun").
+        rewrite /pterm_wc. iRight. iSplitR; [ iPureIntro; lia | ].
+        iExact "Hsh'".
+    - iExact "Hclaw".
+  Qed.
+
+  (* =================================================================== *)
+  (*  S5  THE TERMINAL ARM'S TIMELESS CORE, AND THE READ REFUTATION AT    *)
+  (*      IT ALONE (lane SH-PIPE-ROUND-6)                                 *)
+  (*                                                                     *)
+  (*  WHY THIS IS HERE.  [UkShFork]'s fork arm redeems the child's exit   *)
+  (*  payload with [ChildTok.gen_pay_timeless] -- the escrow's plain      *)
+  (*  [gen_pay] costs a LATER, and the u-tier has no later-providing      *)
+  (*  leaf at the two [c.mv]s the parent runs next, so the payload MUST   *)
+  (*  be [Timeless] ([UkShFork]'s own [HWct] section variable, and the    *)
+  (*  [Proof using] of [wp_kshf_fork_at] / [wp_kshm_body_at] names it).   *)
+  (*  [pterm_shape] is NOT: it carries the family's [inv].  The check     *)
+  (*  below is the two halves of that, one green and one red.            *)
+  (*                                                                     *)
+  (*  The RED one, compiled by hand and NOT committed, is                 *)
+  (*                                                                     *)
+  (*    Lemma chk_pterm_wc_timeless I p : Timeless (pterm_wc g I p).      *)
+  (*    Proof. rewrite /pterm_wc /pterm_shape /pwc_fork_exit /blk2_inv.   *)
+  (*           apply _. Qed.                                              *)
+  (*                                                                     *)
+  (*    Error: Cannot infer this placeholder of type: Timeless           *)
+  (*      (Wcf I p \/ |(p < 3)%nat| * exists v L gL gR gM XL YR,          *)
+  (*         |...| * era_pin gamma (S gen_id) v *                         *)
+  (*         inv blk2N (blk2_body g (S gen_id) v I L gL gR gM XL YR) *    *)
+  (*         wcur gR (1/2) (5 + p) * wcur gM (1/2) 3 *                    *)
+  (*         (cs_frozen_at v (nlines I - 1) \/ echo_taint gamma))         *)
+  (*                                                                     *)
+  (*  -- i.e. PIPE-STAGE-3's obstruction verbatim, at the CHILD'S EXIT    *)
+  (*  ESCROW instead of at a [LinkRec] boundary field.  Everything in     *)
+  (*  the shape BUT the [inv] is timeless, which is the green half:       *)
+  (* =================================================================== *)
+  Lemma pterm_cursors_timeless (v : era_pins) (gR gM : gname) (c2 : nat)
+      (I : list (bv 8)) :
+    Timeless (PipeBoth.wcur gR (1/2) c2 ∗ PipeBoth.wcur gM (1/2) 3%nat
+              ∗ (cs_frozen_at v (nlines I - 1)%nat ∨ echo_taint γ))%I.
+  Proof using . apply _. Qed.
+
+  (* THE TIMELESS, PERSISTENT CORE of the terminal arm: the era's pin, the
+     round's FROZEN resolution and the two pure facts.  It is everything
+     the READ site needs and nothing the PROMPT needs -- which is the
+     whole of what a repair has to re-home (design SS4.3m AS LANDED SS7's
+     era-fixed family: the [inv] moves to [pipe_links], the core stays
+     in the credential). *)
+  Definition pterm_tcore (I : list (bv 8)) : iProp Σ :=
+    (∃ v : era_pins,
+       ⌜pboth_line I⌝
+       ∗ era_pin γ (S gen_id) v
+       ∗ ((⌜(1 <= nlines I)%nat⌝ ∗ cs_frozen_at v (nlines I - 1)%nat)
+          ∨ echo_taint γ))%I.
+
+  Global Instance pterm_tcore_persistent I : Persistent (pterm_tcore I).
+  Proof using . rewrite /pterm_tcore. apply _. Qed.
+  Global Instance pterm_tcore_timeless I : Timeless (pterm_tcore I).
+  Proof using . rewrite /pterm_tcore. apply _. Qed.
+
+  (* ...AND THE READ AFTER THE TERMINAL PROMPT REFUTES A LATER LINE AT THE
+     CORE ALONE: a PLAIN entailment, no family, no mask, no fancy update.
+     This is strictly stronger than part 3's [pterm_read_law] (which
+     spends a [={T}=*] only to read [1 <= nlines I] back out of the
+     family's invariant) and it survives any re-homing of the family. *)
+  Lemma pterm_tcore_read (v : era_pins) (I l : list (bv 8)) :
+    era_pin γ (S gen_id) v -∗
+    pterm_tcore I -∗ pwc_rres v (I ++ l ++ [wl_nl])%list -∗
+    echo_taint γ.
+  Proof using .
+    iIntros "#Hpv Hc Hres".
+    iDestruct "Hc" as (v') "(%Hbl & #Hpin & [[%Hpos #Hfz] | #HT])";
+      [| iExact "HT" ].
+    iDestruct (era_pin_agree with "Hpin Hpv") as %->.
+    iExFalso.
+    iApply (pterm_read_absurd v I l Hpos with "Hfz Hres").
+  Qed.
+
+  (* ...AND THE LANDED SHAPE YIELDS IT, at the one fancy update
+     [PipeBoth.pwc_fork_exit_nlines] costs. *)
+  Lemma pterm_shape_tcore (E : coPset) (I : list (bv 8)) (c2 : nat) :
+    (↑blk2N : coPset) ⊆ E ->
+    pterm_shape g I c2 ={E}=∗ pterm_shape g I c2 ∗ pterm_tcore I.
+  Proof using .
+    intros HN. rewrite {1}/pterm_shape.
+    iIntros "H".
+    iDestruct "H" as (v L gL gR gM XL YR) "(%Htl & #Hpin & Hfe)".
+    destruct Htl as (HTX & HTY & Hbl).
+    iMod (pwc_fork_exit_nlines g E blk2N (S gen_id) v I L gL gR gM XL YR c2
+            HTX HTY HN with "Hfe") as "[Hfe #Hn]".
+    iAssert (pterm_tcore I) as "#Hc".
+    { rewrite /pterm_tcore. iExists v. iSplitR; [ by iPureIntro | ].
+      iFrame "Hpin". iDestruct "Hn" as "[%Hpos | #HT]"; [| by iRight ].
+      rewrite {1}/pwc_fork_exit. iDestruct "Hfe" as "(_ & _ & _ & #Hfz)".
+      iDestruct "Hfz" as "[#Hfz | #HT]"; [| by iRight ].
+      iLeft. iFrame "Hfz". by iPureIntro. }
+    iModIntro. iFrame "Hc". rewrite /pterm_shape.
+    iExists v, L, gL, gR, gM, XL, YR. iSplitR; [ by iPureIntro | ].
+    by iFrame "Hpin Hfe".
+  Qed.
+
+End UkShPipeForkPrompt.

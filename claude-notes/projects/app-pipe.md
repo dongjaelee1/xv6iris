@@ -345,11 +345,17 @@ arm is the theorem's one named premise (`pipe_both_law`).
   design in the Findings §7: an ERA-FIXED family invariant in
   `pipe_links` with a per-round registry in `pipe_era`.  Tree RC=0, 34
   results Closed.  Brief `brief-pipe-stage-4.md`.
-- [ ] **SH-PIPE-ROUND-6** (after STAGE-4, merged; design §4.3m AS LANDED:
+- [~] **SH-PIPE-ROUND-6** (after STAGE-4, merged; design §4.3m AS LANDED:
   the flag in `pe_cur`, `pterm_read_law` discharged, §4.3j's route
   unblocked): A the prompt arm, B the pipe body/fork twins + the child
   law at `pterm_pay`, C the right child's mode half, D the assembly and
   `pipe_adequacy_pipeΣ_final`.  Brief `brief-sh-pipe-round-6.md`.
+  **A LANDED** (`UkShPipeFork.pterm_prompt_step` / `pterm_prompt_arm` /
+  `pterm_prompt_law`), **C MEASURED** (`UCatPipe` does not move: the
+  abstract `Pay` already carries the mode half), **B REFUTED and D
+  BLOCKED**: §4.3j's widened exit payload CANNOT BE REDEEMED — the fork
+  arm redeems a child's exit with `ChildTok.gen_pay_timeless` and
+  `pterm_shape` carries the family's `inv`.  See the Findings block.
 ## Findings (append as lanes report)## Findings (append as lanes report)## Findings (append as lanes report)
 
 ### PQ-FLAG-2 (2026-09-18) — the write link's second premise, paid by the CODE
@@ -7946,3 +7952,324 @@ terminal round needs on the CLAIM side is landed and Closed: the flag,
 the freeze, the two terminal byte steps, the two chains, the second
 shape with the frozen reading, the pure read refutation,
 `pterm_read_law_of` and the end-to-end test.
+
+### SH-PIPE-ROUND-6 (2026-09-21) — obligation (A) LANDS, (C) costs nothing, and (B) IS REFUTED AT A THIRD SITE OF THE SAME `Timeless` WALL: a child's exit payload is redeemed with `gen_pay_timeless`, so the terminal round's family CANNOT TRAVEL THROUGH THE ESCROW — §4.3m AS LANDED §7 is not an optional simplification, it is the critical path
+
+Branch `app-pipe/sh-pipe-round-6` off main (`6f7c9e70b`), three code
+commits (`64768c717`, `008021119`, `f32d43c80`).  Files moved:
+`iris/UkShPipeFork.v` (mine) and ONE new file `iris/UShPipeCatSlot.v`
+(+ one `iris/_CoqProject` row), plus the report file
+`iris/PipeRound6Assumptions.v` (NOT a `_CoqProject` row).
+**`UShPipeRound.v`, `UShPipeRound2.v`, `UCatPipe.v`, `UEchoPipe.v`,
+`PipeAssumptions.v`, `UInitPipeAdequacy.v` and every generic and
+upstream file are BYTE-IDENTICAL to main**; in particular
+`sh_pipe_child_law` was NOT redefined and `sh_round_holds_pipe`,
+`sh_pipe_child_law_all` and `pipe_adequacy_pipeΣ_of_child` did not move.
+Whole-tree `ec2-lane.sh round6 build` **RC=0**; no `Admitted`, no
+`Axiom`; `Proof using` on every result.  **ALL FOUR AUDITS ARE UNMOVED BY
+CONSTRUCTION, and the dependency graph says so**: the REVERSE cone of the
+two files this lane touches is `{UkShPipeFork, UShPipeCatSlot}` plus the
+three report files, and NONE of those is a `_CoqProject` row that
+`SystemAssumptions`, `EchoAssumptions`, `TreeAssumptions`,
+`FileAssumptions` or `PipeAssumptions` reaches (measured:
+`grep -ln 'Require Import UkShPipeFork' *.v` = the three report files
+only; `UShPipeCatSlot` = itself and this lane's report file).  So
+`audit-only` **13**, `audit-echo-only` **14**, `audit-tree-only` **13**,
+`audit-pipe-only` **14** stand at their baselines — and they were
+MEASURED on the mirror after the changes all the same, and are exactly
+that: **13 / 14 / 13 / 14**, each list verbatim the standing one.
+`Print Assumptions` on the lane's **eight** results
+(`iris/PipeRound6Assumptions.v`): six **Closed under the global
+context** (`pterm_wq_pay`, `pterm_prompt_step`,
+`pterm_cursors_timeless`, `pterm_tcore_read`, `pterm_shape_tcore`, and
+— see below — nothing else); `pterm_prompt_arm` and `pterm_prompt_law`
+carry THREE (`resv_matches`, `resv_is_valid`,
+`functional_extensionality_dep`) because they walk the `write` syscall
+through the Sail model; `UShPipeCatSlot.pipe_sh_cat_slot` carries
+THIRTEEN (the 11 `PrimString`/`PrimInt63` primitives + the two
+`xv6iris_extras` reservation `Parameter`s), because the /cat pin is read
+off the imported disk image.  **Every one of those is inside the
+campaign's standing FOURTEEN; nothing new appears.**
+
+**THE FINAL THEOREM IS NOT REACHED, and this lane states that plainly**:
+`pipe_adequacy_pipeΣ_final` does not exist, `sh_pipe_child_law_all` is
+still owed, `PipeAssumptions.v` still audits
+`UInitPipeAdequacy.pipe_adequacy_pipeΣ_of_child`.
+
+**(0) IN ONE SENTENCE.**  Order A is landed and order C is free, but
+order B — §4.3j (2)'s "pipe twins of `UkShFork.wp_kshm_body_at` /
+`wp_kshf_fork_at` at `ukn_pay N' := fun _ => pterm_pay I`" — is
+**impossible at any credential that carries the family's `inv`**,
+because the fork arm's re-entry redeems its child's exit payload with
+`ChildTok.gen_pay_timeless` and the u-tier has NO later-providing leaf
+between the `wait`'s return and the loop head; so §4.3j's whole route
+(`UkShPipeFork` as the carrier of the terminal round) is dead and
+PIPE-STAGE-4's §7 successor — the ERA-FIXED family invariant in
+`pipe_links` with a persistent per-round registry — is the ONLY
+remaining repair, and it is on the critical path rather than beside it.
+
+**(1) ORDER A, LANDED, and it costs one new pure conjunct.**
+
+```coq
+  Lemma pterm_prompt_step (I : list (bv 8)) :
+    pipe_link_taint g -∗
+    UShPanic.prompt_step (fun p : nat => pterm_shape g I (5 + p)%nat).
+
+  Lemma pterm_prompt_arm (Np : uk_names Σ) (I : list (bv 8))
+      (l : list fdstate) (rb : bool) :
+    l !! 2%nat = Some (FdOpen rb true (FdDevice CONSOLE)) ->
+    pipe_link_taint g -∗ shk_rodata (ukn_t Np) -∗
+    UkSh.ksh_w Np (mword_of_int 2) (mword_of_int UkSh.sh_prompt_pv) 2%nat
+      (UserFd.ustd (ukn_fd Np) l ∗ pterm_shape g I 5%nat)
+      (UserFd.ustd (ukn_fd Np) l ∗ pterm_shape g I 7%nat).
+
+  Lemma pterm_prompt_law (Np : uk_names Σ) :
+    pipe_link_taint g -∗ shk_rodata (ukn_t Np) -∗
+    UkSh.ush_prompt_law Np (pipe_Wcl_at g) -∗
+    UkSh.ush_prompt_law Np (pterm_wc g).
+```
+
+`UShPanic.ksh_w_of_link_prompt_fam` is the prompt's ONE call at an
+abstract byte family with a per-byte link step as its only premise, so
+(A) is exactly a `prompt_step` whose two instances are STAGE-3's landed
+`pprompt_dollar_fork` (position 5 of `alt_forkc`) and `pprompt_space_fork`
+(position 6) — the brief's "both landed and Closed" is right and nothing
+else was needed.  TWO things the design did not say:
+
+- **`pterm_shape` needs a THIRD pure conjunct, `pboth_line I`.**  The two
+  steps ask for `∀ sel, sel_wf2 alt_forkc sel -> pblk2_wit_t I alt_forkc
+  sel`, which is free at an `LPipe` line (`pblk2_wit_t_forkc`) and at no
+  other — and `UkSh.ush_prompt_law` quantifies over EVERY input `I`, so
+  the shape has to carry it.  One line; the round has it from
+  `pipe_round_entry`'s own `pboth_line`.
+- **The terminal byte steps need the record equation `Hcons`
+  (`riscv_cons_res = pecl g`) as a HYPOTHESIS**, because they turn a
+  claim step into an `out_link` directly, while every other era-level
+  byte law reaches `out_link` through the RESOURCE bundle
+  `PipeLinks.pipe_links` (whose own `pipe_links_holds` is
+  `Proof using Hcons`).  The pipeline's `LinkRec` has no leaf for the
+  TERMINAL byte and STAGE-3 showed it cannot have one.  So the clean
+  home for (A) in the successor is an EIGHTH leaf of `pipe_links` (or a
+  second era bundle beside it), produced where `pipe_links_holds` is.
+  This lane carries the equation in its own section, as `PipeBoth` does.
+
+**(2) ORDER B IS REFUTED, and the refutation is three lines of Coq plus
+one grep.**  `UkShFork`'s section binds
+
+```coq
+  Context `{HWct : forall (I : list (bv 8)) (p : nat), Timeless (Wc I p)}.
+```
+
+and BOTH `wp_kshf_fork_at` and `wp_kshm_body_at` name it in their
+`Proof using` — it is spent at exactly one place, the parent's re-entry:
+
+```coq
+  iMod (gen_pay_timeless γ pidc (fun _ : Z => ushf_wq np) xs
+          with "Htok Hesc") as "HQ".
+```
+
+`ChildTok.gen_pay` — the escrow's only other form — yields `▷ Q xs`
+(`gen_agree`'s saved predicate), and `gen_pay_timeless` is `gen_pay`
+followed by `iMod`, which needs `Timeless (Q xs)`.  At `Q := fun _ =>
+pterm_pay I` that is `Timeless (Wcf I 3 ∨ Wcf I 0 ∨ pterm_shape I 5)`,
+and `pterm_shape` carries `blk2_inv = inv blk2N (blk2_body …)`.  The
+check, compiled by hand and NOT committed (the file's S5 header quotes
+it):
+
+```coq
+  Lemma chk_pterm_wc_timeless I p : Timeless (pterm_wc g I p).
+  Proof. rewrite /pterm_wc /pterm_shape /pwc_fork_exit /blk2_inv.
+         apply _. Qed.
+  (* Error: Cannot infer this placeholder of type "Timeless
+       (Wcf I p ∨ ⌜p < 3⌝ ∗ ∃ v L gL gR gM XL YR, ⌜…⌝ ∗
+        era_pin γ (S gen_id) v ∗
+        inv blk2N (blk2_body g (S gen_id) v I L gL gR gM XL YR) ∗
+        wcur gR (1/2) (5 + p) ∗ wcur gM (1/2) 3 ∗
+        (cs_frozen_at v (nlines I - 1) ∨ echo_taint γ))" *)
+```
+
+and its GREEN half is committed (`pterm_cursors_timeless`): **everything
+in the terminal shape but the `inv` is timeless.**  This is
+PIPE-STAGE-3's obstruction verbatim, at its THIRD site — `LinkRec`'s
+boundary fields (STAGE-3), the claim's deposit (STAGE-4 §6), and now the
+child's exit escrow.
+
+**AND THE `▷` CANNOT BE PAID, which is the part that makes it a
+refutation and not a shape problem.**  A `▷` is strippable only at a
+later-providing leaf, and at the `urun` altitude the u-tier has exactly
+TWO (`grep -rn 'Lemma wp_uk_[a-z0-9_]*_later'`):
+`UkRunLeaf.wp_uk_btype_later` and `UkRunBr.wp_uk_btype0_later`, both
+BTYPE.  (`UkLoad.wp_uk_load_later` / `UkStore.wp_uk_store_later` are one
+tier below and have no `urun` wrapper; `UkStep.wp_uk_retire_later` is the
+generic one they are all built from.)  Between the `wait`'s return and
+the point the credential is SPENT the parent executes `0x938 c.mv`,
+`0x93a c.mv`, `0x93c jal getcmd`, and then the prompt's `write` INSIDE
+`getcmd` — no BTYPE at all.  (`0x930 c.beqz` is before the
+wait, and `0x940 bltz` is after the prompt.)  So:
+
+- *A later-providing `c.mv` would not be enough either.*  Even given
+  `UkRunLeaf.wp_uk_cmv_later` (a 20-line twin of `wp_uk_btype_later`
+  over the already-landed `UkStep.wp_uk_retire_later` — the cheap-looking
+  repair), stripping the later at `0x938` CONSUMES that instruction, and
+  the only re-entry the loop offers is `UkShLoop.ushl_head` AT `0x938`
+  (`UkSh.wp_ksh_loop`, the whole loop under one `iLöb`, is `Local`).
+  There is no entry point at `0x93a`.  So the cheap repair needs TWO
+  generic additions (the leaf and a loop head at `0x93a`) plus a copy of
+  the `Local` `wp_kshf_fork_core`; it is not cheaper than §7.
+- *`▷` inside the credential does not work either.*  Pushing the later
+  into the terminal arm (`Wcf I p ∨ ⌜p<3⌝ ∗ ▷ pterm_fam …`) survives the
+  redemption but dies at the PROMPT: `pblk2_cstep_R_t` opens `blk2_inv`,
+  and `out_link`'s `={⊤∖↑uartN}=∗` absorbs `◇` but not `▷`, while
+  `▷ inv N P ⊬ |={E}=> inv N P`.  Splitting the shape so that only the
+  timeless half is outside the later leaves the prompt with `▷ inv`
+  again.
+
+**CONSEQUENCE.**  §4.3m AS LANDED's "ROUND-6 lands, in order: … (B) the
+twins `wp_kshm_body_pipe`/`wp_kshf_fork_pipe` and `sh_pipe_child_law`
+redefined at `pterm_pay`" is not implementable, and neither is any
+variant of it that leaves the family in the payload.  **`UkShPipeFork`
+cannot be the carrier of the terminal round**, and STAGE-4 §7's
+successor — `pipe_era` gains `pe_fam` (a `mono_list` registry of the
+per-round `(gL, gR, gM)`), `pipe_links` gains an eighth leaf holding an
+ERA-FIXED `inv`, and the boundary credential becomes the persistent
+registry fragment plus timeless ghost halves plus `cs_frozen_at` — is
+the ONLY route left.  Under it (B) costs NOTHING AT ALL: with
+`Timeless (Wc I p)` restored, `UkShFork.wp_kshm_body_at` / `wp_kshf_fork_at`
+AT the widened credential ARE the twins (`UkShFork`'s section takes `Wc`
+as a parameter and `UkSh`'s takes no `Timeless` of it at all — grep:
+`UkSh.v` has ONE `Timeless` and it is `ush_pid`'s), and §4.3j's
+redefinition of `sh_pipe_child_law` becomes
+`ushf_child_law_at (pterm_wc g) ushq_lp 68` — one instantiation, the
+argument list `(g : pipe_gn)` unchanged, so `sh_pipe_child_law_all` and
+`UInitPipe` do not move.  That is the design finding worth keeping.
+
+**(3) WHAT LANDED BESIDE (A): the terminal arm's TIMELESS CORE, and the
+read refutation at IT ALONE.**
+
+```coq
+  Definition pterm_tcore (I : list (bv 8)) : iProp Σ :=
+    (∃ v : era_pins, ⌜pboth_line I⌝ ∗ era_pin γ (S gen_id) v
+       ∗ ((⌜(1 <= nlines I)%nat⌝ ∗ cs_frozen_at v (nlines I - 1)%nat)
+          ∨ echo_taint γ))%I.
+
+  Lemma pterm_tcore_read (v : era_pins) (I l : list (bv 8)) :
+    era_pin γ (S gen_id) v -∗ pterm_tcore I -∗
+    pwc_rres v (I ++ l ++ [wl_nl])%list -∗ echo_taint γ.
+
+  Lemma pterm_shape_tcore (E : coPset) (I : list (bv 8)) (c2 : nat) :
+    (↑blk2N : coPset) ⊆ E ->
+    pterm_shape g I c2 ={E}=∗ pterm_shape g I c2 ∗ pterm_tcore I.
+```
+
+`pterm_tcore` is **persistent AND timeless**, and `pterm_tcore_read` is
+a **plain entailment** — no family, no mask, no fancy update.  So the
+read obligation the whole of ROUND-5 parts 2–4 and STAGE-4 were about
+needs NOTHING of the family; it is `cs_frozen_at` and two pure facts.
+Two consequences: route (α)'s fupd on `UkSh.ush_wc_read` (§4.3k) is not
+needed by any route (STAGE-4 already said its own route did not need
+it — now no route does), and under §7 the credential's terminal arm is
+`pterm_tcore I` plus the registry fragment, which is exactly the
+timeless shape §7 promises.
+
+**(4) ORDER C, MEASURED: `UCatPipe.v` DOES NOT MOVE — the abstract `Pay`
+already carries the mode half.**  `UCatPipe.pcat_pay_at W Q Pay` takes
+`Pay` opaque and `pcat_pay_at_of_round` forwards it to the round law
+`□ (∀ N'' l, ⌜ukn_pay N'' = Q⌝ -∗ ustd -∗ Pay -∗ ∃ I Cend, kcat_round ∗ I
+∗ (Cend -∗ ukn_pay N'' (-1)))`, which `UShCatPay.sh_exec_sup_cat_wq_holds_at`
+takes at `Pay := Cr` — the round's own lend `RcR γp`.  The `Cend -∗ …`
+is built INSIDE the body, with `Cr` in hand, so it closes over whatever
+`Cr` carried: put `wcur gM (1/2) n` in `RcR γp` and the right child's
+exit payload has it.  Nothing in `UCatPipe.v` or `UShCatPay.v` is
+stated at a fixed payload.  STAGE-4 §8's "the RIGHT CHILD must hand its
+mode half back" is therefore a choice of `Qc` and `RcR` in the ROUND and
+not an edit anywhere below it.  (The mode the right child returns is 1
+or 2; 3 is the runcmd child's own panic and fires only where there is no
+right child, so `pipe_round_exit`'s `n <> 3` is met.)
+
+**(5) A SECOND, INDEPENDENT WALL FOR ORDER D, at the statement:
+`sh_round_holds_pipe` CANNOT SUPPLY THE ROUND WITH /cat's PIN.**
+`⊢ sh_pipe_child_law g` is asserted with NO resources
+(`UInitPipe.sh_pipe_child_law_all`), so everything the round needs must
+be a wand ANTECEDENT of `sh_pipe_child_law` and must be produced by
+`sh_round_holds_pipe`, whose premises are exactly `pipe_links g`, `udep`,
+`UShEcho.sh_echo_slot T`, `(∃ v, era_pin γ (S gen_id) v)` and
+`sh_pipe_child_law` itself.  The round execs /cat, and that needs
+`UShCatPay.sh_cat_slot T`, whose middle conjunct is
+`□ (∀ v, app_pred app_run v -∗ app_pred app_run v ∗ (⌜era0_cat_pins v⌝ ∨ T))`.
+Measured: `sh_cat_slot` has **exactly one producer in the tree**
+(`sh_cat_slot_of_fs_pure_holds`, at `FileFsPure.file_fs_pure`) and
+reaching it needs the ERA EQUATION
+`file_app = MkAppcfg echo_names (pipe_pred γ) r` — which lives in
+`UInitPipe.pipe_Hinit_boot` and nowhere below it; `sh_round_holds_pipe`
+has neither `r` nor that equation, and `sh_echo_slot`'s law is at
+`FsEchoPin.era0_echo_pins`, from which /cat's pin does not follow
+(`EchoFsPure.echo_fs_pure` is /init + /sh + /echo;
+`FileFsPure.file_fs_pure` is that AND `era0_cat_pins`).
+
+The missing producer is landed as **`iris/UShPipeCatSlot.pipe_sh_cat_slot`**
+— `app_inv fsc_fs` and `pipe_Hinit_boot`'s own `Hmint`, plus the era
+equation, give `sh_cat_slot (echo_taint γ)` through
+`AppPipeCons.pipe_cat_pins_acc` — so the repair is one `iAssert` in
+`pipe_Hinit_boot` beside the `Hslot` it already builds, and one more
+premise on `sh_round_holds_pipe`.  **That premise is a STATEMENT change
+in a file this lane owns whose CALL SITE is in `UInitPipe.v`, which it
+does not**, so the lane stopped there per STOP rule 3 and did not make
+it.  `pipe_Hinit_boot`'s own statement does not move under the repair —
+only its proof body, by three lines.
+
+**(6) THE ROUND'S FOUR EXITS, for the record.**  Of the four the brief
+lists, the good path and the `pipe(2)` tail are payable at the LANDED
+child law (`pipe_round_exit` / `pipe_round_unwind`); **both** fork
+tails are not, and both for ROUND-5's reason — at `fork1` #1's panic the
+runcmd child has already written `fork\n` through the family
+(`pblk2_fork1_chain` at mode 3), so its block is non-empty and
+`pipe_round_unwind` cannot run; it exits at the TERMINAL SHAPE just as
+`fork1` #2 does (the brief's own order D says so: "fork #1 fails →
+`pblk2_fork1_chain` at mode 3 → `pwc_fork_exit`"), and
+`pipe_fork_exit_not_lpr` refutes both.  ROUND-5's
+contrast ("`fork1` #1's panic is fine because the lend came back whole")
+is right about the LEND and wrong about the BLOCK: `ush_fork_ans`'s left
+arm hands `RcL γp` back, but the five bytes are already out.  So the
+terminal payload is needed on TWO of the four exits, not one.
+
+**WHAT THE DESIGN GOT WRONG.**
+1. §4.3j (2) / §4.3m AS LANDED's order B: the pipe twins at `pterm_pay`
+   cannot exist, because a child's exit payload is redeemed with
+   `gen_pay_timeless` and `pterm_shape` carries an `inv`.  §2 above.
+2. §4.3m AS LANDED's "the era-fixed family invariant with a per-round
+   registry (STAGE-4's Findings §7) is an optional later simplification,
+   off the critical path" — it is the critical path, and it is the only
+   route left.  §2.
+3. The brief's order C ("the mode half in cat's exit payload:
+   `pcat_pay_at`'s `Pay`/exit — measure whether the abstract `Pay`
+   already carries it"): it does, entirely.  §4.
+4. §4.3j (3)'s "`sh_round_holds_pipe`'s STATEMENT … do not move" cannot
+   hold for the /cat pin: the round cannot be closed from the five
+   premises that statement has.  §5.
+5. ROUND-5's reading of `fork1` #1's panic tail.  §6.
+
+**STOP RULES.**  Rule 1 did not fire (the round was never reached).
+Rule 2 did not fire (`sh_pipe_child_law_all`'s quantifier shape is met
+by an antecedent-style definition; what fails is §5's supply, one level
+down).  **Rule 3 FIRED, twice**: at `UkShFork`'s `HWct` (§2 — no
+statement was weakened; the twin was not written) and at
+`sh_round_holds_pipe`'s premise list (§5 — the premise was not added,
+the missing producer was landed beside it instead).
+
+**THE ONE THING THE NEXT LANE NEEDS FIRST.**  The coordinator's ruling
+that STAGE-4 §7 is now the route, and the one piece §7 left unmeasured:
+`XL`/`YR` are per-round `iProp`s born at `pipe(2)` (they are
+`PipeProto.wcur pn 0` and `pws_lb pn (take 1 L)` at the pipe names the
+runcmd child creates), so an ERA-FIXED `blk2_body` must name them
+through `saved_prop` — or the exclusion must be re-cut as a fact about
+`PipeProto` that both children can restate from the registry's own
+handle.  Everything else §7 needs is landed: this lane's (A) and the
+timeless core, STAGE-4's flag, freeze, two terminal byte steps, two
+chains and pure read refutation, ROUND-5's `pipe_round_entry` /
+`_exit` / `_unwind`, PIPE-EXEC-ECHO's H1/H3, EXEC-CAT's H2, PIPE-CC's
+credential, and (§5) `UShPipeCatSlot.pipe_sh_cat_slot`.  And
+`pterm_wq_pay` says what (B) then costs: NOTHING, because
+`UkShFork.ushf_wq (pterm_wc g) I ⊣⊢ pterm_pay I` — §4.3j (1)'s
+redefinition is `ushf_child_law_at (pterm_wc g) ushq_lp 68`, one
+instantiation of the landed definition, and its argument list after the
+section closes is still `(g : pipe_gn)`.

@@ -1695,6 +1695,7 @@ PipeStageInst.v
 UShPipeRound.v
 UkShCat.v
 UShCatPay.v
+UShPipeCatSlot.v
 PipeReadInst.v
 UInitPipe.v
 UInitPipeAdequacy.v

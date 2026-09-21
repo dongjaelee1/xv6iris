@@ -386,8 +386,17 @@ arm is the theorem's one named premise (`pipe_both_law`).
   `ush_read_leaf`, i.e. the era's payload equation, which
   `UkSh.ush_rest_l_at` does not pass down), so the shape has to ride the
   ERA'S credential and `UInitPipe.pipe_cc`'s `cc_wc` must become
-  `UkShPipeFork.pterm_wc g`.  Items 2–5 NOT landed; the final theorem is
-  not reached.  See the Findings block.
+  `UkShPipeFork.pterm_wc g`.  **PART 2 (after the coordinator ruled that
+  as §4.3p): (a)–(d) LANDED and the whole tree is green at the widened
+  credential — `pterm_shape`'s `inp_lb`, `pipe_cc`/`pipe_cc_holds`/the
+  prompt law, `UShPipeRound` restated at `pterm_wc`, and the fork twin
+  (`UkShPipeForkTwin.v`, which compiled first try).  All four audits at
+  their baselines.  (e) THE ROUND stops one premise short:
+  `UShPipeChild.wp_kshm_child_pipe_paid_line`'s `□ (Cr -∗ ukn_pay N (-1))`
+  is a PURE wand and the family's allocation is a FANCY UPDATE, with no
+  third site (the registrar's resources are lost on `pipe(2)`'s `-1` arm,
+  and the split is pure) — one-token repair in a file this lane does not
+  own.  (f) not reached.**  See the Findings blocks.
 ## Findings (append as lanes report)## Findings (append as lanes report)## Findings (append as lanes report)
 
 ### PQ-FLAG-2 (2026-09-18) — the write link's second premise, paid by the CODE
@@ -8803,3 +8812,146 @@ at `pterm_wc` (five mechanical re-derivations, §3); (d) the fork twin =
 `UkShPipeWait.wp_kshr_wait_pid_later` and `ChildTok.gen_pay` in place of
 the landed wait and `gen_pay_timeless`; (e) THE ROUND (brief item 4);
 (f) the theorem.
+
+### SH-PIPE-ROUND-7 — PART 2 (2026-09-24, design §4.3p as ruled) — the widening LANDS end to end and the tree is green at it; THE ROUND stops one premise short, at a PURE wand where the family's allocation needs a FANCY UPDATE
+
+Same branch, five more code commits (`79c702144`, `c1e5c1f99`, and the
+three before them).  Files moved beyond part 1: `iris/UkShPipeFork.v`,
+`iris/UShPipeRound.v`, `iris/UInitPipe.v`, plus TWO new files
+`iris/UkShPipeForkTwin.v` and (part 1) `iris/UkShPipeWait.v`
+(+ two `iris/_CoqProject` rows).  Whole-tree `ec2-lane.sh round7 build`
+**RC=0**; no `Admitted`, no `Axiom`; `Proof using` on every result.
+**AUDITS, all four re-measured at this tree AFTER the era's credential
+changed: `audit-only` 13, `audit-echo-only` 14, `audit-tree-only` 13,
+`audit-pipe-only` 14** — each list verbatim the standing one.
+`Print Assumptions` on the lane's five results is unchanged (one Closed
+under the global context, the others inside the standing fourteen).
+
+**(6) §4.3p IS LANDED, (a)–(d).**
+- (a) `UkShPipeFork.pterm_shape` carries `inp_lb v I`; `pterm_shape_inp`
+  reads it and `pterm_wc_inp_of` lost its hypothesis.
+- (b) `UInitPipe.pipe_cc`'s `cc_wc` **is** `UkShPipeFork.pterm_wc g`.
+  `pipe_cc_holds`'s five `Wc`-laws are the landed ones through
+  `pterm_wc_3` / `pterm_wc_of`, the read law is the new
+  `UInitPipe.pipe_wc_read_t` (`pterm_wc_read_of` over
+  `UShPipeRound.pipe_pterm_read_law`, itself off the new
+  `pipe_mid_rres`), and the cursor-boundary law is
+  `UShLine.ush_posb_of_lend_at` at `pterm_wc` with `pterm_wc_inp_of`.
+  The prompt law is `UShPipeRound.pipe_sh_prompt_law_t`.
+- (c) `UShPipeRound` restated at `pterm_wc`: `pipe_Hchild_echo_t`,
+  `pipe_Hexecfail_D_t`, `pipe_Hpanic_t`, `pipe_child_law_echo_t`,
+  `pipe_kill_law_t`, `pwc3_t`/`pwc3b_t`/`pwc0_t`/`pwct_t`,
+  `sh_pipe_child_law`, `ushq_body_law_pipe`, `sh_round_holds_pipe`.
+  **Every one of them is the landed proof with `pterm_wc_3` on the way in
+  and `pterm_wc_of` on the way out** — part 1's measurement held: the era
+  reads its credential at index 3 alone, plus index 0 and the taint.
+- (d) NEW `iris/UkShPipeForkTwin.v`: `UkShFork`'s `wp_kshf_fork_core`,
+  `wp_kshf_fork_at`, `wp_kshm_body_at`, `ushf_body_law_echo` and
+  `ushf_rest_of_body_at`, VERBATIM, with exactly three changes — the wait
+  is `UkShPipeWait.wp_kshr_wait_pid_later` (the answer at `0xc94`), the
+  re-entry's obligation is `▷ ush_posb` where it was `◇ ush_posb`, and the
+  payload is redeemed with `ChildTok.gen_pay`.  No `HWct`.  **It compiled
+  first try**, which is the strongest evidence part 1's route is right:
+  the only thing the timeless credential ever bought was that one `iMod`.
+
+**(7) TWO OPERATIONAL FINDINGS, both measured, both now recorded in the
+files.**
+- **The widened credential must be `Typeclasses Opaque`** — with
+  `PipeLinkInst.pipe_Wcl_at` and `pipe_Wbl_at`.  With `cc_wc` transparent,
+  an instance search at the era's seam walks into the two-writer family
+  and does not come back: one `iApply` in `pipe_Hinit_boot` ran **1 h 28
+  min** at 99.9 % CPU and 4 GB before it was killed.  `UInitPipe`'s own
+  header already warned about this file's cone; the credential is the
+  fourth leaf that has to be named rather than searched.
+- **`UkShPipeFork`'s prompt lemmas were stated at the WRONG `uprogSG`
+  instance.**  ROUND-6 landed `pterm_prompt_arm`/`pterm_prompt_law` with
+  their `urun`s at the AMBIENT `uprogSG` (the section's `PS` was never
+  generalised — `About` shows no `PS` argument), while the era is at
+  `uprogSG_free`; the mismatch shows up only at the first call site.
+  Both statements are now pinned at `(PS := uprogSG_free)` and so is the
+  `UShPanic.ksh_w_of_link_prompt_fam` call inside.  **And even pinned,
+  APPLYING `pterm_prompt_law` as a wand wedges the proofmode** (`iApply`,
+  `iSpecialize`, `iDestruct` all time out at 90 s on the same step),
+  while its BODY is three `iDestruct`s and one `iPoseProof`: so
+  `UShPipeRound.pipe_sh_prompt_law_t` inlines the body.  The wedge is at
+  `IntoWand` on a premise whose credential family is the record's
+  `lk_lcred`; `Typeclasses Opaque` on it does NOT fix that one.
+
+**(8) (e) THE ROUND STOPS ONE PREMISE SHORT, and the leaf is exact.**
+`UShPipeChild.wp_kshm_child_pipe_paid_line` — the round's entry, and the
+only one — takes
+
+```coq
+    Cr -∗
+    □ (app_taint -∗ Qc (-1)) -∗
+    □ (Cr -∗ ukn_pay N (-1)) -∗                          (* <-- HERE *)
+    (∀ γp : pipe_names, Cr -∗ R γp -∗ RcL γp ∗ (RcR γp ∗ (Rk γp ∗ Cx γp))) -∗
+    UkShPipe.ush_pipe_call N ld R -∗
+    UkShDiag.ush_execfail_law_at (wl_line PipeDisc.dg_pipe) 5%nat Cr Bp -∗
+```
+
+and the two marked premises are PURE wands.  The family must exist before
+BOTH forks (the split hands `wcur gL` to the left child and `wcur gR`,
+`wcur gM` to the right), and it is born by a FANCY UPDATE
+(`UShPipeRound2.pipe_round_entry`, i.e. `PipeBoth.blk2_inv_alloc`).  There
+are exactly three places a fupd is available before the forks, and each
+is refuted:
+
+- **before the walk** (the child law's own goal is a `mWP`, so `iMod`
+  works): then `Cr` IS the family bundle, and `□ (Cr -∗ ukn_pay N (-1))`
+  asks for `family -∗ pterm_pay I` — the payload is
+  `Wcf I 3 ∨ Wcf I 0 ∨ pterm_shape I 5` (`pterm_wq_pay`), the family at
+  `c1 = c2 = 0, mode 0` is none of them, and the two routes back
+  (`pipe_round_unwind` to `Wcf I 3`, `pipe_round_exit` to `Wcf I 0`) are
+  BOTH fancy updates.  Widening the payload does not help either: the
+  payload is `ushf_wq Wct I`, i.e. the CREDENTIAL at 3 and 0, and the
+  unwind returns a 3-credential — so the open family would have to be an
+  arm of `pterm_wc I 3`, which `pterm_wc_3` (the collapse the whole era
+  rests on, §6(c)) makes impossible: the echo child law, the panic law
+  and the exec supply all read index 3 through a PURE wand.
+- **the registrar** (`ush_pipe_call_paid`'s
+  `∀ γp, pipe_qfrag … ={⊤}=∗ pipe_reg γp ∗ R γp`, a real fupd): it would
+  have to capture the lend, and `UkShPipe.ush_pipe_ans`'s `-1` arm
+  **returns nothing of the registrar** (measured: the arm is
+  `⌜r = -1⌝ ∗ (∃f, ubytes …) ∗ ustd`), so the `panic("pipe")` tail —
+  which is paid from `Cr` through `ush_execfail_law_at … Cr Bp` — would
+  have nothing left.
+- **the split**: it is a pure wand and it is the caller's to supply, so
+  no fupd can be inserted into it.
+
+**THE REPAIR IS ONE TOKEN, in a file this lane does not own**:
+`□ (Cr -∗ ukn_pay N (-1))` becomes `□ (Cr ={⊤}=∗ ukn_pay N (-1))` in
+`UShPipeChild.v` (both the `_paid` lemma and the `_paid_line` corollary),
+and — if the walk spends it off a WP point — the same in
+`UkShPipePaid.v`.  Its own comment says what it is for ("the lend pays
+the PARSE's own exits, whole"), and every parse exit is a WP point, so
+the re-discharge should be one `iMod`.  **STOP rule 3 FIRED; the lane did
+not make the change.**  Everything else (e) needs was surveyed and is
+landed: `ush_pipe_call_echo_pay` / `ep_reg_pay` (the registrar at
+`Wq := emp`), `sh_exec_sup_echo_pipe_at`, `pcat_pay_at` /
+`pcat_round_at_g` / `sh_exec_sup_cat_wq_holds_at`, `pipe_Qc` /
+`pipe_Qc_two` / `pipe_round_reading` / `pipe_payL` / `pipe_payR`,
+`pipe_round_entry` / `_exit` / `_unwind`, `blk2_mode_fire` /
+`pblk2_cstep_R_t` / `pblk2_fork1_chain` / `pwc_fork_exit`.
+
+**(f) NOT REACHED.**  `sh_pipe_child_law_all` is still owed, so
+`pipe_adequacy_pipeΣ_final` does not exist and `PipeAssumptions.v` still
+audits `pipe_adequacy_pipeΣ_of_child` (at **14**, re-measured).
+`UInitPipe.sh_pipe_child_law_all`'s Prop did NOT have to change: the
+child law is still `⊢ sh_pipe_child_law c`, now at `pterm_wc`.
+
+**IMPORTS THIS LANE ADDED** (for the nightly dead-import sweep's merge —
+every one is load-bearing): `UkShPipeFork.v` gains `UexecExecInst`
+(`uprogSG_free`, §7); `UShPipeRound.v` gains `UkShPipeFork` and
+`UkShPipeForkTwin`; `UInitPipe.v` gains `UkShPipeFork`.  The two new
+files carry `UkShFork`'s import list plus `UkShPipeWait` /
+`UkShPipeFork`.  `UkShPipeFork.v` also declares five `#[global]
+Typeclasses Opaque` (§7) which must survive any sweep.
+
+**THE ONE THING THE NEXT LANE NEEDS FIRST.**  Ownership of
+`UShPipeChild.v` (and `UkShPipePaid.v` if the premise is forwarded), for
+§8's one-token change.  With it, (e) is an assembly with no measured
+hole: allocate the family from the lend at the child law's own `mWP`
+(`pipe_round_entry`), pass it as `Cr`, take the registrar at
+`Wq := emp`, split it into the two lends, and close the four exits at
+`pipe_round_exit` (n ≠ 3), `pipe_round_unwind` and the terminal shape.

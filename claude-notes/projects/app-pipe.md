@@ -370,10 +370,24 @@ arm is the theorem's one named premise (`pipe_both_law`).
   pure entailment into `lk_blk` and the terminal round's family holds the
   era's `turn` for ever.  See the Findings block.
 - [ ] **SH-PIPE-ROUND-7** (after STAGE-5): the assembly; the theorem.
-- [ ] **SH-PIPE-ROUND-7** (design §4.3o, route (a): the later repair — two
+- [x] **SH-PIPE-ROUND-7** (design §4.3o, route (a): the later repair — two
   generic additions; the pipe twins under `gen_pay`; the child law at
   `pterm_wc`; the assembly; `pipe_adequacy_pipeΣ_final`).  Brief
-  `brief-sh-pipe-round-7.md`.
+  `brief-sh-pipe-round-7.md`.  **THE TWO ADDITIONS ARE THE WRONG TWO and
+  the lane STOPS at a statement it does not own.**  The later IS payable,
+  but at `0xc94 c.jr ra` inside `wait` (landed:
+  `UkRunLeaf.wp_uk_cjr_later`, `UkShPipeWait.wp_kshr_wait_pid_later`), not
+  at `0x938` — stripping it there consumes the LOOP HEAD'S OWN first
+  instruction and the loop has no re-entry at `0x93a`, so §4.3o's
+  `▷`-accepting `ushl_head` does not exist (statement landed as
+  `UkShLoop.ushl_head_later`, with `ushl_head_of_later` the one direction
+  that holds).  And the repair is not additive: the terminal round's only
+  continuation at `0x938` is the loop head (`UkSh.wp_ksh_getcmd` needs
+  `ush_read_leaf`, i.e. the era's payload equation, which
+  `UkSh.ush_rest_l_at` does not pass down), so the shape has to ride the
+  ERA'S credential and `UInitPipe.pipe_cc`'s `cc_wc` must become
+  `UkShPipeFork.pterm_wc g`.  Items 2–5 NOT landed; the final theorem is
+  not reached.  See the Findings block.
 ## Findings (append as lanes report)## Findings (append as lanes report)## Findings (append as lanes report)
 
 ### PQ-FLAG-2 (2026-09-18) — the write link's second premise, paid by the CODE
@@ -8549,3 +8563,243 @@ routes §2 and §3 leave, because they are the only two:
 Either way, `UkShPipeFork.v` STAYS: §3 says the terminal round can never
 go through the `LinkRec` record, so the widened credential outside it is
 permanent, and §4.3n's "retired for good" should be struck.
+
+### SH-PIPE-ROUND-7 (2026-09-24, design §4.3o route (a)) — §4.3o's TWO GENERIC ADDITIONS ARE THE WRONG TWO: the later IS payable, but at `0xc94` inside `wait`, not at `0x938`; and the repair is NOT additive, because the terminal round's only continuation at `0x938` is the LOOP HEAD, so the era's own credential (`UInitPipe.pipe_cc`'s `cc_wc`) has to BE `pterm_wc`
+
+Branch `app-pipe/sh-pipe-round-7` off main (`75276f451`), five code
+commits (`f3691be97`, `9980e57db`, `54c878adb`, `a12e92806`, `6859e8339`)
+plus this notes commit.  Files moved: `iris/UkRunLeaf.v`, `iris/UkShLoop.v`,
+`iris/UkShPipeFork.v` — **all three ADDITIVE, every landed statement
+byte-identical** — plus ONE new file `iris/UkShPipeWait.v` (+ one
+`iris/_CoqProject` row) and the report file `iris/PipeRound7Assumptions.v`
+(NOT a `_CoqProject` row).  **`UkSh.v`, `UkShFork.v`, `UShPipeRound.v`,
+`UShPipeRound2.v`, `UCatPipe.v`, `UEchoPipe.v`, `PipeBoth.v`,
+`PipeLink*.v`, `UInitPipe.v`, `UInitPipeAdequacy.v` and
+`PipeAssumptions.v` are BYTE-IDENTICAL to main.**  Whole-tree
+`ec2-lane.sh round7 build` **RC=0**; no `Admitted`, no `Axiom`;
+`Proof using` on every result.
+
+**THE FINAL THEOREM IS NOT REACHED, and this lane says so plainly**:
+`pipe_adequacy_pipeΣ_final` does not exist, `sh_pipe_child_law_all` is
+still owed, `PipeAssumptions.v` still audits
+`UInitPipeAdequacy.pipe_adequacy_pipeΣ_of_child`.  Brief items 2–5 (the
+twins, the child law at `pterm_wc`, THE ROUND, the theorem) are NOT
+landed: item 2 is blocked by §3 below and everything after it by item 2.
+
+**(0) IN ONE SENTENCE.**  §4.3o is right that the terminal round can
+travel through the escrow under a later and right that the later can be
+paid — but not at the instruction it names: stripping it at `0x938`
+consumes the LOOP HEAD'S OWN first instruction and the loop has no
+re-entry at `0x93a`, so the two additions that work are
+`UkRunLeaf.wp_uk_cjr_later` and a WAIT TWIN that hands its answer at
+`0xc94` (both landed here); and even with the later paid the repair is
+not additive, because the parent's only continuation at `0x938` is
+`UkShLoop.ushl_head`, so the terminal shape has to ride the ERA'S OWN
+credential and `UInitPipe.pipe_cc`'s `cc_wc` field — which this lane does
+not own — has to become `UkShPipeFork.pterm_wc g`.
+
+**(1) §4.3o's SECOND ADDITION DOES NOT EXIST, and the obstruction is the
+head's own first instruction.**  `UkShLoop.ushl_head_later` is landed as a
+DEFINITION (with the refutation in its header): `ushl_head` with
+`▷ UkSh.ush_pstate`.  A `▷` is strippable only at a later-providing step;
+the step available at `0x938` is `0x938 c.mv a1,s3` itself —
+`UkRunLeaf.wp_uk_cmv_later`, landed here, exactly as §4.3o asks — and
+taking it CONSUMES the head's first instruction and leaves the walk at
+`0x93a`, where `ushl_head` (stated at `urun … (mword_of_int 0x938) …`) no
+longer applies.  The loop offers no entry point at `0x93a`, and a body law
+cannot finish the walk by hand either — both public continuations need
+era-level resources `UkSh.ush_rest_l_at` does not pass down:
+
+- `UkSh.wp_ksh_getcmd` (the call at `0x93c`) is
+  `Proof using Hdsc_ncr Hdsc_line Hdsc_short HT ush_at_of_pm_taint
+  ush_at_of_pm_wb ush_read_leaf ush_wb_read ush_wc_read`, so it takes
+  `UkSh.ush_read_leaf` as an argument.  Its one producer,
+  `UShLine.ush_read_recv_leaf_holds_at`, needs the ERA'S PAYLOAD EQUATION
+  `ukn_pay N = ucons_pay fsc_cons γp (lk_T L) (ush_rd_x_at …)`, and
+  `ush_rest_l_at`'s body gives a body law only `⌜ukn_const N⌝`
+  (`UkRun.ukn_const`: "the payload does not read the status").  The
+  equation is TRUE of the record sh runs on; it is an INTERFACE gap in the
+  generic obligation, and closing it is a statement change to
+  `UkSh.ush_rest_l_at`.
+- `UkSh.wp_ksh_loop` (which would rebuild a head at any `Wc`) needs
+  `□ (T -∗ sh_deps)`, `ush_tag_law`, `ush_prompt_law`, `ush_rest_l_at` AND
+  `ush_read_leaf` — the body law holds none of the five.
+
+So `ushl_head_of_later : ushl_head_later -∗ ushl_head` (landed, one line)
+is all that holds: the latered head is STRICTLY STRONGER and cannot come
+from the landed one.
+
+**(2) BUT THE LATER IS PAYABLE — one instruction earlier than anybody
+looked — and both halves are landed.**  ROUND-6 measured "between the
+WAIT'S RETURN (`0x938`) and the prompt there is no later-providing leaf"
+and §4.3o priced a `c.mv`.  The resource whose later must be stripped is
+the child's exit payload, redeemed with `ChildTok.gen_pay` out of the
+escrow that rides `UexecRet.uwait_ans_pid` — and the ECALL delivers that
+answer at `0xc90`, while `UkShRun.wp_kshr_wait_pid` is
+`c.li a7,3 ; ecall ; c.jr ra` and runs ONE more instruction, `0xc94
+c.jr ra`, before control reaches `0x938`:
+
+```coq
+  (* iris/UkRunLeaf.v *)
+  Lemma wp_uk_cjr_later (N : uk_names Σ) (h : CpuId) (m : regfile)
+      (pc : mword 64) (rs1 : mword 5) (tgt : mword 64) (avail : nat) :
+    uint rs1 <> 0 -> tgt = ret_pc (m !!! Regidx rs1) ->
+    uinstr_is (ukn_t N) pc true (C_JR (Regidx rs1)) -∗ urun N h m pc avail -∗
+    ▷ (∀ h' : CpuId, urun N h' m tgt avail -∗ mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
+
+  (* iris/UkShPipeWait.v -- [UkShRun.wp_kshr_wait_pid] with its last
+     instruction taken over; the landed lemma is untouched *)
+  Lemma wp_kshr_wait_pid_later (N : uk_names Σ) `{!ukn_const N}
+      (h : CpuId) (m : regfile) (avail : nat) (Sc : gset gname) (p : Z) :
+    uint (m !!! Regidx a0_idx) = 0 ->
+    shk_code (ukn_t N) -∗ urun N h m (mword_of_int ShSyms.wait) avail -∗
+    UserChildren.uch (ukn_ch N) Sc -∗ UserChildren.upid (ukn_pid N) p -∗
+    (∀ (ret : mword 64) (Sc' : gset gname) (pidv : mword 32),
+       ⌜bv_unsigned pidv = p⌝ -∗ UserChildren.upid (ukn_pid N) p -∗
+       ⌜ret = (mword_of_int (-1) : mword 64) -> Sc' = (∅ : gset gname)⌝ -∗
+       uwait_ans_pid ret Sc Sc' pidv -∗ UserChildren.uch (ukn_ch N) Sc' -∗
+       ▷ (∀ h' : CpuId,
+            urun N h' (<[Regidx a0_idx := ret]>
+                        (<[Regidx a7_idx := (mword_of_int 3 : mword 64)]> m))
+              (ret_pc (m !!! Regidx ra_idx)) avail -∗
+            mWP (Loop : expr riscv_lang))) -∗
+    mWP (Loop : expr riscv_lang).
+```
+
+A caller redeems with `gen_pay` at `0xc94`, lands the `▷ Q` inside that
+later, and re-enters the command loop at `0x938` with `Q` LATER-FREE —
+the only shape `ushl_head` accepts.  **SH-PIPE-ROUND-6 §2's "AND THE `▷`
+CANNOT BE PAID" is refuted; §4.3o's ruling that the later repair is
+available stands, its choice of instruction does not.**
+
+**(3) THE STOP, AND THE LANE'S REAL FINDING: the terminal round has to
+ride the ERA'S credential.**  With the later paid, the parent holds
+`pterm_pay I = Wcf I 3 ∨ Wcf I 0 ∨ pterm_shape I 5` at `0x938` and must
+produce `UkSh.ush_posb N γp T Wc Wb Pm l 0` for the head AT THE LOOP'S
+`Wc` — which is `cc_wc` of the era's `UserConsole.cons_cred`, i.e.
+`UInitPipe.pipe_cc`'s field, i.e. `pipe_Wcl_at g`.  The first two arms
+land in it; the third cannot (PIPE-STAGE-3 and PIPE-STAGE-5 §3: no arm of
+`lk_lcred` can carry the terminal round).  And by §1 there is no other
+continuation — a body law holds `ush_gen_slot` (needs the taint, and a
+terminal round is a real, untainted run), the panic law (needs to be at
+`panic`'s entry) and the head, and nothing else that closes a WP on sh's
+code.  **So `cc_wc` must BE `UkShPipeFork.pterm_wc g`** — a statement
+change in `UInitPipe.v`, which this lane does not own.  STOP rule 3.  What
+it costs was measured to the leaf and is SMALL:
+
+- `UInitPipe.pipe_cc`: one field.  Of `pipe_cc_holds`'s ten laws, five
+  never mention `Wc`; (6) is `UkShPipeFork.pterm_wb_wc`, (7) is
+  `pterm_wc_blk_line`, (5) is `pterm_wc_read_of` over the landed law, (10)
+  is `pipe_wp_line` then `pterm_wc_of` — all landed — and (9) is
+  `UShLine.ush_posb_of_lend_at`, generic in `Wc`.
+- the ONE law that does not transfer for free is `UShLine.ush_wc_inp` (the
+  credential carries the era's delivered input): a PURE entailment whose
+  input fact the terminal shape keeps inside `blk2_inv`.
+  **`UkShPipeFork.pterm_wc_inp_of` (landed) is that law at the landed one
+  plus exactly the reading the shape owes**: one persistent `inp_lb v I`
+  conjunct on `pterm_shape`, which the round can mint (it forks on a line
+  it has just read).
+- `UShKernel.sh_prompt_law (pterm_wc g)` is the landed
+  `UkShPipeFork.pterm_prompt_law` applied to the law at `pipe_Wcl_at g`
+  plus `pipe_link_taint` — three lines in `pipe_Hinit_boot`.
+- `UShPipeRound.sh_round_holds_pipe` restated at `pterm_wc g` (this lane's
+  file, but its one consumer `pipe_Hinit_boot` is not), and with it
+  `pipe_child_law_echo`, `pipe_Hchild_echo`, `pipe_Hexecfail_D`,
+  `pipe_Hpanic`, `pipe_kill_law`.  **MEASURED at their statements: every
+  one of them reads `Wc` only at index 3 (`ush_panic_law` takes `Wc I 3`;
+  `UShEchoPay.sh_exec_sup_echo_wq_holds_at_D`'s four `Wc` premises are
+  index 3, index 0 and the taint), where the widening COLLAPSES
+  (`pterm_wc_3`) or injects (`pterm_wc_of`) — so all five are mechanical
+  re-derivations, including the ECHO line's child law at the widened
+  exit payload `ushf_wq (pterm_wc g) I = pterm_pay I`
+  (`UkShPipeFork.pterm_wq_pay`).**
+- §4.3j (3)'s "`sh_round_holds_pipe`'s STATEMENT, `UInitPipe`,
+  `UInitPipeAdequacy` and `PipeAssumptions` do not move" and §4.3o's "two
+  GENERIC ADDITIONS, no landed statement moves" are therefore both false.
+
+**(4) A CAMPAIGN-WIDE CORRECTION, measured: `Local Lemma` IS REACHABLE BY
+QUALIFIED NAME.**  `Local` keeps the short name out of an importer's
+scope; it does not hide the constant.  Compiled:
+`Require Import UkSh. Check UkSh.wp_ksh_loop.` typechecks, and so do
+`UkSh.wp_ksh_die`, `UkSh.wp_ksh_scan_step`, `UkSh.wp_ksh_blank_entry`
+and `Require Import UkShFork. Check UkShFork.wp_kshf_fork_core.`
+So SH-PIPE-ROUND-6 §2's cost "plus a copy of the `Local`
+`wp_kshf_fork_core`" is wrong: `UkShFork.wp_kshf_fork_core` can be
+APPLIED, and it does NOT name `HWct` (its `Proof using` is
+`Hpay Hpsok_free`), so it is usable at a NON-timeless credential.  What
+still forces a copy of its tail is narrower and exact: the core calls
+`UkShRun.wp_kshr_wait_pid`, which hands its answer at `0x938`, so the
+later cannot be paid inside it; the twin re-does fork1's parent arm from
+the `c.beqz` at `0x930` to the wait with
+`UkShPipeWait.wp_kshr_wait_pid_later` in its place (~250 of the core's
+~330 lines, verbatim).
+
+**(5) ROUTE (b) IS SUBJECT TO §3 TOO, and this is why §3 is the ruling the
+campaign owes itself first.**  §4.3o's recorded alternative (the family
+into `AppInv.app_inv`'s body) makes the terminal arm TIMELESS, which
+removes the escrow's later and both of this lane's leaves — but it does
+NOT give the terminal shape a home inside `lk_lcred`, so `cc_wc` still has
+to widen.  The widening is common to both routes.
+
+**WHAT THE DESIGN GOT WRONG.**
+1. §4.3o's second generic addition (a `▷`-accepting `ushl_head`): not
+   derivable from `ushl_head` — the only later-providing step at `0x938`
+   is the head's own first instruction and the loop has no re-entry at
+   `0x93a`.  §1.
+2. §4.3o's first generic addition (`wp_uk_cmv_later`): it lands, and it is
+   useless AT THE SITE THE RULING NAMES, for §1's reason.  The leaf the
+   repair needs is `wp_uk_cjr_later`, at `0xc94`.  §2.
+3. SH-PIPE-ROUND-6 §2's "the `▷` CANNOT be paid": refuted — the escrow's
+   token is in hand one instruction BEFORE the parent's re-entry.  §2.
+4. §4.3j (3) / §4.3o's "no landed statement moves": the terminal round
+   cannot reach the prompt outside the era's own credential, so
+   `UInitPipe.pipe_cc`'s `cc_wc` moves.  §3.
+5. ROUND-6 §2's "plus a copy of the `Local` `wp_kshf_fork_core`": `Local`
+   does not hide the constant; what forces the copy is the wait call
+   inside it.  §4.
+
+**STOP RULES.**  Rule 1 fired in substance and not in form: a
+later-providing step between the wait's return and the prompt DOES exist
+(`0xc94`, and `0x938` itself), but the re-entry it serves does not accept
+what stripping at `0x938` delivers; the lane reports the instruction —
+`0x938 c.mv a1,s3`, the loop head's own — and stopped there (§1).  Rule 2
+did not fire (the round was never reached).  **Rule 3 FIRED**:
+`UInitPipe.pipe_cc`'s `cc_wc` field (§3).  No statement outside this
+lane's files was weakened, and no landed statement inside them moved
+either.
+
+**`Print Assumptions`** (`iris/PipeRound7Assumptions.v`, compiled by hand
+on the mirror): `UkShPipeFork.pterm_wc_inp_of` **Closed under the global
+context**; `UkShLoop.ushl_head_of_later` **2** (`resv_matches`,
+`resv_is_valid` — the reservation `Parameter`s every `urun` statement
+carries); `UkRunLeaf.wp_uk_cmv_later`, `UkRunLeaf.wp_uk_cjr_later` and
+`UkShPipeWait.wp_kshr_wait_pid_later` **3** each (those two and
+`functional_extensionality_dep`, because they walk instructions through
+the Sail model).  **Every one is inside the campaign's standing FOURTEEN;
+nothing new appears.**
+
+**AUDITS.**  `audit-pipe-only` **14**, re-measured on the mirror at this
+lane's tree (`Print Assumptions UInitPipeAdequacy.pipe_adequacy_pipeΣ_of_child`
+under the audit's own `AUDIT_FLAGS`): the 11 `PrimString`/`PrimInt63`
+primitives + the two `xv6iris_extras` reservation `Parameter`s +
+`functional_extensionality_dep`, verbatim the standing list.
+`audit-only` **13**, `audit-echo-only` **14**,
+`audit-tree-only` **13** — each re-measured on the mirror at this lane's
+tree, each list verbatim the standing one.  All four cones are touched by this lane's changes
+(`UkRunLeaf.v` and `UkShLoop.v` are under every one of them), which is
+why all four were measured and not argued from the dependency graph; the
+changes are ADDITIVE, so no existing proof term moved.
+
+**THE ONE THING THE NEXT LANE NEEDS FIRST.**  The coordinator's ruling on
+§3 — `UInitPipe.pipe_cc`'s `cc_wc := UkShPipeFork.pterm_wc g`, with
+`pterm_shape` gaining its `inp_lb` conjunct and `sh_round_holds_pipe`
+restated at the widened credential — because BOTH remaining routes need it
+and nothing after it can be written until it is made.  With it the order
+is: (a) `pterm_shape`'s `inp_lb v I`; (b) `pipe_cc` + `pipe_cc_holds` +
+`Hplaw`, four short edits, all measured in §3; (c) `UShPipeRound` restated
+at `pterm_wc` (five mechanical re-derivations, §3); (d) the fork twin =
+`UkShFork.wp_kshf_fork_core`'s tail with
+`UkShPipeWait.wp_kshr_wait_pid_later` and `ChildTok.gen_pay` in place of
+the landed wait and `gen_pay_timeless`; (e) THE ROUND (brief item 4);
+(f) the theorem.

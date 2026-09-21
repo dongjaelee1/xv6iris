@@ -126,6 +126,8 @@ Require Import AppPipeClaim.
 Require Import AppPipeCons.
 Require Import UInitConsPipe.
 Require Import UShPipeRound.
+Require Import UShPipeCatSlot.  (* [pipe_sh_cat_slot] -- the /cat pin, off
+                                   the era equation (lane SH-PIPE-ROUND-6) *)
 Require Import AppPipe.
 Require FsImg.
 Require InodeInv.
@@ -730,6 +732,15 @@ Section PipeInitBoot.
     { iApply UShEcho.sh_echo_slot_of_fs_pure_holds.
       rewrite /UShEcho.sh_echo_slot_of_fs_pure.
       iSplitR; [ iExact "Hinv" | ]. iSplitR; [ iExact "Hfs" | iExact "Hmint" ]. }
+    (* ---- /cat's PINNED ENTRY (lane PIPE-STAGE-5, design SS4.3n's fourth
+           bullet).  The round's right child execs /cat, and the pin its
+           (W) half needs has exactly one producer in the tree, at
+           [FileFsPure.file_fs_pure] -- which is reachable only through
+           the ERA EQUATION [Heq], and that lives here and nowhere below.
+           Beside [Hslot], off the same [Hinv] and the same [Hmint]. ---- *)
+    iAssert (UShCatPay.sh_cat_slot (echo_taint (pgn_cl g))) as "#Hcat".
+    { iApply (UShPipeCatSlot.pipe_sh_cat_slot (pgn_cl g) r Heq
+                with "Hinv Hmint"). }
     (* ---- the shell's slot: the state payload, the TAIL at the pipeline
            era's round, and the tag ---- *)
     (* LINEAR, NOT [#Hsh], and it is the lane's third wedge: an
@@ -756,7 +767,7 @@ Section PipeInitBoot.
         [ iApply UInitSh.sh_pay_state_holds | ].
       iIntros (γp N).
       iApply (UShPipeRound.sh_round_holds_pipe g Hkill γp N
-                with "Hlks [] Hslot Hpine []").
+                with "Hlks [] Hslot Hcat Hpine []").
       - iApply (udep_free).
       - iApply Hchild. }
     (* ...AND THE PROMPT'S LAW AT EVERY LINE BOUNDARY, off the links *)

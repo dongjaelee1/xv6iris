@@ -12,6 +12,7 @@ Require Import UShPipeAssembly.
 Print Assumptions ksh_w1_acc.
 Print Assumptions exf_law_fupd.
 Print Assumptions ksh_w1_of_step.
+Print Assumptions wp_kshr_exit0_paid.
 Print Assumptions pipe_names_alloc.
 Print Assumptions pipe_inv_alloc_at.
 Print Assumptions pipe_fork_panic_law.

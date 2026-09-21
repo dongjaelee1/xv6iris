@@ -68,6 +68,7 @@ Require Import WpUart.             (* [out_link] *)
 Require Import UkWriteLeaf.
 Require Import UCodeShK.
 Require Import UkSh.
+Require Import UkShRun.       (* [wp_kshr_jal] -- the exit call's second half *)
 Require Import UkShDiag.
 Require Import UShOut.
 Require Import UShPanic.           (* the mould: [ksh_w1_of_link_blk_at] *)
@@ -288,6 +289,47 @@ Section UShPipeAssemblyGen.
     iDestruct (ubyte_join with "Hb1 Hb2") as "Hbuf".
     iApply ("Hcont" $! h' ret with "[Hbuf Hl Hc] Hrun").
     iFrame "Hbuf Hl". iExact "Hc".
+  Qed.
+
+  (* =================================================================== *)
+  (*  S2b  THE RUNCMD CHILD'S OWN EXIT, PAID                              *)
+  (*                                                                     *)
+  (*  [UkShRun.wp_kshr_exit0] -- the [c.li a0,0; jal ra,<exit>] every     *)
+  (*  [runcmd] arm ends at, and where the pipeline round's parent lands   *)
+  (*  (0xea, [UkShPipe]'s own parent continuation) -- takes the exit      *)
+  (*  payload FREE, as a Prop [(⊢ ukn_pay N (-1))].  A PAID round holds   *)
+  (*  it as a RESOURCE (the family closed at the two cursors, i.e.        *)
+  (*  [UShPipeRound2.pipe_round_exit]'s [pipe_Wcl_at g I 0]), so the      *)
+  (*  landed walk cannot end the round.  This is the same two             *)
+  (*  instructions with the payload linear; [UkSh.wp_ksh_exit] already    *)
+  (*  takes it that way, so the only thing that was free is the Prop.     *)
+  (* =================================================================== *)
+  Lemma wp_kshr_exit0_paid (N : uk_names Σ) `{!ukn_const N}
+      (h : CpuId) (m : regfile)
+      (pc0 pc1 ret : Z) (k : mword 6) (imm : mword 21) (avail : nat) :
+    add_vec_int (mword_of_int pc0 : mword 64) 2 = mword_of_int pc1 ->
+    (mword_of_int ShSyms.exit : mword 64)
+      = add_vec (mword_of_int pc1 : mword 64) (sign_extend' 64 imm) ->
+    (mword_of_int ret : mword 64)
+      = add_vec_int (mword_of_int pc1 : mword 64) 4 ->
+    eq_vec (access_vec_dec (mword_of_int ShSyms.exit : mword 64) 0) ('b"0")
+      = true ->
+    shk_code (ukn_t N) -∗
+    uinstr_is (ukn_t N) (mword_of_int pc0) true (C_LI (k, Regidx a0_idx)) -∗
+    uinstr_is (ukn_t N) (mword_of_int pc1) false (JAL (imm, Regidx ra_idx)) -∗
+    ukn_pay N (-1) -∗
+    urun N h m (mword_of_int pc0) avail -∗
+    mWP (Loop : expr riscv_lang).
+  Proof using .
+    intros E01 Hsym Hret Hal. iIntros "#Hcode #Hi0 #Hi1 Hpay Hrun".
+    iApply (wp_uk_cli N h m (mword_of_int pc0) k a0_idx avail
+              ltac:(unfold unot_sp; vm_compute; discriminate)
+              ltac:(vm_compute; discriminate) with "Hi0 Hrun").
+    rewrite E01. iIntros (h1) "Hrun".
+    iApply (UkShRun.wp_kshr_jal N h1 _ pc1 ShSyms.exit ret imm avail
+              Hsym Hret Hal with "Hi1 Hrun").
+    iIntros (h2) "Hrun".
+    iApply (UkSh.wp_ksh_exit N h2 _ avail with "Hcode Hpay Hrun").
   Qed.
 
 End UShPipeAssemblyGen.

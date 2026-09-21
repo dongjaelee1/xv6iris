@@ -484,6 +484,224 @@ Section UkShPipe.
 
 
   (* ===================================================================== *)
+  (* §3a' THE SAME CALL READ AGAINST THE CALLER'S OWN PID (design app-pipe  *)
+  (* SS4.3w, purchase 3).                                                   *)
+  (*                                                                        *)
+  (* [wp_kshpi_wait0] relays [UexecRet.uwait_ans], which QUANTIFIES the      *)
+  (* caller's pid -- so its reaping arm's [γ' ∈ cs \/ pidv = 1] is satisfied *)
+  (* by the right disjunct and names nobody ([UShPipeAssembly.               *)
+  (* uwait_ans_orphan_arm] is the witness).  This one runs on                *)
+  (* [UkShRun.wp_kshr_wait_pid] instead and relays the MIDDLE form           *)
+  (* ([UexecRet.uwait_ans_pid]) beside the kernel's row that a -1 leaves NO  *)
+  (* children -- the two facts a parent needs to say WHICH of its children   *)
+  (* it reaped ([UexecRet.uwait_ans_pid_mine]).  The pid fragment comes back *)
+  (* untouched: a process's pid never moves.                                 *)
+  (* ===================================================================== *)
+  Lemma wp_kshpi_wait0_pid (N : uk_names Σ) `{!ukn_const N} (h : CpuId)
+      (m : regfile) (pc0 pc1 ret : Z) (imm : mword 21) (Sc : gset gname)
+      (avail : nat) (p : Z) :
+    add_vec_int (mword_of_int pc0 : mword 64) 2 = mword_of_int pc1 ->
+    (mword_of_int ShSyms.wait : mword 64)
+      = add_vec (mword_of_int pc1 : mword 64) (sign_extend' 64 imm) ->
+    (mword_of_int ret : mword 64)
+      = add_vec_int (mword_of_int pc1 : mword 64) 4 ->
+    eq_vec (access_vec_dec (mword_of_int ShSyms.wait : mword 64) 0) ('b"0")
+      = true ->
+    ret_pc (mword_of_int ret : mword 64) = mword_of_int ret ->
+    shk_code (ukn_t N) -∗
+    uinstr_is (ukn_t N) (mword_of_int pc0) true
+      (C_LI (mword_of_int 0 : mword 6, Regidx a0_idx)) -∗
+    uinstr_is (ukn_t N) (mword_of_int pc1) false (JAL (imm, Regidx ra_idx)) -∗
+    urun N h m (mword_of_int pc0) avail -∗
+    UserChildren.uch (ukn_ch N) Sc -∗
+    UserChildren.upid (ukn_pid N) p -∗
+    (∀ (h' : CpuId) (m' : regfile) (rw : mword 64) (Sc' : gset gname)
+       (pidv : mword 32),
+       ⌜ ucallee_saved m m' ⌝ -∗
+       ⌜ bv_unsigned pidv = p ⌝ -∗
+       ⌜ rw = (mword_of_int (-1) : mword 64) -> Sc' = (∅ : gset gname) ⌝ -∗
+       uwait_ans_pid rw Sc Sc' pidv -∗
+       urun N h' m' (mword_of_int ret) avail -∗
+       UserChildren.uch (ukn_ch N) Sc' -∗
+       UserChildren.upid (ukn_pid N) p -∗
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
+  Proof using Hpsok_free.
+    intros E01 Hsym Hret Hal Hrp.
+    iIntros "#Hcode #Hi0 #Hi1 Hrun Hch Hpid Hcont".
+    iApply (wp_uk_cli N h m (mword_of_int pc0)
+              (mword_of_int 0 : mword 6) a0_idx avail
+              ltac:(unfold unot_sp; vm_compute; discriminate)
+              ltac:(vm_compute; discriminate) with "Hi0 Hrun").
+    rewrite E01. iIntros (h1) "Hrun".
+    set (m1 := <[Regidx a0_idx
+                 := regval_into_reg (sign_extend' 64
+                      (mword_of_int 0 : mword 6) : mword 64)]> m).
+    iApply (UkShRun.wp_kshr_jal N h1 m1 pc1 ShSyms.wait ret imm avail
+              Hsym Hret Hal with "Hi1 Hrun").
+    iIntros (h2) "Hrun".
+    set (m2 := <[Regidx ra_idx := (mword_of_int ret : mword 64)]> m1).
+    assert (Ha0_2 : uint (m2 !!! Regidx a0_idx) = 0).
+    { rewrite /m2 (upd_ne m1 (Regidx ra_idx) (Regidx a0_idx) _
+                     ltac:(vm_compute; discriminate)).
+      rewrite /m1 (upd_eq m (Regidx a0_idx)
+                     (regval_into_reg (sign_extend' 64
+                        (mword_of_int 0 : mword 6) : mword 64))).
+      vm_compute. reflexivity. }
+    assert (Hra2 : m2 !!! Regidx ra_idx = (mword_of_int ret : mword 64))
+      by exact (upd_eq m1 (Regidx ra_idx) _).
+    iApply (UkShRun.wp_kshr_wait_pid Hpsok_free N h2 m2 avail Sc p Ha0_2
+              with "Hcode Hrun Hch Hpid").
+    iIntros (h3 rw Sc' pidv) "%Hpv Hpid %Hneg1 Hans Hrun Hch".
+    rewrite Hra2 Hrp.
+    iApply ("Hcont" $! h3 _ rw Sc' pidv with "[%] [%] [%] Hans Hrun Hch Hpid");
+      [ | exact Hpv | exact Hneg1 ].
+    intros q Hq.
+    rewrite (upd_ne _ (Regidx a0_idx) (Regidx q) rw
+               (UkShRedir.ushx_cs_ne q a0_idx Hq
+                  ltac:(right; left; vm_compute; reflexivity))).
+    rewrite (upd_ne _ (Regidx a7_idx) (Regidx q) _
+               (UkShRedir.ushx_cs_ne q a7_idx Hq
+                  ltac:(right; right; right; right; vm_compute; reflexivity))).
+    rewrite /m2 (upd_ne m1 (Regidx ra_idx) (Regidx q) _
+                   (UkShRedir.ushx_cs_ne q ra_idx Hq
+                      ltac:(left; vm_compute; reflexivity))).
+    rewrite /m1 (upd_ne m (Regidx a0_idx) (Regidx q) _
+                   (UkShRedir.ushx_cs_ne q a0_idx Hq
+                      ltac:(right; left; vm_compute; reflexivity))).
+    reflexivity.
+  Qed.
+
+  (* ===================================================================== *)
+  (* §3a'' [wait(0)] AS A CALL LAW, AT AN ABSTRACT ANSWER (design app-pipe  *)
+  (* SS4.3w, purchase 3).                                                   *)
+  (*                                                                        *)
+  (* THE PIPE ARM RUNS THE SAME TWO INSTRUCTIONS TWICE and the two          *)
+  (* readings of what they answer are BOTH wanted: the FREE arm             *)
+  (* ([wp_kshr_pipe_arm] below, and the generic runner under the taint)     *)
+  (* has no pid handle to spend and takes [UexecRet.uwait_ans]; a PAID      *)
+  (* round -- sh's runcmd child, which [UkShFork.ushf_child_law_at] now     *)
+  (* hands [UkSh.ush_pid] (purchase 2) -- takes the pid form, because a     *)
+  (* round that cannot tell its two children apart receives no payload.     *)
+  (* Duplicating a 600-instruction walk to change two of its instructions   *)
+  (* is the wrong answer, so the ARM is generic in the pair and this is     *)
+  (* the interface: [Wr] the credential the call spends and hands back      *)
+  (* ([emp] or the pid fragment), [Pw] what a reap answers.  Persistent by  *)
+  (* construction -- the arm calls it twice.                               *)
+  (* ===================================================================== *)
+  Definition ush_wait0_law (N : uk_names Σ) (Wr : iProp Σ)
+      (Pw : mword 64 -> gset gname -> gset gname -> iProp Σ) : iProp Σ :=
+    (□ (∀ (h : CpuId) (m : regfile) (pc0 pc1 ret : Z) (imm : mword 21)
+          (Sc : gset gname) (avail : nat),
+          ⌜ add_vec_int (mword_of_int pc0 : mword 64) 2
+            = mword_of_int pc1 ⌝ -∗
+          ⌜ (mword_of_int ShSyms.wait : mword 64)
+            = add_vec (mword_of_int pc1 : mword 64) (sign_extend' 64 imm) ⌝ -∗
+          ⌜ (mword_of_int ret : mword 64)
+            = add_vec_int (mword_of_int pc1 : mword 64) 4 ⌝ -∗
+          ⌜ eq_vec (access_vec_dec (mword_of_int ShSyms.wait : mword 64) 0)
+              ('b"0") = true ⌝ -∗
+          ⌜ ret_pc (mword_of_int ret : mword 64) = mword_of_int ret ⌝ -∗
+          shk_code (ukn_t N) -∗
+          uinstr_is (ukn_t N) (mword_of_int pc0) true
+            (C_LI (mword_of_int 0 : mword 6, Regidx a0_idx)) -∗
+          uinstr_is (ukn_t N) (mword_of_int pc1) false
+            (JAL (imm, Regidx ra_idx)) -∗
+          urun N h m (mword_of_int pc0) avail -∗
+          UserChildren.uch (ukn_ch N) Sc -∗
+          Wr -∗
+          (∀ (h' : CpuId) (m' : regfile) (rw : mword 64) (Sc' : gset gname),
+             ⌜ ucallee_saved m m' ⌝ -∗
+             Pw rw Sc Sc' -∗
+             urun N h' m' (mword_of_int ret) avail -∗
+             UserChildren.uch (ukn_ch N) Sc' -∗
+             Wr -∗
+             mWP (Loop : expr riscv_lang)) -∗
+          mWP (Loop : expr riscv_lang)))%I.
+
+  Global Instance ush_wait0_law_persistent N Wr Pw :
+    Persistent (ush_wait0_law N Wr Pw).
+  Proof using . rewrite /ush_wait0_law. apply _. Qed.
+
+  (* the FREE reading: no credential, and the answer with the pid
+     quantified away -- [wp_kshpi_wait0], packaged *)
+  Lemma ush_wait0_law_free (N : uk_names Σ) `{!ukn_const N} :
+    ⊢ ush_wait0_law N emp%I uwait_ans.
+  Proof using Hpsok_free.
+    rewrite /ush_wait0_law.
+    iIntros "!>" (h m pc0 pc1 ret imm Sc avail)
+      "%E01 %Hsym %Hret %Hal %Hrp #Hcode #Hi0 #Hi1 Hrun Hch _ Hcont".
+    iApply (wp_kshpi_wait0 N h m pc0 pc1 ret imm Sc avail
+              E01 Hsym Hret Hal Hrp with "Hcode Hi0 Hi1 Hrun Hch").
+    iIntros (h' m' rw Sc') "%Hcs Hans Hrun Hch".
+    iApply ("Hcont" $! h' m' rw Sc' with "[%] Hans Hrun Hch [//]").
+    exact Hcs.
+  Qed.
+
+  (* ...AND THE PID READING: what a reap answers a process that can name
+     its own pid.  The pid is BOUND IN THE ANSWER and not in the law, so
+     the arm below stays at one [Pw] across its two calls; what the
+     consumer spends it on is [UexecRet.uwait_ans_pid_mine], whose two
+     hypotheses are exactly this arm's two pure rows. *)
+  (* a [Z] other than 1 is a word other than <init>'s ([UkShFork.
+     ushf_pid_ne_1]'s twin, inlined: this file does not import that one) *)
+  Local Lemma ushpi_pid_ne_1 (pidv : mword 32) (p : Z) :
+    bv_unsigned pidv = p -> p <> 1 -> pidv <> (mword_of_int 1 : mword 32).
+  Proof using .
+    intros Hp Hne Heq. apply Hne. rewrite <- Hp, Heq. vm_compute. reflexivity.
+  Qed.
+
+  Definition ush_wait_pid_ans (rw : mword 64) (Sc Sc' : gset gname)
+      : iProp Σ :=
+    (∃ pidv : mword 32,
+       ⌜ pidv <> (mword_of_int 1 : mword 32) ⌝ ∗
+       ⌜ rw = (mword_of_int (-1) : mword 64) -> Sc' = (∅ : gset gname) ⌝ ∗
+       uwait_ans_pid rw Sc Sc' pidv)%I.
+
+  Lemma ush_wait0_law_pid (N : uk_names Σ) `{!ukn_const N} :
+    ⊢ ush_wait0_law N (UkSh.ush_pid N) ush_wait_pid_ans.
+  Proof using Hpsok_free.
+    rewrite /ush_wait0_law.
+    iIntros "!>" (h m pc0 pc1 ret imm Sc avail)
+      "%E01 %Hsym %Hret %Hal %Hrp #Hcode #Hi0 #Hi1 Hrun Hch Hpid Hcont".
+    rewrite /UkSh.ush_pid. iDestruct "Hpid" as (p) "[%Hp1 Hpid]".
+    iApply (wp_kshpi_wait0_pid N h m pc0 pc1 ret imm Sc avail p
+              E01 Hsym Hret Hal Hrp with "Hcode Hi0 Hi1 Hrun Hch Hpid").
+    iIntros (h' m' rw Sc' pidv) "%Hcs %Hpv %Hneg1 Hans Hrun Hch Hpid".
+    iApply ("Hcont" $! h' m' rw Sc' with "[%] [Hans] Hrun Hch [Hpid]").
+    - exact Hcs.
+    - rewrite /ush_wait_pid_ans. iExists pidv.
+      iSplitR; [ iPureIntro | iSplitR; [ iPureIntro; exact Hneg1
+                                       | iExact "Hans" ] ].
+      exact (ushpi_pid_ne_1 pidv p Hpv Hp1).
+    - rewrite /UkSh.ush_pid. iExists p.
+      iSplitR; [ iPureIntro; exact Hp1 | iExact "Hpid" ].
+  Qed.
+
+  (* THE CONSUMER TEST -- the wall lane SH-PIPE-ROUND-10 measured, coming
+     down.  At [UexecRet.uwait_ans] a reap NAMES NOBODY: the arm's
+     [γ' ∈ cs \/ pidv = 1] takes its right disjunct and
+     [UShPipeAssembly.uwait_ans_orphan_arm] is the witness (an answer that
+     reaped a generation OUTSIDE the set, leaving the set unchanged, is a
+     perfectly good [uwait_ans]).  At this answer it does not: the pid row
+     refutes the orphan disjunct, so the escrow that came back is at a
+     generation of the CALLER'S OWN set, and the pid uniqueness beside it
+     is what makes the returned number name it
+     ([ChildTok.gen_uniq_tok]). *)
+  Lemma ush_wait_pid_reap (rw : mword 64) (Sc Sc' : gset gname) :
+    rw <> (mword_of_int (-1) : mword 64) ->
+    ush_wait_pid_ans rw Sc Sc' -∗
+    ∃ (γ' : gname) (rv : mword 32) (xs : Z),
+      ⌜ rw = (sign_extend' 64 rv : mword 64) /\ Sc' = Sc ∖ {[γ']}
+        /\ γ' ∈ Sc /\ (1 <= bv_unsigned rv <= PIDMAX)%Z ⌝ ∗
+      exit_tok γ' rv xs ∗ gen_uniq Sc rv γ'.
+  Proof using .
+    intros Hm1. iIntros "H". rewrite /ush_wait_pid_ans.
+    iDestruct "H" as (pidv) "(%Hne & _ & Hans)".
+    iApply (uwait_ans_pid_mine rw Sc Sc' pidv Hne Hm1 with "Hans").
+  Qed.
+
+  (* ===================================================================== *)
   (* §3b FIVE SMALL FACTS THE ARM NEEDS.                                    *)
   (* ===================================================================== *)
   (* the two pipe handles as the map [UkShRun.wp_kshr_fork1] hands back
@@ -752,7 +970,17 @@ Section UkShPipe.
       (cl cr : ushcmd) (h : CpuId) (m : regfile) (t szv cwdv : Z)
       (ld : list fdstate) (st0 st1 : fdstate) (Sc : gset gname) (av : nat)
       (R RcL RcR Rk Cx : pipe_names -> iProp Σ) (Qc : Z -> iProp Σ)
-      (Cr : iProp Σ) :
+      (Cr : iProp Σ)
+      (* ...AND THE TWO [wait(0)]s AS A CALL LAW (design app-pipe SS4.3w,
+         purchase 3): [Wr] is what the call spends and hands back, [Pw]
+         what a reap answers.  The FREE arm below is this at
+         [emp / UexecRet.uwait_ans] -- the landed reading -- and the
+         PAID one a round takes is [UkSh.ush_pid N / ush_wait_pid_ans],
+         where the answer NAMES the reaped generation.  A parameter and
+         not two lemmas, because the two readings differ in two of this
+         walk's six hundred instructions. *)
+      (Wr : iProp Σ)
+      (Pw : mword 64 -> gset gname -> gset gname -> iProp Σ) :
     (forall x y : Z, Qc x = Qc y) ->
     m !!! Regidx a0_idx = (mword_of_int t : mword 64) ->
     (* the two standard streams the two children shut before their dup:
@@ -774,6 +1002,9 @@ Section UkShPipe.
     Cr -∗
     (∀ γp : pipe_names, Cr -∗ R γp -∗ RcL γp ∗ (RcR γp ∗ (Rk γp ∗ Cx γp))) -∗
     ush_pipe_call N ld R -∗
+    (* the wait credential and the law that spends it, twice *)
+    Wr -∗
+    ush_wait0_law N Wr Pw -∗
     (* ---- THE THREE PANIC TAILS, as continuations.  Each is at [panic]'s
        own entry with the message's address in a0 -- 0x12c8 for the pipe
        panic and 0x1298 for the fork one -- and holds the ledger and the
@@ -873,10 +1104,21 @@ Section UkShPipe.
        common [exit(0)] every runcmd arm ends at ---- *)
     (∀ (h' : CpuId) (m' : regfile) (γp : pipe_names)
        (r1 r2 rw1 rw2 : mword 64) (S1 S2 S3 S4 : gset gname),
+       (* THE TWO FORKS RETURNED A PID (design app-pipe SS4.3w, purchase
+          3): a [fork1] that answered -1 PANICS, and the panic tail is
+          one of the two continuations above -- so a run that reaches
+          0xea has two LIVE children, and [ush_fork_ans]'s failing
+          disjunct is refuted at both.  Pure, off
+          [UkShRun.wp_kshr_fork1]'s returning arm. *)
+       ⌜ r1 <> (mword_of_int (-1) : mword 64) ⌝ -∗
+       ⌜ r2 <> (mword_of_int (-1) : mword 64) ⌝ -∗
        ush_fork_ans Sc S1 (RcL γp) Qc r1 -∗
        ush_fork_ans S1 S2 (RcR γp) Qc r2 -∗
-       uwait_ans rw1 S2 S3 -∗
-       uwait_ans rw2 S3 S4 -∗
+       (* ...and the two reaps, at whatever the caller's wait law
+          answers -- [UexecRet.uwait_ans] at the free reading, the
+          pid-carrying [ush_wait_pid_ans] at a round's *)
+       Pw rw1 S2 S3 -∗
+       Pw rw2 S3 S4 -∗
        UserChildren.uch (ukn_ch N) S4 -∗
        ush_jtab (ukn_t N) -∗
        usz (ukn_s N) szv -∗
@@ -884,13 +1126,15 @@ Section UkShPipe.
        UserCwd.ucwd (ukn_cwd N) cwdv -∗
        Rk γp -∗
        Cx γp -∗
+       (* ...and the wait credential, unspent: a pid never moves *)
+       Wr -∗
        urun N h' m' (mword_of_int 0xea) (2 + (UkShDiag.ush_Dg + av)) -∗
        mWP (Loop : expr riscv_lang)) -∗
     mWP (Loop : expr riscv_lang).
   Proof using Hpsok_free.
     intros HQc Ha0 Hl0 Hl1 Hne0 Hne1 Hnp0 Hnp1.
     iIntros "#Hcode #Hjt #Htree Hsz Hstd Hcwd Hch #Hkw Hcr Hsplit Hpipe
-             #Hpanp #Hpanf1 #Hpanf2 Hrun HcL HcR Hpar".
+             HWr #Hwl #Hpanp #Hpanf1 #Hpanf2 Hrun HcL HcR Hpar".
     iDestruct (ush_jtab_ro with "Hjt") as "#Hro".
     iDestruct (ush_cmd_addr with "Htree") as %[Htr Ht8].
     assert (Ht4 : t mod 4 = 0)
@@ -1117,16 +1361,17 @@ Section UkShPipe.
     { iApply (ushpi_hs_in (ukn_fd N) a b _ _ Hab with "Hha Hhb"). }
     { iFrame "HRcR Hpay". }
     rewrite Hra_f1.
-    iSplitR "Hpar HcL HcR HRk".
+    iSplitR "Hpar HcL HcR HRk HWr".
     { (* ---- fork1's -1 arm: panic("fork") ---- *)
       (* SS4.3u: the borrowed pair is [RcR γp ∗ Cx γp] *)
       iIntros (hA mA rA) "%HmsgA %HrA Hans Hstd [HRcR Hpayv] Hrun".
       iApply ("Hpanf1" $! hA mA rA γp
                 with "[%] [%] Hans Hstd HRcR Hpayv Hrun");
         [ exact HmsgA | exact HrA ]. }
-    iSplitL "Hpar HcR HRk".
+    iSplitL "Hpar HcR HRk HWr".
     - (* ===================== THE PARENT: fork1 AGAIN ==================== *)
-      iIntros (hA mA rA) "%HrA %HcsA %Ha0_A Hans1 (#Hjt2 & #Ht2 & Hb0 & Hb1)
+      iIntros (hA mA rA) "%HrA %Hn1A %HcsA %Ha0_A Hans1
+                          (#Hjt2 & #Ht2 & Hb0 & Hb1)
                           Hsz Hstd Hcwd HD [HRcR Hpayv] Hrun".
       iAssert (∃ S1 : gset gname,
                  ush_fork_ans Sc S1 (RcL γp) Qc rA
@@ -1193,16 +1438,17 @@ Section UkShPipe.
       { iFrame "Hjt2 Ht2 Hb0 Hb1". }
       { iApply (ushpi_hs_in (ukn_fd N) a b _ _ Hab with "Hha Hhb"). }
       rewrite Hra_f2.
-      iSplitR "Hpar HcR Hfa1 HRk".
+      iSplitR "Hpar HcR Hfa1 HRk HWr".
       { (* ---- fork1's -1 arm: panic("fork") ---- *)
         iIntros (hZ mZ rZ) "%HmsgZ %HrZ Hans Hstd Hpayv Hrun".
         iApply ("Hpanf2" $! hZ mZ rZ γp S1 with "[%] [%] Hans Hstd Hpayv Hrun");
           [ exact HmsgZ | exact HrZ ]. }
-      iSplitL "Hpar Hfa1 HRk".
+      iSplitL "Hpar Hfa1 HRk HWr".
       + (* ============ THE PARENT: two closes, two waits, break ========== *)
         (* [Hpayv] -- the borrowed [Cx γp] -- comes back on this arm and
            rides to [Hpar] unspent (lane PIPE-ARM-PAID). *)
-        iIntros (hD mD rD) "%HrD %HcsD %Ha0_D Hans2 (#Hjt3 & #Ht3 & Hb0 & Hb1)
+        iIntros (hD mD rD) "%HrD %Hn1D %HcsD %Ha0_D Hans2
+                            (#Hjt3 & #Ht3 & Hb0 & Hb1)
                             Hsz Hstd Hcwd HD Hpayv Hrun".
         iAssert (∃ S2 : gset gname,
                    ush_fork_ans S1 S2 (RcR γp) Qc rD
@@ -1328,31 +1574,31 @@ Section UkShPipe.
         { iFrame "HdW Hhb". }
         iIntros (hI mI rI) "%HcsI %Ha0_I _ Hrun".
         (* ---- 0x1b6..0x1ba  wait(0) ---- *)
-        iApply (wp_kshpi_wait0 N hI mI 0x1b6 0x1b8 0x1bc
+        iApply ("Hwl" $! hI mI 0x1b6 0x1b8 0x1bc
                   (mword_of_int 2774 : mword 21) S2
                   (2 + (UkShDiag.ush_Dg + av))%nat
-                  ltac:(apply bv_eq; vm_compute; reflexivity)
-                  ltac:(rewrite shp_wait; apply bv_eq; vm_compute; reflexivity)
-                  ltac:(apply bv_eq; vm_compute; reflexivity)
-                  ltac:(rewrite shp_wait; vm_compute; reflexivity)
-                  ltac:(apply bv_eq; vm_compute; reflexivity)
-                  with "Hcode [] [] Hrun Hch").
+                  with "[%] [%] [%] [%] [%] Hcode [] [] Hrun Hch HWr").
+        { apply bv_eq; vm_compute; reflexivity. }
+        { rewrite shp_wait; apply bv_eq; vm_compute; reflexivity. }
+        { apply bv_eq; vm_compute; reflexivity. }
+        { rewrite shp_wait; vm_compute; reflexivity. }
+        { apply bv_eq; vm_compute; reflexivity. }
         { iApply (uis_shk_1b6 with "Hcode"). }
         { iApply (uis_shk_1b8 with "Hcode"). }
-        iIntros (hJ mJ rw1 S3) "%HcsJ Hwa1 Hrun Hch".
+        iIntros (hJ mJ rw1 S3) "%HcsJ Hwa1 Hrun Hch HWr".
         (* ---- 0x1bc..0x1c0  wait(0) again ---- *)
-        iApply (wp_kshpi_wait0 N hJ mJ 0x1bc 0x1be 0x1c2
+        iApply ("Hwl" $! hJ mJ 0x1bc 0x1be 0x1c2
                   (mword_of_int 2768 : mword 21) S3
                   (2 + (UkShDiag.ush_Dg + av))%nat
-                  ltac:(apply bv_eq; vm_compute; reflexivity)
-                  ltac:(rewrite shp_wait; apply bv_eq; vm_compute; reflexivity)
-                  ltac:(apply bv_eq; vm_compute; reflexivity)
-                  ltac:(rewrite shp_wait; vm_compute; reflexivity)
-                  ltac:(apply bv_eq; vm_compute; reflexivity)
-                  with "Hcode [] [] Hrun Hch").
+                  with "[%] [%] [%] [%] [%] Hcode [] [] Hrun Hch HWr").
+        { apply bv_eq; vm_compute; reflexivity. }
+        { rewrite shp_wait; apply bv_eq; vm_compute; reflexivity. }
+        { apply bv_eq; vm_compute; reflexivity. }
+        { rewrite shp_wait; vm_compute; reflexivity. }
+        { apply bv_eq; vm_compute; reflexivity. }
         { iApply (uis_shk_1bc with "Hcode"). }
         { iApply (uis_shk_1be with "Hcode"). }
-        iIntros (hK mK rw2 S4) "%HcsK Hwa2 Hrun Hch".
+        iIntros (hK mK rw2 S4) "%HcsK Hwa2 Hrun Hch HWr".
         (* ---- 0x1c2  c.j 0xea -- break, to the common exit(0) ---- *)
         iApply (wp_uk_cj N hK mK (mword_of_int 0x1c2)
                   (mword_of_int 1940 : mword 11) (mword_of_int 0xea)
@@ -1363,8 +1609,9 @@ Section UkShPipe.
         { iApply (uis_shk_1c2 with "Hcode"). }
         iIntros (hL) "Hrun".
         iApply ("Hpar" $! hL mK γp rA rD rw1 rw2 S1 S2 S3 S4
-                  with "Hfa1 Hfa2 Hwa1 Hwa2 Hch Hjt3 Hsz Hstd Hcwd HRk Hpayv
-                        Hrun").
+                  with "[%] [%] Hfa1 Hfa2 Hwa1 Hwa2 Hch Hjt3 Hsz Hstd Hcwd
+                        HRk Hpayv HWr Hrun");
+          [ exact Hn1A | exact Hn1D ].
       + (* ================== THE RIGHT CHILD: fd 0 = the READ end ========= *)
         iIntros (N' hD mD γ')
           "%Hpeq %HcsD %Ha0_D Hmy HRcR #Hck (#Hjt3 & #Ht3 & Hb0 & Hb1)
@@ -2018,15 +2265,25 @@ Section UkShPipe.
     iIntros "#Hdp #Hcode #Hjt #Htree Hsz Hstd Hcwd Hch #Hkw Hsplit Hpipe Hrun
              HcL HcR Hpar".
     iDestruct (ush_jtab_ro with "Hjt") as "#Hro".
+    (* THE FREE INSTANCE OF THE WAIT LAW (design app-pipe SS4.3w, purchase
+       3): no credential, and the answer with the pid quantified away --
+       which is why THIS statement does not move.  The two [⌜r <> -1⌝]
+       rows the generic arm now hands its parent are DROPPED here for the
+       same reason: the landed statement is byte-identical. *)
     iApply (wp_kshr_pipe_arm_g N cl cr h m t szv cwdv ld st0 st1 Sc av
               R RcL RcR Rk (fun _ => ukn_pay N (-1))%I Qc emp%I
+              emp%I uwait_ans
               HQc Ha0 Hl0 Hl1 Hne0 Hne1 Hnp0 Hnp1
               with "Hcode Hjt Htree Hsz Hstd Hcwd Hch Hkw [] [Hsplit]
-                    Hpipe [] [] [] Hrun HcL HcR [Hpar]").
+                    Hpipe [] [] [] [] [] Hrun HcL HcR [Hpar]").
     - done.
     - iIntros (γp) "_ HR".
       iDestruct ("Hsplit" $! γp with "HR") as "[$ [$ $]]".
       iApply Hpx.
+    - (* the wait credential: none *)
+      done.
+    - (* ...and the wait law at the free reading *)
+      iApply ush_wait0_law_free.
     - (* panic("pipe") *)
       iIntros "!>" (h' m') "%Ha0' Hstd' _ Hrun'".
       iDestruct Hpx as "Hpay".
@@ -2051,7 +2308,7 @@ Section UkShPipe.
       rewrite UkShRun.ush_diag_res_panic. done.
     - (* the parent: the borrowed payload comes back and is dropped *)
       iIntros (h' m' γp r1 r2 rw1 rw2 S1 S2 S3 S4)
-        "Hfa1 Hfa2 Hwa1 Hwa2 Hch' Hjt' Hsz' Hstd' Hcwd' HRk _ Hrun'".
+        "_ _ Hfa1 Hfa2 Hwa1 Hwa2 Hch' Hjt' Hsz' Hstd' Hcwd' HRk _ _ Hrun'".
       iApply ("Hpar" $! h' m' γp r1 r2 rw1 rw2 S1 S2 S3 S4
                 with "Hfa1 Hfa2 Hwa1 Hwa2 Hch' Hjt' Hsz' Hstd' Hcwd' HRk
                       Hrun'").

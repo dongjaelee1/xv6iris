@@ -601,7 +601,8 @@ Section UkShFork.
         [ exact Hmsg | exact HrA ]. }
     iSplitL "Hhead Hpid Hre".
     - (* ================= THE PARENT: reap, and round again ============= *)
-      iIntros (hA mA rA) "%HrA %HcsA %Ha0A Hans Hpay Hsz Hustd Hcwd _ Hlease Hrun".
+      iIntros (hA mA rA) "%HrA _ %HcsA %Ha0A Hans Hpay Hsz Hustd Hcwd _ Hlease
+                          Hrun".
       iDestruct "Hpay" as "(_ & _ & _ & Hdat & Hbuf)".
       (* WHAT THE FORK LEFT IN sh's HAND, at the set it grew to *)
       iAssert (∃ Sw : gset gname,

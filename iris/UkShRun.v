@@ -1369,6 +1369,14 @@ Section UkShRun.
     (∀ (h' : CpuId) (m' : regfile),
        ⌜ forall q : mword 5, uint q <> 1 -> uint q <> 2 -> uint q <> 8 ->
            uint q <> 15 -> m' !!! Regidx q = mt !!! Regidx q ⌝ -∗
+       (* ...AND THE RETURN VALUE IS NOT -1 (design app-pipe SS4.3w,
+          purchase 3).  The [beq a0,a5] at 0x76 is fork1's whole body --
+          the panic arm above is the taken branch, this is the fallen
+          one -- so the fact is free here and derivable NOWHERE ELSE: a
+          caller sees only [r <> 0].  What it buys is a fork ANSWER whose
+          [-1] disjunct is refuted, which is what a pipeline round needs
+          at 0xea to have two live children. *)
+       ⌜ mt !!! Regidx a0_idx <> (mword_of_int (-1) : mword 64) ⌝ -∗
        ⌜ m' !!! Regidx ra_idx = vra ⌝ -∗
        ⌜ m' !!! Regidx s0_idx = vs0 ⌝ -∗
        ⌜ m' !!! Regidx csp_rs1 = sp0 ⌝ -∗
@@ -1497,6 +1505,12 @@ Section UkShRun.
       iApply ("Hpanic" $! h5 t4 with "[%] [%] Hpayv Hrun");
         [ exact Hmsg | exact Hneg ]. }
     (* ---- fork succeeded: pop and return ---- *)
+    (* ...AND THE BRANCH WAS NOT TAKEN, SO a0 IS NOT -1 (purchase 3): the
+       mirror of the taken branch's [Hneg] above. *)
+    assert (Hnm1 : mt !!! Regidx a0_idx <> (mword_of_int (-1) : mword 64)).
+    { intro He. unfold uv_btaken in Hbt.
+      rewrite (Ht1 a0_idx ltac:(vm_compute; discriminate)) Ha5_1 He in Hbt.
+      vm_compute in Hbt. discriminate Hbt. }
     (* 0x7a  c.ldsp ra,8(sp) *)
     iApply (wp_uk_cldsp N h2 t1 (mword_of_int 0x7a)
               (mword_of_int 1 : mword 6) ra_idx (uint sp0 - 8) vra (Dg + n)
@@ -1581,8 +1595,8 @@ Section UkShRun.
               with "[] Hrun").
     { iApply (uis_shk_80 with "Hcode"). }
     iIntros (h6) "Hrun".
-    iApply ("Hcont" $! h6 e3 with "[%] [%] [%] [%] Hpayv Hrun");
-      [ | exact Hra3 | exact Hs03
+    iApply ("Hcont" $! h6 e3 with "[%] [%] [%] [%] [%] Hpayv Hrun");
+      [ | exact Hnm1 | exact Hra3 | exact Hs03
         | exact (upd_eq e2 (Regidx csp_rs1) (regval_into_reg sp0)) ].
     intros q H1 H2 H8 H15.
     assert (Hc1 : uint ra_idx = 1) by (vm_compute; reflexivity).
@@ -1655,6 +1669,12 @@ Section UkShRun.
         mWP (Loop : expr riscv_lang)) ∗
      (∀ (h' : CpuId) (m' : regfile) (r : mword 64),
         ⌜ r <> (mword_of_int 0 : mword 64) ⌝ -∗
+        (* ...AND IT IS NOT -1 EITHER (design app-pipe SS4.3w, purchase
+           3): fork1 PANICS at -1 ([wp_kshr_fork1_tail]'s taken branch),
+           so a caller that reaches this arm forked a live child.  The
+           row refutes [ush_fork_ans]'s failing disjunct, which is what
+           puts the two children's tokens in a pipeline round's hand. *)
+        ⌜ r <> (mword_of_int (-1) : mword 64) ⌝ -∗
         ⌜ ucallee_saved m m' ⌝ -∗
         ⌜ m' !!! Regidx a0_idx = r ⌝ -∗
         (* fork's answer, relayed -- see [wp_kshr_fork] *)
@@ -1924,7 +1944,7 @@ Section UkShRun.
         iApply ("Hpanic" $! hp2 m' r
                   with "[%] [%] Hans Hstd Hpayv Hrun");
           [ exact Hmsg | exact Hneg ]. }
-      iIntros (hp2 m') "%Hq %Hra %Hs0 %Hsps Hpayv Hrun".
+      iIntros (hp2 m') "%Hq %Hnm1 %Hra %Hs0 %Hsps Hpayv Hrun".
       (* the parent's a0 IS the return value, and it is not 0 -- so what
          comes back is [X] and not the tail's dead disjunct *)
       iDestruct "Hpayv" as "[(Hpayv & Hans & HP & Hsz & Hstd & Hcwd & HD)
@@ -1932,8 +1952,12 @@ Section UkShRun.
       { exfalso. apply Hr.
         rewrite <- Hz0. symmetry. exact (upd_eq _ (Regidx a0_idx) r). }
       iApply ("Hpar" $! hp2 m' r
-                with "[%] [%] [%] Hans HP Hsz Hstd Hcwd HD Hpayv [Hrun]").
+                with "[%] [%] [%] [%] Hans HP Hsz Hstd Hcwd HD Hpayv [Hrun]").
       + exact Hr.
+      + intro Heq. apply Hnm1.
+        rewrite (upd_eq (<[Regidx a7_idx := (mword_of_int 1 : mword 64)]> m3)
+                   (Regidx a0_idx) r).
+        exact Heq.
       + exact (fun q => Hback r m' q Hq Hra Hs0 Hsps).
       + rewrite (Hq a0_idx ltac:(vm_compute; lia) ltac:(vm_compute; lia)
                    ltac:(vm_compute; lia) ltac:(vm_compute; lia)).
@@ -1957,7 +1981,7 @@ Section UkShRun.
         rewrite (upd_eq _ (Regidx a0_idx) (mword_of_int 0 : mword 64)) in Hneg.
         apply (f_equal bv_unsigned) in Hneg. vm_compute in Hneg.
         discriminate Hneg. }
-      iIntros (hc2 m') "%Hq %Hra %Hs0 %Hsps _ Hrun".
+      iIntros (hc2 m') "%Hq _ %Hra %Hs0 %Hsps _ Hrun".
       iApply ("Hchi" $! N' hc2 m' γ'
                 with "[%] [%] [%] Hmy HRc Hck HP Hsz Hstd Hcwd Hch Hpid HD
                       [Hrun]").
@@ -2056,7 +2080,7 @@ Section UkShRun.
                 with "Hdp Hcode Hro [] Hpayv Hrun").
       rewrite ush_diag_res_panic. done. }
     iSplitL "Hpar".
-    - iIntros (h' m' r) "%Hr %Hcs %Ha0 Hans HP Hsz Hstd Hcwd HD Hpayv Hrun".
+    - iIntros (h' m' r) "%Hr _ %Hcs %Ha0 Hans HP Hsz Hstd Hcwd HD Hpayv Hrun".
       iAssert (UserChildren.uch_any (ukn_ch N)) with "[Hans]" as "Hch".
       { iDestruct "Hans" as "[(_ & Hf & _) | Hpid]".
         - iApply (uch_any_of with "Hf").

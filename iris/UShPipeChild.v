@@ -162,7 +162,11 @@ Section UShPipeChild.
       (args : list (nat * nat)) (gp ge : nat)
       (ld : list fdstate) (st0 st1 : fdstate) (Sc : gset gname) (n : nat)
       (R RcL RcR Rk Cx Bx : pipe_names -> iProp Σ) (Qc : Z -> iProp Σ)
-      (Cp Cr Bp : iProp Σ) :
+      (Cp Cr Bp : iProp Σ)
+      (* the two [wait(0)]s' law, relayed (design app-pipe SS4.3w,
+         purchase 3) -- see [UkShPipe.wp_kshr_pipe_arm_g] *)
+      (Wr : iProp Σ)
+      (Pw : mword 64 -> gset gname -> gset gname -> iProp Σ) :
     ushp_malloc_ty UM0 UM1 ->
     ushp_malloc_ty UM2 UM3 ->
     m !!! Regidx s1_idx = (mword_of_int s0 : mword 64) ->
@@ -198,6 +202,9 @@ Section UShPipeChild.
     (Cp ={⊤}=∗ Cr) -∗
     (∀ γp : pipe_names, Cr -∗ R γp -∗ RcL γp ∗ (RcR γp ∗ (Rk γp ∗ Cx γp))) -∗
     UkShPipe.ush_pipe_call N ld R -∗
+    (* the wait credential and the law that spends it, twice *)
+    Wr -∗
+    UkShPipe.ush_wait0_law N Wr Pw -∗
     UkShDiag.ush_execfail_law_at (wl_line PipeDisc.dg_pipe) 5%nat Cr Bp -∗
     □ (UserFd.ustd γfd ld -∗ Bp -∗ ukn_pay N (-1)) -∗
     (* SS4.3u (lane SH-PIPE-ROUND-9): the fork tails' credential is
@@ -256,10 +263,14 @@ Section UShPipeChild.
        mWP (Loop : expr riscv_lang)) -∗
     (∀ (h' : CpuId) (m' : regfile) (γp : pipe_names)
        (r1 r2 rw1 rw2 : mword 64) (S1 S2 S3 S4 : gset gname),
+       (* the two forks returned a pid (purchase 3): a -1 panics and never
+          reaches 0xea -- see [UkShPipe.wp_kshr_pipe_arm_g] *)
+       ⌜ r1 <> (mword_of_int (-1) : mword 64) ⌝ -∗
+       ⌜ r2 <> (mword_of_int (-1) : mword 64) ⌝ -∗
        UkShPipe.ush_fork_ans Sc S1 (RcL γp) Qc r1 -∗
        UkShPipe.ush_fork_ans S1 S2 (RcR γp) Qc r2 -∗
-       uwait_ans rw1 S2 S3 -∗
-       uwait_ans rw2 S3 S4 -∗
+       Pw rw1 S2 S3 -∗
+       Pw rw2 S3 S4 -∗
        UserChildren.uch γch S4 -∗
        ush_jtab γt -∗
        usz γs szv -∗
@@ -267,6 +278,8 @@ Section UShPipeChild.
        UserCwd.ucwd γcwd cwdv -∗
        Rk γp -∗
        Cx γp -∗
+       (* ...and the wait credential, unspent *)
+       Wr -∗
        urun N h' m' (mword_of_int 0xea)
          (2 + (UkShDiag.ush_Dg + (68 + n))) -∗
        mWP (Loop : expr riscv_lang)) -∗
@@ -275,8 +288,8 @@ Section UShPipeChild.
     intros Hm01 Hm23 Hs1 Hpq Htoks Hpos Htlen Hs0 Hs64 Hs38
            HQc Hl0 Hl1 Hne0 Hne1 Hnp0 Hnp1 Hfd2.
     iIntros "#Hcode #Hjt #Hpcode #Hpro Hline Hws Hsy Hsz Hstd Hcwd Hch
-             HM Hcr #Hkw #Hpxw Halloc Hsplit Hpipe #Hlawp #Hbp #Hlawf #Hbx
-             Hrun HcL HcR Hpar".
+             HM Hcr #Hkw #Hpxw Halloc Hsplit Hpipe HWr #Hwl
+             #Hlawp #Hbp #Hlawf #Hbx Hrun HcL HcR Hpar".
     iDestruct (UkSh.ush_jtab_ro γt with "Hjt") as "#Hro".
     iDestruct (ustr_nonul with "Hline") as %Hnn0.
     iDestruct (ustr_len with "Hline") as %Hlen31.
@@ -375,10 +388,10 @@ Section UShPipeChild.
               (UExec (ush_args s0 (ushq_cut args len f ge) args))
               (UExec (ush_args s0 (ushq_cut args len f ge) [(S (S gp), ge)]))
               h4 m4 p szv cwdv ld st0 st1 Sc (68 + n)%nat
-              R RcL RcR Rk Cx Bx Qc Cr Bp
+              R RcL RcR Rk Cx Bx Qc Cr Bp Wr Pw
               HQc Ha0_4 Hl0 Hl1 Hne0 Hne1 Hnp0 Hnp1 Hfd2
               with "Hcode Hro Hjt Htree Hsz Hstd Hcwd Hch Hkw Hcr Hsplit
-                    Hpipe Hlawp Hbp Hlawf Hbx Hrun HcL HcR Hpar").
+                    Hpipe HWr Hwl Hlawp Hbp Hlawf Hbx Hrun HcL HcR Hpar").
   Qed.
 
   (* =================================================================== *)
@@ -390,7 +403,11 @@ Section UShPipeChild.
       (args : list (nat * nat)) (gp ge : nat)
       (ld : list fdstate) (st0 st1 : fdstate) (Sc : gset gname) (n : nat)
       (R RcL RcR Rk Cx Bx : pipe_names -> iProp Σ) (Qc : Z -> iProp Σ)
-      (Cr Bp : iProp Σ) :
+      (Cr Bp : iProp Σ)
+      (* the two [wait(0)]s' law, relayed (design app-pipe SS4.3w,
+         purchase 3) -- see [UkShPipe.wp_kshr_pipe_arm_g] *)
+      (Wr : iProp Σ)
+      (Pw : mword 64 -> gset gname -> gset gname -> iProp Σ) :
     ushp_malloc_ty UM0 UM1 ->
     ushp_malloc_ty UM2 UM3 ->
     m !!! Regidx s1_idx = (mword_of_int s0 : mword 64) ->
@@ -427,6 +444,9 @@ Section UShPipeChild.
        and the forks, so nothing is split before it *)
     (∀ γp : pipe_names, Cr -∗ R γp -∗ RcL γp ∗ (RcR γp ∗ (Rk γp ∗ Cx γp))) -∗
     UkShPipe.ush_pipe_call N ld R -∗
+    (* the wait credential and the law that spends it, twice *)
+    Wr -∗
+    UkShPipe.ush_wait0_law N Wr Pw -∗
     (* ---- THE THREE DIAGNOSTICS, PAID ---- *)
     UkShDiag.ush_execfail_law_at (wl_line PipeDisc.dg_pipe) 5%nat Cr Bp -∗
     □ (UserFd.ustd γfd ld -∗ Bp -∗ ukn_pay N (-1)) -∗
@@ -489,10 +509,14 @@ Section UShPipeChild.
     (* ---- THE PARENT, at 0xea, with the forks' borrowed credential ---- *)
     (∀ (h' : CpuId) (m' : regfile) (γp : pipe_names)
        (r1 r2 rw1 rw2 : mword 64) (S1 S2 S3 S4 : gset gname),
+       (* the two forks returned a pid (purchase 3): a -1 panics and never
+          reaches 0xea -- see [UkShPipe.wp_kshr_pipe_arm_g] *)
+       ⌜ r1 <> (mword_of_int (-1) : mword 64) ⌝ -∗
+       ⌜ r2 <> (mword_of_int (-1) : mword 64) ⌝ -∗
        UkShPipe.ush_fork_ans Sc S1 (RcL γp) Qc r1 -∗
        UkShPipe.ush_fork_ans S1 S2 (RcR γp) Qc r2 -∗
-       uwait_ans rw1 S2 S3 -∗
-       uwait_ans rw2 S3 S4 -∗
+       Pw rw1 S2 S3 -∗
+       Pw rw2 S3 S4 -∗
        UserChildren.uch γch S4 -∗
        ush_jtab γt -∗
        usz γs szv -∗
@@ -500,6 +524,8 @@ Section UShPipeChild.
        UserCwd.ucwd γcwd cwdv -∗
        Rk γp -∗
        Cx γp -∗
+       (* ...and the wait credential, unspent *)
+       Wr -∗
        urun N h' m' (mword_of_int 0xea)
          (2 + (UkShDiag.ush_Dg + (68 + n))) -∗
        mWP (Loop : expr riscv_lang)) -∗
@@ -508,15 +534,15 @@ Section UShPipeChild.
     intros Hm01 Hm23 Hs1 Hpq Htoks Hpos Htlen Hs0 Hs64 Hs38
            HQc Hl0 Hl1 Hne0 Hne1 Hnp0 Hnp1 Hfd2.
     iIntros "#Hcode #Hjt #Hpcode #Hpro Hline Hws Hsy Hsz Hstd Hcwd Hch
-             HM Hcr #Hkw #Hpxw Hsplit Hpipe #Hlawp #Hbp #Hlawf #Hbx Hrun
-             HcL HcR Hpar".
+             HM Hcr #Hkw #Hpxw Hsplit Hpipe HWr #Hwl #Hlawp #Hbp #Hlawf #Hbx
+             Hrun HcL HcR Hpar".
     iApply (wp_kshm_child_pipe_paid_at h m dw dv s0 szv cwdv len f args gp ge
-              ld st0 st1 Sc n R RcL RcR Rk Cx Bx Qc Cr Cr Bp
+              ld st0 st1 Sc n R RcL RcR Rk Cx Bx Qc Cr Cr Bp Wr Pw
               Hm01 Hm23 Hs1 Hpq Htoks Hpos Htlen Hs0 Hs64 Hs38
               HQc Hl0 Hl1 Hne0 Hne1 Hnp0 Hnp1 Hfd2
               with "Hcode Hjt Hpcode Hpro Hline Hws Hsy Hsz Hstd Hcwd Hch
-                    HM Hcr Hkw Hpxw [] Hsplit Hpipe Hlawp Hbp Hlawf Hbx Hrun
-                    HcL HcR Hpar").
+                    HM Hcr Hkw Hpxw [] Hsplit Hpipe HWr Hwl Hlawp Hbp Hlawf
+                    Hbx Hrun HcL HcR Hpar").
     iIntros "H". by iModIntro.
   Qed.
 
@@ -533,7 +559,11 @@ Section UShPipeChild.
       (ws : list (list (bv 8)))
       (ld : list fdstate) (st0 st1 : fdstate) (Sc : gset gname) (n : nat)
       (R RcL RcR Rk Cx Bx : pipe_names -> iProp Σ) (Qc : Z -> iProp Σ)
-      (Cr Bp : iProp Σ) :
+      (Cr Bp : iProp Σ)
+      (* the two [wait(0)]s' law, relayed (design app-pipe SS4.3w,
+         purchase 3) -- see [UkShPipe.wp_kshr_pipe_arm_g] *)
+      (Wr : iProp Σ)
+      (Pw : mword 64 -> gset gname -> gset gname -> iProp Σ) :
     ushp_malloc_ty UM0 UM1 ->
     ushp_malloc_ty UM2 UM3 ->
     m !!! Regidx s1_idx = (mword_of_int s0 : mword 64) ->
@@ -563,6 +593,9 @@ Section UShPipeChild.
     □ (Cr -∗ ukn_pay N (-1)) -∗
     (∀ γp : pipe_names, Cr -∗ R γp -∗ RcL γp ∗ (RcR γp ∗ (Rk γp ∗ Cx γp))) -∗
     UkShPipe.ush_pipe_call N ld R -∗
+    (* the wait credential and the law that spends it, twice *)
+    Wr -∗
+    UkShPipe.ush_wait0_law N Wr Pw -∗
     UkShDiag.ush_execfail_law_at (wl_line PipeDisc.dg_pipe) 5%nat Cr Bp -∗
     □ (UserFd.ustd γfd ld -∗ Bp -∗ ukn_pay N (-1)) -∗
     (* SS4.3u (lane SH-PIPE-ROUND-9): the fork tails' credential is
@@ -627,10 +660,14 @@ Section UShPipeChild.
        mWP (Loop : expr riscv_lang)) -∗
     (∀ (h' : CpuId) (m' : regfile) (γp : pipe_names)
        (r1 r2 rw1 rw2 : mword 64) (S1 S2 S3 S4 : gset gname),
+       (* the two forks returned a pid (purchase 3): a -1 panics and never
+          reaches 0xea -- see [UkShPipe.wp_kshr_pipe_arm_g] *)
+       ⌜ r1 <> (mword_of_int (-1) : mword 64) ⌝ -∗
+       ⌜ r2 <> (mword_of_int (-1) : mword 64) ⌝ -∗
        UkShPipe.ush_fork_ans Sc S1 (RcL γp) Qc r1 -∗
        UkShPipe.ush_fork_ans S1 S2 (RcR γp) Qc r2 -∗
-       uwait_ans rw1 S2 S3 -∗
-       uwait_ans rw2 S3 S4 -∗
+       Pw rw1 S2 S3 -∗
+       Pw rw2 S3 S4 -∗
        UserChildren.uch γch S4 -∗
        ush_jtab γt -∗
        usz γs szv -∗
@@ -638,6 +675,8 @@ Section UShPipeChild.
        UserCwd.ucwd γcwd cwdv -∗
        Rk γp -∗
        Cx γp -∗
+       (* ...and the wait credential, unspent *)
+       Wr -∗
        urun N h' m' (mword_of_int 0xea)
          (2 + (UkShDiag.ush_Dg + (68 + n))) -∗
        mWP (Loop : expr riscv_lang)) -∗
@@ -657,7 +696,7 @@ Section UShPipeChild.
     exact (wp_kshm_child_pipe_paid h m dw dv s0 szv cwdv len f (wl_toks ws)
              (length (wl_body ws) + 1)%nat
              (S (S (length (wl_body ws) + 1)) + 3)%nat
-             ld st0 st1 Sc n R RcL RcR Rk Cx Bx Qc Cr Bp
+             ld st0 st1 Sc n R RcL RcR Rk Cx Bx Qc Cr Bp Wr Pw
              Hm01 Hm23 Hs1 Hq Ht Hpos Htlen Hs0 Hs64 Hs38
              HQc Hl0 Hl1 Hne0 Hne1 Hnp0 Hnp1 Hfd2).
   Qed.
@@ -674,7 +713,11 @@ Section UShPipeChild.
       (ws : list (list (bv 8)))
       (ld : list fdstate) (st0 st1 : fdstate) (Sc : gset gname) (n : nat)
       (R RcL RcR Rk Cx Bx : pipe_names -> iProp Σ) (Qc : Z -> iProp Σ)
-      (Cp Cr Bp : iProp Σ) :
+      (Cp Cr Bp : iProp Σ)
+      (* the two [wait(0)]s' law, relayed (design app-pipe SS4.3w,
+         purchase 3) -- see [UkShPipe.wp_kshr_pipe_arm_g] *)
+      (Wr : iProp Σ)
+      (Pw : mword 64 -> gset gname -> gset gname -> iProp Σ) :
     ushp_malloc_ty UM0 UM1 ->
     ushp_malloc_ty UM2 UM3 ->
     m !!! Regidx s1_idx = (mword_of_int s0 : mword 64) ->
@@ -705,6 +748,9 @@ Section UShPipeChild.
     (Cp ={⊤}=∗ Cr) -∗
     (∀ γp : pipe_names, Cr -∗ R γp -∗ RcL γp ∗ (RcR γp ∗ (Rk γp ∗ Cx γp))) -∗
     UkShPipe.ush_pipe_call N ld R -∗
+    (* the wait credential and the law that spends it, twice *)
+    Wr -∗
+    UkShPipe.ush_wait0_law N Wr Pw -∗
     UkShDiag.ush_execfail_law_at (wl_line PipeDisc.dg_pipe) 5%nat Cr Bp -∗
     □ (UserFd.ustd γfd ld -∗ Bp -∗ ukn_pay N (-1)) -∗
     (* SS4.3u (lane SH-PIPE-ROUND-9): the fork tails' credential is
@@ -769,10 +815,14 @@ Section UShPipeChild.
        mWP (Loop : expr riscv_lang)) -∗
     (∀ (h' : CpuId) (m' : regfile) (γp : pipe_names)
        (r1 r2 rw1 rw2 : mword 64) (S1 S2 S3 S4 : gset gname),
+       (* the two forks returned a pid (purchase 3): a -1 panics and never
+          reaches 0xea -- see [UkShPipe.wp_kshr_pipe_arm_g] *)
+       ⌜ r1 <> (mword_of_int (-1) : mword 64) ⌝ -∗
+       ⌜ r2 <> (mword_of_int (-1) : mword 64) ⌝ -∗
        UkShPipe.ush_fork_ans Sc S1 (RcL γp) Qc r1 -∗
        UkShPipe.ush_fork_ans S1 S2 (RcR γp) Qc r2 -∗
-       uwait_ans rw1 S2 S3 -∗
-       uwait_ans rw2 S3 S4 -∗
+       Pw rw1 S2 S3 -∗
+       Pw rw2 S3 S4 -∗
        UserChildren.uch γch S4 -∗
        ush_jtab γt -∗
        usz γs szv -∗
@@ -780,6 +830,8 @@ Section UShPipeChild.
        UserCwd.ucwd γcwd cwdv -∗
        Rk γp -∗
        Cx γp -∗
+       (* ...and the wait credential, unspent *)
+       Wr -∗
        urun N h' m' (mword_of_int 0xea)
          (2 + (UkShDiag.ush_Dg + (68 + n))) -∗
        mWP (Loop : expr riscv_lang)) -∗
@@ -799,7 +851,7 @@ Section UShPipeChild.
     exact (wp_kshm_child_pipe_paid_at h m dw dv s0 szv cwdv len f (wl_toks ws)
              (length (wl_body ws) + 1)%nat
              (S (S (length (wl_body ws) + 1)) + 3)%nat
-             ld st0 st1 Sc n R RcL RcR Rk Cx Bx Qc Cp Cr Bp
+             ld st0 st1 Sc n R RcL RcR Rk Cx Bx Qc Cp Cr Bp Wr Pw
              Hm01 Hm23 Hs1 Hq Ht Hpos Htlen Hs0 Hs64 Hs38
              HQc Hl0 Hl1 Hne0 Hne1 Hnp0 Hnp1 Hfd2).
   Qed.

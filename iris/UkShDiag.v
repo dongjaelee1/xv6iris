@@ -8997,6 +8997,9 @@ Section UkShDiagLeaf.
         mWP (Loop : expr riscv_lang)) ∗
      (∀ (h' : CpuId) (m' : regfile) (r : mword 64),
         ⌜ r <> (mword_of_int 0 : mword 64) ⌝ -∗
+        (* ...and it is not -1 either (design app-pipe SS4.3w, purchase
+           3): fork1 panics at -1 -- see [UkShRun.wp_kshr_fork1] *)
+        ⌜ r <> (mword_of_int (-1) : mword 64) ⌝ -∗
         ⌜ ucallee_saved m m' ⌝ -∗
         ⌜ m' !!! Regidx a0_idx = r ⌝ -∗
         ((⌜r = (mword_of_int (-1) : mword 64)⌝ ∗

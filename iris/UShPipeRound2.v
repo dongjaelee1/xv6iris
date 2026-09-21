@@ -50,14 +50,18 @@ Require Import SailStdpp.Operators_mwords.
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values
         SailStdpp.MachineWord.
 Require Import RiscvLang.
+Require Import ObsTrace.
 Require Import LineWords.
 Require Import EchoDisc.
-Require Import LogEntryDefs.
+Require Import ConsLog.
+Require Import EchoOutPure.
 Require Import PipeDisc.
+Require Import PipeOutPure.
 Require Import PipeBothPure.
 Require Import EchoOut.
 Require Import AppEcho.
 Require Import PipeOut.
+Require Import PipeLinks.
 Require Import PipeLinksLine.
 Require Import PipeBoth.
 Require Import PipeLinkInst.
@@ -65,10 +69,12 @@ Require Import Xv6G.            (* [xv6G] -- the backtick Context trap: a
                                    generalisation over a name that is NOT
                                    in scope BINDS it (durable-notes) *)
 Require Import PipeNames.
+Require Import PipeQueue.
 Require Import PipeProto.
 Require Import UEchoPipe.
 Require Import RiscvPtsto.
 Require Import WpUart.
+Require Import CtxIdDefs.
 Local Open Scope list_scope.
 
 (* ===================================================================== *)

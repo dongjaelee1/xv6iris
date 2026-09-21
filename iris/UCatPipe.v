@@ -49,7 +49,7 @@ Require Import Riscv.rv64d_types Riscv.rv64d Riscv.riscv_extras.
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.MachineWord.
 Require Import RiscvLang RiscvPtsto RiscvExtras RiscvModelBytes.
 Require Import RegFile.
-Require Import UmodeArith.
+Require Import UmodeArith UmodeAbi.
 Require Import UserHeap UkRun UkRunLeaf UkRunSys.
 Require Import UserPtTree.         (* [uptd] / [uva_wmapped] *)
 Require Import VcGen.              (* [trunc32_subrange] *)
@@ -58,13 +58,19 @@ Require Import WpUart.             (* [out_link] *)
 Require Import UCodeCat.
 Require User.CatSyms User.CatInstrs.
 Require Import ChildTok.
-Require Import FdSlots PipeNames UserFd.
+Require Import FdSlots PipeNames ProcGeom UserFd.
 Require Import UexecSlot UexecRet UsysMemOk.
 Require Import UexecExecInst.      (* THE INSTANCES: [uexecSG_xv6], [uprogSG_gen] *)
 Require Import UkCat.
 Require Import UkCatCat.
 Require Import UkCatMain.
+Require Import ExecEntry.          (* [image_entry] / [image_entry_of_at] *)
+Require Import SpecKexec.          (* [kexec_image_ok_fd] *)
+Require Import UkAbi.              (* [uk_args_c] / [uka_argc] *)
+Require Import ElfUser.            (* [cat_elf] *)
 Require Import UEchoKernel.        (* [echo_args] / the key's argument reading *)
+Require Import UShEcho.            (* [echo_node_img] *)
+Require Import UkShEcho.           (* [echo_argv_bytes] / [echo_off_lt] *)
 Require Import UShCat.             (* cat's exec/argv geometry and entry carve *)
 Require Import Xv6Cameras Xv6G IrefSlots ProcAvail FileInvDefs.
 Require Import PipeQueue.          (* the payments and the posts *)

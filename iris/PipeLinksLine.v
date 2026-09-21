@@ -40,10 +40,13 @@ Require Import SailStdpp.Operators_mwords.
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values
         SailStdpp.MachineWord.
 Require Import RiscvLang.
+Require Import ObsTrace.
 Require Import LineWords.
 Require Import EchoDisc.
+Require Import ConsLog.
 Require Import EchoOutPure.
 Require Import PipeDisc.
+Require Import PipeDiscDec.
 Require Import PipeOutPure.
 Require Import EchoOut.
 Require Import AppEcho.
@@ -54,6 +57,7 @@ Require Import EchoLinksLine.    (* ...and the SHARED alternative lengths *)
 Require Import EchoLinksPro.     (* ...and the SHARED prologue arithmetic *)
 Require Import RiscvPtsto.
 Require Import WpUart.
+Require Import CtxIdDefs.
 (* as in EchoDisc / PipeDisc / PipeOut: the Sail imports leave
    string_scope on top and [++] would elaborate as String.append. *)
 Local Open Scope list_scope.

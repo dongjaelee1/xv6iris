@@ -26,9 +26,14 @@ Require Import SailStdpp.Operators_mwords.
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values
         SailStdpp.MachineWord.
 Require Import RiscvLang.
+Require Import ObsTrace.
 Require Import LineWords.
+Require Import EchoDisc.
+Require Import LogEntryDefs.
 Require Import ConsLog.
+Require Import EchoOutPure.
 Require Import PipeDisc.
+Require Import PipeOutPure.
 Require Import RiscvPtsto.
 Require Import ConsoleInv.
 Require Import WpUart.
@@ -37,6 +42,8 @@ Require Import AppEcho.
 Require Import PipeOut.
 Require Import PipeLinks.
 Require Import PipeLinksLine.
+Require Import CtxIdDefs.
+Require Import LinkRec.
 Require Import ReadRec.
 Require Import UserConsole.
 Require Import PipeLinkInst.

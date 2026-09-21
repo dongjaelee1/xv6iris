@@ -46,18 +46,23 @@ Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.Mac
 Require Import RiscvLang RiscvPtsto RiscvExtras RiscvModelBytes.
 Require Import RegFile.
 Require Import Xv6Cameras.
+Require Import UserPtTree.
 Require Import UmodeArith UmodeAbi.
-Require Import UserHeap UkRun UkRunLeaf.
+Require Import UserPerm.
+Require Import UserHeap UkRun UkRunLeaf UkRunSys.
 Require Import UkRunExecRef.
 Require Import UkRunMem.
 Require Import FdSlots UserFd UserCwd UserChildren.
 Require Import PipeNames.
 Require Import UCodeShK.
+Require Import UCodeShP.
 Require Import UkSh.
 Require Import UkShParse.
 Require Import UkShParseCmd.
 Require Import UkShParseSym.
 Require Import UkShRedirSeam.
+Require Import LineWords.
+Require Import UkShWords.
 Require Import UkShRun.
 Require Import UkShDiag.
 Require Import UkShMain.

@@ -1300,6 +1300,52 @@ operational rules from the lane, now standing: the widened credential
 lemmas are pinned at `uprogSG_free` and `pipe_sh_prompt_law_t` inlines
 `pterm_prompt_law`'s body (applying it as a wand wedges `IntoWand`).
 
+### 4.3r RULED (2026-09-24, after SH-PIPE-ROUND-8): two one-line rulings, and the round's bill
+
+ROUND-8 refuted §4.3q both ways — the token is forwarded into seven
+statements of `UkShPipeCm.v`, and it is unnecessary: the family must
+exist before `pipe(2)`, not before the parse — and landed the paid child
+walk at TWO payers (`wp_kshm_child_pipe_paid_at`: the lend across
+`parsecmd`, the family into `runcmd`; the landed pair is the special case
+`Cp := Cr`), the protocol's allocation split in two (`pipe_names_alloc`
+before `pipe(2)` so the exclusion witnesses can name `pn`; `pipe_inv_alloc_at`
+at the registrar), `pipe_fork_panic_law` (§4.3h's terminal payload as a
+law the walk takes), the child's paid `exit(0)`, and the generic step
+lemmas (`ksh_w1_of_step`, `out_step`/`out_chain_of_step`, `exf_law_fupd`).
+Two rulings, both one line:
+
+- **`UShPipeRound.sh_pipe_child_law` gains a `PipeLinks.pipe_links g`
+  antecedent** beside the /cat pin (`□ (pipe_links g -∗ sh_cat_slot T -∗
+  ushf_child_law_at (pterm_wc g) ushq_lp 68)`): every family byte step
+  takes `pipe_link_taint g`, whose only producer is the bundle;
+  `sh_round_holds_pipe` already holds it; `sh_pipe_child_law_all`'s Prop
+  is unchanged.
+- **`UkShDiag.ush_execfail_law_at`'s byte step is guarded by `⌜p < n⌝`.**
+  The echo child's diagnostic law asks a step at every byte of
+  `alt_execfail = dg_execL ++ u_prompt` (19) while `n = 17` and, at a
+  pipeline round, the prompt is the PARENT's to write; the guard strictly
+  weakens what a supplier provides and every landed consumer spends the
+  step at `p < n` (measured).  One generic line; the echo/file suppliers
+  re-discharge unchanged.  Consequence: `XL` IS the `wtok pn` inside the
+  refunded `ep_pay`, spent into the family, so the round reads `PExecL`
+  off the CURSOR (`c1 = length dg_execL`, `pround_case`'s second
+  disjunct), and `pipe_round_reading` is needed only on the arms with
+  `c1 = 0`.
+
+The bill (ROUND-8's Findings §6, each measured): (1) the left child's
+diagnostic at the family's left chain; (2) the right child's at mode 2;
+(3) cat's multi-byte write at mode 1 — the copy of
+`UCatKernel.cat_w_of_link` at `Ch c := wcur gR (1/2) c ∗ wcur gM (1/2) 1`
+over `out_chain_of_step` (the largest item); (4) the registrar at the
+pre-allocated `pn` (`ush_pipe_call_echo_pay`'s twin over
+`pipe_inv_alloc_at`, `Wq := emp`); (5) the `panic("pipe")` law at the
+era's credential (`ush_execfail_law_holds_at`'s body at the pipe
+alternative + a `dg`-weakening, then `exf_law_fupd` at
+`pipe_round_unwind`); (6) the split, `Qc`, the two `ush_fork_ans`, the
+two `uwait_ans`, the reading and `pipe_round_exit`.  Then
+`sh_pipe_child_law_all` and `pipe_adequacy_pipeΣ_final`.  Lane
+SH-PIPE-ROUND-9.
+
 ## 5. Programs
 
 ### 5.1 sh: the PIPE arm (lanes SH-PARSE-PIPE, SH-PIPE)

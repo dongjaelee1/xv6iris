@@ -370,10 +370,24 @@ arm is the theorem's one named premise (`pipe_both_law`).
   pure entailment into `lk_blk` and the terminal round's family holds the
   era's `turn` for ever.  See the Findings block.
 - [ ] **SH-PIPE-ROUND-7** (after STAGE-5): the assembly; the theorem.
-- [ ] **SH-PIPE-ROUND-7** (design §4.3o, route (a): the later repair — two
+- [x] **SH-PIPE-ROUND-7** (design §4.3o, route (a): the later repair — two
   generic additions; the pipe twins under `gen_pay`; the child law at
   `pterm_wc`; the assembly; `pipe_adequacy_pipeΣ_final`).  Brief
-  `brief-sh-pipe-round-7.md`.
+  `brief-sh-pipe-round-7.md`.  **THE TWO ADDITIONS ARE THE WRONG TWO and
+  the lane STOPS at a statement it does not own.**  The later IS payable,
+  but at `0xc94 c.jr ra` inside `wait` (landed:
+  `UkRunLeaf.wp_uk_cjr_later`, `UkShPipeWait.wp_kshr_wait_pid_later`), not
+  at `0x938` — stripping it there consumes the LOOP HEAD'S OWN first
+  instruction and the loop has no re-entry at `0x93a`, so §4.3o's
+  `▷`-accepting `ushl_head` does not exist (statement landed as
+  `UkShLoop.ushl_head_later`, with `ushl_head_of_later` the one direction
+  that holds).  And the repair is not additive: the terminal round's only
+  continuation at `0x938` is the loop head (`UkSh.wp_ksh_getcmd` needs
+  `ush_read_leaf`, i.e. the era's payload equation, which
+  `UkSh.ush_rest_l_at` does not pass down), so the shape has to ride the
+  ERA'S credential and `UInitPipe.pipe_cc`'s `cc_wc` must become
+  `UkShPipeFork.pterm_wc g`.  Items 2–5 NOT landed; the final theorem is
+  not reached.  See the Findings block.
 ## Findings (append as lanes report)## Findings (append as lanes report)## Findings (append as lanes report)
 
 ### PQ-FLAG-2 (2026-09-18) — the write link's second premise, paid by the CODE

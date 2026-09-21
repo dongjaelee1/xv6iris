@@ -2079,25 +2079,46 @@ Section UShRound.
      linear resource, and [Pay] is what the entry hands over per
      invocation.  [om] is a PARAMETER throughout -- never [OffParked],
      never [OffHeld] literally. *)
-  Definition cat_pay (I : list (bv 8)) (q1 q2 : Qp) (om : offmode)
-      (sts : list fdstate) (v : era_pins) (vf : file_era)
+  Definition cat_pay (I : list (bv 8)) (q : Qp)
+      (v : era_pins) (vf : file_era)
       (ps0 : list nat) (P : nat) : iProp Σ :=
     (Wcl I 3%nat
-     ∗ (∃ (cs0 : list nat) (i : Z) (bs : list (bv 8)),
-          ⌜UCatOut.cat_tie cs0 s0 I (Some (i, bs))⌝
-          ∗ UCatKernel.cat_lend g (fgn_cl g) r q1 q2 i bs om sts
-              FsImg.ROOTINO v vf ps0 cs0 s0 I P))%I.
+     ∗ (∃ (cs0 : list nat) (s : dst),
+          ⌜UCatOut.cat_tie cs0 s0 I s⌝
+          ∗ UCatKernel.cat_lend g r q s v vf ps0 cs0 s0 I P))%I.
 
-  (* THE ENTRY, AT THE NODE SH BUILT (lane CAT-GEOM-2).  This used to
-     quantify [M] and [av] FREE, and that was WRONG: cat's diagnostic
-     names `f` ([FileDisc.alt_catopen]), so an entry owed at EVERY
-     argument vector is a claim cat cannot make.  The five premises below
-     are the ones [UCatKernel.cat_image_entry] takes, and every one of
-     them is a fact SH HAS -- it built the node ([UkShEcho.echo_cmd] at
-     [t]) and it parsed the line -- so [Hchild_cat] is ONE application of
-     that lemma. *)
+  (* THE ENTRY, AT THE NODE SH BUILT (lane CAT-GEOM-2) -- STILL A HYPOTHESIS,
+     AND TWO THINGS ARE WRONG WITH IT THAT THE NEXT LANE MUST FIX FIRST
+     (PROGRAM-STREAM stretch 11):
+
+     (1) [EchoDisc.line_ok ws] IS FALSE AT `cat f`.  [line_ok] demands
+         [ws !! 0 = Some cmd_echo]; the cat line's words are [cat; f].  The
+         premise is inherited from [UCatKernel.cat_image_entry], which reads
+         the argument vector through the ECHO tier's lemmas
+         ([UShEcho.echo_args_det_holds], [UkShEcho.echo_off_lt], ...), all
+         stated at [line_ok].  Those lemmas are about THE EXEC NODE SH BUILT
+         and use [line_ok] only for well-formedness and the length bounds;
+         the fix is a predicate for that ("an exec'able word list") under
+         them, with [line_ok] as its instance at [echo].  The pipe campaign
+         met the same wall and TWINNED the lemmas at its one-word `cat`
+         ([UShCatPay.cat_args_det_1w], [cat_image_entry_1w]).
+
+     (2) THE LEND IS NOT ALL OF WHAT THE CHILD MUST RETURN.  The fork's
+         payload is [ushf_wq Wcf I] -- the WHOLE position-0 credential,
+         whose deed conjunct is [fown r s = fdeed r s ∗ ftkt r s] with the
+         tie, the typing and the pins.  cat takes [fdq r q s] and returns
+         it (RULING CAT-DEED, amended), so the REST of [PRE I] has to ride
+         across cat's entry as a FRAME, the way [Hold] rides echo's
+         ([UShEchoPay.echo_slot_of_kexec_at_at]); [UCatKernel.cat_pay_present]
+         has no frame yet (its round's hold family [cat_hold_at] is where
+         one goes).
+
+     What IS right now: one fraction in, the same one out
+     ([UCatKernel.catq_cat]); no [app_taint] antecedent; the payload
+     conversion is cat's entry's own premise and no longer this
+     hypothesis's. *)
   Hypothesis Hchild_cat :
-    forall (I : list (bv 8)) (q1 q2 : Qp) (om : offmode)
+    forall (I : list (bv 8)) (q : Qp)
            (ws : list (list (bv 8)))
            (M : gmap Z (bv 8)) (sv t : Z) (gn : nat -> bv 8)
            (sts : list fdstate) (cw : Z) (cs : gset gname)
@@ -2106,7 +2127,6 @@ Section UShRound.
            (rb : bool),
       length sts = NOFILE ->
       cw = FsImg.ROOTINO ->
-      (* ...and the line is `cat f`, read off sh's own node *)
       EchoDisc.line_ok ws ->
       UShEcho.echo_node_img ws M sv t gn ->
       UkShEcho.echo_argv_bytes ws gn ->
@@ -2115,24 +2135,13 @@ Section UShRound.
       (forall j : nat, (j < 1)%nat ->
          LineWords.wl_line ws !!! (UkShEcho.echo_off ws 1%nat + j)%nat
          = FsImgCheck.fname_f !!! j) ->
-      (* ...and the child's standard streams, which are sh's own *)
       take NSTD sts !! 1%nat = Some (FdOpen rb true (FdDevice ConsoleInv.CONSOLE)) ->
       take NSTD sts !! 2%nat = Some (FdOpen rb true (FdDevice ConsoleInv.CONSOLE)) ->
       fd_lowest_closed (take NSTD sts) = None ->
-      (* THE PAYLOAD CONVERSION, and it is SH's: what cat's exit files is
-         one of its OWN two alternatives ([UCatKernel.catq_cat], at cat's
-         own end cursor); what the fork chose is [ushf_wq Wcf I].  The
-         wand between them is a fact about the era's links, so it belongs
-         to the round and not to cat's entry -- which is why
-         [UCatKernel.cat_child_of_entry] takes [Q] as a parameter. *)
-      ⊢ □ (∀ cs0 : list nat,
-             UCatKernel.catq_cat g v vf ps0 cs0 s0 I P (-1)
-             -∗ UkShFork.ushf_wq Wcf I) -∗
-        app_taint -∗
-        image_entry ElfUser.cat_elf M (mword_of_int (t + 8) : mword 64) sts
+      ⊢ image_entry ElfUser.cat_elf M (mword_of_int (t + 8) : mword 64) sts
           cw cs pidv
           (fun _ : Z => UkShFork.ushf_wq Wcf I)
-          (cat_pay I q1 q2 om sts v vf ps0 P) uslot.
+          (cat_pay I q v vf ps0 P) uslot.
 
   (* ---- THE REDIRECT CHILD'S LAW (item 2d; it was a section hypothesis at
           a stale twin of [UkShRedirBody.sh_redir_child_law] -- 60 steps

@@ -868,6 +868,80 @@ Section UShRound.
             [ rewrite length_app; cbn [length]; lia | exact Hpre ].
   Qed.
 
+  (* THE FOLD AT AN ALTERNATIVE THAT MOVES `f` (the redirect child's
+     printing exits; [Wcf0_of_pre_line_id]'s twin).  There the line
+     credential hid which alternative it filed and that was harmless,
+     because every alternative left `f` alone.  Here the holder HAS moved
+     the file -- a failed exec after the open truncated it, a round that
+     wrote its chunks -- so it must present the block at the alternative
+     [a] it took ([UShPanic.ush_diag_law_hold_at_alt] ends there), beside
+     a deed whose content is [a]'s own f-effect on the round's entry
+     state.  The block's choice list and the deed's agree by length
+     ([cs_lb_agree_len]); past its first byte the block has FILED [a]
+     (DONE, by [done_tie_snoc]), and a block whose prompt is its first
+     byte is still owed (PEND at [a] itself, which is why that case asks
+     for [a]'s continuation to be the bare prompt). *)
+  Lemma Wcf0_of_post_alt (I : list (bv 8)) (a : nat) (v v' : era_pins)
+      (cs' : list nat) (s : dst) :
+    fapr I a ->
+    length cs' = (nlines I - 1)%nat -> (0 < nlines I)%nat ->
+    dst_content s
+      = fsm (UCatOut.cat_st cs' s0 I) (fline I) (ralt_dec a) ->
+    ((length (fab I a) - 2)%nat = 0%nat ->
+     cont (UCatOut.cat_st cs' s0 I) (fline I) (ralt_dec a) = u_prompt) ->
+    lk_pin FI (S gen_id) v -∗ lk_post FI (S gen_id) v I a -∗
+    fown r s -∗ f_typed (fgn_cl g) s -∗
+    era_pin (fgn_echo g) (S gen_id) v' -∗ cs_lb v' cs' -∗
+    Wcf I 0%nat.
+  Proof using .
+    intros Hapr Hlen Hpos Hc Hpr.
+    iIntros "#Hpin Hblk Hd #Hty #Hpin' #Hcs'". rewrite Wcf_0.
+    cbn [lk_pin FileLinkInst.file_link_inst_at].
+    iDestruct (era_pin_agree (fgn_echo g) (S gen_id) v v' with "Hpin Hpin'")
+      as %<-.
+    rewrite /lk_post. cbn [lk_blk lk_ab FileLinkInst.file_link_inst_at].
+    rewrite /fwc_blk_at. iDestruct "Hblk" as "[Hblk | #HT]"; last first.
+    { iLeft. iSplitL "";
+        [ iApply (Hcltaint I 0%nat v with "Hpin HT")
+        | iApply (sh_deed_taint with "HT") ]. }
+    iDestruct "Hblk" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE & #Hf)".
+    pose proof Hw as [(_ & _ & Hn & _) _].
+    destruct (length (fab I a) - 2)%nat as [| i] eqn:Hi.
+    - (* the prompt is the block's first byte: still owed, deed PEND at [a] *)
+      cbn [blkcs_f]. rewrite Nat.add_0_r.
+      iDestruct (cs_lb_agree_len v cs cs' ltac:(lia) with "Hcs Hcs'") as %<-.
+      iRight. iSplitL "Htn".
+      + iApply (Wcl3_close I v ps cs P Hw with "Hpin [Htn]").
+        rewrite /FileLinksLine.fcur. iFrame "Htn Hps Hcs HE Hf".
+      + rewrite /sh_pend_at /sh_deed_at. iLeft. iExists cs, s, v.
+        iFrame "Hd Hty Hpin Hcs". iPureIntro. exists a.
+        split_and!; [ exact Hlen | exact Hpos | exact (proj1 Hapr)
+                    | exact (Hpr eq_refl) | exact Hc ].
+    - (* a byte before the prompt: [a] is filed, deed DONE *)
+      cbn [blkcs_f].
+      iDestruct (cs_lb_prefix_len v (cs ++ [a]) cs'
+                   ltac:(rewrite length_app; cbn [length]; lia)
+                   with "Hcs Hcs'") as %Hpre.
+      assert (Hcseq : cs = cs').
+      { destruct Hpre as [k Hk].
+        assert (Hkl : length k = 1%nat).
+        { apply (f_equal length) in Hk.
+          rewrite !length_app in Hk. cbn [length] in Hk. lia. }
+        destruct k as [| x [| y k]]; cbn [length] in Hkl; try lia.
+        apply app_inj_tail in Hk. exact (proj1 Hk). }
+      subst cs'.
+      iLeft. iSplitL "Htn".
+      + iExists v. iFrame "Hpin".
+        cbn [lk_lpr FileLinkInst.file_link_inst_at fwc_lpr_at].
+        rewrite /fwc_line_at. iRight. iExists a.
+        iSplitR; [ by iPureIntro | ]. rewrite /fwc_blk_at. iLeft.
+        iExists ps, cs, P.
+        rewrite Hi. cbn [blkcs_f]. iFrame "Htn Hps Hcs HE Hf". by iPureIntro.
+      + rewrite /sh_done_at /sh_deed_at. iLeft. iExists (cs ++ [a]), s, v.
+        iFrame "Hd Hty Hpin Hcs". iPureIntro.
+        exact (done_tie_snoc cs a s0 I _ Hlen Hpos Hc).
+  Qed.
+
   (* ---- THE LOOP'S LAWS AT [Wcf] / [Wbf] ---- *)
 
   (* [UkShFork]'s [Hwbl]: a fork that failed re-enters at the boundary --

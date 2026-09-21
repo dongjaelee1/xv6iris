@@ -828,6 +828,44 @@ Section UShPanicGen.
       rewrite /lk_post (lk_ab_exf L I). iExact "Hp".
   Qed.
 
+  (* ...AND AT ANY ALTERNATIVE, WITH THE ALTERNATIVE LEFT VISIBLE AT THE
+     END.  [ush_execfail_law_hold_at] closes on [lk_lcred ... 0], which
+     HIDES which alternative the block filed; that is all a holder needs
+     whose resource every alternative leaves alone.  A holder whose
+     resource MOVES with the alternative (the file application's deed at a
+     redirect line: a failed exec leaves `f` truncated, a failed open
+     leaves it as it was) has to read the alternative off the end state,
+     so this law stops one step earlier, at the block written up to its
+     prompt.  The diagnostic's bytes are the alternative's own
+     ([lk_ab L I a]), so the same law serves the exec-failed and the
+     open-failed walks. *)
+  Lemma ush_diag_law_hold_at_alt (Hold : iProp Σ) (I : list (bv 8))
+      (a : nat) :
+    lk_links L -∗
+    UkShDiag.ush_execfail_law_at (lk_ab L I a)
+      (length (lk_ab L I a) - 2)%nat
+      (lk_lcred L (S gen_id) I 3%nat ∗ Hold)
+      (∃ v : era_pins,
+         lk_pin L (S gen_id) v ∗ lk_post L (S gen_id) v I a ∗ Hold).
+  Proof using .
+    iIntros "#Hlk". rewrite /UkShDiag.ush_execfail_law_at.
+    iIntros "!>" (N l) "%Hfd2 [Hc Hh]". destruct Hfd2 as [rb Hl2].
+    iDestruct (lk_lcred_blk_open L (S gen_id) I a with "Hc")
+      as (v) "[#Hpin Hc]".
+    iExists (fun p : nat => lk_blk L (S gen_id) v I a p ∗ Hold)%I.
+    iSplitL; [ iFrame "Hc Hh" | ].
+    iSplit.
+    - iIntros "!>" (p b) "%Hb".
+      iApply (ksh_w1_hold N (mword_of_int 2 : mword 64) b
+                (UserFd.ustd (ukn_fd N) l)
+                (lk_blk L (S gen_id) v I a p)
+                (lk_blk L (S gen_id) v I a (S p)) Hold).
+      iApply (ksh_w1_of_link_blk_at N v I l rb a p b Hl2 Hb
+                with "Hpin Hlk").
+    - iIntros "!> [Hp Hh]". iExists v. iFrame "Hpin Hh".
+      rewrite /lk_post. iExact "Hp".
+  Qed.
+
 End UShPanicGen.
 
 (* ===================================================================== *)

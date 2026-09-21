@@ -67,15 +67,12 @@ Require Import ChildTok.
 Require Import UexecSlot.
 Require Import UexecRet.
 Require Import UexecSG.
-Require Import PathElems.
 Require Import AppCfg.
 Require Import AppInv.
 Require Import FsCfg.
 Require Import ConsoleInv.
 Require Import SpecKexec.
 Require Import FsAbsDefs.
-Require Import FsAbsEra.
-Require Import PinnedExec.
 Require Import UexecExecInst.
 Require Import UkRun.
 Require Import UkInit.
@@ -83,17 +80,12 @@ Require Import UexecExecMint.
 Require Import UkWriteClosed.
 Require Import UInitKernel.
 Require Import LineWords.
-Require Import EchoLinks.
 Require Import UInitDiag.
 Require Import UInitBanner.
 Require Import UInitCons.
-Require Import UInitConsK.
 Require Import UInitSh.
 Require Import UShPanic.
 Require Import UShEcho.
-Require Import EchoLinksPro.
-Require Import EchoLinksLine.
-Require Import EchoLinksBan.
 Require Import UShLine.
 Require Import AppEcho.
 Require Import EchoOut.
@@ -102,17 +94,12 @@ Require Import UserFd.
 Require Import LinkUserinit.
 Require Import UkSh.
 Require Import UShConsK.
-Require Import KexecDefs.
-Require Import PageGeom.
 Require Import InitBoot.
 Require Import ElfUser.
-Require Import ElfLoadable.
-Require Import FsInitPin.
 Require Import FsInitPinBoot.
 Require Import UInitBoot.          (* [init_deps_of_laws] / [init_boot_bundle_of_pinned] *)
 (* ---- the pipeline era's own layers ---- *)
 Require Import LinkRec.
-Require Import ReadRec.
 Require Import PipeDisc.
 Require Import PipeOutPure.
 Require Import PipeOut.

@@ -43,37 +43,26 @@ Require Import Riscv.rv64d_types Riscv.rv64d Riscv.riscv_extras.
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.MachineWord.
 Require Import RiscvLang RiscvPtsto RiscvModelBytes.
 Require Import Xv6Cameras Xv6G FdSlots IrefSlots ProcAvail FileInvDefs.
-Require Import ProcGeom.          (* [NOFILE] / [NSTD] *)
 Require Import UexecSlot UexecRet UexecSG.
 Require Import UkRun.
 Require Import UserFd.
-Require Import ChildTok.
 Require Import ElfFile ElfUser.
-Require Import PageGeom.
-Require Import UmodeAbi.
 Require Import FsImg.
 Require Import FsEchoPin.
-Require Import SpecKexec.
 Require Import ExecEntry.         (* [image_entry] / [image_entry_taint] *)
 Require Import FsAbsDefs.         (* [anode] / [MkAnode] / [AFile] *)
 Require Import ExecRun.           (* the U-TIER EXEC RULE *)
-Require Import UShKernel.
-Require Import KexecDefs.
 Require Import UexecExecInst.
 Require Import PipeNames.
 Require Import PipeQueue.
 Require Import PipeReg.
 Require Import PipeProto.         (* [pnames] / [pipe_inv] *)
-Require Import UCodeEcho.
-Require Import UkSh UkShFork UkShEcho.
+Require Import UkShEcho.
 Require Import UkShPipe.        (* [ush_pipe_call] *)
 Require Import UShPipeCall.     (* H1: the paid stub at a real registrar *)
 Require Import LineWords.
 Require Import EchoDisc.
-Require Import UEchoOut.
 Require Import UShEcho.           (* the pinned bundle's inputs *)
-Require Import UShEchoOut.
-Require Import UShEchoPay.        (* the CONSOLE mould, for reference *)
 Require Import UEchoPipe.         (* THE (E) HALF: [ep_image_entry] *)
 Require User.EchoSyms.
 Local Open Scope Z_scope.

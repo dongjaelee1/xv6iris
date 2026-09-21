@@ -1887,14 +1887,20 @@ Section UCatEntry.
     fd_lowest_closed (take NSTD (uvis_fd W)) = None ->
     era_pin (fgn_echo g) (S gen_id) v -∗
     file_era_pin g (S gen_id) vf -∗
-    (* ---- OFF-LINK item 1 ---- *)
+    (* ---- OFF-LINK item 1.  THE ROW IS OWED AT CAT'S OWN CWD: the deed
+       open resolves a relative path, [cat_open_hand_of_deed] spends the
+       process's [ucwd], and that resource is the PAYER's (it arrives
+       inside [cat_pay_at]) -- a lender cannot hold it for every record. *)
     (∀ N' : uk_names Σ,
+       UCodeCat.cat_code (ukn_t N') -∗
+       UserCwd.ucwd (ukn_cwd N') (uvis_cwd W) -∗
        cat_open_hand N' c r q1 q2 i bs (take NSTD (uvis_fd W))
          (uvis_cwd W) om) -∗
     (* ---- OFF-LINK item 2: the HELD read at the pinned offset.  Its
        count bound is already in [cat_held_read]'s post (landed above),
        which is what makes [cat_hw_of_link] discharge [Hw] outright. ---- *)
     (∀ (N' : uk_names Σ) (fd : nat) (gamo : gname),
+       UCodeCat.cat_code (ukn_t N') -∗
        ⌜(fd < NOFILE)%nat⌝ -∗
        cat_held_read N' (cat_hold_at N' r q1 i bs om fd gamo) c fd bs) -∗
     (* THE EXIT PAYLOAD, AT CAT'S OWN END CURSOR (lane CAT-GEOM-3).  It
@@ -1945,14 +1951,15 @@ Section UCatEntry.
       by (rewrite /UShCat.cat_args echo_args_length; lia).
     cbn [UkCatMain.kcat_pay].
     iExists ga, (ukn_pay N' (-1)). iSplitR; [ by iPureIntro | ].
-    iSplitL "Hopen Hheld Hc"; last first.
+    iSplitL "Hopen Hheld Hc Hcwf"; last first.
     { cbn [UkCatMain.kcat_pay]. by iIntros "$". }
     rewrite /UkCatMain.kcat_file.
+    iDestruct ("Hopen" $! N' with "Hcode Hcwf") as "Hopen".
     iApply (UkCat.kcat_o_mono N' (mword_of_int (UserHeap.ua_ptr ga)) _ _ _
               with "[Hheld] [Hopen Hc]"); last first.
     { iApply (kcat_o_frame N' (mword_of_int (UserHeap.ua_ptr ga)) _ _ _
                 with "Hc").
-      iApply ("Hopen" $! N'
+      iApply ("Hopen" $!
                 (base.filter
                    (fun kv : Z * bv 8 => ~ (kv.1 < uint (uvis_sp W)))
                    (udata_lo (uvis_M W) (uvis_perm W) (uvis_sz W)))
@@ -2009,7 +2016,7 @@ Section UCatEntry.
                        (take NSTD (uvis_fd W)) v vf ps0 cs0 s0 I0 P _
                        Hgc Htie
                        with "[Hheld] [] [] Hcode").
-             ++ iApply ("Hheld" $! N' fd gamo with "[%]"). exact Hlt1.
+             ++ iApply ("Hheld" $! N' fd gamo with "Hcode [%]"). exact Hlt1.
              ++ iApply (cat_hw_of_link g Hcons N' c v vf ps0 cs0 s0 I0 P
                           (take NSTD (uvis_fd W)) rb Hgc Hst Hl1
                           with "Hpin Hfp").
@@ -2097,7 +2104,8 @@ Section UCatEntry.
   Lemma cat_pay_filed_some (W : uvis) (v : era_pins) (vf : file_era)
       (ps0 cs0 : list nat) (s0 : fstate) (I0 : list (bv 8)) (P : nat)
       (c : file_fixed) (r : file_names) (q : Qp) (i : Z)
-      (bs : list (bv 8)) (om : offmode) (rb : bool) (Q : Z -> iProp Σ) :
+      (bs : list (bv 8)) (rb : bool) (jc : Z) (Q : Z -> iProp Σ) :
+    file_app = MkAppcfg file_names (file_pred c) r ->
     c = fgn_cl g ->
     UCatOut.cat_stage ps0 cs0 s0 I0 P ->
     cat_tie cs0 s0 I0 (Some (i, bs)) ->
@@ -2112,23 +2120,23 @@ Section UCatEntry.
        [Q] slot rigid), so cat states what it produces ([catq_cat]) and the
        caller says how that pays [Q]. *)
     □ (catq_cat c r q (Some (i, bs)) v vf ps0 cs0 s0 I0 P (-1) -∗ Q (-1)) -∗
+    □ (app_taint -∗ file_taint c) -∗ □ (file_taint c -∗ app_taint) -∗
+    cons_made (fn_cons r) jc -∗
+    app_inv fsc_fs -∗
     era_pin (fgn_echo g) (S gen_id) v -∗
     file_era_pin g (S gen_id) vf -∗
-    (* the two rows, at the two HALVES the one fraction is split into *)
-    (∀ N' : uk_names Σ,
-       cat_open_hand N' c r (q / 2) (q / 2) i bs (take NSTD (uvis_fd W))
-         (uvis_cwd W) om) -∗
-    (∀ (N' : uk_names Σ) (fd : nat) (gamo : gname),
-       ⌜(fd < NOFILE)%nat⌝ -∗
-       cat_held_read N' (cat_hold_at N' r (q / 2) i bs om fd gamo) c fd bs) -∗
     (∀ N' : uk_names Σ, ⌜ukn_pay N' = Q⌝ -∗
        cat_taint_open N' c (take NSTD (uvis_fd W)) (Q (-1))) -∗
+    (* WHAT IS LENT IS ONE FRACTION AND THE CURSOR.  The open's and the
+       read's laws are cat's OWN ([cat_open_hand_of_deed] at the process's
+       cwd, [cat_held_read_of_deed]), at the two halves the fraction is
+       split into. *)
     cat_pay_at W Q
       (fdq r q (Some (i, bs))
        ∗ UCatOut.cch g v vf ps0 cs0 s0 I0 (ralt_enc RCRan) P 0%nat).
   Proof using Hcons.
-    intros Hgc Hst Htie Hcw Hl1 Hl2 Hnone.
-    iIntros "#HQ #Hpin #Hfp Hopen Hheld #Htaint".
+    intros Heq Hgc Hst Htie Hcw Hl1 Hl2 Hnone.
+    iIntros "#HQ #Hbr #Hrb #Hmade #Hinv #Hpin #Hfp #Htaint".
     iApply (cat_pay_at_mono W _
               (fdq r (q / 2) (Some (i, bs)) ∗ fdq r (q / 2) (Some (i, bs))
                ∗ UCatOut.cch g v vf ps0 cs0 s0 I0 (ralt_enc RCRan) P 0%nat)%I
@@ -2143,9 +2151,18 @@ Section UCatEntry.
       iDestruct (fdq_join r (q / 2) (q / 2) with "Hd1 Hd2") as "Hd".
       rewrite Qp.div_2. iExact "Hd". }
     iApply (cat_pay_present W v vf ps0 cs0 s0 I0 P c r (q / 2)%Qp (q / 2)%Qp
-              i bs om rb _
+              i bs OffHeld rb _
               Hgc Hst Htie Hcw Hl1 Hl2 Hnone
-              with "Hpin Hfp Hopen Hheld [] [] [] Htaint").
+              with "Hpin Hfp [] [] [] [] [] Htaint").
+    - (* the open's law, at cat's own cwd *)
+      iIntros (N') "#Hcode Hcwf".
+      iApply (cat_open_hand_of_deed N' c r (q / 2)%Qp (q / 2)%Qp i bs
+                (take NSTD (uvis_fd W)) (uvis_cwd W) Heq cat_fname_elems
+                Hnone with "Hcode Hinv Hcwf").
+    - (* the held read's law *)
+      iIntros (N' fd gamo) "#Hcode %Hlt".
+      iApply (cat_held_read_of_deed N' c r (q / 2)%Qp i bs fd gamo jc Heq
+                Hlt with "Hbr Hrb Hcode Hmade Hinv").
     - (* the content arm: [cat_out_len] IS [length bs] *)
       iIntros "!> Hc Hd". iApply "HQ".
       rewrite /catq_cat /UCatOut.catq_filed
@@ -2212,19 +2229,16 @@ Section UCatEntry.
   (*  cat's: the two rows lane OFF-LINK-4 owes, the deed's two fractions  *)
   (*  and the era's cursor at the round's own start.                      *)
   (* =================================================================== *)
-  Definition cat_lend (c : file_fixed) (r : file_names) (q : Qp)
-      (i : Z) (bs : list (bv 8)) (om : offmode)
-      (sts : list fdstate) (cw : Z) (v : era_pins) (vf : file_era)
+  (* WHAT SH LENDS cat (RULING CAT-DEED, amended 2026-09-21): ONE fraction
+     of `f`'s ghost state, at whatever state `f` is in, and the era's
+     console cursor at the round's own start.  Nothing else: the laws cat's
+     open and read run on are cat's own. *)
+  Definition cat_lend (r : file_names) (q : Qp) (s : dst)
+      (v : era_pins) (vf : file_era)
       (ps0 cs0 : list nat) (s0 : fstate) (I0 : list (bv 8)) (P : nat)
     : iProp Σ :=
-    ((∀ N' : uk_names Σ,
-        cat_open_hand N' c r (q / 2) (q / 2) i bs (take NSTD sts) cw om)
-     ∗ ((∀ (N' : uk_names Σ) (fd : nat) (gamo : gname),
-           ⌜(fd < NOFILE)%nat⌝ -∗
-           cat_held_read N' (cat_hold_at N' r (q / 2) i bs om fd gamo) c fd bs)
-        (* ONE fraction of `f`'s ghost state (RULING CAT-DEED, amended) *)
-        ∗ (fdq r q (Some (i, bs))
-           ∗ UCatOut.cch g v vf ps0 cs0 s0 I0 (ralt_enc RCRan) P 0%nat)))%I.
+    (fdq r q s
+     ∗ UCatOut.cch g v vf ps0 cs0 s0 I0 (ralt_enc RCRan) P 0%nat)%I.
 
   (* ...and the payment FRAMES its lend: a payer that needs a resource
      only inside the walk takes it off [Pay] when the entry hands it
@@ -2240,18 +2254,19 @@ Section UCatEntry.
       [ exact H1 | exact H2 | exact H3 | exact H4 ].
   Qed.
 
+  (* THE ONE NAME SH APPLIES, at either state of `f`. *)
   Lemma cat_child_of_entry (ws : list (list (bv 8))) (Mn : gmap Z (bv 8))
       (sv t : Z) (gn : nat -> bv 8)
       (sts : list fdstate) (cw : Z) (cs : gset gname) (pidv : mword 32)
       (v : era_pins) (vf : file_era) (ps0 cs0 : list nat) (s0 : fstate)
       (I0 : list (bv 8)) (P : nat)
-      (c : file_fixed) (r : file_names) (q : Qp) (i : Z)
-      (bs : list (bv 8)) (om : offmode) (rb : bool) (Q : Z -> iProp Σ) :
+      (c : file_fixed) (r : file_names) (q : Qp) (s : dst)
+      (rb : bool) (jc : Z) (Q : Z -> iProp Σ) :
     (forall x y : Z, Q x = Q y) ->
     file_app = MkAppcfg file_names (file_pred c) r ->
     c = fgn_cl g ->
     UCatOut.cat_stage ps0 cs0 s0 I0 P ->
-    cat_tie cs0 s0 I0 (Some (i, bs)) ->
+    cat_tie cs0 s0 I0 s ->
     line_ok ws ->
     UShEcho.echo_node_img ws Mn sv t gn ->
     UkShEcho.echo_argv_bytes ws gn ->
@@ -2265,39 +2280,32 @@ Section UCatEntry.
     take NSTD sts !! 1%nat = Some (FdOpen rb true (FdDevice CONSOLE)) ->
     take NSTD sts !! 2%nat = Some (FdOpen rb true (FdDevice CONSOLE)) ->
     fd_lowest_closed (take NSTD sts) = None ->
-    (* the machine's credential out of the application's flag -- NOT the
-       flag itself, which made this entry an out-of-spec statement only *)
-    □ (file_taint c -∗ app_taint) -∗
+    (* the machine's credential and the application's flag are one fact --
+       as a CONVERSION, not the flag itself, which had made this entry an
+       out-of-spec statement only *)
+    □ (app_taint -∗ file_taint c) -∗ □ (file_taint c -∗ app_taint) -∗
     (* what cat produces pays the payload the fork chose *)
-    □ (catq_cat c r q (Some (i, bs)) v vf ps0 cs0 s0 I0 P (-1) -∗ Q (-1)) -∗
+    □ (catq_cat c r q s v vf ps0 cs0 s0 I0 P (-1) -∗ Q (-1)) -∗
+    cons_made (fn_cons r) jc -∗
+    app_inv fsc_fs -∗
     era_pin (fgn_echo g) (S gen_id) v -∗
     file_era_pin g (S gen_id) vf -∗
     UkRun.urun_nopipe sts -∗ udep -∗
     image_entry ElfUser.cat_elf Mn (mword_of_int (t + 8) : mword 64) sts
       cw cs pidv Q
-      (cat_lend c r q i bs om sts cw v vf ps0 cs0 s0 I0 P) uslot.
-  Proof using Hcons.
+      (cat_lend r q s v vf ps0 cs0 s0 I0 P) uslot.
+  Proof using Hcons ufdG0.
     intros HQc Heq Hgc Hst Htie Hok Himg Hbytes Hfdl Hws2 Halen1 Hfname
            Hcw Hl1 Hl2 Hnone.
-    iIntros "#Hkc #HQ #Hpin #Hfp #Hnpw #Hdep".
+    iIntros "#Hbr #Hkc #HQ #Hmade #Hinv #Hpin #Hfp #Hnpw #Hdep".
     iApply (cat_image_entry ws Mn sv t gn sts cw cs pidv _ _ HQc
               Hok Himg Hbytes Hfdl Hws2 Halen1 Hfname
               with "[] Hnpw Hdep").
     iIntros "!>" (W') "%Hfdw %Hcww".
-    rewrite /cat_lend.
-    iApply cat_pay_at_lend. iIntros "Hopen".
-    iApply cat_pay_at_lend. iIntros "Hheld".
-    iApply (cat_pay_filed_some W' v vf ps0 cs0 s0 I0 P c r q i bs om rb Q
-              Hgc Hst Htie
-              ltac:(rewrite Hcww; exact Hcw)
-              ltac:(rewrite Hfdw; exact Hl1)
-              ltac:(rewrite Hfdw; exact Hl2)
-              ltac:(rewrite Hfdw; exact Hnone)
-              with "HQ Hpin Hfp [Hopen] [Hheld] []").
-    - rewrite Hfdw Hcww. iExact "Hopen".
-    - iExact "Hheld".
-    - iIntros (N') "%Hpq".
-      rewrite Hfdw.
+    iAssert (∀ N' : uk_names Σ, ⌜ukn_pay N' = Q⌝ -∗
+               cat_taint_open N' c (take NSTD (uvis_fd W')) (Q (-1)))%I
+      as "#Htaint".
+    { iIntros (N') "%Hpq". rewrite Hfdw.
       iApply (cat_taint_open_of_taint N' c r (take NSTD sts) (Q (-1))
                 Heq Hnone with "[] [] Hkc").
       + iIntros "!> #HT". iApply "HQ".
@@ -2307,72 +2315,21 @@ Section UCatEntry.
       + iIntros "!> #HT". rewrite Hpq. iApply "HQ".
         rewrite /catq_cat /UCatOut.catq_filed /UCatOut.cch.
         iSplitL; [ | by iRight ].
-        iLeft. iRight. rewrite <- Hgc. iExact "HT".
-  Qed.
-
-  (* ...AND AT AN ABSENT `f`: the same entry, the lend is the fraction at
-     [None] and the cursor -- no rows, because the open never returns a
-     descriptor in spec -- and the payload returns the fraction. *)
-  Lemma cat_child_of_entry_none (ws : list (list (bv 8)))
-      (Mn : gmap Z (bv 8))
-      (sv t : Z) (gn : nat -> bv 8)
-      (sts : list fdstate) (cw : Z) (cs : gset gname) (pidv : mword 32)
-      (v : era_pins) (vf : file_era) (ps0 cs0 : list nat) (s0 : fstate)
-      (I0 : list (bv 8)) (P : nat)
-      (c : file_fixed) (r : file_names) (q : Qp) (rb : bool)
-      (Q : Z -> iProp Σ) :
-    (forall x y : Z, Q x = Q y) ->
-    file_app = MkAppcfg file_names (file_pred c) r ->
-    c = fgn_cl g ->
-    UCatOut.cat_stage ps0 cs0 s0 I0 P ->
-    cat_tie cs0 s0 I0 None ->
-    line_ok ws ->
-    UShEcho.echo_node_img ws Mn sv t gn ->
-    UkShEcho.echo_argv_bytes ws gn ->
-    length sts = NOFILE ->
-    length ws = 2%nat ->
-    UkShEcho.echo_alen ws 1%nat = 1%nat ->
-    (forall j : nat, (j < 1)%nat ->
-       wl_line ws !!! (UkShEcho.echo_off ws 1%nat + j)%nat
-       = FsImgCheck.fname_f !!! j) ->
-    cw = FsImg.ROOTINO ->
-    take NSTD sts !! 2%nat = Some (FdOpen rb true (FdDevice CONSOLE)) ->
-    fd_lowest_closed (take NSTD sts) = None ->
-    □ (file_taint c -∗ app_taint) -∗
-    □ (catq_cat c r q None v vf ps0 cs0 s0 I0 P (-1) -∗ Q (-1)) -∗
-    app_inv fsc_fs -∗
-    era_pin (fgn_echo g) (S gen_id) v -∗
-    file_era_pin g (S gen_id) vf -∗
-    UkRun.urun_nopipe sts -∗ udep -∗
-    image_entry ElfUser.cat_elf Mn (mword_of_int (t + 8) : mword 64) sts
-      cw cs pidv Q
-      (fdq r q None
-       ∗ UCatOut.cch g v vf ps0 cs0 s0 I0 (ralt_enc RCRan) P 0%nat) uslot.
-  Proof using Hcons ufdG0.
-    intros HQc Heq Hgc Hst Htie Hok Himg Hbytes Hfdl Hws2 Halen1 Hfname
-           Hcw Hl2 Hnone.
-    iIntros "#Hkc #HQ #Hinv #Hpin #Hfp #Hnpw #Hdep".
-    iApply (cat_image_entry ws Mn sv t gn sts cw cs pidv _ _ HQc
-              Hok Himg Hbytes Hfdl Hws2 Halen1 Hfname
-              with "[] Hnpw Hdep").
-    iIntros "!>" (W') "%Hfdw %Hcww".
-    iApply (cat_pay_filed_none W' v vf ps0 cs0 s0 I0 P c r q rb Q
-              Heq Hgc Hst Htie
-              ltac:(rewrite Hcww; exact Hcw)
-              ltac:(rewrite Hfdw; exact Hl2)
-              ltac:(rewrite Hfdw; exact Hnone)
-              with "HQ Hinv Hpin Hfp []").
-    iIntros (N') "%Hpq". rewrite Hfdw.
-    iApply (cat_taint_open_of_taint N' c r (take NSTD sts) (Q (-1))
-              Heq Hnone with "[] [] Hkc").
-    + iIntros "!> #HT". iApply "HQ".
-      rewrite /catq_cat /UCatOut.catq_filed /UCatOut.cch.
-      iSplitL; [ | by iRight ].
-      iLeft. iRight. rewrite <- Hgc. iExact "HT".
-    + iIntros "!> #HT". rewrite Hpq. iApply "HQ".
-      rewrite /catq_cat /UCatOut.catq_filed /UCatOut.cch.
-      iSplitL; [ | by iRight ].
-      iLeft. iRight. rewrite <- Hgc. iExact "HT".
+        iLeft. iRight. rewrite <- Hgc. iExact "HT". }
+    rewrite /cat_lend. destruct s as [[i bs] |].
+    - iApply (cat_pay_filed_some W' v vf ps0 cs0 s0 I0 P c r q i bs rb jc Q
+                Heq Hgc Hst Htie
+                ltac:(rewrite Hcww; exact Hcw)
+                ltac:(rewrite Hfdw; exact Hl1)
+                ltac:(rewrite Hfdw; exact Hl2)
+                ltac:(rewrite Hfdw; exact Hnone)
+                with "HQ Hbr Hkc Hmade Hinv Hpin Hfp Htaint").
+    - iApply (cat_pay_filed_none W' v vf ps0 cs0 s0 I0 P c r q rb Q
+                Heq Hgc Hst Htie
+                ltac:(rewrite Hcww; exact Hcw)
+                ltac:(rewrite Hfdw; exact Hl2)
+                ltac:(rewrite Hfdw; exact Hnone)
+                with "HQ Hinv Hpin Hfp Htaint").
   Qed.
 
 End UCatEntry.

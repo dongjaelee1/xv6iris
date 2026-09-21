@@ -404,10 +404,11 @@ arm is the theorem's one named premise (`pipe_both_law`).
   antecedent; ROUND-8's six items; `sh_pipe_child_law_all`;
   `pipe_adequacy_pipeΣ_final`).  Brief `brief-sh-pipe-round-9.md`.
   **PARTLY: both rulings LANDED tree-wide (whole-tree RC=0, four audits at
-  their baselines); bill items 1, 2, 4 and 5 LANDED; item 3 is REFUTED AT A
-  PREMISE in `UCatPipe.pcat_round_at_g` (one file over, one-line repair —
-  `pcat_hw_gap` is the witness) and items 6/7 are not reached.**  See the
-  Findings block.
+  their baselines); bill items 1, 2, 3, 4 and 5 LANDED (item 3 after the
+  coordinator ruled §4.3s, which this lane also landed in `UCatPipe.v`);
+  items 6/7 are NOT reached, and the leaf they stop at is a SECOND
+  forwarding gap in the same lemma — §4.3t below.**  See the two Findings
+  blocks.
 ## Findings (append as lanes report)## Findings (append as lanes report)## Findings (append as lanes report)
 
 ### PQ-FLAG-2 (2026-09-18) — the write link's second premise, paid by the CODE
@@ -9345,3 +9346,105 @@ well as by measurement.
 Item 3 cannot be written until that lands, and items 6 and 7 cannot be
 assembled without item 3.  Everything else on the round's bill is either
 landed here or measured to a leaf.
+
+
+### SH-PIPE-ROUND-9 — PART 2 (2026-09-25, design §4.3s as ruled) — item 3 LANDS whole at the first attempt, and the round stops at the SECOND forwarding gap in `pcat_round_at_g`: cat cannot fire the mode, because the fire's witness is the READER'S PERMIT and `Hw` never sees it
+
+Two more commits on `app-pipe/sh-pipe-round-9`: `0691d551a` (§4.3s +
+item 3).  **Whole tree `ec2-lane.sh round9 build` RC=0** at it, and the
+four audits re-measured on the mirror ON TOP OF the `UCatPipe.v` move:
+`audit-only` **13**, `audit-echo-only` **14**, `audit-tree-only` **13**,
+`audit-pipe-only` **14** — every one still at its baseline.
+
+**(a) §4.3s, LANDED, and it cost five lines.**  `UCatPipe.
+pcat_round_at_g`'s `Hw` premise is now stated at `L`; the content arm,
+which already had that form (`pcat_acc_line`), passes it straight
+through instead of weakening it with `pcat_round_line`.  The landed
+instance `pcat_round_at` is **byte-identical in statement** — only its
+proof moved, from an `exact` to a five-line re-derivation that applies
+`pcat_round_line` where the generic round used to.  Nothing else in
+`UCatPipe.v` moved.
+
+**(b) ITEM 3, LANDED, in a NEW file `iris/UShPipeCatRound.v`** (+ one
+`_CoqProject` row; nothing imports it yet).  It is `UCatKernel.
+cat_w_of_link` transcribed with three substitutions —
+`UCatOut.cch _ (p+j)` → `pcat_ch gR gM (c+j)`, `cch_chain` →
+`UShPipeAssembly.out_chain_of_step`, `cch_chain_taint` →
+`pcat_chain_taint` — and it compiled at the first attempt.  ROUND-8's
+pricing of the transcription was right.  **Two things the mould does not
+have to do**, and both are the interesting part:
+
+- **The mode has to fire, and there IS a fupd site: inside
+  `WpUart.out_link`.**  `PipeBoth.blk2_mode_fire` is a fancy update and
+  the round's entry into cat (`UShCatPay.sh_exec_sup_cat_wq_holds_at`'s
+  `Hround`) is a PURE wand, so §4.3q's problem recurs — but `out_link`'s
+  conclusion is a `={⊤ ∖ ↑uartN Uart0}=∗` and `↑blk2N` misses
+  `↑uartN Uart0` (`blk2N_uart`).  `fupd_out_link` is the peel and
+  `pcat_ch`'s INDEX carries the mode (0 at cursor 0, 1 after), so the
+  fire happens at cat's first byte and nowhere else.  **This is the third
+  site in this campaign where a fupd that "has no home" turns out to
+  have one at a lower altitude** (ROUND-7 at `0xc94`, ROUND-8 at
+  `ksh_w1`, here at `out_link`); the rule is now: look INSIDE the leaf
+  the credential is spent at, not at the statement that carries it.
+- **The taint arm is not free.**  `UCatOut.cch` has a taint disjunct of
+  its own, so the mould's taint chain is `by iRight` at every byte; this
+  family is two EXCLUSIVE cursor halves.  So `pcat_ch` takes the taint as
+  its own second arm and a tainted turn DROPS the halves — sound, because
+  a tainted round exits through `PipeLinksLine.pwc_line2_taint` and wants
+  no family at all.  The same shape will be needed for the round's `Qc`.
+
+**(c) THE STOP, and it is one line again — design §4.3t.**  Item 3's
+`pipe_cat_w` takes `YR` as a premise, so it is complete; what cannot be
+supplied is `YR` ITSELF at the call site.  `YR` is PIPE-EXEC-ECHO's
+`pws_lb pn (take 1 L)` — "a byte reached the reader" — and it is exactly
+what `PipeBoth.blk2_mode_fire` demands when the mode goes to 1.  Its ONE
+producer is `PipeProto.pws_lb_of_rcur`, which needs `rcur pn c` with
+`0 < c`.  Measured, at the statement:
+
+- cat holds `rcur pn 0` at entry (`pws_lb pn (take 0 L)` is free and
+  useless), so the lower bound only exists AFTER the first read;
+- in `pcat_round_at_g`'s content arm the post-read permit `Hr : rcur pn
+  (c + d)` **is in hand** — and it goes into the post-transformer wand of
+  `UkCat.kcat_wr_mono` (it is put back into `pcat_hold` at `c + d`),
+  while `Hw` is applied with `Hstd` and `Ch c` only.  So `Hw` never sees
+  it, and `Ch` cannot reach it either: `Ch (c + cnt)` is produced BY
+  `Hw`, so anything the permit would license is circular.
+- No choice of `XL`/`YR` avoids it.  Both sides of
+  `□ (XL -∗ YR ={Eex}=∗ False)` must deposit a real resource (at
+  `YR := emp` the left child's own deposit becomes absurd and the left
+  diagnostic is unprovable; at `XL := emp` the fire is).  cat's only
+  honest witness that a byte reached it is its own read cursor, or the
+  persistent lower bound derived from it.
+- Firing earlier does not work either: the round cannot produce `YR`
+  before `pipe(2)`+fork (the pipe is empty), and the right child cannot
+  produce it before its first read.
+
+**THE REPAIR, one premise and its production**: `pcat_round_at_g`'s `Hw`
+gains a PERSISTENT antecedent
+`pws_lb pn (take (c + Z.to_nat (bv_unsigned rv)) L) ∨ T`, produced in the
+content arm by `PipeProto.pws_lb_of_rcur` — which has a fupd site there,
+because the goal right after `pcat_read_walk` returns (before
+`iApply "Hcont"`) is still an `mWP`.  It is ADDITIVE to `Hw`'s
+antecedents, so it strictly WEAKENS the supplier's obligation, and
+`pcat_round_at` re-derives by ignoring it — its statement stays
+byte-identical for the second time.  At cat's first byte `c = 0` and
+`cnt ≥ 1`, so the antecedent gives `pws_lb pn (take cnt L)` and
+`pws_lb_weaken` cuts it to `take 1 L`, which IS `YR`.
+
+`UCatPipe.v` is this lane's only for §4.3s's one premise, so the lane
+STOPS here (STOP rule 3) rather than transcribe `pcat_round_at_g`'s
+200-line walk into its own file.
+
+**(d) WHAT ITEMS 6 AND 7 STILL OWE, unchanged from part 1** except that
+item 3 is no longer among them: `Qc := PipeProto.pipe_Qc pn PL PR`
+widened by the cursor halves and with an `app_taint` arm, the four-way
+split, the two `ush_fork_ans` × two `uwait_ans` at `0xea` redeemed
+through `ChildTok.gen_pay_timeless`, the five-row reading (part 1's
+table, whose fifth row `blk2_no_L_at_mode1` already refutes), and
+`pipe_round_exit`; then `sh_pipe_child_law`, `sh_pipe_child_law_all` and
+`pipe_adequacy_pipeΣ_final`.  Every one of them is assembly at leaves
+that are now landed — except that `RcR γp` cannot be written down until
+§4.3t fixes what cat's lend must contain.
+
+**THE ONE THING THE NEXT LANE NEEDS FIRST.**  §4.3t, one line, in the
+lemma §4.3s already touched.

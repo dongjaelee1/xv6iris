@@ -79,6 +79,13 @@ theorem mp_leaf (x : BitVec 64) (perm : BitVec 64) (h : x.toNat < 2 ^ 56) :
   revert h56
   bv_decide
 
+/-- `va + c + (pa - va) = pa + c` in `BitVec 64` (a commutative-group
+identity).  Stated with `c` abstract so `bv_decide` proves it in one shot;
+inlining `c = ofNat (4096*i)` makes `bv_omega` feed omega a `% 2^64` goal
+with the `4096*i` literal, which is the ~70s hot spot in `mappages_iter`. -/
+theorem mp_addr_id (va pa c : BitVec 64) : va + c + (pa - va) = pa + c := by
+  bv_decide
+
 /-- A branch on a value known to be zero / nonzero. -/
 theorem mp_beq_ne {α : Type} (x : BitVec 64) (h : x ≠ 0#64) (p q : α) :
     (if bcond bop.BEQ x 0#64 then p else q) = q := by
@@ -391,8 +398,7 @@ theorem mappages_iter (W : WALK) [CurCtx]
     have h21' : R2 21#5 = perm := e21.trans h21
     have hval : ((R2 9#5 + R2 19#5) >>> 12 <<< 10 ||| R2 21#5) ||| 1#64
         = leafOf (BitVec.extractLsb' 12 44 pa + BitVec.ofNat 44 i) perm := by
-      rw [h9', h19', h21', show va + BitVec.ofNat 64 (4096 * i) + (pa - va)
-        = pa + BitVec.ofNat 64 (4096 * i) from by bv_omega]
+      rw [h9', h19', h21', mp_addr_id va pa (BitVec.ofNat 64 (4096 * i))]
       rw [← mp_ppn pa i hplt64]
       exact mp_leaf _ perm (by rw [mp_toNat_add pa _ hplt64]; omega)
     -- c.beqz a0 : not taken

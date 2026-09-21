@@ -2088,20 +2088,14 @@ Section UShRound.
           ∗ UCatKernel.cat_lend g r q s v vf ps0 cs0 s0 I P))%I.
 
   (* THE ENTRY, AT THE NODE SH BUILT (lane CAT-GEOM-2) -- STILL A HYPOTHESIS,
-     AND TWO THINGS ARE WRONG WITH IT THAT THE NEXT LANE MUST FIX FIRST
+     AND THIS IS WHAT WAS WRONG WITH IT
      (PROGRAM-STREAM stretch 11):
 
-     (1) [EchoDisc.line_ok ws] IS FALSE AT `cat f`.  [line_ok] demands
-         [ws !! 0 = Some cmd_echo]; the cat line's words are [cat; f].  The
-         premise is inherited from [UCatKernel.cat_image_entry], which reads
-         the argument vector through the ECHO tier's lemmas
-         ([UShEcho.echo_args_det_holds], [UkShEcho.echo_off_lt], ...), all
-         stated at [line_ok].  Those lemmas are about THE EXEC NODE SH BUILT
-         and use [line_ok] only for well-formedness and the length bounds;
-         the fix is a predicate for that ("an exec'able word list") under
-         them, with [line_ok] as its instance at [echo].  The pipe campaign
-         met the same wall and TWINNED the lemmas at its one-word `cat`
-         ([UShCatPay.cat_args_det_1w], [cat_image_entry_1w]).
+     (1) FIXED (2026-09-21): the line premise is [ExecWords.exec_ok ws]
+         -- [EchoDisc.line_ok] without the command -- which `cat f` meets;
+         it was [line_ok ws], which demands [ws !! 0 = Some cmd_echo] and is
+         FALSE there.  [UCatKernel.cat_image_entry] reads sh's exec node
+         through the [_x] lemmas of [UkShEcho] / [UShEcho].
 
      (2) THE LEND IS NOT ALL OF WHAT THE CHILD MUST RETURN.  The fork's
          payload is [ushf_wq Wcf I] -- the WHOLE position-0 credential,
@@ -2127,7 +2121,7 @@ Section UShRound.
            (rb : bool),
       length sts = NOFILE ->
       cw = FsImg.ROOTINO ->
-      EchoDisc.line_ok ws ->
+      ExecWords.exec_ok ws ->
       UShEcho.echo_node_img ws M sv t gn ->
       UkShEcho.echo_argv_bytes ws gn ->
       length ws = 2%nat ->

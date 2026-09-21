@@ -71,6 +71,7 @@ Require Import UEchoKernel.  (* [uvis_sp] / [uvis_av] / [uvis_argc] and the
                                 argument reading off the key -- none of it
                                 names a program *)
 Require Import UShCat.       (* cat's exec/argv geometry and its entry carve *)
+Require Import ExecWords.        (* [exec_ok]: [line_ok] without the command *)
 Require Import CtxIdDefs.
 Import Defs.
 
@@ -1372,7 +1373,7 @@ Section UCatEntry.
       (sts : list fdstate) (cw : Z) (cs : gset gname) (pidv : mword 32)
       (Q : Z -> iProp Σ) (Pay : iProp Σ) :
     (forall x y : Z, Q x = Q y) ->
-    line_ok ws ->
+    exec_ok ws ->
     UShEcho.echo_node_img ws Mn sv t gn ->
     UkShEcho.echo_argv_bytes ws gn ->
     length sts = NOFILE ->
@@ -1400,7 +1401,7 @@ Section UCatEntry.
     iApply image_entry_of_at. iIntros "!>" (na alen afun) "%Hargs".
     destruct (UShCat.cat_args_det_holds ws Hok Mn sv t gn na alen afun
                 Himg Hbytes Hargs) as (Hna & Halen & Hafun).
-    pose proof (UShCat.cat_room_of_det ws na alen Hok Hna Halen) as Hroom.
+    pose proof (UShCat.cat_room_of_det_x ws na alen Hok Hna Halen) as Hroom.
     rewrite /image_entry_at.
     iIntros "!>" (W') "%Hokk %Hcwv %Hlzf _ _ Hmp HPay".
     destruct (UShCat.cat_kexec_pages na alen afun sts W' Hokk)
@@ -1432,8 +1433,8 @@ Section UCatEntry.
     { intros i j Hi Hj.
       rewrite (Hafun i j ltac:(lia)
                  ltac:(rewrite <- (Halen i ltac:(lia)); exact Hj)).
-      apply (UShEcho.line_nonul ws _ Hok).
-      exact (UkShEcho.echo_off_lt ws i j Hok ltac:(lia)
+      apply (UShEcho.line_nonul_x ws _ Hok).
+      exact (UkShEcho.echo_off_lt_x ws i j Hok ltac:(lia)
                ltac:(rewrite <- (Halen i ltac:(lia)); lia)). }
     destruct (UShCat.cat_key_args_holds na alen afun sts W' Hokk Hno)
       as [Hargcna Hkey].
@@ -2319,7 +2320,7 @@ Section UCatEntry.
     c = fgn_cl g ->
     UCatOut.cat_stage ps0 cs0 s0 I0 P ->
     cat_tie cs0 s0 I0 s ->
-    line_ok ws ->
+    exec_ok ws ->
     UShEcho.echo_node_img ws Mn sv t gn ->
     UkShEcho.echo_argv_bytes ws gn ->
     length sts = NOFILE ->

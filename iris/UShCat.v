@@ -80,6 +80,7 @@ Require Import UEchoKernel.       (* [echo_arg] / [echo_args] /
 Require Import UkCatMain.
 Require Import UkShEcho.
 Require Import EchoDisc.
+Require Import ExecWords.        (* [exec_ok]: [line_ok] without the command *)
 Require Import UShEcho.           (* the push's own lemmas, and the node
                                      reading [echo_args_det_holds] *)
 Require User.CatSyms User.CatInstrs.
@@ -142,20 +143,27 @@ Qed.
 (* ...AND EVERY ADMISSIBLE LINE EARNS IT.  [UShEcho.kxc_span_le_line] is
    the bound; fewer than ten words at under [line_max] bytes each is under
    1150 bytes of a 4096-byte stack page, and cat's frame takes 336. *)
-Lemma cat_argv_fits_of_ok (ws : list (list (bv 8))) :
-  line_ok ws -> cat_argv_fits ws (UkShEcho.echo_alen ws).
+Lemma cat_argv_fits_of_ok_x (ws : list (list (bv 8))) :
+  exec_ok ws -> cat_argv_fits ws (UkShEcho.echo_alen ws).
 Proof using .
   intro Hok. rewrite /cat_argv_fits.
   assert (Hb : forall i : nat, (i < length ws)%nat ->
             (UkShEcho.echo_alen ws i < line_max)%nat).
   { intros i Hi.
-    pose proof (UkShEcho.echo_off_lt ws i (UkShEcho.echo_alen ws i)
+    pose proof (UkShEcho.echo_off_lt_x ws i (UkShEcho.echo_alen ws i)
                   Hok Hi ltac:(lia)) as Hlt.
-    pose proof (line_ok_len ws Hok) as Hlm. lia. }
+    pose proof (exec_ok_len ws Hok) as Hlm. lia. }
   pose proof (UShEcho.kxc_span_le_line (UkShEcho.echo_alen ws) (length ws) Hb)
     as Hsp.
-  pose proof (line_ok_lt10 ws Hok) as H10.
+  pose proof (exec_ok_lt10 ws Hok) as H10.
   unfold PGSIZE. lia.
+Qed.
+
+Lemma cat_argv_fits_of_ok (ws : list (list (bv 8))) :
+  line_ok ws -> cat_argv_fits ws (UkShEcho.echo_alen ws).
+Proof using .
+  intro Hok__.
+  exact (cat_argv_fits_of_ok_x ws (line_ok_exec_ok _ Hok__)).
 Qed.
 
 (* ===================================================================== *)
@@ -762,9 +770,9 @@ Qed.
 (*  line has fewer than ten words, each under [line_max] bytes, so the    *)
 (*  whole push is under 1250 bytes of a 4096-byte stack page and cat's    *)
 (*  336-byte frame still fits below it.                                   *)
-Lemma cat_room_of_det (ws : list (list (bv 8))) (na : nat)
+Lemma cat_room_of_det_x (ws : list (list (bv 8))) (na : nat)
     (alen : nat -> nat) :
-  line_ok ws ->
+  exec_ok ws ->
   na = length ws ->
   (forall i : nat, (i < length ws)%nat ->
      alen i = UkShEcho.echo_alen ws i) ->
@@ -781,7 +789,20 @@ Proof using .
     { induction n as [| n IH]; intro Hn; cbn [kxc_span]; [ reflexivity | ].
       rewrite (IH ltac:(lia)) (Halen n ltac:(lia)). reflexivity. }
     exact (Hgen (length ws) ltac:(lia)). }
-  rewrite Hsp. exact (cat_argv_fits_of_ok ws Hok).
+  rewrite Hsp. exact (cat_argv_fits_of_ok_x ws Hok).
+Qed.
+
+Lemma cat_room_of_det (ws : list (list (bv 8))) (na : nat)
+    (alen : nat -> nat) :
+  line_ok ws ->
+  na = length ws ->
+  (forall i : nat, (i < length ws)%nat ->
+     alen i = UkShEcho.echo_alen ws i) ->
+  kexec_sz ElfUser.cat_elf - PGSIZE + 336
+    <= kxc_sp_final (kexec_sz ElfUser.cat_elf) alen na.
+Proof using .
+  intro Hok__.
+  exact (cat_room_of_det_x ws na alen (line_ok_exec_ok _ Hok__)).
 Qed.
 
 (* ===================================================================== *)
@@ -876,11 +897,14 @@ Section UShCat.
   (* THE VECTOR sh's node DETERMINES.  Not cat's: [UShEcho.echo_args_det]
      is a fact about the malloc'd node SH BUILT and mentions no image at
      all, so cat's reading IS echo's. *)
+  (* AT [ExecWords.exec_ok], NOT [EchoDisc.line_ok]: cat's line is [cat f]
+     and [line_ok] demands the command be [echo] (PROGRAM-STREAM stretch 11,
+     defect 1). *)
   Definition cat_args_det (ws : list (list (bv 8))) : Prop :=
-    UShEcho.echo_args_det ws.
+    UShEcho.echo_args_det_x ws.
 
   Lemma cat_args_det_holds (ws : list (list (bv 8))) : cat_args_det ws.
-  Proof using GEN. exact (UShEcho.echo_args_det_holds ws). Qed.
+  Proof using GEN. exact (UShEcho.echo_args_det_x_holds ws). Qed.
 
   (* cat's argument vector, as the KEY spells it ([UEchoKernel.echo_args]
      is a function of the key and names no program). *)

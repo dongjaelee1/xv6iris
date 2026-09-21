@@ -60,6 +60,7 @@ Require Import UkShMain.
 Require Import UkShFork.
 Require Import UConsLine.        (* [ush_line_is ws]: the buffer's LINE    *)
 Require Import EchoDisc.         (* [line_ok] / [cmd_echo] / [sb] / [nlb]  *)
+Require Import ExecWords.        (* [exec_ok]: [line_ok] without the command *)
 Require Import FsImg.            (* [ROOTINO] -- the cwd the pin resolves at *)
 Require Import UexecSG.          (* [uexecSG] / [uprogSG]: the deposit class *)
 Require Import CtxIdDefs.
@@ -110,19 +111,34 @@ Definition echo_alen (ws : list (list (bv 8))) (i : nat) : nat :=
 (* the one fact about an admissible line's words the lexer's caller needs
    and the general statement cannot give it: there are fewer of them than
    sh's MAXARGS -- which is [EchoDisc.line_ok]'s third conjunct *)
+Lemma echo_toks_lt10_x (ws : list (list (bv 8))) :
+  exec_ok ws -> (length (echo_toks ws) < 10)%nat.
+Proof. intro Hok. rewrite /echo_toks wl_toks_length. exact (exec_ok_lt10 ws Hok). Qed.
+
 Lemma echo_toks_lt10 (ws : list (list (bv 8))) :
   line_ok ws -> (length (echo_toks ws) < 10)%nat.
-Proof. intro Hok. rewrite /echo_toks wl_toks_length. exact (line_ok_lt10 ws Hok). Qed.
+Proof.
+  intro Hok__.
+  exact (echo_toks_lt10_x ws (line_ok_exec_ok _ Hok__)).
+Qed.
 
 (* AN ARGUMENT'S BYTES ARE INSIDE THE LINE -- [LineWords.wl_off_lt_line] at
    these words.  A caller that used to bound [echo_off i + j] by case
    analysis over three literal offsets gets it from this. *)
+Lemma echo_off_lt_x (ws : list (list (bv 8))) (i j : nat) :
+  exec_ok ws -> (i < length ws)%nat -> (j <= echo_alen ws i)%nat ->
+  (echo_off ws i + j < length (wl_line ws))%nat.
+Proof.
+  intros Hok Hi Hj. rewrite /echo_off.
+  exact (wl_off_lt_line ws i _ j (exec_ok_at ws i Hok Hi) Hj).
+Qed.
+
 Lemma echo_off_lt (ws : list (list (bv 8))) (i j : nat) :
   line_ok ws -> (i < length ws)%nat -> (j <= echo_alen ws i)%nat ->
   (echo_off ws i + j < length (wl_line ws))%nat.
 Proof.
-  intros Hok Hi Hj. rewrite /echo_off.
-  exact (wl_off_lt_line ws i _ j (line_ok_at ws i Hok Hi) Hj).
+  intro Hok__.
+  exact (echo_off_lt_x ws i j (line_ok_exec_ok _ Hok__)).
 Qed.
 
 (* ...AND THE TWO NUMBERS THAT ARE NOT ABOUT THE ARGUMENTS.  The first
@@ -138,12 +154,20 @@ Lemma echo_alen_0 (ws : list (list (bv 8))) :
   line_ok ws -> echo_alen ws 0%nat = 4%nat.
 Proof. exact (line_ok_head_len ws). Qed.
 
+Lemma echo_toks_lookup_x (ws : list (list (bv 8))) (i : nat) :
+  exec_ok ws -> (i < length ws)%nat ->
+  echo_toks ws !! i = Some (echo_off ws i, (echo_off ws i + echo_alen ws i)%nat).
+Proof.
+  intros Hok Hi. rewrite /echo_toks /echo_off /echo_alen /wl_toks.
+  exact (wl_toks_at_lookup ws 0%nat i _ (exec_ok_at ws i Hok Hi)).
+Qed.
+
 Lemma echo_toks_lookup (ws : list (list (bv 8))) (i : nat) :
   line_ok ws -> (i < length ws)%nat ->
   echo_toks ws !! i = Some (echo_off ws i, (echo_off ws i + echo_alen ws i)%nat).
 Proof.
-  intros Hok Hi. rewrite /echo_toks /echo_off /echo_alen /wl_toks.
-  exact (wl_toks_at_lookup ws 0%nat i _ (line_ok_at ws i Hok Hi)).
+  intro Hok__.
+  exact (echo_toks_lookup_x ws i (line_ok_exec_ok _ Hok__)).
 Qed.
 
 (* THE COMMAND NAME IS THE LINE'S FIRST FOUR BYTES, which is what the
@@ -242,9 +266,9 @@ Proof.
   rewrite UkShMain.ush_args_length /echo_toks. exact (wl_toks_length ws).
 Qed.
 
-Lemma echo_cmd_args_lookup (ws : list (list (bv 8))) (s0 : Z)
+Lemma echo_cmd_args_lookup_x (ws : list (list (bv 8))) (s0 : Z)
     (g : nat -> bv 8) (i : nat) :
-  line_ok ws -> (i < length ws)%nat ->
+  exec_ok ws -> (i < length ws)%nat ->
   UkShMain.ush_args s0 g (echo_toks ws) !! i
   = Some (UArg (s0 + Z.of_nat (echo_off ws i)) (echo_alen ws i)
             (fun j : nat => g (echo_off ws i + j)%nat)).
@@ -252,11 +276,22 @@ Proof.
   intros Hok Hi.
   rewrite (UkShMain.ush_args_lookup s0 g (echo_toks ws) i
              (echo_off ws i, (echo_off ws i + echo_alen ws i)%nat)
-             (echo_toks_lookup ws i Hok Hi)).
+             (echo_toks_lookup_x ws i Hok Hi)).
   cbn [fst snd].
   replace (echo_off ws i + echo_alen ws i - echo_off ws i)%nat
     with (echo_alen ws i) by lia.
   reflexivity.
+Qed.
+
+Lemma echo_cmd_args_lookup (ws : list (list (bv 8))) (s0 : Z)
+    (g : nat -> bv 8) (i : nat) :
+  line_ok ws -> (i < length ws)%nat ->
+  UkShMain.ush_args s0 g (echo_toks ws) !! i
+  = Some (UArg (s0 + Z.of_nat (echo_off ws i)) (echo_alen ws i)
+            (fun j : nat => g (echo_off ws i + j)%nat)).
+Proof.
+  intro Hok__.
+  exact (echo_cmd_args_lookup_x ws s0 g i (line_ok_exec_ok _ Hok__)).
 Qed.
 
 (* ---- the argv BYTES, as a pure premise ------------------------------- *)
@@ -336,9 +371,9 @@ Section UkShEcho.
   (*  pointer word, its string, and the NULL cap.  Everything is           *)
   (*  [DfracDiscarded], so every one of them is free to take.              *)
   (* =================================================================== *)
-  Lemma echo_cmd_str (ws : list (list (bv 8))) (gd : gname) (t s0 : Z)
+  Lemma echo_cmd_str_x (ws : list (list (bv 8))) (gd : gname) (t s0 : Z)
       (g : nat -> bv 8) (i : nat) :
-    line_ok ws -> (i < length ws)%nat ->
+    exec_ok ws -> (i < length ws)%nat ->
     ush_cmd gd t (echo_cmd ws s0 g) -∗
     ⌜ 0 < s0 + Z.of_nat (echo_off ws i) < 2 ^ 38 ⌝ ∗
     ustr gd DfracDiscarded (s0 + Z.of_nat (echo_off ws i)) (echo_alen ws i)
@@ -347,10 +382,37 @@ Section UkShEcho.
     intros Hok Hi. iIntros "#Hc".
     iDestruct (ush_cmd_exec with "Hc") as "(_ & _ & #Hs)".
     iDestruct (big_sepL_lookup _ (UkShMain.ush_args s0 g (echo_toks ws)) i _
-                 (echo_cmd_args_lookup ws s0 g i Hok Hi) with "Hs") as "#Hx".
+                 (echo_cmd_args_lookup_x ws s0 g i Hok Hi) with "Hs") as "#Hx".
     rewrite /ush_str. cbn [ua_ptr ua_len ua_bytes].
     iDestruct "Hx" as "[%Hr #Hstr]".
     iSplit; [ iPureIntro; exact Hr | iExact "Hstr" ].
+  Qed.
+
+  Lemma echo_cmd_str (ws : list (list (bv 8))) (gd : gname) (t s0 : Z)
+      (g : nat -> bv 8) (i : nat) :
+    line_ok ws -> (i < length ws)%nat ->
+    ush_cmd gd t (echo_cmd ws s0 g) -∗
+    ⌜ 0 < s0 + Z.of_nat (echo_off ws i) < 2 ^ 38 ⌝ ∗
+    ustr gd DfracDiscarded (s0 + Z.of_nat (echo_off ws i)) (echo_alen ws i)
+      (fun j : nat => g (echo_off ws i + j)%nat).
+  Proof using .
+    intro Hok__.
+    exact (echo_cmd_str_x ws gd t s0 g i (line_ok_exec_ok _ Hok__)).
+  Qed.
+
+  Lemma echo_cmd_word_x (ws : list (list (bv 8))) (gd : gname) (t s0 : Z)
+      (g : nat -> bv 8) (i : nat) :
+    exec_ok ws -> (i < length ws)%nat ->
+    ush_cmd gd t (echo_cmd ws s0 g) -∗
+    uwordq gd DfracDiscarded (t + 8 + 8 * Z.of_nat i)
+      (mword_of_int (s0 + Z.of_nat (echo_off ws i))).
+  Proof using .
+    intros Hok Hi. iIntros "#Hc".
+    iDestruct (ush_cmd_exec with "Hc") as "(#Hv & _ & _)".
+    iDestruct (uargv_acc gd (t + 8) (UkShMain.ush_args s0 g (echo_toks ws)) i _
+                 (echo_cmd_args_lookup_x ws s0 g i Hok Hi) with "Hv")
+      as "[[#Hw _] _]".
+    cbn [ua_ptr]. iExact "Hw".
   Qed.
 
   Lemma echo_cmd_word (ws : list (list (bv 8))) (gd : gname) (t s0 : Z)
@@ -360,12 +422,8 @@ Section UkShEcho.
     uwordq gd DfracDiscarded (t + 8 + 8 * Z.of_nat i)
       (mword_of_int (s0 + Z.of_nat (echo_off ws i))).
   Proof using .
-    intros Hok Hi. iIntros "#Hc".
-    iDestruct (ush_cmd_exec with "Hc") as "(#Hv & _ & _)".
-    iDestruct (uargv_acc gd (t + 8) (UkShMain.ush_args s0 g (echo_toks ws)) i _
-                 (echo_cmd_args_lookup ws s0 g i Hok Hi) with "Hv")
-      as "[[#Hw _] _]".
-    cbn [ua_ptr]. iExact "Hw".
+    intro Hok__.
+    exact (echo_cmd_word_x ws gd t s0 g i (line_ok_exec_ok _ Hok__)).
   Qed.
 
   Lemma echo_cmd_cap (ws : list (list (bv 8))) (gd : gname) (t s0 : Z)
@@ -388,6 +446,27 @@ Section UkShEcho.
      SLOT the [c.ld a0,8(s1)] at 0xce loads, and the STRING the diagnostic
      tail prints.  [UkShRun.ush_argv0] is the generic form; at [echo_cmd]
      the [match] on the vector is already decided. *)
+  Lemma echo_cmd_argv0_x (ws : list (list (bv 8))) (gd : gname) (t s0 : Z)
+      (g : nat -> bv 8) :
+    exec_ok ws ->
+    ush_cmd gd t (echo_cmd ws s0 g) -∗
+    ush_ptr gd (t + 8) (s0 + Z.of_nat (echo_off ws 0%nat))
+    ∗ ush_str gd (UArg (s0 + Z.of_nat (echo_off ws 0%nat)) (echo_alen ws 0%nat)
+                    (fun j : nat => g (echo_off ws 0%nat + j)%nat)).
+  Proof using .
+    intro Hok. iIntros "#Hc". iSplit.
+    - iDestruct (echo_cmd_word_x ws gd t s0 g 0%nat Hok
+                   ltac:(exact (exec_ok_pos ws Hok)) with "Hc") as "#Hw".
+      assert (E : t + 8 + 8 * Z.of_nat 0%nat = t + 8) by lia.
+      iEval (rewrite E) in "Hw".
+      rewrite /ush_ptr. iExact "Hw".
+    - iDestruct (echo_cmd_str_x ws gd t s0 g 0%nat Hok
+                   ltac:(exact (exec_ok_pos ws Hok)) with "Hc")
+        as "[%Hr #Hs]".
+      rewrite /ush_str. cbn [ua_ptr ua_len ua_bytes].
+      iSplit; [ iPureIntro; exact Hr | iExact "Hs" ].
+  Qed.
+
   Lemma echo_cmd_argv0 (ws : list (list (bv 8))) (gd : gname) (t s0 : Z)
       (g : nat -> bv 8) :
     line_ok ws ->
@@ -396,17 +475,8 @@ Section UkShEcho.
     ∗ ush_str gd (UArg (s0 + Z.of_nat (echo_off ws 0%nat)) (echo_alen ws 0%nat)
                     (fun j : nat => g (echo_off ws 0%nat + j)%nat)).
   Proof using .
-    intro Hok. iIntros "#Hc". iSplit.
-    - iDestruct (echo_cmd_word ws gd t s0 g 0%nat Hok
-                   ltac:(exact (line_ok_pos ws Hok)) with "Hc") as "#Hw".
-      assert (E : t + 8 + 8 * Z.of_nat 0%nat = t + 8) by lia.
-      iEval (rewrite E) in "Hw".
-      rewrite /ush_ptr. iExact "Hw".
-    - iDestruct (echo_cmd_str ws gd t s0 g 0%nat Hok
-                   ltac:(exact (line_ok_pos ws Hok)) with "Hc")
-        as "[%Hr #Hs]".
-      rewrite /ush_str. cbn [ua_ptr ua_len ua_bytes].
-      iSplit; [ iPureIntro; exact Hr | iExact "Hs" ].
+    intro Hok__.
+    exact (echo_cmd_argv0_x ws gd t s0 g (line_ok_exec_ok _ Hok__)).
   Qed.
 
   (* =================================================================== *)

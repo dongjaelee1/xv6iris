@@ -1496,6 +1496,7 @@ App.v
 LineWords.v
 FileState.v
 EchoDisc.v
+ExecWords.v
 FileDisc.v
 FileDiscDec.v
 PipeDisc.v

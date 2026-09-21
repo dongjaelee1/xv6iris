@@ -126,6 +126,36 @@ Section PipeQueue.
   Definition pipe_olink (γ : gname) (Φ : pipe_st -> iProp Σ) : iProp Σ :=
     (∀ s : pipe_st, pipe_qauth γ s ={⊤}=∗ pipe_qauth γ s ∗ Φ s)%I.
 
+  (* ...AND THE TWO END-KEYED OBSERVATIONS THE CHAINS ACTUALLY USE (lane
+     PIPE-RO).  An observation node is fired by ONE of the two calls, and
+     each of them runs on behalf of a process holding ONE END OPEN -- which
+     the caller's credential proves ([PipeInvDefs.pipe_endstate_holder] at
+     the end the contract is entered with: [SpecPipewrite]'s [w = true],
+     [SpecPiperead]'s [w = false]).  Publishing that end to the observation
+     is what gives the protocol the ORDER of the two enders, and with it the
+     law that no round can be SHORT (design app-pipe.md SS4.3w, purchase 5;
+     [PipeProto.pipe_no_short]):
+
+     - the WRITER's observation fires at a shut READ end, and carries
+       [ps_wo s = true] -- so no writer can observe after an end-of-file has
+       been read, because an end-of-file is read at [ps_wo s = false] (P3);
+     - the READER's observation fires at a dry ring, and carries
+       [ps_ro s = true] -- so no end-of-file can be read after the read end
+       has been seen shut, because that is (P4)'s [ps_ro s = false].
+
+     Neither restricts the code and neither is a new fact about it: both are
+     the caller's own credential, read through [pipe_qres]'s coupled arm.
+     As with the write link, a premise WEAKENS the link, so an unconditional
+     observer is still one of each ([pipe_wolink_of_olink] /
+     [pipe_rolink_of_olink]) and no holder loses anything. *)
+  Definition pipe_wolink (γ : gname) (Φ : pipe_st -> iProp Σ) : iProp Σ :=
+    (∀ s : pipe_st,
+       ⌜ps_wo s = true⌝ -∗ pipe_qauth γ s ={⊤}=∗ pipe_qauth γ s ∗ Φ s)%I.
+
+  Definition pipe_rolink (γ : gname) (Φ : pipe_st -> iProp Σ) : iProp Σ :=
+    (∀ s : pipe_st,
+       ⌜ps_ro s = true⌝ -∗ pipe_qauth γ s ={⊤}=∗ pipe_qauth γ s ∗ Φ s)%I.
+
   (* THE WRITE LINK CARRIES TWO PURE PREMISES, AND BOTH FLAGS ARE OPEN at
      the state the byte lands in: [ps_wo s = true] (lane PQ-FLAG, design
      3.1) and [ps_ro s = true] (lane PQ-FLAG-2, design 3.1b).  Both are
@@ -174,12 +204,24 @@ Section PipeQueue.
      [FileInvDefs.fc_wbool C] ([file_core_noff]), while fileread's pipe arm
      learns only [f->readable <> 0].  "A readable pipe file is the read end"
      is true of pipealloc and is nowhere in the file invariant, so the
-     premise would be unsupplyable at the fire site.  Nothing in the pipeline
-     protocol needs it (the reader's side freezes on the WRITE flag), so the
-     read link stays unconditional. *)
+     premise was unsupplyable at the fire site.
+
+     PIPE-RO BUYS THE MISSING PUBLISHER: a pipe file's two ends are
+     complementary ([FileInvDefs.fdpipe_ends], one conjunct on
+     [fdstate_ok]'s pipe arm, paid by pipealloc's own stores), so a READABLE
+     pipe row IS the read end, [SpecPiperead] is entered at [w = false], and
+     the fire site reads [readopen <> 0] off the caller's share exactly as
+     [pipewrite] reads [writeopen <> 0] off its own.
+
+     WHAT IT BUYS is not this link -- a read moves neither flag nor the
+     contents -- but the READER'S OBSERVATION beside it ([pipe_rolink]),
+     whose end-of-file node is the protocol's second ender.  It is stated
+     here for symmetry with [pipe_wlink] and because the fire site has it
+     for free once per round; an older holder loses nothing
+     ([pipe_rlink_of_uncond]). *)
   Definition pipe_rlink (γ : gname) (Φ : bv 8 -> iProp Σ) : iProp Σ :=
     (∀ (s : pipe_st) (b : bv 8),
-       ⌜pst_next s = Some b⌝ -∗ pipe_qauth γ s
+       ⌜ps_ro s = true⌝ -∗ ⌜pst_next s = Some b⌝ -∗ pipe_qauth γ s
        ={⊤}=∗ pipe_qauth γ (pst_read s) ∗ Φ b)%I.
 
   (* closing end [w]: fired by pipeclose at the store that clears the flag
@@ -212,12 +254,28 @@ Section PipeQueue.
     iMod ("Hk" with "Hf") as "HΦ". iModIntro. iFrame "Ha HΦ".
   Qed.
 
+  Lemma pipe_wolink_of_frag γ (Φ : pipe_st -> iProp Σ) (s0 : pipe_st) :
+    pipe_qfrag γ s0 -∗ (pipe_qfrag γ s0 ={⊤}=∗ Φ s0) -∗ pipe_wolink γ Φ.
+  Proof using .
+    iIntros "Hf Hk" (s) "_ Ha".
+    iDestruct (pipe_queue_agree with "Ha Hf") as %<-.
+    iMod ("Hk" with "Hf") as "HΦ". iModIntro. iFrame "Ha HΦ".
+  Qed.
+
+  Lemma pipe_rolink_of_frag γ (Φ : pipe_st -> iProp Σ) (s0 : pipe_st) :
+    pipe_qfrag γ s0 -∗ (pipe_qfrag γ s0 ={⊤}=∗ Φ s0) -∗ pipe_rolink γ Φ.
+  Proof using .
+    iIntros "Hf Hk" (s) "_ Ha".
+    iDestruct (pipe_queue_agree with "Ha Hf") as %<-.
+    iMod ("Hk" with "Hf") as "HΦ". iModIntro. iFrame "Ha HΦ".
+  Qed.
+
   Lemma pipe_rlink_of_frag γ (Φ : bv 8 -> iProp Σ) (s0 : pipe_st) :
     pipe_qfrag γ s0 -∗
     (∀ b : bv 8, ⌜pst_next s0 = Some b⌝ -∗ pipe_qfrag γ (pst_read s0) ={⊤}=∗ Φ b) -∗
     pipe_rlink γ Φ.
   Proof using .
-    iIntros "Hf Hk" (s b) "%Hb Ha".
+    iIntros "Hf Hk" (s b) "_ %Hb Ha".
     iDestruct (pipe_queue_agree with "Ha Hf") as %<-.
     iMod (pipe_queue_update _ _ _ (pst_read s0) with "Ha Hf") as "[Ha Hf]".
     iMod ("Hk" with "[%] Hf") as "HΦ"; [exact Hb |]. iModIntro. iFrame "Ha HΦ".
@@ -276,8 +334,52 @@ Section PipeQueue.
   Lemma pipe_rlink_mono γ (Φ Φ' : bv 8 -> iProp Σ) :
     (∀ b : bv 8, Φ b -∗ Φ' b) -∗ pipe_rlink γ Φ -∗ pipe_rlink γ Φ'.
   Proof using .
-    iIntros "Hw Hl" (s b) "%Hb Ha". iMod ("Hl" with "[%] Ha") as "[$ HΦ]"; [exact Hb |].
+    iIntros "Hw Hl" (s b) "%Hro %Hb Ha".
+    iMod ("Hl" with "[%] [%] Ha") as "[$ HΦ]"; [exact Hro | exact Hb |].
     iModIntro. by iApply "Hw".
+  Qed.
+
+  (* ...and the read link's own sanity lemma (lane PIPE-RO, the mirror of
+     [pipe_wlink_of_uncond]): the PQ-FLAG-era unconditional read stepper is
+     still a [pipe_rlink], so nothing a holder could build before is lost.
+     The converse is false and deliberately not stated -- a link that may
+     assume the read end open cannot step a state with it shut, which is
+     exactly what the reader-side order is bought with. *)
+  Lemma pipe_rlink_of_uncond γ (Φ : bv 8 -> iProp Σ) :
+    (∀ (s : pipe_st) (b : bv 8), ⌜pst_next s = Some b⌝ -∗ pipe_qauth γ s
+       ={⊤}=∗ pipe_qauth γ (pst_read s) ∗ Φ b) -∗
+    pipe_rlink γ Φ.
+  Proof using .
+    iIntros "Hl" (s b) "_ %Hb Ha". iApply ("Hl" $! s b with "[%] Ha"). exact Hb.
+  Qed.
+
+  Lemma pipe_wolink_mono γ (Φ Φ' : pipe_st -> iProp Σ) :
+    (∀ s, Φ s -∗ Φ' s) -∗ pipe_wolink γ Φ -∗ pipe_wolink γ Φ'.
+  Proof using .
+    iIntros "Hw Hl" (s) "%Hwo Ha". iMod ("Hl" with "[%] Ha") as "[$ HΦ]"; [exact Hwo |].
+    iModIntro. by iApply "Hw".
+  Qed.
+
+  Lemma pipe_rolink_mono γ (Φ Φ' : pipe_st -> iProp Σ) :
+    (∀ s, Φ s -∗ Φ' s) -∗ pipe_rolink γ Φ -∗ pipe_rolink γ Φ'.
+  Proof using .
+    iIntros "Hw Hl" (s) "%Hro Ha". iMod ("Hl" with "[%] Ha") as "[$ HΦ]"; [exact Hro |].
+    iModIntro. by iApply "Hw".
+  Qed.
+
+  (* an unconditional OBSERVER is still one of each (lane PIPE-RO) *)
+  Lemma pipe_wolink_of_olink γ (Φ : pipe_st -> iProp Σ) :
+    pipe_olink γ Φ -∗ pipe_wolink γ Φ.
+  Proof using .
+    rewrite /pipe_olink /pipe_wolink. iIntros "Hl" (s) "_ Ha".
+    iApply ("Hl" $! s with "Ha").
+  Qed.
+
+  Lemma pipe_rolink_of_olink γ (Φ : pipe_st -> iProp Σ) :
+    pipe_olink γ Φ -∗ pipe_rolink γ Φ.
+  Proof using .
+    rewrite /pipe_olink /pipe_rolink. iIntros "Hl" (s) "_ Ha".
+    iApply ("Hl" $! s with "Ha").
   Qed.
 
   Lemma pipe_clink_mono γ w (Φ Φ' : iProp Σ) :
@@ -308,7 +410,7 @@ Section PipeQueue.
     | O => Q j
     | S cnt' =>
         (Q j
-         ∧ pipe_olink γ (Qe j)
+         ∧ pipe_wolink γ (Qe j)
          ∧ (∀ b : bv 8,
               ⌜M !! uint (add_vec_int ua (Z.of_nat j)) = Some b⌝ -∗
               pipe_wlink γ b (pipe_wchain γ M ua Q Qe (S j) cnt')))%I
@@ -335,7 +437,7 @@ Section PipeQueue.
     | O => Q acc
     | S cnt' =>
         (Q acc
-         ∧ pipe_olink γ (Qe acc)
+         ∧ pipe_rolink γ (Qe acc)
          ∧ pipe_rlink γ (fun b => pipe_rchain γ Q Qe (acc ++ [b]) cnt'))%I
     end.
 
@@ -610,4 +712,4 @@ Section PipeQueue.
 
 End PipeQueue.
 
-Global Typeclasses Opaque pipe_qauth pipe_qfrag pipe_olink pipe_wlink pipe_rlink pipe_clink.
+Global Typeclasses Opaque pipe_qauth pipe_qfrag pipe_olink pipe_wolink pipe_rolink pipe_wlink pipe_rlink pipe_clink.

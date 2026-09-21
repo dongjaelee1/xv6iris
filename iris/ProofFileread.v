@@ -1183,6 +1183,24 @@ Section ProofFileread.
         iDestruct (fileread_in_of_pipe (fp_inum pn) (fp_ooff pn) (fp_om pn) (fp_pipe pn) Cf st
                      n Fr Rd Rin Rp Rpe P Hstp Htyp Hrdnz with "Hau HP")
           as "[HP Hpay]".
+        (* ...AND THE END IS THE READ END (lane PIPE-RO, design app-pipe.md
+           SS4.3w's purchase 5).  [file_core]'s pipe arm hands out the
+           reference at [fc_wbool Cf] -- the file's OWN [f->writable] cell --
+           and [SpecPiperead] is entered at the READ end.  The two meet
+           because a pipe file's two ends are COMPLEMENTARY
+           ([FileInvDefs.fdpipe_ends], the conjunct on [fdstate_ok]'s pipe
+           arm that pipealloc's two stores pay): past [f->readable <> 0] the
+           row is [FdOpen true false (FdPipe _)] and the write cell is zero.
+           This is the fact lane PQ-FLAG measured as missing -- "nobody
+           publishes that a pipe file's two ends are complementary" -- and it
+           is what lets piperead publish [ps_ro s = true] to the byte
+           queue's read link and read-side observation. *)
+        assert (Hrdnz0 : fc_readable Cf <> ((mword_of_int 0) : mword 8)).
+        { intro Hz. rewrite Hz in Hrdnz. vm_compute in Hrdnz. discriminate. }
+        assert (Hrdend : fc_wbool Cf = false).
+        { destruct (fdstate_ok_pipe_rd (fp_inum pn) (fp_ooff pn) (fp_om pn)
+                      (fp_pipe pn) Cf st Hstp Htyp Hrdnz0) as [_ Hw0].
+          exact (fc_wbool_zero Cf Hw0). }
         assert (Htgt6a : add_vec (mword_of_int (FR + 0x24) : mword 64)
                   (sign_extend' 64 (mword_of_int 70 : mword 13))
                   = mword_of_int (FR + 0x6a))
@@ -1264,7 +1282,7 @@ Section ProofFileread.
                      with "Hcnt") as "Hcnt".
         iApply (Piperead.wp_piperead_sconf fsc_kalloc γf γs j γlp (fp_lock pn) (fp_pipe pn)
                   (fc_wbool Cf) q Q2 (K - 6)%nat eb pidv U n b
-                  _ Rp Rpe Hj Hgs Hlens HQ2a2 (fr_n_range n Hn) (fr_av_pipe K HK) Heb
+                  _ Rp Rpe Hj Hgs Hlens HQ2a2 (fr_n_range n Hn) (fr_av_pipe K HK) Heb Hrdend
                   with "Hcg Hcnt Htext Hpc [] Hpref Hpay Hpriv Hkenv Hprocs").
         all: try lkbelow.
         { iEval (rewrite HQ2a0). iExact "Hpipe". }

@@ -101,6 +101,22 @@ Definition wp_piperead_sconf_body `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslot
      trap CSRs across the crossing -- at level 0 with an enabled base the
      pushing acquire produces exactly that set.  See SpecSched.v. *)
   eb = true ->
+  (* THE END IS THE READ END (lane PIPE-RO, design/app-pipe.md SS4.3w's
+     purchase 5 -- the MIRROR of [SpecPipewrite]'s [w = true], which lane
+     PQ-FLAG landed and whose reader-side twin it then measured as
+     unbuyable).  piperead dequeues through the caller's own
+     [PipeQueue.pipe_rlink] and stops on its [PipeQueue.pipe_rolink], both
+     of which fire only at [ps_ro s = true]; piperead itself never loads
+     [pi->readopen], so the fact is the CALLER'S to give and the only thing
+     that gives it is a share of the READ end -- with which
+     [PipeInvDefs.pipe_endstate_holder] reads [readopen <> 0] off the lock's
+     payload at every round.  Not a restriction on the code: fileread
+     reaches this call only on [f->readable <> 0], and a pipe file's two
+     ends are COMPLEMENTARY ([FileInvDefs.fdpipe_ends], the conjunct this
+     lane published on [fdstate_ok]'s pipe arm), so a readable pipe file's
+     [FileInvDefs.fc_wbool] is exactly this [false]
+     ([FileInvDefs.fdstate_ok_pipe_rd], [FileInvDefs.fc_wbool_zero]). *)
+  w = false ->
   (* piperead acquires the pipe lock (7); killed/sleep_prepare/sleep/wakeup all
      sit at "proc" (11), strictly higher, so this ONE premise covers the cone. *)
   locks_below lks "pipe" ->

@@ -581,24 +581,43 @@ Section ProofPiperead.
     pipe_rpost (pv_upt (us_V U)) (pn_queue γp) addrv Q Qe
       ((ChildTok.kill_shot (pv_gen (us_V U)) ∗ app_taint)%I) (Z.to_nat n) d bsw r.
 
+  (* THE READ END IS OPEN, from the caller's own credential (lane PIPE-RO,
+     the mirror of [ProofPipewrite.pw_wo_open]): [SpecPiperead]'s contract
+     pins the end it is entered with to the READ one ([w = false]), and a
+     share of an end refutes that end's shut arm
+     ([PipeInvDefs.pipe_endstate_holder]).  piperead itself never loads
+     [pi->readopen] -- lane PQ-FLAG's measurement, and the reason this fact
+     has to come from the credential rather than from a branch.  Stated at
+     the generic [w] so the loop bodies -- which name [w] in every argument
+     list -- can read it without substituting. *)
+  Lemma pr_ro_open (γp : pipe_names) (w : bool) (ro : mword 32) (q : Qp) :
+    w = false ->
+    pipe_endstate γp false ro -∗ pipe_ref γp w q -∗ ⌜pflag_open ro⌝.
+  Proof using . intros ->. apply pipe_endstate_holder. Qed.
+
   (* the links are [Typeclasses Opaque]: their eliminations *)
-  Lemma pr_olink_apply (γ : gname) (Φ : pipe_st -> iProp Σ) (s : pipe_st) :
-    pipe_olink γ Φ -∗ pipe_qauth γ s ={⊤}=∗ pipe_qauth γ s ∗ Φ s.
-  Proof using . rewrite /pipe_olink. iIntros "H". iApply "H". Qed.
+  Lemma pr_rolink_apply (γ : gname) (Φ : pipe_st -> iProp Σ) (s : pipe_st) :
+    ps_ro s = true ->
+    pipe_rolink γ Φ -∗ pipe_qauth γ s ={⊤}=∗ pipe_qauth γ s ∗ Φ s.
+  Proof using .
+    intro Hro. rewrite /pipe_rolink. iIntros "H".
+    iApply ("H" $! s with "[%]"); [exact Hro].
+  Qed.
 
   Lemma pr_rlink_apply (γ : gname) (Φ : bv 8 -> iProp Σ) (s : pipe_st) (b : bv 8) :
-    pst_next s = Some b ->
+    ps_ro s = true -> pst_next s = Some b ->
     pipe_rlink γ Φ -∗ pipe_qauth γ s ={⊤}=∗ pipe_qauth γ (pst_read s) ∗ Φ b.
   Proof using .
-    intro Hb. rewrite /pipe_rlink. iIntros "H". iApply ("H" $! s b). iPureIntro. exact Hb.
+    intros Hro Hb. rewrite /pipe_rlink. iIntros "H".
+    iApply ("H" $! s b with "[%] [%]"); [exact Hro | exact Hb].
   Qed.
 
   (* NODE [acc] OF THE CHAIN, at the count the cursor form carries.  Its
      three components are an ADDITIVE conjunction: taking the observation
      SPENDS the node, which is what the post's dry arm hands back. *)
-  Lemma pr_chain_olink (γ : gname) Q Qe (acc : list (bv 8)) (nn : nat) :
+  Lemma pr_chain_rolink (γ : gname) Q Qe (acc : list (bv 8)) (nn : nat) :
     (length acc < nn)%nat ->
-    pipe_rchain γ Q Qe acc (nn - length acc) -∗ pipe_olink γ (Qe acc).
+    pipe_rchain γ Q Qe acc (nn - length acc) -∗ pipe_rolink γ (Qe acc).
   Proof using .
     intro Hk. assert (E : (nn - length acc)%nat = S (nn - S (length acc))%nat) by lia.
     rewrite E. by iIntros "[_ [$ _]]".
@@ -663,13 +682,17 @@ Section ProofPiperead.
     (length acc <= Z.to_nat n)%nat -> length acc = d -> (d < Z.to_nat n)%nat ->
     (forall j : nat, (j < d)%nat -> bsw j = acc !!! j) ->
     (d = 0%nat -> ~ pflag_open wo) ->
+    (* THE READ END IS OPEN (lane PIPE-RO): what the caller's
+       [PipeQueue.pipe_rolink] demands of the state it observes, through
+       [pipe_qres]'s coupled arm.  [pr_ro_open] is where it comes from. *)
+    pflag_open ro ->
     nr = nw ->
     pr_pay γp Q Qe acc (Z.to_nat n) -∗
     pipe_qres γp nr nw ro wo bs
     ={⊤}=∗ pipe_qres γp nr nw ro wo bs ∗
            pr_post γp U addrv Q Qe n d bsw (mword_of_int (Z.of_nat d) : mword 64).
   Proof using .
-    intros Hle Hd Hdn Hbs Hwo Hnrw. rewrite /pr_pay /pr_post /pipe_rpost.
+    intros Hle Hd Hdn Hbs Hwo Hroo Hnrw. rewrite /pr_pay /pr_post /pipe_rpost.
     iIntros "[Hch | #Ht] Hq".
     2:{ iModIntro. iFrame "Hq". iRight. iSplitR; [iExact "Ht" |].
         by iApply pipe_rpay_taint. }
@@ -679,8 +702,9 @@ Section ProofPiperead.
     iDestruct "Hc" as (ws rp) "[%Hok Ha]".
     assert (Hemp : rp = length ws) by exact (pr_queue_empty ws rp nr nw bs Hok Hnrw).
     assert (Hlt : (length acc < Z.to_nat n)%nat) by lia.
-    iDestruct (pr_chain_olink _ _ _ acc (Z.to_nat n) Hlt with "Hch") as "Hol".
-    iMod (pr_olink_apply _ _ (MkPipeSt ws rp (pflag_bool ro) (pflag_bool wo))
+    iDestruct (pr_chain_rolink _ _ _ acc (Z.to_nat n) Hlt with "Hch") as "Hol".
+    iMod (pr_rolink_apply _ _ (MkPipeSt ws rp (pflag_bool ro) (pflag_bool wo))
+            ltac:(cbn [ps_ro]; unfold pflag_bool; by apply bool_decide_eq_true_2)
             with "Hol Ha") as "[Ha HQe]".
     iModIntro. iSplitL "Ha".
     - rewrite /pipe_qres. iLeft. iExists ws, rp.
@@ -704,12 +728,14 @@ Section ProofPiperead.
     (length acc < nn)%nat -> nr <> nw ->
     bs !! idx = Some db ->
     idx = Z.to_nat (bv_unsigned nr mod 512) ->
+    (* THE READ END IS OPEN (lane PIPE-RO), as on the observation above *)
+    pflag_open ro ->
     pr_pay γp Q Qe acc nn -∗
     pipe_qres γp nr nw ro wo bs
     ={⊤}=∗ pipe_qres γp (add_vec nr (mword_of_int 1 : mword 32)) nw ro wo bs
            ∗ pr_pay γp Q Qe ((acc ++ [db])%list) nn.
   Proof using .
-    intros Hk Hne Hlk Hidx. rewrite /pr_pay. iIntros "[Hch | #Ht] Hq".
+    intros Hk Hne Hlk Hidx Hroo. rewrite /pr_pay. iIntros "[Hch | #Ht] Hq".
     2:{ iModIntro. iSplitR; [by iApply pipe_qres_taint |]. by iRight. }
     iDestruct "Hq" as "[Hc | #Ht]".
     2:{ iModIntro. iSplitR; [by iApply pipe_qres_taint |]. by iRight. }
@@ -720,6 +746,7 @@ Section ProofPiperead.
     subst db.
     iDestruct (pr_chain_rlink _ _ _ acc nn Hk with "Hch") as "Hrl".
     iMod (pr_rlink_apply _ _ (MkPipeSt ws rp (pflag_bool ro) (pflag_bool wo)) b
+            ltac:(cbn [ps_ro]; unfold pflag_bool; by apply bool_decide_eq_true_2)
             Hws with "Hrl Ha") as "[Ha Hch]".
     iModIntro. iSplitL "Ha".
     - rewrite /pipe_qres. iLeft. iExists ws, (S rp).
@@ -959,7 +986,7 @@ Section ProofPiperead.
     : wp_piperead_sconf_body γa γf γs j γlp γl γp w q m av eb pid U n b lks Q Qe.
   Proof using .
     cbv beta delta [wp_piperead_sconf_body].
-    intros pcE pj pi addr ret_tgt Hj Hjl Hlen Ha2 Hnrng Hav Heb Hbelow. subst eb.
+    intros pcE pj pi addr ret_tgt Hj Hjl Hlen Ha2 Hnrng Hav Heb Hrend Hbelow. subst eb.
     
     (* piperead's own cone bottoms out at "pipe" (7); killed/sleep_prepare/
        sleep/wakeup all sit at "proc" (11), strictly higher, so this ONE
@@ -2132,6 +2159,14 @@ Section ProofPiperead.
           by (destruct Hex3 as ((H1 & _) & _); exact H1).
         iDestruct "Hres" as (nr nw ro wo vnm bs)
           "(%Hnei & Hnm & Hnr & Hnw & Hro & Hwo & Hst0 & Hst1 & %Hcnt & %Hbslen & Hdat & Hslack & Hqr)".
+        (* THE READ END IS OPEN, this round (lane PIPE-RO, design SS4.3w's
+           purchase 5): the caller holds a share of it ([Href], the [w =
+           false] the contract is entered at), so the payload's
+           [pipe_endstate] for the READ end cannot be on its shut arm.  The
+           conclusion is pure, so both inputs survive; it is what
+           [pr_qres_pop] needs to fire the caller's [pipe_rlink] and what
+           [pr_post_dry] needs to fire its [pipe_rolink]. *)
+        iDestruct (pr_ro_open γp w ro q Hrend with "Hst0 Href") as %Hroopen.
         assert (Hnra : add_vec (M3 !!! Regidx Rs1) (sign_extend' 64 (mword_of_int 536 : mword 12)) = a_pnread pi)
           by (rewrite H3s1; reflexivity).
         (* 0x92 lw a5,536(s1) *)
@@ -2200,7 +2235,7 @@ Section ProofPiperead.
             by (intros jj Hjj; reflexivity).
           iApply fupd_wp.
           iMod (pr_post_dry γp U addrv Q Qe n acc i (fun j : nat => acc !!! j)
-                  nr nw ro wo bs Hlenle Hlacc Hilt Hbsacc Hwoc Hnrw
+                  nr nw ro wo bs Hlenle Hlacc Hilt Hbsacc Hwoc Hroopen Hnrw
                   with "HR Hqr") as "[Hqr HRP]".
           iModIntro.
           iAssert (pipe_res γp pi) with "[Hnm Hnr Hnw Hro Hwo Hst0 Hst1 Hdat Hslack Hqr]" as "Hres".
@@ -2695,7 +2730,7 @@ Section ProofPiperead.
           assert (Haccn : (length acc < Z.to_nat n)%nat) by lia.
           iApply fupd_wp.
           iMod (pr_qres_pop γp Q Qe acc (Z.to_nat n) nr nw ro wo bs idx db
-                  Haccn Hne Hlk Hidxeq with "HR Hqr") as "[Hqr HR]".
+                  Haccn Hne Hlk Hidxeq Hroopen with "HR Hqr") as "[Hqr HR]".
           iModIntro.
           (* ...and the run the copyout wrote grows by that same byte *)
           assert (Hdb8 : trunc8 (K5 !!! Regidx Ra5) = db)

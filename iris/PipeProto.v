@@ -1459,4 +1459,219 @@ Section PipeProto.
                 with "Hinv Hsh HR").
   Qed.
 
+
+  (* ------------------------------------------------------------------- *)
+  (*  8.  THE SHORT ROUND, AND WHY THE PROTOCOL CANNOT REFUTE IT          *)
+  (*      (design SS4.3v as ruled -- REFUTED here at its second bullet;   *)
+  (*       lane SH-PIPE-ROUND-10)                                         *)
+  (*                                                                      *)
+  (*  THE ARM.  [UShPipeAssembly.pipe_round_reading_at] leaves one block   *)
+  (*  beside the round's four codes: cat printed a PROPER PREFIX of the    *)
+  (*  line ([0 < c < length L]) while echo's exit says its write stopped   *)
+  (*  because the READ END WAS SHUT ([pipe_payL]'s third arm).  Design     *)
+  (*  SS4.3v rules that a FIRST-ENDER one-shot refutes it: the writer's    *)
+  (*  observation shoots [RoFirst] (it sees the read end shut while no     *)
+  (*  end-of-file has been read), the reader's end-of-file shoots          *)
+  (*  [EofFirst], and two values of one agreement cell are [False].        *)
+  (*                                                                      *)
+  (*  THE FIRST HALF IS MINTABLE AND THE SECOND IS NOT.  [RoFirst] costs   *)
+  (*  nothing: the writer's observation node ([pipe_wchain_of_inv]'s       *)
+  (*  [pipe_olink] arm) opens this body, and (P3)'s LEFT arm being there   *)
+  (*  IS the fact that no end-of-file has been read.  [EofFirst] cannot    *)
+  (*  be minted:                                                           *)
+  (*  the reader's end-of-file node would have to know that the read end   *)
+  (*  is still OPEN at the state it fires at, and                          *)
+  (*                                                                      *)
+  (*    - [PipeQueue.pipe_olink] is a [forall s] with NO premise, and      *)
+  (*      [PipeQueue.pipe_rlink] carries no [ps_ro] premise either -- lane *)
+  (*      PQ-FLAG measured why and design SS3.1 records it: [piperead]      *)
+  (*      never loads [pi->readopen], so the only route is the caller's    *)
+  (*      own [pipe_ref γp false q], and the FILE layer cannot supply the  *)
+  (*      end (nobody publishes that a pipe file's two ends are            *)
+  (*      complementary);                                                  *)
+  (*    - and no addition to THIS BODY can supply it either, because the   *)
+  (*      close link is FREE AT BOTH ENDS by [PipeReg.pipe_reg]'s own      *)
+  (*      contract -- a registered pipe is one whose ends may be closed by *)
+  (*      anybody at any time without anybody owing anything -- so the     *)
+  (*      fact that the read end is still open is not a consequence of any *)
+  (*      resource the reader can hold.                                    *)
+  (*                                                                      *)
+  (*  WHAT IS MECHANISED BELOW.  [pipe_short_trace]: the short round is a  *)
+  (*  RUN OF THIS PROTOCOL'S OWN TRANSITION SYSTEM -- every premise the    *)
+  (*  landed links put on every step is met, in order (echo's [c] writes   *)
+  (*  at both flags open, the read end's close, echo's observation at a    *)
+  (*  shut read end with its own end still open, the write end's close,    *)
+  (*  cat's [c] reads, cat's end-of-file).  [pipe_short_round_realisable]  *)
+  (*  and [pipe_short_round_payloads]: the two EXIT PAYLOADS of that run   *)
+  (*  are derivable from the pipe's birth alone, so the pair is not merely *)
+  (*  unrefuted, it is REACHABLE.  [pipe_no_short_not_of_inv]: therefore   *)
+  (*  the law below cannot be proved from the invariant.                   *)
+  (*                                                                      *)
+  (*  [pipe_no_short] is that law, NAMED, so that the round can take it as *)
+  (*  one antecedent and whoever buys the reader-side fact can discharge   *)
+  (*  it in one place.                                                     *)
+  (* ------------------------------------------------------------------- *)
+
+  (* THE LAW THE ROUND IS OWED: a proper prefix of the line cannot have
+     been printed by a reader that saw an end-of-file while the writer's
+     halt says the read end was shut.  True of the machine -- the read end
+     is shut only by cat's own exit, which comes after cat's end-of-file
+     read, and an end-of-file needs every write end shut, so the two views
+     order the two closes oppositely -- and NOT a consequence of the
+     protocol (see [pipe_short_round_payloads]). *)
+  Definition pipe_no_short (pn : pnames) (L : list (bv 8)) : iProp Σ :=
+    (□ (∀ c : nat, ⌜(0 < c)%nat /\ (c < length L)%nat⌝ -∗
+          ro_shot pn -∗ eof_shot pn (take c L) ={⊤}=∗ False))%I.
+
+  Global Instance pipe_no_short_persistent pn L :
+    Persistent (pipe_no_short pn L).
+  Proof using . rewrite /pipe_no_short. apply _. Qed.
+
+  (* THE RUN.  Nothing here is about ghosts: it is the pure check that the
+     short round's states are the ones the landed links step between, and
+     that each link's premises hold at the state it fires at.  [pipe_wlink]
+     asks for BOTH flags open (lanes PQ-FLAG / PQ-FLAG-2) and gets them;
+     [pipe_rlink] asks only for a byte to be there; [pipe_clink] and
+     [pipe_olink] ask for nothing at all -- which is the whole finding. *)
+  Lemma pipe_short_trace (L : list (bv 8)) (c : nat) :
+    (0 < c)%nat -> (c < length L)%nat ->
+    (* (1) echo's [c] write links, each at BOTH ends open *)
+    (forall j : nat, (j < c)%nat ->
+       ps_wo (MkPipeSt (take j L) 0%nat true true) = true
+       /\ ps_ro (MkPipeSt (take j L) 0%nat true true) = true
+       /\ pst_write (L !!! j) (MkPipeSt (take j L) 0%nat true true)
+          = MkPipeSt (take (S j) L) 0%nat true true)
+    (* (2) the READ end is shut -- the close link needs nothing *)
+    /\ pst_close false (MkPipeSt (take c L) 0%nat true true)
+       = MkPipeSt (take c L) 0%nat false true
+    (* (3) echo's observation fires HERE: the read end is shut and its own
+       end is still open, which is [pipe_wpost]'s third arm and the state
+       [pipe_wQe] shoots [ro_shot] at *)
+    /\ ps_ro (MkPipeSt (take c L) 0%nat false true) = false
+    /\ ps_wo (MkPipeSt (take c L) 0%nat false true) = true
+    (* (4) echo exits: the WRITE end is shut *)
+    /\ pst_close true (MkPipeSt (take c L) 0%nat false true)
+       = MkPipeSt (take c L) 0%nat false false
+    (* (5) cat's [c] read links, each with its byte in the ring *)
+    /\ (forall j : nat, (j < c)%nat ->
+          pst_next (MkPipeSt (take c L) j false false) = Some (L !!! j)
+          /\ pst_read (MkPipeSt (take c L) j false false)
+             = MkPipeSt (take c L) (S j) false false)
+    (* (6) ...and cat's observation is an END OF FILE -- at a state whose
+       read end has been shut since (2), which is exactly the premise a
+       first-ender shot would need and cannot have *)
+    /\ pst_eof (MkPipeSt (take c L) c false false)
+    /\ ps_ro (MkPipeSt (take c L) c false false) = false.
+  Proof using .
+    intros Hc0 HcL. split_and!.
+    - intros j Hj. split_and!; [ reflexivity | reflexivity | ].
+      rewrite /pst_write /=. f_equal. symmetry.
+      apply take_S_r, list_lookup_lookup_total_lt. lia.
+    - reflexivity.
+    - reflexivity.
+    - reflexivity.
+    - reflexivity.
+    - intros j Hj. split; [ | reflexivity ].
+      rewrite /pst_next /=. rewrite lookup_take; [ | lia ].
+      apply list_lookup_lookup_total_lt. lia.
+    - rewrite /pst_eof /pst_empty /=. split; [ | reflexivity ].
+      rewrite length_take. lia.
+    - reflexivity.
+  Qed.
+
+  (* THE RUN'S TWO EXIT PAYLOADS, BUILT.  What the round reads off the two
+     children is [pipe_payL]'s third arm on the left and [pipe_payR] on the
+     right; here they are, out of the pipe's birth state and nothing else,
+     at a cursor that is a PROPER PREFIX of the line. *)
+  Lemma pipe_short_round_realisable (γp : pipe_names) (L : list (bv 8))
+      (c : nat) :
+    (0 < c)%nat -> (c <= length L)%nat ->
+    pipe_qauth (pn_queue γp) pst0 -∗ pipe_qfrag (pn_queue γp) pst0 ={⊤}=∗
+    ∃ pn : pnames,
+      pipe_inv pn γp L
+      ∗ pipe_qauth (pn_queue γp) (MkPipeSt (take c L) c false false)
+      (* echo's halt: the cursor and (P4)'s shot *)
+      ∗ wcur pn c ∗ ro_shot pn
+      (* cat's exit: the frozen snapshot at the SAME cursor *)
+      ∗ eof_shot pn (take c L)
+      ∗ rcur pn c ∗ side_L pn ∗ side_R pn.
+  Proof using .
+    intros Hc0 HcL. iIntros "Ha Hf".
+    set (s := MkPipeSt (take c L) c false false).
+    iMod (pipe_queue_update _ _ _ s with "Ha Hf") as "[Ha Hf]".
+    iMod (own_alloc (●ML ((take c L) : list (leibnizO (bv 8))))) as (gh) "Hh";
+      [ apply mono_list_auth_valid | ].
+    iMod (own_alloc
+            (Cinr (to_agree ((take c L) : leibnizO (list (bv 8))))
+             : pipe_eofR)) as (ge) "#He"; [ done | ].
+    iMod (own_alloc (Cinr (to_agree ()) : pipe_roR)) as (go) "#Ho"; [ done | ].
+    iMod (ghost_var_alloc c) as (gw) "Hw".
+    iMod (ghost_var_alloc c) as (gr) "Hr".
+    iMod (own_alloc (Excl ())) as (gl) "Hsl"; [ done | ].
+    iMod (own_alloc (Excl ())) as (gs) "Hsr"; [ done | ].
+    set (pn := MkPNames gh ge go gw gr gl gs).
+    iDestruct (ghost_var_split (pn_wcur pn) c (1/2) (1/2) with "[Hw]")
+      as "[Hw1 Hw2]"; [ by rewrite Qp.half_half | ].
+    iDestruct (ghost_var_split (pn_rcur pn) c (1/2) (1/2) with "[Hr]")
+      as "[Hr1 Hr2]"; [ by rewrite Qp.half_half | ].
+    assert (Hlen : length (take c L) = c) by (rewrite length_take; lia).
+    iMod (inv_alloc pipeN ⊤ (pipe_body pn γp L) with "[Hf Hh Hw1 Hr1]")
+      as "#Hinv".
+    { iNext. iExists s. rewrite /s /=. rewrite Hlen. iFrame "Hf Hh Hw1 Hr1".
+      iSplitR; [ iPureIntro; apply prefix_take | ].
+      iSplitR; [ iPureIntro; lia | ].
+      iSplitR.
+      - iRight. iExists (take c L). rewrite /eof_shot. iFrame "He".
+        iPureIntro. split; reflexivity.
+      - iRight. rewrite /ro_shot. iFrame "Ho". by iPureIntro. }
+    iModIntro. iExists pn. rewrite /wcur /rcur /side_L /side_R /eof_shot.
+    iFrame "Hinv Ha Hw2 Ho He Hr2 Hsl Hsr".
+  Qed.
+
+  (* ...AND THE SAME, READ AS THE ROUND READS IT: the two symmetric exit
+     payloads, both derivable, whose reading is the arm with no code.  So
+     the SHORT ROUND is not an unrefuted possibility -- it is a DERIVABLE
+     configuration of the protocol, and no strengthening of [pipe_body]
+     can exclude it while the read side keeps its landed premises. *)
+  Lemma pipe_short_round_payloads (L : list (bv 8)) (c : nat) :
+    (0 < c)%nat -> (c <= length L)%nat ->
+    ⊢ |={⊤}=> ∃ (γp : pipe_names) (pn : pnames),
+        pipe_inv pn γp L
+        ∗ pipe_Qc pn (pipe_payL pn L) (pipe_payR pn)
+        ∗ pipe_Qc pn (pipe_payL pn L) (pipe_payR pn).
+  Proof using .
+    intros Hc0 HcL.
+    iMod (pipe_queue_alloc) as (γq) "[Ha Hf]".
+    set (γp := MkPipeNames 1%positive 1%positive 1%positive 1%positive γq).
+    iMod (pipe_short_round_realisable γp L c Hc0 HcL with "Ha Hf")
+      as (pn) "(#Hinv & _ & Hw & #Hro & #Heof & _ & HsL & HsR)".
+    iModIntro. iExists γp, pn. iFrame "Hinv".
+    iSplitL "HsL Hw".
+    - rewrite /pipe_Qc. iLeft. iFrame "HsL". rewrite /pipe_payL.
+      iRight. iRight. iExists c. iFrame "Hw Hro".
+    - rewrite /pipe_Qc. iRight. iFrame "HsR". rewrite /pipe_payR.
+      iExists (take c L). iExact "Heof".
+  Qed.
+
+  (* THE REFUTATION, at the statement: if the law were a consequence of the
+     invariant, the logic would prove [False].  (The conclusion is not
+     [False] in Rocq -- it cannot be, it is a claim about the logic -- but
+     [|={⊤}=> ⌜False⌝] with no premise is absurd in any model of it, which
+     is the same standard [PipeReg.pipe_reg_not_free] is stated at.) *)
+  Lemma pipe_no_short_not_of_inv (L : list (bv 8)) (c : nat) :
+    (0 < c)%nat -> (c < length L)%nat ->
+    (forall (pn : pnames) (γp : pipe_names),
+       pipe_inv pn γp L -∗ pipe_no_short pn L) ->
+    ⊢@{iPropI Σ} |={⊤}=> ⌜False⌝.
+  Proof using .
+    intros Hc0 HcL Hlaw.
+    iMod (pipe_queue_alloc) as (γq) "[Ha Hf]".
+    set (γp := MkPipeNames 1%positive 1%positive 1%positive 1%positive γq).
+    iMod (pipe_short_round_realisable γp L c Hc0 ltac:(lia) with "Ha Hf")
+      as (pn) "(#Hinv & _ & _ & #Hro & #Heof & _ & _ & _)".
+    iDestruct (Hlaw pn γp with "Hinv") as "#Hno".
+    iMod ("Hno" $! c with "[%] Hro Heof") as %[].
+    split; [ exact Hc0 | exact HcL ].
+  Qed.
+
 End PipeProto.

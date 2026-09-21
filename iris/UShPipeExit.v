@@ -117,15 +117,16 @@ Section pipe_exit.
   (*  [pblk2_at] pins the length of [o_cs] at [r].                        *)
   (* =================================================================== *)
   Lemma pecl_open_cs_len (k r : nat) (w : pipe_era) (gb : gname)
-      (ho : list mobs) (H : LogEntryDefs.cons_hist) :
-    pera_pin g k w -∗ cur_half w (1/2) r gb -∗ pecl g k ho H -∗
+      (tm : bool) (ho : list mobs) (H : LogEntryDefs.cons_hist) :
+    pera_pin g k w -∗ cur_half w (1/2) r gb tm -∗ pecl g k ho H -∗
     (PT ∨ ∃ v : era_pins, era_pin γ k v
-           ∗ (∃ cs : list nat, ⌜length cs = r⌝ ∗ cs_auth v cs)).
+           ∗ (∃ (cs : list nat) (fz : bool),
+                ⌜length cs = r⌝ ∗ pcs v cs fz)).
   Proof using .
     iIntros "#Hpera Hcw Hcl".
     rewrite /pecl. iDestruct "Hcl" as "[#HT | Hc]"; [by iLeft |].
     iDestruct "Hc"
-      as (v2 w2 so r2 gb2 pre opn)
+      as (v2 w2 so r2 gb2 pre opn tm2)
          "(#Hpin2 & #Hpera2 & Hblk & Hcur & Hrb & Hta & Hcsa & Hpsa & HEa
            & Hdl & Hdll & %Hall)".
     iDestruct (pera_pin_agree with "Hpera Hpera2") as %->.
@@ -133,8 +134,9 @@ Section pipe_exit.
     { rewrite Hfls. cbn [cur_frac].
       iDestruct (cur_half_excl with "Hcur Hcw") as %[]. }
     rewrite Htrue. cbn [cur_frac].
-    iDestruct (cur_half_agree with "Hcw Hcur") as %[Hr _].
-    iRight. iExists v2. iFrame "Hpin2". iExists (o_cs so). iFrame "Hcsa".
+    iDestruct (cur_half_agree with "Hcw Hcur") as %(Hr & _ & _).
+    iRight. iExists v2. iFrame "Hpin2".
+    iExists (o_cs so), (true && tm2). iFrame "Hcsa".
     iPureIntro.
     destruct Hopen as (_ & Hop & _).
     destruct Hop as (Hreq & _ & _ & (a' & Hat & _)).
@@ -157,10 +159,10 @@ Section pipe_exit.
   (* =================================================================== *)
   Lemma pipe_blk2_of_lpr3 (k : nat) (v : era_pins) (I R : list (bv 8)) :
     pboth_line I ->
-    pwc_lpr g k v I 3%nat -∗ pwc_blk2 g k v I R [] 0%nat 0%nat.
+    pwc_lpr g k v I 3%nat -∗ pwc_blk2 g k v I R [] 0%nat 0%nat false.
   Proof using .
     intros Hl. iIntros "Hc".
-    iApply (pwc_blk2_of_lend g k v I R Hl).
+    iApply (pwc_blk2_of_lend g k v I R false Hl).
     iApply (pwc_lend_of_blk0 g k v I 0%nat with "Hc").
   Qed.
 
@@ -172,13 +174,13 @@ Section pipe_exit.
          FILED.  This is the arm sh's fork re-entry lands on when the
          child's exit paid a block ([lk_lcred_of_post_a]). *)
   Lemma pipe_open_not_post (k : nat) (v : era_pins) (w : pipe_era)
-      (gb : gname) (I : list (bv 8)) (a : nat)
+      (gb : gname) (tm : bool) (I : list (bv 8)) (a : nat)
       (ho : list mobs) (H : LogEntryDefs.cons_hist) :
     (* the block owes more than the prompt's own two bytes -- which at the
        round's code is exactly [sel <> []] ([PipeBoth.pblk2_code_len]) *)
     (2 < length (pab I a))%nat ->
     era_pin γ k v -∗ pera_pin g k w -∗
-    cur_half w (1/2) (nlines I - 1)%nat gb -∗
+    cur_half w (1/2) (nlines I - 1)%nat gb tm -∗
     pwc_post g k v I a -∗ pecl g k ho H -∗ PT.
   Proof using .
     intros Hlen. iIntros "#Hpin #Hpera Hcw Hpost Hcl".
@@ -186,11 +188,11 @@ Section pipe_exit.
       [iExact "HT" |].
     iDestruct "Hc" as (v2) "[#Hpin2 Hc]".
     iDestruct (era_pin_agree with "Hpin2 Hpin") as %->.
-    iDestruct "Hc" as (cs0) "[%Hcs0 Hcsa]".
+    iDestruct "Hc" as (cs0 fz0) "[%Hcs0 Hcsa]".
     rewrite /pwc_post /pwc_blk.
     iDestruct "Hpost" as "[Hp | #HT]"; [| iExact "HT"].
     iDestruct "Hp" as (ps' cs' P') "(%Hw' & Htn' & #Hps' & #Hcs' & #HE')".
-    iDestruct (cs_lb_prefix with "Hcsa Hcs'") as %Hpre.
+    iDestruct (pcs_lb_prefix with "Hcsa Hcs'") as %Hpre.
     iExFalso. iPureIntro.
     (* the credential's index is positive, so its choice list is the
        claim's with the round's code ALREADY APPENDED *)
@@ -210,12 +212,12 @@ Section pipe_exit.
          the one a PANICKING round leaves.  Refuted the same way: it wants
          a choice list as long as the input has lines. *)
   Lemma pipe_open_not_pro (k : nat) (v : era_pins) (w : pipe_era)
-      (gb : gname) (I : list (bv 8))
+      (gb : gname) (tm : bool) (I : list (bv 8))
       (ho : list mobs) (H : LogEntryDefs.cons_hist) :
     I <> [] ->
     rest_of I = [] ->
     era_pin γ k v -∗ pera_pin g k w -∗
-    cur_half w (1/2) (nlines I - 1)%nat gb -∗
+    cur_half w (1/2) (nlines I - 1)%nat gb tm -∗
     pwc_pro g k v I -∗ pecl g k ho H -∗ PT.
   Proof using .
     intros Hne Hrest. iIntros "#Hpin #Hpera Hcw Hpro Hcl".
@@ -223,11 +225,11 @@ Section pipe_exit.
       [iExact "HT" |].
     iDestruct "Hc" as (v2) "[#Hpin2 Hc]".
     iDestruct (era_pin_agree with "Hpin2 Hpin") as %->.
-    iDestruct "Hc" as (cs0) "[%Hcs0 Hcsa]".
+    iDestruct "Hc" as (cs0 fz0) "[%Hcs0 Hcsa]".
     rewrite /pwc_pro.
     iDestruct "Hpro" as "[Hp | #HT]"; [| iExact "HT"].
     iDestruct "Hp" as (ps' cs' P') "(%Hw' & Htn' & #Hps' & #Hcs' & #HE')".
-    iDestruct (cs_lb_prefix with "Hcsa Hcs'") as %Hpre.
+    iDestruct (pcs_lb_prefix with "Hcsa Hcs'") as %Hpre.
     iExFalso. iPureIntro.
     destruct Hw' as (_ & _ & Hn' & _).
     pose proof (prefix_length _ _ Hpre) as Hle.
@@ -241,19 +243,19 @@ Section pipe_exit.
      refuted on the wire by [PipeDisc.pcont_pair_det], which is the
      design's own uniqueness argument and is not repeated here. *)
   Lemma pipe_open_not_line (k : nat) (v : era_pins) (w : pipe_era)
-      (gb : gname) (I : list (bv 8)) (a : nat)
+      (gb : gname) (tm : bool) (I : list (bv 8)) (a : nat)
       (ho : list mobs) (H : LogEntryDefs.cons_hist) :
     I <> [] ->
     rest_of I = [] ->
     (2 < length (pab I a))%nat ->
     era_pin γ k v -∗ pera_pin g k w -∗
-    cur_half w (1/2) (nlines I - 1)%nat gb -∗
+    cur_half w (1/2) (nlines I - 1)%nat gb tm -∗
     (pwc_pro g k v I ∨ pwc_post g k v I a) -∗ pecl g k ho H -∗ PT.
   Proof using .
     intros Hne Hrest Hlen. iIntros "#Hpin #Hpera Hcw [Hpro | Hpost] Hcl".
-    - iApply (pipe_open_not_pro k v w gb I ho H Hne Hrest
+    - iApply (pipe_open_not_pro k v w gb tm I ho H Hne Hrest
                 with "Hpin Hpera Hcw Hpro Hcl").
-    - iApply (pipe_open_not_post k v w gb I a ho H Hlen
+    - iApply (pipe_open_not_post k v w gb tm I a ho H Hlen
                 with "Hpin Hpera Hcw Hpost Hcl").
   Qed.
 
@@ -298,10 +300,10 @@ Section pipe_exit.
   Qed.
 
   Lemma pipe_blk2_not_blk0 (k : nat) (v : era_pins) (I R : list (bv 8))
-      (sel : list bool) (c1 c2 a i : nat)
+      (sel : list bool) (c1 c2 a i : nat) (tm : bool)
       (ho : list mobs) (H : LogEntryDefs.cons_hist) :
     era_pin γ k v -∗
-    pwc_blk2 g k v I R sel c1 c2 -∗ pwc_blk g k v I a i -∗
+    pwc_blk2 g k v I R sel c1 c2 tm -∗ pwc_blk g k v I a i -∗
     pecl g k ho H -∗ PT.
   Proof using .
     iIntros "#Hpin Hfam Hblk Hcl".
@@ -311,7 +313,7 @@ Section pipe_exit.
     iDestruct "Hf" as (ps cs P) "(_ & _ & Htn1 & _)".
     iDestruct "Hb" as (ps' cs' P') "(_ & Htn2 & _)".
     iDestruct "Hc"
-      as (v2 w so r gb pre opn)
+      as (v2 w so r gb pre opn tm2)
          "(#Hpin2 & _ & _ & _ & _ & Hta & _)".
     iDestruct (era_pin_agree with "Hpin2 Hpin") as %->.
     iExFalso.
@@ -329,12 +331,12 @@ Section pipe_exit.
   (*  are exactly the premises [PipeBoth.pblk2_exit] takes.               *)
   (* =================================================================== *)
   Lemma pipe_blk2_not_line (k : nat) (v : era_pins) (I R : list (bv 8))
-      (sel : list bool) (c1 c2 a : nat)
+      (sel : list bool) (c1 c2 a : nat) (tm : bool)
       (ho : list mobs) (H : LogEntryDefs.cons_hist) :
     sel <> [] ->
     pblk2_code I R sel a ->
     era_pin γ k v -∗
-    pwc_blk2 g k v I R sel c1 c2 -∗
+    pwc_blk2 g k v I R sel c1 c2 tm -∗
     (pwc_pro g k v I ∨ pwc_post g k v I a) -∗
     pecl g k ho H -∗
     PT.
@@ -351,7 +353,7 @@ Section pipe_exit.
     pose proof (pblk2_code_len I R sel a c1 c2 Hwf Hlen Hcode) as Hab.
     assert (Hpos : (0 < c1 + c2)%nat).
     { destruct sel as [| b s]; [done |]. cbn [length] in Hlen. lia. }
-    iApply (pipe_open_not_line k v w gb I a ho H Hne Hrest
+    iApply (pipe_open_not_line k v w gb tm I a ho H Hne Hrest
               ltac:(rewrite Hab; lia) with "Hpin Hpera Hcw Hline Hcl").
   Qed.
 

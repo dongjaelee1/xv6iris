@@ -203,7 +203,7 @@ Section pipe_links.
     pcont (pline_of (bodies_of I0 !!! r)) (palt_of a) = pre0 ++ u_prompt ->
     b = u_prompt !!! 0%nat ->
     era_pin γ k v -∗ pera_pin g k w -∗
-    turn v (P + length pre0)%nat -∗ cur_half w (1/2) r gb -∗
+    turn v (P + length pre0)%nat -∗ cur_half w (1/2) r gb false -∗
     rblk_lb gb pre0 -∗ ps_lb v ps0 -∗ cs_lb v cs0 -∗ inp_lb v I0 -∗
     (((turn v (S (P + length pre0))%nat ∗ ps_lb v ps0
        ∗ cs_lb v (cs0 ++ [a]) ∗ inp_lb v I0) ∨ T) -∗ Phi) -∗
@@ -382,7 +382,7 @@ Section pipe_links.
         ⌜pcont (pline_of (bodies_of I0 !!! r)) (palt_of a) = pre0 ++ u_prompt⌝ -∗
         ⌜b = u_prompt !!! 0%nat⌝ -∗
         era_pin γ k v -∗ pera_pin g k w -∗
-        turn v (P + length pre0)%nat -∗ cur_half w (1/2) r gb -∗
+        turn v (P + length pre0)%nat -∗ cur_half w (1/2) r gb false -∗
         rblk_lb gb pre0 -∗ ps_lb v ps0 -∗ cs_lb v cs0 -∗ inp_lb v I0 -∗
         (((turn v (S (P + length pre0))%nat ∗ ps_lb v ps0
            ∗ cs_lb v (cs0 ++ [a]) ∗ inp_lb v I0) ∨ T) -∗ Phi) -∗

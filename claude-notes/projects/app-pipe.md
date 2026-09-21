@@ -409,6 +409,9 @@ arm is the theorem's one named premise (`pipe_both_law`).
   arm of the reading — the SHORT ROUND, which `PipeDisc` has no
   alternative for and the protocol does not refute — and item 7 is not
   reached.**  See the four Findings blocks.
+- [ ] **SH-PIPE-ROUND-10** (design §4.3v: the first-ender shot refutes the
+  short round; item 6's split/forks/waits/exit; `sh_pipe_child_law_all`;
+  `pipe_adequacy_pipeΣ_final`).  Brief `brief-sh-pipe-round-10.md`.
 ## Findings (append as lanes report)## Findings (append as lanes report)## Findings (append as lanes report)
 
 ### PQ-FLAG-2 (2026-09-18) — the write link's second premise, paid by the CODE

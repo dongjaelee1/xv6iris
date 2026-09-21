@@ -1414,6 +1414,47 @@ meaning and re-derives the landed forms is pre-authorised; likewise
 additive antecedents on `sh_pipe_child_law` (with `sh_round_holds_pipe`
 supplying them) — report, do not stop.
 
+### 4.3v RULED (2026-09-25, after SH-PIPE-ROUND-9 part 4): the SHORT ROUND is refuted by the protocol's FIRST-ENDER shot
+
+Item 6's reading is a theorem (`pipe_round_reading_at`: four rows are the
+round's code, the fifth is refuted), and what it leaves beside the code
+is the SHORT ROUND: cat printed a proper prefix (`0 < c < length L`, so
+cat ran and read) and echo's exit says its write stopped because the
+read end was shut (`pipe_payL`'s third arm, `wcur pn c ∗ ro_shot pn`).
+No alternative admits that block, and the protocol as landed does not
+refute it — (P3)/(P4) are consistent with `ps_ws = take c L, ps_wo =
+false, ps_ro = true` beside cat's `eof_shot pn (take c L)`.  In the
+machine it cannot happen: the read end is shut only by cat's exit, which
+comes after cat's EOF read (or under the taint), and EOF needs the write
+end shut first — so echo's view (read end shut WHILE the write end was
+open) and cat's view (EOF read, i.e. write end shut, WHILE the read end
+was open) order the two closes oppositely.  What the protocol lacks is
+that ORDER.  RULED (R-2, at the protocol; R-1 — a taint on echo's
+`ro_shot` arm — is this same fact hidden in echo's file and is NOT
+taken):
+
+- `pnames` gains one one-shot AGREE ghost, the FIRST ENDER `pn_end`, with
+  `end_shot pn RoFirst` / `end_shot pn EofFirst` (persistent, agree — two
+  different values are `False`), pending in the body until the first of
+  the two events: the body's (P4) clause becomes "`ps_ro = true` ⇒ the
+  ender is shot, and it is `RoFirst` iff no EOF had been read (i.e.
+  `eof_pending` was still in the body) when the read end shut"; the EOF
+  read step (the read link at `pst_next s = None`, `ps_wo = true`) shoots
+  `EofFirst` if nothing is shot yet — it requires `ps_ro = false` (the
+  reader's fd is open; the read-end close is what flips it).
+- `pipe_wpay_of_inv_after_short`'s short arm yields `end_shot pn RoFirst`
+  (it observed `ps_ro = true ∧ ps_wo = false`; `ps_wo` is monotone, so no
+  EOF could have been read before the shut); `pipe_payL`'s third arm
+  carries it.  The EOF read yields `end_shot pn EofFirst`; `pipe_payR`
+  carries it beside `eof_shot`.
+- `pipe_round_reading_at`'s leftover arm is then `end_shot RoFirst ∗
+  end_shot EofFirst` — `False`.  `pipe_proto_alloc` allocates the ghost;
+  `UEchoPipe`'s exit payload and `UCatPipe`'s relay the shots (additive,
+  under the standing grants); nothing in the kernel tier moves.
+
+Then item 6's split, the forks, the waits, `pipe_round_exit_mode`, and
+item 7.  Lane SH-PIPE-ROUND-10.
+
 ## 5. Programs
 
 ### 5.1 sh: the PIPE arm (lanes SH-PARSE-PIPE, SH-PIPE)

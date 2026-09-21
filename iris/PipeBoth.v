@@ -446,14 +446,21 @@ Section pipe_both.
      it, the family holds the writer's half AND the ledger's lower bound
      on the bytes written so far -- the half is what makes it the CURRENT
      round's family and not a stale one. *)
+  (* ...AND THE TERMINAL FLAG (lane PIPE-STAGE-4, design SS4.3m).  The
+     writer's half of the current-round ghost PINS it, so the claim and
+     every party writing the round agree on whether it is a fork-failure
+     round.  That is the discriminator [pecl_blk2_file] was missing: the
+     filing step takes the half at [tm = false], which the claim's own
+     half refutes at a terminal round -- and that is what makes the
+     resolution FREEZABLE there. *)
   Definition pblk_led (k : nat) (I R : list (bv 8)) (sel : list bool)
-    : iProp Σ :=
+      (tm : bool) : iProp Σ :=
     (⌜sel = []⌝ ∨ ∃ (w : pipe_era) (gb : gname),
-        pera_pin g k w ∗ cur_half w (1/2) (nlines I - 1)%nat gb
+        pera_pin g k w ∗ cur_half w (1/2) (nlines I - 1)%nat gb tm
         ∗ rblk_lb gb (pend2 R sel))%I.
 
-  Global Instance pblk_led_timeless k I R sel :
-    Timeless (pblk_led k I R sel).
+  Global Instance pblk_led_timeless k I R sel tm :
+    Timeless (pblk_led k I R sel tm).
   Proof using .
     rewrite /pblk_led.
     apply bi.or_timeless; [apply bi.pure_timeless |].
@@ -465,17 +472,18 @@ Section pipe_both.
   Qed.
 
   Definition pwc_blk2 (k : nat) (v : era_pins) (I : list (bv 8))
-      (R : list (bv 8)) (sel : list bool) (c1 c2 : nat) : iProp Σ :=
+      (R : list (bv 8)) (sel : list bool) (c1 c2 : nat) (tm : bool)
+    : iProp Σ :=
     ((∃ (ps cs : list nat) (P : nat),
         ⌜wr_blk2_p ps cs I P R sel c1 c2⌝ ∗ ⌜wr_tail_p ps cs⌝
         ∗ turn v (P + c1 + c2)%nat ∗ ps_lb v ps ∗ cs_lb v cs
-        ∗ pblk_led k I R sel ∗ inp_lb v I) ∨ PT)%I.
+        ∗ pblk_led k I R sel tm ∗ inp_lb v I) ∨ PT)%I.
 
   (* NAME THE LEAVES, do not search: the tree carries 455 [Timeless]
      instances under transparent definitions and one [apply _] at this
      altitude tries nearly all of them ([PipeLinksLine]'s [tl_leaf]). *)
-  Global Instance pwc_blk2_timeless k v I R sel c1 c2 :
-    Timeless (pwc_blk2 k v I R sel c1 c2).
+  Global Instance pwc_blk2_timeless k v I R sel c1 c2 tm :
+    Timeless (pwc_blk2 k v I R sel c1 c2 tm).
   Proof using .
     rewrite /pwc_blk2.
     apply bi.or_timeless; [| apply echo_taint_timeless].
@@ -490,7 +498,8 @@ Section pipe_both.
     apply bi.sep_timeless; [apply pblk_led_timeless | apply inp_lb_timeless].
   Qed.
 
-  Lemma pwc_blk2_taint k v I R sel c1 c2 : PT -∗ pwc_blk2 k v I R sel c1 c2.
+  Lemma pwc_blk2_taint k v I R sel c1 c2 tm :
+    PT -∗ pwc_blk2 k v I R sel c1 c2 tm.
   Proof using . iIntros "HT". rewrite /pwc_blk2. by iRight. Qed.
 
   (* THE ENTRY: what sh's runcmd child holds for the round is the block
@@ -498,9 +507,9 @@ Section pipe_both.
      [lk_lcred]'s owed arm at an [LPipe] line); it IS the family at the
      empty selector, at ANY right-hand source. *)
   Lemma pwc_blk2_of_lend (k : nat) (v : era_pins) (I : list (bv 8))
-      (R : list (bv 8)) :
+      (R : list (bv 8)) (tm : bool) :
     pboth_line I ->
-    pwc_lend g k v I -∗ pwc_blk2 k v I R [] 0%nat 0%nat.
+    pwc_lend g k v I -∗ pwc_blk2 k v I R [] 0%nat 0%nat tm.
   Proof using .
     intros Hl. iIntros "Hc". rewrite /pwc_lend /pwc_blk2.
     iDestruct "Hc" as "[Hx | #HT]"; last by iRight.
@@ -530,11 +539,11 @@ Section pipe_both.
         ⌜dg_execL !! c1 = Some b⌝ -∗ ⌜Forall nodollar (pend2 R sel)⌝ -∗
         ⌜pblk2_wit I R (sel ++ [true])⌝ -∗
         era_pin γ k v -∗ turn v (P + c1 + c2)%nat -∗ ps_lb v ps -∗
-        cs_lb v cs -∗ pblk_led k I R sel -∗ inp_lb v I -∗
+        cs_lb v cs -∗ pblk_led k I R sel false -∗ inp_lb v I -∗
         pecl g k ho H ==∗
           pecl g k ho (ConsLog.cons_step H (ConsLog.EvOut b))
           ∗ ((turn v (S (P + c1 + c2))%nat
-              ∗ pblk_led k I R (sel ++ [true])) ∨ PT))%I.
+              ∗ pblk_led k I R (sel ++ [true]) false) ∨ PT))%I.
 
   Definition pblk2_ecl_R : iProp Σ :=
     (□ ∀ (k : nat) (v : era_pins) (ho : list mobs)
@@ -544,11 +553,11 @@ Section pipe_both.
         ⌜R !! c2 = Some b⌝ -∗ ⌜Forall nodollar R⌝ -∗
         ⌜pblk2_wit I R (sel ++ [false])⌝ -∗
         era_pin γ k v -∗ turn v (P + c1 + c2)%nat -∗ ps_lb v ps -∗
-        cs_lb v cs -∗ pblk_led k I R sel -∗ inp_lb v I -∗
+        cs_lb v cs -∗ pblk_led k I R sel false -∗ inp_lb v I -∗
         pecl g k ho H ==∗
           pecl g k ho (ConsLog.cons_step H (ConsLog.EvOut b))
           ∗ ((turn v (S (P + c1 + c2))%nat
-              ∗ pblk_led k I R (sel ++ [false])) ∨ PT))%I.
+              ∗ pblk_led k I R (sel ++ [false]) false) ∨ PT))%I.
 
   (* ...AND THE FILING, at the prompt's own first byte: the only step
      that moves [cs], and the only place a round's code is built. *)
@@ -560,7 +569,7 @@ Section pipe_both.
         ⌜pblk2_code I R sel a⌝ -∗ ⌜sel <> []⌝ -∗
         ⌜b = u_prompt !!! 0%nat⌝ -∗
         era_pin γ k v -∗ turn v (P + c1 + c2)%nat -∗ ps_lb v ps -∗
-        cs_lb v cs -∗ pblk_led k I R sel -∗ inp_lb v I -∗
+        cs_lb v cs -∗ pblk_led k I R sel false -∗ inp_lb v I -∗
         pecl g k ho H ==∗
           pecl g k ho (ConsLog.cons_step H (ConsLog.EvOut b))
           ∗ ((turn v (S (P + c1 + c2))%nat ∗ cs_lb v (cs ++ [a])) ∨ PT))%I.
@@ -750,30 +759,32 @@ Section pipe_both.
   Definition pblk2_ecl_L_t : iProp Σ :=
     (□ ∀ (k : nat) (v : era_pins) (ho : list mobs)
          (H : LogEntryDefs.cons_hist) (I R : list (bv 8)) (ps cs : list nat)
-         (P : nat) (sel : list bool) (c1 c2 : nat) (b : bv 8),
+         (P : nat) (sel : list bool) (c1 c2 : nat) (b : bv 8) (tmi : bool),
         ⌜wr_blk2_p ps cs I P R sel c1 c2⌝ -∗ ⌜wr_tail_p ps cs⌝ -∗
         ⌜dg_execL !! c1 = Some b⌝ -∗
         ⌜pblk2_wit_t I R (sel ++ [true])⌝ -∗
         era_pin γ k v -∗ turn v (P + c1 + c2)%nat -∗ ps_lb v ps -∗
-        cs_lb v cs -∗ pblk_led k I R sel -∗ inp_lb v I -∗
+        cs_lb v cs -∗ pblk_led k I R sel tmi -∗ inp_lb v I -∗
         pecl g k ho H ==∗
           pecl g k ho (ConsLog.cons_step H (ConsLog.EvOut b))
           ∗ ((turn v (S (P + c1 + c2))%nat
-              ∗ pblk_led k I R (sel ++ [true])) ∨ PT))%I.
+              ∗ pblk_led k I R (sel ++ [true]) true
+              ∗ cs_frozen_at v (nlines I - 1)%nat) ∨ PT))%I.
 
   Definition pblk2_ecl_R_t : iProp Σ :=
     (□ ∀ (k : nat) (v : era_pins) (ho : list mobs)
          (H : LogEntryDefs.cons_hist) (I R : list (bv 8)) (ps cs : list nat)
-         (P : nat) (sel : list bool) (c1 c2 : nat) (b : bv 8),
+         (P : nat) (sel : list bool) (c1 c2 : nat) (b : bv 8) (tmi : bool),
         ⌜wr_blk2_p ps cs I P R sel c1 c2⌝ -∗ ⌜wr_tail_p ps cs⌝ -∗
         ⌜R !! c2 = Some b⌝ -∗
         ⌜pblk2_wit_t I R (sel ++ [false])⌝ -∗
         era_pin γ k v -∗ turn v (P + c1 + c2)%nat -∗ ps_lb v ps -∗
-        cs_lb v cs -∗ pblk_led k I R sel -∗ inp_lb v I -∗
+        cs_lb v cs -∗ pblk_led k I R sel tmi -∗ inp_lb v I -∗
         pecl g k ho H ==∗
           pecl g k ho (ConsLog.cons_step H (ConsLog.EvOut b))
           ∗ ((turn v (S (P + c1 + c2))%nat
-              ∗ pblk_led k I R (sel ++ [false])) ∨ PT))%I.
+              ∗ pblk_led k I R (sel ++ [false]) true
+              ∗ cs_frozen_at v (nlines I - 1)%nat) ∨ PT))%I.
 
   Definition pblk2_ecl_t : iProp Σ :=
     (pblk2_ecl_L_t ∗ pblk2_ecl_R_t)%I.

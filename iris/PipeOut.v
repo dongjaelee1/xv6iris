@@ -85,8 +85,9 @@ Local Open Scope list_scope.
 Record pipe_era := MkPEra {
   pe_blk : gname;   (* mono_list (bv 8), carried at [EchoOut.eo_El]'s camera:
                        the era's process bytes in wire order *)
-  pe_cur : gname;   (* ghost_var (nat * gname): THE ROUND IN PROGRESS -- its
-                       index and its own block ledger's gname.  One half is
+  pe_cur : gname;   (* ghost_var (nat * gname * bool): THE ROUND IN PROGRESS
+                       -- its index, its own block ledger's gname, and the
+                       TERMINAL FLAG (lane PIPE-STAGE-4, design SS4.3m).  One half is
                        in the claim and one in the round's family, so
                        [ghost_var_agree] forces a writer's round and ledger
                        to be the claim's: a family minted for an EARLIER
@@ -102,12 +103,12 @@ Record pipe_gn := MkPipeGn {
 
 Class pipeOutG (Σ : gFunctors) := PipeOutG {
   pog_era : ghost_mapG Σ nat pipe_era;
-  pog_cur : ghost_varG Σ (nat * gname);
+  pog_cur : ghost_varG Σ (nat * gname * bool);
 }.
 #[global] Existing Instances pog_era pog_cur.
 
 Definition pipeOutΣ : gFunctors :=
-  #[ ghost_mapΣ nat pipe_era; ghost_varΣ (nat * gname) ].
+  #[ ghost_mapΣ nat pipe_era; ghost_varΣ (nat * gname * bool) ].
 
 Global Instance subG_pipeOutΣ {Σ} : subG pipeOutΣ Σ -> pipeOutG Σ.
 Proof. solve_inG. Qed.
@@ -1470,61 +1471,72 @@ Section pipe_ledger.
 
   (* ---- THE CURRENT ROUND, in two exclusive halves ---- *)
 
+  (* ...AND ITS THIRD COMPONENT, THE TERMINAL FLAG (lane PIPE-STAGE-4,
+     design claude-notes/design/app-pipe.md SS4.3m).  [tm] is the ONE
+     thing the claim has to know about the family that is writing the open
+     round: whether the round is a FORK-FAILURE round.  It is set when the
+     block's first PForkS byte is written and it never goes back, and the
+     writer's own half PINS it -- which is what refutes [pecl_blk2_file]
+     at a terminal round (the filer has to present [tm = false]) and so
+     makes the claim's resolution FREEZABLE there. *)
   Definition cur_half (w : pipe_era) (q : Qp) (r : nat) (gb : gname)
-    : iProp Σ := ghost_var (pe_cur w) q (r, gb).
+      (tm : bool) : iProp Σ := ghost_var (pe_cur w) q (r, gb, tm).
 
-  Global Instance cur_half_timeless w q r gb : Timeless (cur_half w q r gb).
+  Global Instance cur_half_timeless w q r gb tm :
+    Timeless (cur_half w q r gb tm).
   Proof using . rewrite /cur_half. apply _. Qed.
 
   (* THE EXCLUSION a stale family runs into: the claim's half and the
-     family's half agree on the round AND on its ledger. *)
-  Lemma cur_half_agree w q1 q2 r1 gb1 r2 gb2 :
-    cur_half w q1 r1 gb1 -∗ cur_half w q2 r2 gb2 -∗ ⌜r1 = r2 /\ gb1 = gb2⌝.
+     family's half agree on the round, on its ledger AND on the flag. *)
+  Lemma cur_half_agree w q1 q2 r1 gb1 tm1 r2 gb2 tm2 :
+    cur_half w q1 r1 gb1 tm1 -∗ cur_half w q2 r2 gb2 tm2 -∗
+    ⌜r1 = r2 /\ gb1 = gb2 /\ tm1 = tm2⌝.
   Proof using .
     rewrite /cur_half. iIntros "H1 H2".
     iDestruct (ghost_var_agree with "H1 H2") as %Heq.
-    iPureIntro. by injection Heq.
+    iPureIntro. injection Heq as Hr Hg Ht. by split_and!.
   Qed.
 
-  Lemma cur_half_excl w r gb r' gb' :
-    cur_half w 1 r gb -∗ cur_half w (1/2) r' gb' -∗ False.
+  Lemma cur_half_excl w r gb tm r' gb' tm' :
+    cur_half w 1 r gb tm -∗ cur_half w (1/2) r' gb' tm' -∗ False.
   Proof using .
     rewrite /cur_half. iIntros "H1 H2".
     by iDestruct (ghost_var_valid_2 with "H1 H2") as %[Hq _].
   Qed.
 
-  Lemma cur_half_update w r1 gb1 r2 gb2 r gb :
-    cur_half w (1/2) r1 gb1 -∗ cur_half w (1/2) r2 gb2 ==∗
-      cur_half w (1/2) r gb ∗ cur_half w (1/2) r gb.
+  Lemma cur_half_update w r1 gb1 tm1 r2 gb2 tm2 r gb tm :
+    cur_half w (1/2) r1 gb1 tm1 -∗ cur_half w (1/2) r2 gb2 tm2 ==∗
+      cur_half w (1/2) r gb tm ∗ cur_half w (1/2) r gb tm.
   Proof using .
     rewrite /cur_half. iIntros "H1 H2".
-    by iMod (ghost_var_update_halves (r, gb) with "H1 H2") as "[$ $]".
+    by iMod (ghost_var_update_halves (r, gb, tm) with "H1 H2") as "[$ $]".
   Qed.
 
   (* the era is born with BOTH halves at a round nobody is writing *)
   Lemma blk_alloc : ⊢ |==> ∃ (w : pipe_era) (gb : gname),
-      blk_auth w [] ∗ rblk_auth gb [] ∗ cur_half w 1 0%nat gb.
+      blk_auth w [] ∗ rblk_auth gb [] ∗ cur_half w 1 0%nat gb false.
   Proof using .
     iMod (own_alloc (●ML ([] : list (leibnizO (list mobs * bv 8)))))
       as (ge) "Ha"; [by apply mono_list_auth_valid |].
     iMod rblk_alloc as (gb) "Hr".
-    iMod (ghost_var_alloc (0%nat, gb)) as (gc) "Hc".
+    iMod (ghost_var_alloc (0%nat, gb, false)) as (gc) "Hc".
     iModIntro. iExists (MkPEra ge gc), gb.
     rewrite /blk_auth /cur_half. cbn [pe_blk pe_cur].
     rewrite fmap_nil. iFrame "Ha Hr Hc".
   Qed.
 
   (* the opening of a round SPLITS it; the filing rejoins it *)
-  Lemma cur_split w r gb :
-    cur_half w 1 r gb -∗ cur_half w (1/2) r gb ∗ cur_half w (1/2) r gb.
+  Lemma cur_split w r gb tm :
+    cur_half w 1 r gb tm -∗ cur_half w (1/2) r gb tm ∗ cur_half w (1/2) r gb tm.
   Proof using .
     rewrite /cur_half. iIntros "H".
     iEval (rewrite -Qp.half_half) in "H".
     by iDestruct (ghost_var_split with "H") as "[$ $]".
   Qed.
 
-  Lemma cur_join w r gb :
-    cur_half w (1/2) r gb -∗ cur_half w (1/2) r gb -∗ cur_half w 1 r gb.
+  Lemma cur_join w r gb tm :
+    cur_half w (1/2) r gb tm -∗ cur_half w (1/2) r gb tm -∗
+    cur_half w 1 r gb tm.
   Proof using .
     rewrite /cur_half. iIntros "H1 H2".
     iCombine "H1 H2" as "H". iExact "H".
@@ -1532,11 +1544,11 @@ Section pipe_ledger.
 
   (* ...and a WHOLE current-round ghost may be retargeted at the round the
      block that is opening belongs to *)
-  Lemma cur_retarget w r gb r' gb' :
-    cur_half w 1 r gb ==∗ cur_half w 1 r' gb'.
+  Lemma cur_retarget w r gb tm r' gb' tm' :
+    cur_half w 1 r gb tm ==∗ cur_half w 1 r' gb' tm'.
   Proof using .
     rewrite /cur_half. iIntros "H".
-    by iMod (ghost_var_update (r', gb') with "H") as "$".
+    by iMod (ghost_var_update (r', gb', tm') with "H") as "$".
   Qed.
 
   (* the map, and its two moves -- [FileOut.f0_map] verbatim *)
@@ -1637,17 +1649,103 @@ Section pipe_out.
     iPureIntro. pose proof (prefix_length _ _ Hp) as Hle. lia.
   Qed.
 
+  (* the frozen authority still HANDS OUT its own lower bound *)
+  Lemma cs_frozen_lb (v : era_pins) (l : list nat) :
+    cs_frozen v l -∗ cs_lb v l.
+  Proof using .
+    rewrite /cs_frozen /cs_lb. iIntros "H".
+    iDestruct (own_mono _ _ (◯ML (l : list (leibnizO nat))) with "H")
+      as "#Hl"; [apply mono_list_included |].
+    iExact "Hl".
+  Qed.
+
+  (* WHAT A WRITER CARRIES AWAY FROM A TERMINAL ROUND.  The list itself is
+     not interesting to the writer -- only its LENGTH is, because that is
+     what a later line's read residue contradicts.  Persistent and
+     timeless, so a [LinkRec] boundary field may hold it. *)
+  Definition cs_frozen_at (v : era_pins) (n : nat) : iProp Σ :=
+    (∃ l : list nat, ⌜length l = n⌝ ∗ cs_frozen v l)%I.
+
+  Global Instance cs_frozen_at_persistent v n : Persistent (cs_frozen_at v n).
+  Proof using . rewrite /cs_frozen_at. apply _. Qed.
+  Global Instance cs_frozen_at_timeless v n : Timeless (cs_frozen_at v n).
+  Proof using . rewrite /cs_frozen_at. apply _. Qed.
+
+  Lemma cs_frozen_at_of (v : era_pins) (l : list nat) (n : nat) :
+    length l = n -> cs_frozen v l -∗ cs_frozen_at v n.
+  Proof using .
+    intros Hn. iIntros "H". rewrite /cs_frozen_at. iExists l. by iFrame "H".
+  Qed.
+
+  (* ...AND THE CONTRADICTION THE TERMINAL READ SPENDS, at that reading:
+     a resolution LONGER than the frozen one cannot be a lower bound. *)
+  Lemma cs_frozen_at_lb_absurd (v : era_pins) (n : nat) (l' : list nat) :
+    (n < length l')%nat -> cs_frozen_at v n -∗ cs_lb v l' -∗ False.
+  Proof using .
+    intro Hlt. iIntros "Ha Hl". rewrite /cs_frozen_at.
+    iDestruct "Ha" as (l) "[%Hn Ha]". subst n.
+    iApply (cs_frozen_lb_absurd v l l' Hlt with "Ha Hl").
+  Qed.
+
+  (* ===================================================================== *)
+  (*  THE CLAIM'S RESOLUTION AUTHORITY, FLAG-INDEXED (lane PIPE-STAGE-4).   *)
+  (*                                                                       *)
+  (*  While a FORK-FAILURE round is open the claim holds the resolution     *)
+  (*  FROZEN and not merely authoritative: the round will never be filed,   *)
+  (*  so [cs] never grows again, and the persisted authority is the one     *)
+  (*  non-monotone reading a writer may carry to a later read.  Both forms  *)
+  (*  answer the two things every other step asks of the authority -- a     *)
+  (*  lower bound's prefix, and a lower bound of its own.                   *)
+  (* ===================================================================== *)
+  Definition pcs (v : era_pins) (l : list nat) (fz : bool) : iProp Σ :=
+    (if fz then cs_frozen v l else cs_auth v l)%I.
+
+  Global Instance pcs_timeless v l fz : Timeless (pcs v l fz).
+  Proof using . rewrite /pcs. destruct fz; apply _. Qed.
+
+  Lemma pcs_lb_prefix v l l' fz :
+    pcs v l fz -∗ cs_lb v l' -∗ ⌜l' `prefix_of` l⌝.
+  Proof using .
+    rewrite /pcs. destruct fz;
+      [ iApply cs_frozen_prefix | iApply cs_lb_prefix ].
+  Qed.
+
+  Lemma pcs_lb_get v l fz : pcs v l fz -∗ pcs v l fz ∗ cs_lb v l.
+  Proof using .
+    rewrite /pcs. destruct fz; [| iApply cs_lb_get ].
+    iIntros "H". iDestruct (cs_frozen_lb with "H") as "#Hl". by iFrame "H Hl".
+  Qed.
+
+  (* ...and the two readings the two cs-GROWING steps need: at a flag the
+     claim can show to be [false] the authority is the landed one. *)
+  Lemma pcs_auth v l fz : fz = false -> pcs v l fz -∗ cs_auth v l.
+  Proof using . intros ->. rewrite /pcs /=. by iIntros "$". Qed.
+
+  Lemma pcs_of_auth v l fz : fz = false -> cs_auth v l -∗ pcs v l fz.
+  Proof using . intros ->. rewrite /pcs /=. by iIntros "$". Qed.
+
+  (* THE FIRE.  [cs_freeze] at the claim's own authority, at any flag --
+     a second fire is a no-op, which is what lets the terminal byte step
+     be stated uniformly over the flag it finds. *)
+  Lemma pcs_freeze v l fz : pcs v l fz ==∗ pcs v l true ∗ cs_frozen v l.
+  Proof using .
+    destruct fz; rewrite /pcs /=.
+    - iIntros "#H". iModIntro. by iFrame "H".
+    - iIntros "H". iMod (cs_freeze v l with "H") as "#H". iModIntro.
+      by iFrame "H".
+  Qed.
+
   (* [EchoOut.ecl] at the pipeline stage: the same four authorities, the
      same delivered count, no extra per-era ghost. *)
   Definition pecl (k : nat) (ho : list mobs)
       (H : LogEntryDefs.cons_hist) : iProp Σ :=
     ( T
     ∨ ∃ (v : era_pins) (w : pipe_era) (so : postage)
-        (r : nat) (gb : gname) (pre : list (bv 8)) (opn : bool),
+        (r : nat) (gb : gname) (pre : list (bv 8)) (opn : bool) (tm : bool),
         era_pin γ k v ∗ pera_pin g k w ∗ blk_auth w (pstream so)
-        ∗ cur_half w (cur_frac opn) r gb ∗ rblk_auth gb pre
+        ∗ cur_half w (cur_frac opn) r gb tm ∗ rblk_auth gb pre
         ∗ turn_auth v (pcount_p (o_ps so) (o_cs so) (o_E so) (o_w so))
-        ∗ cs_auth v (o_cs so)
+        ∗ pcs v (o_cs so) (opn && tm)
         ∗ ps_auth v (o_ps so)
         ∗ Elist_auth v (o_E so)
         ∗ dl_cnt v (1/2) (length (LogEntryDefs.ch_dl H))
@@ -1691,8 +1789,8 @@ Section pipe_out.
   Proof using .
     intros Hok Hev. rewrite /pecl.
     iIntros "[HT | Hc]"; [by iLeft |]. iRight.
-    iDestruct "Hc" as (v w so r gb pre opn) "(Hpin & Hpera & Hblk & Hcur & Hrb & Htn & Hcs & Hps & HE & Hdl & Hdll & %Hpure)".
-    iExists v, w, so, r, gb, pre, opn. iFrame "Hpin Hpera Hblk Hcur Hrb Htn Hcs Hps HE".
+    iDestruct "Hc" as (v w so r gb pre opn tm) "(Hpin & Hpera & Hblk & Hcur & Hrb & Htn & Hcs & Hps & HE & Hdl & Hdll & %Hpure)".
+    iExists v, w, so, r, gb, pre, opn, tm. iFrame "Hpin Hpera Hblk Hcur Hrb Htn Hcs Hps HE".
     rewrite ch_dl_close. iFrame "Hdl Hdll". iPureIntro.
     by apply (pcl_pure2_close k ho so r pre opn H Hok Hev Hpure).
   Qed.
@@ -1709,8 +1807,8 @@ Section pipe_out.
   Proof using .
     intros Hn Hd Hb Hdh Hsh Hends Hord Hlt. rewrite /pecl.
     iIntros "[HT | Hc]"; [by iLeft |]. iRight.
-    iDestruct "Hc" as (v w so r gb pre opn) "(Hpin & Hpera & Hblk & Hcur & Hrb & Htn & Hcs & Hps & HE & Hdl & Hdll & %Hpure)".
-    iExists v, w, so, r, gb, pre, opn. iFrame "Hpin Hpera Hblk Hcur Hrb Htn Hcs Hps HE".
+    iDestruct "Hc" as (v w so r gb pre opn tm) "(Hpin & Hpera & Hblk & Hcur & Hrb & Htn & Hcs & Hps & HE & Hdl & Hdll & %Hpure)".
+    iExists v, w, so, r, gb, pre, opn, tm. iFrame "Hpin Hpera Hblk Hcur Hrb Htn Hcs Hps HE".
     rewrite /ConsLog.cons_step. cbn [LogEntryDefs.ch_dl]. iFrame "Hdl Hdll".
     iPureIntro.
     by apply (pcl_pure2_open k ho so r pre opn H h c cs
@@ -1731,9 +1829,9 @@ Section pipe_out.
   Proof using .
     rewrite /pecl. iIntros "[#HT | Hp]".
     { iSplitR; [by iLeft | by iLeft]. }
-    iDestruct "Hp" as (v w so r gb pre opn) "(#Hpin & #Hpera & Hblk & Hcur & Hrb & Htn & Hcs & Hps & HE & Hdl & Hdll & %Hall)".
+    iDestruct "Hp" as (v w so r gb pre opn tm) "(#Hpin & #Hpera & Hblk & Hcur & Hrb & Htn & Hcs & Hps & HE & Hdl & Hdll & %Hall)".
     iSplitL.
-    - iRight. iExists v, w, so, r, gb, pre, opn. iFrame "Hpin Hpera Hblk Hcur Hrb Htn Hcs Hps HE Hdl Hdll". by iPureIntro.
+    - iRight. iExists v, w, so, r, gb, pre, opn, tm. iFrame "Hpin Hpera Hblk Hcur Hrb Htn Hcs Hps HE Hdl Hdll". by iPureIntro.
     - iRight. iPureIntro. exact (pcl_pure2_arm k ho so r pre opn CH Hall).
   Qed.
 
@@ -1749,9 +1847,9 @@ Section pipe_out.
   Proof using .
     intros Hsh Hk Hends Hord. rewrite /pecl. iIntros "[#HT | Hp]".
     { iSplitR; [by iLeft | by iLeft]. }
-    iDestruct "Hp" as (v w so r gb pre opn) "(#Hpin & #Hpera & Hblk & Hcur & Hrb & Htn & Hcs & Hps & HE & Hdl & Hdll & %Hall)".
+    iDestruct "Hp" as (v w so r gb pre opn tm) "(#Hpin & #Hpera & Hblk & Hcur & Hrb & Htn & Hcs & Hps & HE & Hdl & Hdll & %Hall)".
     iSplitL.
-    - iRight. iExists v, w, so, r, gb, pre, opn. iFrame "Hpin Hpera Hblk Hcur Hrb Htn Hcs Hps HE Hdl Hdll". by iPureIntro.
+    - iRight. iExists v, w, so, r, gb, pre, opn, tm. iFrame "Hpin Hpera Hblk Hcur Hrb Htn Hcs Hps HE Hdl Hdll". by iPureIntro.
     - iRight. iPureIntro.
       destruct (pcl_pure2_pein k ho so r pre opn CH Hall)
         as (_ & _ & Hstamp & _ & Hidx & _ & _).
@@ -1778,10 +1876,10 @@ Section pipe_out.
     iIntros "#Hpin Ht #Hpslb #Hcslb #Hilb Hcl".
     iDestruct "Hcl" as "[#HT | Hp]".
     { iModIntro. iSplitR; [rewrite /pecl; by iLeft | by iRight]. }
-    iDestruct "Hp" as (v2 w so r gb pre opn) "(#Hpin2 & #Hpera & Hblk & Hcur & Hrb & Hta & Hcs & Hps & HE & Hdl & Hdll & %Hall)".
+    iDestruct "Hp" as (v2 w so r gb pre opn tm) "(#Hpin2 & #Hpera & Hblk & Hcur & Hrb & Hta & Hcs & Hps & HE & Hdl & Hdll & %Hall)".
     iDestruct (era_pin_agree with "Hpin2 Hpin") as %->.
     iDestruct (turn_agree with "Ht Hta") as %HP.
-    iDestruct (cs_lb_prefix with "Hcs Hcslb") as %Hcsp.
+    iDestruct (pcs_lb_prefix with "Hcs Hcslb") as %Hcsp.
     iDestruct (ps_lb_prefix with "Hps Hpslb") as %Hpsp.
     iDestruct (inp_lb_le with "Hdll Hilb") as %HI0dl.
     assert (HI0 : I0 `prefix_of` (snd <$> o_E so)).
@@ -1822,7 +1920,7 @@ Section pipe_out.
     iMod (blk_auth_grow w (pstream so) b with "Hblk") as "[Hblk _]".
     iModIntro. iSplitR "Ht".
     - rewrite /pecl. iRight.
-      iExists v, w, (MkO (o_ps so) (o_cs so) (o_E so) (o_w so ++ [b])), r, gb, pre, opn.
+      iExists v, w, (MkO (o_ps so) (o_cs so) (o_E so) (o_w so ++ [b])), r, gb, pre, opn, tm.
       cbn [o_ps o_cs o_E o_w]. rewrite pcount_p_write -HP.
       rewrite (pstream_write (o_ps so) (o_cs so) (o_E so) (o_w so) b).
       rewrite /ConsLog.cons_step. cbn [LogEntryDefs.ch_dl].
@@ -1878,10 +1976,10 @@ Section pipe_out.
     iIntros "#Hpin Ht #Hpslb #Hcslb #Hilb Hcl".
     iDestruct "Hcl" as "[#HT | Hp]".
     { iModIntro. iSplitR; [rewrite /pecl; by iLeft | by iRight]. }
-    iDestruct "Hp" as (v2 w so r gb pre opn) "(#Hpin2 & #Hpera & Hblk & Hcur & Hrb & Hta & Hcs & Hps & HE & Hdl & Hdll & %Hall)".
+    iDestruct "Hp" as (v2 w so r gb pre opn tm) "(#Hpin2 & #Hpera & Hblk & Hcur & Hrb & Hta & Hcs & Hps & HE & Hdl & Hdll & %Hall)".
     iDestruct (era_pin_agree with "Hpin2 Hpin") as %->.
     iDestruct (turn_agree with "Ht Hta") as %HP.
-    iDestruct (cs_lb_prefix with "Hcs Hcslb") as %Hcsp.
+    iDestruct (pcs_lb_prefix with "Hcs Hcslb") as %Hcsp.
     iDestruct (ps_lb_prefix with "Hps Hpslb") as %Hpsp.
     iDestruct (inp_lb_le with "Hdll Hilb") as %HI0dl.
     assert (HI0 : I0 `prefix_of` (snd <$> o_E so)).
@@ -1979,12 +2077,19 @@ Section pipe_out.
     { rewrite HlenE Hrl0 Hq. lia. }
     iMod (turn_update v P (pcount_p (o_ps so) (o_cs so) (o_E so) (o_w so))
             (S P) ltac:(lia) with "Ht Hta") as "[Ht Hta]".
+    (* the other cs-GROWING step: it is at the BETWEEN-ROUNDS arm ([opn =
+       false], refuted above for an open round), so the claim's authority
+       is never the frozen one here either. *)
+    iDestruct (pcs_auth v (o_cs so) (opn && tm) ltac:(by rewrite Hfls)
+                 with "Hcs") as "Hcs".
     iMod (cs_auth_grow v (o_cs so) a with "Hcs") as "[Hcs #Hcslb2]".
     iDestruct (ps_lb_get with "Hps") as "[Hps #Hpslb2]".
     iMod (blk_auth_grow w (pstream so) b with "Hblk") as "[Hblk _]".
+    iDestruct (pcs_of_auth v (o_cs so ++ [a]) (opn && tm)
+                 ltac:(by rewrite Hfls) with "Hcs") as "Hcs".
     iModIntro. iSplitR "Ht".
     - rewrite /pecl. iRight.
-      iExists v, w, (MkO (o_ps so) (o_cs so ++ [a]) (o_E so) [b]), r, gb, pre, opn.
+      iExists v, w, (MkO (o_ps so) (o_cs so ++ [a]) (o_E so) [b]), r, gb, pre, opn, tm.
       cbn [o_ps o_cs o_E o_w]. rewrite Hpc2.
       rewrite (pstream_blk (o_ps so) (o_cs so) (o_E so) a b Hpin Hrlbnd).
       rewrite (_ : pstream (MkO (o_ps so) (o_cs so) (o_E so) []) = pstream so);
@@ -2045,7 +2150,11 @@ Section pipe_out.
       pecl k ho (ConsLog.cons_step H (ConsLog.EvOut b))
       ∗ ((∃ (w : pipe_era) (gb : gname),
             turn v (S P) ∗ pera_pin g k w
-            ∗ cur_half w (1/2) (nlines I0 - 1)%nat gb ∗ rblk_lb gb [b]
+            ∗ cur_half w (1/2) (nlines I0 - 1)%nat gb
+                (palt_isforkS (palt_of a))
+            ∗ rblk_lb gb [b]
+            ∗ (⌜palt_isforkS (palt_of a) = false⌝
+               ∨ cs_frozen_at v (nlines I0 - 1)%nat)
             ∗ ps_lb v ps0 ∗ cs_lb v cs0 ∗ inp_lb v I0) ∨ T).
   Proof using .
     intros Hne0 Hr0 Hdiv Hpin0 HPeq Halt Hpan Hhead Hfarm.
@@ -2054,10 +2163,10 @@ Section pipe_out.
     iIntros "#Hpin Ht #Hpslb #Hcslb #Hilb Hcl".
     iDestruct "Hcl" as "[#HT | Hp]".
     { iModIntro. iSplitR; [rewrite /pecl; by iLeft | by iRight]. }
-    iDestruct "Hp" as (v2 w so r gb pre opn) "(#Hpin2 & #Hpera & Hblk & Hcur & Hrb & Hta & Hcs & Hps & HE & Hdl & Hdll & %Hall)".
+    iDestruct "Hp" as (v2 w so r gb pre opn tm) "(#Hpin2 & #Hpera & Hblk & Hcur & Hrb & Hta & Hcs & Hps & HE & Hdl & Hdll & %Hall)".
     iDestruct (era_pin_agree with "Hpin2 Hpin") as %->.
     iDestruct (turn_agree with "Ht Hta") as %HP.
-    iDestruct (cs_lb_prefix with "Hcs Hcslb") as %Hcsp.
+    iDestruct (pcs_lb_prefix with "Hcs Hcslb") as %Hcsp.
     iDestruct (ps_lb_prefix with "Hps Hpslb") as %Hpsp.
     iDestruct (inp_lb_le with "Hdll Hilb") as %HI0dl.
     assert (HI0 : I0 `prefix_of` (snd <$> o_E so)).
@@ -2121,18 +2230,34 @@ Section pipe_out.
     (* the round's OWN ledger, minted here and nowhere else *)
     iMod rblk_alloc as (gb2) "Hrb2".
     iMod (rblk_auth_grow gb2 [] b with "Hrb2") as "[Hrb2 #Hrlb]".
-    rewrite Hfls. cbn [cur_frac].
-    iMod (cur_retarget w r gb (nlines I0 - 1)%nat gb2 with "Hcur") as "Hcur".
-    iDestruct (cur_split w (nlines I0 - 1)%nat gb2 with "Hcur")
+    rewrite Hfls. cbn [cur_frac andb].
+    iMod (cur_retarget w r gb tm (nlines I0 - 1)%nat gb2
+            (palt_isforkS (palt_of a)) with "Hcur") as "Hcur".
+    iDestruct (cur_split w (nlines I0 - 1)%nat gb2
+                 (palt_isforkS (palt_of a)) with "Hcur")
       as "[Hcur1 Hcur2]".
+    (* THE TERMINAL FIRE (design SS4.3m): a round whose alternative is a
+       [PForkS] is never filed, so its resolution is FROZEN here and the
+       writer carries the persisted authority away. *)
+    iAssert (|==> pcs v (o_cs so) (palt_isforkS (palt_of a))
+                  ∗ (⌜palt_isforkS (palt_of a) = false⌝
+                     ∨ cs_frozen_at v (nlines I0 - 1)%nat))%I
+      with "[Hcs]" as ">[Hcs #Hfz]".
+    { destruct (palt_isforkS (palt_of a)) eqn:Hfk2.
+      - iMod (pcs_freeze v (o_cs so) false with "Hcs") as "[Hcs #Hf]".
+        iModIntro. iFrame "Hcs". iRight.
+        iApply (cs_frozen_at_of v (o_cs so) (nlines I0 - 1)%nat with "Hf").
+        by rewrite Hq.
+      - iModIntro. iFrame "Hcs". iLeft. by iPureIntro. }
     iMod (turn_update v P (pcount_p (o_ps so) (o_cs so) (o_E so) (o_w so))
             (S P) ltac:(lia) with "Ht Hta") as "[Ht Hta]".
     iMod (blk_auth_grow w (pstream so) b with "Hblk") as "[Hblk _]".
     iModIntro. iSplitR "Ht Hcur2".
     - rewrite /pecl. iRight.
       iExists v, w, (MkO (o_ps so) (o_cs so) (o_E so) [b]),
-              (nlines I0 - 1)%nat, gb2, [b], true.
-      cbn [o_ps o_cs o_E o_w]. rewrite Hpc2.
+              (nlines I0 - 1)%nat, gb2, [b], true,
+              (palt_isforkS (palt_of a)).
+      cbn [o_ps o_cs o_E o_w andb]. rewrite Hpc2.
       rewrite (_ : pstream (MkO (o_ps so) (o_cs so) (o_E so) [b])
                    = pstream so ++ [b]); last first.
       { rewrite /pstream. cbn [o_ps o_cs o_E o_w]. by rewrite Hwnil app_nil_r. }
@@ -2168,7 +2293,7 @@ Section pipe_out.
       + pose proof (ps_len_ok_p_write so b Hpsl) as Hx.
         rewrite Hwnil in Hx. exact Hx.
     - iLeft. iExists w, gb2.
-      iFrame "Ht Hpera Hcur2 Hrlb Hpslb Hcslb Hilb".
+      iFrame "Ht Hpera Hcur2 Hrlb Hfz Hpslb Hcslb Hilb".
   Qed.
 
   (* (W-blk2) A FURTHER BYTE OF AN OPEN ROUND.  The writer's half of the
@@ -2179,7 +2304,7 @@ Section pipe_out.
      ([cur_half_excl]).  The ledger then pins the block's BYTES, which
      [turn] alone cannot (PIPE-2W's [pend_both_not_inj]). *)
   Lemma pecl_blk2_byte_gen (k : nat) (v : era_pins) (w : pipe_era) (gb : gname)
-      (P r a : nat) (b : bv 8) (pre0 : list (bv 8))
+      (tmi : bool) (P r a : nat) (b : bv 8) (pre0 : list (bv 8))
       (ps0 cs0 : list nat) (I0 : list (bv 8)) (ho : list mobs)
       (H : LogEntryDefs.cons_hist) :
     I0 <> [] ->
@@ -2195,23 +2320,25 @@ Section pipe_out.
     ((palt_isforkS (palt_of a) = false /\ Forall nodollar pre0 /\ nodollar b)
      \/ palt_isforkS (palt_of a) = true) ->
     era_pin γ k v -∗ pera_pin g k w -∗
-    turn v (P + length pre0)%nat -∗ cur_half w (1/2) r gb -∗
+    turn v (P + length pre0)%nat -∗ cur_half w (1/2) r gb tmi -∗
     rblk_lb gb pre0 -∗ ps_lb v ps0 -∗ cs_lb v cs0 -∗ inp_lb v I0 -∗
     pecl k ho H ==∗
       pecl k ho (ConsLog.cons_step H (ConsLog.EvOut b))
-      ∗ ((turn v (S (P + length pre0))%nat ∗ cur_half w (1/2) r gb
-          ∗ rblk_lb gb (pre0 ++ [b])) ∨ T).
+      ∗ ((turn v (S (P + length pre0))%nat
+          ∗ cur_half w (1/2) r gb (tmi || palt_isforkS (palt_of a))
+          ∗ rblk_lb gb (pre0 ++ [b])
+          ∗ (⌜palt_isforkS (palt_of a) = false⌝ ∨ cs_frozen_at v r)) ∨ T).
   Proof using .
     intros Hne0 Hr0 Hreq Hcseq Hpin0 HPeq Halt Hpan Hpref Hfarm.
     pose proof (nlines_pos_of_rest_nil I0 Hne0 Hr0) as Hpos0.
     iIntros "#Hpin #Hperaw Ht Hcw #Hrlb0 #Hpslb #Hcslb #Hilb Hcl".
     iDestruct "Hcl" as "[#HT | Hp]".
     { iModIntro. iSplitR; [rewrite /pecl; by iLeft | by iRight]. }
-    iDestruct "Hp" as (v2 w2 so r2 gb2 pre opn) "(#Hpin2 & #Hpera & Hblk & Hcur & Hrb & Hta & Hcs & Hps & HE & Hdl & Hdll & %Hall)".
+    iDestruct "Hp" as (v2 w2 so r2 gb2 pre opn tm) "(#Hpin2 & #Hpera & Hblk & Hcur & Hrb & Hta & Hcs & Hps & HE & Hdl & Hdll & %Hall)".
     iDestruct (era_pin_agree with "Hpin2 Hpin") as %->.
     iDestruct (pera_pin_agree with "Hpera Hperaw") as %->.
     iDestruct (turn_agree with "Ht Hta") as %HP.
-    iDestruct (cs_lb_prefix with "Hcs Hcslb") as %Hcsp.
+    iDestruct (pcs_lb_prefix with "Hcs Hcslb") as %Hcsp.
     iDestruct (ps_lb_prefix with "Hps Hpslb") as %Hpsp.
     iDestruct (inp_lb_le with "Hdll Hilb") as %HI0dl.
     assert (HI0 : I0 `prefix_of` (snd <$> o_E so)).
@@ -2220,8 +2347,9 @@ Section pipe_out.
     destruct Hall as [(Hfls & Hall) | (Htrue & Hopen)].
     { rewrite Hfls. cbn [cur_frac].
       iDestruct (cur_half_excl with "Hcur Hcw") as %[]. }
-    rewrite Htrue. cbn [cur_frac].
-    iDestruct (cur_half_agree with "Hcur Hcw") as %[-> ->].
+    rewrite Htrue. cbn [cur_frac andb].
+    iDestruct (cur_half_agree with "Hcur Hcw") as %(-> & -> & Htmeq).
+    subst tm.
     pose proof Hopen as (Hout & Hop & Hpsl & Hin & Hera & HEtie).
     pose proof Hout as (Hacc & Hidx & Hbyte & Hpsb & Hpin & Hcsb' & Hdsc
                         & Hpre1 & Hpre2 & Hpre3 & Hnofk).
@@ -2256,6 +2384,28 @@ Section pipe_out.
     assert (Hpre0 : pre0 = o_w so).
     { rewrite Hwp' in Hlen0 |- *.
       exact (prefix_length_eq pre0 pre Hprefl ltac:(lia)). }
+    (* THE TERMINAL FIRE (design SS4.3m).  A byte whose alternative is a
+       [PForkS] sets the round's TERMINAL FLAG -- both halves are here, so
+       the update is available -- and FREEZES the claim's resolution: the
+       round is never filed, so [cs] never grows again, and the writer
+       carries the persisted authority away.  At a non-fork byte the flag
+       is left exactly where it was. *)
+    iAssert (|==> pcs v (o_cs so) (tmi || palt_isforkS (palt_of a))
+                  ∗ cur_half w (1/2) r gb (tmi || palt_isforkS (palt_of a))
+                  ∗ cur_half w (1/2) r gb (tmi || palt_isforkS (palt_of a))
+                  ∗ (⌜palt_isforkS (palt_of a) = false⌝
+                     ∨ cs_frozen_at v r))%I
+      with "[Hcs Hcur Hcw]" as ">(Hcs & Hcur & Hcw & #Hfz)".
+    { destruct (palt_isforkS (palt_of a)) eqn:Hfk2.
+      - rewrite (orb_true_r tmi).
+        iMod (pcs_freeze v (o_cs so) tmi with "Hcs") as "[Hcs #Hf]".
+        iMod (cur_half_update w r gb tmi r gb tmi r gb true
+                with "Hcur Hcw") as "[Hcur Hcw]".
+        iModIntro. iFrame "Hcs Hcur Hcw". iRight.
+        iApply (cs_frozen_at_of v (o_cs so) r with "Hf").
+        by rewrite Hqq Hreq2.
+      - rewrite (orb_false_r tmi).
+        iModIntro. iFrame "Hcs Hcur Hcw". iLeft. by iPureIntro. }
     iMod (rblk_auth_grow gb pre b with "Hrb") as "[Hrb #Hrlb1]".
     iMod (turn_update v (P + length pre0)%nat
             (pcount_p (o_ps so) (o_cs so) (o_E so) (o_w so))
@@ -2269,8 +2419,9 @@ Section pipe_out.
     iModIntro. iSplitR "Ht Hcw".
     - rewrite /pecl. iRight.
       iExists v, w, (MkO (o_ps so) (o_cs so) (o_E so) (o_w so ++ [b])),
-              r, gb, (pre ++ [b]), true.
-      cbn [o_ps o_cs o_E o_w]. rewrite pcount_p_write -HP.
+              r, gb, (pre ++ [b]), true,
+              (tmi || palt_isforkS (palt_of a)).
+      cbn [o_ps o_cs o_E o_w andb]. rewrite pcount_p_write -HP.
       rewrite (pstream_write (o_ps so) (o_cs so) (o_E so) (o_w so) b).
       rewrite /ConsLog.cons_step. cbn [LogEntryDefs.ch_dl].
       iFrame "Hpin Hpera Hblk Hcur Hrb Hta Hcs Hps HE Hdl Hdll".
@@ -2306,7 +2457,7 @@ Section pipe_out.
         apply Forall_app. split; [| by apply Forall_singleton, Hnd].
         rewrite -Hwp' -Hpre0. exact Hnd0.
       + exact (ps_len_ok_p_write so b Hpsl).
-    - iLeft. rewrite Hpre0 -Hwp'. iFrame "Ht Hcw Hrlb1".
+    - iLeft. rewrite Hpre0 -Hwp'. iFrame "Ht Hcw Hrlb1 Hfz".
   Qed.
 
   (* ---- THE TWO STEPS AT THE NON-TERMINAL ARM (the landed statements,
@@ -2331,12 +2482,18 @@ Section pipe_out.
       pecl k ho (ConsLog.cons_step H (ConsLog.EvOut b))
       ∗ ((∃ (w : pipe_era) (gb : gname),
             turn v (S P) ∗ pera_pin g k w
-            ∗ cur_half w (1/2) (nlines I0 - 1)%nat gb ∗ rblk_lb gb [b]
+            ∗ cur_half w (1/2) (nlines I0 - 1)%nat gb false ∗ rblk_lb gb [b]
             ∗ ps_lb v ps0 ∗ cs_lb v cs0 ∗ inp_lb v I0) ∨ T).
   Proof using .
     intros Hne0 Hr0 Hdiv Hpin0 HPeq Halt Hpan Hfk Hhead Hnd.
-    exact (pecl_blk2_open_gen k v P a b ps0 cs0 I0 ho H Hne0 Hr0 Hdiv Hpin0
-             HPeq Halt Hpan Hhead (or_introl (conj Hfk Hnd))).
+    iIntros "#Hpin Ht #Hpslb #Hcslb #Hilb Hcl".
+    iMod (pecl_blk2_open_gen k v P a b ps0 cs0 I0 ho H Hne0 Hr0 Hdiv Hpin0
+            HPeq Halt Hpan Hhead (or_introl (conj Hfk Hnd))
+            with "Hpin Ht Hpslb Hcslb Hilb Hcl") as "[Hcl Hr]".
+    iModIntro. iFrame "Hcl". rewrite Hfk.
+    iDestruct "Hr" as "[Hx | #HT]"; [| by iRight]. iLeft.
+    iDestruct "Hx" as (w gb) "(Ht & Hpera & Hcur & Hrlb & _ & Hps & Hcs & Hi)".
+    iExists w, gb. iFrame "Ht Hpera Hcur Hrlb Hps Hcs Hi".
   Qed.
 
   Lemma pecl_blk2_byte (k : nat) (v : era_pins) (w : pipe_era) (gb : gname)
@@ -2357,17 +2514,23 @@ Section pipe_out.
     Forall nodollar pre0 ->
     nodollar b ->
     era_pin γ k v -∗ pera_pin g k w -∗
-    turn v (P + length pre0)%nat -∗ cur_half w (1/2) r gb -∗
+    turn v (P + length pre0)%nat -∗ cur_half w (1/2) r gb false -∗
     rblk_lb gb pre0 -∗ ps_lb v ps0 -∗ cs_lb v cs0 -∗ inp_lb v I0 -∗
     pecl k ho H ==∗
       pecl k ho (ConsLog.cons_step H (ConsLog.EvOut b))
-      ∗ ((turn v (S (P + length pre0))%nat ∗ cur_half w (1/2) r gb
+      ∗ ((turn v (S (P + length pre0))%nat ∗ cur_half w (1/2) r gb false
           ∗ rblk_lb gb (pre0 ++ [b])) ∨ T).
   Proof using .
     intros Hne0 Hr0 Hreq Hcseq Hpin0 HPeq Halt Hpan Hfk Hpref Hnd0 Hnd.
-    exact (pecl_blk2_byte_gen k v w gb P r a b pre0 ps0 cs0 I0 ho H Hne0 Hr0
-             Hreq Hcseq Hpin0 HPeq Halt Hpan Hpref
-             (or_introl (conj Hfk (conj Hnd0 Hnd)))).
+    iIntros "#Hpin #Hpera Ht Hcw #Hrlb0 #Hpslb #Hcslb #Hilb Hcl".
+    iMod (pecl_blk2_byte_gen k v w gb false P r a b pre0 ps0 cs0 I0 ho H
+            Hne0 Hr0 Hreq Hcseq Hpin0 HPeq Halt Hpan Hpref
+            (or_introl (conj Hfk (conj Hnd0 Hnd)))
+            with "Hpin Hpera Ht Hcw Hrlb0 Hpslb Hcslb Hilb Hcl")
+      as "[Hcl Hr]".
+    iModIntro. iFrame "Hcl". rewrite Hfk. cbn [orb].
+    iDestruct "Hr" as "[Hx | #HT]"; [| by iRight]. iLeft.
+    iDestruct "Hx" as "(Ht & Hcw & Hrlb & _)". iFrame "Ht Hcw Hrlb".
   Qed.
 
   (* ===================================================================== *)
@@ -2399,16 +2562,25 @@ Section pipe_out.
       pecl k ho (ConsLog.cons_step H (ConsLog.EvOut b))
       ∗ ((∃ (w : pipe_era) (gb : gname),
             turn v (S P) ∗ pera_pin g k w
-            ∗ cur_half w (1/2) (nlines I0 - 1)%nat gb ∗ rblk_lb gb [b]
+            ∗ cur_half w (1/2) (nlines I0 - 1)%nat gb true ∗ rblk_lb gb [b]
+            ∗ cs_frozen_at v (nlines I0 - 1)%nat
             ∗ ps_lb v ps0 ∗ cs_lb v cs0 ∗ inp_lb v I0) ∨ T).
   Proof using .
     intros Hne0 Hr0 Hdiv Hpin0 HPeq Halt Hpan Hfk Hhead.
-    exact (pecl_blk2_open_gen k v P a b ps0 cs0 I0 ho H Hne0 Hr0 Hdiv Hpin0
-             HPeq Halt Hpan Hhead (or_intror Hfk)).
+    iIntros "#Hpin Ht #Hpslb #Hcslb #Hilb Hcl".
+    iMod (pecl_blk2_open_gen k v P a b ps0 cs0 I0 ho H Hne0 Hr0 Hdiv Hpin0
+            HPeq Halt Hpan Hhead (or_intror Hfk)
+            with "Hpin Ht Hpslb Hcslb Hilb Hcl") as "[Hcl Hr]".
+    iModIntro. iFrame "Hcl". rewrite Hfk.
+    iDestruct "Hr" as "[Hx | #HT]"; [| by iRight]. iLeft.
+    iDestruct "Hx"
+      as (w gb) "(Ht & Hpera & Hcur & Hrlb & Hfz & Hps & Hcs & Hi)".
+    iDestruct "Hfz" as "[%Hbad | #Hfz]"; [discriminate Hbad |].
+    iExists w, gb. iFrame "Ht Hpera Hcur Hrlb Hfz Hps Hcs Hi".
   Qed.
 
   Lemma pecl_blk2_byte_t (k : nat) (v : era_pins) (w : pipe_era) (gb : gname)
-      (P r a : nat) (b : bv 8) (pre0 : list (bv 8))
+      (tmi : bool) (P r a : nat) (b : bv 8) (pre0 : list (bv 8))
       (ps0 cs0 : list nat) (I0 : list (bv 8)) (ho : list mobs)
       (H : LogEntryDefs.cons_hist) :
     I0 <> [] ->
@@ -2423,16 +2595,24 @@ Section pipe_out.
     (pre0 ++ [b]) `prefix_of`
       pcont (pline_of (bodies_of I0 !!! r)) (palt_of a) ->
     era_pin γ k v -∗ pera_pin g k w -∗
-    turn v (P + length pre0)%nat -∗ cur_half w (1/2) r gb -∗
+    turn v (P + length pre0)%nat -∗ cur_half w (1/2) r gb tmi -∗
     rblk_lb gb pre0 -∗ ps_lb v ps0 -∗ cs_lb v cs0 -∗ inp_lb v I0 -∗
     pecl k ho H ==∗
       pecl k ho (ConsLog.cons_step H (ConsLog.EvOut b))
-      ∗ ((turn v (S (P + length pre0))%nat ∗ cur_half w (1/2) r gb
-          ∗ rblk_lb gb (pre0 ++ [b])) ∨ T).
+      ∗ ((turn v (S (P + length pre0))%nat ∗ cur_half w (1/2) r gb true
+          ∗ rblk_lb gb (pre0 ++ [b]) ∗ cs_frozen_at v r) ∨ T).
   Proof using .
     intros Hne0 Hr0 Hreq Hcseq Hpin0 HPeq Halt Hpan Hfk Hpref.
-    exact (pecl_blk2_byte_gen k v w gb P r a b pre0 ps0 cs0 I0 ho H Hne0 Hr0
-             Hreq Hcseq Hpin0 HPeq Halt Hpan Hpref (or_intror Hfk)).
+    iIntros "#Hpin #Hpera Ht Hcw #Hrlb0 #Hpslb #Hcslb #Hilb Hcl".
+    iMod (pecl_blk2_byte_gen k v w gb tmi P r a b pre0 ps0 cs0 I0 ho H
+            Hne0 Hr0 Hreq Hcseq Hpin0 HPeq Halt Hpan Hpref (or_intror Hfk)
+            with "Hpin Hpera Ht Hcw Hrlb0 Hpslb Hcslb Hilb Hcl")
+      as "[Hcl Hr]".
+    iModIntro. iFrame "Hcl". rewrite Hfk (orb_true_r tmi).
+    iDestruct "Hr" as "[Hx | #HT]"; [| by iRight]. iLeft.
+    iDestruct "Hx" as "(Ht & Hcw & Hrlb & Hfz)".
+    iDestruct "Hfz" as "[%Hbad | #Hfz]"; [discriminate Hbad |].
+    iFrame "Ht Hcw Hrlb Hfz".
   Qed.
 
   Lemma pecl_blk2_file (k : nat) (v : era_pins) (w : pipe_era) (gb : gname)
@@ -2451,7 +2631,7 @@ Section pipe_out.
     pcont (pline_of (bodies_of I0 !!! r)) (palt_of a) = pre0 ++ u_prompt ->
     b = u_prompt !!! 0%nat ->
     era_pin γ k v -∗ pera_pin g k w -∗
-    turn v (P + length pre0)%nat -∗ cur_half w (1/2) r gb -∗
+    turn v (P + length pre0)%nat -∗ cur_half w (1/2) r gb false -∗
     rblk_lb gb pre0 -∗ ps_lb v ps0 -∗ cs_lb v cs0 -∗ inp_lb v I0 -∗
     pecl k ho H ==∗
       pecl k ho (ConsLog.cons_step H (ConsLog.EvOut b))
@@ -2463,11 +2643,11 @@ Section pipe_out.
     iIntros "#Hpin #Hperaw Ht Hcw #Hrlb0 #Hpslb #Hcslb #Hilb Hcl".
     iDestruct "Hcl" as "[#HT | Hp]".
     { iModIntro. iSplitR; [rewrite /pecl; by iLeft | by iRight]. }
-    iDestruct "Hp" as (v2 w2 so r2 gb2 pre opn) "(#Hpin2 & #Hpera & Hblk & Hcur & Hrb & Hta & Hcs & Hps & HE & Hdl & Hdll & %Hall)".
+    iDestruct "Hp" as (v2 w2 so r2 gb2 pre opn tm) "(#Hpin2 & #Hpera & Hblk & Hcur & Hrb & Hta & Hcs & Hps & HE & Hdl & Hdll & %Hall)".
     iDestruct (era_pin_agree with "Hpin2 Hpin") as %->.
     iDestruct (pera_pin_agree with "Hpera Hperaw") as %->.
     iDestruct (turn_agree with "Ht Hta") as %HP.
-    iDestruct (cs_lb_prefix with "Hcs Hcslb") as %Hcsp.
+    iDestruct (pcs_lb_prefix with "Hcs Hcslb") as %Hcsp.
     iDestruct (ps_lb_prefix with "Hps Hpslb") as %Hpsp.
     iDestruct (inp_lb_le with "Hdll Hilb") as %HI0dl.
     assert (HI0 : I0 `prefix_of` (snd <$> o_E so)).
@@ -2476,8 +2656,9 @@ Section pipe_out.
     destruct Hall as [(Hfls & Hall) | (Htrue & Hopen)].
     { rewrite Hfls. cbn [cur_frac].
       iDestruct (cur_half_excl with "Hcur Hcw") as %[]. }
-    rewrite Htrue. cbn [cur_frac].
-    iDestruct (cur_half_agree with "Hcur Hcw") as %[-> ->].
+    rewrite Htrue. cbn [cur_frac andb].
+    iDestruct (cur_half_agree with "Hcur Hcw") as %(-> & -> & Htmeq).
+    subst tm.
     pose proof Hopen as (Hout & Hop & Hpsl & Hin & Hera & HEtie).
     pose proof Hout as (Hacc & Hidx & Hbyte & Hpsb & Hpin & Hcsb' & Hdsc
                         & Hpre1 & Hpre2 & Hpre3 & Hnofk).
@@ -2516,10 +2697,16 @@ Section pipe_out.
             (pcount_p (o_ps so) (o_cs so) (o_E so) (o_w so))
             (S (P + length pre0)) ltac:(lia) with "Ht Hta") as "[Ht Hta]".
     iMod (blk_auth_grow w (pstream so) b with "Hblk") as "[Hblk _]".
+    (* THE FILING IS REFUTED AT A TERMINAL ROUND (design SS4.3m): the filer
+       presents its own half of the current-round ghost at [tm = false],
+       and [cur_half_agree] has already forced the CLAIM's flag to match,
+       so the authority here is the landed [cs_auth] and never the frozen
+       one.  This is the step the freeze was waiting for. *)
+    iDestruct (pcs_auth v (o_cs so) false eq_refl with "Hcs") as "Hcs".
     iMod (cs_auth_grow v (o_cs so) a with "Hcs") as "[Hcs #Hcslb2]".
     iDestruct (ps_lb_get with "Hps") as "[Hps #Hpslb2]".
     (* the writer's half comes home *)
-    iDestruct (cur_join w r gb with "Hcur Hcw") as "Hcur".
+    iDestruct (cur_join w r gb false with "Hcur Hcw") as "Hcur".
     (* the round's line is the writer's line *)
     assert (Hbod : bodies_of (snd <$> o_E so) !!! r = bodies_of I0 !!! r).
     { destruct (bodies_of_prefix I0 (snd <$> o_E so) HI0) as [z Hz].
@@ -2559,8 +2746,10 @@ Section pipe_out.
     iModIntro. iSplitR "Ht".
     - rewrite /pecl. iRight.
       iExists v, w, (MkO (o_ps so) (o_cs so ++ [a]) (o_E so) (o_w so ++ [b])),
-              r, gb, pre, false.
-      cbn [o_ps o_cs o_E o_w]. rewrite -Hpceq pcount_p_write -HP.
+              r, gb, pre, false, false.
+      cbn [o_ps o_cs o_E o_w andb]. rewrite -Hpceq pcount_p_write -HP.
+      iDestruct (pcs_of_auth v (o_cs so ++ [a]) false eq_refl with "Hcs")
+        as "Hcs".
       rewrite (pstream_blk_w (o_ps so) (o_cs so) (o_E so) a (o_w so) b
                  Hpin Hrlbnd).
       rewrite /ConsLog.cons_step. cbn [LogEntryDefs.ch_dl].
@@ -2621,10 +2810,10 @@ Section pipe_out.
     iIntros "#Hpin Ht #Hpslb #Hcslb #Hilb Hcl".
     iDestruct "Hcl" as "[#HT | Hp]".
     { iModIntro. iSplitR; [rewrite /pecl; by iLeft | by iRight]. }
-    iDestruct "Hp" as (v2 w so r gb pre opn) "(#Hpin2 & #Hpera & Hblk & Hcur & Hrb & Hta & Hcs & Hps & HE & Hdl & Hdll & %Hall)".
+    iDestruct "Hp" as (v2 w so r gb pre opn tm) "(#Hpin2 & #Hpera & Hblk & Hcur & Hrb & Hta & Hcs & Hps & HE & Hdl & Hdll & %Hall)".
     iDestruct (era_pin_agree with "Hpin2 Hpin") as %->.
     iDestruct (turn_agree with "Ht Hta") as %HP.
-    iDestruct (cs_lb_prefix with "Hcs Hcslb") as %Hcsp.
+    iDestruct (pcs_lb_prefix with "Hcs Hcslb") as %Hcsp.
     iDestruct (ps_lb_prefix with "Hps Hpslb") as %Hpsp.
     iDestruct (inp_lb_le with "Hdll Hilb") as %HI0dl.
     assert (HI0 : I0 `prefix_of` (snd <$> o_E so)).
@@ -2837,7 +3026,7 @@ Section pipe_out.
     iMod (blk_auth_grow w (pstream so) b with "Hblk") as "[Hblk _]".
     iModIntro. iSplitR "Ht".
     - rewrite /pecl. iRight.
-      iExists v, w, (MkO (o_ps so ++ [a]) (o_cs so) (o_E so) (o_w so ++ [b])), r, gb, pre, opn.
+      iExists v, w, (MkO (o_ps so ++ [a]) (o_cs so) (o_E so) (o_w so ++ [b])), r, gb, pre, opn, tm.
       cbn [o_ps o_cs o_E o_w]. rewrite Hpc2.
       rewrite (pstream_pro (o_ps so) (o_cs so) (o_E so) (o_w so) a b Hpin).
       rewrite /ConsLog.cons_step. cbn [LogEntryDefs.ch_dl].
@@ -2932,7 +3121,7 @@ Section pipe_out.
     intros Hread. iIntros "#Hpinr Hdlr Hcl".
     iDestruct "Hcl" as "[#HT | Hp]".
     { iModIntro. iSplitR; [rewrite /pecl; by iLeft |]. iLeft. by iFrame "Hdlr". }
-    iDestruct "Hp" as (v2 w so r gb pre opn) "(#Hpin & #Hpera & Hblk & Hcur & Hrb & Hta & Hcs & Hps & HE & Hdl & Hdll & %Hall)".
+    iDestruct "Hp" as (v2 w so r gb pre opn tm) "(#Hpin & #Hpera & Hblk & Hcur & Hrb & Hta & Hcs & Hps & HE & Hdl & Hdll & %Hall)".
     iDestruct (era_pin_agree with "Hpin Hpinr") as %->.
     iDestruct (dl_cnt_agree with "Hdl Hdlr") as %Hdleq.
     pose proof Hall as Hall0.
@@ -3009,7 +3198,7 @@ Section pipe_out.
                    ltac:(intros j Hj; apply Hagree; lia) q' Hq'q).
         apply Hpinf. pose proof (nstarted_prefix Iw (snd <$> o_E so) HEpre).
         lia. }
-    iDestruct (cs_lb_get with "Hcs") as "[Hcs #Hcslb]".
+    iDestruct (pcs_lb_get with "Hcs") as "[Hcs #Hcslb]".
     iDestruct (cs_lb_weaken_p v (o_cs so) csq
                  ltac:(rewrite /csq; apply prefix_take) with "Hcslb")
       as "#Hcslbq".
@@ -3021,7 +3210,7 @@ Section pipe_out.
     iMod (dl_list_auth_grow v (LogEntryDefs.ch_dl CH) ws with "Hdll")
       as "[Hdll #Hdllb]".
     iModIntro. iSplitL "Hta Hcs Hps HE Hdl Hdll Hblk Hcur Hrb".
-    { rewrite /pecl. iRight. iExists v, w, so, r, gb, pre, opn.
+    { rewrite /pecl. iRight. iExists v, w, so, r, gb, pre, opn, tm.
       rewrite /ConsLog.cons_step. cbn [LogEntryDefs.ch_dl].
       rewrite length_app Hdleq.
       iFrame "Hpin Hpera Hblk Hcur Hrb Hta Hcs Hps HE Hdl Hdll".
@@ -3067,7 +3256,7 @@ Section pipe_out.
     iIntros "Hcl".
     iDestruct "Hcl" as "[#HT | Hp]".
     { iModIntro. rewrite /pecl. by iLeft. }
-    iDestruct "Hp" as (v w so r gb pre opn) "(#Hpin & #Hpera & Hblk & Hcur & Hrb & Hta & Hcs & Hps & HE & Hdl & Hdll & %Hall)".
+    iDestruct "Hp" as (v w so r gb pre opn tm) "(#Hpin & #Hpera & Hblk & Hcur & Hrb & Hta & Hcs & Hps & HE & Hdl & Hdll & %Hall)".
     pose proof Hall as Hall0.
     (* AN ECHO CANNOT HAPPEN WHILE A ROUND'S BLOCK IS OPEN, and the reason
        is the DISCIPLINE's, not the stage's: [disc_pt] wants the round's
@@ -3421,7 +3610,7 @@ Section pipe_out.
     iMod (Elist_auth_grow v (o_E so) (open_seg h, c) with "HE")
       as "[HE #HElb2]".
     iModIntro. rewrite /pecl. iRight.
-    iExists v, w, (MkO (o_ps so) (o_cs so) (o_E so ++ [(open_seg h, c)]) []), r, gb, pre, opn.
+    iExists v, w, (MkO (o_ps so) (o_cs so) (o_E so ++ [(open_seg h, c)]) []), r, gb, pre, opn, tm.
     cbn [o_ps o_cs o_E o_w].
     rewrite (pcount_p_echo (o_ps so) (o_cs so) (o_E so) (open_seg h, c)
                (o_w so) Hweq).
@@ -3513,13 +3702,13 @@ Section pipe_out.
     iIntros "Hcl".
     iDestruct "Hcl" as "[#HT | Hp]".
     - iSplitR; [iLeft; iExact "HT" | iLeft; iExact "HT"].
-    - iDestruct "Hp" as (v w so r gb pre opn) "(#Hpin & #Hpera & Hblk & Hcur & Hrb & Hta & Hcs & Hps & HE & Hdl & Hdll & %Hall)".
+    - iDestruct "Hp" as (v w so r gb pre opn tm) "(#Hpin & #Hpera & Hblk & Hcur & Hrb & Hta & Hcs & Hps & HE & Hdl & Hdll & %Hall)".
       pose proof Hall as Hall2.
       pose proof (pcl_pure2_out (obs_boots h) ho so r pre opn CH Hall2)
         as (Hacc & Hidx & Hbyte & Hpsb & Hpin & Hcs' & Hdsc
             & Hpre1 & Hpre2 & Hpre3 & Hnofk).
       iSplitL "Hta Hcs Hps HE Hdl Hdll Hblk Hcur Hrb".
-      { iRight. iExists v, w, so, r, gb, pre, opn. iFrame "Hpin Hpera Hblk Hcur Hrb Hta Hcs Hps HE Hdl Hdll".
+      { iRight. iExists v, w, so, r, gb, pre, opn, tm. iFrame "Hpin Hpera Hblk Hcur Hrb Hta Hcs Hps HE Hdl Hdll".
         by iPureIntro. }
       iRight. iPureIntro.
       assert (Hbytes : (snd <$> o_E so) `prefix_of` ins seg).
@@ -3604,7 +3793,7 @@ Section pipe_out.
   Lemma era_full_split_p (k : nat) (v : era_pins) (w : pipe_era)
       (gb : gname) :
     era_pin γ k v -∗ pera_pin g k w -∗ blk_auth w [] -∗
-    rblk_auth gb [] -∗ cur_half w 1 0%nat gb -∗ era_full v -∗
+    rblk_auth gb [] -∗ cur_half w 1 0%nat gb false -∗ era_full v -∗
       pecl k [] (LogEntryDefs.MkCH [] [] [] None) ∗ pturn k.
   Proof using .
     iIntros "#Hpin #Hpera Hblk Hrb Hcur1 (Ht & Hcs & Hps & HE & Hdl & Hdll)".
@@ -3619,10 +3808,12 @@ Section pipe_out.
     iDestruct (Elist_lb_get with "HE") as "[HE #HElb]".
     iDestruct (dl_list_lb_get with "Hdll") as "[Hdll #Hdllb]".
     iSplitL "Ht1 Hcs Hps HE Hdl1 Hdll Hblk Hcur1 Hrb".
-    { rewrite /pecl. iRight. iExists v, w, ostage0, 0%nat, gb, [], false.
+    { rewrite /pecl. iRight. iExists v, w, ostage0, 0%nat, gb, [], false, false.
       rewrite pstream_0.
       cbn [o_ps o_cs o_E o_w ostage0 length LogEntryDefs.ch_dl].
       rewrite /pcount_p fmap_nil proc_before_p_nil. cbn [length].
+      iDestruct (pcs_of_auth v [] (false && false) eq_refl with "Hcs")
+        as "Hcs".
       iFrame "Hpin Hpera Hblk Hcur1 Hrb Ht1 Hcs Hps HE Hdl1 Hdll". iPureIntro.
       left. split; [reflexivity |]. rewrite /pcl_pure.
       cbn [LogEntryDefs.ch_acc LogEntryDefs.ch_log LogEntryDefs.ch_dl

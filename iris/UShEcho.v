@@ -1105,6 +1105,65 @@ Section UShEcho.
   Qed.
 
   (* THE PATH: argv[0]'s string IS "echo", terminated. *)
+  (* THE EXEC'S PATH IS THE LINE'S FIRST WORD, at any exec'able word list
+     (PROGRAM-STREAM stretch 12).  [sh_echo_path_of] below is this at
+     [ws !!! 0 = cmd_echo]; a consumer at another command ([cat f]) reads
+     its own path here. *)
+  Definition sh_exec_path_of_x (ws : list (list (bv 8))) : Prop :=
+    exec_ok ws ->
+    forall (M : gmap Z (bv 8)) (s0 t : Z) (g : nat -> bv 8),
+      echo_node_img ws M s0 t g ->
+      UkShEcho.echo_argv_bytes ws g ->
+      exec_path_of M (mword_of_int s0 : mword 64) (ws !!! 0%nat).
+
+  Lemma sh_exec_path_of_x_holds (ws : list (list (bv 8))) :
+    sh_exec_path_of_x ws.
+  Proof using .
+    intros Hok M s0 t g (_ & Hri & _ & _ & Hgi & Hzi) Hbytes.
+    pose proof (exec_ok_pos ws Hok) as Hpos.
+    pose proof (Hri 0%nat Hpos) as Hr.
+    rewrite UkShEcho.echo_off_0 in Hr. rewrite Z.add_0_r in Hr.
+    pose proof (UkShEcho.echo_off_0 ws) as Hoff0.
+    set (cmd := ws !!! 0%nat).
+    assert (Hal : UkShEcho.echo_alen ws 0%nat = length cmd) by reflexivity.
+    pose proof (UkShEcho.echo_off_lt_x ws 0%nat (UkShEcho.echo_alen ws 0%nat)
+                  Hok Hpos ltac:(lia)) as Hlt.
+    pose proof (exec_ok_len ws Hok) as Hlm. unfold line_max in Hlm.
+    rewrite Hoff0 Hal Nat.add_0_l in Hlt.
+    assert (Hn : M !! (s0 + Z.of_nat (length cmd)) = Some (bv_0 8)).
+    { rewrite <- ubyte0_bv0.
+      replace (s0 + Z.of_nat (length cmd))
+        with (s0 + Z.of_nat (UkShEcho.echo_off ws 0%nat)
+              + Z.of_nat (UkShEcho.echo_alen ws 0%nat))
+        by (rewrite Hoff0 Hal; lia).
+      exact (Hzi 0%nat Hpos). }
+    split_and!.
+    - split; [ lia | ].
+      intros j b Hj.
+      pose proof (Forall_lookup_1 _ _ _ _ (exec_ok_wf ws Hok)
+                    (exec_ok_at ws 0%nat Hok Hpos)) as [_ Hwa].
+      pose proof (Forall_lookup_1 _ _ _ _ Hwa Hj) as Hb.
+      intros ->. revert Hb. rewrite /wl_alnum. vm_compute.
+      intros [H | [H | H]]; destruct H as [H1 H2];
+        first [ by apply H1 | by apply H2 ].
+    - intros j b Hj.
+      assert (Hjl : (j < length cmd)%nat) by exact (lookup_lt_Some _ _ _ Hj).
+      rewrite (uint_avi_moi s0 (Z.of_nat j) ltac:(lia) ltac:(lia)
+                 ltac:(unfold Z64; lia)).
+      replace (s0 + Z.of_nat j)
+        with (s0 + Z.of_nat (UkShEcho.echo_off ws 0%nat) + Z.of_nat j)
+        by (rewrite Hoff0; lia).
+      rewrite (Hgi 0%nat Hpos j ltac:(rewrite Hal; exact Hjl)).
+      f_equal.
+      rewrite <- (list_lookup_total_correct _ _ _ Hj).
+      rewrite (proj1 Hbytes 0%nat j Hpos ltac:(rewrite Hal; exact Hjl)).
+      rewrite Hoff0 Nat.add_0_l.
+      exact (UkShEcho.echo_line_word0 ws j Hok Hjl).
+    - rewrite (uint_avi_moi s0 (Z.of_nat (length cmd)) ltac:(lia) ltac:(lia)
+                 ltac:(unfold Z64; lia)).
+      exact Hn.
+  Qed.
+
   Definition sh_echo_path_of (ws : list (list (bv 8))) : Prop :=
     line_ok ws ->
     forall (M : gmap Z (bv 8)) (s0 t : Z) (g : nat -> bv 8),

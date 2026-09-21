@@ -423,6 +423,14 @@ arm is the theorem's one named premise (`pipe_both_law`).
   pid-erased, so the round gets no payload at all.  Item 7 not reached;
   whole tree RC=0, four audits at their baselines.**  See the Findings
   block for the five-item purchase list.
+- [ ] **PIPE-PID** (design §4.3w purchases 1–4: the pid route through sh's
+  fork/wait — `UkShRun`, `UkShFork`, `UkShPipe*`, `UexecRet`/`UkFork`).
+  Brief `brief-pipe-pid.md`.
+- [ ] **PIPE-RO** (design §4.3w purchase 5: the read end published open —
+  `SpecPiperead`, `PipeQueue`, `PipeProto.pipe_no_short`, the fd layer's
+  complementary ends).  Brief `brief-pipe-ro.md`.
+- [ ] **SH-PIPE-ROUND-11** (after both): the split, the instantiation,
+  `sh_pipe_child_law_all`, `pipe_adequacy_pipeΣ_final`.
 ## Findings (append as lanes report)## Findings (append as lanes report)## Findings (append as lanes report)
 
 ### PQ-FLAG-2 (2026-09-18) — the write link's second premise, paid by the CODE

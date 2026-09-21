@@ -1455,6 +1455,55 @@ taken):
 Then item 6's split, the forks, the waits, `pipe_round_exit_mode`, and
 item 7.  Lane SH-PIPE-ROUND-10.
 
+### 4.3w RULED (2026-09-25, after SH-PIPE-ROUND-10): the five purchases — the pid route through sh's fork/wait, and the read end published open
+
+ROUND-10 showed two structural gaps that no work inside the pipe files
+can close, and mechanised both.  (a) The SHORT ROUND is DERIVABLE at
+today's links (`pipe_short_trace`, `pipe_short_round_payloads`): the
+kernel's `piperead` never loads `readopen`, so `SpecPiperead` publishes
+nothing about the read end, and `PipeReg.pipe_reg` makes the close link
+free at both ends — §4.3v's `EofFirst` has no producer and R-2 cannot
+live in the protocol (also: §4.3v's prose had both flags' polarity
+inverted; `ps_ro = false` is the SHUT read end).  (b) The reaps at `0xea`
+are PID-ERASED: `uwait_ans` quantifies the caller's pid existentially,
+sh's fork helpers drop the child's pid the kernel's fork already mints,
+so the round cannot tell which child it reaped and receives no payload
+(`uwait_ans_orphan_arm`, `ufork_ans_same_gen`).  §4.2's "the pid route is
+an alternative to the side tokens" was wrong: the side tokens tell the
+two payloads apart once in hand; the pid route is what puts them there.
+RULED: buy all five, as two parallel lanes.
+
+**Lane PIPE-PID (purchases 1–4, the sh/exec generic tier, all additive
+relays of facts already minted):** (1) `UkShRun.wp_kshr_fork`/`wp_kshr_fork1`
+relay the child's `∃ p, ⌜p ≠ 1⌝ ∗ upid (ukn_pid N') p` that
+`UkFork.wp_uk_ecall_fork` mints instead of dropping it; (2)
+`UkShFork.ushf_child_law_at` takes `UkSh.ush_pid (ukn_pid N')` and
+`UserChildren.uch (ukn_ch N') ∅` (free for its provers — the echo and
+file eras ignore both — owed by its one consumer, (1)); (3) `UkShPipe.v`:
+a pid form of `wp_kshpi_wait0` over `wp_kshr_wait_pid`, `⌜r₁ ≠ -1⌝`/`⌜r₂
+≠ -1⌝` and the `uwait_ans_pid`/`⌜ret = -1 → Sc' = ∅⌝` rows on the arm's
+parent continuation; (4) `UexecRet.ufork_ans` gains `⌜γ ∉ cs⌝`, discharged
+where the generation is allocated (`wp_uk_ecall_fork`'s parent arm, from
+the generation map as `ChildTok.gen_uniq` does) — the one discharge site
+not yet verified; if it cannot be discharged there, STOP and report.
+Every landed consumer re-discharges by ignoring the new conjuncts.
+
+**Lane PIPE-RO (purchase 5, the kernel/file tier):** `SpecPiperead`
+entered at the READ end publishes `ps_ro s = true` (the read end is
+open) — which needs the file layer to state that a pipe file's two ends
+are complementary (`fdstate_ok`/`file_core_noff`'s pipe arm: a readable
+`FdPipe` row implies `readopen ≥ 1`; PQ-FLAG's measured gap), the read
+LINK (`PipeQueue.pipe_rlink`/`pipe_olink`) carrying `⌜ps_ro s = true⌝` as
+the write link carries `⌜ps_wo s = true⌝` (PQ-FLAG-2's mirror), and
+`PipeProto.pipe_no_short` discharged by one invariant access.  Mould:
+lanes PQ-FLAG/PQ-FLAG-2/PIPE-NEG1 (their Findings blocks), the kernel's
+`piperead` at the pinned revision.
+
+Then **SH-PIPE-ROUND-11**: the four-way split, the instantiation of
+`wp_kshm_child_pipe_paid_line_at`, `sh_pipe_child_law`,
+`sh_pipe_child_law_all`, `pipe_adequacy_pipeΣ_final` — assembly at
+landed leaves.
+
 ## 5. Programs
 
 ### 5.1 sh: the PIPE arm (lanes SH-PARSE-PIPE, SH-PIPE)

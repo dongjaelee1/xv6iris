@@ -75,6 +75,24 @@ Require Import PipeNames.
 Require Import PipeQueue.
 Require Import PipeReg.
 Require Import PipeProto.
+Require Import ObsTrace.
+Require Import ConsLog.
+Require Import LineWords.
+Require Import EchoDisc.
+Require Import PipeDisc.
+Require Import EchoOutPure.
+Require Import EchoOut.
+Require Import AppEcho.
+Require Import PipeOutPure.
+Require Import PipeOut.
+Require Import PipeBothPure.
+Require Import PipeBoth.
+Require Import PipeLinks.
+Require Import PipeLinksLine.
+Require Import PipeLinkInst.
+Require Import UkShFork.
+Require Import UkShPipeFork.      (* [pterm_shape] -- the terminal payload *)
+Require Import UShPipeRound2.     (* [blk2N] and the round's two ends *)
 Require Import CtxIdDefs.
 Require User.ShSyms.
 Local Open Scope list_scope.
@@ -286,7 +304,7 @@ Section UShPipeAssemblyProto.
      Splitting the allocation in two is what lets the round name [pn]
      BEFORE [pipe(2)] -- see the header. *)
   Definition pipe_pre (pn : pnames) : iProp Σ :=
-    (pws_auth pn [] ∗ wcur pn 0%nat ∗ rcur pn 0%nat
+    (pws_auth pn [] ∗ PipeProto.wcur pn 0%nat ∗ PipeProto.rcur pn 0%nat
      ∗ eof_pending pn ∗ ro_pending pn)%I.
 
   Lemma pipe_names_alloc :
@@ -309,8 +327,8 @@ Section UShPipeAssemblyProto.
                  0%nat (1/2) (1/2) with "[Hr]") as "[Hr1 Hr2]";
       [ by rewrite Qp.half_half | ].
     iModIntro. iExists (MkPNames gh ge go gw gr gl gs).
-    rewrite /pipe_pre /wtok /rtok /side_L /side_R /pws_auth /wcur /rcur
-            /eof_pending /ro_pending /=.
+    rewrite /pipe_pre /wtok /rtok /side_L /side_R /pws_auth /PipeProto.wcur
+            /PipeProto.rcur /eof_pending /ro_pending /=.
     by iFrame "Hh Hw1 Hr1 He Ho Hw2 Hr2 Hsl Hsr".
   Qed.
 
@@ -334,3 +352,116 @@ Section UShPipeAssemblyProto.
   Qed.
 
 End UShPipeAssemblyProto.
+
+(* ===================================================================== *)
+(*  S4  THE RUNCMD CHILD'S OWN [fork1] PANIC, AS A DIAGNOSTIC LAW        *)
+(*                                                                       *)
+(*  The round hands each [fork1] tail [Cx gp] and takes back             *)
+(*  [ukn_pay N (-1)] through [Bx gp] ([UShPipeChild.                     *)
+(*  wp_kshm_child_pipe_paid_line]'s last two premises).  At the pipeline *)
+(*  era the payload is [UkShPipeFork.pterm_pay I], whose SECOND ARM is   *)
+(*  the terminal shape at cursor 5 -- so this law IS design SS4.3h's      *)
+(*  terminal round, in the shape the walk consumes:                      *)
+(*                                                                       *)
+(*    [Cx gp] := the family's right and mode halves, both at 0           *)
+(*    [Bx gp] := [UkShPipeFork.pterm_shape g I 5]                        *)
+(*                                                                       *)
+(*  It needs TWO of this file's leaves and nothing else: the mode's fire *)
+(*  to 3 ([PipeBoth.blk2_mode_fire]) is a FANCY UPDATE and is spent at   *)
+(*  the first byte through [exf_law_fupd]; each of `fork\n''s five bytes *)
+(*  is [PipeBoth.pblk2_cstep_R_t] through [ksh_w1_of_step].              *)
+(* ===================================================================== *)
+Section UShPipeAssemblyFork.
+  Context `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, !fileG Σ,
+            !irefslotG Σ, !pavG Σ, !wchG Σ, !ufdG Σ}.
+  Context `{GEN : GenId} `{XI : CurCtx}.
+  Context `{!ghost_varG Σ Z}.
+  Context `{!ghost_varG Σ (gset gname)}.
+  Context `{!uartGhostG Σ}.
+  Context `{!echoOutG Σ, !pipeOutG Σ}.
+  Context (g : pipe_gn).
+  Local Notation γ := (pgn_cl g).
+  Context (Hcons : @riscv_cons_res Σ (@riscv_fixedGS Σ _) = pecl g).
+  Context `{PS : uprogSG Σ}.
+
+  Local Notation PT := (echo_taint γ).
+
+  (* the five bytes of `fork\n' are [alt_forkc]'s first five *)
+  Local Lemma fork_panic_byte (p : nat) (b : bv 8) :
+    alt_panic !! p = Some b -> alt_forkc !! p = Some b.
+  Proof using .
+    intro Hb. rewrite alt_forkc_panic. by apply lookup_app_l_Some.
+  Qed.
+
+  (* THE LAW.  Everything persistent the family's byte step asks for is a
+     premise here, so what the round lends the two [fork1] tails is the
+     two ghost halves and nothing else. *)
+  Lemma pipe_fork_panic_law (v : era_pins) (I L : list (bv 8))
+      (ws : list (list (bv 8))) (gL gR gM : gname) (XL YR : iProp Σ) :
+    Timeless XL -> Timeless YR ->
+    pline_at I = LPipe ws ->
+    pipe_link_taint g -∗
+    era_pin γ (S gen_id) v -∗
+    inp_lb v I -∗
+    blk2_inv g blk2N (S gen_id) v I L gL gR gM XL YR -∗
+    ush_execfail_law_at alt_panic 5%nat
+      (PipeBoth.wcur gR (1/2) 0%nat ∗ PipeBoth.wcur gM (1/2) 0%nat)
+      (UkShPipeFork.pterm_shape g I 5%nat).
+  Proof using Hcons.
+    intros HTX HTY Hline.
+    iIntros "#Ht #Hpin #Hlb #Hinv".
+    assert (Hbl : pboth_line I) by (exists ws; exact Hline).
+    assert (Hwitt : forall sel : list bool,
+               sel_wf2 alt_forkc sel -> pblk2_wit_t I alt_forkc sel)
+      by (intros sel Hs; exact (pblk2_wit_t_forkc I ws sel Hline Hs)).
+    (* ---- (1) THE MODE FIRES AT THE FIRST BYTE, under [exf_law_fupd] ---- *)
+    iApply (exf_law_fupd alt_panic 5%nat
+              (PipeBoth.wcur gR (1/2) 0%nat ∗ PipeBoth.wcur gM (1/2) 0%nat)%I
+              (PipeBoth.wcur gR (1/2) 0%nat ∗ PipeBoth.wcur gM (1/2) 3%nat)%I
+              (UkShPipeFork.pterm_shape g I 5%nat) ltac:(lia) with "[] []").
+    { iIntros "!> [HcR HcM]".
+      iMod (blk2_mode_fire g ⊤ blk2N (S gen_id) v I L gL gR gM XL YR 3%nat
+              HTX HTY ltac:(apply top_subseteq) ltac:(by right; right)
+              with "Hinv HcM HcR []") as "[HcM HcR]".
+      { iIntros "%Hq". discriminate Hq. }
+      iModIntro. iFrame "HcR HcM". }
+    (* ---- (2) THE FIVE BYTES, each [pblk2_cstep_R_t] ---- *)
+    rewrite /ush_execfail_law_at.
+    iIntros "!>" (N l) "%Hfd2 Hc". destruct Hfd2 as [rb Hl2].
+    iExists (fun p : nat =>
+               (PipeBoth.wcur gR (1/2) p ∗ PipeBoth.wcur gM (1/2) 3%nat
+                ∗ (match p with
+                   | O => True
+                   | _ => cs_frozen_at v (nlines I - 1)%nat ∨ PT
+                   end))%I)%I.
+    iSplitL "Hc"; [ by iDestruct "Hc" as "[$ $]" | ].
+    iSplit.
+    - iIntros "!>" (p b) "%Hb".
+      (* THE FAMILY IS NAMED AND NOT SEARCHED: with [_] here the elaborator
+         has to solve [?F p =?= ...] and [?F (S p) =?= ...] together and
+         does not come back (measured: >10 min, then [Set Default Timeout]
+         cut it). *)
+      iApply (ksh_w1_of_step N
+                (fun q : nat =>
+                   (PipeBoth.wcur gR (1/2) q ∗ PipeBoth.wcur gM (1/2) 3%nat
+                    ∗ (match q with
+                       | O => True
+                       | _ => cs_frozen_at v (nlines I - 1)%nat ∨ PT
+                       end))%I)
+                l rb p b Hl2).
+      iIntros "!>" (Φ) "Hf HΦ".
+      iDestruct "Hf" as "(HcR & HcM & _)".
+      iApply (pblk2_cstep_R_t g Hcons blk2N (S gen_id) v I L gL gR gM XL YR
+                p b Φ HTX HTY blk2N_uart (fork_panic_byte p b Hb) Hwitt
+                with "[] Ht Hpin Hinv HcR HcM").
+      { iApply pblk2_ecl_R_t_holds. }
+      iIntros "HcR HcM #Hfz". iApply "HΦ". iFrame "HcR HcM". iExact "Hfz".
+    - iIntros "!> (HcR & HcM & #Hfz)".
+      rewrite /UkShPipeFork.pterm_shape.
+      iExists v, L, gL, gR, gM, XL, YR.
+      iSplitR; [ iPureIntro; split_and!; assumption | ].
+      iFrame "Hpin Hlb". rewrite /pwc_fork_exit.
+      by iFrame "Hinv HcR HcM Hfz".
+  Qed.
+
+End UShPipeAssemblyFork.

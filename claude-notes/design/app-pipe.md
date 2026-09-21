@@ -1366,6 +1366,27 @@ item 3 (the copy of `UCatKernel.cat_w_of_link` at `Ch c := wcur gR (1/2) c
 ∗ wcur gM (1/2) 1` over `out_chain_of_step`), item 6, `sh_pipe_child_law_all`,
 `pipe_adequacy_pipeΣ_final`.
 
+### 4.3t RULED (2026-09-24, after SH-PIPE-ROUND-9 part 2): cat's round hands its write the reader's persistent bound
+
+Item 3 landed (`UShPipeCatRound.pipe_cat_w`, the transcription of
+`UCatKernel.cat_w_of_link` at the family's right chain; the mode fires at
+cat's first byte inside `out_link`'s own fupd — the campaign's third fupd
+with no home at the statement and one inside the leaf).  `pipe_cat_w`
+takes `YR = pws_lb pn (take 1 L)`, and at the call site nothing produces
+it: its only producer is `PipeProto.pws_lb_of_rcur` at `rcur pn c` with
+`0 < c`, which `pcat_round_at_g`'s content arm holds after its read and
+sends back into `pcat_hold` before calling `Hw`.  RULED: `pcat_round_at_g`'s
+`Hw` gains the persistent antecedent `pws_lb pn (take (c + cnt) L) ∨ T`,
+produced in the content arm by `pws_lb_of_rcur` at the read's own WP
+point (after `pcat_read_walk` returns, before `iApply "Hcont"`);
+additive, so the supplier's obligation weakens; `pcat_round_at` re-derives
+by ignoring it, statement byte-identical for the second time.  At cat's
+first byte `c = 0`, `cnt ≥ 1`, and `pws_lb_weaken` cuts it to `take 1 L` =
+`YR`.  STANDING GRANT for the rest of the round: any further ADDITIVE
+antecedent on `pcat_round_at_g`'s `Hw` (or on `pcat_pay_at`'s `Pay`) that
+keeps `pcat_round_at`'s statement byte-identical is pre-authorised — say
+what and why in the report, do not stop for it.
+
 ## 5. Programs
 
 ### 5.1 sh: the PIPE arm (lanes SH-PARSE-PIPE, SH-PIPE)

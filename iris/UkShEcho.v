@@ -54,6 +54,7 @@ Require Import LineWords.        (* [wl_line] / [wl_toks] / [wl_off]      *)
 Require Import UkShWords.        (* the lexer at an ARBITRARY word list *)
 Require Import UkShRun.
 Require Import UkShDiag.
+Require Import UkShDiagAt.        (* the exec-failed diagnostic at any command name *)
 Require Import UkShMalloc.
 Require Import UkShLoop.
 Require Import UkShMain.
@@ -172,6 +173,19 @@ Qed.
 
 (* THE COMMAND NAME IS THE LINE'S FIRST FOUR BYTES, which is what the
    "exec %s failed" diagnostic prints back ([UkShDiag]'s [cmd_echo]). *)
+(* ...AT ANY COMMAND: the line's first bytes are its first word's. *)
+Lemma echo_line_word0 (ws : list (list (bv 8))) (j : nat) :
+  exec_ok ws -> (j < length (ws !!! 0%nat))%nat ->
+  wl_line ws !!! j = (ws !!! 0%nat) !!! j.
+Proof.
+  intros Hok Hj.
+  pose proof (wl_line_word ws 0%nat (ws !!! 0%nat) j
+                (exec_ok_at ws 0%nat Hok (exec_ok_pos ws Hok)) Hj) as Hw.
+  replace (wl_off 0%nat ws 0%nat + j)%nat with j in Hw
+    by (rewrite wl_off_0; lia).
+  exact Hw.
+Qed.
+
 Lemma echo_line_cmd_byte (ws : list (list (bv 8))) (j : nat) :
   line_ok ws -> (j < 4)%nat -> wl_line ws !!! j = cmd_echo !!! j.
 Proof.
@@ -191,16 +205,23 @@ Definition ush_line_tokens (ws : list (list (bv 8))) : Prop :=
        (wl_toks ws)
   /\ (length (wl_toks ws) < 10)%nat.
 
-Lemma ush_line_tokens_holds (ws : list (list (bv 8))) :
-  line_ok ws -> ush_line_tokens ws.
+Lemma ush_line_tokens_holds_x (ws : list (list (bv 8))) :
+  exec_ok ws -> ush_line_tokens ws.
 Proof.
-  intro Hok. pose proof (line_ok_wf ws Hok) as Hwf.
+  intro Hok. pose proof (exec_ok_wf ws Hok) as Hwf.
   split_and!.
   - exact (wl_no_symbols ws (fun j : nat => wl_line ws !!! j)
              (length (wl_line ws)) Hwf eq_refl (fun j _ => eq_refl)).
   - exact (wl_tokens ws (fun j : nat => wl_line ws !!! j)
              (length (wl_line ws)) Hwf eq_refl (fun j _ => eq_refl)).
-  - rewrite wl_toks_length. exact (line_ok_lt10 ws Hok).
+  - rewrite wl_toks_length. exact (exec_ok_lt10 ws Hok).
+Qed.
+
+Lemma ush_line_tokens_holds (ws : list (list (bv 8))) :
+  line_ok ws -> ush_line_tokens ws.
+Proof.
+  intro Hok__.
+  exact (ush_line_tokens_holds_x ws (line_ok_exec_ok _ Hok__)).
 Qed.
 
 (* ---- the determinacy the DISCIPLINED buffer needs -------------------- *)
@@ -212,6 +233,53 @@ Qed.
    computation.  It is [UConsLine.ush_line_lexable] with the token list
    NAMED, which is what the specialised arm needs and the existential form
    cannot give. *)
+(* ---- THE LINE, AT ANY EXEC'ABLE WORD LIST ----------------------------- *)
+(* [UConsLine.ush_line_is] with [ExecWords.exec_ok] for [EchoDisc.line_ok]:
+   the buffer holds the join of [ws], whatever command [ws] names.  The
+   lexer's transports below, the exec arm and the child's walk spend nothing
+   else of the line; the [line_ok] statements are their instances. *)
+Definition ush_xline_is (ws : list (list (bv 8))) (f : nat -> bv 8)
+    (k len : nat) : Prop :=
+  exec_ok ws
+  /\ len = length (wl_line ws)
+  /\ forall j : nat, (j < len)%nat -> f (k + j)%nat = wl_line ws !!! j.
+
+Lemma ush_xline_is_of_line (ws : list (list (bv 8))) (f : nat -> bv 8)
+    (k len : nat) :
+  UConsLine.ush_line_is ws f k len -> ush_xline_is ws f k len.
+Proof.
+  intros (Hok & Hlen & Hf). exact (conj (line_ok_exec_ok ws Hok) (conj Hlen Hf)).
+Qed.
+
+Definition ush_line_toks_x : Prop :=
+  forall (ws : list (list (bv 8))) (f : nat -> bv 8) (k len : nat),
+    ush_xline_is ws f k len ->
+    len = length (wl_line ws)
+    /\ ushp_no_symbols len (fun j : nat => f (k + j)%nat)
+    /\ ushp_tokens len (fun j : nat => f (k + j)%nat) 0%nat (echo_toks ws).
+
+(* ---- the transport, which is all the determinacy costs --------------- *)
+(* The four [ushp_*_ext] lemmas this used to carry say only that the lexer
+   reads [f] inside its window and nowhere else -- nothing about echo, and
+   nothing about any particular line -- so they live in [UkShWords.v] now,
+   beside the general tokenization they exist to move. *)
+
+(* ...and the determinacy itself: ONE transport of the lexing above. *)
+Lemma ush_line_toks_x_holds : ush_line_toks_x.
+Proof.
+  intros ws f k len (Hok & Hlen & Hf).
+  split; [ exact Hlen | ].
+  subst len.
+  destruct (ush_line_tokens_holds_x ws Hok) as (Hns & Htk & _).
+  assert (Hext : forall j : nat, (j < length (wl_line ws))%nat ->
+            wl_line ws !!! j = f (k + j)%nat)
+    by (intros j Hj; symmetry; exact (Hf j Hj)).
+  split.
+  - exact (ushp_no_symbols_ext (length (wl_line ws)) _ _ Hext Hns).
+  - exact (ushp_tokens_ext (length (wl_line ws)) _ _ Hext 0%nat
+             (echo_toks ws) Htk).
+Qed.
+
 Definition ush_line_toks : Prop :=
   forall (ws : list (list (bv 8))) (f : nat -> bv 8) (k len : nat),
     UConsLine.ush_line_is ws f k len ->
@@ -228,17 +296,8 @@ Definition ush_line_toks : Prop :=
 (* ...and the determinacy itself: ONE transport of the lexing above. *)
 Lemma ush_line_toks_holds : ush_line_toks.
 Proof.
-  intros ws f k len (Hok & Hlen & Hf).
-  split; [ exact Hlen | ].
-  subst len.
-  destruct (ush_line_tokens_holds ws Hok) as (Hns & Htk & _).
-  assert (Hext : forall j : nat, (j < length (wl_line ws))%nat ->
-            wl_line ws !!! j = f (k + j)%nat)
-    by (intros j Hj; symmetry; exact (Hf j Hj)).
-  split.
-  - exact (ushp_no_symbols_ext (length (wl_line ws)) _ _ Hext Hns).
-  - exact (ushp_tokens_ext (length (wl_line ws)) _ _ Hext 0%nat
-             (echo_toks ws) Htk).
+  intros ws f k len Hl.
+  exact (ush_line_toks_x_holds ws f k len (ush_xline_is_of_line ws f k len Hl)).
 Qed.
 
 (* ---- the command, as a VALUE ---------------------------------------- *)
@@ -313,6 +372,37 @@ Definition echo_argv_bytes (ws : list (list (bv 8))) (g : nat -> bv 8)
    NUL at each token's END and leaves every other index alone, and every
    word's end is outside every token -- so the strings are the line's own
    bytes and the terminators are the cut's. *)
+Definition echo_argv_bytes_of_line_x : Prop :=
+  forall (ws : list (list (bv 8))) (f : nat -> bv 8) (k len : nat),
+    ush_xline_is ws f k len ->
+    echo_argv_bytes ws
+      (ushp_nulfold (echo_toks ws)
+         (ushp_ext len (fun j : nat => f (k + j)%nat))).
+
+(* ...AND THE CUT IS NOT A PROPERTY OF ANY PARTICULAR OFFSETS EITHER.  It
+   used to be three stores at 4, 10 and 16, discharged by [reflexivity] at
+   each.  [UkShWords.wl_cut_in] / [wl_cut_end] say the same thing at an
+   arbitrary word list -- inside word [i] the cut is transparent, at its
+   END it is the terminator -- so this is two applications and the
+   arithmetic that keeps every index inside [ushp_ext]'s window. *)
+Lemma echo_argv_bytes_of_line_x_holds : echo_argv_bytes_of_line_x.
+Proof.
+  intros ws f k len (Hok & Hlen & Hf).
+  split.
+  - intros i j Hi Hj.
+    pose proof (exec_ok_at ws i Hok Hi) as Hw.
+    assert (Hlt : (wl_off 0%nat ws i + j < len)%nat).
+    { rewrite Hlen.
+      exact (wl_off_lt_line ws i _ j Hw (Nat.lt_le_incl _ _ Hj)). }
+    rewrite /echo_off /echo_toks
+      (wl_cut_in ws (fun x : nat => f (k + x)%nat) len i _ j Hw Hj Hlt).
+    exact (Hf _ Hlt).
+  - intros i Hi.
+    pose proof (exec_ok_at ws i Hok Hi) as Hw.
+    rewrite /echo_off /echo_alen /echo_toks.
+    exact (wl_cut_end ws (fun x : nat => f (k + x)%nat) len i _ Hw).
+Qed.
+
 Definition echo_argv_bytes_of_line : Prop :=
   forall (ws : list (list (bv 8))) (f : nat -> bv 8) (k len : nat),
     UConsLine.ush_line_is ws f k len ->
@@ -328,20 +418,9 @@ Definition echo_argv_bytes_of_line : Prop :=
    arithmetic that keeps every index inside [ushp_ext]'s window. *)
 Lemma echo_argv_bytes_of_line_holds : echo_argv_bytes_of_line.
 Proof.
-  intros ws f k len (Hok & Hlen & Hf).
-  split.
-  - intros i j Hi Hj.
-    pose proof (line_ok_at ws i Hok Hi) as Hw.
-    assert (Hlt : (wl_off 0%nat ws i + j < len)%nat).
-    { rewrite Hlen.
-      exact (wl_off_lt_line ws i _ j Hw (Nat.lt_le_incl _ _ Hj)). }
-    rewrite /echo_off /echo_toks
-      (wl_cut_in ws (fun x : nat => f (k + x)%nat) len i _ j Hw Hj Hlt).
-    exact (Hf _ Hlt).
-  - intros i Hi.
-    pose proof (line_ok_at ws i Hok Hi) as Hw.
-    rewrite /echo_off /echo_alen /echo_toks.
-    exact (wl_cut_end ws (fun x : nat => f (k + x)%nat) len i _ Hw).
+  intros ws f k len Hl.
+  exact (echo_argv_bytes_of_line_x_holds ws f k len
+           (ush_xline_is_of_line ws f k len Hl)).
 Qed.
 Section UkShEcho.
   Context `{!riscvGS Σ}.
@@ -680,6 +759,40 @@ Section UkShEcho.
   (* ...AND THE SAME ARM AT AN ABSTRACT fd-1 ROW (lane SH-CHILD-2), which
      is what the REDIRECT child runs: its fd 1 is the file the open
      returned, and the only place the row is read is the supply. *)
+  (* THE EXEC ARM AT ANY EXEC'ABLE WORD LIST (2026-09-21).  The arm execs
+     [argv[0]] whatever it is; the ONE place it read the command was the
+     failed-exec diagnostic, which prints the name back.  So the general arm
+     takes the alternative's bytes around the name
+     ([UkShDiagAt.ush_execfail_bytes]) and the law at that alternative, and
+     echo's is its instance at [alt_execfail]. *)
+  Definition wp_kshr_exec_x_at (Fd1 : list fdstate -> Prop)
+      (ws : list (list (bv 8))) (dg : list (bv 8)) (Q : Z -> iProp Σ)
+      (Cr Cd : iProp Σ) : Prop :=
+    forall (N : uk_names Σ) (Hc : ukn_const N) (h : CpuId) (m : regfile)
+           (t szv s0 : Z) (g : nat -> bv 8) (ld : list fdstate) (n : nat),
+      exec_ok ws ->
+      UkShDiagAt.ush_execfail_bytes dg (ws !!! 0%nat) ->
+      ukn_pay N = Q ->
+      m !!! Regidx a0_idx = (mword_of_int t : mword 64) ->
+      echo_argv_bytes ws g ->
+      Fd1 ld ->
+      UkSh.ush_fd2p ld ->
+      ⊢ shk_code (ukn_t N) -∗
+        sh_exec_sup_echo_at Fd1 ws Q Cr -∗
+        UkShDiag.ush_execfail_law_at dg (13 + length (ws !!! 0%nat))%nat
+          Cr Cd -∗
+        □ (Cd -∗ Q (-1)) -∗
+        ush_jtab (ukn_t N) -∗
+        ush_cmd (ukn_d N) t (echo_cmd ws s0 g) -∗
+        usz (ukn_s N) szv -∗
+        UserFd.ustd (ukn_fd N) ld -∗
+        UserCwd.ucwd (ukn_cwd N) FsImg.ROOTINO -∗
+        UserChildren.uch_any (ukn_ch N) -∗
+        Cr -∗
+        urun N h m (mword_of_int ShSyms.runcmd)
+          (6 + (2 + (UkShDiag.ush_Dg + n))) -∗
+        mWP (Loop : expr riscv_lang).
+
   Definition wp_kshr_exec_echo_at (Fd1 : list fdstate -> Prop)
       (ws : list (list (bv 8))) (Q : Z -> iProp Σ)
       (Cr Cd : iProp Σ) : Prop :=
@@ -714,6 +827,7 @@ Section UkShEcho.
      follow the names out of this file. *)
   #[local] Typeclasses Opaque sh_exec_sup_echo_at.
   #[local] Typeclasses Opaque wp_kshr_exec_echo_at.
+  #[local] Typeclasses Opaque wp_kshr_exec_x_at.
 
   Lemma wp_kshr_exec_at_cwd_holds (R : iProp Σ) : wp_kshr_exec_at_cwd R.
   Proof using .
@@ -769,12 +883,13 @@ Section UkShEcho.
   Qed.
 
   (* ---- the specialised EXEC arm, PROVED ------------------------------- *)
-  Lemma wp_kshr_exec_echo_at_holds (Fd1 : list fdstate -> Prop)
-      (ws : list (list (bv 8)))
+  Lemma wp_kshr_exec_x_at_holds (Fd1 : list fdstate -> Prop)
+      (ws : list (list (bv 8))) (dg : list (bv 8))
       (Q : Z -> iProp Σ) (Cr Cd : iProp Σ) :
-    wp_kshr_exec_echo_at Fd1 ws Q Cr Cd.
+    wp_kshr_exec_x_at Fd1 ws dg Q Cr Cd.
   Proof using .
-    intros N Hcc h m t szv s0 g ld n Hok Hpeq Ha0 Hbytes Hfd1 Hfd2.
+    intros N Hcc h m t szv s0 g ld n Hok Hdgb Hpeq Ha0 Hbytes Hfd1 Hfd2.
+    destruct Hdgb as (Hc2 & Hdglk & Hw1 & Harg & Hw2).
     (* THE BUNDLE-INTRO HANG (durable-notes, "iIntros #H on a bundle of
        wands"): [iIntros "#H"] on a bundle of [UkRun.udepw_law]s sends the
        [Persistent] search down [udepw]'s wand chain and it does not return
@@ -786,7 +901,7 @@ Section UkShEcho.
     rewrite /sh_exec_sup_echo_at. iDestruct "Hexs" as "#Hexs".
     iDestruct (ush_jtab_ro with "Hjt") as "#Hro".
     iDestruct (echo_cmd_addr with "Htree") as %[Htr Ht8].
-    iDestruct (echo_cmd_argv0 ws _ _ _ _ Hok with "Htree") as "[#Hw0 #Hstr]".
+    iDestruct (echo_cmd_argv0_x ws _ _ _ _ Hok with "Htree") as "[#Hw0 #Hstr]".
     iDestruct "Hstr" as "[%Hxr #Hxs]".
     cbn [ua_ptr ua_len ua_bytes] in Hxr.
     (* ---- runcmd's prologue and the jump table ---- *)
@@ -941,21 +1056,61 @@ Section UkShEcho.
       rewrite Hs1_k. apply uint_moi. unfold Z64. lia. }
     replace (2 + (UkShDiag.ush_Dg + n))%nat
       with (UkShDiag.ush_Dg + (2 + n))%nat by lia.
-    iApply (UkShDiag.wp_kshd_execfail_paid N Cr Cd ld h6 k4 (2 + n)
+    iApply (UkShDiagAt.wp_kshd_execfail_paid_at N dg (ws !!! 0%nat) Cr Cd
+              ld h6 k4 (2 + n)
               (UArg (s0 + Z.of_nat (echo_off ws 0%nat)) (echo_alen ws 0%nat)
                  (fun j : nat => g (echo_off ws 0%nat + j)%nat))
-              Hfd2 ltac:(rewrite Hs1_k4; exact Ht8) (echo_alen_0 ws Hok)
+              Hfd2 ltac:(rewrite Hs1_k4; exact Ht8) Hc2 eq_refl
               ltac:(intros j Hj; cbn [ua_bytes];
                     rewrite (proj1 Hbytes 0%nat j
-                               ltac:(exact (line_ok_pos ws Hok))
-                               ltac:(rewrite (echo_alen_0 ws Hok); exact Hj));
+                               ltac:(exact (exec_ok_pos ws Hok)) Hj);
                     rewrite (echo_off_0 ws) Nat.add_0_l;
-                    exact (echo_line_cmd_byte ws j Hok Hj))
+                    exact (echo_line_word0 ws j Hok Hj))
+              Hdglk Hw1 Harg Hw2
               with "Hxl Hcode Hro [] [] Hstd Hcr [] Hrun").
     { rewrite Hs1_k4. cbn [ua_ptr]. iExact "Hw0". }
     { rewrite /ush_str. cbn [ua_ptr ua_len ua_bytes].
       iSplitR; [ iPureIntro; exact Hxr | iExact "Hxs" ]. }
     { iIntros "_ Hc". rewrite <- Hpeq. iApply ("Hcd" with "Hc"). }
+  Qed.
+
+  (* ECHO'S BYTES: the landed diagnostic's alternative around its name *)
+  Lemma echo_execfail_bytes : UkShDiagAt.ush_execfail_bytes alt_execfail cmd_echo.
+  Proof using .
+    rewrite /UkShDiagAt.ush_execfail_bytes. split_and!.
+    - vm_compute. lia.
+    - intros p Hp.
+      assert (Hl : (p < length alt_execfail)%nat) by (vm_compute in Hp |- *; lia).
+      exact (list_lookup_lookup_total_lt alt_execfail p Hl).
+    - intros p Hp.
+      apply (UkShDiag.ush_bytes_of_forallb (UkShDiag.shd_lit 0x12a8)
+               (fun q : nat => alt_execfail !!! q) 0%nat 5%nat);
+        [ vm_compute; reflexivity | lia ].
+    - intros j Hj.
+      assert (Hj4 : (j < 4)%nat) by (vm_compute in Hj; lia).
+      destruct j as [| [| [| [| j]]]]; try lia; vm_compute; reflexivity.
+    - intros p Hp.
+      apply (UkShDiag.ush_bytes_of_forallb (UkShDiag.shd_lit 0x12a8)
+               (fun q : nat => alt_execfail !!! (q + 2)%nat) 7%nat 8%nat);
+        [ vm_compute; reflexivity | lia ].
+  Qed.
+
+  Lemma wp_kshr_exec_echo_at_holds (Fd1 : list fdstate -> Prop)
+      (ws : list (list (bv 8)))
+      (Q : Z -> iProp Σ) (Cr Cd : iProp Σ) :
+    wp_kshr_exec_echo_at Fd1 ws Q Cr Cd.
+  (* THE GENERAL ARM, at echo's alternative.  BY CONVERSION ([exact], not the
+     proofmode -- see [wp_kshr_exec_echo_holds]): with the head word read as
+     [cmd_echo] the law's index [13 + 4] computes to the landed 17. *)
+  Proof using .
+    intros N Hcc h m t szv s0 g ld n Hok Hpeq Ha0 Hbytes Hfd1 Hfd2.
+    pose proof (list_lookup_total_correct ws 0%nat cmd_echo
+                  (line_ok_head ws Hok)) as Hhd.
+    pose proof (wp_kshr_exec_x_at_holds Fd1 ws alt_execfail Q Cr Cd
+                  N Hcc h m t szv s0 g ld n (line_ok_exec_ok ws Hok)
+                  ltac:(rewrite Hhd; exact echo_execfail_bytes)
+                  Hpeq Ha0 Hbytes Hfd1 Hfd2) as Hx.
+    rewrite Hhd in Hx. exact Hx.
   Qed.
 
   (* ...and the landed arm is that one at the console row. *)
@@ -988,6 +1143,50 @@ Section UkShEcho.
   (* it does today.  The disjunction is [UConsLine.ush_rest_line]'s, and   *)
   (* the case split belongs to the body that holds it (SH-LINE 2b).        *)
   (* =================================================================== *)
+  (* THE CHILD'S WALK AT ANY EXEC'ABLE LINE (2026-09-21): parse, then the
+     exec arm.  Nothing in it reads the command but the failed-exec
+     diagnostic ([wp_kshr_exec_x_at]); echo's walk is its instance. *)
+  Definition wp_kshm_child_x (ws : list (list (bv 8)))
+      (dg : list (bv 8)) (Q : Z -> iProp Σ) (Cr Cd : iProp Σ) : Prop :=
+    forall (N : uk_names Σ) (Hc : ukn_const N)
+           (h : CpuId) (m : regfile) (dw dv : dfrac)
+           (s0 : Z) (len : nat) (f : nat -> bv 8) (sz : Z)
+           (ld : list fdstate) (n : nat),
+      ukn_pay N = Q ->
+      (* ...and the record holds no offset half -- [wp_kshr_exec_echo] *)
+      m !!! Regidx s1_idx = (mword_of_int s0 : mword 64) ->
+      ush_xline_is ws f 0%nat len ->
+      UkShDiagAt.ush_execfail_bytes dg (ws !!! 0%nat) ->
+      0 < s0 -> s0 + Z.of_nat len + 1 < Z64 -> s0 + Z.of_nat len < 2 ^ 38 ->
+      8344 <= sz ->
+      UserPtTree.pgroundup sz = sz ->
+      usz_ok (sz + 65536) ->
+      UkSh.ush_fd1p ld ->
+      UkSh.ush_fd2p ld ->
+      (* NO FREE WRITE LAW (M4b(2)): the paid child's walk spends it
+         nowhere *)
+      ⊢ shk_code (ukn_t N) -∗
+        sh_exec_sup_echo ws Q Cr -∗
+        (* what the lend pays where the parser's walk DIES (the null store
+           at [memset]) -- and the diagnostic's law and what its end pays
+           where the exec FAILED (M4b(2)) *)
+        □ (Cr -∗ Q (-1)) -∗
+        UkShDiag.ush_execfail_law_at dg (13 + length (ws !!! 0%nat))%nat
+          Cr Cd -∗
+        □ (Cd -∗ Q (-1)) -∗
+        shp_code (ukn_t N) -∗ shp_rodata (ukn_t N) -∗ ush_jtab (ukn_t N) -∗
+        ustr (ukn_d N) (DfracOwn 1) s0 len f -∗
+        ustr (ukn_d N) dw ushp_whitespace 5 ushp_ws_f -∗
+        ustr (ukn_d N) dv ushp_symbols 7 ushp_sym_f -∗
+        UserFd.ustd (ukn_fd N) ld -∗
+        UserCwd.ucwd (ukn_cwd N) FsImg.ROOTINO -∗
+        UserChildren.uch_any (ukn_ch N) -∗
+        UkShMalloc.ushm_fresh N sz -∗
+        Cr -∗
+        urun N h m (mword_of_int 0x9c0)
+          (60 + (8 + (UkShDiag.ush_Dg + n))) -∗
+        mWP (Loop : expr riscv_lang).
+
   Definition wp_kshm_child_echo (ws : list (list (bv 8)))
       (Q : Z -> iProp Σ) (Cr Cd : iProp Σ) : Prop :=
     forall (N : uk_names Σ) (Hc : ukn_const N)
@@ -1027,21 +1226,21 @@ Section UkShEcho.
           (60 + (8 + (UkShDiag.ush_Dg + n))) -∗
         mWP (Loop : expr riscv_lang).
 
-  Lemma wp_kshm_child_echo_holds (ws : list (list (bv 8)))
-      (Q : Z -> iProp Σ) (Cr Cd : iProp Σ) :
-    wp_kshm_child_echo ws Q Cr Cd.
+  Lemma wp_kshm_child_x_holds (ws : list (list (bv 8)))
+      (dg : list (bv 8)) (Q : Z -> iProp Σ) (Cr Cd : iProp Σ) :
+    wp_kshm_child_x ws dg Q Cr Cd.
   Proof.
     intros N Hc h m dw dv s0 len f sz ld n
-      Hpeq Hs1 Hline Hs0 Hs64 Hs38 Hszlo Hszal Hszok Hfd1 Hfd2.
+      Hpeq Hs1 Hline Hdgb Hs0 Hs64 Hs38 Hszlo Hszal Hszok Hfd1 Hfd2.
     (* the line the discipline admits, as the parser's own premises *)
     pose proof (proj1 Hline) as Hok.
-    destruct (ush_line_toks_holds ws f 0%nat len Hline) as (_ & Hns0 & Htoks0).
+    destruct (ush_line_toks_x_holds ws f 0%nat len Hline) as (_ & Hns0 & Htoks0).
     assert (Hns : ushp_no_symbols len f) by exact Hns0.
     assert (Htoks : ushp_tokens len f 0%nat (echo_toks ws)) by exact Htoks0.
-    pose proof (echo_toks_lt10 ws Hok) as Htlen.
+    pose proof (echo_toks_lt10_x ws Hok) as Htlen.
     assert (Hbytes : echo_argv_bytes ws
               (ushp_nulfold (echo_toks ws) (ushp_ext len f)))
-      by exact (echo_argv_bytes_of_line_holds ws f 0%nat len Hline).
+      by exact (echo_argv_bytes_of_line_x_holds ws f 0%nat len Hline).
     (* the pinned supply LINEARLY, as in [wp_kshr_exec_echo_holds]: it is
        spent exactly once, at the arm below, and introducing it with [#]
        does not return here.  No [UkSh.sh_deps] anywhere on this walk
@@ -1155,10 +1354,29 @@ Section UkShEcho.
        generic supply appears anywhere in this walk. *)
     replace (60 + (8 + (UkShDiag.ush_Dg + n)))%nat
       with (6 + (2 + (UkShDiag.ush_Dg + (60 + n))))%nat by lia.
-    iApply (wp_kshr_exec_echo_holds ws Q Cr Cd N _ h4 m4 p (sz + 65536) s0
+    iApply (wp_kshr_exec_x_at_holds UkSh.ush_fd1p ws dg Q Cr Cd N _ h4 m4 p
+              (sz + 65536) s0
               (ushp_nulfold (echo_toks ws) (ushp_ext len f)) ld ((60 + n)%nat)
-              Hok Hpeq Ha0_4 Hbytes Hfd1 Hfd2
+              Hok Hdgb Hpeq Ha0_4 Hbytes Hfd1 Hfd2
               with "Hcode Hexs Hxl Hcd Hjt Htree Hsz Hstd Hcwd Hch Hcr Hrun").
+  Qed.
+
+  Lemma wp_kshm_child_echo_holds (ws : list (list (bv 8)))
+      (Q : Z -> iProp Σ) (Cr Cd : iProp Σ) :
+    wp_kshm_child_echo ws Q Cr Cd.
+  (* THE GENERAL WALK, at echo's alternative -- by conversion, as the arm. *)
+  Proof.
+    intros N Hc h m dw dv s0 len f sz ld n
+      Hpeq Hs1 Hline Hs0 Hs64 Hs38 Hszlo Hszal Hszok Hfd1 Hfd2.
+    pose proof (proj1 Hline) as Hok.
+    pose proof (list_lookup_total_correct ws 0%nat cmd_echo
+                  (line_ok_head ws Hok)) as Hhd.
+    pose proof (wp_kshm_child_x_holds ws alt_execfail Q Cr Cd
+                  N Hc h m dw dv s0 len f sz ld n
+                  Hpeq Hs1 (ush_xline_is_of_line ws f 0%nat len Hline)
+                  ltac:(rewrite Hhd; exact echo_execfail_bytes)
+                  Hs0 Hs64 Hs38 Hszlo Hszal Hszok Hfd1 Hfd2) as Hx.
+    rewrite Hhd in Hx. exact Hx.
   Qed.
 
   (* =================================================================== *)

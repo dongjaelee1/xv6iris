@@ -9362,7 +9362,10 @@ landed here or measured to a leaf.
 ### SH-PIPE-ROUND-9 — PART 2 (2026-09-25, design §4.3s as ruled) — item 3 LANDS whole at the first attempt, and the round stops at the SECOND forwarding gap in `pcat_round_at_g`: cat cannot fire the mode, because the fire's witness is the READER'S PERMIT and `Hw` never sees it
 
 Two more commits on `app-pipe/sh-pipe-round-9`: `0691d551a` (§4.3s +
-item 3).  **Whole tree RC=0** at it.
+item 3).  **Whole tree `ec2-lane.sh round9 build` RC=0** at it, and the
+four audits re-measured on the mirror ON TOP OF the `UCatPipe.v` move:
+`audit-only` **13**, `audit-echo-only` **14**, `audit-tree-only` **13**,
+`audit-pipe-only` **14** — every one still at its baseline.
 
 **(a) §4.3s, LANDED, and it cost five lines.**  `UCatPipe.
 pcat_round_at_g`'s `Hw` premise is now stated at `L`; the content arm,

@@ -7541,29 +7541,34 @@ Three routes have now been measured to the leaf and each named its own
 successor; (β) is the only one left and every part of this lane's work
 (parts 1–4) is reusable inside it.
 
-### PIPE-STAGE-4 (2026-09-22, design §4.3m route (β)) — the MODE reaches the claim, the freeze is SOUND and the read after a terminal prompt refutes purely; but the FAMILY cannot follow it, and the reason is a DEPOSIT that has no link step
+### PIPE-STAGE-4 (2026-09-22, design §4.3m route (β)) — the MODE reaches the claim as ONE BIT of `pe_cur`, the freeze is SOUND, and `pterm_read_law` — SH-PIPE-ROUND-5 part 2's ONE remaining obligation — IS DISCHARGED; the FAMILY cannot follow, and the reason is a DEPOSIT that has no link step
 
-Branch `app-pipe/pipe-stage-4` off main (`946f3c8c8`), four code commits
-(`846c5f89d`, `b5401a2e0`, `665131e97`, `eee3c0de4`).  Files moved:
-`iris/PipeOut.v`, `iris/PipeBoth.v`, `iris/PipeLinks.v`,
-`iris/UShPipeExit.v`, `iris/UShPipeRound2.v`, `iris/UInitPipe.v`, plus
-the report file `iris/PipeStage4Assumptions.v` (NOT a `_CoqProject`
-row).  `PipeLinksLine.v`, `PipeLinkInst.v`, `UShPipeRound.v`,
-`UkShPipeFork.v`, `UCatPipe.v`, `UShPipeChild.v` are UNTOUCHED, and so
-is every GENERIC file (`LinkRec.v`, `UkSh.v`): **no generic law moved**.
-Whole-tree `ec2-lane.sh stage4 build` **RC=0**; no `Admitted`, no
-`Axiom`; `Proof using` on every result.  `Print Assumptions` on the
-lane's **thirty-four** headline results: **all thirty-four Closed under
-the global context**.
+Branch `app-pipe/pipe-stage-4` off main (`946f3c8c8`), five code commits
+(`846c5f89d`, `b5401a2e0`, `665131e97`, `eee3c0de4`, `f72f3671c`).
+Files moved: `iris/PipeOut.v`, `iris/PipeBoth.v`, `iris/PipeLinks.v`,
+`iris/UShPipeExit.v`, `iris/UShPipeRound2.v`, `iris/UInitPipe.v`,
+`iris/UkShPipeFork.v`, plus the report file
+`iris/PipeStage4Assumptions.v` (NOT a `_CoqProject` row).
+`PipeLinksLine.v`, `PipeLinkInst.v`, `UShPipeRound.v`, `UCatPipe.v`,
+`UShPipeChild.v` are UNTOUCHED, and so is every GENERIC file
+(`LinkRec.v`, `UkSh.v`): **no generic law moved, and `UkShPipeFork.v` is
+NOT retired — it is FINISHED**.  Whole-tree `ec2-lane.sh stage4 build`
+**RC=0**; no `Admitted`, no `Axiom`; `Proof using` on every result.
+`Print Assumptions` on the lane's **thirty-eight** headline results:
+**all thirty-eight Closed under the global context**.
 
 **(0) WHAT THE LANE LANDED, IN ONE SENTENCE.**  §4.3m's second and
 fourth bullets are theorems — the terminal round FREEZES the claim's
 resolution and the read after a terminal prompt refutes any later line
-PURELY — and they cost neither the family's move nor one generic edit;
-its first, third and fifth bullets (the family into the claim,
-`blk2_inv` retired, the record carrying the terminal round,
-`UkShPipeFork` retired) are REFUTED, at a wall that is one level below
-the three walls parts 2–4 found.
+PURELY — and with them **`UkShPipeFork.pterm_read_law` is DISCHARGED**,
+which is the single obligation SH-PIPE-ROUND-5 part 2 reduced the whole
+terminal re-entry to and the one parts 2, 3 and 4 each failed to pay;
+they cost neither the family's move nor one generic edit.  §4.3m's
+first, third and fifth bullets (the family into the claim, `blk2_inv`
+retired, the record carrying the terminal round, `UkShPipeFork` retired)
+are REFUTED, at a wall one level below the three parts 2–4 found —
+**and the campaign does not need them**, because §4.3i/§4.3j's route (the
+pipe-specific fork twin) is now unblocked.
 
 **(1) THE DISCRIMINATOR THE CLAIM NEEDED IS NOT THE MODE GHOST — IT IS
 ONE BIT OF `pe_cur`, WHICH IS ALREADY CLAIM-SIDE AND ALREADY
@@ -7726,6 +7731,35 @@ continuation, `pblk2_cterm_chain_fz` (a NON-EMPTY terminal chain; the
 empty one cannot produce the reading and keeps its landed statement) and
 `pblk2_fork1_chain` carry it on.
 
+**(5b) AND THEREFORE `pterm_read_law` IS DISCHARGED — the leaf
+SH-PIPE-ROUND-5 part 2 stopped at, and parts 3 and 4 each failed to
+reach.**  `UkShPipeFork.pterm_shape I c2` is `∃ v L gL gR gM XL YR, … ∗
+pwc_fork_exit g blk2N (S gen_id) v I L gL gR gM XL YR c2`, so the shape
+now carries the frozen resolution by construction, and `Pm I'` is
+`UShLine.ush_mid_at pwc_rres γ γp I'`, whose fourth conjunct is `∃ v,
+era_pin γ (S gen_id) v ∗ … ∗ pwc_rres v I'` — both persistent.  That is
+the whole proof:
+
+```coq
+  Lemma pterm_read_law_of :
+    (forall I' : list (bv 8),
+       ⊢ Pm I' -∗ Pm I'
+         ∗ (∃ v : era_pins, era_pin γ (S gen_id) v ∗ pwc_rres v I')) ->
+    pterm_read_law.
+```
+
+(`pterm_read_law` is part 3's fupd form; the update is spent only to read
+`1 <= nlines I` back out of the family's invariant —
+`PipeBoth.pwc_fork_exit_nlines`, where the right cursor half refutes the
+DONE arm and `wr_blk2_p` gives `I ≠ []` and `rest_of I = []`.  The
+CONTRADICTION itself is the plain entailment §4 above.)  `UkSh`'s fourth
+`Wc` hypothesis at the widened credential is then `pterm_wc_read_of`,
+already landed by part 2.  **What the terminal re-entry still owes is
+obligation (A) alone** — `pterm_prompt_arm`, the two prompt bytes
+(`pprompt_dollar_fork` / `pprompt_space_fork`, both landed and Closed)
+packaged as `UkSh.ksh_w` — plus the `UkShFork` twin walk §4.3j (2)
+names.
+
 **(6) THE REFUTATION — WHY THE FAMILY CANNOT FOLLOW THE FLAG INTO THE
 CLAIM, AND IT IS NOT A MISSING LEMMA.**  §4.3m's first bullet asks for
 the two cursors, the mode and the `(⌜c1 = 0⌝ ∨ XL)` witness to join
@@ -7773,14 +7807,18 @@ at the statement:
   record `pipe_era`, whose authority must itself be reachable before the
   first byte — the same wall again.
 
-**CONSEQUENCE: §4.3m's third and fifth bullets do not follow.**  With
-`blk2_inv` alive, `pwc_fork_exit` still carries an `inv`, so
-PIPE-STAGE-3's `Timeless` obstruction stands verbatim (`lk_line_tl`,
-`lk_sp_t_tl`, `lk_open_t_tl`), `pwc_line2`'s third arm cannot hold the
-terminal round, `lk_prompt_dollar_line` cannot write the terminal `$`,
-and `UkShPipeFork` cannot be retired.  `pwc_line2`'s third arm is
-therefore at the flag `false` and every landed record field is
+**CONSEQUENCE: §4.3m's third and fifth bullets do not follow — AND THEY
+ARE NOT NEEDED.**  With `blk2_inv` alive, `pwc_fork_exit` still carries
+an `inv`, so PIPE-STAGE-3's `Timeless` obstruction stands verbatim
+(`lk_line_tl`, `lk_sp_t_tl`, `lk_open_t_tl`), `pwc_line2`'s third arm
+cannot hold the terminal round, `lk_prompt_dollar_line` cannot write the
+terminal `$`, and `UkShPipeFork` cannot be retired.  `pwc_line2`'s third
+arm is therefore at the flag `false` and every landed record field is
 BYTE-IDENTICAL; `PipeLinkInst.v` and `PipeLinksLine.v` did not move.
+But §4.3i/§4.3j's route — the terminal round handled at sh's FORK ARM's
+re-entry, by the pipe-specific twin — was blocked on exactly one leaf,
+and §5b below pays it.  **So the campaign is unblocked on the route the
+coordinator already ruled, and (β) was never needed for it.**
 
 **(7) THE SUCCESSOR DESIGN, measured while refuting (β).**  The family
 does not have to be in the CLAIM for the credential to be timeless — it
@@ -7864,14 +7902,19 @@ same discriminator at a ghost the filer already carries — the report
 names it.  Rule 2 did NOT fire: no generic law was touched, because the
 record never sees the terminal round under this repair.
 
-**THE ONE THING THE NEXT LANE NEEDS FIRST.**  The coordinator's ruling
-on §7 — the ERA-FIXED family invariant with a per-round registry in
-`pipe_era` — which is (β)'s goal reached at the only anchor that is
-reachable before the forks.  Everything the terminal round needs on the
-CLAIM side is now landed and Closed: the flag, the freeze, the two
-terminal byte steps, the two chains, the second shape with the frozen
-reading, the pure read refutation and the end-to-end test.  After the
-ruling the order is: the registry + the eighth link leaf, then
-`pwc_line2`'s terminal arm and `lk_prompt_dollar_line` at it, then the
-mode half in the right child's exit payload (§8), then ROUND-6's
-assembly.
+**THE ONE THING THE NEXT LANE NEEDS FIRST.**  **Nothing.**  §4.3j's route
+is open and its last leaf is paid: the order is (A)
+`UkShPipeFork.pterm_prompt_arm` (the two prompt bytes as `UkSh.ksh_w`;
+both steps are landed and Closed), then §4.3j (2)'s
+`wp_kshm_body_pipe` / `wp_kshf_fork_pipe` twins and the redefinition of
+`UShPipeRound.sh_pipe_child_law` at `pterm_pay`, then §8's mode half in
+the right child's exit payload, then ROUND-6's assembly at
+`pipe_round_entry` / `pipe_round_exit`.  §7 (the era-fixed family
+invariant) is now an OPTIONAL simplification — it would retire
+`UkShPipeFork`, `pterm_wc` and the four transfers and put the terminal
+round on the record, which is what §4.3m wanted; it is not on the
+critical path any more and the coordinator can defer it.  Everything the
+terminal round needs on the CLAIM side is landed and Closed: the flag,
+the freeze, the two terminal byte steps, the two chains, the second
+shape with the frozen reading, the pure read refutation,
+`pterm_read_law_of` and the end-to-end test.

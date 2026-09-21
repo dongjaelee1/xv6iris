@@ -2216,8 +2216,11 @@ Section UShRound.
     rewrite /UkShRedirBody.sh_redir_child_law.
     iIntros "!>" (N' h m dw dv sa len ws file fb sz ld n I)
       "%Hpeq %Hs1 %Hline %Hlws %Hfok %Hsa %Hs64 %Hs38 %Hszlo %Hszal %Hszok
-       %Hrows #Hcode #Hpcode #Hpro #Hjt Hstr Hwsp Hsy Hstd Hcwd Hch HM Hcr
+       %Hrows #Hcode #Hpcode #Hpro #Hjt Hstr Hwsp Hsy Hstd Hcwd Hch Hpid HM Hcr
        Hrun".
+    (* PIPE-PID gave [sh_redir_child_law] the pid row and the empty
+       children set; the file era's walk still takes [uch_any] and no pid. *)
+    iDestruct (UserChildren.uch_any_of with "Hch") as "Hch". iClear "Hpid".
     pose proof (proj1 Hline) as Hokws.
     (* ---- the line, off the fork's words ---- *)
     assert (Hpos : (0 < nlines I)%nat).

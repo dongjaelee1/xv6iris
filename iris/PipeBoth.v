@@ -2442,6 +2442,52 @@ Section pipe_both.
     rewrite Nat.add_0_l. iExact "HcR".
   Qed.
 
+  (* ================================================================= *)
+  (*  S12  THE READ AFTER A TERMINAL PROMPT REFUTES A LATER LINE, PURELY *)
+  (*       (lane PIPE-STAGE-4; design SS4.3m, the fourth bullet)          *)
+  (*                                                                   *)
+  (*  This is route (gamma)'s lemma AT ITS TRUE SITE.  The read residue  *)
+  (*  [PipeLinksLine.pwc_rres] at a line DELIVERED AFTER the terminal    *)
+  (*  round carries [cs_lb v cs0] with                                   *)
+  (*  [nlines (removelast (I ++ l ++ [wl_nl])) <= length cs0], i.e.      *)
+  (*  [length cs0 >= nlines I]; the terminal writer carries the FROZEN   *)
+  (*  resolution at length [nlines I - 1].  A lower bound of a frozen    *)
+  (*  authority is a PREFIX of it, so the two cannot both hold -- and    *)
+  (*  this is a PLAIN entailment, under no mask and with no claim in the *)
+  (*  room, which is exactly what [UkSh.ush_wc_read]'s shape allows.     *)
+  (*  (SH-PIPE-ROUND-5 parts 2-4 measured three routes to this leaf; the *)
+  (*  reading the read site can hold had to be NON-MONOTONE, and this is *)
+  (*  the only one there is.)                                           *)
+  (* ================================================================= *)
+  Lemma pterm_read_absurd (v : era_pins) (I l : list (bv 8)) :
+    (1 <= nlines I)%nat ->
+    cs_frozen_at v (nlines I - 1)%nat -∗
+    pwc_rres v (I ++ l ++ [wl_nl]) -∗ False.
+  Proof using .
+    intros Hpos. iIntros "#Hfz Hres". rewrite /pwc_rres.
+    iDestruct "Hres" as (ps0 cs0) "(%Hrd & _ & _ & #Hcs0)".
+    destruct Hrd as (_ & _ & _ & Hle).
+    assert (Hrl : removelast (I ++ l ++ [wl_nl]) = (I ++ l)%list).
+    { rewrite app_assoc. apply epu_removelast_snoc. }
+    rewrite Hrl in Hle.
+    pose proof (nlines_app_le I l) as Hmono.
+    iApply (cs_frozen_at_lb_absurd v (nlines I - 1)%nat cs0
+              ltac:(lia) with "Hfz Hcs0").
+  Qed.
+
+  (* ...and at the shape the runcmd child's exit payload actually has *)
+  Lemma pterm_fork_exit_read (N : namespace) (k : nat) (v : era_pins)
+      (I L l : list (bv 8)) (gL gR gM : gname) (XL YR : iProp Σ)
+      (c2 : nat) :
+    (1 <= nlines I)%nat ->
+    pwc_fork_exit N k v I L gL gR gM XL YR c2 -∗
+    pwc_rres v (I ++ l ++ [wl_nl]) -∗ PT.
+  Proof using .
+    intros Hpos. iIntros "(_ & _ & _ & [#Hfz | #HT]) Hres"; [| iExact "HT"].
+    iExFalso.
+    iApply (pterm_read_absurd v I l Hpos with "Hfz Hres").
+  Qed.
+
   (* ---- (ITEM 5) THE TEST: [fork1] #2 fails; the runcmd child prints
      `fork\n' through the family and exits with the second shape; sh's
      main loop prints `$ '; the STRAY prints its whole diagnostic after
@@ -2490,6 +2536,47 @@ Section pipe_both.
     { by iIntros "_". }
     iIntros "HcL". iApply ("HΦ" $! gL gR gM with "[HcL] HcR HcM Hfz").
     rewrite Nat.add_0_l. iExact "HcL".
+  Qed.
+
+  (* ---- ...AND THE SAME TEST WITH THE READ AT ITS END (lane
+     PIPE-STAGE-4): after the terminal round's whole wire has gone out
+     through the CLAIM, what the round's writers hold REFUTES the read
+     residue of ANY later delivered line -- purely, with no mask and no
+     claim in the room.  This is the end-to-end anti-vacuity check for
+     SS4.3m's fourth bullet: the credential the test starts from is
+     [pwc_lend], the one sh's round lends, and every byte goes through
+     [PipeOut.pecl]. ---- *)
+  Lemma pterm_round_read_test (E : coPset) (N : namespace) (Eex : coPset)
+      (k : nat) (v : era_pins) (I L : list (bv 8))
+      (ws : list (list (bv 8))) (XL YR : iProp Σ) (Φ : iProp Σ) :
+    Timeless XL -> Timeless YR ->
+    (↑N : coPset) ## (↑uartN Uart0 : coPset) ->
+    (↑N : coPset) ⊆ E ->
+    Eex ⊆ (⊤ ∖ ↑uartN Uart0 ∖ ↑N : coPset) ->
+    pline_at I = LPipe ws ->
+    (1 <= nlines I)%nat ->
+    (forall sel : list bool,
+       sel_wf2 dg_execR sel -> pblk2_wit I dg_execR sel) ->
+    □ (XL -∗ YR ={Eex}=∗ False) -∗
+    pblk2_ecl_L -∗ pblk2_ecl_L_t -∗ pblk2_ecl_R_t -∗
+    pipe_link_taint g -∗ era_pin γ k v -∗
+    pwc_lend g k v I -∗ XL -∗
+    (∀ gL gR gM : gname,
+       wcur gL (1/2) (length dg_execL) -∗
+       wcur gR (1/2) (length alt_forkc) -∗ wcur gM (1/2) 3%nat -∗
+       (∀ l : list (bv 8), pwc_rres v (I ++ l ++ [wl_nl]) -∗ PT) -∗ Φ)
+    ={E}=∗ out_chain Uart0 k (alt_forkc ++ dg_execL) Φ.
+  Proof using Hcons.
+    intros HTX HTY Hns HNE HEx Hline Hpos Hwit.
+    iIntros "#Hex #HL #HLt #HRt #Ht #Hpin Hlend HXL HΦ".
+    iMod (pterm_round_test E N Eex k v I L ws XL YR Φ
+            HTX HTY Hns HNE HEx Hline Hwit
+            with "Hex HL HLt HRt Ht Hpin Hlend HXL [HΦ]") as "$"; [| done].
+    iIntros (gL gR gM) "HcL HcR HcM #Hfz".
+    iApply ("HΦ" $! gL gR gM with "HcL HcR HcM").
+    iIntros (l) "Hres".
+    iDestruct "Hfz" as "[#Hf | #HT]"; [| iExact "HT"].
+    iExFalso. iApply (pterm_read_absurd v I l Hpos with "Hf Hres").
   Qed.
 
 End pipe_both.

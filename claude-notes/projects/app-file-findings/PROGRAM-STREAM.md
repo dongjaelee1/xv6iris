@@ -1532,3 +1532,63 @@ section's `Context \`{!ghost_varG Σ Z}` from `UShRound` (and `UShRest`'s
 binder list it copies) so there is one instance in scope — not done here
 because the binder list is copied verbatim for an elaboration-cost reason
 (`UShRound`'s header); worth measuring.
+
+## PROGRAM STREAM, stretch 11 (2026-09-21) — cat's interface: one fraction in, the same one out; and two defects in what sh would apply
+
+RULING CAT-DEED was amended by the owner (design §3): sh passes cat ONE `fdq`
+and gets THAT SAME `fdq` back in cat's exit predicate, with `∨ file_taint c`
+on both sides.  `UCatKernel.v` (branch `app-file/cat-child`, `.vok`-checked):
+
+* `catq_cat c r q s …` carries `(fdq r q s ∨ file_taint c)`.
+  `cat_pay_absent` / `cat_pay_present` hand the fraction(s) to their payload
+  wands on every in-spec exit (the failed open's refund of stretch 10 is what
+  makes `RCNoOpen` payable; the round's held fraction the other), and take
+  `□ (file_taint c -∗ Q (-1))` for the rest.
+* THE TWO FRACTIONS WERE AN IMPLEMENTATION DETAIL LEAKING.  `open`'s
+  precondition is a separating conjunction of two independently-fired ghost
+  obligations (the path walk's cursor and the final observation), each of
+  which compares a fraction against the invariant's half, so each carries its
+  own.  `cat_pay_filed_some` SPLITS the one fraction (`q/2`, `q/2`) and JOINS
+  at the exit; nothing above it sees two.
+* THE LEND IS `cat_lend r q s := fdq r q s ∗ cch … 0`, at EITHER state of `f`,
+  and `cat_child_of_entry` is ONE lemma over `s`.  The two "rows" sh used to
+  lend (`cat_open_hand`, `cat_held_read`) are built by cat from
+  `cat_open_hand_of_deed` / `cat_held_read_of_deed`: the first spends the
+  PROCESS's `ucwd`, which only the payer has (it arrives inside
+  `cat_pay_at`), so a lender could never have supplied it `∀ N'`.
+* `cat_taint_open_of_taint` took `app_taint` OUTRIGHT — i.e. the out-of-spec
+  flag as a premise — which made `cat_child_of_entry`, and `Hchild_cat` above
+  it, statements about out-of-spec runs only.  It takes
+  `□ (file_taint c -∗ app_taint)` now (the sub-arm is entered with the flag in
+  hand).
+* `cat_child_of_entry` takes the fork's payload `Q` as a PARAMETER with
+  `□ (catq_cat … (-1) -∗ Q (-1))` (`ChildTok.my_pay_agree` makes the entry's
+  `Q` rigid; K1's `efile_image_entry` learned the same thing).
+
+TWO DEFECTS FOUND, both upstream of `Hchild_cat` becoming a lemma (they are
+written into `UShRound.v` at the hypothesis):
+
+1. **`EchoDisc.line_ok ws` is FALSE at `cat f`.**  `line_ok` demands
+   `ws !! 0 = Some cmd_echo`.  `UCatKernel.cat_image_entry` (hence
+   `cat_child_of_entry`, hence `Hchild_cat`) takes `line_ok ws` because it
+   reads sh's exec node through the ECHO tier's lemmas
+   (`UShEcho.echo_args_det_holds`, `echo_node_img_of_cmd`, `line_nonul`,
+   `UkShEcho.echo_off_lt`, `echo_cmd_args_lookup`, …).  Those are facts about
+   THE NODE SH BUILT FOR AN EXEC and use `line_ok` for `wl_wf` and the length
+   bounds only.  THE CLEAN FIX: a predicate for "an exec'able word list"
+   (`wl_wf ws ∧ 0 < length ws < 10 ∧ length (wl_line ws) < line_max`) under
+   those lemmas, `line_ok` its instance at `echo`, the cat line another.  The
+   pipe campaign hit the same wall and twinned the lemmas at its one-word
+   `cat` (`UShCatPay.cat_args_det_1w`, `cat_image_entry_1w`,
+   `sh_exec_sup_cat_wq_holds_at`) — a third copy for `cat f` is the wrong
+   direction.  This touches `UkShEcho`/`UShEcho` (echo, file AND pipe cones),
+   so it is the owner's call when to take it.
+2. **The lend is not all the child must return.**  The fork's payload is
+   `ushf_wq Wcf I`, the whole position-0 credential; its deed conjunct is
+   `fown r s = fdeed r s ∗ ftkt r s` with the tie, the typing and the pins.
+   cat takes and returns `fdq r q s` only, so the rest of `PRE I` must cross
+   cat's entry as a FRAME — echo's entry has one
+   (`UShEchoPay.echo_slot_of_kexec_at_at`'s `Hold`), cat's has none.  It goes
+   in `cat_pay_present`'s `Ci` on the no-open exits and in the round's hold
+   family (`cat_hold_at`, already a parameter of `cat_round_at`) on the ran
+   exit.

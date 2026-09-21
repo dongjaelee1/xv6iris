@@ -403,12 +403,12 @@ arm is the theorem's one named premise (`pipe_both_law`).
 - [ ] **SH-PIPE-ROUND-9** (design §4.3r: the `p < n` guard, the `pipe_links`
   antecedent; ROUND-8's six items; `sh_pipe_child_law_all`;
   `pipe_adequacy_pipeΣ_final`).  Brief `brief-sh-pipe-round-9.md`.
-  **PARTLY: §4.3r's two rulings and §4.3s/§4.3t LANDED tree-wide
-  (whole-tree RC=0, four audits at their baselines); bill items 1, 2, 3, 4
-  and 5 LANDED; item 6 is REFUTED AT THE ARM'S SPLIT (`UkShPipe.
-  wp_kshr_pipe_arm_g` hands the family's one right chain to `RcR` and to
-  `Cx`, and there is one of it) and item 7 is not reached.**  See the
-  three Findings blocks.
+  **PARTLY: §4.3r's two rulings and §4.3s/§4.3t/§4.3u LANDED tree-wide
+  (whole-tree RC=0, four audits at their baselines); bill items 1–5
+  LANDED and item 6's exit and READING with them; item 6 stops at ONE
+  arm of the reading — the SHORT ROUND, which `PipeDisc` has no
+  alternative for and the protocol does not refute — and item 7 is not
+  reached.**  See the four Findings blocks.
 ## Findings (append as lanes report)## Findings (append as lanes report)## Findings (append as lanes report)
 
 ### PQ-FLAG-2 (2026-09-18) — the write link's second premise, paid by the CODE
@@ -9550,3 +9550,95 @@ Timeless); the five-row reading of part 1, whose fifth row
 
 **THE ONE THING THE NEXT LANE NEEDS FIRST.**  §4.3u — two additive
 touches, both on resources the walk already holds and drops.
+
+
+### SH-PIPE-ROUND-9 — PART 4 (2026-09-25, design §4.3u as ruled) — §4.3u lands in three additive touches; item 6's exit and READING land as theorems, and the round stops at ONE arm: the SHORT ROUND
+
+Two commits, `9e276521c` (§4.3u) and `6b993859e` (item 6's exit and
+reading).  **Whole tree `ec2-lane.sh round9 build` RC=0**, and the four
+audits re-measured over both: `audit-only` **13**, `audit-echo-only`
+**14**, `audit-tree-only` **13**, `audit-pipe-only` **14** — all at their
+baselines, for the fourth time in this lane.
+
+**(a) §4.3u, LANDED, three additive touches and no new walk.**
+
+1. `UkShPipe.wp_kshr_pipe_arm_g`'s FIRST fork-panic continuation gains
+   `RcR γp`.  **The hand-over is the FORK RULE's, not an `iSplit`'s**,
+   and that is the whole trick: `UkShRun.wp_kshr_fork1`'s three
+   continuations are `∗`-separated, so a resource put beside them can go
+   to only one — but its `Pex` slot is exactly "what the panic spends,
+   borrowed, and the returning arm hands straight back".  So the walk
+   forks at `Pex := RcR γp ∗ Cx γp` and the second `fork1` is entered
+   exactly as before.  **This is the general answer to "two
+   continuations of which exactly one fires" when the rule already has a
+   borrow slot: use the slot, not an additive conjunction.**
+   `wp_kshr_pipe_arm` (the FREE arm) drops it in one token — it pays its
+   tails out of `UkSh.sh_deps` and needs no console credential.
+2. `UkShPipePaid.wp_kshr_pipe_arm_paid` states the fork-panic law at
+   `RcR γp ∗ Cx γp`.  At the second tail the lend arrives inside the
+   fork answer's `-1` arm, and that continuation's own `r = -1` premise
+   refutes the pid arm (`ushq_pid_sext_ne_m1`, `UkShFork`'s restated —
+   that file is not in this one's cone).
+3. `UShPipeChild`'s four statements forward the law at its new
+   credential; the file only relays it, so nothing else moved.
+
+At `Cx := emp` the law is at exactly the family's right and mode halves,
+which is what ROUND-8's `pipe_fork_panic_law` proves, and cat's
+`pcat_ch` keeps them on the good path.
+
+**(b) ITEM 6's EXIT, at the MODE.**  `PipeBoth.blk2_inv_close_nt` returns
+`R = L ∨ R = dg_execR`, which is not enough for `pipe_round_exit`'s
+`Hcode` — a PURE premise that would then have to produce a `pblk2_code`
+for BOTH, and at a `PRan` round (`c1 = 0`, `c2 = length L`) there is none
+at `R = dg_execR` unless `length L` happens to be 16.  The mode settles
+it: `rmode`'s own arms pin `R = rsrc L n` at every `n ≠ 3` (the `n = 0`
+arm through `c2 = 0` and `pwc_blk2_R_indep`).  `blk2_inv_close_mode` is
+the close re-derived there and `pipe_round_exit_mode` the exit at it.
+
+**(c) ITEM 6's READING, `pipe_round_reading_at`, IS A THEOREM.**  `Qc` as
+ruled: `pipe_Qc_at := PT ∨ pipe_Qc pn (pipe_PL …) (pipe_PR …)`, the left
+payload's second arm carrying NO `pipe_payL`, the right payload's first
+arm carrying cat's own `Cend` beside `pcat_ch`'s pair.  **Four of the
+five rows come out as the round's code and the fifth is refuted inside
+the proof** by `blk2_no_L_at_mode1` — which is why part 1's table now has
+four rows and not five.  It compiled at the first attempt.
+
+**(d) THE STOP, and it is the lane's first NON-additive wall: THE SHORT
+ROUND.**  What the reading leaves beside the code is one arm:
+
+> cat printed a PROPER PREFIX of the line (`0 < c < length L`) and echo's
+> exit says it stopped because the READ END WAS SHUT (`pipe_payL`'s third
+> arm, `ro_shot pn`).
+
+`PipeDisc` has no alternative for that block — `pround_case` has four and
+none fits — so a round that ends there violates `good_out_p`.  **And the
+protocol alone does not refute it**, measured at the statement: (P3)
+gives `ps_ws s = take c L` and `ps_wo s = false`, (P4) gives
+`ps_ro s = false`, echo's `wcur pn c'` agrees at `c' = c`, and that state
+is consistent.  The reason it cannot happen is that **cat holds the read
+end open until it has seen EOF, and EOF needs every write end closed** —
+an fd/registry fact about who holds `p[0]`/`p[1]` and until when, not a
+fact about `pipe_body`.  Two candidate repairs, both outside this lane's
+files and neither additive:
+
+- **(R-1)** `UEchoPipe`'s halt: make `ep_stuck`'s `ro_shot` arm carry the
+  TAINT (`ECHO-PIPE-2` already says "the ONE arm left is the kill"), so
+  `pipe_payL`'s third arm is `app_taint`-guarded and the reading's second
+  disjunct collapses into its first.  Smallest, if the claim is true.
+- **(R-2)** give the round a resource that refutes `ro_shot pn` while cat
+  is alive — i.e. the protocol records WHO may shut the read end.  That
+  is `PipeProto`'s (P4) re-cut, and it is the honest version.
+
+`UEchoPipe.v`'s exit payload and `PipeProto.v`'s (P4) are not this lane's
+and the change is not additive, so the lane STOPS here as instructed.
+
+**(e) WHAT IS LEFT AFTER THE RULING**, all measured: the four-way split
+at names allocated BEFORE the walk (`pn` by `pipe_names_alloc` at the
+child law's own `mWP` entry; `gL`/`gR`/`gM` by `ghost_var_alloc` there
+and passed into the LINEAR wand `Cp ={⊤}=∗ Cr`; `v` off the era pin,
+which is `sh_pipe_child_law`'s granted third antecedent); the two
+`ush_fork_ans` × two `uwait_ans` at `0xea` through `gen_pay_timeless`;
+then `pipe_round_exit_mode`, `wp_kshr_exit0_paid`, and item 7.
+
+**THE ONE THING THE NEXT LANE NEEDS FIRST.**  A ruling on the short
+round — (R-1) or (R-2) of (d).

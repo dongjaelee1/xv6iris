@@ -76,6 +76,27 @@ Require Import PipeDisc.
 Local Open Scope Z_scope.
 Import Defs.
 
+(* A PID IN [1, PIDMAX] DOES NOT SIGN-EXTEND TO -1 ([UkShFork.
+   ushf_pid_sext_ne_m1] restated; that file is not in this one's cone).
+   Design SS4.3u spends it: the SECOND [fork1]'s panic tail is entered
+   with [r = -1] as a PURE premise, so the fork answer's pid arm is
+   refutable and what is left is its [-1] arm -- which carries the RIGHT
+   child's lend. *)
+Lemma ushq_pid_sext_ne_m1 (pidv : mword 32) :
+  1 <= bv_unsigned pidv <= PIDMAX ->
+  (sign_extend' 64 pidv : mword 64) <> (mword_of_int (-1) : mword 64).
+Proof using.
+  intros Hrng Heq.
+  assert (Hlt : bv_unsigned pidv < Z31) by (unfold PIDMAX, Z31 in *; lia).
+  rewrite (sext32_small pidv Hlt) in Heq.
+  pose proof (f_equal uint Heq) as Hu.
+  rewrite (uint_moi (bv_unsigned pidv)
+             ltac:(unfold PIDMAX, Z64 in *; lia)) in Hu.
+  assert (Hm1 : uint (mword_of_int (-1) : mword 64) = 18446744073709551615)
+    by (vm_compute; reflexivity).
+  rewrite Hm1 in Hu. unfold PIDMAX in Hrng. lia.
+Qed.
+
 Section UkShPipePaid.
   (* [UkShPipe.v]'s binder list verbatim. *)
   Context `{!riscvGS Σ}.
@@ -242,8 +263,22 @@ Section UkShPipePaid.
        with. ---- *)
     ush_execfail_law_at (wl_line PipeDisc.dg_pipe) 5%nat Cr Bp -∗
     □ (UserFd.ustd (ukn_fd N) ld -∗ Bp -∗ ukn_pay N (-1)) -∗
+    (* ...AT [RcR γp ∗ Cx γp] (design SS4.3u, lane SH-PIPE-ROUND-9).  The
+       family's RIGHT chain is what a [panic("fork")] tail writes on
+       ([PipeBoth.rsrc L 3 = alt_forkc], mode 3) and it is also cat's
+       ([rsrc L 1 = L], mode 1) -- one resource, and the arm's single
+       up-front split cannot give it to both [RcR γp] and [Cx γp].  It
+       does not have to: the RIGHT child's lend is IN SH'S HAND at both
+       tails and was being dropped.  At the second it arrives inside the
+       fork answer's [-1] arm (the other disjunct is refuted by
+       [ushq_pid_sext_ne_m1] against this continuation's own
+       [r = -1]); at the first [UkShPipe.wp_kshr_pipe_arm_g] now borrows
+       it through [wp_kshr_fork1]'s [Pex] slot.  At [Cx := emp] this is
+       the law at exactly the family's right and mode halves, which is
+       what [UShPipeAssembly.pipe_fork_panic_law] proves. *)
     □ (∀ γp : pipe_names,
-         ush_execfail_law_at EchoDisc.alt_panic 5%nat (Cx γp) (Bx γp)) -∗
+         ush_execfail_law_at EchoDisc.alt_panic 5%nat
+           (RcR γp ∗ Cx γp) (Bx γp)) -∗
     □ (∀ γp : pipe_names,
          UserFd.ustd (ukn_fd N) ld -∗ Bx γp -∗ ukn_pay N (-1)) -∗
     urun N h m (mword_of_int ShSyms.runcmd)
@@ -322,23 +357,31 @@ Section UkShPipePaid.
                 ushq_pipe_msg_byte ushq_pipe_msg_nl
                 with "Hlawp Hcode Hro Hstd' Hcr' [] Hrun'").
       iIntros "Hstd'' Hb". iApply ("Hbp" with "Hstd'' Hb").
-    - (* ---- the first fork1's panic("fork") ---- *)
-      iIntros "!>" (h' m' r γp) "%Ha0' %Hr' _ Hstd' Hcx Hrun'".
+    - (* ---- the first fork1's panic("fork"): SS4.3u's borrowed pair ---- *)
+      iIntros "!>" (h' m' r γp) "%Ha0' %Hr' _ Hstd' HRcR Hcx Hrun'".
       iApply (wp_kshd_panic_paid_at N 0x1298 EchoDisc.alt_panic
-                (Cx γp) (Bx γp) ld h' m' av
+                (RcR γp ∗ Cx γp)%I (Bx γp) ld h' m' av
                 Hfd2 Ha0' ltac:(lia) ushq_fork_msg_fmt ush_fork_msg_len
                 ush_fork_msg_byte ush_fork_msg_nl
-                with "[] Hcode Hro Hstd' Hcx [] Hrun'").
+                with "[] Hcode Hro Hstd' [HRcR Hcx] [] Hrun'").
       + iApply ("Hlawf" $! γp).
+      + iFrame "HRcR Hcx".
       + iIntros "Hstd'' Hb". iApply ("Hbx" $! γp with "Hstd'' Hb").
-    - (* ---- the second fork1's panic("fork") ---- *)
-      iIntros "!>" (h' m' r γp S1) "%Ha0' %Hr' _ Hstd' Hcx Hrun'".
+    - (* ---- the second fork1's panic("fork"): the lend is in the
+            answer's [-1] arm, and [r = -1] refutes the other ---- *)
+      iIntros "!>" (h' m' r γp S1) "%Ha0' %Hr' Hans Hstd' Hcx Hrun'".
+      iAssert (RcR γp) with "[Hans]" as "HRcR".
+      { iDestruct "Hans" as "[(_ & _ & HR) | Hpid]"; [ iExact "HR" | ].
+        iDestruct "Hpid" as (γ pidv) "(%Hr2 & %Hrng & _ & _)".
+        iExFalso. iPureIntro.
+        apply (ushq_pid_sext_ne_m1 pidv Hrng). rewrite -Hr2. exact Hr'. }
       iApply (wp_kshd_panic_paid_at N 0x1298 EchoDisc.alt_panic
-                (Cx γp) (Bx γp) ld h' m' av
+                (RcR γp ∗ Cx γp)%I (Bx γp) ld h' m' av
                 Hfd2 Ha0' ltac:(lia) ushq_fork_msg_fmt ush_fork_msg_len
                 ush_fork_msg_byte ush_fork_msg_nl
-                with "[] Hcode Hro Hstd' Hcx [] Hrun'").
+                with "[] Hcode Hro Hstd' [HRcR Hcx] [] Hrun'").
       + iApply ("Hlawf" $! γp).
+      + iFrame "HRcR Hcx".
       + iIntros "Hstd'' Hb". iApply ("Hbx" $! γp with "Hstd'' Hb").
   Qed.
 

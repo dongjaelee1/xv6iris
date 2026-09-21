@@ -228,7 +228,11 @@ Section UkShPipePaid.
       (cl cr : ushcmd) (h : CpuId) (m : regfile) (t szv cwdv : Z)
       (ld : list fdstate) (st0 st1 : fdstate) (Sc : gset gname) (av : nat)
       (R RcL RcR Rk Cx Bx : pipe_names -> iProp Σ) (Qc : Z -> iProp Σ)
-      (Cr Bp : iProp Σ) :
+      (Cr Bp : iProp Σ)
+      (* the two [wait(0)]s' law, relayed (design app-pipe SS4.3w,
+         purchase 3) -- see [UkShPipe.wp_kshr_pipe_arm_g] *)
+      (Wr : iProp Σ)
+      (Pw : mword 64 -> gset gname -> gset gname -> iProp Σ) :
     (forall x y : Z, Qc x = Qc y) ->
     m !!! Regidx a0_idx = (mword_of_int t : mword 64) ->
     (* the two standard streams the two children shut before their dup *)
@@ -257,6 +261,9 @@ Section UkShPipePaid.
     Cr -∗
     (∀ γp : pipe_names, Cr -∗ R γp -∗ RcL γp ∗ (RcR γp ∗ (Rk γp ∗ Cx γp))) -∗
     ush_pipe_call N ld R -∗
+    (* the wait credential and the law that spends it, twice *)
+    Wr -∗
+    ush_wait0_law N Wr Pw -∗
     (* ---- THE THREE DIAGNOSTICS, PAID.  [panic("pipe")] writes
        [wl_line dg_pipe] and [panic("fork")] writes [alt_panic]; both are
        five bytes and both leave a residue the caller says what to do
@@ -326,10 +333,14 @@ Section UkShPipePaid.
     (* ---- THE PARENT, at 0xea, with the forks' borrowed payload back ---- *)
     (∀ (h' : CpuId) (m' : regfile) (γp : pipe_names)
        (r1 r2 rw1 rw2 : mword 64) (S1 S2 S3 S4 : gset gname),
+       (* the two forks returned a pid (purchase 3): a -1 panics and never
+          reaches 0xea -- see [UkShPipe.wp_kshr_pipe_arm_g] *)
+       ⌜ r1 <> (mword_of_int (-1) : mword 64) ⌝ -∗
+       ⌜ r2 <> (mword_of_int (-1) : mword 64) ⌝ -∗
        ush_fork_ans Sc S1 (RcL γp) Qc r1 -∗
        ush_fork_ans S1 S2 (RcR γp) Qc r2 -∗
-       uwait_ans rw1 S2 S3 -∗
-       uwait_ans rw2 S3 S4 -∗
+       Pw rw1 S2 S3 -∗
+       Pw rw2 S3 S4 -∗
        UserChildren.uch (ukn_ch N) S4 -∗
        ush_jtab (ukn_t N) -∗
        usz (ukn_s N) szv -∗
@@ -337,18 +348,19 @@ Section UkShPipePaid.
        UserCwd.ucwd (ukn_cwd N) cwdv -∗
        Rk γp -∗
        Cx γp -∗
+       Wr -∗
        urun N h' m' (mword_of_int 0xea) (2 + (UkShDiag.ush_Dg + av)) -∗
        mWP (Loop : expr riscv_lang)) -∗
     mWP (Loop : expr riscv_lang).
   Proof using Hpsok_free.
     intros HQc Ha0 Hl0 Hl1 Hne0 Hne1 Hnp0 Hnp1 Hfd2.
     iIntros "#Hcode #Hro #Hjt #Htree Hsz Hstd Hcwd Hch #Hkw Hcr Hsplit Hpipe
-             #Hlawp #Hbp #Hlawf #Hbx Hrun HcL HcR Hpar".
+             HWr #Hwl #Hlawp #Hbp #Hlawf #Hbx Hrun HcL HcR Hpar".
     iApply (wp_kshr_pipe_arm_g Hpsok_free N cl cr h m t szv cwdv ld st0 st1
-              Sc av R RcL RcR Rk Cx Qc Cr
+              Sc av R RcL RcR Rk Cx Qc Cr Wr Pw
               HQc Ha0 Hl0 Hl1 Hne0 Hne1 Hnp0 Hnp1
               with "Hcode Hjt Htree Hsz Hstd Hcwd Hch Hkw Hcr Hsplit Hpipe
-                    [] [] [] Hrun HcL HcR Hpar").
+                    HWr Hwl [] [] [] Hrun HcL HcR Hpar").
     - (* ---- panic("pipe"): the lend pays its five bytes ---- *)
       iIntros "!>" (h' m') "%Ha0' Hstd' Hcr' Hrun'".
       iApply (wp_kshd_panic_paid_at N 0x12c8 (wl_line PipeDisc.dg_pipe)

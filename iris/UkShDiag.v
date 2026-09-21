@@ -8997,6 +8997,9 @@ Section UkShDiagLeaf.
         mWP (Loop : expr riscv_lang)) ∗
      (∀ (h' : CpuId) (m' : regfile) (r : mword 64),
         ⌜ r <> (mword_of_int 0 : mword 64) ⌝ -∗
+        (* ...and it is not -1 either (design app-pipe SS4.3w, purchase
+           3): fork1 panics at -1 -- see [UkShRun.wp_kshr_fork1] *)
+        ⌜ r <> (mword_of_int (-1) : mword 64) ⌝ -∗
         ⌜ ucallee_saved m m' ⌝ -∗
         ⌜ m' !!! Regidx a0_idx = r ⌝ -∗
         ((⌜r = (mword_of_int (-1) : mword 64)⌝ ∗
@@ -9030,6 +9033,9 @@ Section UkShDiagLeaf.
         UserFd.ustd (ukn_fd N') l -∗
         UserCwd.ucwd (ukn_cwd N') cw -∗
         UserChildren.uch (ukn_ch N') ∅ -∗
+        (* ...and its own pid, as a handle (design app-pipe SS4.3w,
+           purchase 1): [UkShRun.wp_kshr_fork1]'s row, relayed *)
+        (∃ p : Z, ⌜p <> 1⌝ ∗ UserChildren.upid (ukn_pid N') p) -∗
         ([∗ map] fd ↦ st ∈ D, UserFd.ufd (ukn_fd N') fd st) -∗
         urun N' h' m'
           (ret_pc (m !!! Regidx (mword_of_int 1 : mword 5)))

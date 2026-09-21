@@ -192,6 +192,10 @@ Section UkShPipeForkTwin.
        UserFd.ustd (ukn_fd N') l -∗
        UserCwd.ucwd (ukn_cwd N') FsImg.ROOTINO -∗
        UserChildren.uch (ukn_ch N') ∅ -∗
+       (* ...and its own pid, not <init>'s (design app-pipe SS4.3w,
+          purchase 1's relay): [UkShRun.wp_kshr_fork1]'s row, in the shape
+          [UkSh.ush_pid] names it *)
+       UkSh.ush_pid N' -∗
        UkShMalloc.ushm_fresh N' sz -∗
        urun N' hB mA (mword_of_int 0x9c0)
          (68 + (8 + (UkShDiag.ush_Dg + n))) -∗
@@ -269,7 +273,8 @@ Section UkShPipeForkTwin.
         [ exact Hmsg | exact HrA ]. }
     iSplitL "Hhead Hpid Hre".
     - (* ================= THE PARENT: reap, and round again ============= *)
-      iIntros (hA mA rA) "%HrA %HcsA %Ha0A Hans Hpay Hsz Hustd Hcwd _ Hlease Hrun".
+      iIntros (hA mA rA) "%HrA _ %HcsA %Ha0A Hans Hpay Hsz Hustd Hcwd _ Hlease
+                          Hrun".
       iDestruct "Hpay" as "(_ & _ & _ & Hdat & Hbuf)".
       (* WHAT THE FORK LEFT IN sh's HAND, at the set it grew to *)
       iAssert (∃ Sw : gset gname,
@@ -408,7 +413,7 @@ Section UkShPipeForkTwin.
       + rewrite /UkSh.ush_pstate /UkSh.ush_std. iFrame "Hustd Hcwd Hch Hpid Hpos".
     - (* ================= THE CHILD: parse, run, exec =================== *)
       iIntros (N' hA mA γ') "%Hpeq' %HcsA %Ha0A Hmy HRc #Hcode' Hpay Hsz Hustd Hcwd
-                             Hch _ Hrun".
+                             Hch Hpid' _ Hrun".
       iDestruct "Hpay" as "(_ & #Hro' & #Hjt' & Hdat & Hbuf)".
       (* ---- 0x930  c.beqz a0,0x9c0 -- TAKEN: this is the child ---- *)
       iApply (wp_uk_cbeqz N' hA mA (mword_of_int 0x930)
@@ -440,7 +445,7 @@ Section UkShPipeForkTwin.
         with (68 + (8 + (UkShDiag.ush_Dg + n)))%nat
         by (unfold UkShDiag.ush_Dg; lia).
       iApply ("Hchild" $! N' hB mA γ' with "[%] [%] Hmy HRc Hcode' Hro' Hjt'
-                Hline Hws Hsy Hustd Hcwd Hch Hfresh Hrun");
+                Hline Hws Hsy Hustd Hcwd Hch Hpid' Hfresh Hrun");
         [ exact Hpeq' | exact Hs1_A ].
   Qed.
 
@@ -557,7 +562,8 @@ Section UkShPipeForkTwin.
           exact (ushf_pid_sext_ne_m1 pidv Hrng (eq_trans (eq_sym Hpv) Hr1)).
       + (* the child, on the paid entry *)
         iIntros (N' hB mA γ') "%Hpeq' %Hs1A Hmy HRc #Hcode' #Hro' #Hjt'
-                               Hline' Hws Hsy Hustd' Hcwd' Hch' Hfresh Hrun'".
+                               Hline' Hws Hsy Hustd' Hcwd' Hch' Hpid' Hfresh
+                               Hrun'".
         (* THE CHILD'S ROOM, AS ITS OWN LAW ASKS FOR IT (lane SH-CHILD-2):
            the core hands [68 + (8 + (ush_Dg + n))] -- the body's
            [ush_Dbody] less its own frames -- and a law that spends [Dc] of
@@ -571,7 +577,8 @@ Section UkShPipeForkTwin.
                   sz l (68 - Dc + n)%nat np
                   with "[%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%]
                         Hcode' [] []
-                        Hjt' Hline' Hws Hsy Hustd' Hcwd' [Hch'] Hfresh HRc Hrun'").
+                        Hjt' Hline' Hws Hsy Hustd' Hcwd' Hch' Hpid' Hfresh HRc
+                        Hrun'").
         * exact Hpeq'.
         * exact Hs1A.
         * exact Hline.
@@ -586,7 +593,6 @@ Section UkShPipeForkTwin.
         * exact Hrow.
         * iApply (ushf_code_shp with "Hcode'").
         * iApply (ushf_rodata_shp with "Hro'").
-        * iApply (UserChildren.uch_any_of with "Hch'").
       + (* the re-entry, with the pieces back in hand *)
         iIntros (Sw Sw' ret pidv) "%Hpv1 %Hm1 Hfans Hans Hpm".
         rewrite /ushf_fans. iDestruct "Hfans" as "[[%HSw HRc] | Hfans]".

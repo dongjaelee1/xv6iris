@@ -1118,6 +1118,21 @@ Section UkShRun.
         UserFd.ustd (ukn_fd N') l -∗
         UserCwd.ucwd (ukn_cwd N') cw -∗
         UserChildren.uch (ukn_ch N') ∅ -∗
+        (* ...AND ITS OWN PID, AS A HANDLE, WITH THE ONE FACT THAT MAKES IT
+           WORTH HAVING (design app-pipe SS4.3w, purchase 1).  The leaf
+           MINTS it -- [UkFork.wp_uk_ecall_fork]'s child arm hands out
+           [∃ p, ⌜p <> 1⌝ ∗ upid (ukn_pid N') p], "a forked child is the
+           one process that can PROVE it is not <init>" -- and this stub
+           used to DROP it on the floor.  That drop is what left a
+           pipeline round's two reaps PID-ERASED: [UexecRet.uwait_ans]
+           quantifies the caller's pid, so the reaping arm's
+           [γ' ∈ cs \/ pidv = 1] is satisfied by its right disjunct and
+           names nobody (lane SH-PIPE-ROUND-10, witness
+           [UShPipeAssembly.uwait_ans_orphan_arm]).  The pid-carrying wait
+           ([wp_kshr_wait_pid] above) is what refutes it, and it asks for
+           exactly this fragment.  Relayed VERBATIM: a caller that does
+           not want it introduces it and drops it. *)
+        (∃ p : Z, ⌜p <> 1⌝ ∗ UserChildren.upid (ukn_pid N') p) -∗
         ([∗ map] fd ↦ st ∈ D, UserFd.ufd (ukn_fd N') fd st) -∗
         urun N' h'
           (<[Regidx a0_idx := (mword_of_int 0 : mword 64)]>
@@ -1182,7 +1197,7 @@ Section UkShRun.
       iIntros (hp2) "Hrun".
       iApply ("Hpar" $! hp2 r with "[%] Hans HP Hsz Hstd Hcwd HD Hrun").
       exact Hr.
-    - iIntros (N' hc γ') "%Hpeq Hmy HRc [#Hck HP] Hsz Hstd HD Hcwd Hch _ Hrun".
+    - iIntros (N' hc γ') "%Hpeq Hmy HRc [#Hck HP] Hsz Hstd HD Hcwd Hch Hpid Hrun".
       (* the weaker class the rest of sh's walk is stated at: the record
          the arm minted is keyed at [Q], and [Q] does not read the status *)
       pose proof (ukn_const_of_eq N' Q Hpeq HQc) as Hcst'.
@@ -1196,7 +1211,7 @@ Section UkShRun.
       { iApply (uis_shk_c84 with "Hck"). }
       iIntros (hc2) "Hrun".
       iApply ("Hchi" $! N' hc2 γ'
-                with "[%] Hmy HRc Hck HP Hsz Hstd Hcwd Hch HD Hrun").
+                with "[%] Hmy HRc Hck HP Hsz Hstd Hcwd Hch Hpid HD Hrun").
       exact Hpeq.
   Qed.
 
@@ -1354,6 +1369,14 @@ Section UkShRun.
     (∀ (h' : CpuId) (m' : regfile),
        ⌜ forall q : mword 5, uint q <> 1 -> uint q <> 2 -> uint q <> 8 ->
            uint q <> 15 -> m' !!! Regidx q = mt !!! Regidx q ⌝ -∗
+       (* ...AND THE RETURN VALUE IS NOT -1 (design app-pipe SS4.3w,
+          purchase 3).  The [beq a0,a5] at 0x76 is fork1's whole body --
+          the panic arm above is the taken branch, this is the fallen
+          one -- so the fact is free here and derivable NOWHERE ELSE: a
+          caller sees only [r <> 0].  What it buys is a fork ANSWER whose
+          [-1] disjunct is refuted, which is what a pipeline round needs
+          at 0xea to have two live children. *)
+       ⌜ mt !!! Regidx a0_idx <> (mword_of_int (-1) : mword 64) ⌝ -∗
        ⌜ m' !!! Regidx ra_idx = vra ⌝ -∗
        ⌜ m' !!! Regidx s0_idx = vs0 ⌝ -∗
        ⌜ m' !!! Regidx csp_rs1 = sp0 ⌝ -∗
@@ -1482,6 +1505,12 @@ Section UkShRun.
       iApply ("Hpanic" $! h5 t4 with "[%] [%] Hpayv Hrun");
         [ exact Hmsg | exact Hneg ]. }
     (* ---- fork succeeded: pop and return ---- *)
+    (* ...AND THE BRANCH WAS NOT TAKEN, SO a0 IS NOT -1 (purchase 3): the
+       mirror of the taken branch's [Hneg] above. *)
+    assert (Hnm1 : mt !!! Regidx a0_idx <> (mword_of_int (-1) : mword 64)).
+    { intro He. unfold uv_btaken in Hbt.
+      rewrite (Ht1 a0_idx ltac:(vm_compute; discriminate)) Ha5_1 He in Hbt.
+      vm_compute in Hbt. discriminate Hbt. }
     (* 0x7a  c.ldsp ra,8(sp) *)
     iApply (wp_uk_cldsp N h2 t1 (mword_of_int 0x7a)
               (mword_of_int 1 : mword 6) ra_idx (uint sp0 - 8) vra (Dg + n)
@@ -1566,8 +1595,8 @@ Section UkShRun.
               with "[] Hrun").
     { iApply (uis_shk_80 with "Hcode"). }
     iIntros (h6) "Hrun".
-    iApply ("Hcont" $! h6 e3 with "[%] [%] [%] [%] Hpayv Hrun");
-      [ | exact Hra3 | exact Hs03
+    iApply ("Hcont" $! h6 e3 with "[%] [%] [%] [%] [%] Hpayv Hrun");
+      [ | exact Hnm1 | exact Hra3 | exact Hs03
         | exact (upd_eq e2 (Regidx csp_rs1) (regval_into_reg sp0)) ].
     intros q H1 H2 H8 H15.
     assert (Hc1 : uint ra_idx = 1) by (vm_compute; reflexivity).
@@ -1640,6 +1669,12 @@ Section UkShRun.
         mWP (Loop : expr riscv_lang)) ∗
      (∀ (h' : CpuId) (m' : regfile) (r : mword 64),
         ⌜ r <> (mword_of_int 0 : mword 64) ⌝ -∗
+        (* ...AND IT IS NOT -1 EITHER (design app-pipe SS4.3w, purchase
+           3): fork1 PANICS at -1 ([wp_kshr_fork1_tail]'s taken branch),
+           so a caller that reaches this arm forked a live child.  The
+           row refutes [ush_fork_ans]'s failing disjunct, which is what
+           puts the two children's tokens in a pipeline round's hand. *)
+        ⌜ r <> (mword_of_int (-1) : mword 64) ⌝ -∗
         ⌜ ucallee_saved m m' ⌝ -∗
         ⌜ m' !!! Regidx a0_idx = r ⌝ -∗
         (* fork's answer, relayed -- see [wp_kshr_fork] *)
@@ -1673,6 +1708,9 @@ Section UkShRun.
         UserFd.ustd (ukn_fd N') l -∗
         UserCwd.ucwd (ukn_cwd N') cw -∗
         UserChildren.uch (ukn_ch N') ∅ -∗
+        (* ...AND ITS OWN PID, AS A HANDLE (design app-pipe SS4.3w,
+           purchase 1): [wp_kshr_fork]'s row, relayed. *)
+        (∃ p : Z, ⌜p <> 1⌝ ∗ UserChildren.upid (ukn_pid N') p) -∗
         ([∗ map] fd ↦ st ∈ D, UserFd.ufd (ukn_fd N') fd st) -∗
         urun N' h' m' (ret_pc (m !!! Regidx ra_idx)) (2 + (Dg + n)) -∗
         mWP (Loop : expr riscv_lang))) -∗
@@ -1906,7 +1944,7 @@ Section UkShRun.
         iApply ("Hpanic" $! hp2 m' r
                   with "[%] [%] Hans Hstd Hpayv Hrun");
           [ exact Hmsg | exact Hneg ]. }
-      iIntros (hp2 m') "%Hq %Hra %Hs0 %Hsps Hpayv Hrun".
+      iIntros (hp2 m') "%Hq %Hnm1 %Hra %Hs0 %Hsps Hpayv Hrun".
       (* the parent's a0 IS the return value, and it is not 0 -- so what
          comes back is [X] and not the tail's dead disjunct *)
       iDestruct "Hpayv" as "[(Hpayv & Hans & HP & Hsz & Hstd & Hcwd & HD)
@@ -1914,8 +1952,12 @@ Section UkShRun.
       { exfalso. apply Hr.
         rewrite <- Hz0. symmetry. exact (upd_eq _ (Regidx a0_idx) r). }
       iApply ("Hpar" $! hp2 m' r
-                with "[%] [%] [%] Hans HP Hsz Hstd Hcwd HD Hpayv [Hrun]").
+                with "[%] [%] [%] [%] Hans HP Hsz Hstd Hcwd HD Hpayv [Hrun]").
       + exact Hr.
+      + intro Heq. apply Hnm1.
+        rewrite (upd_eq (<[Regidx a7_idx := (mword_of_int 1 : mword 64)]> m3)
+                   (Regidx a0_idx) r).
+        exact Heq.
       + exact (fun q => Hback r m' q Hq Hra Hs0 Hsps).
       + rewrite (Hq a0_idx ltac:(vm_compute; lia) ltac:(vm_compute; lia)
                    ltac:(vm_compute; lia) ltac:(vm_compute; lia)).
@@ -1923,7 +1965,7 @@ Section UkShRun.
       + iExact "Hrun".
     - (* ---- THE CHILD, under fresh names ---- *)
       iIntros (N' hc γ') "%Hpeq Hmy HRc #Hck (#Hcro & HP & Hw8 & Hw0) Hsz Hstd
-                          Hcwd Hch HD Hrun".
+                          Hcwd Hch Hpid HD Hrun".
       pose proof (ukn_const_of_eq N' Q Hpeq HQc) as Hcst'.
       (* THE CHILD NEVER PANICS: its a0 is 0 on the nose, which is what
          stands in for the trivial record's free payload. *)
@@ -1939,9 +1981,10 @@ Section UkShRun.
         rewrite (upd_eq _ (Regidx a0_idx) (mword_of_int 0 : mword 64)) in Hneg.
         apply (f_equal bv_unsigned) in Hneg. vm_compute in Hneg.
         discriminate Hneg. }
-      iIntros (hc2 m') "%Hq %Hra %Hs0 %Hsps _ Hrun".
+      iIntros (hc2 m') "%Hq _ %Hra %Hs0 %Hsps _ Hrun".
       iApply ("Hchi" $! N' hc2 m' γ'
-                with "[%] [%] [%] Hmy HRc Hck HP Hsz Hstd Hcwd Hch HD [Hrun]").
+                with "[%] [%] [%] Hmy HRc Hck HP Hsz Hstd Hcwd Hch Hpid HD
+                      [Hrun]").
       + exact Hpeq.
       + exact (fun q => Hback (mword_of_int 0 : mword 64) m' q Hq Hra Hs0 Hsps).
       + rewrite (Hq a0_idx ltac:(vm_compute; lia) ltac:(vm_compute; lia)
@@ -2037,7 +2080,7 @@ Section UkShRun.
                 with "Hdp Hcode Hro [] Hpayv Hrun").
       rewrite ush_diag_res_panic. done. }
     iSplitL "Hpar".
-    - iIntros (h' m' r) "%Hr %Hcs %Ha0 Hans HP Hsz Hstd Hcwd HD Hpayv Hrun".
+    - iIntros (h' m' r) "%Hr _ %Hcs %Ha0 Hans HP Hsz Hstd Hcwd HD Hpayv Hrun".
       iAssert (UserChildren.uch_any (ukn_ch N)) with "[Hans]" as "Hch".
       { iDestruct "Hans" as "[(_ & Hf & _) | Hpid]".
         - iApply (uch_any_of with "Hf").
@@ -2047,7 +2090,7 @@ Section UkShRun.
                 with "[%] [%] [%] HP Hsz Hstd [Hcwd] Hch HD Hpayv Hrun");
         [ exact Hr | exact Hcs | exact Ha0
         | iApply (ucwd_any_of with "Hcwd") ].
-    - iIntros (N' h' m' γ') "%Hpeq %Hcs %Ha0 _ _ #Hck HP Hsz Hstd Hcwd Hch HD
+    - iIntros (N' h' m' γ') "%Hpeq %Hcs %Ha0 _ _ #Hck HP Hsz Hstd Hcwd Hch _ HD
                              Hrun".
       iApply ("Hchi" $! N' h' m'
                 with "[%] [%] [%] Hck HP Hsz Hstd [Hcwd] [Hch] HD Hrun");

@@ -554,6 +554,34 @@ Definition fline_ok (b : list (bv 8)) : Prop :=
 Lemma fline_ok_of l : uline_ok l -> fline_ok (line_body l).
 Proof using. intro H. by exists l. Qed.
 
+(* ...AND WHICH LINE THE [cat f] WORD LIST IS: the fork's words at a cat
+   round are [uline_ws LCat], and no other constructor has them -- an echo
+   line's first word is [echo], a redirect's and a pipeline's word lists are
+   two longer than a command's, which has at least two. *)
+Lemma fline_ok_cat_words (b : list (bv 8)) :
+  fline_ok b -> wl_words b = uline_ws LCat -> uline_of b = LCat.
+Proof using.
+  intros (l & Hok & ->) Hw.
+  destruct l as [ws' | ws' | | ws'].
+  - exfalso. cbn [line_body] in Hw.
+    rewrite (wl_words_body ws' (line_ok_wf _ Hok)) in Hw.
+    pose proof (line_ok_head ws' Hok) as Hh. rewrite Hw in Hh.
+    revert Hh. cbn [uline_ws]. vm_compute. discriminate.
+  - exfalso. destruct Hok as [Hok' _].
+    rewrite (uline_ws_gtf ws' Hok') in Hw.
+    apply (f_equal length) in Hw. revert Hw.
+    cbn [uline_ws]. rewrite length_app.
+    pose proof (line_ok_ge2 ws' Hok') as H2.
+    vm_compute (length (wl_words cmd_cat_f)). cbn [length]. lia.
+  - apply uline_of_body; [ intros w Hp; discriminate Hp | exact Hok ].
+  - exfalso. destruct Hok as [Hok' _].
+    rewrite (uline_ws_pipe ws' Hok') in Hw.
+    apply (f_equal length) in Hw. revert Hw.
+    cbn [uline_ws]. rewrite length_app.
+    pose proof (line_ok_ge2 ws' Hok') as H2.
+    vm_compute (length (wl_words cmd_cat_f)). cbn [length]. lia.
+Qed.
+
 (* WHICH LINE A REDIRECT WORD LIST IS (RULING SLOT-WS, option B): an
    admissible body whose words are a command's, then `>', then a file name,
    is THE redirect line of that command, and the file is `f`.  This is what

@@ -1143,10 +1143,12 @@ Section UkShEcho.
   (* it does today.  The disjunction is [UConsLine.ush_rest_line]'s, and   *)
   (* the case split belongs to the body that holds it (SH-LINE 2b).        *)
   (* =================================================================== *)
-  (* THE CHILD'S WALK AT ANY EXEC'ABLE LINE (2026-09-21): parse, then the
-     exec arm.  Nothing in it reads the command but the failed-exec
+  (* THE CHILD'S WALK AT ANY EXEC'ABLE LINE (2026-09-21), AND AT ANY ROW
+     PREDICATE the supply asks of the child's table ([Fd1], as the arm's:
+     echo's entry reads row 1, cat's rows 0-2): parse, then the exec arm.  Nothing in it reads the command but the failed-exec
      diagnostic ([wp_kshr_exec_x_at]); echo's walk is its instance. *)
-  Definition wp_kshm_child_x (ws : list (list (bv 8)))
+  Definition wp_kshm_child_x (Fd1 : list fdstate -> Prop)
+      (ws : list (list (bv 8)))
       (dg : list (bv 8)) (Q : Z -> iProp Σ) (Cr Cd : iProp Σ) : Prop :=
     forall (N : uk_names Σ) (Hc : ukn_const N)
            (h : CpuId) (m : regfile) (dw dv : dfrac)
@@ -1161,12 +1163,12 @@ Section UkShEcho.
       8344 <= sz ->
       UserPtTree.pgroundup sz = sz ->
       usz_ok (sz + 65536) ->
-      UkSh.ush_fd1p ld ->
+      Fd1 ld ->
       UkSh.ush_fd2p ld ->
       (* NO FREE WRITE LAW (M4b(2)): the paid child's walk spends it
          nowhere *)
       ⊢ shk_code (ukn_t N) -∗
-        sh_exec_sup_echo ws Q Cr -∗
+        sh_exec_sup_echo_at Fd1 ws Q Cr -∗
         (* what the lend pays where the parser's walk DIES (the null store
            at [memset]) -- and the diagnostic's law and what its end pays
            where the exec FAILED (M4b(2)) *)
@@ -1226,9 +1228,10 @@ Section UkShEcho.
           (60 + (8 + (UkShDiag.ush_Dg + n))) -∗
         mWP (Loop : expr riscv_lang).
 
-  Lemma wp_kshm_child_x_holds (ws : list (list (bv 8)))
+  Lemma wp_kshm_child_x_holds (Fd1 : list fdstate -> Prop)
+      (ws : list (list (bv 8)))
       (dg : list (bv 8)) (Q : Z -> iProp Σ) (Cr Cd : iProp Σ) :
-    wp_kshm_child_x ws dg Q Cr Cd.
+    wp_kshm_child_x Fd1 ws dg Q Cr Cd.
   Proof.
     intros N Hc h m dw dv s0 len f sz ld n
       Hpeq Hs1 Hline Hdgb Hs0 Hs64 Hs38 Hszlo Hszal Hszok Hfd1 Hfd2.
@@ -1354,7 +1357,7 @@ Section UkShEcho.
        generic supply appears anywhere in this walk. *)
     replace (60 + (8 + (UkShDiag.ush_Dg + n)))%nat
       with (6 + (2 + (UkShDiag.ush_Dg + (60 + n))))%nat by lia.
-    iApply (wp_kshr_exec_x_at_holds UkSh.ush_fd1p ws dg Q Cr Cd N _ h4 m4 p
+    iApply (wp_kshr_exec_x_at_holds Fd1 ws dg Q Cr Cd N _ h4 m4 p
               (sz + 65536) s0
               (ushp_nulfold (echo_toks ws) (ushp_ext len f)) ld ((60 + n)%nat)
               Hok Hdgb Hpeq Ha0_4 Hbytes Hfd1 Hfd2
@@ -1371,7 +1374,7 @@ Section UkShEcho.
     pose proof (proj1 Hline) as Hok.
     pose proof (list_lookup_total_correct ws 0%nat cmd_echo
                   (line_ok_head ws Hok)) as Hhd.
-    pose proof (wp_kshm_child_x_holds ws alt_execfail Q Cr Cd
+    pose proof (wp_kshm_child_x_holds UkSh.ush_fd1p ws alt_execfail Q Cr Cd
                   N Hc h m dw dv s0 len f sz ld n
                   Hpeq Hs1 (ush_xline_is_of_line ws f 0%nat len Hline)
                   ltac:(rewrite Hhd; exact echo_execfail_bytes)

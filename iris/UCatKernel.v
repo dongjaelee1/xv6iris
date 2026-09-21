@@ -1913,7 +1913,7 @@ Section UCatEntry.
   Lemma cat_pay_present (W : uvis) (v : era_pins) (vf : file_era)
       (ps0 cs0 : list nat) (s0 : fstate) (I0 : list (bv 8)) (P : nat)
       (c : file_fixed) (r : file_names) (q1 q2 : Qp) (i : Z)
-      (bs : list (bv 8)) (om : offmode) (rb : bool) (Q : Z -> iProp Σ)
+      (bs : list (bv 8)) (om : offmode) (rb rb2 : bool) (Q : Z -> iProp Σ)
       (F : iProp Σ) :
     c = fgn_cl g ->
     UCatOut.cat_stage ps0 cs0 s0 I0 P ->
@@ -1922,7 +1922,7 @@ Section UCatEntry.
     take NSTD (uvis_fd W) !! 1%nat
       = Some (FdOpen rb true (FdDevice CONSOLE)) ->
     take NSTD (uvis_fd W) !! 2%nat
-      = Some (FdOpen rb true (FdDevice CONSOLE)) ->
+      = Some (FdOpen rb2 true (FdDevice CONSOLE)) ->
     fd_lowest_closed (take NSTD (uvis_fd W)) = None ->
     era_pin (fgn_echo g) (S gen_id) v -∗
     file_era_pin g (S gen_id) vf -∗
@@ -2030,7 +2030,7 @@ Section UCatEntry.
           iApply (UkFileOpen.uk_open_taint_fd_std (ukn_fd N')
                     (take NSTD (uvis_fd W)) ret Hnone with "Hf"). }
       iApply (cat_dg_open_noopen g Hcons N' v vf ps0 cs0 s0 I0 P
-                (take NSTD (uvis_fd W)) rb ga Hst Hl2 Hglen Hfb
+                (take NSTD (uvis_fd W)) rb2 ga Hst Hl2 Hglen Hfb
                 with "Hpin Hfp [HD HF] Hstd [Hc]").
       + iIntros "[_ Hc]". rewrite Hpayeq.
         iDestruct "HD" as "[Hd | #HT]";
@@ -2154,7 +2154,7 @@ Section UCatEntry.
   Lemma cat_pay_filed_some (W : uvis) (v : era_pins) (vf : file_era)
       (ps0 cs0 : list nat) (s0 : fstate) (I0 : list (bv 8)) (P : nat)
       (c : file_fixed) (r : file_names) (q : Qp) (i : Z)
-      (bs : list (bv 8)) (rb : bool) (jc : Z) (Q : Z -> iProp Σ)
+      (bs : list (bv 8)) (rb rb2 : bool) (jc : Z) (Q : Z -> iProp Σ)
       (F : iProp Σ) :
     file_app = MkAppcfg file_names (file_pred c) r ->
     c = fgn_cl g ->
@@ -2164,7 +2164,7 @@ Section UCatEntry.
     take NSTD (uvis_fd W) !! 1%nat
       = Some (FdOpen rb true (FdDevice CONSOLE)) ->
     take NSTD (uvis_fd W) !! 2%nat
-      = Some (FdOpen rb true (FdDevice CONSOLE)) ->
+      = Some (FdOpen rb2 true (FdDevice CONSOLE)) ->
     fd_lowest_closed (take NSTD (uvis_fd W)) = None ->
     (* THE PAYLOAD IS THE FORK'S, not cat's: a generation's payload is
        what its parent chose ([ChildTok.my_pay_agree] makes the entry's
@@ -2209,7 +2209,7 @@ Section UCatEntry.
       iDestruct (fdq_join r (q / 2) (q / 2) with "Hd1 Hd2") as "Hd".
       rewrite Qp.div_2. iExact "Hd". }
     iApply (cat_pay_present W v vf ps0 cs0 s0 I0 P c r (q / 2)%Qp (q / 2)%Qp
-              i bs OffHeld rb _ F
+              i bs OffHeld rb rb2 _ F
               Hgc Hst Htie Hcw Hl1 Hl2 Hnone
               with "Hpin Hfp [] [] [] [] [] Htaint").
     - (* the open's law, at cat's own cwd *)
@@ -2314,7 +2314,7 @@ Section UCatEntry.
       (v : era_pins) (vf : file_era) (ps0 cs0 : list nat) (s0 : fstate)
       (I0 : list (bv 8)) (P : nat)
       (c : file_fixed) (r : file_names) (q : Qp) (s : dst)
-      (rb : bool) (jc : Z) (Q : Z -> iProp Σ) (F : iProp Σ) :
+      (rb rb2 : bool) (jc : Z) (Q : Z -> iProp Σ) (F : iProp Σ) :
     (forall x y : Z, Q x = Q y) ->
     file_app = MkAppcfg file_names (file_pred c) r ->
     c = fgn_cl g ->
@@ -2331,7 +2331,7 @@ Section UCatEntry.
        = FsImgCheck.fname_f !!! j) ->
     cw = FsImg.ROOTINO ->
     take NSTD sts !! 1%nat = Some (FdOpen rb true (FdDevice CONSOLE)) ->
-    take NSTD sts !! 2%nat = Some (FdOpen rb true (FdDevice CONSOLE)) ->
+    take NSTD sts !! 2%nat = Some (FdOpen rb2 true (FdDevice CONSOLE)) ->
     fd_lowest_closed (take NSTD sts) = None ->
     (* the machine's credential and the application's flag are one fact --
        as a CONVERSION, not the flag itself, which had made this entry an
@@ -2372,14 +2372,14 @@ Section UCatEntry.
                ∗ F)%I _ with "[]").
     { iIntros "[[Hd Hc] HF]". iFrame "Hd Hc HF". }
     destruct s as [[i bs] |].
-    - iApply (cat_pay_filed_some W' v vf ps0 cs0 s0 I0 P c r q i bs rb jc Q F
+    - iApply (cat_pay_filed_some W' v vf ps0 cs0 s0 I0 P c r q i bs rb rb2 jc Q F
                 Heq Hgc Hst Htie
                 ltac:(rewrite Hcww; exact Hcw)
                 ltac:(rewrite Hfdw; exact Hl1)
                 ltac:(rewrite Hfdw; exact Hl2)
                 ltac:(rewrite Hfdw; exact Hnone)
                 with "HQ HQt Hbr Hkc Hmade Hinv Hpin Hfp Htaint").
-    - iApply (cat_pay_filed_none W' v vf ps0 cs0 s0 I0 P c r q rb Q F
+    - iApply (cat_pay_filed_none W' v vf ps0 cs0 s0 I0 P c r q rb2 Q F
                 Heq Hgc Hst Htie
                 ltac:(rewrite Hcww; exact Hcw)
                 ltac:(rewrite Hfdw; exact Hl2)

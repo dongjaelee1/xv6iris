@@ -9057,7 +9057,27 @@ neither do `UInitPipe.v`, `UInitPipeAdequacy.v` or `PipeAssumptions.v`.
 **(6) WHAT THE ROUND STILL OWES, itemised and measured.**
 1. the LEFT child's diagnostic at the family's left chain
    (`ush_execfail_law alt_execfail 17 (RcL γp) Cd` over `pblk2_cstep_L`
-   + `ksh_w1_of_step`; no fupd — the left chain fires no mode).  Note the
+   + `ksh_w1_of_step`; no fupd — the left chain fires no mode).  **AND IT
+   HAS A WALL OF ITS OWN, measured at the statement: the law's STEP IS
+   NOT GUARDED BY `p < n`.**  `UkShDiag.ush_execfail_law_at dg n` asks
+   for a byte step at EVERY `p` with `dg !! p = Some b`, and the echo
+   child's `dg` is `alt_execfail = dg_execL ++ u_prompt` — NINETEEN
+   bytes — while `n` is 17.  The echo era gets away with it because its
+   supplier is the LINK RECORD, whose block family steps every byte of
+   the block, the shell's next prompt included.  The pipeline round's
+   left chain cannot: `PipeBoth.pblk2_cstep_L` is hard-wired to
+   `dg_execL !! c1 = Some b` (17 bytes), and at a pipeline round the
+   prompt is NOT the child's to write — it is the parent's, out of the
+   closed family (`pwc_line2`'s third arm → `PipeBoth.pblk2_exit_lk`).
+   No choice of `Pf` repairs it: `Pf 17` is what the sixteenth step
+   produces and the seventeenth would have to perform a console write
+   nothing pays for.  THE REPAIR IS ONE LINE, in a generic file this
+   lane does not own: guard `ush_execfail_law_at`'s step with
+   `⌜(p < n)%nat⌝`.  It strictly WEAKENS what a supplier must provide
+   (every landed supplier still proves it) and no consumer loses
+   anything — measured: `UkShDiag.wp_kshd_execfail_paid` /
+   `wp_kshd_panic_paid` and `UkShPipePaid.wp_kshd_panic_paid_at` spend
+   the step at `p < n` only.  Note the
    consequence for the round's payload: `XL` IS the `wtok pn` inside the
    refunded `ep_pay`, so it is spent into the family and the round must
    read `PExecL` off the CURSOR (`c1 = length dg_execL`, which is all
@@ -9068,9 +9088,10 @@ neither do `UInitPipe.v`, `UInitPipeAdequacy.v` or `PipeAssumptions.v`.
 3. **the big one**: cat's `Hw` — the MULTI-byte console write at the
    family's right chain at mode 1.  `UCatKernel.cat_w_of_link` (≈200
    lines) is the FILE era's twin and there is no generic version; the
-   cheap half is a `cons_out_chain`-of-step leaf (the multi-byte sibling
-   of `ksh_w1_of_step`, i.e. `UShPanic.prompt_chain`'s own move), the
-   rest is the copy at `Ch c := wcur gR (1/2) c ∗ wcur gM (1/2) 1`.  The
+   cheap half is LANDED here as `UShPipeAssembly.out_step` /
+   `out_chain_of_step` (the multi-byte sibling of `ksh_w1_of_step`, i.e.
+   `UShPanic.prompt_chain` with the prompt taken out); the rest is the
+   copy at `Ch c := wcur gR (1/2) c ∗ wcur gM (1/2) 1`.  The
    mode's fire to 1 deposits `YR`, which cat has from
    `PipeProto.pws_lb_of_rcur`.
 4. the registrar at the PRE-ALLOCATED `pn` (`ush_pipe_call_echo_pay`'s

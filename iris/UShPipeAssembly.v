@@ -292,6 +292,45 @@ Section UShPipeAssemblyGen.
   Qed.
 
   (* =================================================================== *)
+  (*  S2a  ...AND THE SAME AT A MULTI-BYTE CALL                           *)
+  (*                                                                     *)
+  (*  [UShPanic.prompt_chain] with the prompt taken out: a run of bytes   *)
+  (*  written by ONE [write(2, buf, n)] is a [cons_out_chain] over the    *)
+  (*  same step family, and cat's console turn                            *)
+  (*  ([UCatPipe.pcat_round_at_g]'s [Hw], whose FILE-era discharge is     *)
+  (*  [UCatKernel.cat_w_of_link]) is exactly that at the pipeline         *)
+  (*  family's RIGHT chain.  This is the half of that discharge which is  *)
+  (*  not cat's geometry.                                                 *)
+  (* =================================================================== *)
+  Definition out_step (bs : list (bv 8)) (F : nat -> iProp Σ) : iProp Σ :=
+    (□ (∀ (p : nat) (b : bv 8) (Φ : iProp Σ),
+          ⌜ bs !! p = Some b ⌝ -∗
+          F p -∗ (F (S p) -∗ Φ) -∗ out_link Uart0 (S gen_id) b Φ))%I.
+
+  Lemma out_chain_of_step (bs : list (bv 8)) (F : nat -> iProp Σ)
+      (M : gmap Z (bv 8)) (ua : mword 64) (fb : nat -> bv 8) :
+    forall (c i : nat),
+    (forall j : nat, (i <= j)%nat -> (j < i + c)%nat -> bs !! j = Some (fb j)) ->
+    (forall j : nat, (i <= j)%nat -> (j < i + c)%nat ->
+       M !! uint (add_vec_int ua (Z.of_nat j)) = Some (fb j)) ->
+    out_step bs F -∗ F i -∗ cons_out_chain (S gen_id) M ua F i c.
+  Proof using .
+    intros c. induction c as [| c IH]; intros i Hline HM.
+    - iIntros "_ Hc". cbn [cons_out_chain]. iExact "Hc".
+    - iIntros "#Hst Hc". cbn [cons_out_chain]. iSplit.
+      + iExact "Hc".
+      + iIntros (b) "%Hbm".
+        assert (Hbb : b = fb i).
+        { rewrite (HM i ltac:(lia) ltac:(lia)) in Hbm. by injection Hbm. }
+        subst b.
+        iApply ("Hst" $! i (fb i) _ with "[%] Hc").
+        { exact (Hline i ltac:(lia) ltac:(lia)). }
+        iIntros "Hc".
+        iApply (IH (S i) ltac:(intros j H1 H2; apply Hline; lia)
+                  ltac:(intros j H1 H2; apply HM; lia) with "Hst Hc").
+  Qed.
+
+  (* =================================================================== *)
   (*  S2b  THE RUNCMD CHILD'S OWN EXIT, PAID                              *)
   (*                                                                     *)
   (*  [UkShRun.wp_kshr_exit0] -- the [c.li a0,0; jal ra,<exit>] every     *)

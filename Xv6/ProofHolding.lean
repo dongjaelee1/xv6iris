@@ -218,6 +218,87 @@ theorem holding_notheld_proof (MC : MYCPU) {hlc : HasLC} {GF : BundledGFunctors}
       · ipureintro; exact hne
 
 set_option maxHeartbeats 4000000 in
+/-- Cancellable-lock form of `holding_notheld_proof`: opens through
+`lockOpenable γ lk s R D`, threading the credential `Tc` (which refutes the
+dead branch `D`) through the racy word load and the owner-word load, and
+handing it back in the continuation.  `holding_tail` is generic in its
+`P`/`Q` and needs no change. -/
+theorem holding_notheld_gen_proof (MC : MYCPU) {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF] [CurCtx]
+    (cpu : CPU) (k : KCtx) (γ : GName) (s : String) (R : CtxId → IProp GF)
+    (D : IProp GF) [Timeless D] (Tc : IProp GF) (hrefute : ⊢ Tc -∗ D -∗ (False : IProp GF))
+    (hsie : k.sie = false) (hK : 6 ≤ k.avail) (hs : s ∉ k.locks) :
+    wp_holding_notheld_gen_body (hlc := hlc) (GF := GF) cpu k γ s R D Tc hrefute hsie hK hs := by
+  unfold wp_holding_notheld_gen_body
+  iintro ⟨Hk, Hpc, #Hlk, Hcred, HΦ⟩
+  icases kctx_kernelText _ _ $$ Hk with ⟨#Htext, Hk⟩
+  icases kctx_wf _ _ $$ Hk with ⟨%hwf, Hk⟩
+  ihave Hk := (show kctx cpu k ⊢ kctx cpu (k.withRegs k.regs) from by rw [KCtx.withRegs_self]) $$ Hk
+  simp only [holdingAddr, KernelSyms.«holding»]
+  -- lw a5,0(a0): racy
+  k_step (wp_s_lw_lockword_gen cpu _ ?hs 0x80000b54#64 true 0#12 15#5 10#5 (by decide) γ (k.regs 10#5) s R D Tc hrefute ?haddr) from (text_instr _ _ _ _ rfl rfl) Htext
+    $$ [- $Hk $Hpc $Hcred]
+  case haddr => k_norm
+  iintro %w Hk Hpc Hcred
+  by_cases hw : w = 0#32
+  · -- the word is 0: not held; return 0, handing Tc back
+    subst hw
+    k_step (wp_s_branch cpu _ 0x80000b56#64 true 6#13 15#5 0#5 (by decide) bop.BNE) from (text_instr _ _ _ _ rfl rfl) Htext
+      $$ [- $Hk $Hpc] with [bcond_bne_00']
+    iintro Hk Hpc
+    -- li a0,0
+    k_step (wp_s_addi cpu _ 0x80000b58#64 true 0#12 10#5 0#5 (by decide)) from (text_instr _ _ _ _ rfl rfl) Htext $$ [- $Hk $Hpc]
+    iintro Hk Hpc
+    -- ret
+    k_step (wp_s_ret cpu _ 0x80000b5a#64 true 1#5) from (text_instr _ _ _ _ rfl rfl) Htext $$ [- $Hk $Hpc]
+    iintro Hk Hpc
+    iapply HΦ $$ %_ Hk Hpc [] Hcred
+    ipureintro
+    constructor
+    · unfold calleeSaved
+      simp only [RegMap.set_apply, BitVec.reduceEq, ite_false, ite_true, eq_self_iff_true, true_and, and_true]
+    · simp only [RegMap.set_apply, BitVec.reduceEq, ite_false, ite_true, BitVec.reduceSignExtend, BitVec.add_zero]
+  · -- the word is nonzero: read the owner word, which is not ours; Tc rides in Q
+    k_step (wp_s_branch cpu _ 0x80000b56#64 true 6#13 15#5 0#5 (by decide) bop.BNE) from (text_instr _ _ _ _ rfl rfl) Htext
+      $$ [- $Hk $Hpc] with [bcond_bne_sext_ne w hw]
+    iintro Hk Hpc
+    iapply (holding_tail MC cpu (k.withRegs (k.regs.set 15#5 (BitVec.signExtend 64 w))) hsie hK
+      (iprop(lockOpenable γ (k.regs 10#5) s R D ∗ Tc)) (fun w' => iprop(⌜w' ≠ cpuAddr cpu⌝ ∗ Tc)) 0#64 ?hld ?hans)
+    rotate_right 1
+    · iframe Hk Hpc Hcred
+      iframe #
+      iintro %R' %w' Hk Hpc %hcs ⟨%_, Hcred⟩
+      k_norm
+      iapply HΦ $$ %_ Hk Hpc [] Hcred
+      ipureintro
+      obtain ⟨hcs, h10⟩ := hcs
+      refine ⟨?_, h10⟩
+      unfold calleeSaved at hcs ⊢
+      simp only [KCtx.withRegs_regs, RegMap.set_apply, BitVec.reduceEq, ite_false] at hcs
+      exact hcs
+    case hld =>
+      iintro ⟨#Hi, Hk, Hpc, ⟨#Hlk, Hcred⟩, HΦ'⟩
+      iapply (wp_s_ld_lkcpu_notheld_gen cpu (holdingFrameCtx (k.withRegs (k.regs.set 15#5 (BitVec.signExtend 64 w))))
+        (by k_norm [holdingFrameCtx]) 0x80000b66#64 true 16#12 15#5 10#5 (by decide) γ
+        (k.regs 10#5) s R D Tc hrefute (by k_norm [holdingFrameCtx]) (by k_norm [holdingFrameCtx]; exact hs))
+      iframe Hk Hpc Hcred
+      iframe #
+      inext
+      iapply wpNext_mono $$ HΦ'
+      iintro %cpu' HK %w' Hk Hpc %hne Hcred
+      iapply HK $$ %w' Hk Hpc
+      isplit
+      · ipureintro; exact hne
+      · iexact Hcred
+    case hans =>
+      intro w'
+      iintro ⟨%hne, Hcred⟩
+      isplit
+      · ipureintro; exact sltiu_diff_ne w' (cpuAddr cpu) hne
+      · isplit
+        · ipureintro; exact hne
+        · iexact Hcred
+
+set_option maxHeartbeats 4000000 in
 theorem holding_locked_proof (MC : MYCPU) {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF] [CurCtx]
     (cpu : CPU) (k : KCtx) (γ : GName) (s : String) (R : CtxId → IProp GF)
     (hsie : k.sie = false) (hK : 6 ≤ k.avail) :
@@ -278,6 +359,8 @@ theorem holding_locked_proof (MC : MYCPU) {hlc : HasLC} {GF : BundledGFunctors} 
 
 theorem holding_proof (MC : MYCPU) : HOLDING :=
   ⟨fun {_ _} _ _ cpu k γ s R hsie hK hs => holding_notheld_proof MC cpu k γ s R hsie hK hs,
-   fun {_ _} _ _ cpu k γ s R hsie hK => holding_locked_proof MC cpu k γ s R hsie hK⟩
+   fun {_ _} _ _ cpu k γ s R hsie hK => holding_locked_proof MC cpu k γ s R hsie hK,
+   fun {_ _} _ _ cpu k γ s R D _ Tc hrefute hsie hK hs =>
+     holding_notheld_gen_proof MC cpu k γ s R D Tc hrefute hsie hK hs⟩
 
 end Xv6

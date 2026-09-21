@@ -65,4 +65,29 @@ structure ACQUIRE : Prop where
     (γ : GName) (s : String) (R : CtxId → IProp GF) [CtxMorph R] hnoff hK hs,
     wp_acquire_body (hlc := hlc) (GF := GF) cpu k γ s R hnoff hK hs
 
+/-- **Cancellable-lock form of `wp_acquire_body`.**  Opens through
+`lockOpenable γ lk s R D`, ruling out the dead branch with a credential
+`Tc` that refutes `D`; `Tc` is threaded through push_off, the holding
+check, the acquire spin and the owner store, and handed back in the
+continuation.  The `D := False`, `Tc := emp` case recovers
+`wp_acquire_body`. -/
+def wp_acquire_gen_body {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF] [CurCtx]
+    (cpu : CPU) (k : KCtx) (γ : GName) (s : String) (R : CtxId → IProp GF) [CtxMorph R]
+    (D : IProp GF) [Timeless D] (Tc : IProp GF) (hrefute : ⊢ Tc -∗ D -∗ (False : IProp GF))
+    (hnoff : k.noff + 1 < 2 ^ 31) (hK : 10 ≤ k.avail) (hs : s ∉ k.locks) : Prop :=
+  kctx cpu k ∗ pcIs cpu acquireAddr ∗ lockOpenable γ (k.regs 10#5) s R D ∗ Tc ∗
+  wpNext k.sie k.proc cpu (fun cpu' => iprop(∀ spie : Bool, ∀ spp : Bool, ∀ R' : RegMap,
+    ⌜k.sie = false → spie = k.spie ∧ spp = k.spp⌝ -∗
+    kctx cpu' (((k.pushOffAt spie spp).withRegs R').withLocks (s :: k.locks)) -∗
+    pcIs cpu' (jumpPc (k.regs 1#5)) -∗ ⌜calleeSaved k.regs R'⌝ -∗
+    locked γ cpu' -∗ R curCtx -∗ (∃ K : Nat, viewLb cpu' K) -∗ sieArm cpu' k.sie k.proc -∗ Tc -∗ wpLoop cpu'))
+  ⊢ wpLoop (GF := GF) cpu
+
+/-- The cancellable-lock interface of `acquire`. -/
+structure ACQUIRE_GEN : Prop where
+  wp_acquire_gen : ∀ {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF] [CurCtx] (cpu : CPU) (k : KCtx)
+    (γ : GName) (s : String) (R : CtxId → IProp GF) [CtxMorph R] (D : IProp GF) [Timeless D] (Tc : IProp GF)
+    hrefute hnoff hK hs,
+    wp_acquire_gen_body (hlc := hlc) (GF := GF) cpu k γ s R D Tc hrefute hnoff hK hs
+
 end Xv6

@@ -356,6 +356,11 @@ arm is the theorem's one named premise (`pipe_both_law`).
   BLOCKED**: §4.3j's widened exit payload CANNOT BE REDEEMED — the fork
   arm redeems a child's exit with `ChildTok.gen_pay_timeless` and
   `pterm_shape` carries the family's `inv`.  See the Findings block.
+- [ ] **PIPE-STAGE-5** (design §4.3n: the era-fixed family invariant behind a
+  per-round registry as the eighth leaf of `pipe_links`; the terminal round
+  through the record; `UkShPipeFork`/`blk2_inv` retired; the round law
+  takes the /cat pin).  Brief `brief-pipe-stage-5.md`.
+- [ ] **SH-PIPE-ROUND-7** (after STAGE-5): the assembly; the theorem.
 ## Findings (append as lanes report)## Findings (append as lanes report)## Findings (append as lanes report)
 
 ### PQ-FLAG-2 (2026-09-18) — the write link's second premise, paid by the CODE

@@ -1151,6 +1151,58 @@ the assembly at `pipe_round_entry`/`pipe_round_exit`, `sh_pipe_child_law_all`,
 per-round registry in `pipe_era` (STAGE-4's Findings §7) is an optional
 later simplification, off the critical path.
 
+### 4.3n RULED (2026-09-23, after SH-PIPE-ROUND-6): the family lives in an ERA-FIXED invariant behind a per-round registry (STAGE-4's §7); the exclusion is the protocol fact at the registry's record; the round law takes the /cat pin
+
+ROUND-6 landed the terminal prompt arm and a timeless, persistent core
+at which the read after the terminal prompt is refuted as a plain
+entailment (`pterm_tcore_read`), showed that §4.3j's redefinition needs
+no new definition (`pterm_wq_pay`), and refuted order B at a THIRD site
+of the same wall: `UkShFork`'s fork arm redeems a child's exit payload
+with `gen_pay_timeless` (`HWct : ∀ I p, Timeless (Wc I p)`), the
+terminal payload carries `blk2_inv`, and no later-providing leaf lies
+between the `wait`'s return and the prompt.  Every carrier a per-round
+`inv` can ride in has now been measured: the record (STAGE-3), the
+claim (STAGE-4), the escrow (ROUND-6).  RULED: the family's invariant is
+ERA-FIXED — allocated once with the era, held in the record's fixed
+persistent bundle, which every consumer already has — and the per-round
+data sits behind a registry:
+
+- `pipe_era` gains `pe_fam : gname`, a `mono_list` of per-round records
+  `(pn, γp, L, gL, gR, gM)` — the pipe's protocol names, the line, and
+  the three family gnames; lower bounds are persistent, so BOTH children
+  and the main loop hold the current round's record.
+- `PipeLinks.pipe_links` gains an EIGHTH leaf, `pipe_link_fam := inv
+  pipefamN (∃ recs, own (pe_fam w) (●ML recs) ∗ fam_body (last recs))`,
+  where `fam_body` at the current record is STAGE-4's `blk2_body` with
+  the exclusion witnesses CONCRETE: `XL := wcur pn 0`, `YR := pws_lb pn
+  (take 1 L)`, and the exclusion premise is `PipeProto.pipe_excl_wtok_lb_pipeN`
+  at `pipe_inv pn γp L` (persistent), restated by whoever steps — no
+  `saved_prop`.  Between rounds (`recs = []` or the last round closed)
+  the body is the closed shape; a round REGISTERS its record by opening
+  the leaf before the forks (a plain fupd; it holds the bundle), which
+  is the moment the claim could never reach.  The terminal round's body
+  stays open for ever; a later registration under a violated D4 is paid
+  by the taint arm the body carries.
+- The boundary credential's terminal shape is `era_pin ∗ (the registry
+  lower bound at the current record) ∗ wcur gR (1/2) c2 ∗ wcur gM (1/2)
+  3 ∗ cs_frozen_at v (nlines I - 1)` — persistent fragments and ghost
+  halves, TIMELESS — so `pwc_line2`'s third arm carries it, `HWct` holds,
+  `lk_prompt_dollar_line` writes the terminal `$` at it (`pterm_prompt_step`
+  re-based on the leaf), `pwc_sp_t`/`pwc_open_t` gain the terminal arm
+  (c2 = 6, 7), the pipe's `ush_wc_read` instance is `pterm_tcore_read`;
+  `pipe_round_entry`/`pipe_round_exit` re-derived at the leaf; `blk2_inv`,
+  `blk2_inv_alloc/_close(_nt)`, `pwc_fork_exit`, `UkShPipeFork.v`
+  (`pterm_shape/pay/wc`, the transfers) RETIRED — the child law stays at
+  `ushf_wq`, §4.3i/§4.3j superseded for good.
+- `UShPipeRound.sh_round_holds_pipe` gains the premise
+  `UShCatPay.sh_cat_slot T` (the /cat pin), which `UInitPipe.pipe_Hinit_boot`
+  supplies from the era equation through `UShPipeCatSlot.pipe_sh_cat_slot`
+  (landed); `sh_pipe_child_law_all`'s shape is unchanged.
+
+Lanes: **PIPE-STAGE-5** (§7 landed, the tree green, the terminal round
+through the record, the retirements), then **SH-PIPE-ROUND-7** (the
+assembly at the two ends, the child law, the theorem).
+
 ## 5. Programs
 
 ### 5.1 sh: the PIPE arm (lanes SH-PARSE-PIPE, SH-PIPE)

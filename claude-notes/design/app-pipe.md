@@ -1488,7 +1488,11 @@ inum 3 — `FsCatPin`).  `iris/UPipeBootAdequacy.v`:
 `App.xv6_app_adequacy` at `app_pipe`, closed at the literal image, with
 `PipeAssumptions.v` and `make audit-pipe{,-only}` beside the echo, tree and
 file audits (bar: ≤ echo's fourteen, plus `pipe_both_law` until PIPE-2W
-lands, reported as such).
+lands, reported as such).  THE PIPE FILE PRINTS MORE THAN ONE LIST: the
+anchor corollary, then a FRONTIER block for the lemmas an open premise still
+hides from it (labelled by `idtac`).  The bar is per list.  A lane extends
+that block rather than adding a `<Lane>Assumptions.v` of its own -- see
+`durable-notes.md`.
 
 ### 5.6 RULED (2026-09-18, after PIPE-STAGE's finding): the claim pins /cat
 

@@ -5510,8 +5510,7 @@ Whole-tree `ec2-lane.sh round4 build` **RC=0**; no `Admitted`;
 `Proof using` on every result.
 
 `Print Assumptions` on the lane's thirteen headline results
-(`iris/PipeRound4Assumptions.v`, a report file, not a `_CoqProject`
-row): **eleven are Closed under the global context** —
+(hand-run): **eleven are Closed under the global context** —
 `pwc_line2`, `pprompt_dollar_line2`, `pblk2_exit_lk`,
 `pipe_link_inst_at`, `blk2_inv_alloc`, `blk2_mode_fire`,
 `pblk2_cstep_L`, `pblk2_cstep_R`, `blk2_inv_close`,
@@ -6200,8 +6199,7 @@ Branch `app-pipe/pipe-exec-echo` off main (`4c258fa32`), three code
 commits (`415813994`, `02c6f8151`, `e446f20bd`).  Files: `iris/PipeProto.v`
 (the body's conjunct list and its destructuring patterns; every landed
 STATEMENT byte-identical) and TWO new files, `iris/UShPipeCall.v` and
-`iris/UShEchoPipePay.v` (+ two `_CoqProject` rows), plus the report file
-`iris/PipeExecEchoAssumptions.v` (not a `_CoqProject` row).
+`iris/UShEchoPipePay.v` (+ two `_CoqProject` rows).
 `UkShPipe.v` is UNTOUCHED, and so are `UkShCat.v`/`UShCatPay.v` (EXEC-CAT)
 and `UShLine.v`/`UInitPipe.v`/`UPipeBootAdequacy.v` (PIPE-CC).
 Whole-tree `ec2-lane.sh execl build` **RC=0** (and `make -f CoqMakefile
@@ -6212,7 +6210,7 @@ every result.
 the same list textually (1 `functional_extensionality_dep` + the 2
 `xv6iris_extras` reservation `Parameter`s + 11 PrimString/PrimInt63),
 measured after the changes.  `Print Assumptions` on the lane's ten results
-(`iris/PipeExecEchoAssumptions.v`, a report file, not a `_CoqProject` row):
+(hand-run):
 SEVEN are **Closed under the global context** — `pws_lb_of_rcur`,
 `pipe_excl_wtok_lb`, `pipe_excl_wtok_lb_pipeN`, `pipe_body_needs_P5`,
 `pipe_body_P5`, `ep_registrar_of_wq`, `image_entry_pay_mono` — and the
@@ -6544,8 +6542,7 @@ Branch `app-pipe/pipe-model-3`, six code commits (`58b37f35d`,
 the notes.  Whole-tree
 `ec2-lane.sh model3 build` **RC=0**; no `Admitted`; `Proof using` on
 every new result.  `Print Assumptions` on EIGHTEEN headline results
-(`iris/PipeModel3Assumptions.v`, a report file, not a `_CoqProject`
-row): **all eighteen Closed under the global context** — `palt_of_code`,
+(hand-run): **all eighteen Closed under the global context** — `palt_of_code`,
 `pcont_forkS_old`, `pmergeable_forkS`, `pmergeable_prefix`,
 `d4_ambiguous`, `pcont_pair_det`, `sessp_prefix_det`,
 `elem_of_forkS_sels`, `disc_p_dec`, `d4_p_nomerge_snoc`,
@@ -6791,8 +6788,7 @@ moved: `iris/PipeOut.v` (the claim's two byte steps re-cut + their
 terminal twins), `iris/PipeBoth.v` (the pure terminal witness, the third
 mode, the two terminal obligations and their discharges, the two
 concurrent terminal steps, two chains, the second shape, the fork-#1
-corollary, the end-to-end test), plus one report file
-`iris/PipeStage3Assumptions.v` (NOT a `_CoqProject` row).
+corollary, the end-to-end test).
 `iris/PipeLinks.v`, `iris/PipeLinkInst.v` and `iris/PipeLinksLine.v` are
 UNTOUCHED — see the refutation.
 
@@ -7034,8 +7030,7 @@ open.
 
 Branch `app-pipe/sh-pipe-round-5` off main (`83c96d159`), two code
 commits (`02dffadce`, `f31336b46`) beside this one.  ONE new file,
-`iris/UShPipeRound2.v` (+ one `iris/_CoqProject` row), plus the report
-file `iris/PipeRound5Assumptions.v` (NOT a `_CoqProject` row).
+`iris/UShPipeRound2.v` (+ one `iris/_CoqProject` row).
 **Nothing else moved**: `UShPipeRound.v`, `UShPipeChild.v`, `UCatPipe.v`,
 `PipeBoth.v`, `PipeOut.v`, `PipeLinkInst.v`, `UInitPipe.v`,
 `UInitPipeAdequacy.v` and `PipeAssumptions.v` are byte-identical to
@@ -7261,7 +7256,7 @@ retirement).  `UShPipeRound.v` is UNTOUCHED — see "why the definition
 did not move".  Whole-tree `ec2-lane.sh round5 build` **RC=0**; no
 `Admitted`, no `Axiom`; `Proof using` on every result.  `Print
 Assumptions` on the lane's **twenty-one** results (parts 1 + 2,
-`iris/PipeRound5Assumptions.v`): **all twenty-one Closed under the
+hand-run): **all twenty-one Closed under the
 global context**.  **ALL FOUR AUDITS AT THEIR BASELINES**, re-measured
 on the mirror after the retirement: `audit-only` **13**,
 `audit-echo-only` **14**, `audit-tree-only` **13**, `audit-pipe-only`
@@ -7599,8 +7594,7 @@ Branch `app-pipe/pipe-stage-4` off main (`946f3c8c8`), five code commits
 (`846c5f89d`, `b5401a2e0`, `665131e97`, `eee3c0de4`, `f72f3671c`).
 Files moved: `iris/PipeOut.v`, `iris/PipeBoth.v`, `iris/PipeLinks.v`,
 `iris/UShPipeExit.v`, `iris/UShPipeRound2.v`, `iris/UInitPipe.v`,
-`iris/UkShPipeFork.v`, plus the report file
-`iris/PipeStage4Assumptions.v` (NOT a `_CoqProject` row).
+`iris/UkShPipeFork.v`.
 `PipeLinksLine.v`, `PipeLinkInst.v`, `UShPipeRound.v`, `UCatPipe.v`,
 `UShPipeChild.v` are UNTOUCHED, and so is every GENERIC file
 (`LinkRec.v`, `UkSh.v`): **no generic law moved, and `UkShPipeFork.v` is
@@ -8002,8 +7996,7 @@ shape with the frozen reading, the pure read refutation,
 Branch `app-pipe/sh-pipe-round-6` off main (`6f7c9e70b`), three code
 commits (`64768c717`, `008021119`, `f32d43c80`).  Files moved:
 `iris/UkShPipeFork.v` (mine) and ONE new file `iris/UShPipeCatSlot.v`
-(+ one `iris/_CoqProject` row), plus the report file
-`iris/PipeRound6Assumptions.v` (NOT a `_CoqProject` row).
+(+ one `iris/_CoqProject` row).
 **`UShPipeRound.v`, `UShPipeRound2.v`, `UCatPipe.v`, `UEchoPipe.v`,
 `PipeAssumptions.v`, `UInitPipeAdequacy.v` and every generic and
 upstream file are BYTE-IDENTICAL to main**; in particular
@@ -8023,7 +8016,7 @@ only; `UShPipeCatSlot` = itself and this lane's report file).  So
 MEASURED on the mirror after the changes all the same, and are exactly
 that: **13 / 14 / 13 / 14**, each list verbatim the standing one.
 `Print Assumptions` on the lane's **eight** results
-(`iris/PipeRound6Assumptions.v`): six **Closed under the global
+(hand-run): six **Closed under the global
 context** (`pterm_wq_pay`, `pterm_prompt_step`,
 `pterm_cursors_timeless`, `pterm_tcore_read`, `pterm_shape_tcore`, and
 — see below — nothing else); `pterm_prompt_arm` and `pterm_prompt_law`
@@ -8322,8 +8315,7 @@ section closes is still `(g : pipe_gn)`.
 
 Branch `app-pipe/pipe-stage-5` off main (`6bb9b4764`), one code commit
 (`23ab2a2bd`) plus this notes commit.  Files moved: `iris/UShPipeRound.v`
-and `iris/UInitPipe.v`, plus the report file
-`iris/PipeStage5Assumptions.v` (NOT a `_CoqProject` row).
+and `iris/UInitPipe.v`.
 **`PipeOut.v`, `PipeBoth.v`, `PipeLinks.v`, `PipeLinkInst.v`,
 `PipeLinksLine.v`, `UShPipeRound2.v`, `UkShPipeFork.v`, `UShPipeExit.v`,
 `UCatPipe.v`, `UShPipeChild.v`, `UInitPipeAdequacy.v`,
@@ -8498,8 +8490,7 @@ cone requires it).  Restating the exclusion from `pipe_inv pn γp L` at
 the stepping child, as §4.3n rules, is right and costs nothing once the
 record is in hand.
 
-**(5) `Print Assumptions`** (`iris/PipeStage5Assumptions.v`, compiled by
-hand): `UShPipeRound.sh_round_holds_pipe` **14**,
+**(5) `Print Assumptions`** (hand-run): `UShPipeRound.sh_round_holds_pipe` **14**,
 `UShPipeCatSlot.pipe_sh_cat_slot` **13**, `UInitPipe.pipe_Hinit_boot`
 **14** — each verbatim the campaign's standing list (11
 `PrimString`/`PrimInt63` primitives + the 2 `xv6iris_extras` reservation
@@ -8583,8 +8574,7 @@ commits (`f3691be97`, `9980e57db`, `54c878adb`, `a12e92806`, `6859e8339`)
 plus this notes commit.  Files moved: `iris/UkRunLeaf.v`, `iris/UkShLoop.v`,
 `iris/UkShPipeFork.v` — **all three ADDITIVE, every landed statement
 byte-identical** — plus ONE new file `iris/UkShPipeWait.v` (+ one
-`iris/_CoqProject` row) and the report file `iris/PipeRound7Assumptions.v`
-(NOT a `_CoqProject` row).  **`UkSh.v`, `UkShFork.v`, `UShPipeRound.v`,
+`iris/_CoqProject` row).  **`UkSh.v`, `UkShFork.v`, `UShPipeRound.v`,
 `UShPipeRound2.v`, `UCatPipe.v`, `UEchoPipe.v`, `PipeBoth.v`,
 `PipeLink*.v`, `UInitPipe.v`, `UInitPipeAdequacy.v` and
 `PipeAssumptions.v` are BYTE-IDENTICAL to main.**  Whole-tree
@@ -8781,8 +8771,7 @@ did not fire (the round was never reached).  **Rule 3 FIRED**:
 lane's files was weakened, and no landed statement inside them moved
 either.
 
-**`Print Assumptions`** (`iris/PipeRound7Assumptions.v`, compiled by hand
-on the mirror): `UkShPipeFork.pterm_wc_inp_of` **Closed under the global
+**`Print Assumptions`** (hand-run on the mirror): `UkShPipeFork.pterm_wc_inp_of` **Closed under the global
 context**; `UkShLoop.ushl_head_of_later` **2** (`resv_matches`,
 `resv_is_valid` — the reservation `Parameter`s every `urun` statement
 carries); `UkRunLeaf.wp_uk_cmv_later`, `UkRunLeaf.wp_uk_cjr_later` and

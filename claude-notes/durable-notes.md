@@ -1037,6 +1037,21 @@ From the PROOF only: `functional_extensionality_dep`.
   wired into boot do not appear here.
 - **`audit-only` does not rebuild**, so against a stale tree the list is
   archaeology.
+- **ONE AUDIT FILE PER APPLICATION, and a lane never adds its own.** There are
+  five `iris/*Assumptions.v` — system, echo, tree, file, pipe — each with a
+  `make audit-*-only` target and a commented `_CoqProject` row. A lane whose
+  lemmas are not yet in the anchor theorem's cone (they sit behind an open
+  premise, so the anchor's print says nothing about them) edits that
+  application's file — a FRONTIER block below the anchor print — and deletes
+  the line again once the lemma enters the cone. A `<Lane>Assumptions.v` is a
+  journal entry, not a check: nothing compiles it, so it rots the day it is
+  written, and it turns the coverage checker's `_CoqProject` gate red. Nine of
+  them accumulated on the pipe campaign, 138 prints over 112 lemmas, and were
+  deleted.
+- **Audit the TOP of the frontier, not each lemma under it.** `Print
+  Assumptions` walks a cone, so printing the round law subsumes printing the
+  hundred lemmas its proof uses; a roster of those measures nothing the one
+  print does not.
 - **`Print Assumptions` does not see a refutable premise.** Prefer a theorem with
   nothing left as a premise over a shorter axiom list obtained by leaving one
   undischarged; a premise on the anchor theorem is worth a satisfiability witness

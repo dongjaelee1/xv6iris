@@ -102,6 +102,8 @@ Require Import UInitSh.        (* [sh_Rsh] -- the loop's own data at the break *
 Require Import SpecKexec.      (* [kexec_sz] *)
 Require Import UserPtTree.
 Require Import UkShPipeRound.  (* [ushq_line_at] -- the pipe line's shape *)
+Require Import UkShPipeFork.   (* [pterm_wc] -- design SS4.3p's WIDENED credential *)
+Require Import UkShPipeForkTwin.  (* the fork arm at it *)
 Require Import UShCatPay.      (* [sh_cat_slot] -- the /cat pin the round's
                                   right child's exec needs (lane
                                   SH-PIPE-ROUND-6, finding (5)) *)
@@ -255,6 +257,7 @@ Proof using. intros _ Hok. exact (FileDisc.fline_ok_of lu Hok). Qed.
 (* ===================================================================== *)
 (*  S1/S2  THE FAMILIES, AND THE ECHO ARM'S THREE LAWS                    *)
 (* ===================================================================== *)
+
 Section UShPipeRound.
   (* [UShRound.v]'s binder list VERBATIM (durable-notes: a shorter list
      makes Coq synthesise an instance and the elaboration explodes), MINUS
@@ -489,6 +492,174 @@ Section UShPipeRound.
     iApply (pipe_Hcltaint g I 0%nat v with "Hpin HT").
   Qed.
 
+  (* =================================================================== *)
+  (*  S2b  THE ERA'S CREDENTIAL IS THE WIDENED ONE (design SS4.3p; lane   *)
+  (*       SH-PIPE-ROUND-7 part 2).                                       *)
+  (*                                                                     *)
+  (*  The terminal round reaches the prompt only inside the LOOP'S OWN    *)
+  (*  credential -- the fork arm's re-entry at 0x938 has no continuation  *)
+  (*  but [UkShLoop.ushl_head] -- so the era runs at                      *)
+  (*  [UkShPipeFork.pterm_wc g] and not at [pipe_Wcl_at g].  Every law    *)
+  (*  below is the landed one at [Wcf] with [pterm_wc_3] on the way in    *)
+  (*  (the body sees the credential at index 3 ALONE, where the widening  *)
+  (*  collapses) and [pterm_wc_of] on the way out.                        *)
+  (* =================================================================== *)
+  Local Notation Wct := (UkShPipeFork.pterm_wc g).
+
+  Local Lemma pwc3_t (I0 : list (bv 8)) :
+    ⊢ Wct I0 3%nat -∗ ∃ v : era_pins,
+        lk_pin PI (S gen_id) v ∗ lk_lpr PI (S gen_id) v I0 3%nat ∗ emp.
+  Proof using .
+    iIntros "H". iApply (pwc3 I0).
+    iApply (UkShPipeFork.pterm_wc_3 g I0 with "H").
+  Qed.
+
+  Local Lemma pwc3b_t (I0 : list (bv 8)) (v0 : era_pins) :
+    ⊢ lk_pin PI (S gen_id) v0 -∗ lk_lpr PI (S gen_id) v0 I0 3%nat -∗
+      emp -∗ Wct I0 3%nat.
+  Proof using .
+    iIntros "#Hp Hc He".
+    iApply (UkShPipeFork.pterm_wc_of g I0 3%nat).
+    iApply (pwc3b I0 v0 with "Hp Hc He").
+  Qed.
+
+  Local Lemma pwc0_t (I0 : list (bv 8)) (v0 : era_pins) :
+    ck_lineok (sk_cur SI) I0 ->
+    ⊢ lk_pin PI (S gen_id) v0 -∗ lk_post PI (S gen_id) v0 I0 0%nat -∗
+      emp -∗ Wct I0 0%nat.
+  Proof using .
+    intro Hlok. iIntros "#Hp Hc He".
+    iApply (UkShPipeFork.pterm_wc_of g I0 0%nat).
+    iApply (pwc0 I0 v0 Hlok with "Hp Hc He").
+  Qed.
+
+  Local Lemma pwct_t (I0 : list (bv 8)) (v0 : era_pins) :
+    ⊢ lk_pin PI (S gen_id) v0 -∗ lk_T PI -∗ Wct I0 0%nat.
+  Proof using .
+    iIntros "#Hp #HT".
+    iApply (UkShPipeFork.pterm_wc_of g I0 0%nat).
+    iApply (pwct I0 v0 with "Hp HT").
+  Qed.
+
+  Lemma pipe_Hchild_echo_t :
+    ⊢ PipeLinks.pipe_links g -∗ udep (PS := uprogSG_free) -∗
+      UShEcho.sh_echo_slot T -∗
+      UkShEcho.sh_exec_sup_echo_wq_at pipe_D Wct.
+  Proof using Hkill.
+    exact (UShEchoPay.sh_exec_sup_echo_wq_holds_at_D SI pipe_D Wct
+             (fun _ => emp)%I
+             (fun I0 => _)
+             pwc3_t pwc3b_t pwc0_t pwct_t pipe_Hktaint
+             (fun I0 H => proj1 H) (fun I0 H => proj2 H)).
+  Qed.
+
+  Lemma pipe_Hexecfail_D_t :
+    ⊢ PipeLinks.pipe_links g -∗
+      UkShEcho.ush_execfail_law_wq_at_D (PS := uprogSG_free) pipe_D
+        (lk_exfb PI)
+        (fun I : list (bv 8) => (length (lk_exfb PI I) - 2)%nat)
+        Wct.
+  Proof using .
+    iIntros "#Hlk".
+    iPoseProof (pipe_Hexecfail_D with "Hlk") as "#Hx".
+    rewrite /UkShEcho.ush_execfail_law_wq_at_D.
+    iIntros "!>" (I) "%HD".
+    iPoseProof ("Hx" $! I with "[%]") as "#Hy"; [ exact HD | ].
+    rewrite /UkShDiag.ush_execfail_law_at.
+    iIntros "!>" (N l) "%Hfd Hc".
+    iDestruct ("Hy" $! N l with "[%] [Hc]") as (Pf) "(H0 & #Hstep & #Hend)";
+      [ exact Hfd | iApply (UkShPipeFork.pterm_wc_3 g I with "Hc") | ].
+    iExists Pf. iFrame "H0 Hstep". iIntros "!> Hp".
+    iApply (UkShPipeFork.pterm_wc_of g I 0%nat).
+    iApply ("Hend" with "Hp").
+  Qed.
+
+  Lemma pipe_Hpanic_t :
+    ⊢ PipeLinks.pipe_links g -∗
+      UkShDiag.ush_panic_law (PS := uprogSG_free) Wct Wbf.
+  Proof using .
+    iIntros "#Hlk".
+    iPoseProof (pipe_Hpanic with "Hlk") as "#Hp".
+    rewrite /UkShDiag.ush_panic_law. iIntros "!>" (N I l) "%Hfd Hc".
+    iApply ("Hp" $! N I l with "[%] [Hc]"); [ exact Hfd | ].
+    iApply (UkShPipeFork.pterm_wc_3 g I with "Hc").
+  Qed.
+
+  Lemma pipe_child_law_echo_t :
+    ⊢ PipeLinks.pipe_links g -∗ udep (PS := uprogSG_free) -∗
+      UShEcho.sh_echo_slot T -∗
+      UkShFork.ushf_child_law (PS := uprogSG_free) (SG := uexecSG_xv6) Wct.
+  Proof using Hkill.
+    iIntros "#Hlk #Hdep #Hslot".
+    iPoseProof (pipe_Hexecfail_D_t with "Hlk") as "#Hxl".
+    iPoseProof (pipe_Hchild_echo_t with "Hlk Hdep Hslot") as "#Hsup".
+    iApply (UkShEcho.ushf_child_law_holds_at_D (PS := uprogSG_free)
+              (SG := uexecSG_xv6) (fun k H => H) pipe_D (lk_exfb PI)
+              (fun I : list (bv 8) => (length (lk_exfb PI I) - 2)%nat) Wct
+              pipe_D_of_line pipe_D_exfb with "Hxl Hsup").
+  Qed.
+
+  (* ...AND THE PROMPT'S LAW AT THE WIDENED CREDENTIAL.  Stated HERE and
+     not at its call site ([UInitPipe.pipe_Hinit_boot]) on purpose: this
+     section carries ONE [riscvGS]/[GenId] pair and the record equation
+     [Hcons] beside it, so [UkShPipeFork.pterm_prompt_law] -- whose
+     [Hcons] argument pins its own instances -- meets the landed law at
+     the SAME ones.  At the boot lemma, which takes [HR] and [GEN] as
+     explicit arguments beside the section's, the two sides of that wand
+     are elaborated at different instances and the conversion walks into
+     the two-writer family (measured: one [iApply] ran 1h28m). *)
+  Lemma pipe_sh_prompt_law_t :
+    ⊢ PipeLinks.pipe_links g -∗
+      UShKernel.sh_prompt_law (PS := uprogSG_free) Wct.
+  Proof using Hcons.
+    iIntros "#Hlk".
+    iDestruct (PipeLinks.pipe_links_taint g with "Hlk") as "#Ht".
+    iAssert (UShKernel.sh_prompt_law (PS := uprogSG_free) Wcf)%I as "#Hpl0".
+    { iApply (UShPanic.sh_prompt_law_holds_line_at PI (PS := uprogSG_free)
+                with "Hlk"). }
+    rewrite /UShKernel.sh_prompt_law. iIntros "!>" (Np) "#Hro".
+    (* [UkShPipeFork.pterm_prompt_law]'s body, INLINED.  Applying that
+       lemma as a wand wedges -- the proofmode's [IntoWand] on a premise
+       whose credential family is the record's [lk_lcred] runs past 90 s
+       and (measured) past 90 min -- while its body is three [iDestruct]s
+       on a [box] and one [iPoseProof] of [pterm_prompt_arm]. *)
+    iPoseProof ("Hpl0" $! Np with "Hro") as "#Hlaw".
+    rewrite {1}/UkSh.ush_prompt_law.
+    iDestruct "Hlaw" as "[#Hplaw #Hclaw]".
+    rewrite /UkSh.ush_prompt_law. iModIntro. iSplitR "".
+    - iIntros (I l) "%Hfd2". destruct Hfd2 as [rb Hl2].
+      iPoseProof (UkShPipeFork.pterm_prompt_arm g Hcons Np I l rb Hl2
+                    with "Ht Hro") as "Hta".
+      iIntros (h m avail) "%Ha0 %Ha1 %Ha2 #Hcode [Hstd Hc] Hrun Hcont".
+      rewrite {1}/UkShPipeFork.pterm_wc.
+      iDestruct "Hc" as "[Hc | [_ Hsh]]".
+      + iApply ("Hplaw" $! I l with "[%] [%] [%] [%] Hcode [$Hstd $Hc] Hrun
+                 [Hcont]");
+          [ by exists rb | exact Ha0 | exact Ha1 | exact Ha2 | ].
+        iIntros (h' ret) "[Hstd Hw] Hrun".
+        iApply ("Hcont" $! h' ret with "[$Hstd Hw] Hrun").
+        iApply (UkShPipeFork.pterm_wc_of g I 2%nat with "Hw").
+      + iApply ("Hta" $! h m avail with "[%] [%] [%] Hcode [$Hstd Hsh]
+                 Hrun [Hcont]");
+          [ exact Ha0 | exact Ha1 | exact Ha2 | | ].
+        { rewrite Nat.add_0_r. iExact "Hsh". }
+        iIntros (h' ret) "[Hstd Hsh'] Hrun".
+        iApply ("Hcont" $! h' ret with "[$Hstd Hsh'] Hrun").
+        rewrite /UkShPipeFork.pterm_wc. iRight.
+        iSplitR; [ iPureIntro; lia | ]. iExact "Hsh'".
+    - iExact "Hclaw".
+  Qed.
+
+  Lemma pipe_kill_law_t (v : era_pins) :
+    era_pin γ (S gen_id) v -∗ UkShFork.ushf_kill_law Wct.
+  Proof using Hkill.
+    iIntros "#Hpin". rewrite /UkShFork.ushf_kill_law.
+    iIntros "!>" (I) "#Hk".
+    iAssert T as "#HT"; [ iApply pipe_Hktaint; iExact "Hk" | ].
+    iApply (UkShPipeFork.pterm_wc_of g I 0%nat).
+    iApply (pipe_Hcltaint g I 0%nat v with "Hpin HT").
+  Qed.
+
 
   (* =================================================================== *)
   (*  S3  THE REFUTATION THIS LANE OWES: THE CONSOLE TURN ADMITS EXACTLY  *)
@@ -629,10 +800,15 @@ Section UShPipeRound.
      [sh_round_holds_pipe] takes it as a premise; the Prop
      [sh_pipe_child_law_all] is unchanged.  The [box] is what keeps the
      law PERSISTENT, which is what the loop's [#]-intro of it needs. *)
+  (* ...AND AT THE WIDENED CREDENTIAL (design SS4.3p): the child's exit
+     payload is [UkShFork.ushf_wq Wct I], which [UkShPipeFork.pterm_wq_pay]
+     says IS [pterm_pay I] -- the terminal round included.  No new
+     definition, exactly as SS4.3j (1) predicted; what changed is the
+     credential the WHOLE ERA runs at. *)
   Definition sh_pipe_child_law : iProp Σ :=
     (□ (UShCatPay.sh_cat_slot T -∗
         UkShFork.ushf_child_law_at (PS := uprogSG_free) (SG := uexecSG_xv6)
-          Wcf ushq_lp 68))%I.
+          Wct ushq_lp 68))%I.
 
   Global Instance sh_pipe_child_law_persistent :
     Persistent sh_pipe_child_law.
@@ -646,23 +822,47 @@ Section UShPipeRound.
   (* =================================================================== *)
   Local Notation Pm := (UShLine.ush_mid_at (lk_rres PI) γ γp).
 
+  (* ...AND THE ERA'S READING OF THE PIECES (design SS4.3p, the read law
+     at the widened credential): the mid-line pieces carry the READER'S
+     residue at the same input, which is what [UkShPipeFork.
+     pterm_read_law_of] -- the terminal arm's refutation -- takes as its
+     one premise.  Persistent conjuncts, so the pieces come back whole. *)
+  Lemma pipe_mid_rres (I' : list (bv 8)) :
+    ⊢ Pm I' -∗ Pm I' ∗ (∃ v : era_pins, era_pin γ (S gen_id) v
+                                        ∗ pwc_rres v I').
+  Proof using .
+    rewrite /UShLine.ush_mid_at. iIntros "(Hp & Hpa & Hrd & Hv)".
+    iDestruct "Hv" as (v) "(#Hpin & Hdl & #Hlb & #Hres)".
+    iSplitR "".
+    - iFrame "Hp Hpa Hrd". iExists v. by iFrame "Hpin Hdl Hlb Hres".
+    - iExists v. by iFrame "Hpin Hres".
+  Qed.
+
+  (* ...and the pipeline era's own [pterm_read_law], off it *)
+  Lemma pipe_pterm_read_law :
+    UkShPipeFork.pterm_read_law g Pm.
+  Proof using .
+    exact (UkShPipeFork.pterm_read_law_of g Pm pipe_mid_rres).
+  Qed.
+
   Lemma ushq_body_law_pipe (N : uk_names Σ) `{Hp : !ukn_const N} (sz : Z) :
     8344 <= sz ->
     UserPtTree.pgroundup sz = sz ->
     usz_ok (sz + 65536) ->
-    UkShFork.ushf_kill_law Wcf -∗
-    UkShFork.ushf_child_law (PS := uprogSG_free) (SG := uexecSG_xv6) Wcf -∗
+    UkShFork.ushf_kill_law Wct -∗
+    UkShFork.ushf_child_law (PS := uprogSG_free) (SG := uexecSG_xv6) Wct -∗
     UkShFork.ushf_child_law_at (PS := uprogSG_free) (SG := uexecSG_xv6)
-      Wcf ushq_lp 68 -∗
-    UkShDiag.ush_panic_law (PS := uprogSG_free) Wcf Wbf -∗
+      Wct ushq_lp 68 -∗
+    UkShDiag.ush_panic_law (PS := uprogSG_free) Wct Wbf -∗
     UkShFork.ushf_body_law (PS := uprogSG_free) (SG := uexecSG_xv6)
-      N γp T Wcf Wbf Pm PipeUline.ush_line_pipe sz.
+      N γp T Wct Wbf Pm PipeUline.ush_line_pipe sz.
   Proof using .
     intros Hszlo Hszal Hszok.
     iIntros "#Hkl #Hchl #Hchq #Hplaw".
-    iPoseProof (UkShFork.ushf_body_law_echo (PS := uprogSG_free)
-                  (SG := uexecSG_xv6) N γp T Wcf Wbf Pm
-                  (fun k H => H) sz Hszlo Hszal Hszok (pipe_Hwbl g)
+    iPoseProof (UkShPipeForkTwin.ushf_body_law_echo_pipe (PS := uprogSG_free)
+                  (SG := uexecSG_xv6) N γp T Wct Wbf Pm
+                  (fun k H => H) sz Hszlo Hszal Hszok
+                  (UkShPipeFork.pterm_wc_blk_line g)
                   with "Hkl Hchl Hplaw") as "#Hecho".
     rewrite /UkShFork.ushf_body_law.
     iIntros "!>" (lu h m f k len l n)
@@ -678,14 +878,15 @@ Section UShPipeRound.
         | exact Hfd0 ].
     - (* [echo a b | cat] -- the SAME walk at the pipe child's law *)
       iDestruct (UkSh.ush_jtab_ro (ukn_t N) with "Hjt") as "#Hro".
-      iApply (UkShFork.wp_kshm_body_at (PS := uprogSG_free)
-                (SG := uexecSG_xv6) N γp T Wcf Wbf Pm (fun k0 H => H)
+      iApply (UkShPipeForkTwin.wp_kshm_body_pipe (PS := uprogSG_free)
+                (SG := uexecSG_xv6) N γp T Wct Wbf Pm (fun k0 H => H)
                 ushq_lp 68 h m f k len
                 (FileDisc.uline_ws (FileDisc.LPipe ws)) sz l n
                 ltac:(lia) ushq_lp0
                 Hregs Hs1 Ha5 Hnn Hnul Hkl2
                 (ushq_lp_of_at ws f k len Hlat)
-                Hszlo Hszal Hszok Hpm1 Hpmwb (pipe_Hwbl g)
+                Hszlo Hszal Hszok Hpm1 Hpmwb
+                (UkShPipeFork.pterm_wc_blk_line g)
                 with "Hgen Hhead Hcode Hro [] Hjt Hkl Hchq Hplaw [%] Hstd
                       Hdat Hsz Hbuf Hrun").
       + iApply (UkShFork.ushf_code_shp (ukn_t N) with "Hcode").
@@ -702,26 +903,27 @@ Section UShPipeRound.
       UShCatPay.sh_cat_slot T -∗
       (∃ v : era_pins, era_pin γ (S gen_id) v) -∗
       sh_pipe_child_law -∗
-      UkSh.ush_rest_l_at (PS := uprogSG_free) N γp T Wcf Wbf Pm
+      UkSh.ush_rest_l_at (PS := uprogSG_free) N γp T Wct Wbf Pm
         PipeUline.ush_line_pipe
         (UInitSh.sh_Rsh (ukn_t N) (ukn_d N) (ukn_s N)).
   Proof using Hkill.
     iIntros "#Hlk #Hdep #Hslot #Hcat #Hpin #Hchl0".
     iPoseProof ("Hchl0" with "Hcat") as "#Hchq".
     iDestruct "Hpin" as (v) "#Hp".
-    iPoseProof (pipe_kill_law v with "Hp") as "#Hkl".
-    iPoseProof (pipe_child_law_echo with "Hlk Hdep Hslot") as "#Hchl".
-    iPoseProof (pipe_Hpanic with "Hlk") as "#Hplaw".
+    iPoseProof (pipe_kill_law_t v with "Hp") as "#Hkl".
+    iPoseProof (pipe_child_law_echo_t with "Hlk Hdep Hslot") as "#Hchl".
+    iPoseProof (pipe_Hpanic_t with "Hlk") as "#Hplaw".
     iIntros "!>" (l) "%Hc".
     iPoseProof (ushq_body_law_pipe N (Hp := Hc) (kexec_sz ElfUser.sh_elf)
                   UShRest.sh_sz_lo UShRest.sh_sz_al UShRest.sh_sz_ok
                   with "Hkl Hchl Hchq Hplaw") as "#Hbody".
-    iPoseProof (UkShFork.ushf_rest_of_body_at (PS := uprogSG_free)
-                  (SG := uexecSG_xv6) (Hpay := Hc) N γp T Wcf Wbf Pm
+    iPoseProof (UkShPipeForkTwin.ushf_rest_of_body_at_pipe
+                  (PS := uprogSG_free)
+                  (SG := uexecSG_xv6) (Hpay := Hc) N γp T Wct Wbf Pm
                   (fun k H => H) PipeUline.ush_line_pipe
                   (kexec_sz ElfUser.sh_elf)
                   UShRest.sh_sz_lo UShRest.sh_sz_al UShRest.sh_sz_ok
-                  (pipe_Hwbl g) with "Hbody") as "Hb".
+                  (UkShPipeFork.pterm_wc_blk_line g) with "Hbody") as "Hb".
     rewrite /UkSh.ush_rest_l_at.
     iDestruct ("Hb" $! l with "[%]") as "Hb'"; [ exact Hc | iExact "Hb'" ].
   Qed.

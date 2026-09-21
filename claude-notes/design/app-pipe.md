@@ -1346,6 +1346,26 @@ two `uwait_ans`, the reading and `pipe_round_exit`.  Then
 `sh_pipe_child_law_all` and `pipe_adequacy_pipeΣ_final`.  Lane
 SH-PIPE-ROUND-9.
 
+### 4.3s RULED (2026-09-24, after SH-PIPE-ROUND-9 part 1): cat's round takes its write premise at the LINE, not at the alternative
+
+ROUND-9 landed §4.3r's two rulings (the suppliers needed one token
+each, not none) and bill items 1, 2, 4, 5, refuted the fifth exit case
+(`blk2_no_L_at_mode1`), and stopped at item 3 on a premise:
+`UCatPipe.pcat_round_at_g`'s `Hw` hands the turn's write as a lookup into
+the ALTERNATIVE `L ++ u_prompt`, while the family's right chain at mode 1
+steps `rsrc L 1 = L` and demands `nodollar` — at index `length L` the
+premise is satisfied by the prompt's `$` (`pcat_hw_gap`).  The fact that
+rules that index out (`c + cnt ≤ length L`) is the reader's, which
+`pcat_round_at_g` has (its content arm derives `L !! (c+j) = Some (gb j)`
+and WEAKENS it with `pcat_round_line` before calling `Hw`).  RULED: state
+`pcat_round_at_g`'s `Hw` premise at `L` (a parameter of the lemma
+already); the content arm passes its bytes straight through; the landed
+instance `pcat_round_at` weakens back with `pcat_round_line`, statement
+byte-identical.  One premise in `UCatPipe.v`; nothing else moves.  Then
+item 3 (the copy of `UCatKernel.cat_w_of_link` at `Ch c := wcur gR (1/2) c
+∗ wcur gM (1/2) 1` over `out_chain_of_step`), item 6, `sh_pipe_child_law_all`,
+`pipe_adequacy_pipeΣ_final`.
+
 ## 5. Programs
 
 ### 5.1 sh: the PIPE arm (lanes SH-PARSE-PIPE, SH-PIPE)

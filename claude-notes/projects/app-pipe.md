@@ -8963,8 +8963,26 @@ hole: allocate the family from the lend at the child law's own `mWP`
 
 Branch `app-pipe/sh-pipe-round-8` off main (`aca43274a`).  TWO files
 moved: `iris/UShPipeChild.v` (additive — every landed statement
-byte-identical) and NEW `iris/UShPipeAssembly.v` (+ one
-`iris/_CoqProject` row).  Nothing else in the tree moved.
+byte-identical, checked) and NEW `iris/UShPipeAssembly.v` (+ one
+`iris/_CoqProject` row), plus the report file
+`iris/PipeRound8Assumptions.v` (NOT a `_CoqProject` row).  Nothing else
+in the tree moved.  Whole-tree `ec2-lane.sh round8 build` **RC=0**; no
+`Admitted`, no `Axiom`; `Proof using` on every result.  **ALL FOUR
+AUDITS AT THEIR BASELINES**, re-measured on the mirror: `audit-only`
+**13**, `audit-echo-only` **14**, `audit-tree-only` **13**,
+`audit-pipe-only` **14** — and unmovable by construction as well, since
+nothing in the tree imports either file (the two mentions in
+`UkShCat.v` / `UShPipeRound2.v` are comments).  `Print Assumptions` on
+the lane's twelve results: two Closed under the global context
+(`pipe_names_alloc`, `pipe_inv_alloc_at`) and the rest inside the
+standing set — `xv6iris_extras.resv_is_valid`, `resv_matches` and
+`functional_extensionality_dep`, three of the pipeline audit's fourteen.
+
+**THE FINAL THEOREM IS NOT REACHED, and this lane states it plainly**:
+`pipe_adequacy_pipeΣ_final` does not exist, `UInitPipe.
+sh_pipe_child_law_all` is still owed, and `iris/PipeAssumptions.v` still
+audits `pipe_adequacy_pipeΣ_of_child`.  What the round still owes is
+(6) below, and it is now an assembly with no unmeasured piece.
 
 **(1) §4.3q IS WRONG ON BOTH HALVES, and both halves are measured.**
 

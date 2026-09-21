@@ -1640,9 +1640,12 @@ Section ProofPipealloc.
          head-normalises every hypothesis type in a whole-function
          context with delta.  Name the term instead -- optimization.md's
          "[iPureIntro. done.] on a goal you can read at a glance". *)
-      (* four [eq_refl]s now: [fdstate_ok]'s pipe arm also demands that the
-         descriptor's names ARE the payload's ([fp_pipe pn = γp]) *)
-      iSplitR; [iPureIntro; exact (conj eq_refl (conj eq_refl (conj eq_refl eq_refl)))|].
+      (* FIVE [eq_refl]s now: [fdstate_ok]'s pipe arm also demands that the
+         descriptor's names ARE the payload's ([fp_pipe pn = γp]) and that
+         THE TWO ENDS ARE COMPLEMENTARY ([FileInvDefs.fdpipe_ends], lane
+         PIPE-RO) -- which is exactly the pair of cells this store writes *)
+      iSplitR; [iPureIntro;
+                exact (conj eq_refl (conj eq_refl (conj eq_refl (conj eq_refl eq_refl))))|].
       iFrame "Hpn0".
       rewrite /file_core /file_core_noff /file_core_off /fc_wbool;
         cbn [fc_type fc_pipe fc_writable].
@@ -1665,9 +1668,12 @@ Section ProofPipealloc.
          head-normalises every hypothesis type in a whole-function
          context with delta.  Name the term instead -- optimization.md's
          "[iPureIntro. done.] on a goal you can read at a glance". *)
-      (* four [eq_refl]s now: [fdstate_ok]'s pipe arm also demands that the
-         descriptor's names ARE the payload's ([fp_pipe pn = γp]) *)
-      iSplitR; [iPureIntro; exact (conj eq_refl (conj eq_refl (conj eq_refl eq_refl)))|].
+      (* FIVE [eq_refl]s now: [fdstate_ok]'s pipe arm also demands that the
+         descriptor's names ARE the payload's ([fp_pipe pn = γp]) and that
+         THE TWO ENDS ARE COMPLEMENTARY ([FileInvDefs.fdpipe_ends], lane
+         PIPE-RO) -- which is exactly the pair of cells this store writes *)
+      iSplitR; [iPureIntro;
+                exact (conj eq_refl (conj eq_refl (conj eq_refl (conj eq_refl eq_refl))))|].
       iFrame "Hpn1".
       rewrite /file_core /file_core_noff /file_core_off /fc_wbool;
         cbn [fc_type fc_pipe fc_writable].

@@ -531,10 +531,11 @@ Record fcontent := MkFContent {
      everything a holder used to read off [C] at this altitude, it now reads
      off the state.
 
-   [fc_readable] / [fc_writable] are deliberately not related here: this
-   increment tracks only whether a descriptor is open, what KIND of file it
-   names, and which one.  Adding the mode later is a field on [fdtype], not
-   a change of shape.
+   [fc_readable] / [fc_writable] are deliberately not related here -- EXCEPT
+   ON A PIPE, where they are complementary (see [fdpipe_ends] and the pipe
+   arm below, lane PIPE-RO): this increment tracks only whether a descriptor
+   is open, what KIND of file it names, and which one.  Adding the mode later
+   is a field on [fdtype], not a change of shape.
 
    DEVICE FILES ARE NOT GIVEN THEIR INUM even though they hold an inode
    reference too and could be.  A device fd's identity to its user is the
@@ -547,6 +548,22 @@ Record fcontent := MkFContent {
    will be handed a half of is the one that sits beside THIS file's
    [f->off].  Like the inum it is a per-publish constant read off the
    payload names, so two holders of one file agree on it for free. *)
+(* A PIPE FILE'S TWO ENDS ARE COMPLEMENTARY (lane PIPE-RO, design
+   app-pipe.md SS4.3w's purchase 5; lane PQ-FLAG's "measured gap").
+   [pipealloc] is the ONLY producer of an FD_PIPE file and it writes the two
+   descriptors' mode cells at [1/0] and [0/1] -- the fact was true of the
+   code and dropped at the store, which is why nothing above could tell a
+   READ end from a WRITE end.  Published here, one conjunct on the pipe arm,
+   it is what lets [fileread]'s pipe arm hand [SpecPiperead] the read end
+   ([w = false], the mirror of [SpecPipewrite]'s [w = true]) and so lets
+   [piperead] publish [ps_ro s = true] to the byte queue's links.
+
+   IT IS A NAMED DEFINITION AND NOT AN INLINE CONJUNCTION, deliberately:
+   [fdstate_ok]'s body is on the conversion path of every [Qed] that takes
+   a row as a premise, so each branch stays ONE HEAD SYMBOL WIDE (lane
+   PIPE-NEG1's measured [UShRound] wedge, durable-notes' lesson). *)
+Definition fdpipe_ends (r w : bool) : Prop := w = negb r.
+
 Definition fdstate_ok (inum : mword 32) (γo : gname) (om : offmode)
     (γp : pipe_names) (C : fcontent) (st : fdstate) : Prop :=
   match st with
@@ -558,7 +575,7 @@ Definition fdstate_ok (inum : mword 32) (γo : gname) (om : offmode)
          (* ...AND THE PIPE'S NAMES ARE THE PAYLOAD'S (design/pipe.md,
             "The byte queue"): the queue a program's links are stated on
             is the one whose authority sits inside THIS pipe's lock. *)
-         | FdPipe g      => fc_type C = FD_PIPE /\ g = γp
+         | FdPipe g      => fc_type C = FD_PIPE /\ g = γp /\ fdpipe_ends r w
          (* ...AND THE OFFSET MODE IS PARKED.  There is exactly one user
             half of the shadow, and the kernel's own proofs advance
             [f->off] against [FdSlots.foff_row], which claims that half
@@ -592,9 +609,40 @@ Proof.
     by vm_compute in Hok.
   - exfalso. destruct Hok as (_ & _ & Hc & _). rewrite Ht in Hc.
     apply (f_equal bv_unsigned) in Hc. by vm_compute in Hc.
-  - destruct Hok as (_ & _ & _ & ->). by exists r, w.
+  - destruct Hok as (_ & _ & _ & -> & _). by exists r, w.
   - exfalso. destruct Hok as (_ & _ & Hc & _). rewrite Ht in Hc.
     apply (f_equal bv_unsigned) in Hc. by vm_compute in Hc.
+Qed.
+
+(* THE COMPLEMENTARITY, READ OFF A TYPED ROW (lane PIPE-RO).  What a proof
+   that has branched on [f->type == FD_PIPE] and on [f->readable] learns
+   about the OTHER mode cell -- which is the whole of purchase 5's fd-layer
+   fact: a READABLE pipe row is the READ end, so its [pipe_ref] is at
+   [w = false] and [PipeInvDefs.pipe_endstate_holder] reads
+   [readopen <> 0] off it. *)
+Lemma fdstate_ok_pipe_ends (inum : mword 32) (γo : gname) (om : offmode) (γp : pipe_names) (C : fcontent)
+    (r w : bool) (g : pipe_names) :
+  fdstate_ok inum γo om γp C (FdOpen r w (FdPipe g)) -> w = negb r.
+Proof. cbn. intros (_ & _ & _ & _ & H). exact H. Qed.
+
+(* ...at the key the WALK holds: the type word and the [f->readable] test.
+   [fileread] reaches its pipe arm past [beqz f->readable], so [r] is
+   [true] and the row is the read end whole. *)
+Lemma fdstate_ok_pipe_rd (inum : mword 32) (γo : gname) (om : offmode) (γp : pipe_names) (C : fcontent)
+    (st : fdstate) :
+  fdstate_ok inum γo om γp C st -> fc_type C = FD_PIPE ->
+  fc_readable C <> ((mword_of_int 0) : mword 8) ->
+  st = FdOpen true false (FdPipe γp)
+  /\ fc_writable C = ((mword_of_int 0) : mword 8).
+Proof.
+  intros Hok Ht Hrd.
+  destruct (fdstate_ok_pipe inum γo om γp C st Hok Ht) as (rb & wb & Hst).
+  rewrite Hst in Hok.
+  pose proof (fdstate_ok_pipe_ends inum γo om γp C rb wb γp Hok) as Hcm.
+  destruct Hok as (Hr & Hw & _).
+  destruct rb; last first.
+  { exfalso. apply Hrd. exact Hr. }
+  cbn in Hcm. subst wb. split; [ exact Hst | exact Hw ].
 Qed.
 
 Lemma fdstate_ok_inode (inum : mword 32) (γo : gname) (om : offmode) (γp : pipe_names) (C : fcontent) (st : fdstate) :
@@ -670,7 +718,7 @@ Proof.
     destruct (fdstate_ok_inode inum γo om γp C st2 H2 Ht) as (r2 & w2 & ->).
     destruct (fdstate_ok_rw inum γo om γp C r2 w2 _ H2) as [Hr2 Hw2].
     by rewrite (fdstate_bit_inj r1 r2 _ Hr Hr2) (fdstate_bit_inj w1 w2 _ Hw Hw2).
-  - destruct H1 as (Hr & Hw & Ht & ->).
+  - destruct H1 as (Hr & Hw & Ht & -> & _).
     destruct (fdstate_ok_pipe inum γo om γp C st2 H2 Ht) as (r2 & w2 & ->).
     destruct (fdstate_ok_rw inum γo om γp C r2 w2 _ H2) as [Hr2 Hw2].
     by rewrite (fdstate_bit_inj r1 r2 _ Hr Hr2) (fdstate_bit_inj w1 w2 _ Hw Hw2).
@@ -1436,6 +1484,15 @@ Section FileInv.
      the type nor the lastness has to appear in fileclose's postcondition. *)
   Definition fc_wbool (C : fcontent) : bool :=
     negb (eq_vec (fc_writable C : mword 8) (mword_of_int 0 : mword 8)).
+
+  (* THE READ END, AT THE BOOLEAN [file_core_noff] PICKS ITS [pipe_ref] AT
+     (lane PIPE-RO).  A pipe row whose [f->writable] cell is zero carries the
+     reference at [false] -- the READ end -- which is what [fileread]'s pipe
+     arm hands [SpecPiperead].  [fdstate_ok_pipe_rd] is where the zero comes
+     from on a readable pipe. *)
+  Lemma fc_wbool_zero (C : fcontent) :
+    fc_writable C = ((mword_of_int 0) : mword 8) -> fc_wbool C = false.
+  Proof using . intros H. rewrite /fc_wbool H. by vm_compute. Qed.
 
   (* THE PAYLOAD PROPER -- what a type-dispatched consumer (fileclose's
      pipeclose/iput arms, the two carves) spends.  This is the historical

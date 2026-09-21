@@ -1680,3 +1680,50 @@ their `fab` statements as instances.  Files: `FileLinksLine` (pure),
 `FileLinksAt`, `FileLinksAtLine`, `FileLinksAtBan`, `FileLinksAtInp`,
 `FileLinkInst`, then `UShRound` (`Wcf0_of_pre_line_id`, `Wcf0_of_post_alt`).
 NOT STARTED.
+
+## PROGRAM STREAM, stretch 12 (2026-09-21) — defect 1: `exec_ok`, and how to generalise without breaking a consumer
+
+The owner approved both remaining defects, with one condition: DO NOT BREAK THE
+EXISTING PROOFS.  The method that meets it, and that the next generalisation
+should reuse:
+
+* **a new LEAF file for the predicate** (`iris/ExecWords.v`: `exec_ok ws :=
+  wl_wf ws ∧ 0 < length ws < 10 ∧ length (wl_line ws) < line_max`, its five
+  projections mirroring `line_ok_{wf,pos,lt10,len,at}`, and
+  `line_ok_exec_ok`), so `EchoDisc` — under every application — does not move;
+* **the general lemma is named `<lemma>_x` and CARRIES THE PROOF; the `line_ok`
+  lemma keeps its statement and its `Proof using` VERBATIM and its body becomes
+  `intro H. exact (<lemma>_x binders (line_ok_exec_ok _ H)).`**  Same type, same
+  argument list (the `Proof using` clause is what fixes a section lemma's
+  arguments), so no consumer, positional application or `Module Type` moves.
+  Scratchpad `genx.py` does this mechanically for a lemma whose FIRST premise is
+  `line_ok ws` and whose binders are explicit; `fixx.py` re-applies the name
+  substitution inside the `_x` proofs when the set grows (the compile error
+  "Hok has type exec_ok ws … expected line_ok ws" names the next lemma to add).
+* `Prop`-valued definitions with a `_holds` lemma (`echo_args_det`,
+  `ush_line_toks`, `echo_argv_bytes_of_line`) are done by hand the same way.
+
+STEP 1 LANDED on `main` (whole tree: the 29 files above `UkShEcho` rebuilt, zero
+errors, `make -n` empty; audits identical): the exec-NODE lemmas
+(`UkShEcho.{echo_toks_lt10, echo_off_lt, echo_toks_lookup, echo_cmd_args_lookup,
+echo_cmd_str, echo_cmd_word, echo_cmd_argv0}`, `UShEcho.{line_nonul,
+echo_argv_fits_of_ok, echo_node_row{,s}_of_cmd, echo_node_img_of_cmd,
+echo_uargv_shape, echo_node_img_s0_pos, echo_uargv_img, echo_uargv_exec_of_cmd,
+echo_room_of_det, echo_args_det{,_holds}}`, `UShCat.{cat_argv_fits_of_ok,
+cat_room_of_det}`); `UShCat.cat_args_det`, `UCatKernel.cat_image_entry` /
+`cat_child_of_entry` and `UShRound`'s `Hchild_cat` are AT `exec_ok`, which
+`cat f` meets.
+
+STEP 2 (in flight, branch `app-file/exec-ok`): the child's WALK.
+`UkShEcho.ush_xline_is` (the buffer's line at `exec_ok`), `ush_line_toks_x`,
+`echo_argv_bytes_of_line_x`, `echo_line_word0`; the exec arm
+`wp_kshr_exec_x_at{,_holds}` and the walk `wp_kshm_child_x{,_holds}` take the
+failed-exec alternative's bytes as ONE premise
+(`UkShDiagAt.ush_execfail_bytes dg (ws !!! 0)`) and the law at
+`ush_execfail_law_at dg (13 + length (ws !!! 0))` — the diagnostic was the only
+place the arm read the command.  THE GENERAL DIAGNOSTIC WAS THE PIPE CAMPAIGN'S
+(`UkShCat.wp_kshd_execfail_paid_at`) and sat ABOVE `UkShEcho`; it is moved to a
+new file `UkShDiagAt.v` below it, and `UkShCat`'s lemma keeps its statement and
+is `exact` the moved one.  Echo's arm and walk become `exact` the general ones
+at `alt_execfail` after `rewrite (ws !!! 0 = cmd_echo)` — by CONVERSION, as that
+file's own note demands (the proofmode route costs tens of minutes there).

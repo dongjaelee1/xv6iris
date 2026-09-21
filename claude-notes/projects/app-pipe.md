@@ -356,10 +356,19 @@ arm is the theorem's one named premise (`pipe_both_law`).
   BLOCKED**: §4.3j's widened exit payload CANNOT BE REDEEMED — the fork
   arm redeems a child's exit with `ChildTok.gen_pay_timeless` and
   `pterm_shape` carries the family's `inv`.  See the Findings block.
-- [ ] **PIPE-STAGE-5** (design §4.3n: the era-fixed family invariant behind a
+- [~] **PIPE-STAGE-5** (design §4.3n: the era-fixed family invariant behind a
   per-round registry as the eighth leaf of `pipe_links`; the terminal round
   through the record; `UkShPipeFork`/`blk2_inv` retired; the round law
   takes the /cat pin).  Brief `brief-pipe-stage-5.md`.
+  **BULLET 4 LANDED** (`sh_round_holds_pipe` takes `UShCatPay.sh_cat_slot T`,
+  `pipe_Hinit_boot` supplies it; `sh_pipe_child_law_all` unchanged).
+  **BULLETS 1–3 REFUTED**, at two walls neither STAGE-4 nor ROUND-6 had
+  reached: the era-fixed invariant has NO ALLOCATION SITE (`App.al_programs`
+  ends in `|==>`, `pipe_links_holds` and `sh_round_holds_pipe` are closed
+  entailments — `inv_alloc` needs a fancy update), and even a TIMELESS
+  terminal credential cannot go through the record, because `lk_read_t` is a
+  pure entailment into `lk_blk` and the terminal round's family holds the
+  era's `turn` for ever.  See the Findings block.
 - [ ] **SH-PIPE-ROUND-7** (after STAGE-5): the assembly; the theorem.
 ## Findings (append as lanes report)## Findings (append as lanes report)## Findings (append as lanes report)
 
@@ -8278,3 +8287,248 @@ credential, and (§5) `UShPipeCatSlot.pipe_sh_cat_slot`.  And
 redefinition is `ushf_child_law_at (pterm_wc g) ushq_lp 68`, one
 instantiation of the landed definition, and its argument list after the
 section closes is still `(g : pipe_gn)`.
+
+### PIPE-STAGE-5 (2026-09-23, design §4.3n) — bullet 4 LANDS; bullets 1–3 are REFUTED at TWO walls below the three §4.3n already knew: the era-fixed invariant HAS NO ALLOCATION SITE, and the record cannot carry the terminal round EVEN WHEN IT IS TIMELESS
+
+Branch `app-pipe/pipe-stage-5` off main (`6bb9b4764`), one code commit
+(`23ab2a2bd`) plus this notes commit.  Files moved: `iris/UShPipeRound.v`
+and `iris/UInitPipe.v`, plus the report file
+`iris/PipeStage5Assumptions.v` (NOT a `_CoqProject` row).
+**`PipeOut.v`, `PipeBoth.v`, `PipeLinks.v`, `PipeLinkInst.v`,
+`PipeLinksLine.v`, `UShPipeRound2.v`, `UkShPipeFork.v`, `UShPipeExit.v`,
+`UCatPipe.v`, `UShPipeChild.v`, `UInitPipeAdequacy.v`,
+`PipeAssumptions.v` and every generic file are BYTE-IDENTICAL to main.**
+Whole-tree `ec2-lane.sh stage5 build` **RC=0** (three files recompiled:
+`UShPipeRound.v`, `UInitPipe.v`, `UInitPipeAdequacy.v`); no `Admitted`,
+no `Axiom`.
+
+**(0) IN ONE SENTENCE.**  §4.3n's fourth bullet is landed and costs
+nothing; its first three are not implementable, and the reason is not a
+missing lemma but two facts about the tree that no earlier lane had to
+look at — **the pipeline application can allocate NO invariant of its
+own** (every era-scope obligation it discharges is a BASIC update, and
+`inv_alloc` needs a fancy one), and **the record's `lk_read_t` refutes a
+terminal arm at `lk_open_t` even after the `inv` is gone**, because the
+terminal round holds the era's `turn` for ever and every non-taint arm of
+`lk_blk` needs one.
+
+**(1) WHAT LANDED — the /cat pin on the round law (§4.3n bullet 4,
+SH-PIPE-ROUND-6 finding (5)).**  Verbatim:
+
+```coq
+  Definition sh_pipe_child_law : iProp Σ :=
+    (□ (UShCatPay.sh_cat_slot T -∗
+        UkShFork.ushf_child_law_at (PS := uprogSG_free) (SG := uexecSG_xv6)
+          Wcf ushq_lp 68))%I.
+
+  Lemma sh_round_holds_pipe (N : uk_names Σ) :
+    ⊢ PipeLinks.pipe_links g -∗
+      udep (PS := uprogSG_free) -∗
+      UShEcho.sh_echo_slot T -∗
+      UShCatPay.sh_cat_slot T -∗
+      (∃ v : era_pins, era_pin γ (S gen_id) v) -∗
+      sh_pipe_child_law -∗
+      UkSh.ush_rest_l_at (PS := uprogSG_free) N γp T Wcf Wbf Pm
+        PipeUline.ush_line_pipe
+        (UInitSh.sh_Rsh (ukn_t N) (ukn_d N) (ukn_s N)).
+```
+
+`ushq_body_law_pipe` now takes the APPLIED law
+(`UkShFork.ushf_child_law_at … Wcf ushq_lp 68`) where it took
+`sh_pipe_child_law`; `sh_round_holds_pipe`'s proof spends one
+`iPoseProof ("Hchl0" with "Hcat")`.  **The Prop
+`UInitPipe.sh_pipe_child_law_all` is UNCHANGED** — same binder list, same
+`⊢ sh_pipe_child_law c` — which is what §4.3n asks.  The pin is an
+ANTECEDENT OF THE CHILD LAW and not merely a premise of the round,
+because `sh_pipe_child_law_all` asserts the law with no resources at all.
+`UInitPipe.pipe_Hinit_boot` builds it in three lines beside the `Hslot` it
+already builds, off the same `Hinv` and the same `Hmint`:
+
+```coq
+    iAssert (UShCatPay.sh_cat_slot (echo_taint (pgn_cl g))) as "#Hcat".
+    { iApply (UShPipeCatSlot.pipe_sh_cat_slot (pgn_cl g) r Heq
+                with "Hinv Hmint"). }
+```
+
+No Persistent wedge at either `#`-intro (`sh_cat_slot_persistent` is
+named and the definition is three conjuncts).
+
+**(2) THE FIRST WALL: THE ERA-FIXED INVARIANT HAS NO ALLOCATION SITE.**
+§4.3n's first bullet says the family's invariant is "allocated once with
+the era, held in the record's fixed persistent bundle".  Measured, at the
+statements:
+
+- `PipeLinks.pipe_links_holds : ⊢ pipe_links` is a CLOSED ENTAILMENT, and
+  `lk_links` is a plain `iProp` field.  `⊢ inv N P` is false, so an
+  eighth leaf that is an `inv` cannot be a leaf of `pipe_links` at all —
+  the bundle would have to become `⊢ |={E}=> pipe_links`, and its two
+  call sites are both inside `pipe_Hinit_boot` (`UInitPipe.v:725,727`).
+- `UShPipeRound.sh_round_holds_pipe` is a closed entailment too, so the
+  leaf cannot be allocated there either; and it is `□`-wrapped per round
+  the moment it is, so an allocation inside it is per-USE, not per-era.
+- `UInitPipe.pipe_Hinit_boot` — the application's whole era-scope
+  obligation — ends in **`|==> init_boot_bundle …`**, and so does the
+  generic field it discharges: `App.al_programs` (`App.v:411`) and
+  `UPipeBootAdequacy.pipe_prog_law` (`:110`) both end `|==>`.  A basic
+  update cannot allocate an invariant (`(|==> P) ⊢ |={E}=> P` goes only
+  one way), so NOTHING the pipeline application hands the shell can
+  contain an invariant it allocated.
+- The one remaining shared-state carrier that IS reachable at a fancy
+  update — the CLAIM, through `out_link`'s `={⊤∖↑uartN Uart0}=∗` — cannot
+  hold an `inv` either, and this is a GENERIC statement:
+  `RiscvPtsto.riscv_cons_res_timeless` is `ai_cons_timeless`, a FIELD of
+  the machine's `app_iface` record, and `PipeOut.pecl_timeless` is the
+  pipeline's discharge of it.  An `inv` is not timeless.
+
+  **So the only era-fixed invariant every party of a pipeline round
+  holds is `AppInv.app_inv fsc_fs`** — it is the FIRST CONJUNCT of both
+  `UShEcho.sh_echo_slot T` and `UShCatPay.sh_cat_slot T`, which the round
+  now carries, and it is `pipe_Hinit_boot`'s own first premise.  Its body
+  is `AppInv.app_body`, whose only application-owned slot is
+  `app_pred app_run (abs_view I)` = `AppPipeClaim.pipe_pred (pgn_cl g)`.
+  That slot carries NO `Timeless` obligation (`app_body` is never opened
+  with `>`), so the family's body — which is timeless throughout — would
+  fit.  What it costs is that `app_pred app_pipe` must be applied to the
+  WHOLE fixed part `pipe_gn` and not only to `pgn_cl g`, i.e. the era
+  equation `file_app = MkAppcfg echo_names (pipe_pred γ) r` moves.  That
+  is `AppPipeClaim.v` / `AppPipe.v` and every file that names the
+  equation — none of them this lane's.
+
+**(3) THE SECOND WALL: THE RECORD CANNOT CARRY THE TERMINAL ROUND EVEN
+WITH THE `inv` GONE — `lk_read_t`, and the `turn`.**  §4.3n's third
+bullet asks for `pwc_line2`'s arm, `pwc_sp_t`/`pwc_open_t`'s terminal
+arms at `c2 = 6, 7` and `lk_prompt_dollar_line` at the arm.  The chain
+dies at the record's read field:
+
+```coq
+    lk_read_t : forall k v I a l,
+      wl_nl ∉ l ->
+      ⊢ inp_lb v (I ++ l ++ [wl_nl]) -∗ lk_open_t k v I -∗
+      lk_blk k v (I ++ l ++ [wl_nl]) a 0%nat;
+```
+
+It is a PURE entailment: no `lk_links`, no fupd, no claim, and — this is
+the point — **not the reader's residue**.  A terminal `lk_open_t` arm
+must therefore produce `lk_blk … 0`, and
+
+- `pwc_blk`'s non-taint arm requires `turn v P`, one half of the era's
+  `mono_nat` authority whose other half is in `pecl`.  The terminal
+  round's family holds that half INSIDE `blk2_body` (`pwc_blk2`'s
+  `turn v (P + c1 + c2)`) and never gives it back: the round is never
+  filed, because the stray may write at any later time.  So the terminal
+  credential can never carry a `turn`, and no arm of it can produce one.
+- `pwc_blk`'s taint arm requires `PT`, and the only thing that yields
+  `PT` after a terminal round is `PipeBoth.pterm_read_absurd` /
+  `UkShPipeFork.pterm_tcore_read`, both of which take
+  `PipeLinksLine.pwc_rres` — the READER's `cs_lb` — which `lk_read_t`
+  does not have.  `cs_frozen_at v n` and `inp_lb v (I ++ l ++ [wl_nl])`
+  live at two independent gnames of `era_pins` and their tie
+  (`nlines I ≤ length cs`) is a PURE conjunct of `pcl_pure2`, i.e. inside
+  the claim.
+
+  Pushing the arm one step further down does not help: giving `lk_blk` a
+  terminal arm at `i = 0` (the only index `lk_read_t` produces, and
+  `lk_panic_done`/`lk_blk_sp` sit at nonzero indices so they are free)
+  cascades into `lk_owed` (`lk_blk_owed`) and `lk_lend`
+  (`lk_lend_of_blk0`), and `lk_lend`'s arm lands in `pwc_blk2` through
+  `pwc_blk2_of_lend`, i.e. in the family itself.  `lk_blk_step` at the
+  arm is the only one of them that is payable (it has `lk_links` and
+  produces an `out_link`, so the claim is in the room) — every other law
+  on the way is pure.
+
+  **Consequence:** `lk_prompt_dollar_line` cannot write the terminal `$`,
+  `pwc_line2`/`pwc_sp_t`/`pwc_open_t` do not move, `PipeLinkInst.v` and
+  `PipeLinksLine.v` do not move, and **`UkShPipeFork.v` cannot be
+  retired**: the widened credential OUTSIDE the record
+  (`UkShPipeFork.pterm_wc`) remains the only carrier of the terminal
+  round.  This is PIPE-STAGE-3's obstruction at a FOURTH site, and unlike
+  the first three it survives the `inv` being re-homed.
+
+**(4) WHAT §4.3n GOT RIGHT, AND THE ONE STOP RULE THAT DID NOT FIRE.**
+STOP rule 1 (the registry's record) does NOT fire: the record is plain
+data and `leibnizO` is available, because both exclusion witnesses are
+determined by gnames and a list —
+`XL = PipeProto.wcur pn 0 = ghost_var (pn_wcur pn) (1/2) 0` and
+`YR = PipeProto.pws_lb pn (take 1 L) = own (pn_hist pn) (◯ML (take 1 L))`
+— so
+`Record fam_rec := MkFamRec { fr_wcur : gname; fr_hist : gname;
+  fr_I : list (bv 8); fr_L : list (bv 8); fr_gL : gname; fr_gR : gname;
+  fr_gM : gname }` carries everything `blk2_body` is indexed by, with no
+`iProp` in it and no `saved_prop`.  The COST the design left unmeasured
+is a different one: whatever file states `fam_body` must be able to NAME
+`PipeProto.wcur` / `pws_lb`, i.e. must take `pipeProtoG Σ` and therefore
+`Require Import PipeProto` — which `PipeOut.v` and `PipeLinks.v` cannot
+do (they sit below the kernel bundle; `PipeProto` requires `Xv6G`,
+`PipeQueue`, `PipeReg`), while `PipeBoth.v` can (nothing in `PipeProto`'s
+cone requires it).  Restating the exclusion from `pipe_inv pn γp L` at
+the stepping child, as §4.3n rules, is right and costs nothing once the
+record is in hand.
+
+**(5) `Print Assumptions`** (`iris/PipeStage5Assumptions.v`, compiled by
+hand): `UShPipeRound.sh_round_holds_pipe` **14**,
+`UShPipeCatSlot.pipe_sh_cat_slot` **13**, `UInitPipe.pipe_Hinit_boot`
+**14** — each verbatim the campaign's standing list (11
+`PrimString`/`PrimInt63` primitives + the 2 `xv6iris_extras` reservation
+`Parameter`s + `functional_extensionality_dep` where the walk touches the
+model).  Nothing new appears.
+
+**AUDITS.**  `audit-pipe-only` **14** (re-measured on the mirror at
+`23ab2a2bd`; the lane's cone is the only one that reaches
+`PipeAssumptions`).  `audit-only` **13**, `audit-echo-only` **14**,
+`audit-tree-only` **13** are unmoved BY CONSTRUCTION and the dependency
+graph says so: the reverse cone of the two changed files is
+`{UShPipeRound, UInitPipe, UInitPipeAdequacy, UPipeBootAdequacy,
+PipeAssumptions}` plus the report files, and `SystemAssumptions` requires
+only `SystemAdequacy`, `EchoAssumptions` only `UInitBootAdequacy`,
+`TreeAssumptions` only `UTreeAdequacy` — none of which reaches
+`UInitPipe`.
+
+**WHAT THE DESIGN GOT WRONG.**
+1. §4.3n bullet 1 ("allocated once with the era, held in the record's
+   fixed persistent bundle"): there is no fancy update at era scope.
+   `pipe_links_holds` is `⊢ pipe_links`, `sh_round_holds_pipe` is a
+   closed entailment, and `App.al_programs` / `pipe_prog_law` /
+   `pipe_Hinit_boot` all end in `|==>`.  §2.
+2. §4.3n bullet 1's fallback, the claim: `pecl` must be `Timeless`
+   (`RiscvPtsto`'s `ai_cons_timeless` FIELD), so it cannot carry an
+   `inv` either.  §2.
+3. §4.3n bullet 3 ("`pwc_sp_t`/`pwc_open_t` gain the terminal arm"):
+   `lk_read_t` refutes it, independently of timelessness.  §3.
+4. §4.3n bullet 3's consequences — `lk_prompt_dollar_line` at the arm,
+   `UkShPipeFork.v` retired, `blk2_inv` retired — fall with it.
+5. §4.3n bullet 4 is RIGHT and is landed.  §1.
+6. §7's "one cost is `XL`/`YR`" is the wrong cost: they are `leibnizO`
+   data, and the real cost is the `pipeProtoG` class in whatever file
+   states the body.  §4.
+
+**STOP RULES.**  Rule 1 did NOT fire (the record is `leibnizO`).  **Rule
+2 FIRED** — `lk_read_t`'s statement would have to change (from
+`inp_lb v (I ++ l ++ [wl_nl])` to `lk_rres v (I ++ l ++ [wl_nl])`, which
+every era can supply at the call site but which is a field of the GENERIC
+`LinkRec` record) — and the lane stopped there and did not make it.
+Rule 3 did not fire.  A third stop, not in the brief: bullet 1 needs
+`App.al_programs`'s `|==>` to become `={⊤}=∗`, which is a field of the
+GENERIC `App.xv6_app_laws` record, consumed by `BootChain`.
+
+**THE ONE THING THE NEXT LANE NEEDS FIRST.**  A ruling between the two
+routes §2 and §3 leave, because they are the only two:
+ (a) **the `▷` repair** ROUND-6 priced and rejected as "not cheaper" —
+     `UkRunLeaf.wp_uk_cmv_later` (a 20-line twin of `wp_uk_btype_later`
+     over the landed `UkStep.wp_uk_retire_later`) plus a loop head at
+     `0x93a`, so `UkShFork`'s re-entry can redeem the child's exit with
+     the plain `ChildTok.gen_pay` and strip the `▷` at `0x938`.  It is
+     now the CHEAPEST route, because every carrier that avoids it has
+     been measured and refuted (the record — STAGE-3 and §3 above; the
+     claim's deposit — STAGE-4 §6; the child's escrow — ROUND-6 §2; an
+     application-allocated era-fixed invariant — §2 above).  Two generic
+     additions, no application file moves.
+ (b) **the family into `AppInv.app_inv`'s own body**, i.e. into
+     `AppPipeClaim.pipe_pred`, with `app_pred app_pipe` taking the whole
+     `pipe_gn`.  No generic file moves and the credential becomes
+     timeless exactly as §4.3n promised, but the era equation
+     `file_app = MkAppcfg echo_names (pipe_pred γ) r` moves and with it
+     `AppPipe.v`, `AppPipeCons.v`, `UShPipeCatSlot.v`, `UInitPipe.v` and
+     `UPipeBootAdequacy.v`.
+Either way, `UkShPipeFork.v` STAYS: §3 says the terminal round can never
+go through the `LinkRec` record, so the widened credential outside it is
+permanent, and §4.3n's "retired for good" should be struck.

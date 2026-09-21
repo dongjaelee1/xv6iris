@@ -38,7 +38,9 @@ Landed 2026-09-21:
 - **2d** (`UShRound.Hchild_redir` is a LEMMA at
   `UkShRedirBody.sh_redir_child_law Wcf`; the stale twin is deleted; it takes
   `(∃ jc, cons_made (fn_cons r) jc)`, which `sh_round_holds_file` must gain).
-  PROGRAM-STREAM.md stretch 10 has every name and the sixth hang shape.
+  PROGRAM-STREAM.md stretch 10 has every name, and the `ghost_varG` instance
+  hang it met four times (a known shape; the clean fix is to drop `UShRound`'s
+  own `ghost_varG Σ Z` binder -- not yet measured).
 
 NEXT: 3 (iii)-(iv) (`Hchild_cat`; (iii) waits on the owner confirming RULING
 CAT-DEED's taint arm), then 5 (`sh_round_holds_file`, with the `cons_made`

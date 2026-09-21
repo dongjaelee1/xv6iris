@@ -1513,7 +1513,7 @@ as written, with three corrections:
   (fn_cons r) jc)` as a premise to apply `Hchild_redir`; the statement is NOT
   yet changed (item 5 restates it anyway).
 
-**THE SIXTH SILENT-HANG SHAPE, met four times in one lemma.**  `UShRound`'s
+**A KNOWN HANG SHAPE (durable-notes, "A section variable of a class type is a LOCAL INSTANCE" -- its last sentences name exactly this `ghost_varG` case), met four times in one lemma.**  `UShRound`'s
 section has its own `ghost_varG Σ Z`, and `Hopen_hand` (hence the walk, hence
 the child law) is at `offbox_offG`.  Every lemma applied inside the proof that
 mentions `ucwd`/`urun` — `UkRun.urun_gen`, `ExecRun.udepw_at_refR_of_sup`,
@@ -1526,7 +1526,8 @@ every one of them (and `(PS := uprogSG_free) (SG := uexecSG_xv6)` where the
 lemma has those names).  The tell that a lemma took the wrong one is Rocq's
 `Proof using` complaint naming `ghost_varG0` at `Qed`.  Localise with
 `rocq compile -vok -time` under `timeout` (scratchpad `tcheck.sh`): the last
-`Chars` line is the sentence BEFORE the hang.  THE CLEAN FIX is to delete the
+`Chars` line is the sentence BEFORE the hang.  THE CLEAN FIX, which durable-notes
+prescribes ("Drop the binders"), is to delete the
 section's `Context \`{!ghost_varG Σ Z}` from `UShRound` (and `UShRest`'s
 binder list it copies) so there is one instance in scope — not done here
 because the binder list is copied verbatim for an elaboration-cost reason

@@ -1628,3 +1628,36 @@ WHAT IS LEFT OF `Hchild_cat`, in order:
 3. the child's walk at the `cat f` line (parse, exec `/cat`) with the supply
    built from `cat_child_of_entry` — `redir_exec_sup`'s shape, the walk pin at
    `FsCatPin`, the generic slot for a tainted PRE.
+
+### Stretch 11: DEFECT 3, read out of `FileLinksAt` — the line credential cannot hold a filed `RCRan` block
+
+Item 2's CLOSE (`catq_cat … ∗ F` to `Wcf I 0`) has no target when cat printed
+a NON-EMPTY file.  `Wcf I 0` is `(Wcl I 0 ∗ DONE I) ∨ (Wcl I 3 ∗ PEND I)`:
+
+* EMPTY content (`bs = []`): cat printed nothing, the cursor is still at 0 and
+  unfiled (`UCatOut.cch_0_alt`), so the exit is `Wcl I 3 ∗ PEND I` at
+  `a := ralt_enc RCRan`, whose continuation is the bare prompt — this case is
+  fine, and is `redir_ran_exit`'s shape.
+* NON-EMPTY content: the console has FILED `RCRan` (`cs0 ++ [a]`) and the turn
+  is at `P + length bs`, so the exit must be `Wcl I 0 ∗ DONE I`.  But
+  `Wcl I 0 = FileLinksAt.fwc_line_at` has two arms — the panic prologue
+  (`wr_pro_f`, which demands the last alternative be a PANIC) and
+  `∃ a, ⌜fapr I a⌝ ∗ fwc_blk_at … a (length (fab I a) - 2)` — and
+  `fapr I a` demands `fstate_free (ralt_dec a)`, which `RCRan` is not;
+  `fab I (ralt_enc RCRan) = []`.  NEITHER ARM HOLDS IT.  The same is true of
+  `RCNoOpen`?  No: `RCNoOpen` IS state-free (`alt_catopen`), so the
+  `cannot open` exit closes by `Wcf0_of_post_alt`.
+
+THE CAUSE is the record's type: `LinkRec.lk_ab : list (bv 8) -> nat -> list
+(bv 8)` gives an alternative's bytes from the INPUT alone, and cat's output is
+a function of the FILE's state.  THE FIX IS IN THE FILE INSTANCE, not the
+generic record: `lk_line` is abstract to the sh loop, and the `_at` families
+are already indexed by the era's boot state `s0`, from which the round's state
+is computable (`UCatOut.cat_st cs s0 I`).  A third arm of `fwc_line_at` —
+`∃ a ps cs P, ⌜wr_blk_t_f ps cs s0 I P⌝ ∗ ⌜ralt_ok (fline I) (ralt_dec a) ∧
+¬ panic⌝ ∗ turn v (P + (length (cont (cat_st cs s0 I) (fline I) (ralt_dec a))
+- 2)) ∗ cs_lb v (cs ++ [a]) ∗ …` — with the record's line laws re-proved at it
+(the prompt's two bytes from that arm: `lk_blk_sp`-shaped; `Wcf0_of_pre_line_id`
+and `Wcf0_of_post_alt` gain a case).  The state-free arm is then its instance,
+which is a simplification worth checking before adding a third arm beside it.
+File tier only (`FileLinksAt`, `FileLinkInst`, `FileLinksAtInp`, `UShRound`).

@@ -8958,3 +8958,160 @@ hole: allocate the family from the lend at the child law's own `mWP`
 (`pipe_round_entry`), pass it as `Cr`, take the registrar at
 `Wq := emp`, split it into the two lends, and close the four exits at
 `pipe_round_exit` (n ≠ 3), `pipe_round_unwind` and the terminal shape.
+
+### SH-PIPE-ROUND-8 (2026-09-21, design §4.3q) — the one-token repair is REFUTED IN BOTH DIRECTIONS (it cannot be made in the file it names, and it is not needed); the round's four generic holes are measured, THREE ARE CLOSED, and the fourth is named
+
+Branch `app-pipe/sh-pipe-round-8` off main (`aca43274a`).  TWO files
+moved: `iris/UShPipeChild.v` (additive — every landed statement
+byte-identical) and NEW `iris/UShPipeAssembly.v` (+ one
+`iris/_CoqProject` row).  Nothing else in the tree moved.
+
+**(1) §4.3q IS WRONG ON BOTH HALVES, and both halves are measured.**
+
+- **The token cannot be changed in `UShPipeChild.v`.**  The premise
+  `□ (Cr -∗ ukn_pay N (-1))` is never SPENT in that file: it is
+  forwarded, as `Pex`, to `UkShPipeCm.wp_kshp_parsecmd_bar`, and from
+  there into the parse cone: SEVEN statements in `UkShPipeCm.v` alone
+  (`□ (Pex -∗ ukn_pay N (-1))` at lines 184, 216, 331, 1264, 1332, 2019,
+  2901 — two of them the `parseexec` and `pipecmd` CALL PREMISES, whose
+  suppliers must state it too), plus
+  `UkShPipeRight.wp_kshp_parsepipe_right`; every one a PURE wand.  `UkShPipePaid.wp_kshr_pipe_arm_paid` — the walk's other callee,
+  the file §4.3q names as the possible second site — **does not take the
+  premise at all** (its statement has `□ (app_taint -∗ Qc (-1))` and no
+  payment wand).  So the "one token" is a dozen statements in files this
+  lane does not own, and STOP rule 2 would have fired on every one.
+- **It is not needed.**  The family must exist before `pipe(2)`, not
+  before the PARSE; the parse's payer and the arm's lend need not be the
+  same resource; and `Pex` comes back OUT of the parse, at a WP point.
+  LANDED: `UShPipeChild.wp_kshm_child_pipe_paid_at` /
+  `wp_kshm_child_pipe_paid_line_at`, the walk at TWO payers — the round's
+  lend `Cp` carried across `parsecmd` (whose exit payment is the PURE
+  `UkShPipeFork.pterm_wc_of`, `Wcf I 3 -∗ ushf_wq Wct I`), one `iMod` at
+  0x9c6, the family `Cr` into `runcmd`'s arm.  The landed
+  `wp_kshm_child_pipe_paid` / `_line` are byte-identical in statement and
+  are now this at `Cp := Cr`.
+
+**(2) WHERE THE FUPD ACTUALLY GOES — and it is generic, not per-file.**
+
+```coq
+  Lemma exf_law_fupd (dg : list (bv 8)) (n : nat) (Cr Cr' Cd : iProp Σ) :
+    (0 < n)%nat ->
+    □ (Cr ={⊤}=∗ Cr') -∗
+    ush_execfail_law_at dg n Cr' Cd -∗ ush_execfail_law_at dg n Cr Cd.
+```
+
+`UkShDiag.ksh_w1`'s conclusion is an `mWP`, so the credential a
+diagnostic is paid from may arrive under a FANCY UPDATE at its FIRST
+BYTE; only the law's *entry* is pure (`ksh_w1_acc` is the accessor that
+makes it so).  That is what makes the `pipe(2)`-failed tail payable from
+the family (`pipe_round_unwind` is a fupd) and both `fork1` tails payable
+at the mode's fire (`blk2_mode_fire` is a fupd).  §4.3q's repair is the
+same observation made one level too high.
+
+**(3) THE HOLE §4.3q DID NOT SEE: `blk2_inv`'S EXCLUSION WITNESSES NAME
+`pn`, AND `pn` IS MINTED INSIDE THE REGISTRAR.**  `pipe_round_entry` has
+to run before `pipe(2)` (the lend IS the family and the `pipe(2)`-failed
+tail is paid from it) and it FIXES `XL`/`YR` — PIPE-EXEC-ECHO's
+`XL := wcur pn 0`, `YR := pws_lb pn (take 1 L)` — while
+`PipeProto.pipe_proto_alloc` mints the `pnames` and the invariant
+TOGETHER, inside `UEchoPipe.ep_pay_of_alloc`, i.e. after `pipe(2)`.
+Refuted at the statement: two distinct exclusive tokens do not exclude
+each other; two halves of one `ghost_var` at different values cannot both
+be handed out (and at the same value they do not exclude); a
+`pn`-existential `XL`/`YR` pair gives no agreement (`pipe_reg γp` records
+no `pn` — it is `□ ∀ w, pipe_cpay _ w emp` — and two `inv pipeN`s cannot
+be opened under one mask).  LANDED instead: `UShPipeAssembly.pipe_pre` /
+`pipe_names_alloc` / `pipe_inv_alloc_at` — the protocol's allocation
+SPLIT IN TWO, the names and the body's half before the walk, the
+invariant at the registrar; `pipe_proto_alloc` is the two composed.
+
+**(4) THE TERMINAL PAYLOAD IS NOW A LAW THE WALK CAN TAKE.**
+`UShPipeAssembly.pipe_fork_panic_law`, at `Cx γp :=` the family's right
+and mode halves at 0 and `Bx γp := UkShPipeFork.pterm_shape g I 5`:
+
+```coq
+    ush_execfail_law_at alt_panic 5%nat
+      (PipeBoth.wcur gR (1/2) 0 ∗ PipeBoth.wcur gM (1/2) 0)
+      (UkShPipeFork.pterm_shape g I 5%nat)
+```
+
+— the mode's fire to 3 through `exf_law_fupd`, each of `fork\n`'s five
+bytes `PipeBoth.pblk2_cstep_R_t` through the new `ksh_w1_of_step` (the
+abstract-family sibling of `UShPanic.ksh_w1_of_link_blk_at`;
+`alt_forkc = alt_panic ++ u_prompt`, so the child writes 0..4 and the
+main loop's prompt writes 5 and 6).  `pterm_pay`'s SECOND ARM is exactly
+this, so §4.3h's terminal round is now a RESOURCE the round hands its two
+`fork1` tails, and the walk's last two premises are discharged.
+
+**(5) `sh_pipe_child_law` MUST GAIN ONE MORE ANTECEDENT — PIPE-STAGE-5's
+/cat-pin move, once more.**  Every family byte step (`pblk2_cstep_L`,
+`pblk2_cstep_R_t`) takes `PipeLinks.pipe_link_taint g`, whose only
+producer is `pipe_links g` (leaf 4), while `pblk2_ecl_L` /
+`pblk2_ecl_L_t` / `pblk2_ecl_R_t` are CLOSED (`pblk2_ecl_*_holds`).
+`sh_pipe_child_law_all` asserts the law with no resources, so the bundle
+has to be an antecedent: `□ (pipe_links g -∗ sh_cat_slot T -∗
+ushf_child_law_at Wct ushq_lp 68)`, supplied by `sh_round_holds_pipe`,
+which holds it.  The Prop `sh_pipe_child_law_all` does not move, and
+neither do `UInitPipe.v`, `UInitPipeAdequacy.v` or `PipeAssumptions.v`.
+
+**(6) WHAT THE ROUND STILL OWES, itemised and measured.**
+1. the LEFT child's diagnostic at the family's left chain
+   (`ush_execfail_law alt_execfail 17 (RcL γp) Cd` over `pblk2_cstep_L`
+   + `ksh_w1_of_step`; no fupd — the left chain fires no mode).  Note the
+   consequence for the round's payload: `XL` IS the `wtok pn` inside the
+   refunded `ep_pay`, so it is spent into the family and the round must
+   read `PExecL` off the CURSOR (`c1 = length dg_execL`, which is all
+   `pround_case`'s second disjunct asks) and NOT off `pipe_payL`;
+   `pipe_round_reading` is needed only on the arms with `c1 = 0`.
+2. the RIGHT child's diagnostic at mode 2 (`alt_execR`, 16 bytes:
+   `pblk2_cstep_R` + `exf_law_fupd` at `blk2_mode_fire … 2`).
+3. **the big one**: cat's `Hw` — the MULTI-byte console write at the
+   family's right chain at mode 1.  `UCatKernel.cat_w_of_link` (≈200
+   lines) is the FILE era's twin and there is no generic version; the
+   cheap half is a `cons_out_chain`-of-step leaf (the multi-byte sibling
+   of `ksh_w1_of_step`, i.e. `UShPanic.prompt_chain`'s own move), the
+   rest is the copy at `Ch c := wcur gR (1/2) c ∗ wcur gM (1/2) 1`.  The
+   mode's fire to 1 deposits `YR`, which cat has from
+   `PipeProto.pws_lb_of_rcur`.
+4. the registrar at the PRE-ALLOCATED `pn` (`ush_pipe_call_echo_pay`'s
+   twin over `pipe_inv_alloc_at`, at `Wq := emp`).  Every `pn` ghost is
+   consumed there and is LOST at a `pipe(2)` failure — and nothing needs
+   it there, which is why (3) of ROUND-5 part 1 still holds.
+5. the `panic("pipe")` law at the era's credential: the pipe
+   alternative's block IS `wl_line dg_pipe ++ u_prompt`
+   (`PipeLinksLine.pcont_prompt`'s seventh case, so `length - 2 = 5`),
+   i.e. `UShPanic.ush_execfail_law_holds_at`'s body at that alternative
+   plus a `dg`-weakening (`ush_execfail_law_at (dg ++ u) n ⊢
+   ush_execfail_law_at dg n` for `n ≤ length dg`), then `exf_law_fupd`
+   at `pipe_round_unwind`.
+6. the split, `Qc := pipe_Qc pn PL PR`, the two `ush_fork_ans`, the two
+   `uwait_ans`, the reading and `pipe_round_exit`.  The child's own exit
+   at 0xea is LANDED here (`UShPipeAssembly.wp_kshr_exit0_paid`): the
+   landed `UkShRun.wp_kshr_exit0` takes the payload FREE, as the Prop
+   `⊢ ukn_pay N (-1)`, and a paid round holds it as a RESOURCE — the same
+   two instructions with the payload linear, which `UkSh.wp_ksh_exit`
+   already takes that way.
+
+**OPERATIONAL, three, each measured.**
+- `iMod` does NOT see through `RiscvPtsto.wp_triv`: a fancy update
+  against a bare `mWP Loop` goal fails with "cannot eliminate modality",
+  although `|==>` goes through.  `UConsOpen.fupd_wp_triv` is the peel and
+  it is restated in both files this lane touched (neither is in
+  `UConsOpen`'s cone).
+- `PipeProto.wcur` and `PipeBoth.wcur` are two different definitions with
+  one name; a file that imports both must qualify EVERY occurrence (the
+  error surfaces as "pn has type pnames while gname was expected").
+- `UkShRun.wp_kshr_exit0` and friends are `Local Lemma`s: not imported,
+  but reachable by qualified name (`UkShPipe.v` already does it).
+- **NAME THE STEP FAMILY.**  `iApply (ksh_w1_of_step N _ l rb p b Hl2)` —
+  the family left to the elaborator — does not return (measured: >10 min
+  at 100 % CPU, and `Set Default Timeout 60.` named the line in one
+  build).  The unifier is asked for `?F p` and `?F (S p)` at once.  With
+  the family written out the same `iApply` is instant.  This is the fifth
+  leaf in this cone that has to be named rather than searched.
+
+**THE ONE THING THE NEXT LANE NEEDS FIRST.**  Nothing from the owner.
+(6)'s six items are assembly at the leaves this lane landed, (5) is a
+one-line ruling on the precedent PIPE-STAGE-5 already set, and the first
+thing to WRITE is item 3 — cat's `Hw` — because it is the only piece
+whose size is not already known to be small.

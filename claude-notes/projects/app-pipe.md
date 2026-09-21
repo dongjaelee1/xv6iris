@@ -7556,8 +7556,11 @@ NOT retired — it is FINISHED**.  Whole-tree `ec2-lane.sh stage4 build`
 **RC=0**; no `Admitted`, no `Axiom`; `Proof using` on every result.
 `Print Assumptions` on the lane's **thirty-eight** headline results:
 **all thirty-eight Closed under the global context**.
-**`audit-pipe-only` = FOURTEEN**, measured on the mirror after the
-changes and verbatim the standing list (1
+**`audit-pipe-only` = FOURTEEN**, measured on the mirror at
+`eee3c0de4` (the last commit inside `PipeAssumptions`' cone that changes
+anything it walks; `f72f3671c` adds Closed lemmas to `PipeBoth` and
+touches `UkShPipeFork`, which only the report files require) and
+verbatim the standing list (1
 `functional_extensionality_dep` + the 2 `xv6iris_extras` reservation
 `Parameter`s + 11 `PrimString`/`PrimInt63` primitives).  The other three
 audits are unmoved BY CONSTRUCTION, and the dependency graph says so:

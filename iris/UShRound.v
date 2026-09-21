@@ -1420,49 +1420,62 @@ Section UShRound.
 
   (* the open FAILED: `f` is as the round found it ([RFOpenU]), or the
      create had fired before the failure and left it empty ([RFOpenM], at
-     an absent `f` only -- [redir_Kf]'s second arm says so) *)
-  Lemma redir_openfail_exit (I : list (bv 8)) (ws : wordline) (s : dst)
+     an absent `f` only -- [redir_Kf]'s second arm says so).  TWO lemmas
+     and not one over [redir_Kf]: which arm the call returned is known
+     BEFORE the diagnostic is written, and the diagnostic's law is run at
+     the matching alternative, so its end state holds ONE block. *)
+  Local Lemma fab_openfail_long (I : list (bv 8)) (ws : wordline) (a : ralt) :
+    fline I = LEchoF ws -> a = RFOpenU \/ a = RFOpenM ->
+    (length (fab I (ralt_enc a)) - 2)%nat = 0%nat -> False.
+  Proof using .
+    intros Hfl Ha.
+    rewrite (fab_of_apr I (ralt_enc a));
+      [ | rewrite ralt_dec_enc Hfl; destruct Ha as [-> | ->]; split;
+          first [ exact Logic.I | reflexivity ] ].
+    rewrite ralt_dec_enc Hfl.
+    destruct Ha as [-> | ->]; vm_compute; discriminate.
+  Qed.
+
+  Lemma redir_openfail_exit_u (I : list (bv 8)) (ws : wordline) (s : dst)
       (v v' : era_pins) (cs : list nat) :
     fline I = LEchoF ws ->
     pre_tie cs s0 I (dst_content s) -> (0 < nlines I)%nat ->
     lk_pin FI (S gen_id) v -∗
-    (lk_post FI (S gen_id) v I (ralt_enc RFOpenU)
-     ∧ lk_post FI (S gen_id) v I (ralt_enc RFOpenM)) -∗
-    redir_Kf s -∗ f_typed (fgn_cl g) s -∗
-    (∀ i : Z, f_typed (fgn_cl g) (Some (i, []))) -∗
+    lk_post FI (S gen_id) v I (ralt_enc RFOpenU) -∗
+    fown r s -∗ f_typed (fgn_cl g) s -∗
     era_pin (fgn_echo g) (S gen_id) v' -∗ cs_lb v' cs -∗
     Wcf I 0%nat.
   Proof using .
-    intros Hfl [Hlen Hc] Hpos.
-    iIntros "#Hp Hblk HK #Hty #Hty0 #Hpin' #Hcs".
-    assert (Hlong : forall a : ralt,
-              a = RFOpenU \/ a = RFOpenM ->
-              (length (fab I (ralt_enc a)) - 2)%nat = 0%nat -> False).
-    { intros a Ha.
-      rewrite (fab_of_apr I (ralt_enc a));
-        [ | rewrite ralt_dec_enc Hfl; destruct Ha as [-> | ->]; split;
-            first [ exact Logic.I | reflexivity ] ].
-      rewrite ralt_dec_enc Hfl.
-      destruct Ha as [-> | ->]; vm_compute; discriminate. }
-    iDestruct "HK" as "[Hd | [[%Hs Hd] | #HT]]".
-    - iDestruct "Hblk" as "[Hblk _]".
-      iApply (Wcf0_of_post_alt I (ralt_enc RFOpenU) v v' cs s
-                with "Hp Hblk Hd Hty Hpin' Hcs");
-        [ rewrite /fapr ralt_dec_enc Hfl; split_and!; [ exact Logic.I | | ];
-          reflexivity
-        | exact Hlen | exact Hpos
-        | rewrite ralt_dec_enc Hfl; exact Hc
-        | intro Hz; destruct (Hlong RFOpenU (or_introl eq_refl) Hz) ].
-    - iDestruct "Hblk" as "[_ Hblk]". iDestruct "Hd" as (i) "Hd".
-      iApply (Wcf0_of_post_alt I (ralt_enc RFOpenM) v v' cs (Some (i, []))
-                with "Hp Hblk Hd [] Hpin' Hcs");
-        [ rewrite /fapr ralt_dec_enc Hfl; split_and!; [ exact Logic.I | | ];
-          reflexivity
-        | exact Hlen | exact Hpos
-        | rewrite ralt_dec_enc Hfl -Hc Hs; reflexivity
-        | intro Hz; destruct (Hlong RFOpenM (or_intror eq_refl) Hz)
-        | iApply "Hty0" ].
-    - iApply (Wcf_taint I 0%nat v' with "Hpin' HT").
+    intros Hfl [Hlen Hc] Hpos. iIntros "#Hp Hblk Hd #Hty #Hpin' #Hcs".
+    iApply (Wcf0_of_post_alt I (ralt_enc RFOpenU) v v' cs s
+              with "Hp Hblk Hd Hty Hpin' Hcs");
+      [ rewrite /fapr ralt_dec_enc Hfl; split_and!; [ exact Logic.I | | ];
+        reflexivity
+      | exact Hlen | exact Hpos
+      | rewrite ralt_dec_enc Hfl; exact Hc
+      | intro Hz;
+        destruct (fab_openfail_long I ws RFOpenU Hfl (or_introl eq_refl) Hz) ].
+  Qed.
+
+  Lemma redir_openfail_exit_m (I : list (bv 8)) (ws : wordline) (i : Z)
+      (v v' : era_pins) (cs : list nat) :
+    fline I = LEchoF ws ->
+    pre_tie cs s0 I None -> (0 < nlines I)%nat ->
+    lk_pin FI (S gen_id) v -∗
+    lk_post FI (S gen_id) v I (ralt_enc RFOpenM) -∗
+    fown r (Some (i, [])) -∗ f_typed (fgn_cl g) (Some (i, [])) -∗
+    era_pin (fgn_echo g) (S gen_id) v' -∗ cs_lb v' cs -∗
+    Wcf I 0%nat.
+  Proof using .
+    intros Hfl [Hlen Hc] Hpos. iIntros "#Hp Hblk Hd #Hty #Hpin' #Hcs".
+    iApply (Wcf0_of_post_alt I (ralt_enc RFOpenM) v v' cs (Some (i, []))
+              with "Hp Hblk Hd Hty Hpin' Hcs");
+      [ rewrite /fapr ralt_dec_enc Hfl; split_and!; [ exact Logic.I | | ];
+        reflexivity
+      | exact Hlen | exact Hpos
+      | rewrite ralt_dec_enc Hfl -Hc; reflexivity
+      | intro Hz;
+        destruct (fab_openfail_long I ws RFOpenM Hfl (or_intror eq_refl) Hz) ].
   Qed.
 
   (* ---- WHAT THE OPEN'S RECEIPT SAYS ABOUT THE INODE (the PROGRAM

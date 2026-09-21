@@ -729,6 +729,13 @@ Section UCatPipe.
       (ps0 cs0 : list nat) (I0 : list (bv 8)) (P : nat) : iProp Σ :=
     (∃ c : nat, pcat_hold pn l c ∗ pcch g v ps0 cs0 I0 pcat_alt P c)%I.
 
+  (* A FANCY UPDATE IN FRONT OF THE TRIVIAL-POST WP ([UConsOpen.
+     fupd_wp_triv] restated; that file is not in this one's cone).
+     [RiscvPtsto.wp_triv] is a DEFINITION, so the proofmode's [ElimModal]
+     instance for [wp] does not see through it. *)
+  Lemma pcat_fupd_mwp (e : expr riscv_lang) : (|={⊤}=> mWP e) ⊢ mWP e.
+  Proof using . rewrite /wp_triv. iIntros "H". iApply fupd_wp. iExact "H". Qed.
+
   Lemma pcat_round_at_g (pn : pnames) (γp : pipe_names) (L : list (bv 8))
       (l : list fdstate) (wb : bool) (I0 : list (bv 8))
       (Ch : nat -> iProp Σ) (Cend : iProp Σ) :
@@ -770,12 +777,24 @@ Section UCatPipe.
        ([pcat_acc_line]) and used to weaken it here; it now passes it
        straight through, and the landed instance [pcat_round_at] weakens
        it back with [pcat_round_line], statement byte-identical. *)
+    (* ...AND THE READER'S OWN LOWER BOUND (design SS4.3t, lane
+       SH-PIPE-ROUND-9).  ADDITIVE: it only makes [Hw] easier to supply,
+       and the landed instance [pcat_round_at] re-derives by ignoring it.
+       It exists because the pipeline round's two-writer family fires its
+       MODE at cat's first byte ([PipeBoth.blk2_mode_fire]) and that fire
+       demands PIPE-EXEC-ECHO's [YR] -- <<a byte reached the reader>>,
+       i.e. [PipeProto.pws_lb pn (take 1 L)].  Its only producer is
+       [PipeProto.pws_lb_of_rcur], which needs the READER'S PERMIT; the
+       content arm below holds it, one line later it is inside
+       [UkCat.kcat_wr_mono]'s post-transformer and out of [Hw]'s reach.
+       So it is taken here, at the read's own WP point, and forwarded. *)
     □ (∀ (c nb : nat) (rv : mword 64) (fbb : nat -> bv 8),
          ⌜rv = (mword_of_int (Z.of_nat nb) : mword 64)⌝ -∗
          (⌜(Z.to_nat (bv_unsigned rv) <= 512)%nat
            /\ forall j : nat, (j < Z.to_nat (bv_unsigned rv))%nat ->
                 L !! (c + j)%nat = Some (fbb j)⌝
           ∨ T) -∗
+         (pws_lb pn (take (c + Z.to_nat (bv_unsigned rv))%nat L) ∨ T) -∗
          UserFd.ustd γfd l -∗
          Ch c -∗
          UkCat.kcat_wr N (mword_of_int 1) (mword_of_int CatSyms.buf) nb
@@ -821,10 +840,13 @@ Section UCatPipe.
               Ha1 Ha2 Hfd0 ltac:(vm_compute; lia) Hl0
               with "Hcode Hstd Hpay Hbuf Hrun").
     iIntros (h' rv gb M' Pt gn) "%Hans %Hlin %Himg %Hnf Hrp Hstd Hbuf Hrun".
-    iApply ("Hcont" $! h' rv gb with "[Hrp Hstd Hc] Hbuf Hrun").
+    (* SS4.3t: THE POST IS SPLIT HERE, BEFORE [Hcont], so that the content
+       arm still has an [mWP] goal to spend [pws_lb_of_rcur]'s fancy
+       update at. *)
     iDestruct (pcat_rpost with "Hrp") as "[Hgood | [#HTa _]]"; last first.
     { (* THE TAINT ARM of the post: everything from the taint *)
       iAssert T as "#HT"; [ rewrite -Hkill; iExact "HTa" | ].
+      iApply ("Hcont" $! h' rv gb with "[Hstd Hc] Hbuf Hrun").
       iSplit; [| iSplit ].
       - iIntros "_". iApply ("Hdg" with "HT").
       - iIntros "_".
@@ -848,8 +870,8 @@ Section UCatPipe.
           iExists (c + Z.to_nat (bv_unsigned rv))%nat.
           iSplitR "Hc'"; [ | iExact "Hc'" ].
           rewrite /pcat_hold. iFrame "Hstd". by iRight. }
-        iApply ("Hw" $! c nb rv gb with "[%] [] Hstd Hc");
-          [ exact Hret | by iRight ]. }
+        iApply ("Hw" $! c nb rv gb with "[%] [] [] Hstd Hc");
+          [ exact Hret | by iRight | by iRight ]. }
     (* THE CONTENT ARM *)
     iDestruct "Hgood" as (acc d) "([%Hlen %Hd] & %Himg2 & HQ & Harm)".
     iDestruct "HQ" as "[Hr %Hacc]".
@@ -865,6 +887,12 @@ Section UCatPipe.
                                  (Z.of_nat j)) = Some (acc !!! j))
         by (apply (Himg2 ltac:(intros i Hi; apply Hlin; lia)); lia).
       rewrite (Himg j ltac:(lia)) in Hm. by injection Hm as <-. }
+    (* SS4.3t: THE READER'S LOWER BOUND, taken at the read's own WP point *)
+    iApply pcat_fupd_mwp.
+    iMod (pws_lb_of_rcur ⊤ pn γp L (c + length acc)%nat
+            ltac:(apply top_subseteq) with "Hinv Hr") as "[Hr #Hlb2]".
+    iModIntro.
+    iApply ("Hcont" $! h' rv gb with "[Hr Hstd Hc Harm] Hbuf Hrun").
     iDestruct "Harm" as "[[%Hrv Heof] | [[%Hrv %Hd0] Hwhy]]"; last first.
     { (* THE -1 ARMS: two are refuted, the third is the KILL *)
       iAssert T as "#HT".
@@ -893,8 +921,8 @@ Section UCatPipe.
           iExists (c + Z.to_nat (bv_unsigned rv))%nat.
           iSplitR "Hc'"; [ | iExact "Hc'" ].
           rewrite /pcat_hold. iFrame "Hstd". by iRight. }
-        iApply ("Hw" $! c nb rv gb with "[%] [] Hstd Hc");
-          [ exact Hret | by iRight ]. }
+        iApply ("Hw" $! c nb rv gb with "[%] [] [] Hstd Hc");
+          [ exact Hret | by iRight | by iRight ]. }
     (* THE COUNT ARM: the answer is [d], and [d] is at most 512 *)
     assert (Hbu : bv_unsigned rv = Z.of_nat d).
     { rewrite Hrv -uint_unsigned. apply uint_moi. unfold Z64. lia. }
@@ -934,9 +962,11 @@ Section UCatPipe.
         iSplitR "Hc'"; [ | iExact "Hc'" ].
         rewrite /pcat_hold. iFrame "Hstd". iLeft.
         rewrite Hto -Hd. iExact "Hr". }
-      iApply ("Hw" $! c nb rv gb with "[%] [] Hstd Hc"); [ exact Hret | ].
-      iLeft. iPureIntro. rewrite Hto. split; [ exact Hd512 | ].
-      exact Hbytes.
+      iApply ("Hw" $! c nb rv gb with "[%] [] [] Hstd Hc");
+        [ exact Hret | | ].
+      { iLeft. iPureIntro. rewrite Hto. split; [ exact Hd512 | ].
+        exact Hbytes. }
+      { iLeft. rewrite Hto -Hd. iExact "Hlb2". }
   Qed.
 
 
@@ -1010,7 +1040,7 @@ Section UCatPipe.
     iApply (pcat_round_at_g pn γp L l wb I0
               (pcch g v ps0 cs0 I0 pcat_alt P) Cend HL Hl0
               with "Hinv Hdg [] Hend Hcode").
-    iIntros "!>" (c nb rv fbb) "%Hrv Hjust Hstd Hc".
+    iIntros "!>" (c nb rv fbb) "%Hrv Hjust _ Hstd Hc".
     iApply ("Hw" $! c nb rv fbb with "[%] [Hjust] Hstd Hc");
       [ exact Hrv | ].
     iDestruct "Hjust" as "[%Hp | #HT]"; [ | by iRight ].

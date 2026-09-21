@@ -370,6 +370,10 @@ arm is the theorem's one named premise (`pipe_both_law`).
   pure entailment into `lk_blk` and the terminal round's family holds the
   era's `turn` for ever.  See the Findings block.
 - [ ] **SH-PIPE-ROUND-7** (after STAGE-5): the assembly; the theorem.
+- [ ] **SH-PIPE-ROUND-7** (design §4.3o, route (a): the later repair — two
+  generic additions; the pipe twins under `gen_pay`; the child law at
+  `pterm_wc`; the assembly; `pipe_adequacy_pipeΣ_final`).  Brief
+  `brief-sh-pipe-round-7.md`.
 ## Findings (append as lanes report)## Findings (append as lanes report)## Findings (append as lanes report)
 
 ### PQ-FLAG-2 (2026-09-18) — the write link's second premise, paid by the CODE

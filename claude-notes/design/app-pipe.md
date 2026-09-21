@@ -1203,6 +1203,52 @@ Lanes: **PIPE-STAGE-5** (§7 landed, the tree green, the terminal round
 through the record, the retirements), then **SH-PIPE-ROUND-7** (the
 assembly at the two ends, the child law, the theorem).
 
+### 4.3o RULED (2026-09-23, after PIPE-STAGE-5): the terminal round travels through the escrow under a LATER — route (a); §4.3n's leaf, registry and retirements are STRUCK
+
+STAGE-5 landed the /cat pin on the round law (`sh_pipe_child_law := □
+(sh_cat_slot T -∗ ushf_child_law_at Wcf ushq_lp 68)`, `pipe_Hinit_boot`
+supplies it; `sh_pipe_child_law_all` unchanged) and refuted the rest of
+§4.3n at two walls: (W1) no era-scope fancy update exists to allocate an
+era-fixed invariant (`pipe_links_holds` and `sh_round_holds_pipe` are
+closed entailments; `App.al_programs`, `pipe_prog_law`, `pipe_Hinit_boot`
+end in `|==>`; and the claim is barred by the machine's generic
+`ai_cons_timeless` field), and (W2) `LinkRec.lk_read_t` is a PURE
+entailment that cannot take a terminal arm at `lk_open_t` even when
+timeless (`pwc_blk`'s non-taint arm needs the turn the terminal family
+holds for ever; its taint arm needs the reader's residue the field does
+not have).  So the record NEVER carries the terminal round, `UkShPipeFork`
+STAYS, and §4.3n's first three bullets and "retired for good" are struck.
+Every carrier has now been measured: the record (STAGE-3, W2), the claim
+(STAGE-4), the escrow (ROUND-6), an application-allocated era invariant
+(W1).  Two routes remain; RULED (a):
+
+- **The `▷` repair.**  The child's exit payload at a terminal round is
+  `pterm_pay I` WITH `blk2_inv` inside, redeemed by `UkShFork`'s escrow
+  under plain `ChildTok.gen_pay` (a `▷`, no `Timeless`); the parent
+  strips the later before the prompt with a later-providing step.
+  Two GENERIC ADDITIONS, no landed statement moves: `UkRunLeaf.
+  wp_uk_cmv_later` (a `c.mv` step that provides a later, over the landed
+  `UkStep.wp_uk_retire_later`, as `wp_uk_btype_later`/`wp_uk_btype0_later`
+  do for BTYPE), and a `▷`-accepting variant of `UkShLoop.ushl_head` (the
+  loop head at the credential under `▷`, NOT a new entry point at
+  `0x93a` — ROUND-6 priced the wrong thing).  The pipe twins
+  `wp_kshm_body_pipe`/`wp_kshf_fork_pipe` (§4.3j (2)) then use `gen_pay`
+  and never name `HWct`; the two `c.mv`s at `0x938`/`0x93a` eat the
+  later; the prompt is `pterm_prompt_arm` (landed); `getcmd`'s read is
+  `pterm_tcore_read` (landed).  The child law is
+  `□ (sh_cat_slot T -∗ ushf_child_law_at (pterm_wc g) ushq_lp 68)` —
+  `pterm_wq_pay` says this IS the terminal payload, no new definition.
+- Route (b) — the family into `AppInv.app_inv fsc_fs`'s body (the one
+  era-fixed invariant every party holds; `app_pred` would take the whole
+  `pipe_gn`, the era equation moves through six files) — is recorded
+  under §7 and not taken: it puts console ghost state into the file
+  system's invariant, and (a) is two generic leaves.
+
+Lane **SH-PIPE-ROUND-7**: (a)'s two leaves, the twins, the child law at
+`pterm_wc`, order C (the mode half through `Pay`/`Qc`), the assembly at
+`pipe_round_entry`/`pipe_round_exit`, `sh_pipe_child_law_all`,
+`pipe_adequacy_pipeΣ_final`.
+
 ## 5. Programs
 
 ### 5.1 sh: the PIPE arm (lanes SH-PARSE-PIPE, SH-PIPE)

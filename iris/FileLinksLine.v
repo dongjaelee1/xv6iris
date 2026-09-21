@@ -226,6 +226,112 @@ Proof using.
   all: cbn [cont]; vm_compute; done.
 Qed.
 
+(* ===================================================================== *)
+(*  THE STATE-AWARE BLOCK (PROGRAM-STREAM stretch 11, defect 3).           *)
+(*                                                                       *)
+(*  [fab] gives an alternative's bytes from the INPUT alone, and is [[]]  *)
+(*  at the one alternative whose bytes are a function of the FILE --      *)
+(*  [RCRan], "cat printed the contents".  So a block at [RCRan] had no    *)
+(*  bytes here, [fapr] excluded it, and the line credential could not     *)
+(*  hold a round in which cat printed a non-empty file.                   *)
+(*                                                                       *)
+(*  The model underneath was never the problem: [pending_at_f] speaks     *)
+(*  [cont] at the round's own state, [fstate_upto cs s0 ...], and [fab]   *)
+(*  reaches it only through [cont_state_free].  [fabs] is that reading    *)
+(*  with the state kept: the era's boot state [s0] and the choice list    *)
+(*  [cs] filed so far determine it.  [fab] is its instance at a           *)
+(*  state-free alternative ([fabs_fab]), and the block lemmas below are   *)
+(*  proved at [fabs]; their [fab] statements are corollaries.             *)
+(* ===================================================================== *)
+Definition fabs (s0 : fstate) (cs : list nat) (I : list (bv 8)) (a : nat)
+  : list (bv 8) :=
+  cont (fstate_upto cs s0 (bodies_of I) (nlines I - 1)%nat) (fline I)
+    (ralt_dec a).
+
+(* [fapr] without state-freedom: admissible, and not a panic *)
+Definition faprs (I : list (bv 8)) (a : nat) : Prop :=
+  ralt_ok (fline I) (ralt_dec a) /\ ralt_panic (ralt_dec a) = false.
+
+Lemma fapr_faprs (I : list (bv 8)) (a : nat) : fapr I a -> faprs I a.
+Proof using. intros (H1 & _ & H3). exact (conj H1 H3). Qed.
+
+Lemma fabs_fab (s0 : fstate) (cs : list nat) (I : list (bv 8)) (a : nat) :
+  fapr I a -> fabs s0 cs I a = fab I a.
+Proof using.
+  intros (Hok & Hfr & _). rewrite /fabs. symmetry.
+  exact (fab_at I a _ Hok Hfr).
+Qed.
+
+(* every non-panic admissible alternative's block ENDS WITH THE PROMPT, at
+   every state: the file's contents come BEFORE it *)
+Lemma fabs_prompt (s0 : fstate) (cs : list nat) (I : list (bv 8)) (a : nat) :
+  faprs I a -> exists pre : list (bv 8), fabs s0 cs I a = pre ++ u_prompt.
+Proof using.
+  intros [Hok Hp]. rewrite /fabs.
+  generalize (fstate_upto cs s0 (bodies_of I) (nlines I - 1)%nat) as st.
+  revert Hok Hp. generalize (ralt_dec a) as r. intros r Hok Hp st.
+  destruct r as [k | sel | | | | | | | | | |].
+  { (* [REcho]: on its own, so no [vm_compute] meets [fline I] *)
+    rewrite /ralt_ok in Hok. destruct (fline I) as [ws | ws | | ws];
+      cbn in Hok; try done.
+    cbn [ralt_panic] in Hp. apply bool_decide_eq_false in Hp.
+    cbn [cont uline_ws].
+    pose proof (EchoLinksLine.line_alts_len_ge2 ws k ltac:(lia)) as Hl.
+    pose proof (EchoLinksLine.line_alts_dollar ws k ltac:(lia)) as Hd.
+    pose proof (EchoLinksLine.line_alts_space ws k ltac:(lia)) as Hsp.
+    set (bl := line_alts_of ws !!! k) in *.
+    exists (take (length bl - 2) bl).
+    rewrite -{1}(take_drop (length bl - 2) bl). f_equal.
+    apply list_eq. intros i. rewrite lookup_drop.
+    destruct i as [| [| i]].
+    - rewrite Nat.add_0_r Hd. by vm_compute.
+    - replace (length bl - 2 + 1)%nat with (length bl - 1)%nat by lia.
+      rewrite Hsp. by vm_compute.
+    - rewrite lookup_ge_None_2; [ | lia ].
+      symmetry. apply lookup_ge_None_2. vm_compute. lia. }
+  all: try (cbn [ralt_panic] in Hp; by discriminate Hp).
+  all: cbn [cont].
+  (* [RCRan]: the contents, then the prompt -- or the diagnostic *)
+  all: try (destruct st as [bs |]; [ by exists bs | ]).
+  (* a CONSTANT block: its own bytes but the last two *)
+  all: match goal with
+       | |- exists pre : list (bv 8), ?c = pre ++ u_prompt =>
+           exists (take (length c - 2) c); by vm_compute
+       end.
+Qed.
+
+Lemma fabs_len_ge2 (s0 : fstate) (cs : list nat) (I : list (bv 8)) (a : nat) :
+  faprs I a -> (2 <= length (fabs s0 cs I a))%nat.
+Proof using.
+  intro H. destruct (fabs_prompt s0 cs I a H) as [pre ->].
+  rewrite length_app. vm_compute (length u_prompt). lia.
+Qed.
+
+Lemma fabs_dollar (s0 : fstate) (cs : list nat) (I : list (bv 8)) (a : nat) :
+  faprs I a ->
+  fabs s0 cs I a !! (length (fabs s0 cs I a) - 2)%nat
+  = Some (u_prompt !!! 0%nat).
+Proof using.
+  intro H. destruct (fabs_prompt s0 cs I a H) as [pre ->].
+  rewrite length_app. vm_compute (length u_prompt).
+  rewrite lookup_app_r; [ | lia ].
+  replace (length pre + 2 - 2 - length pre)%nat with 0%nat by lia.
+  vm_compute. reflexivity.
+Qed.
+
+Lemma fabs_space (s0 : fstate) (cs : list nat) (I : list (bv 8)) (a : nat) :
+  faprs I a ->
+  fabs s0 cs I a !! (length (fabs s0 cs I a) - 1)%nat
+  = Some (u_prompt !!! 1%nat).
+Proof using.
+  intro H. destruct (fabs_prompt s0 cs I a H) as [pre ->].
+  rewrite length_app. vm_compute (length u_prompt).
+  rewrite lookup_app_r; [ | lia ].
+  replace (length pre + 2 - 1 - length pre)%nat with 1%nat by lia.
+  vm_compute. reflexivity.
+Qed.
+
+
 (* ---- the two PER-LINE alternatives, and the "nobody chose" one ---- *)
 Lemma fpan_of_ok (l : uline) : ralt_ok l (ralt_dec (fpan_of l)).
 Proof using.
@@ -530,13 +636,13 @@ Qed.
 
 (* THE BLOCK THE ROUND OWES once alternative [a] is filed, at a NON-PANIC
    state-free alternative: exactly [fab]. *)
-Lemma wr_blk_pending_f (ps cs : list nat) (s0 : fstate) (I : list (bv 8))
+Lemma wr_blk_pending_fs (ps cs : list nat) (s0 : fstate) (I : list (bv 8))
     (P a : nat) :
   wr_blk_f ps cs s0 I P ->
-  fapr I a ->
-  pending_at_f ps (cs ++ [a]) (Some s0) I = fab I a.
+  ralt_panic (ralt_dec a) = false ->
+  pending_at_f ps (cs ++ [a]) (Some s0) I = fabs s0 cs I a.
 Proof using.
-  intros Hw Hpr. pose proof Hpr as (Hok & Hfr & Hnp).
+  intros Hw Hnp.
   pose proof (wr_blk_nonnil_f ps cs s0 I P Hw) as Hne.
   pose proof Hw as (_ & Hr & Hn & _).
   assert (Hlast : (nlines I - 1)%nat = length cs) by lia.
@@ -552,21 +658,41 @@ Proof using.
   rewrite /pending_at_f decide_False; [| exact Hne].
   rewrite decide_True; [| exact Hr].
   rewrite /alt_cont_f f0_st_some Hat Hup Hnp app_nil_r.
-  symmetry. exact (fab_at I a _ Hok Hfr).
+  reflexivity.
+Qed.
+
+Lemma wr_blk_pending_f (ps cs : list nat) (s0 : fstate) (I : list (bv 8))
+    (P a : nat) :
+  wr_blk_f ps cs s0 I P ->
+  fapr I a ->
+  pending_at_f ps (cs ++ [a]) (Some s0) I = fab I a.
+Proof using.
+  intros Hw Hpr. rewrite -(fabs_fab s0 cs I a Hpr).
+  exact (wr_blk_pending_fs ps cs s0 I P a Hw (proj2 (proj2 Hpr))).
 Qed.
 
 (* THE STREAM BYTE THE WRITE LINK ASKS FOR *)
+Lemma wr_blk_byte_fs (ps cs : list nat) (s0 : fstate) (I : list (bv 8))
+    (P a j : nat) (b : bv 8) :
+  wr_blk_f ps cs s0 I P -> ralt_panic (ralt_dec a) = false ->
+  fabs s0 cs I a !! j = Some b ->
+  proc_stream_f ps (cs ++ [a]) (Some s0) I !! (P + j)%nat = Some b.
+Proof using.
+  intros Hw Hnp Hb. pose proof Hw as (_ & _ & _ & HP).
+  rewrite /proc_stream_f (wr_blk_low_f ps cs s0 I P a Hw)
+          lookup_app_r; [| lia].
+  replace (P + j - length (proc_before_f ps cs (Some s0) I))%nat with j by lia.
+  by rewrite (wr_blk_pending_fs ps cs s0 I P a Hw Hnp).
+Qed.
+
 Lemma wr_blk_byte_f (ps cs : list nat) (s0 : fstate) (I : list (bv 8))
     (P a j : nat) (b : bv 8) :
   wr_blk_f ps cs s0 I P -> fapr I a ->
   fab I a !! j = Some b ->
   proc_stream_f ps (cs ++ [a]) (Some s0) I !! (P + j)%nat = Some b.
 Proof using.
-  intros Hw Hpr Hb. pose proof Hw as (_ & _ & _ & HP).
-  rewrite /proc_stream_f (wr_blk_low_f ps cs s0 I P a Hw)
-          lookup_app_r; [| lia].
-  replace (P + j - length (proc_before_f ps cs (Some s0) I))%nat with j by lia.
-  by rewrite (wr_blk_pending_f ps cs s0 I P a Hw Hpr).
+  intros Hw Hpr Hb. rewrite -(fabs_fab s0 cs I a Hpr) in Hb.
+  exact (wr_blk_byte_fs ps cs s0 I P a j b Hw (proj2 (proj2 Hpr)) Hb).
 Qed.
 
 (* ---- the round index does not move at a non-panic alternative ---- *)
@@ -921,12 +1047,12 @@ Qed.
 (* ===================================================================== *)
 (*  S6  THE TIGHT STEPS ([EchoLinksLine]'s S2 at the file model)          *)
 (* ===================================================================== *)
-Lemma wr_blk_open_f (ps cs : list nat) (s0 : fstate) (I : list (bv 8))
+Lemma wr_blk_open_fs (ps cs : list nat) (s0 : fstate) (I : list (bv 8))
     (P a : nat) :
-  wr_blk_t_f ps cs s0 I P -> fapr I a ->
-  wr_open_t_f ps (cs ++ [a]) s0 I (P + length (fab I a))%nat.
+  wr_blk_t_f ps cs s0 I P -> ralt_panic (ralt_dec a) = false ->
+  wr_open_t_f ps (cs ++ [a]) s0 I (P + length (fabs s0 cs I a))%nat.
 Proof using.
-  intros [Hw Ht] Hpr. pose proof Hpr as (_ & _ & Hnp).
+  intros [Hw Ht] Hnp.
   pose proof (wr_blk_started_f ps cs s0 I P Hw) as Hst.
   pose proof Hw as (Hpin & Hm & Hdv & HP).
   split; [| exact (wr_tail_snoc_f ps cs a Hnp Ht)].
@@ -937,9 +1063,34 @@ Proof using.
   - rewrite Hdv (pro_idx_f_snoc_ne cs a Hnp).
     pose proof (Hpin (length cs) ltac:(rewrite Hst; lia)). lia.
   - rewrite /proc_stream_f (wr_blk_low_f ps cs s0 I P a Hw)
-            (wr_blk_pending_f ps cs s0 I P a Hw Hpr)
-            (length_app (proc_before_f ps cs (Some s0) I) (fab I a)) HP.
+            (wr_blk_pending_fs ps cs s0 I P a Hw Hnp)
+            (length_app (proc_before_f ps cs (Some s0) I) (fabs s0 cs I a)) HP.
     reflexivity.
+Qed.
+
+Lemma wr_blk_open_f (ps cs : list nat) (s0 : fstate) (I : list (bv 8))
+    (P a : nat) :
+  wr_blk_t_f ps cs s0 I P -> fapr I a ->
+  wr_open_t_f ps (cs ++ [a]) s0 I (P + length (fab I a))%nat.
+Proof using.
+  intros Hw Hpr. rewrite -(fabs_fab s0 cs I a Hpr).
+  exact (wr_blk_open_fs ps cs s0 I P a Hw (proj2 (proj2 Hpr))).
+Qed.
+
+Lemma wr_blk_sp_fs (ps cs : list nat) (s0 : fstate) (I : list (bv 8))
+    (P a : nat) :
+  wr_blk_t_f ps cs s0 I P -> faprs I a ->
+  wr_sp_t_f ps (cs ++ [a]) s0 I (P + (length (fabs s0 cs I a) - 1))%nat.
+Proof using.
+  intros Hw Hpr. pose proof (fabs_len_ge2 s0 cs I a Hpr) as Hlen.
+  destruct (wr_blk_open_fs ps cs s0 I P a Hw (proj2 Hpr)) as [Hop Ht].
+  split; [| exact Ht]. split.
+  - replace (S (P + (length (fabs s0 cs I a) - 1)))%nat
+      with (P + length (fabs s0 cs I a))%nat by lia.
+    exact Hop.
+  - exact (wr_blk_byte_fs ps cs s0 I P a (length (fabs s0 cs I a) - 1)%nat
+             (u_prompt !!! 1%nat) (proj1 Hw) (proj2 Hpr)
+             (fabs_space s0 cs I a Hpr)).
 Qed.
 
 Lemma wr_blk_sp_f (ps cs : list nat) (s0 : fstate) (I : list (bv 8))
@@ -947,15 +1098,8 @@ Lemma wr_blk_sp_f (ps cs : list nat) (s0 : fstate) (I : list (bv 8))
   wr_blk_t_f ps cs s0 I P -> fapr I a ->
   wr_sp_t_f ps (cs ++ [a]) s0 I (P + (length (fab I a) - 1))%nat.
 Proof using.
-  intros Hw Hpr. pose proof (fab_len_ge2 I a Hpr) as Hlen.
-  destruct (wr_blk_open_f ps cs s0 I P a Hw Hpr) as [Hop Ht].
-  split; [| exact Ht]. split.
-  - replace (S (P + (length (fab I a) - 1)))%nat
-      with (P + length (fab I a))%nat by lia.
-    exact Hop.
-  - pose proof (wr_blk_byte_f ps cs s0 I P a (length (fab I a) - 1)%nat
-                  (u_prompt !!! 1%nat) (proj1 Hw) Hpr (fab_space I a Hpr)) as H.
-    exact H.
+  intros Hw Hpr. rewrite -(fabs_fab s0 cs I a Hpr).
+  exact (wr_blk_sp_fs ps cs s0 I P a Hw (fapr_faprs I a Hpr)).
 Qed.
 
 Lemma wr_sp_open_t_f (ps cs : list nat) (s0 : fstate) (I : list (bv 8))

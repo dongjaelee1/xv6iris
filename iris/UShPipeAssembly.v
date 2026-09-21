@@ -1197,6 +1197,416 @@ Section UShPipeAssemblyDiag.
       split_and!; [ reflexivity | reflexivity ].
   Qed.
 
+  (* =================================================================== *)
+  (*  S8  ITEM 6's PARENT: THE TWO REAPS, THE READING AND THE EXIT       *)
+  (*      (lane SH-PIPE-ROUND-10)                                        *)
+  (*                                                                     *)
+  (*  What is left of bill item 6 once the round's four laws and its     *)
+  (*  entry/exit are landed is the walk's own bookkeeping at 0xea: the   *)
+  (*  two children's payloads out of two fork answers and two reaps, the *)
+  (*  READING of them, and the exit at whichever credential the reading  *)
+  (*  hands back.  It is all here, at THREE NAMED ANTECEDENTS -- and     *)
+  (*  every one of them is a fact the walk does not carry today.  They   *)
+  (*  are the lane's second finding:                                     *)
+  (*                                                                     *)
+  (*   (i)  [PipeProto.pipe_no_short] -- the protocol's read-side fact;  *)
+  (*        see [PipeProto]'s S8 for why the protocol cannot prove it.   *)
+  (*   (ii) THE REAPS MUST BE AT THE PID FORM.  [UkShPipe.wp_kshpi_      *)
+  (*        wait0] relays [UexecRet.uwait_ans], which EXISTENTIALLY      *)
+  (*        QUANTIFIES the caller's own pid -- so the reaping arm's row  *)
+  (*        [γ' ∈ cs ∨ pidv = 1] is satisfied by its right disjunct and  *)
+  (*        says NOTHING about whose child was reaped                    *)
+  (*        ([uwait_ans_orphan_arm] below is the witness), and the       *)
+  (*        failing arm's reason [wait_why] is satisfied by its          *)
+  (*        [nullst = false] disjunct for the same reason.  The          *)
+  (*        pid-carrying leaf [UkShRun.wp_kshr_wait_pid] gives both the  *)
+  (*        row at a NAMED [pidv] and the [-1 -> Sc' = ∅] row, and it    *)
+  (*        needs the caller's [UserChildren.upid] -- which              *)
+  (*        [UkFork.wp_uk_ecall_fork]'s child arm mints, [UkShRun.       *)
+  (*        wp_kshr_fork1] drops, and [UkShFork.ushf_child_law_at]       *)
+  (*        therefore never hands the runcmd child.                      *)
+  (*   (iii) THE RUNCMD CHILD'S OWN CHILDREN SET MUST BE EMPTY and the   *)
+  (*        second fork's generation must be FRESH.                      *)
+  (*        [ushf_child_law_at] hands [UserChildren.uch_any], i.e.       *)
+  (*        [∃ S, uch S], and [UexecRet.ufork_ans] says only             *)
+  (*        [cs' = cs ∪ {[γ]}] -- so nothing rules out that the two      *)
+  (*        forks named ONE generation, and then the two reaps deliver   *)
+  (*        ONE payload.  Here they are the premises [Sc = ∅] (written   *)
+  (*        into [pipe_round_answers]'s first answer) and [S1 <> S2].    *)
+  (*                                                                     *)
+  (*  Design SS4.2's parenthetical -- if a lane wants the pid route      *)
+  (*  instead, wp_kshr_fork1 must be re-cut to keep upid; not taken --   *)
+  (*  reads the two as alternatives.  They are not: the SIDE             *)
+  (*  TOKENS tell the two payloads apart once they are in hand, and the  *)
+  (*  pid route is what puts them there.                                 *)
+  (* =================================================================== *)
+
+  (* THE WITNESS FOR (ii), at the statement: an answer that reaped a
+     generation OUTSIDE the caller's own children set -- leaving the set
+     unchanged, which is what an ORPHAN reap does -- is a perfectly good
+     [uwait_ans].  So a caller holding one learns nothing about [γ'], and
+     no choice of payload can repair that. *)
+  Lemma uwait_ans_orphan_arm (r : mword 64) (rv : mword 32) (xs : Z)
+      (cs : gset gname) (γ' : gname) :
+    r = (sign_extend' 64 rv : mword 64) ->
+    (1 <= bv_unsigned rv <= PIDMAX)%Z ->
+    γ' ∉ cs ->
+    ChildTok.exit_tok γ' rv xs -∗ ChildTok.gen_uniq cs rv γ' -∗
+    UexecRet.uwait_ans r cs cs.
+  Proof using .
+    intros Hr Hrng Hnin. iIntros "Hesc #Hu".
+    rewrite /UexecRet.uwait_ans /UexecRet.uwait_ans_pid
+            /UexecRet.uwait_ans_at.
+    iExists (mword_of_int 1 : mword 32), γ', true, rv, xs.
+    iSplitR; [ by iPureIntro | ]. rewrite /UserChildren.wait_ans.
+    iRight. iExists γ'. iFrame "Hesc Hu".
+    iSplitR; [ iPureIntro; split; [ | exact Hrng ] | iPureIntro; by right ].
+    symmetry. apply difference_disjoint_L. set_solver.
+  Qed.
+
+  (* THE WITNESS FOR (iii), the other half: an answer whose generation is
+     ALREADY in the caller's set leaves the set unchanged, and
+     [UexecRet.ufork_ans] permits it -- so two forks CAN name one
+     generation as far as the row is concerned, and then the two reaps
+     deliver ONE payload.  [pipe_round_answers]'s [S1 <> S2] is what buys
+     it off; the honest source is a freshness conjunct on the fork's own
+     row, discharged where the generation is allocated. *)
+  Lemma ufork_ans_same_gen (Qc Rc : iProp Σ) (r : mword 64) (γ : gname)
+      (pidv : mword 32) (cs : gset gname) :
+    r = (sign_extend' 64 pidv : mword 64) ->
+    (1 <= bv_unsigned pidv <= PIDMAX)%Z ->
+    γ ∈ cs ->
+    ChildTok.child_tok γ pidv (fun _ : Z => Qc) -∗
+    UkShPipe.ush_fork_ans cs cs Rc (fun _ : Z => Qc) r.
+  Proof using .
+    intros Hr Hrng Hin. iIntros "Ht".
+    rewrite /UkShPipe.ush_fork_ans. iRight. iExists γ, pidv. iFrame "Ht".
+    iPureIntro. split_and!;
+      [ exact Hr | exact (proj1 Hrng) | exact (proj2 Hrng) | set_solver ].
+  Qed.
+
+  (* ONE CHILD'S PAYLOAD, out of the parent's token and the reap's escrow.
+     [UkShFork]'s re-entry does exactly this for the echo era's single
+     child; a pipeline round does it twice. *)
+  Local Lemma pipe_redeem (Qc : iProp Σ) (γ : gname) (p rv : mword 32)
+      (xs : Z) :
+    Timeless Qc ->
+    ChildTok.child_tok γ p (fun _ : Z => Qc) -∗
+    ChildTok.exit_tok γ rv xs ={⊤}=∗ Qc.
+  Proof using .
+    intros HT. iIntros "Ht He".
+    iDestruct (ChildTok.exit_tok_pid with "He") as "#Hgp".
+    iDestruct (ChildTok.child_tok_pid with "Ht Hgp") as %<-.
+    iMod (ChildTok.gen_pay_timeless γ p (fun _ : Z => Qc) xs
+            with "Ht He") as "HQ".
+    by iModIntro.
+  Qed.
+
+  (* THE TWO PAYLOADS.  Both forks returned a pid (a [-1] panics and never
+     reaches 0xea), the second's generation is not the first's, and both
+     reaps are at the caller's own pid -- then the two children's
+     symmetric payload is in hand twice, which is what the round's
+     reading takes. *)
+  Lemma pipe_round_answers (Qc : iProp Σ) (RcL RcR : iProp Σ)
+      (r1 r2 rw1 rw2 : mword 64) (S1 S2 S3 S4 : gset gname)
+      (pidv : mword 32) :
+    Timeless Qc ->
+    pidv <> (mword_of_int 1 : mword 32) ->
+    r1 <> (mword_of_int (-1) : mword 64) ->
+    r2 <> (mword_of_int (-1) : mword 64) ->
+    S1 <> S2 ->
+    (rw1 = (mword_of_int (-1) : mword 64) -> S3 = (∅ : gset gname)) ->
+    (rw2 = (mword_of_int (-1) : mword 64) -> S4 = (∅ : gset gname)) ->
+    UkShPipe.ush_fork_ans (∅ : gset gname) S1 RcL (fun _ : Z => Qc) r1 -∗
+    UkShPipe.ush_fork_ans S1 S2 RcR (fun _ : Z => Qc) r2 -∗
+    UexecRet.uwait_ans_pid rw1 S2 S3 pidv -∗
+    UexecRet.uwait_ans_pid rw2 S3 S4 pidv ={⊤}=∗ Qc ∗ Qc.
+  Proof using .
+    intros HT Hpid Hn1 Hn2 HS12 Hm1 Hm2.
+    iIntros "Hf1 Hf2 Hw1 Hw2".
+    rewrite /UkShPipe.ush_fork_ans.
+    iDestruct "Hf1" as "[[%Hb1 _] | Hf1]";
+      [ exfalso; exact (Hn1 (proj1 Hb1)) | ].
+    iDestruct "Hf2" as "[[%Hb2 _] | Hf2]";
+      [ exfalso; exact (Hn2 (proj1 Hb2)) | ].
+    iDestruct "Hf1" as (γ1 p1) "[%Ha1 Ht1]".
+    iDestruct "Hf2" as (γ2 p2) "[%Ha2 Ht2]".
+    destruct Ha1 as (_ & _ & HS1). destruct Ha2 as (_ & _ & HS2).
+    assert (Hne : γ1 <> γ2).
+    { intro He. apply HS12. rewrite HS2 HS1 He. set_solver. }
+    assert (Hg1 : γ1 ∈ S2) by (rewrite HS2 HS1; set_solver).
+    assert (Hg2 : γ2 ∈ S2) by (rewrite HS2; set_solver).
+    (* ---- THE FIRST REAP ---- *)
+    rewrite /UexecRet.uwait_ans_pid /UexecRet.uwait_ans_at.
+    iDestruct "Hw1" as (gn1 b1 rv1 xs1) "[%Hre1 Hwa1]".
+    rewrite /UserChildren.wait_ans.
+    iDestruct "Hwa1" as "[[%Hf1' _] | Hr1]".
+    { exfalso. destruct Hf1' as [Hrv1 He3].
+      assert (Hm : rw1 = (mword_of_int (-1) : mword 64))
+        by (rewrite Hre1 Hrv1; exact UexecRet.sext_neg1_64).
+      specialize (Hm1 Hm). rewrite He3 in Hm1.
+      rewrite Hm1 in Hg1. set_solver. }
+    iDestruct "Hr1" as (γa) "(%Hrg1 & %Hin1 & Hesc1 & #Hu1)".
+    destruct Hin1 as [Hin1 | Heq1]; [ | exfalso; exact (Hpid Heq1) ].
+    destruct Hrg1 as [HS3 _].
+    assert (Hca : γa = γ1 \/ γa = γ2)
+      by (rewrite HS2 HS1 in Hin1; set_solver).
+    iAssert (|={⊤}=> Qc ∗ ∃ (γb : gname) (pb : mword 32),
+                    ⌜S3 = {[γb]}⌝
+                    ∗ ChildTok.child_tok γb pb (fun _ : Z => Qc))%I
+      with "[Ht1 Ht2 Hesc1]" as ">[HQ1 Hrest]".
+    { destruct Hca as [-> | ->].
+      - iMod (pipe_redeem Qc γ1 p1 rv1 xs1 HT with "Ht1 Hesc1") as "$".
+        iModIntro. iExists γ2, p2. iFrame "Ht2". iPureIntro.
+        rewrite HS3 HS2 HS1. set_solver.
+      - iMod (pipe_redeem Qc γ2 p2 rv1 xs1 HT with "Ht2 Hesc1") as "$".
+        iModIntro. iExists γ1, p1. iFrame "Ht1". iPureIntro.
+        rewrite HS3 HS2 HS1. set_solver. }
+    iDestruct "Hrest" as (γb pb) "[%Hb Htb]".
+    (* ---- THE SECOND REAP ---- *)
+    iDestruct "Hw2" as (gn2 b2 rv2 xs2) "[%Hre2 Hwa2]".
+    rewrite /UserChildren.wait_ans.
+    iDestruct "Hwa2" as "[[%Hf2' _] | Hr2]".
+    { exfalso. destruct Hf2' as [Hrv2 He4].
+      assert (Hm : rw2 = (mword_of_int (-1) : mword 64))
+        by (rewrite Hre2 Hrv2; exact UexecRet.sext_neg1_64).
+      specialize (Hm2 Hm). rewrite He4 in Hm2.
+      rewrite Hb in Hm2. set_solver. }
+    iDestruct "Hr2" as (γc) "(%Hrg2 & %Hin2 & Hesc2 & #Hu2)".
+    destruct Hin2 as [Hin2 | Heq2]; [ | exfalso; exact (Hpid Heq2) ].
+    assert (Hcb : γc = γb) by (rewrite Hb in Hin2; set_solver).
+    subst γc.
+    iMod (pipe_redeem Qc γb pb rv2 xs2 HT with "Htb Hesc2") as "HQ2".
+    iModIntro. iFrame "HQ1 HQ2".
+  Qed.
+
+  Lemma pipe_round_reading_code (pn : pnames) (γp : pipe_names)
+      (L I : list (bv 8)) (v : era_pins) (gL gR gM : gname)
+      (XL YR : iProp Σ) :
+    Timeless XL -> Timeless YR ->
+    (0 < length L)%nat ->
+    □ (XL -∗ YR ={↑pipeN}=∗ False) -∗
+    PipeProto.pipe_no_short pn L -∗
+    pipe_inv pn γp L -∗
+    blk2_inv g blk2N (S gen_id) v I L gL gR gM XL YR -∗
+    pipe_Qc_at pn L gL gR gM -∗ pipe_Qc_at pn L gL gR gM ={⊤}=∗
+    PT
+    ∨ (PipeBoth.wcur gL (1/2) 0%nat ∗ PipeBoth.wcur gR (1/2) 0%nat
+       ∗ PipeBoth.wcur gM (1/2) 0%nat)
+    ∨ (∃ c1 c2 n : nat,
+         ⌜n <> 3%nat /\ (0 < c1 + c2)%nat
+          /\ pround_case L (rsrc L n) c1 c2⌝
+         ∗ PipeBoth.wcur gL (1/2) c1 ∗ PipeBoth.wcur gR (1/2) c2
+         ∗ PipeBoth.wcur gM (1/2) n).
+  Proof using .
+    intros HTX HTY HLpos.
+    iIntros "#Hex #Hno #Hinv #Hbinv HQ1 HQ2".
+    iDestruct "HQ1" as "[#HT | HQ1]"; [ by iModIntro; iLeft | ].
+    iDestruct "HQ2" as "[#HT | HQ2]"; [ by iModIntro; iLeft | ].
+    iDestruct (pipe_Qc_two with "HQ1 HQ2") as "[[_ HPL] [_ HPR]]".
+    iDestruct "HPL" as "[[HpayL HcL] | HcL]".
+    - (* ---- the LEFT child ran: [c1 = 0] ---- *)
+      iDestruct "HPR" as "[HR | [HcR HcM]]"; last first.
+      { (* cat's exec failed: PExecR *)
+        iModIntro. iRight. iRight.
+        iExists 0%nat, (length dg_execR), 2%nat. iFrame "HcL HcR HcM".
+        iPureIntro. split_and!;
+          [ lia | rewrite dg_execR_len; lia | ].
+        rewrite /pround_case. right. right. left.
+        split_and!; [ reflexivity | reflexivity | reflexivity ]. }
+      iDestruct "HR" as (c) "(%Hcle & #Heof & HcR & HcM)".
+      iDestruct "HpayL" as "[#Hlb | Hsh]".
+      + (* the whole line is in: PRan *)
+        iMod (pipe_round_ran pn γp L (take c L) with "Hinv Hlb Heof") as %Hw.
+        assert (Hc : c = length L).
+        { pose proof (f_equal length Hw) as Hl.
+          rewrite length_take in Hl. lia. }
+        subst c. destruct (length L) as [| k] eqn:EL; [ lia | ].
+        iModIntro. iRight. iRight.
+        iExists 0%nat, (S k), 1%nat. iFrame "HcL HcR HcM".
+        iPureIntro. split_and!; [ lia | lia | ].
+        rewrite /pround_case. left.
+        split_and!; [ reflexivity | reflexivity | by rewrite EL ].
+      + (* the write stopped short: the READ END was shut *)
+        iDestruct "Hsh" as (c') "[Hw #Hro]".
+        iMod (pipe_round_short pn γp L (take c L) c' with "Hinv Hw Heof")
+          as "[_ %Hw']".
+        destruct c as [| k].
+        { (* nothing was written at all: the round UNWINDS *)
+          iModIntro. iRight. iLeft. iFrame "HcL HcR HcM". }
+        destruct (decide (S k = length L)) as [Hceq | Hcne].
+        { (* the whole line went out after all: PRan *)
+          iModIntro. iRight. iRight.
+          iExists 0%nat, (S k), 1%nat. iFrame "HcL HcR HcM".
+          iPureIntro. split_and!; [ lia | lia | ].
+          rewrite /pround_case. left.
+          split_and!; [ reflexivity | reflexivity | exact Hceq ]. }
+        (* ...AND THE ARM WITH NO CODE -- the SHORT ROUND, which is
+           where [pipe_round_reading_at] stops and where the protocol's
+           own read-side law is spent ([PipeProto.pipe_no_short], and
+           [PipeProto]'s S8 for why the protocol cannot prove it). *)
+        iMod ("Hno" $! (S k) with "[%] Hro Heof") as %[].
+        split; lia.
+    - (* ---- the LEFT child's exec failed: [c1 = length dg_execL] ---- *)
+      iDestruct "HPR" as "[HR | [HcR HcM]]"; last first.
+      { (* both execs failed: PBoth *)
+        iModIntro. iRight. iRight.
+        iExists (length dg_execL), (length dg_execR), 2%nat.
+        iFrame "HcL HcR HcM". iPureIntro. split_and!;
+          [ lia | rewrite dg_execL_len; lia | ].
+        rewrite /pround_case. right. right. right.
+        split_and!; [ reflexivity | reflexivity | reflexivity ]. }
+      iDestruct "HR" as (c) "(%Hcle & _ & HcR & HcM)".
+      destruct c as [| k]; last first.
+      { (* THE FIFTH ROW, refuted: a left cursor past zero and mode 1 *)
+        iMod (blk2_no_L_at_mode1 v I L gL gR gM XL YR (length dg_execL)
+                HTX HTY ltac:(rewrite dg_execL_len; lia)
+                with "Hex Hbinv HcL HcM") as %[]. }
+      (* cat printed nothing: PExecL *)
+      iModIntro. iRight. iRight.
+      iExists (length dg_execL), 0%nat, 0%nat. iFrame "HcL HcR HcM".
+      iPureIntro. split_and!; [ lia | rewrite dg_execL_len; lia | ].
+      rewrite /pround_case. right. left.
+      split_and!; [ reflexivity | reflexivity ].
+  Qed.
+
+  (* THE ROUND'S EXIT UNDER THE TAINT: [pipe_round_exit_mode]'s own taint
+     branch, on its own, so that the reading's taint arm can pay. *)
+  Lemma pipe_Wcl_at_of_taint (I : list (bv 8)) (v : era_pins) :
+    era_pin γ (S gen_id) v -∗ PT -∗ pipe_Wcl_at g I 0%nat.
+  Proof using .
+    iIntros "#Hpin #HT".
+    rewrite /pipe_Wcl_at (pipe_inst_lcred g (S gen_id) I 0%nat).
+    iExists v. iFrame "Hpin". cbn [pwc_lpr2].
+    iApply (pwc_line2_taint g (S gen_id) v I with "HT").
+  Qed.
+
+  Global Instance pipe_Qc_at_timeless pn L gL gR gM :
+    Timeless (pipe_Qc_at pn L gL gR gM).
+  Proof using .
+    rewrite /pipe_Qc_at /PipeProto.pipe_Qc /pipe_PL /pipe_PR. apply _.
+  Qed.
+
+  (* =================================================================== *)
+  (*  THE PARENT AT 0xea, WHOLE: the two reaps, the reading, the exit.   *)
+  (*                                                                     *)
+  (*  This is the last piece of bill item 6, and it is stated at the     *)
+  (*  three facts the walk does not carry (see S8's header): the         *)
+  (*  protocol's [pipe_no_short], the reaps at a NAMED pid, and the      *)
+  (*  two forks' generations being distinct out of an empty set.  With   *)
+  (*  them the round closes: the two payloads come out of the escrows,   *)
+  (*  the reading turns them into the round's code, and the family       *)
+  (*  closed at the two cursors IS the exit payload sh's runcmd child    *)
+  (*  hands its parent ([UkShFork.ushf_wq]'s two arms, which is why      *)
+  (*  BOTH [pipe_Wcl_at g I 3] and [pipe_Wcl_at g I 0] are accepted).    *)
+  (* =================================================================== *)
+  Lemma pipe_round_parent (N : uk_names Σ) `{!ukn_const N}
+      (pn : pnames) (γp : pipe_names) (I L : list (bv 8))
+      (ws : list (list (bv 8))) (v : era_pins)
+      (gL gR gM : gname) (XL YR Wq RcL RcR : iProp Σ)
+      (h : CpuId) (m : regfile) (av : nat)
+      (r1 r2 rw1 rw2 : mword 64) (S1 S2 S3 S4 : gset gname)
+      (pidv : mword 32) :
+    Timeless XL -> Timeless YR ->
+    pline_at I = LPipe ws ->
+    L = wl_line (drop 1 ws) ->
+    (0 < length L)%nat ->
+    ukn_pay N = (fun _ : Z => Wq) ->
+    pidv <> (mword_of_int 1 : mword 32) ->
+    r1 <> (mword_of_int (-1) : mword 64) ->
+    r2 <> (mword_of_int (-1) : mword 64) ->
+    S1 <> S2 ->
+    (rw1 = (mword_of_int (-1) : mword 64) -> S3 = (∅ : gset gname)) ->
+    (rw2 = (mword_of_int (-1) : mword 64) -> S4 = (∅ : gset gname)) ->
+    □ (XL -∗ YR ={↑pipeN}=∗ False) -∗
+    PipeProto.pipe_no_short pn L -∗
+    pipe_inv pn γp L -∗
+    era_pin γ (S gen_id) v -∗
+    blk2_inv g blk2N (S gen_id) v I L gL gR gM XL YR -∗
+    (pipe_Wcl_at g I 3%nat -∗ Wq) -∗
+    (pipe_Wcl_at g I 0%nat -∗ Wq) -∗
+    shk_code (ukn_t N) -∗
+    UkShPipe.ush_fork_ans (∅ : gset gname) S1 RcL
+      (fun _ : Z => pipe_Qc_at pn L gL gR gM) r1 -∗
+    UkShPipe.ush_fork_ans S1 S2 RcR
+      (fun _ : Z => pipe_Qc_at pn L gL gR gM) r2 -∗
+    UexecRet.uwait_ans_pid rw1 S2 S3 pidv -∗
+    UexecRet.uwait_ans_pid rw2 S3 S4 pidv -∗
+    urun N h m (mword_of_int 0xea) av -∗
+    mWP (Loop : expr riscv_lang).
+  Proof using .
+    intros HTX HTY Hline HL HLpos Hpayeq Hpid Hn1 Hn2 HS12 Hm1 Hm2.
+    iIntros "#Hex #Hno #Hinv #Hpin #Hbinv Hw3 Hw0 #Hcode Hf1 Hf2 Hr1 Hr2 Hrun".
+    iApply fupd_mwp.
+    iMod (pipe_round_answers (pipe_Qc_at pn L gL gR gM) RcL RcR
+            r1 r2 rw1 rw2 S1 S2 S3 S4 pidv _ Hpid Hn1 Hn2 HS12 Hm1 Hm2
+            with "Hf1 Hf2 Hr1 Hr2") as "[HQ1 HQ2]".
+    iMod (pipe_round_reading_code pn γp L I v gL gR gM XL YR HTX HTY HLpos
+            with "Hex Hno Hinv Hbinv HQ1 HQ2") as "Hrd".
+    iAssert (|={⊤}=> Wq)%I with "[Hrd Hw3 Hw0]" as ">Hpayq".
+    { iDestruct "Hrd" as "[#HT | [Hunw | Hcd]]".
+      - iModIntro. iApply "Hw0".
+        iApply (pipe_Wcl_at_of_taint I v with "Hpin HT").
+      - iDestruct "Hunw" as "(HcL & HcR & _)".
+        iMod (pipe_round_unwind g ⊤ I L gL gR gM XL YR v HTX HTY
+                ltac:(apply top_subseteq) with "Hpin Hbinv HcL HcR") as "Hc".
+        iModIntro. iApply "Hw3". iExact "Hc".
+      - iDestruct "Hcd" as (c1 c2 n) "(%Hc & HcL & HcR & HcM)".
+        destruct Hc as (Hn3 & Hpos & Hcase).
+        assert (Hcode : forall sel : list bool,
+                  count_true sel = c1 -> length sel = (c1 + c2)%nat ->
+                  exists a : nat, pblk2_code I (rsrc L n) sel a).
+        { intros sel Hcnt Hlen. rewrite HL. rewrite HL in Hcase.
+          exact (pround_code I ws (rsrc (wl_line (drop 1 ws)) n) sel c1 c2
+                   Hline Hcnt Hlen Hcase). }
+        iMod (pipe_round_exit_mode ⊤ I L gL gR gM XL YR v c1 c2 n
+                HTX HTY ltac:(apply top_subseteq) Hpos Hn3 Hcode
+                with "Hpin Hbinv HcL HcR HcM") as "[Hc _]".
+        iModIntro. iApply "Hw0". iExact "Hc". }
+    iModIntro.
+    iApply (wp_kshr_exit0_paid N h m 0xea 0xec 0xf0
+              (mword_of_int 0 : mword 6) (mword_of_int 2970 : mword 21) av
+              ltac:(apply bv_eq; vm_compute; reflexivity)
+              ltac:(apply bv_eq; vm_compute; reflexivity)
+              ltac:(apply bv_eq; vm_compute; reflexivity)
+              ltac:(vm_compute; reflexivity)
+              with "Hcode [] [] [Hpayq] Hrun").
+    { iApply (uis_shk_ea with "Hcode"). }
+    { iApply (uis_shk_ec with "Hcode"). }
+    { rewrite Hpayeq. iExact "Hpayq". }
+  Qed.
+
+  (* =================================================================== *)
+  (*  THE ROUND'S LEND: the names and the family, out of the credential  *)
+  (*                                                                     *)
+  (*  [UShPipeChild.wp_kshm_child_pipe_paid_at]'s [Cp ={⊤}=∗ Cr], with   *)
+  (*  [Cp] the round's lend and [Cr] the arm's.  S3's split of the       *)
+  (*  protocol's allocation is what makes it statable: the family's two  *)
+  (*  exclusion witnesses NAME [pn], so [pn] has to exist before         *)
+  (*  [pipe(2)] -- and the rest of the protocol (the invariant, the      *)
+  (*  registration) is minted at the registrar out of [pipe_pre]         *)
+  (*  ([pipe_inv_alloc_at], [pipe_registrar_at]).                        *)
+  (* =================================================================== *)
+  Lemma pipe_round_lend (I L : list (bv 8)) :
+    pboth_line I ->
+    pipe_Wcl_at g I 3%nat ={⊤}=∗
+    ∃ (pn : pnames) (v : era_pins) (gL gR gM : gname),
+      era_pin γ (S gen_id) v
+      ∗ blk2_inv g blk2N (S gen_id) v I L gL gR gM
+          (PipeProto.wcur pn 0%nat) (pws_lb pn (take 1%nat L))
+      ∗ PipeBoth.wcur gL (1/2) 0%nat ∗ PipeBoth.wcur gR (1/2) 0%nat
+      ∗ PipeBoth.wcur gM (1/2) 0%nat
+      ∗ pipe_pre pn ∗ wtok pn ∗ rtok pn ∗ side_L pn ∗ side_R pn.
+  Proof using .
+    intros Hline. iIntros "Hc".
+    iMod pipe_names_alloc as (pn) "(Hpre & Hwt & Hrt & HsL & HsR)".
+    iMod (pipe_round_entry g ⊤ I L (PipeProto.wcur pn 0%nat)
+            (pws_lb pn (take 1%nat L)) Hline with "Hc")
+      as (v gL gR gM) "(#Hpin & #Hbinv & HL & HR & HM)".
+    iModIntro. iExists pn, v, gL, gR, gM.
+    iFrame "Hpin Hbinv HL HR HM Hpre Hwt Hrt HsL HsR".
+  Qed.
+
 End UShPipeAssemblyDiag.
 
 (* ===================================================================== *)

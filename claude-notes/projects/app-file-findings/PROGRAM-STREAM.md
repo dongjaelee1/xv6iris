@@ -1592,3 +1592,39 @@ written into `UShRound.v` at the hypothesis):
    in `cat_pay_present`'s `Ci` on the no-open exits and in the round's hold
    family (`cat_hold_at`, already a parameter of `cat_round_at`) on the ran
    exit.
+
+### Stretch 11, continued: defect 2 CLOSED in `UCatKernel` — a frame crosses cat's entry
+
+Branch `app-file/cat-frame` (`.vok`-checked): `kcat_r_frame_in` and
+`cat_held_read_frame` (the read's law is boxed over the cursor, so a linear
+frame goes IN the hold it is stated at and comes back in it, on both arms);
+`cat_pay_present` / `cat_pay_absent` / `cat_pay_filed_{some,none}` /
+`cat_child_of_entry` take `F : iProp`.  It rides beside the cursor across the
+open (`kcat_o_frame` at `cch ∗ F`) and inside the hold across the read loop
+(`cat_round_at` at `fun p => cat_hold_at … p ∗ F` — the hold was already a
+parameter there), and the in-spec exits hand it to the payload wand:
+`□ (catq_cat … (-1) -∗ F -∗ Q (-1))`.  THE OUT-OF-SPEC PAYLOAD IS ITS OWN
+PREMISE, `□ (file_taint c -∗ Q (-1))`: those exits do not hold `F` (it went
+into a syscall whose out-of-spec disjunct returns nothing), so they cannot use
+the wand at `F`.  The entry's payment is `cat_lend r q s … ∗ F`.
+
+WHAT IS LEFT OF `Hchild_cat`, in order:
+
+1. **defect 1** — `line_ok` is false at `cat f` (above); the owner's call.
+2. **the round's two conversions**, which `Hchild_cat` used to take as a
+   premise and now owes: OPEN the lend — `Wcl I 3` to `cat_stage ps0 cs0 s0 I P`
+   and `cch … 0` — and CLOSE it — `catq_cat … ∗ F` to `Wcf I 0`.  `cch` is
+   `FileLinksAt.fwc_blk_at`'s body with the stage pure fact pulled out
+   (`turn v (P + p) ∗ ps_lb ∗ cs_lb (catcs cs0 a p) ∗ inp_lb ∗ f0_lb`), so the
+   open is a reading of `lk_blk … 0 0`.  THE CLOSE IS NOT
+   `Wcf0_of_post_alt`: `RCRan` is the one alternative that is NOT
+   `fstate_free`, so `FileLinksLine.fab I (ralt_enc RCRan) = []` and
+   `fwc_line_at`'s block arm (`fapr`) cannot hold it.  How the line credential
+   represents a filed `RCRan` block has to be read out of `FileLinksLine` /
+   `FileLinkInst` (`sh_prompt_alt_of_deed` is where the prompt law reads the
+   deed to pick the alternative) before the close can be stated.  `F` is
+   `ftkt r s` beside PRE's persistent facts, at `q := 1/2`
+   (`FileOpen.fdq_deed`: `fdeed r s ⊣⊢ fdq r (1/2) s`).
+3. the child's walk at the `cat f` line (parse, exec `/cat`) with the supply
+   built from `cat_child_of_entry` — `redir_exec_sup`'s shape, the walk pin at
+   `FsCatPin`, the generic slot for a tainted PRE.

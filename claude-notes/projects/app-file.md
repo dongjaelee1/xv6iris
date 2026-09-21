@@ -42,9 +42,18 @@ Landed 2026-09-21:
   hang it met four times (a known shape; the clean fix is to drop `UShRound`'s
   own `ghost_varG Σ Z` binder -- not yet measured).
 
-NEXT: 3 (iii)-(iv) (`Hchild_cat`; (iii) waits on the owner confirming RULING
-CAT-DEED's taint arm), then 5 (`sh_round_holds_file`, with the `cons_made`
-premise), 4, the adequacy close.
+- **3 (iii)** (RULING CAT-DEED amended by the owner: ONE `fdq` to cat, the SAME
+  `fdq` back, `∨ file_taint c` on both sides): `UCatKernel.catq_cat`,
+  `cat_lend r q s := fdq r q s ∗ cch`, one `cat_child_of_entry` over `s` with
+  the fork's payload and a FRAME as parameters; the `app_taint` antecedent that
+  made cat's entry out-of-spec-only is gone.  PROGRAM-STREAM.md stretch 11.
+
+NEXT: 3 (iv) `Hchild_cat` -- BLOCKED FIRST on `line_ok` being FALSE at `cat f`
+(the exec-node lemmas in `UkShEcho`/`UShEcho` are stated at `line_ok`, which
+demands the first word be `echo`; the owner's call whether to generalise them
+now), then the round's open/close conversions (the close is not
+`Wcf0_of_post_alt`: `RCRan` is not state-free) and the child's walk; then 5
+(`sh_round_holds_file`, with the `cons_made` premise), 4, the adequacy close.
 
 THE OWNER'S PRIORITY (2026-09-21): good intermediate abstractions and specs
 over time-to-theorem.  A shortcut taken is recorded as a named cleanup item

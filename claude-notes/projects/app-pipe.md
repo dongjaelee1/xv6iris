@@ -8187,8 +8187,10 @@ child law (`pipe_round_exit` / `pipe_round_unwind`); **both** fork
 tails are not, and both for ROUND-5's reason — at `fork1` #1's panic the
 runcmd child has already written `fork\n` through the family
 (`pblk2_fork1_chain` at mode 3), so its block is non-empty and
-`pipe_round_unwind` cannot run; it exits at `pwc_fork_exit … 5` exactly
-as `fork1` #2 does, and `pipe_fork_exit_not_lpr` refutes both.  ROUND-5's
+`pipe_round_unwind` cannot run; it exits at the TERMINAL SHAPE just as
+`fork1` #2 does (the brief's own order D says so: "fork #1 fails →
+`pblk2_fork1_chain` at mode 3 → `pwc_fork_exit`"), and
+`pipe_fork_exit_not_lpr` refutes both.  ROUND-5's
 contrast ("`fork1` #1's panic is fine because the lend came back whole")
 is right about the LEND and wrong about the BLOCK: `ush_fork_ans`'s left
 arm hands `RcL γp` back, but the five bytes are already out.  So the

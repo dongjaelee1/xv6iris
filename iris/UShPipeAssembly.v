@@ -159,6 +159,7 @@ Section UShPipeAssemblyGen.
                     Pf p
                     ∗ □ (∀ (q : nat) (b : bv 8),
                            ⌜ dg !! q = Some b ⌝ -∗
+                           ⌜ (q < n)%nat ⌝ -∗
                            ksh_w1 N (mword_of_int 2 : mword 64) b
                              (UserFd.ustd (ukn_fd N) l ∗ Pf q)
                              (UserFd.ustd (ukn_fd N) l ∗ Pf (S q)))
@@ -166,7 +167,7 @@ Section UShPipeAssemblyGen.
     iExists (fun p : nat => match p with O => Cr | S q => G (S q) end).
     iSplitL "Hc"; [ iExact "Hc" | ].
     iSplit.
-    - iIntros "!>" (p b) "%Hb".
+    - iIntros "!>" (p b) "%Hb %Hlt".
       iApply (ksh_w1_acc N (mword_of_int 2 : mword 64) b).
       iIntros "!> [Hl Hp]".
       destruct p as [| q].
@@ -181,7 +182,8 @@ Section UShPipeAssemblyGen.
                   (UserFd.ustd (ukn_fd N) l ∗ Pf 1%nat)%I
                   with "[] [Hs]").
         { iIntros "!> [$ Hq]". rewrite /G. iExists Pf. by iFrame "Hq Hs He". }
-        { iApply ("Hs" $! 0%nat b). by iPureIntro. }
+        { iApply ("Hs" $! 0%nat b with "[%] [%]");
+            [ exact Hb | exact Hlt ]. }
       + (* EVERY LATER BYTE: the witness is opened and re-packed *)
         rewrite /G. iDestruct "Hp" as (Pf) "(Hq & #Hs & #He)".
         iModIntro. iExists (UserFd.ustd (ukn_fd N) l ∗ Pf (S q))%I.
@@ -192,7 +194,8 @@ Section UShPipeAssemblyGen.
                   with "[] [Hs]").
         { iIntros "!> [$ Hq']". rewrite /G. iExists Pf.
           by iFrame "Hq' Hs He". }
-        { iApply ("Hs" $! (S q) b). by iPureIntro. }
+        { iApply ("Hs" $! (S q) b with "[%] [%]");
+            [ exact Hb | exact Hlt ]. }
     - destruct n as [| n']; [ lia | ].
       iIntros "!> Hp". rewrite /G. iDestruct "Hp" as (Pf) "(Hn & _ & #He)".
       iApply ("He" with "Hn").
@@ -517,7 +520,7 @@ Section UShPipeAssemblyFork.
                    end))%I)%I.
     iSplitL "Hc"; [ by iDestruct "Hc" as "[$ $]" | ].
     iSplit.
-    - iIntros "!>" (p b) "%Hb".
+    - iIntros "!>" (p b) "%Hb %Hlt".
       (* THE FAMILY IS NAMED AND NOT SEARCHED: with [_] here the elaborator
          has to solve [?F p =?= ...] and [?F (S p) =?= ...] together and
          does not come back (measured: >10 min, then [Set Default Timeout]

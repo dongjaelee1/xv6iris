@@ -805,8 +805,18 @@ Section UShPipeRound.
      says IS [pterm_pay I] -- the terminal round included.  No new
      definition, exactly as SS4.3j (1) predicted; what changed is the
      credential the WHOLE ERA runs at. *)
+  (* ...AND IT TAKES THE LINK BUNDLE (design SS4.3r, lane SH-PIPE-ROUND-8
+     finding (5); PIPE-STAGE-5's /cat-pin move once more).  Every byte
+     step of the round's two-writer family ([PipeBoth.pblk2_cstep_L] /
+     [pblk2_cstep_R_t]) takes [PipeLinks.pipe_link_taint g], whose only
+     producer in the tree is [PipeLinks.pipe_links g].
+     [UInitPipe.sh_pipe_child_law_all] asserts this law with NO resources,
+     so the bundle has to be an ANTECEDENT here; [sh_round_holds_pipe]
+     already holds it and supplies it.  The Prop [sh_pipe_child_law_all]
+     does not move. *)
   Definition sh_pipe_child_law : iProp Σ :=
-    (□ (UShCatPay.sh_cat_slot T -∗
+    (□ (PipeLinks.pipe_links g -∗
+        UShCatPay.sh_cat_slot T -∗
         UkShFork.ushf_child_law_at (PS := uprogSG_free) (SG := uexecSG_xv6)
           Wct ushq_lp 68))%I.
 
@@ -908,7 +918,7 @@ Section UShPipeRound.
         (UInitSh.sh_Rsh (ukn_t N) (ukn_d N) (ukn_s N)).
   Proof using Hkill.
     iIntros "#Hlk #Hdep #Hslot #Hcat #Hpin #Hchl0".
-    iPoseProof ("Hchl0" with "Hcat") as "#Hchq".
+    iPoseProof ("Hchl0" with "Hlk Hcat") as "#Hchq".
     iDestruct "Hpin" as (v) "#Hp".
     iPoseProof (pipe_kill_law_t v with "Hp") as "#Hkl".
     iPoseProof (pipe_child_law_echo_t with "Hlk Hdep Hslot") as "#Hchl".

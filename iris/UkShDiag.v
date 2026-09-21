@@ -8782,6 +8782,16 @@ Section UkShDiagLeaf.
             Pf 0%nat
             ∗ □ (∀ (p : nat) (b : bv 8),
                    ⌜ dg !! p = Some b ⌝ -∗
+                   (* THE GUARD (design SS4.3r, lane SH-PIPE-ROUND-9).  The
+                      step is asked for only at the indices the BLOCK
+                      covers.  Without it the law asks for a byte at every
+                      index of [dg], and [dg] is longer than [n] whenever
+                      the alternative's tail is the PROMPT -- which at a
+                      pipeline round is the PARENT's to write, not this
+                      child's.  It strictly WEAKENS what a supplier must
+                      provide and no landed consumer loses anything: every
+                      one of them spends the step at [p < n]. *)
+                   ⌜ (p < n)%nat ⌝ -∗
                    ksh_w1 N (mword_of_int 2 : mword 64) b
                      (UserFd.ustd (ukn_fd N) l ∗ Pf p)
                      (UserFd.ustd (ukn_fd N) l ∗ Pf (S p)))
@@ -8916,20 +8926,23 @@ Section UkShDiagLeaf.
               with "[] [] [] [Hstd HPf] Hcode Hro Hs [] [] [] [] [] [] [Hpay] Hrun").
     { iModIntro. iIntros (p) "%Hp". rewrite /C1.
       rewrite (ush_execfail_w1 p ltac:(lia)).
-      iApply ("Hstep" $! p (alt_execfail !!! p) with "[%]").
-      apply ush_execfail_lookup. lia. }
+      iApply ("Hstep" $! p (alt_execfail !!! p) with "[%] [%]").
+      { apply ush_execfail_lookup. lia. }
+      { lia. } }
     { iModIntro. iIntros (p) "%Hp". rewrite /C2. rewrite Hxlen in Hp.
       rewrite (Hxb p Hp) (ush_execfail_arg p ltac:(lia)).
       replace (5 + S p)%nat with (S (5 + p))%nat by lia.
       iApply ("Hstep" $! (5 + p)%nat (alt_execfail !!! (5 + p)%nat)
-                with "[%]").
-      apply ush_execfail_lookup. lia. }
+                with "[%] [%]").
+      { apply ush_execfail_lookup. lia. }
+      { lia. } }
     { iModIntro. iIntros (p) "%Hp". rewrite /C3.
       rewrite (ush_execfail_w2 p ltac:(lia)).
       replace (S p + 2)%nat with (S (p + 2))%nat by lia.
       iApply ("Hstep" $! (p + 2)%nat (alt_execfail !!! (p + 2)%nat)
-                with "[%]").
-      apply ush_execfail_lookup. lia. }
+                with "[%] [%]").
+      { apply ush_execfail_lookup. lia. }
+      { lia. } }
     { rewrite /C1. iFrame "Hstd HPf". }
     { iApply (uis_shk_dc with "Hcode"). }
     { iApply (uis_shk_e0 with "Hcode"). }

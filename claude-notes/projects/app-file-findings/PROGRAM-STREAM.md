@@ -1764,3 +1764,47 @@ build):
   the prompt IS the prompt (`fabs_prompt`).  `Wcf0_of_post_alt` is its
   corollary and LOST that premise; the three redirect exits got shorter and
   `fab_openfail_long` is deleted.
+
+## PROGRAM STREAM, stretch 13 (2026-09-21) — defect 3 LANDED; the cat child is written
+
+**Defect 3 LANDED on `main`** (the 10 files that depend on
+`FileLinksLine`/`FileLinksAt` rebuilt, zero errors, `make -n` empty, audits
+identical).
+
+THE cat CHILD (branch `app-file/cat-walk`; pieces `.vok`-checked, the law
+itself being compiled at the time of writing):
+
+* `UShEcho.sh_exec_path_of_x{,_holds}` — the exec's path is the line's FIRST
+  WORD at any `exec_ok` list (`sh_echo_path_of` is echo's); compiled first try.
+* `UkShEcho.wp_kshm_child_x` is generic in the fd-row predicate `Fd1` the
+  supply asks of the child's table, as the arm `wp_kshr_exec_x_at` already
+  was: echo's entry reads row 1, cat's reads rows 0–2 (both console rows and
+  "no slot is closed").  Echo's walk is the instance at `UkSh.ush_fd1p`.
+* `UCatKernel.cat_pay_present` / `cat_pay_filed_some` / `cat_child_of_entry`
+  take ONE BOOLEAN PER CONSOLE ROW (`rb`, `rb2`): they took one for both, and
+  sh's row facts (`ush_fd1p`, `ush_fd2p`) give two independent ones.
+* `FileDisc.fline_ok_cat_words` — `fline_ok b -> wl_words b = uline_ws LCat ->
+  uline_of b = LCat` (an echo line's first word is `echo`; a redirect's and a
+  pipeline's word lists are two longer than a command's).
+* `UShRound`: `cat_ws := uline_ws LCat` and its closed facts (`exec_ok`, two
+  words, the file name's byte, `cat_ws !!! 0 = UShCatPay.cat_pl`,
+  `wl_line cat_ws = line_bytes LCat`, `cat_execfail_bytes` at
+  `FileDisc.alt_execcat`); `cch_post` — cat's END CURSOR IS the state-aware
+  post (`UCatOut.cat_out_len cs s0 I a = length (fabs s0 cs I a) - 2` at a cat
+  line, `catcs = blkcs_f`); `cat_exec_sup` — `redir_exec_sup`'s shape with
+  `UCatKernel.cat_child_of_entry` in the image slot, the lend OPENED into
+  cat's cursor inside the slot (so `ps cs P vf` are known where the entry is
+  applied), `q := 1/2` (the deed's half IS `fdq r (1/2) s`), the frame
+  `F := ftkt r s`, the payload conversion through `cch_post` and
+  `Wcf0_of_posts_alt` at `RCRan` and `RCNoOpen`; `Hchild_cat` — the LAW at
+  `UkShFork.ushf_child_law_at Wcf ushs_lp_cat 68`, the walk at `n + 8` (the
+  law's budget is 68, the walk needs 60), the exec-failed diagnostic at
+  `RCExec` through `ush_diag_law_hold_at_alt`.  The pipe campaign's
+  `UShCatPay.sh_cat_slot` / `cat_pl` / `sh_cat_pin_resolves` are reused as they
+  are.  The `Hypothesis Hchild_cat`, `cat_pay` and `cat_hold` are deleted.
+
+AFTER IT: `sh_round_holds_file` needs `(∃ jc, cons_made (fn_cons r) jc)` and
+BOTH slots (`UShEcho.sh_echo_slot T` for the echo and redirect children,
+`UShCatPay.sh_cat_slot T` for cat's) — one slot at
+`FileFsPure.file_fs_pure` projects to both
+(`sh_echo_slot_of_fs_pure_holds`-style, `sh_cat_slot_of_fs_pure_holds`).

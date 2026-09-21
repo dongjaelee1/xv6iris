@@ -19,8 +19,8 @@ tier is GREEN at current `main` (whole tree `--proofs -k`, 2026-09-21), after
 the pipe campaign's changes to the generic sh statements.
 
 What is open in `iris/`: `UShRound.sh_round_holds_file` and
-`UInitFile.file_Hinit_boot` are `Admitted`; `UShRound`'s section hypotheses
-`Hchild_redir` and `Hchild_cat` are undischarged.
+`UInitFile.file_Hinit_boot` are `Admitted`; `UShRound`'s section hypothesis
+`Hchild_cat` is undischarged (`Hchild_redir` is proved, 2026-09-21).
 
 Landed 2026-09-21:
 - **SLOT-WS, option B** (item 2¾ below; ruled by the owner, WITH A CLEANUP
@@ -35,9 +35,14 @@ Landed 2026-09-21:
   confirming the amendment to RULING CAT-DEED (the conjunct needs `∨
   file_taint c`; cat's taint exits hold no deed).
 
-NEXT: 2d (`Hchild_redir`, stated at `UkShRedirBody.sh_redir_child_law Wcf` --
-`UShRound`'s own copy is a stale twin, 60 vs 68 and no `fline_ok`, delete it);
-then 3 (iii)-(iv), 5, 4, the adequacy close.
+- **2d** (`UShRound.Hchild_redir` is a LEMMA at
+  `UkShRedirBody.sh_redir_child_law Wcf`; the stale twin is deleted; it takes
+  `(∃ jc, cons_made (fn_cons r) jc)`, which `sh_round_holds_file` must gain).
+  PROGRAM-STREAM.md stretch 10 has every name and the sixth hang shape.
+
+NEXT: 3 (iii)-(iv) (`Hchild_cat`; (iii) waits on the owner confirming RULING
+CAT-DEED's taint arm), then 5 (`sh_round_holds_file`, with the `cons_made`
+premise), 4, the adequacy close.
 
 THE OWNER'S PRIORITY (2026-09-21): good intermediate abstractions and specs
 over time-to-theorem.  A shortcut taken is recorded as a named cleanup item

@@ -1490,3 +1490,44 @@ Also landed on the branch: `FileLinksLine.fline_echof_in` (`0 < nlines I ->
 fline I = LEchoF ws -> ws ∈ echof_lines_in I`), which is what turns PRE's
 `line_wit` into the `ws ∈ ls` the open and the write credential ask for; and
 `redir_openfail_exit` is now two lemmas (`_u`, `_m`), as the plan above said.
+
+### Stretch 10: 2d CLOSES — `UShRound.Hchild_redir` is a lemma
+
+`Hchild_redir` is PROVED at `UkShRedirBody.sh_redir_child_law Wcf`
+(`.vok`-checked; whole-tree build pending at the time of writing).  The section
+hypothesis and `UShRound`'s stale twin definition are deleted.  New on the way:
+`UShRound.redir_exec_sup` (+ `redir_K'`), `FileDisc.fline_ok_redir_words`,
+`ush_execfail_law_at_wand` and `fab_redir_alts` (local).  The plan above held
+as written, with three corrections:
+
+* the open-failed law needs NO pair of blocks: `redir_Kf`'s arm is destructed
+  inside the law (the law's `Cr` comes in before its `∃ Pf`), and the matching
+  alternative's law is applied there; its taint arm runs the law at
+  `Hold := emp` and ends by `Wcf_taint`.
+* `fline_ok` is `∃ l, uline_ok l ∧ b = line_body l` — NOT `uline_of b = l` and
+  NOT pipe-free — so identifying the line from the fork's words is a four-way
+  case split on the constructor (`fline_ok_redir_words`), refuting `LEcho` by
+  `wl_alnum` at `>`, `LCat` by length and `LPipe` at the bar.  This is the
+  fact option B made learnable.
+* `sh_round_holds_file` (still `Admitted`) will need `(∃ jc, cons_made
+  (fn_cons r) jc)` as a premise to apply `Hchild_redir`; the statement is NOT
+  yet changed (item 5 restates it anyway).
+
+**THE SIXTH SILENT-HANG SHAPE, met four times in one lemma.**  `UShRound`'s
+section has its own `ghost_varG Σ Z`, and `Hopen_hand` (hence the walk, hence
+the child law) is at `offbox_offG`.  Every lemma applied inside the proof that
+mentions `ucwd`/`urun` — `UkRun.urun_gen`, `ExecRun.udepw_at_refR_of_sup`,
+`UEchoFile.efile_image_entry`, `UShPanic.ush_diag_law_hold_at_alt`,
+`UkShEcho.sh_exec_sup_echo_at` in a statement — resolves its `ghost_varG0`
+to the SECTION VARIABLE unless told otherwise, the two print identically, and
+the `iApply` does not fail: it unifies two `urun`-sized terms through their
+definitions and never returns.  Remedy: `(ghost_varG0 := offbox_offG)` on
+every one of them (and `(PS := uprogSG_free) (SG := uexecSG_xv6)` where the
+lemma has those names).  The tell that a lemma took the wrong one is Rocq's
+`Proof using` complaint naming `ghost_varG0` at `Qed`.  Localise with
+`rocq compile -vok -time` under `timeout` (scratchpad `tcheck.sh`): the last
+`Chars` line is the sentence BEFORE the hang.  THE CLEAN FIX is to delete the
+section's `Context \`{!ghost_varG Σ Z}` from `UShRound` (and `UShRest`'s
+binder list it copies) so there is one instance in scope — not done here
+because the binder list is copied verbatim for an elaboration-cost reason
+(`UShRound`'s header); worth measuring.

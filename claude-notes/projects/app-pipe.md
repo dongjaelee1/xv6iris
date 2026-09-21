@@ -8477,8 +8477,11 @@ hand): `UShPipeRound.sh_round_holds_pipe` **14**,
 model).  Nothing new appears.
 
 **AUDITS.**  `audit-pipe-only` **14** (re-measured on the mirror at
-`23ab2a2bd`; the lane's cone is the only one that reaches
-`PipeAssumptions`).  `audit-only` **13**, `audit-echo-only` **14**,
+`23ab2a2bd`, as `Print Assumptions
+UInitPipeAdequacy.pipe_adequacy_pipeΣ_of_child` under the audit's own
+`AUDIT_FLAGS` — which is exactly what `PipeAssumptions.v` prints; the
+list is verbatim the standing one.  The lane's cone is the only one that
+reaches `PipeAssumptions`).  `audit-only` **13**, `audit-echo-only` **14**,
 `audit-tree-only` **13** are unmoved BY CONSTRUCTION and the dependency
 graph says so: the reverse cone of the two changed files is
 `{UShPipeRound, UInitPipe, UInitPipeAdequacy, UPipeBootAdequacy,

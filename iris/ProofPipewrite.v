@@ -698,9 +698,13 @@ Section PwConts.
 
   (* the three links are [Typeclasses Opaque], so they cannot be
      [iSpecialize]d at a state; these are their eliminations. *)
-  Lemma pw_olink_apply (γ : gname) (Φ : pipe_st -> iProp Σ) (s : pipe_st) :
-    pipe_olink γ Φ -∗ pipe_qauth γ s ={⊤}=∗ pipe_qauth γ s ∗ Φ s.
-  Proof using . rewrite /pipe_olink. iIntros "H". iApply "H". Qed.
+  Lemma pw_wolink_apply (γ : gname) (Φ : pipe_st -> iProp Σ) (s : pipe_st) :
+    ps_wo s = true ->
+    pipe_wolink γ Φ -∗ pipe_qauth γ s ={⊤}=∗ pipe_qauth γ s ∗ Φ s.
+  Proof using .
+    intro Hwo. rewrite /pipe_wolink. iIntros "H".
+    iApply ("H" $! s with "[%]"); [exact Hwo].
+  Qed.
 
   Lemma pw_wlink_apply (γ : gname) (b : bv 8) (Φ : iProp Σ) (s : pipe_st) :
     ps_wo s = true -> ps_ro s = true ->
@@ -713,8 +717,8 @@ Section PwConts.
   (* NODE [k] OF THE CHAIN, at the count the cursor form carries.  The three
      components are an ADDITIVE conjunction: taking the observation SPENDS
      the node, which is exactly what the post's observing arm hands back. *)
-  Lemma pw_chain_olink (γ : gname) M ua Q Qe (k nn : nat) :
-    (k < nn)%nat -> pipe_wchain γ M ua Q Qe k (nn - k) -∗ pipe_olink γ (Qe k).
+  Lemma pw_chain_wolink (γ : gname) M ua Q Qe (k nn : nat) :
+    (k < nn)%nat -> pipe_wchain γ M ua Q Qe k (nn - k) -∗ pipe_wolink γ (Qe k).
   Proof using .
     intro Hk. assert (E : (nn - k)%nat = S (nn - S k)%nat) by lia. rewrite E.
     by iIntros "[_ [$ _]]".
@@ -775,12 +779,21 @@ Section PwConts.
       (Q : nat -> iProp Σ) (Qe : nat -> pipe_st -> iProp Σ) (n : Z) (k : nat)
       (nr nw ro wo : mword 32) (bs : list (bv 8)) :
     (k < Z.to_nat n)%nat -> ~ pflag_open ro ->
+    (* THE WRITE END IS OPEN (lane PIPE-RO, design SS4.3w's purchase 5):
+       what the caller's [PipeQueue.pipe_wolink] demands of the state it
+       observes, through [pipe_qres]'s coupled arm.  It is the SAME fact
+       [pw_qres_push] takes for the write link ([pw_wo_open], off the
+       caller's credential), and what it buys here is the ORDER of the two
+       enders: a writer cannot observe a shut read end after an
+       end-of-file has been read, because an end-of-file is read at a SHUT
+       WRITE END.  That is the whole of [PipeProto.pipe_no_short]. *)
+    pflag_open wo ->
     pw_pay γp (us_M U) ua Q Qe k (Z.to_nat n) -∗
     pipe_qres γp nr nw ro wo bs
     ={⊤}=∗ pipe_qres γp nr nw ro wo bs ∗
            pw_post γp U ua Q Qe n (mword_of_int (-1) : mword 64).
   Proof using .
-    intros Hk Hro. rewrite /pw_pay /pw_post /pipe_wpost.
+    intros Hk Hro Hwoo. rewrite /pw_pay /pw_post /pipe_wpost.
     iIntros "[Hch | #Ht] Hq".
     2:{ iModIntro. iFrame "Hq". iRight. iSplitR; [iExact "Ht" |].
         by iApply pipe_wpay_taint. }
@@ -788,8 +801,9 @@ Section PwConts.
     2:{ iModIntro. iSplitR; [by iApply pipe_qres_taint |].
         iRight. iSplitR; [iExact "Ht" |]. by iApply pipe_wpay_taint. }
     iDestruct "Hc" as (ws rp) "[%Hok Ha]".
-    iDestruct (pw_chain_olink _ _ _ _ _ k (Z.to_nat n) Hk with "Hch") as "Hol".
-    iMod (pw_olink_apply _ _ (MkPipeSt ws rp (pflag_bool ro) (pflag_bool wo))
+    iDestruct (pw_chain_wolink _ _ _ _ _ k (Z.to_nat n) Hk with "Hch") as "Hol".
+    iMod (pw_wolink_apply _ _ (MkPipeSt ws rp (pflag_bool ro) (pflag_bool wo))
+            ltac:(cbn [ps_wo]; unfold pflag_bool; by apply bool_decide_eq_true_2)
             with "Hol Ha") as "[Ha HQe]".
     iModIntro. iSplitL "Ha".
     - rewrite /pipe_qres. iLeft. iExists ws, rp.
@@ -2463,7 +2477,7 @@ Section ProofPipewrite.
           assert (Hkro : (Z.to_nat i < Z.to_nat n)%nat) by lia.
           iApply fupd_wp.
           iMod (pw_post_ro γp U addr Q Qe n (Z.to_nat i) nr nw ro wo bs Hkro Hroc
-                  with "HW Hqr") as "[Hqr HWP]".
+                  Hwoopen with "HW Hqr") as "[Hqr HWP]".
           iModIntro.
           iDestruct "HEX" as "[_ MIN]". rewrite /pw_minus1.
           iSpecialize ("MIN" $! CIDlp with "[%]"); [wp_next_chain|].

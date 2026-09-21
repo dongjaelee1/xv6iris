@@ -241,9 +241,9 @@ Section UInitPipeSeam.
      credential [pwc_line2] with the unfiled two-writer block as its third
      arm; that arm carries the input prefix too. *)
   Local Lemma pwc_blk2_inp (k : nat) (v : era_pins) (I R : list (bv 8))
-      (sel : list bool) (c1 c2 : nat) :
-    PipeBoth.pwc_blk2 g k v I R sel c1 c2 -∗
-    PipeBoth.pwc_blk2 g k v I R sel c1 c2 ∗ (inp_lb v I ∨ T).
+      (sel : list bool) (c1 c2 : nat) (tm : bool) :
+    PipeBoth.pwc_blk2 g k v I R sel c1 c2 tm -∗
+    PipeBoth.pwc_blk2 g k v I R sel c1 c2 tm ∗ (inp_lb v I ∨ T).
   Proof using .
     rewrite /PipeBoth.pwc_blk2. iIntros "[Hl | #HT]"; last first.
     { iSplit; [ iRight; iExact "HT" | iRight; iExact "HT" ]. }
@@ -267,7 +267,7 @@ Section UInitPipeSeam.
       iSplitL "Hp"; [ | iExact "Hi" ].
       iRight; iLeft. iExists a. iSplitR; [ by iPureIntro | ]. iExact "Hp".
     - iDestruct "Hb" as (R sel c1 c2 a) "(%Hc & %Hn & Hp)".
-      iDestruct (pwc_blk2_inp k v I R sel c1 c2 with "Hp") as "[Hp Hi]".
+      iDestruct (pwc_blk2_inp k v I R sel c1 c2 false with "Hp") as "[Hp Hi]".
       iSplitL "Hp"; [ | iExact "Hi" ].
       iRight; iRight. iExists R, sel, c1, c2, a.
       iSplitR; [ by iPureIntro | ]. iSplitR; [ by iPureIntro | ]. iExact "Hp".

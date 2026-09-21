@@ -1523,6 +1523,17 @@ Section pipe_both.
     by iApply "HΦ".
   Qed.
 
+  Lemma rmode_zero (gM : gname) (L R : list (bv 8)) (c2 : nat)
+      (tm : bool) (YR : iProp Σ) :
+    wcur gM (1/2) 0%nat -∗ rmode gM L R c2 tm YR -∗ ⌜c2 = 0%nat⌝.
+  Proof using .
+    iIntros "Hm Hr". rewrite /rmode.
+    iDestruct "Hr" as (n') "(Hm' & _ & Harm)".
+    iDestruct (wcur_agree with "Hm Hm'") as %<-.
+    iDestruct "Harm" as "[%Ha | [[%Ha _] | [%Ha | %Ha]]]"; iPureIntro;
+      first [ exact (proj2 Ha) | exfalso; discriminate (proj1 Ha) ].
+  Qed.
+
   Lemma rmode_flag (gM : gname) (L R : list (bv 8)) (c2 n : nat)
       (tm : bool) (YR : iProp Σ) :
     wcur gM (1/2) n -∗ rmode gM L R c2 tm YR -∗ ⌜tm = tmb n c2⌝.
@@ -1806,6 +1817,59 @@ Section pipe_both.
       iFrame "Hf". iPureIntro. split; [by right; left |].
       intro Hx. exfalso. rewrite (Htm0 eq_refl) in Hx. discriminate.
     - iExists R, sel, tm. iFrame "Hf". by iPureIntro.
+  Qed.
+
+  (* ...AND THE NON-TERMINAL FORM (lane PIPE-STAGE-4), which is what the
+     round's EXIT needs: the boundary credential's third arm is at the
+     flag [false], so the round has to show its round is not the runcmd
+     child's own panic -- and the only thing that knows is the MODE.  The
+     honest premise is therefore the right child's mode half, handed back
+     at its exit; see the lane's Findings block. *)
+  Lemma blk2_inv_close_nt (E : coPset) (N : namespace) (k : nat)
+      (v : era_pins) (I L : list (bv 8)) (gL gR gM : gname)
+      (XL YR : iProp Σ) (c1 c2 n : nat) :
+    Timeless XL -> Timeless YR ->
+    (↑N : coPset) ⊆ E ->
+    n <> 3%nat ->
+    blk2_inv N k v I L gL gR gM XL YR -∗
+    wcur gL (1/2) c1 -∗ wcur gR (1/2) c2 -∗ wcur gM (1/2) n ={E}=∗
+    ∃ (R : list (bv 8)) (sel : list bool),
+      pwc_blk2 k v I R sel c1 c2 false
+      ∗ ⌜R = L \/ R = dg_execR⌝ ∗ wcur gM (1/2) n.
+  Proof using .
+    intros HTX HTY HN Hn3. iIntros "#Hinv HcL HcR HcM".
+    iMod (inv_acc E N _ HN with "Hinv") as "[Hin Hclose]".
+    iDestruct "Hin" as ">Hin". rewrite {1}/blk2_body.
+    iDestruct "Hin" as "[Hfam | Hdone]"; last first.
+    { iDestruct (blk2_done_not_L gL gR c1 with "HcL Hdone") as %[]. }
+    iDestruct "Hfam" as (R sel c1' c2' tm) "(Hf & HgL & HgR & Hxl & Hrm)".
+    iDestruct (wcur_agree with "HcL HgL") as %<-.
+    iDestruct (wcur_agree with "HcR HgR") as %<-.
+    iDestruct (rmode_flag gM L R c2 n tm YR with "HcM Hrm") as %Htmb.
+    assert (Htmf : tm = false)
+      by (rewrite Htmb /tmb; destruct n as [| [| [| [| n]]]];
+          try reflexivity; by destruct Hn3).
+    iAssert ⌜c2 = 0%nat \/ R = L \/ R = dg_execR⌝%I as %Hsrc.
+    { destruct (decide (n = 0%nat)) as [-> | Hnz].
+      - iDestruct (rmode_zero gM L R c2 tm YR with "HcM Hrm") as %Hc20.
+        iPureIntro. by left.
+      - iDestruct (rmode_src gM L R c2 n tm YR Hnz with "HcM Hrm") as %HRn.
+        iPureIntro. right. subst R.
+        destruct n as [| [| [| [| n]]]];
+          [ by destruct (Hnz eq_refl) | by left | by right
+          | by destruct (Hn3 eq_refl) | by right ]. }
+    rewrite Htmf. rewrite /wcur.
+    iCombine "HcL HgL" as "HLf". iCombine "HcR HgR" as "HRf".
+    rewrite ?Qp.half_half.
+    iMod ("Hclose" with "[HLf HRf]") as "_".
+    { iNext. rewrite /blk2_body. iRight. rewrite /blk2_done /wcur.
+      iSplitL "HLf"; [iExists c1 | iExists c2]; by iFrame. }
+    iModIntro. destruct Hsrc as [Hc20 | Hor].
+    - subst c2. iExists dg_execR, sel.
+      iDestruct (pwc_blk2_R_indep k v I R dg_execR sel c1 false with "Hf")
+        as "Hf".
+      iFrame "Hf HcM". iPureIntro. by right.
+    - iExists R, sel. iFrame "Hf HcM". by iPureIntro.
   Qed.
 
   (* the chain composes -- [WpUart] names this lemma in a comment but

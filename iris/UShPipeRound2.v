@@ -188,23 +188,28 @@ Section UShPipeRound2.
   (*  protocol reading has ruled out the mixed selector.                  *)
   (* =================================================================== *)
   Lemma pipe_round_exit (E : coPset) (I L : list (bv 8))
-      (gL gR gM : gname) (XL YR : iProp Σ) (v : era_pins) (c1 c2 : nat) :
+      (gL gR gM : gname) (XL YR : iProp Σ) (v : era_pins) (c1 c2 n : nat) :
     Timeless XL -> Timeless YR ->
     (↑blk2N : coPset) ⊆ E ->
     (0 < c1 + c2)%nat ->
+    n <> 3%nat ->
     (forall (R : list (bv 8)) (sel : list bool),
        R = L \/ R = dg_execR \/ R = alt_forkc ->
        count_true sel = c1 -> length sel = (c1 + c2)%nat ->
        exists a : nat, pblk2_code I R sel a) ->
     era_pin γ (S gen_id) v -∗
     blk2_inv g blk2N (S gen_id) v I L gL gR gM XL YR -∗
-    PipeBoth.wcur gL (1/2) c1 -∗ PipeBoth.wcur gR (1/2) c2 ={E}=∗
-    pipe_Wcl_at g I 0%nat.
+    PipeBoth.wcur gL (1/2) c1 -∗ PipeBoth.wcur gR (1/2) c2 -∗
+    PipeBoth.wcur gM (1/2) n ={E}=∗
+    pipe_Wcl_at g I 0%nat ∗ PipeBoth.wcur gM (1/2) n.
   Proof using .
-    intros HX HY HN Hpos Hcode. iIntros "#Hpin #Hinv HcL HcR".
-    iMod (blk2_inv_close g E blk2N (S gen_id) v I L gL gR gM XL YR c1 c2
-            HX HY HN with "Hinv HcL HcR") as (R sel) "[Hf %Hsrc]".
-    iModIntro.
+    intros HX HY HN Hpos Hn3 Hcode. iIntros "#Hpin #Hinv HcL HcR HcM".
+    iMod (blk2_inv_close_nt g E blk2N (S gen_id) v I L gL gR gM XL YR
+            c1 c2 n HX HY HN Hn3 with "Hinv HcL HcR HcM")
+      as (R sel) "(Hf & %Hsrc' & HcM)".
+    assert (Hsrc : R = L \/ R = dg_execR \/ R = alt_forkc)
+      by (destruct Hsrc' as [-> | ->]; [by left | by right; left]).
+    iModIntro. iFrame "HcM".
     rewrite /pipe_Wcl_at (pipe_inst_lcred g (S gen_id) I 0%nat).
     iExists v. iFrame "Hpin". cbn [pwc_lpr2].
     rewrite {1}/pwc_blk2.
@@ -310,7 +315,7 @@ Section UShPipeRound2.
     rewrite {1}/pecl. iDestruct "Hcl" as "[#HT | Hc]";
       [by iModIntro; iExact "HT" |].
     iDestruct "Hc"
-      as (v2 w so r gb pre opn)
+      as (v2 w so r gb pre opn tm)
          "(#Hpin2 & _ & _ & _ & _ & Hta & _)".
     iDestruct (era_pin_agree with "Hpin2 Hpin") as %->.
     iDestruct (pwc_lpr2_turn k v I p with "Hlpr") as "[Hb | #HT]";
@@ -320,12 +325,12 @@ Section UShPipeRound2.
     iDestruct "Hin" as ">Hin". rewrite {1}/blk2_body.
     iDestruct "Hin" as "[Hfam | Hdone]"; last first.
     { iDestruct (blk2_done_not_L gL gR c1 with "HcL Hdone") as %[]. }
-    iDestruct "Hfam" as (R sel c1' c2') "(Hf & HgL & HgR & Hxl & Hrm)".
+    iDestruct "Hfam" as (R sel c1' c2' tmb0) "(Hf & HgL & HgR & Hxl & Hrm)".
     rewrite {1}/pwc_blk2. iDestruct "Hf" as "[Hf | #HT]"; last first.
     { iMod ("Hclose" with "[HgL HgR Hxl Hrm]") as "_".
       { iNext. rewrite /blk2_body. iLeft.
-        iExists R, sel, c1', c2'. iFrame "HgL HgR Hxl Hrm".
-        iApply (pwc_blk2_taint g k v I R sel c1' c2' with "HT"). }
+        iExists R, sel, c1', c2', tmb0. iFrame "HgL HgR Hxl Hrm".
+        iApply (pwc_blk2_taint g k v I R sel c1' c2' tmb0 with "HT"). }
       iModIntro. iExact "HT". }
     iDestruct "Hf" as (ps cs P) "(_ & _ & Htn & _)".
     iDestruct (pround_turn_three v (P + c1' + c2')%nat Pb _
@@ -346,12 +351,12 @@ Section UShPipeRound2.
     pwc_lpr2 g k v I p -∗
     pecl g k ho H ={E}=∗ PT.
   Proof using .
-    intros HX HY HN. iIntros "#Hpin (#Hinv & HcR & HcM) Hlpr Hcl".
+    intros HX HY HN. iIntros "#Hpin (#Hinv & HcR & HcM & _) Hlpr Hcl".
     (* the claim's authority *)
     rewrite {1}/pecl. iDestruct "Hcl" as "[#HT | Hc]";
       [by iModIntro; iExact "HT" |].
     iDestruct "Hc"
-      as (v2 w so r gb pre opn)
+      as (v2 w so r gb pre opn tm)
          "(#Hpin2 & _ & _ & _ & _ & Hta & _)".
     iDestruct (era_pin_agree with "Hpin2 Hpin") as %->.
     (* the boundary credential's own writer *)
@@ -363,12 +368,12 @@ Section UShPipeRound2.
     iDestruct "Hin" as ">Hin". rewrite {1}/blk2_body.
     iDestruct "Hin" as "[Hfam | Hdone]"; last first.
     { iDestruct (blk2_done_not_R gL gR c2 with "HcR Hdone") as %[]. }
-    iDestruct "Hfam" as (R sel c1 c2') "(Hf & HgL & HgR & Hxl & Hrm)".
+    iDestruct "Hfam" as (R sel c1 c2' tmb0) "(Hf & HgL & HgR & Hxl & Hrm)".
     rewrite {1}/pwc_blk2. iDestruct "Hf" as "[Hf | #HT]"; last first.
     { iMod ("Hclose" with "[HgL HgR Hxl Hrm]") as "_".
       { iNext. rewrite /blk2_body. iLeft.
-        iExists R, sel, c1, c2'. iFrame "HgL HgR Hxl Hrm".
-        iApply (pwc_blk2_taint g k v I R sel c1 c2' with "HT"). }
+        iExists R, sel, c1, c2', tmb0. iFrame "HgL HgR Hxl Hrm".
+        iApply (pwc_blk2_taint g k v I R sel c1 c2' tmb0 with "HT"). }
       iModIntro. iExact "HT". }
     iDestruct "Hf" as (ps cs P) "(_ & _ & Htn & _)".
     iDestruct (pround_turn_three v (P + c1 + c2')%nat Pb _
@@ -387,8 +392,8 @@ Section UShPipeRound2.
   (*  the third is not because the stray does.                            *)
   (* =================================================================== *)
   Lemma pwc_blk2_zero_to_blk (k : nat) (v : era_pins) (I R : list (bv 8))
-      (sel : list bool) (a : nat) :
-    pwc_blk2 g k v I R sel 0%nat 0%nat -∗ pwc_blk g k v I a 0%nat.
+      (sel : list bool) (a : nat) (tm : bool) :
+    pwc_blk2 g k v I R sel 0%nat 0%nat tm -∗ pwc_blk g k v I a 0%nat.
   Proof using .
     rewrite /pwc_blk2 /pwc_blk. iIntros "[Hf | #HT]"; last by iRight.
     iDestruct "Hf"
@@ -413,11 +418,12 @@ Section UShPipeRound2.
   Proof using .
     intros HX HY HN. iIntros "#Hpin #Hinv HcL HcR".
     iMod (blk2_inv_close g E blk2N (S gen_id) v I L gL gR gM XL YR
-            0%nat 0%nat HX HY HN with "Hinv HcL HcR") as (R sel) "[Hf _]".
+            0%nat 0%nat HX HY HN with "Hinv HcL HcR")
+      as (R sel tm) "(Hf & _ & _)".
     iModIntro.
     rewrite /pipe_Wcl_at (pipe_inst_lcred g (S gen_id) I 3%nat).
     iExists v. iFrame "Hpin". cbn [pwc_lpr2].
-    iApply (pwc_blk2_zero_to_blk (S gen_id) v I R sel 0%nat with "Hf").
+    iApply (pwc_blk2_zero_to_blk (S gen_id) v I R sel 0%nat tm with "Hf").
   Qed.
 
 End UShPipeRound2.

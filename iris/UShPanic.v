@@ -787,7 +787,9 @@ Section UShPanicGen.
     iExists (fun p : nat => lk_blk L (S gen_id) v I (lk_exf L I) p).
     iSplitL "Hc"; [ iExact "Hc" | ].
     iSplit.
-    - iIntros "!>" (p b) "%Hb".
+    - (* the guard (design SS4.3r) is DROPPED: the record's block family
+         steps every byte of [lk_exfb L I], the prompt included. *)
+      iIntros "!>" (p b) "%Hb %Hlt".
       iApply (ksh_w1_of_link_blk_at N v I l rb (lk_exf L I) p b Hl2
                 ltac:(rewrite (lk_ab_exf L I); exact Hb)
                 with "Hpin Hlk").
@@ -814,7 +816,8 @@ Section UShPanicGen.
                lk_blk L (S gen_id) v I (lk_exf L I) p ∗ Hold I)%I.
     iSplitL; [ iFrame "Hc Hh" | ].
     iSplit.
-    - iIntros "!>" (p b) "%Hb".
+    - (* the guard (design SS4.3r) is DROPPED, as above *)
+      iIntros "!>" (p b) "%Hb %Hlt".
       iApply (ksh_w1_hold N (mword_of_int 2 : mword 64) b
                 (UserFd.ustd (ukn_fd N) l)
                 (lk_blk L (S gen_id) v I (lk_exf L I) p)

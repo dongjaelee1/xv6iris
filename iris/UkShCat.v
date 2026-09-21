@@ -445,20 +445,23 @@ Section UkShCatDiag.
               with "[] [] [] [Hstd HPf] Hcode Hro Hs [] [] [] [] [] [] [Hpay] Hrun").
     { iModIntro. iIntros (p) "%Hp". rewrite /C1.
       rewrite (Hw1 p ltac:(lia)).
-      iApply ("Hstep" $! p (dg !!! p) with "[%]").
-      apply Hdglk. lia. }
+      iApply ("Hstep" $! p (dg !!! p) with "[%] [%]").
+      { apply Hdglk. lia. }
+      { lia. } }
     { iModIntro. iIntros (p) "%Hp". rewrite /C2. rewrite Hxlen in Hp.
       rewrite (Hxb p Hp) (Harg p Hp).
       replace (5 + S p)%nat with (S (5 + p))%nat by lia.
-      iApply ("Hstep" $! (5 + p)%nat (dg !!! (5 + p)%nat) with "[%]").
-      apply Hdglk. lia. }
+      iApply ("Hstep" $! (5 + p)%nat (dg !!! (5 + p)%nat) with "[%] [%]").
+      { apply Hdglk. lia. }
+      { lia. } }
     { iModIntro. iIntros (p) "%Hp". rewrite /C3.
       rewrite (Hw2 p ltac:(lia)).
       replace (S p + (length cmd - 2))%nat
         with (S (p + (length cmd - 2)))%nat by lia.
       iApply ("Hstep" $! (p + (length cmd - 2))%nat
-                (dg !!! (p + (length cmd - 2))%nat) with "[%]").
-      apply Hdglk. lia. }
+                (dg !!! (p + (length cmd - 2))%nat) with "[%] [%]").
+      { apply Hdglk. lia. }
+      { lia. } }
     { rewrite /C1. iFrame "Hstd HPf". }
     { iApply (uis_shk_dc with "Hcode"). }
     { iApply (uis_shk_e0 with "Hcode"). }

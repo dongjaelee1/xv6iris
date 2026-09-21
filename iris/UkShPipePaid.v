@@ -157,13 +157,15 @@ Section UkShPipePaid.
               with "[] [] [] [Hstd HPf] Hcode Hro Hs [Hpay] Hrun").
     { iModIntro. iIntros (p) "%Hp". exfalso. lia. }
     { iModIntro. iIntros (p) "%Hp". rewrite /C2 (Hlo p Hp).
-      iApply ("Hstep" $! p (dg !!! p) with "[%]").
-      apply list_lookup_lookup_total_lt. rewrite Hlen. lia. }
+      iApply ("Hstep" $! p (dg !!! p) with "[%] [%]").
+      { apply list_lookup_lookup_total_lt. rewrite Hlen. lia. }
+      { lia. } }
     { iModIntro. iIntros (p) "%Hp". rewrite /C3.
       assert (Hp2 : p = 2%nat) by lia. subst p. cbn [Nat.add].
       rewrite Hhi.
-      iApply ("Hstep" $! 4%nat (dg !!! 4%nat) with "[%]").
-      apply list_lookup_lookup_total_lt. rewrite Hlen. lia. }
+      iApply ("Hstep" $! 4%nat (dg !!! 4%nat) with "[%] [%]").
+      { apply list_lookup_lookup_total_lt. rewrite Hlen. lia. }
+      { lia. } }
     { rewrite /C1. iFrame "Hstd HPf". }
     { rewrite /C3. iIntros "[Hstd HPf]". cbn [Nat.add].
       iApply ("Hpay" with "Hstd"). iApply ("Hdone" with "HPf"). }

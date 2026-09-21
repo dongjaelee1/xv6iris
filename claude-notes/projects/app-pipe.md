@@ -403,6 +403,11 @@ arm is the theorem's one named premise (`pipe_both_law`).
 - [ ] **SH-PIPE-ROUND-9** (design §4.3r: the `p < n` guard, the `pipe_links`
   antecedent; ROUND-8's six items; `sh_pipe_child_law_all`;
   `pipe_adequacy_pipeΣ_final`).  Brief `brief-sh-pipe-round-9.md`.
+  **PARTLY: both rulings LANDED tree-wide (whole-tree RC=0, four audits at
+  their baselines); bill items 1, 2, 4 and 5 LANDED; item 3 is REFUTED AT A
+  PREMISE in `UCatPipe.pcat_round_at_g` (one file over, one-line repair —
+  `pcat_hw_gap` is the witness) and items 6/7 are not reached.**  See the
+  Findings block.
 ## Findings (append as lanes report)## Findings (append as lanes report)## Findings (append as lanes report)
 
 ### PQ-FLAG-2 (2026-09-18) — the write link's second premise, paid by the CODE
@@ -9146,3 +9151,197 @@ neither do `UInitPipe.v`, `UInitPipeAdequacy.v` or `PipeAssumptions.v`.
 one-line ruling on the precedent PIPE-STAGE-5 already set, and the first
 thing to WRITE is item 3 — cat's `Hw` — because it is the only piece
 whose size is not already known to be small.
+
+
+### SH-PIPE-ROUND-9 (2026-09-25, design §4.3r) — BOTH RULINGS LAND tree-wide and four of the round's six items with them; item 3 is REFUTED AT A PREMISE one file over, and the theorem is NOT reached
+
+Branch `app-pipe/sh-pipe-round-9` off main (`5d1ad00e3`).  Three commits:
+`b318cb7a3` (the two rulings), `6ce0f9305` (items 1/2/4/5), `7b3425d90`
+(item 3's wall + the exit's missing reading).  Files moved: `UkShDiag.v`
+(the guard, and its three own spend sites), `UShPanic.v` /
+`UkShPipePaid.v` / `UkShCat.v` / `UkShRedirPaid.v` (one token each),
+`UShPipeRound.v` (the antecedent, and one token in
+`sh_round_holds_pipe`), `UShPipeAssembly.v` (everything new).  **Whole
+tree `ec2-lane.sh round9 build` RC=0**; no `Admitted`, no `Axiom`;
+`Proof using` on every result.  **All four audits re-measured on the
+mirror and at their baselines: `audit-only` 13, `audit-echo-only` 14,
+`audit-tree-only` 13, `audit-pipe-only` 14** — and unmovable by
+construction as well, since nothing in `_CoqProject` imports
+`UShPipeAssembly.v` (only `iris/PipeRound8Assumptions.v` does, and that
+file is out of the build; upstream's `ONE assumption-audit file per
+application` sweep has not reached it).
+
+**(0) RULING 1 — `UkShDiag.ush_execfail_law_at`'S BYTE STEP IS GUARDED BY
+`⌜p < n⌝`, AND NOTHING ELSE IN THE TREE MOVED.**  ROUND-8 predicted the
+suppliers would re-discharge unchanged; they do not — they need ONE TOKEN
+each, which the brief pre-authorised.  Measured, exhaustively:
+
+- CONSUMERS (they spend the step, and every one spends it at `p < n`, so
+  each gains one `[%]` and a `lia`): `UkShDiag.wp_kshd_execfail_paid`
+  (three sites, `n = 17`), `UkShPipePaid.wp_kshd_panic_paid_at` (two,
+  `n = 5`), `UkShCat.wp_kshd_execfail_paid_at` (three,
+  `n = 13 + length cmd` — and its landed `2 ≤ length cmd` premise is
+  exactly what makes the third site's index `p + (length cmd - 2)` fit),
+  `UkShRedirPaid.wp_kshd_openfail_paid` (three, `n = 14`).
+- SUPPLIERS: only TWO build the law from a record
+  (`UShPanic.ush_execfail_law_holds_at` and `ush_execfail_law_hold_at`),
+  and each drops the guard in one `iIntros` token.  The three
+  RE-WRAPPERS (`UShPipeRound.pipe_Hexecfail_D` / `_D_t`,
+  `UShRound.Hexecfail_D`) pass the step through with `iFrame "H0 Hstep"`
+  at the SAME `dg`/`n` and needed nothing at all.
+- `UShPipeAssembly.exf_law_fupd`'s witness family carries the guard too
+  (one line in the `G` it existentially quantifies).
+
+**The guard's payoff is a new generic leaf, and it is what items 1, 2 and
+5 all spend**: `UShPipeAssembly.exf_law_dg_weaken` —
+`(n ≤ length dg) → ush_execfail_law_at (dg ++ u) n Cr Cd ⊢
+ush_execfail_law_at dg n Cr Cd`.  A record supplies the WHOLE
+alternative; a two-writer family owns only the block.
+
+**(0) RULING 2 — `UShPipeRound.sh_pipe_child_law` GAINS `PipeLinks.pipe_links g`**
+(`□ (pipe_links g -∗ sh_cat_slot T -∗ ushf_child_law_at (pterm_wc g)
+ushq_lp 68)`).  One line in the definition, one token in
+`sh_round_holds_pipe` (`iPoseProof ("Hchl0" with "Hlk Hcat")`).
+`UInitPipe.sh_pipe_child_law_all`'s Prop, `UInitPipe.v`,
+`UInitPipeAdequacy.v` and `PipeAssumptions.v` are all UNTOUCHED, as
+ROUND-8 predicted.
+
+**(1) ITEM 1 — `UShPipeAssembly.pipe_execL_law`.**  `ush_execfail_law_at
+alt_execfail 17 (wcur gL (1/2) 0 ∗ XL) (wcur gL (1/2) 17)`, over
+`PipeBoth.pblk2_cstep_L` and `ksh_w1_of_step`, no fupd.  `XL` — the write
+permit at zero, which is what the refunded `ep_pay` carries — is the
+family entry `(⌜c1 = 0⌝ -∗ XL)` and is spent at the FIRST byte; the
+family is `fun q => wcur gL (1/2) q ∗ (match q with O => XL | _ => True
+end)`.  Nineteen bytes are asked for and seventeen are steps: the guard
+is load-bearing here and nowhere else in the left chain.
+
+**(2) ITEM 2 — `pipe_execR_law`.**  `ush_execfail_law_at alt_execR 16
+(wcur gR (1/2) 0 ∗ wcur gM (1/2) 0) (wcur gR (1/2) 16 ∗ wcur gM (1/2)
+2)`.  `blk2_mode_fire … 2` is a fupd and goes through `exf_law_fupd` at
+the first byte, exactly as ROUND-8's `pipe_fork_panic_law` does at mode
+3; the sixteen bytes are `pblk2_cstep_R` at `rsrc L 2 = dg_execR`.  Its
+`Hwit1` needs the `PRan` witness at every SHORT selector, which did not
+exist — `pblk2_wit_ran_at` is `pblk2_wit_both`'s twin (pad with the right
+side's remaining `false`s).  **`PipeBoth.length_pad`'s note bites again**:
+the padded length must be stated at a `nat` VARIABLE
+(`UShPipeAssembly.pad_false_len`), or `rewrite length_app` walks into the
+`wl_line` and `lia` sees two atoms for one number.
+
+**(4) ITEM 4 — `pipe_registrar_at` / `ush_pipe_call_pipe_pay`.**  The
+`pipe(2)` registrar at a PRE-ALLOCATED `pn`, over ROUND-8's
+`pipe_inv_alloc_at`, at `Wq := emp`:
+`UShEchoPipePay.ush_pipe_call_echo_pay`'s twin for a round whose family
+already names `pn`.  It landed additively in `UShPipeAssembly.v` (four
+new imports: `UkShPipe`, `UShPipeCall`, `UEchoPipe`, `UexecExecInst`);
+`UShEchoPipePay.v` did not have to move.
+
+**(5) ITEM 5 — `pipe_panic_pipe_law`.**  `ush_execfail_law_at (wl_line
+dg_pipe) 5 (wcur gL (1/2) 0 ∗ wcur gR (1/2) 0) (pipe_Wcl_at g I 0)`.  Two
+new pieces: `UShPipeAssembly.ush_execfail_law_holds_alt` —
+`UShPanic.ush_execfail_law_holds_at` with the ALTERNATIVE a parameter
+(its proof never read which one it was, only `lk_apr L I a`), instantiated
+at `palt_code PPipe`; and `exf_law_dg_weaken`, because the record delivers
+the law at `alt_pipe = wl_line dg_pipe ++ u_prompt` and the walk wants it
+at the five-byte block.  The credential is reached by `exf_law_fupd` at
+`UShPipeRound2.pipe_round_unwind`.
+
+**(3) ITEM 3 IS REFUTED AT A PREMISE, AND THE REFUTATION IS THIS LANE'S
+MAIN OUTPUT.**  ROUND-8 priced it as a mechanical copy of
+`UCatKernel.cat_w_of_link` at `Ch c := wcur gR (1/2) c ∗ wcur gM (1/2) 1`
+over this lane's `out_chain_of_step`.  The copy IS mechanical; the
+PREMISE it would be copied at does not exist.  `UCatPipe.pcat_round_at_g`
+(the cursor-generic round, lane SH-PIPE-ROUND-4's) hands its `Hw` the
+pure fact
+
+    ∀ j < cnt, pcont (pcat_line I0) (palt_of pcat_alt) !! (c + j) = Some (fbb j)
+
+— a lookup into the ALTERNATIVE, which is `L ++ u_prompt` — while the
+two-writer family's right chain at mode 1 steps `PipeBoth.rsrc L 1 = L`
+and nothing else (`pblk2_cstep_R`'s `rsrc L n !! c2 = Some b`), and also
+demands `Forall nodollar (rsrc L n)`.  `UShPipeAssembly.pcat_hw_gap` is
+the witness, at the statement: at `c + j = length L` the premise is
+SATISFIED (the byte is the prompt's `$`), `L !! length L = None`, and
+`¬ nodollar ($)`.
+
+**NO CHOICE OF `Ch` REPAIRS IT**, and that is the point.  The fact that
+rules that index out is `c + cnt ≤ length L`, and it is the READER's:
+it comes from `PipeProto.pipe_rQ`'s `acc = take (length acc) (drop c L)`.
+`pcat_round_at_g` HAS it — its content arm derives
+`L !! (c + j) = Some (gb j)` by `pcat_acc_line` and then WEAKENS it with
+`pcat_round_line` before calling `Hw` — and it keeps the reader's permit
+in `pcat_hold`, which `Hw` never sees.  So the fact is unreachable from
+`Ch`, whatever `Ch` is.  (Checked and refuted, at the statement:
+`Ch c := … ∗ ⌜c ≤ length L⌝` gives only `≤`, which is also all the
+family's own invariant gives — `wr_blk2_p`'s last conjunct is
+`c2 ≤ length R`, not `<`; and a `Ch` that carried `rcur pn c` would ask
+for a second half of a `ghost_var` whose other half is in `pcat_hold`.)
+
+**THE REPAIR IS ONE LINE, and it is §4.3r's own guard one file over**:
+state `pcat_round_at_g`'s `Hw` premise at `L` (already a parameter of
+that lemma) instead of at `pcont (pcat_line I0) (palt_of pcat_alt)`; the
+content arm then passes `Hbytes` straight through, and the landed
+instance `UCatPipe.pcat_round_at` weakens it back with the already-landed
+`pcat_round_line`, so nothing outside that ONE premise moves.
+`UCatPipe.v` is not this lane's file, so the lane STOPPED here (STOP rule
+3) rather than copying a 200-line proof out of it.
+
+**(6) ITEM 6 IS MEASURED, and it has ONE more leaf than ROUND-8 counted —
+which is landed here.**  `UShPipeRound2.pround_case` has FOUR arms while
+the two children's exit payloads offer FIVE combinations; the fifth — the
+left child's exec failed (`c1 = length dg_execL`) and cat RAN (mode 1) —
+is not one of them and has to be refuted.  It refutes itself out of the
+children's own exclusion, and `UShPipeAssembly.blk2_no_L_at_mode1` is that
+refutation: `0 < c1` means the family is holding `XL`, mode 1 means it is
+holding `YR`, and `PipeProto.pipe_excl_wtok_lb` says those cannot coexist.
+**So STOP rule 2's question is answered NO: `pipe_round_reading`'s arms
+and the family's `R`/`sel`/mode DO line up at every exit**, by
+
+| left | right | `c1` | mode | `c2` | `pround_case` |
+|---|---|---|---|---|---|
+| echo ran | cat ran | 0 | 1 | `length L` | PRan (needs the reading) |
+| echo ran | exec failed | 0 | 2 | 16 | PExecR (needs the reading) |
+| exec failed | nothing | 17 | 0 | 0 | PExecL (off the CURSOR) |
+| exec failed | exec failed | 17 | 2 | 16 | PBoth (off the CURSOR) |
+| exec failed | cat ran | 17 | 1 | — | REFUTED, `blk2_no_L_at_mode1` |
+
+and the PRan row's `c2 = length L` comes from tying cat's `Cend`
+(`eof_shot pn (take c L)`, out of `pcat_round_at_g`'s `Hend`) to
+`pipe_round_reading`'s first arm (`w = L`), with `c ≤ length L` from
+`wr_blk2_p`.  **What is left of item 6 after that is the walk's own
+bookkeeping**: `Qc := PipeProto.pipe_Qc pn PL PR` widened by the cursor
+halves and with an `app_taint` arm (`□ (app_taint -∗ Qc (-1))` is a
+premise of `wp_kshm_child_pipe_paid_line_at`), the four-way split, and the
+two `ush_fork_ans` × two `uwait_ans` at 0xea redeemed through
+`ChildTok.gen_pay_timeless` (`Qc` is Timeless — `wcur` is a `ghost_var`,
+`pipe_payL`/`pipe_payR` are `mono_list`/`own Excl`, `T` is Timeless by the
+era's own context — so the `▷` `gen_pay` costs is strippable, exactly as
+`UkShFork` does it).  **`PL := (pipe_payL pn L ∗ wcur gL (1/2) 0) ∨
+wcur gL (1/2) (length dg_execL)`** — the second arm carries NO
+`pipe_payL`, because `XL` IS the `wtok pn` and it has been spent into the
+family (ROUND-8's own note, confirmed here at the statement of item 1).
+
+**(7) THE THEOREM IS NOT REACHED.**  `UInitPipe.sh_pipe_child_law_all` is
+still owed, `pipe_adequacy_pipeΣ_final` does not exist, and
+`iris/PipeAssumptions.v` still audits `pipe_adequacy_pipeΣ_of_child`
+(untouched, per the coordinator's note about upstream folding the nine
+lane report files into it).  Nothing in this lane imports
+`UShPipeAssembly.v`, so the four audits cannot move by construction as
+well as by measurement.
+
+**OPERATIONAL, two, both measured.**
+- **A lemma's PURE side conditions come after its iProp parameters.**
+  `exf_law_dg_weaken dg u n ltac:(…)` puts the `ltac:` in `Cr`'s slot and
+  fails with a bare `iApply: cannot apply`; `exf_law_dg_weaken dg u n _ _
+  ltac:(…)` is the form.  (ROUND-8's `pipe_fork_panic_law` has the same
+  shape and got it right by accident of argument order.)
+- **`iFrame "H"` closes a residual `True`**, so the `by destruct p` after
+  it in a `match p with O => X | _ => True end` family is a
+  `No such goal`.  Write the family with the `True` arm and let `iFrame`
+  take it.
+
+**THE ONE THING THE NEXT LANE NEEDS FIRST.**  A ruling on
+`UCatPipe.pcat_round_at_g`'s `Hw` premise (state it at `L`, one line,
+`pcat_round_at` weakens it back with the landed `pcat_round_line`).
+Item 3 cannot be written until that lands, and items 6 and 7 cannot be
+assembled without item 3.  Everything else on the round's bill is either
+landed here or measured to a leaf.

@@ -179,19 +179,22 @@ Section UkShRedirPaid.
               with "[] [] [] [Hstd HPf] Hcode Hro Hs [] [] [] [] [] [] [Hpay] Hrun").
     { iModIntro. iIntros (p) "%Hp". rewrite /C1.
       rewrite (ush_openfail_w1 p ltac:(lia)).
-      iApply ("Hstep" $! p (alt_openfail !!! p) with "[%]").
-      apply ush_openfail_lookup. lia. }
+      iApply ("Hstep" $! p (alt_openfail !!! p) with "[%] [%]").
+      { apply ush_openfail_lookup. lia. }
+      { lia. } }
     { iModIntro. iIntros (p) "%Hp". rewrite /C2. rewrite Hxlen in Hp.
       assert (p = 0%nat) as -> by lia.
       rewrite Hxb ush_openfail_arg.
-      iApply ("Hstep" $! 5%nat (alt_openfail !!! 5%nat) with "[%]").
-      apply ush_openfail_lookup. lia. }
+      iApply ("Hstep" $! 5%nat (alt_openfail !!! 5%nat) with "[%] [%]").
+      { apply ush_openfail_lookup. lia. }
+      { lia. } }
     { iModIntro. iIntros (p) "%Hp". rewrite /C3.
       rewrite (ush_openfail_w2 p ltac:(lia)).
       replace (S p - 1)%nat with (S (p - 1))%nat by lia.
       iApply ("Hstep" $! (p - 1)%nat (alt_openfail !!! (p - 1)%nat)
-                with "[%]").
-      apply ush_openfail_lookup. lia. }
+                with "[%] [%]").
+      { apply ush_openfail_lookup. lia. }
+      { lia. } }
     { rewrite /C1. iFrame "Hstd HPf". }
     { iApply (uis_shk_110 with "Hcode"). }
     { iApply (uis_shk_114 with "Hcode"). }

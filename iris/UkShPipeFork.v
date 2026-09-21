@@ -131,11 +131,21 @@ Section UkShPipeFork.
      and at no other; the shape has to carry it because [UkSh.
      ush_prompt_law] quantifies over EVERY input [I] and the loop knows
      nothing about the round's line. *)
+  (* ...AND THE ERA'S DELIVERED INPUT AT THE BOUNDARY (lane
+     SH-PIPE-ROUND-7 part 2; design SS4.3p (a)).  [inp_lb v I] is
+     PERSISTENT and the round has it -- it forks on a line it has just
+     read -- and without it the widened credential cannot discharge
+     [UShLine.ush_wc_inp], which is a PURE entailment and so cannot open
+     [blk2_inv] to find the input fact inside.  That law is the ONE of
+     [UInitSh.cons_cred_holds_at]'s ten that does not transfer for free
+     when [UInitPipe.pipe_cc]'s [cc_wc] becomes [pterm_wc]; this conjunct
+     is what pays it ([pterm_wc_inp_of] below). *)
   Definition pterm_shape (I : list (bv 8)) (c2 : nat) : iProp Σ :=
     (∃ (v : era_pins) (L : list (bv 8)) (gL gR gM : gname)
        (XL YR : iProp Σ),
        ⌜Timeless XL /\ Timeless YR /\ pboth_line I⌝
        ∗ era_pin γ (S gen_id) v
+       ∗ inp_lb v I
        ∗ pwc_fork_exit g blk2N (S gen_id) v I L gL gR gM XL YR c2)%I.
 
   (* ...AND THE PIPE LINE'S CHILD EXIT PAYLOAD (design SS4.3j (1)).  The
@@ -161,10 +171,10 @@ Section UkShPipeFork.
     (∃ v : era_pins, era_pin γ (S gen_id) v) ∗ pterm_shape I c2.
   Proof using .
     rewrite /pterm_shape. iIntros "H".
-    iDestruct "H" as (v L gL gR gM XL YR) "(%Htl & #Hpin & Hfe)".
+    iDestruct "H" as (v L gL gR gM XL YR) "(%Htl & #Hpin & #Hlb & Hfe)".
     iSplitR; [ by iExists v; iFrame "Hpin" | ].
     iExists v, L, gL, gR, gM, XL, YR. iSplitR; [ by iPureIntro | ].
-    by iFrame "Hpin Hfe".
+    by iFrame "Hpin Hlb Hfe".
   Qed.
 
   (* a KILLED child pays the payload with the taint, exactly as
@@ -282,13 +292,24 @@ Section UkShPipeFork.
   (*  read) can supply it as one more persistent conjunct of               *)
   (*  [pterm_shape].                                                       *)
   (* =================================================================== *)
+  (* ...and the shape's own reading of it, which is why the conjunct is
+     there *)
+  Lemma pterm_shape_inp (I : list (bv 8)) (c2 : nat) :
+    pterm_shape I c2 -∗
+    pterm_shape I c2 ∗ (∃ v : era_pins, era_pin γ (S gen_id) v ∗ inp_lb v I).
+  Proof using .
+    rewrite /pterm_shape. iIntros "H".
+    iDestruct "H" as (v L gL gR gM XL YR) "(%Htl & #Hpin & #Hlb & Hfe)".
+    iSplitR "".
+    - iExists v, L, gL, gR, gM, XL, YR. iSplitR; [ by iPureIntro | ].
+      by iFrame "Hpin Hlb Hfe".
+    - iExists v. by iFrame "Hpin Hlb".
+  Qed.
+
   Lemma pterm_wc_inp_of
       (Hwcf : forall (I : list (bv 8)) (p : nat),
          ⊢ Wcf I p -∗ Wcf I p
            ∗ ((∃ v : era_pins, era_pin γ (S gen_id) v ∗ inp_lb v I) ∨ T))
-      (Hlb : forall (I : list (bv 8)) (c2 : nat),
-         ⊢ pterm_shape I c2 -∗ pterm_shape I c2
-           ∗ (∃ v : era_pins, era_pin γ (S gen_id) v ∗ inp_lb v I))
       (I : list (bv 8)) (p : nat) :
     ⊢ pterm_wc I p -∗ pterm_wc I p
       ∗ ((∃ v : era_pins, era_pin γ (S gen_id) v ∗ inp_lb v I) ∨ T).
@@ -296,7 +317,7 @@ Section UkShPipeFork.
     rewrite {1}/pterm_wc. iIntros "[Hc | [%Hlt Hsh]]".
     - iDestruct (Hwcf I p with "Hc") as "[Hc $]".
       iApply (pterm_wc_of I p with "Hc").
-    - iDestruct (Hlb I (5 + p)%nat with "Hsh") as "[Hsh Hi]".
+    - iDestruct (pterm_shape_inp I (5 + p)%nat with "Hsh") as "[Hsh Hi]".
       iSplitR "Hi"; [ | by iLeft ].
       rewrite /pterm_wc. iRight. iSplitR; [ by iPureIntro | ]. iExact "Hsh".
   Qed.
@@ -379,7 +400,7 @@ Section UkShPipeFork.
     iDestruct (Hpm (I ++ l ++ [wl_nl])%list with "Hpm") as "[Hpm Hv]".
     iDestruct "Hv" as (v') "[#Hpin' #Hres]".
     rewrite /pterm_shape.
-    iDestruct "Hsh" as (v L gL gR gM XL YR) "(%Htl & #Hpin & Hfe)".
+    iDestruct "Hsh" as (v L gL gR gM XL YR) "(%Htl & #Hpin & #Hlb & Hfe)".
     destruct Htl as (HTX & HTY & _).
     iDestruct (era_pin_agree with "Hpin' Hpin") as %->.
     iMod (pterm_fork_exit_read_fupd g ⊤ blk2N (S gen_id) v I L l
@@ -468,7 +489,7 @@ Section UkShPipeForkPrompt.
     assert (Hbt : b = u_prompt !!! p)
       by (symmetry; exact (list_lookup_total_correct u_prompt p b Hb)).
     rewrite /pterm_shape.
-    iDestruct "Hsh" as (v L gL gR gM XL YR) "(%Htl & #Hpin & Hfe)".
+    iDestruct "Hsh" as (v L gL gR gM XL YR) "(%Htl & #Hpin & #Hlb & Hfe)".
     destruct Htl as (HTX & HTY & Hbl).
     assert (Hwitt : forall sel : list bool,
               sel_wf2 alt_forkc sel -> pblk2_wit_t I alt_forkc sel).
@@ -482,7 +503,7 @@ Section UkShPipeForkPrompt.
       { iApply pblk2_ecl_R_t_holds. }
       iIntros "Hfe". iApply "HΦ".
       iExists v, L, gL, gR, gM, XL, YR. iSplitR; [ by iPureIntro | ].
-      by iFrame "Hpin Hfe".
+      by iFrame "Hpin Hlb Hfe".
     - (* the space at position 6 *)
       iApply (pprompt_space_fork g Hcons blk2N (S gen_id) v I L gL gR gM
                 XL YR b Φ HTX HTY blk2N_uart Hbt Hwitt
@@ -490,7 +511,7 @@ Section UkShPipeForkPrompt.
       { iApply pblk2_ecl_R_t_holds. }
       iIntros "Hfe". iApply "HΦ".
       iExists v, L, gL, gR, gM, XL, YR. iSplitR; [ by iPureIntro | ].
-      by iFrame "Hpin Hfe".
+      by iFrame "Hpin Hlb Hfe".
   Qed.
 
   (* ...AND THE CALL ITSELF: obligation (A), verbatim. *)
@@ -623,7 +644,7 @@ Section UkShPipeForkPrompt.
   Proof using .
     intros HN. rewrite {1}/pterm_shape.
     iIntros "H".
-    iDestruct "H" as (v L gL gR gM XL YR) "(%Htl & #Hpin & Hfe)".
+    iDestruct "H" as (v L gL gR gM XL YR) "(%Htl & #Hpin & #Hlb & Hfe)".
     destruct Htl as (HTX & HTY & Hbl).
     iMod (pwc_fork_exit_nlines g E blk2N (S gen_id) v I L gL gR gM XL YR c2
             HTX HTY HN with "Hfe") as "[Hfe #Hn]".
@@ -635,7 +656,7 @@ Section UkShPipeForkPrompt.
       iLeft. iFrame "Hfz". by iPureIntro. }
     iModIntro. iFrame "Hc". rewrite /pterm_shape.
     iExists v, L, gL, gR, gM, XL, YR. iSplitR; [ by iPureIntro | ].
-    by iFrame "Hpin Hfe".
+    by iFrame "Hpin Hlb Hfe".
   Qed.
 
 End UkShPipeForkPrompt.

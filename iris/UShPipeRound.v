@@ -102,6 +102,9 @@ Require Import UInitSh.        (* [sh_Rsh] -- the loop's own data at the break *
 Require Import SpecKexec.      (* [kexec_sz] *)
 Require Import UserPtTree.
 Require Import UkShPipeRound.  (* [ushq_line_at] -- the pipe line's shape *)
+Require Import UShCatPay.      (* [sh_cat_slot] -- the /cat pin the round's
+                                  right child's exec needs (lane
+                                  SH-PIPE-ROUND-6, finding (5)) *)
 Require Import CtxIdDefs.
 Local Open Scope Z_scope.
 
@@ -612,14 +615,29 @@ Section UShPipeRound.
      wp_kshm_child_pipe_line] plus the protocol, the two entries and the
      end-of-round reading; this lane states it and does not discharge it
      (see the report: the lend it has to make is PIPE-2W's lease, S3). *)
+  (* ...AND IT TAKES THE /cat PIN (lane PIPE-STAGE-5; design SS4.3n's
+     fourth bullet, SH-PIPE-ROUND-6 finding (5)).  The round this law is
+     about EXECS /cat in its right child, and the (W) half of that exec
+     ([UShCatPay.sh_exec_sup_cat_wq_holds_at], through
+     [ExecRun.exec_walk_of_pin]) takes [UShCatPay.sh_cat_slot T], whose
+     middle conjunct is the claim's law at [FsCatPin.era0_cat_pins].
+     [UInitPipe.sh_pipe_child_law_all] asserts this law with NO
+     resources, so everything the round needs must be a wand ANTECEDENT
+     of it -- and the pin's ONE producer in the tree needs the ERA
+     EQUATION, which lives in [UInitPipe.pipe_Hinit_boot] and nowhere
+     below it.  So the pin is an antecedent here and
+     [sh_round_holds_pipe] takes it as a premise; the Prop
+     [sh_pipe_child_law_all] is unchanged.  The [box] is what keeps the
+     law PERSISTENT, which is what the loop's [#]-intro of it needs. *)
   Definition sh_pipe_child_law : iProp Σ :=
-    UkShFork.ushf_child_law_at (PS := uprogSG_free) (SG := uexecSG_xv6)
-      Wcf ushq_lp 68.
+    (□ (UShCatPay.sh_cat_slot T -∗
+        UkShFork.ushf_child_law_at (PS := uprogSG_free) (SG := uexecSG_xv6)
+          Wcf ushq_lp 68))%I.
 
   Global Instance sh_pipe_child_law_persistent :
     Persistent sh_pipe_child_law.
   Proof using .
-    rewrite /sh_pipe_child_law /UkShFork.ushf_child_law_at.
+    rewrite /sh_pipe_child_law.
     apply bi.intuitionistically_persistent.
   Qed.
 
@@ -634,7 +652,8 @@ Section UShPipeRound.
     usz_ok (sz + 65536) ->
     UkShFork.ushf_kill_law Wcf -∗
     UkShFork.ushf_child_law (PS := uprogSG_free) (SG := uexecSG_xv6) Wcf -∗
-    sh_pipe_child_law -∗
+    UkShFork.ushf_child_law_at (PS := uprogSG_free) (SG := uexecSG_xv6)
+      Wcf ushq_lp 68 -∗
     UkShDiag.ush_panic_law (PS := uprogSG_free) Wcf Wbf -∗
     UkShFork.ushf_body_law (PS := uprogSG_free) (SG := uexecSG_xv6)
       N γp T Wcf Wbf Pm PipeUline.ush_line_pipe sz.
@@ -680,13 +699,15 @@ Section UShPipeRound.
     ⊢ PipeLinks.pipe_links g -∗
       udep (PS := uprogSG_free) -∗
       UShEcho.sh_echo_slot T -∗
+      UShCatPay.sh_cat_slot T -∗
       (∃ v : era_pins, era_pin γ (S gen_id) v) -∗
       sh_pipe_child_law -∗
       UkSh.ush_rest_l_at (PS := uprogSG_free) N γp T Wcf Wbf Pm
         PipeUline.ush_line_pipe
         (UInitSh.sh_Rsh (ukn_t N) (ukn_d N) (ukn_s N)).
   Proof using Hkill.
-    iIntros "#Hlk #Hdep #Hslot #Hpin #Hchq".
+    iIntros "#Hlk #Hdep #Hslot #Hcat #Hpin #Hchl0".
+    iPoseProof ("Hchl0" with "Hcat") as "#Hchq".
     iDestruct "Hpin" as (v) "#Hp".
     iPoseProof (pipe_kill_law v with "Hp") as "#Hkl".
     iPoseProof (pipe_child_law_echo with "Hlk Hdep Hslot") as "#Hchl".

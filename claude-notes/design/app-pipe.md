@@ -1122,6 +1122,35 @@ and the terminal round through the record), then **SH-PIPE-ROUND-6**
 (the assembly at `pipe_round_entry`/`pipe_round_exit`, the child law,
 the theorem).
 
+### 4.3m AS LANDED (PIPE-STAGE-4, 2026-09-22): the discriminator is a FLAG in `pe_cur`, not the family in the claim
+
+Bullet 1 of §4.3m is impossible and bullets 3 and 5 fall with it: the
+claim is reachable only at a byte (`out_link` takes `chist_at`), while
+the family must exist before the block's first byte and be reachable by
+BOTH children — so claim-side halves would have to be deposited at a
+moment no byte is written, which needs the very invariant β retired; and
+the exclusive resource is the TURN (`pipe_turn_three`), not the cursors.
+What landed instead is strictly cheaper: the round's terminal FLAG joins
+`pe_cur` (`cur_half w q r gb tm`), the claim's resolution is `pcs v cs (opn
+&& tm)` — frozen (`cs_frozen_at v r`) at a terminal round, authoritative
+otherwise — `pecl_blk2_byte_t`'s first firing sets the flag and freezes,
+and `pecl_blk2_file` is guarded at flag `false` (`cur_half_agree`).  The
+read instance is DISCHARGED: `pterm_read_absurd` (`cs_frozen_at v (nlines
+I - 1) -∗ pwc_rres v (I ++ l ++ [wl_nl]) -∗ False`) and
+`UkShPipeFork.pterm_read_law_of`.  `pwc_fork_exit` carries `cs_frozen_at ∨
+PT`; `pipe_round_exit` gains the right child's mode half at `n ≠ 3`
+(only the mode says the round was not the runcmd child's own panic —
+`d4_ambiguous_bytes`), so the RIGHT CHILD HANDS ITS MODE HALF BACK in its
+exit payload.  No generic file moved.  RULED: §4.3i/§4.3j's route stands
+and is unblocked — `UkShPipeFork` stays; ROUND-6 lands, in order: (A)
+`pterm_prompt_arm` (the two prompt bytes as `UkSh.ksh_w`), (B) the twins
+`wp_kshm_body_pipe`/`wp_kshf_fork_pipe` and `sh_pipe_child_law` redefined
+at `pterm_pay`, (C) the mode half in the right child's exit payload, (D)
+the assembly at `pipe_round_entry`/`pipe_round_exit`, `sh_pipe_child_law_all`,
+`pipe_adequacy_pipeΣ_final`.  The era-fixed family invariant with a
+per-round registry in `pipe_era` (STAGE-4's Findings §7) is an optional
+later simplification, off the critical path.
+
 ## 5. Programs
 
 ### 5.1 sh: the PIPE arm (lanes SH-PARSE-PIPE, SH-PIPE)

@@ -345,9 +345,11 @@ arm is the theorem's one named premise (`pipe_both_law`).
   design in the Findings §7: an ERA-FIXED family invariant in
   `pipe_links` with a per-round registry in `pipe_era`.  Tree RC=0, 34
   results Closed.  Brief `brief-pipe-stage-4.md`.
-- [ ] **SH-PIPE-ROUND-6** (after STAGE-4): the assembly at
-  `pipe_round_entry`/`pipe_round_exit`; `sh_pipe_child_law_all`;
-  `pipe_adequacy_pipeΣ_final`.
+- [ ] **SH-PIPE-ROUND-6** (after STAGE-4, merged; design §4.3m AS LANDED:
+  the flag in `pe_cur`, `pterm_read_law` discharged, §4.3j's route
+  unblocked): A the prompt arm, B the pipe body/fork twins + the child
+  law at `pterm_pay`, C the right child's mode half, D the assembly and
+  `pipe_adequacy_pipeΣ_final`.  Brief `brief-sh-pipe-round-6.md`.
 ## Findings (append as lanes report)## Findings (append as lanes report)## Findings (append as lanes report)
 
 ### PQ-FLAG-2 (2026-09-18) — the write link's second premise, paid by the CODE

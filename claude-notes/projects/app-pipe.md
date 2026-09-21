@@ -433,6 +433,9 @@ arm is the theorem's one named premise (`pipe_both_law`).
   complementary ends).  Brief `brief-pipe-ro.md`.
 - [ ] **SH-PIPE-ROUND-11** (after both): the split, the instantiation,
   `sh_pipe_child_law_all`, `pipe_adequacy_pipeΣ_final`.
+- [ ] **PIPE-GEN** (design §4.3x: purchase 4 at the kernel — `pme ≠ zero_reg`
+  into the park block, `γ ∉ cs` through kfork_post → sys_fork → syscall →
+  ufork_ans).  Brief `brief-pipe-gen.md`.
 ## Findings (append as lanes report)## Findings (append as lanes report)## Findings (append as lanes report)
 
 ### PQ-FLAG-2 (2026-09-18) — the write link's second premise, paid by the CODE

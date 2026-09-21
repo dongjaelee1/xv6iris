@@ -1504,6 +1504,36 @@ Then **SH-PIPE-ROUND-11**: the four-way split, the instantiation of
 `sh_pipe_child_law_all`, `pipe_adequacy_pipeΣ_final` — assembly at
 landed leaves.
 
+### 4.3x RULED (2026-09-25, after PIPE-PID): generation freshness is bought at the KERNEL — purchase 4's true site
+
+PIPE-PID landed purchases 1–3 (sh's fork helpers relay the child's pid;
+the child law takes `uch ∅` and `ush_pid`; the pipe arm generic in the
+wait's answer with `ush_wait_pid_ans`, and `r ≠ -1` on `fork1`'s returning
+arm — every consumer tree-wide re-discharged, the file era's
+`sh_redir_child_law` mirror included) and refuted purchase 4 at its site:
+`ufork_ans` is a PREMISE at the U tier (`uexec_fork_parent_F`), its one
+producer is `ProofSyscall` (5109–5122), and the fact `γ ∉ cs` needs a
+premise the park block does not carry — `pme ≠ zero_reg`, the parent's
+address nonzero (`ProofKforkB5.v:569`'s own comment: "nothing on the
+route carries" it); with it, `children_inv ps gs m O ∗ gen_slot g
+(proc_addr j) ⊢ ⌜g ∉ cs⌝` is proved (the lane's probe, `inv_rows` +
+`gen_halves_gen_uniq`).  And the round DOES need it: with `Sc = ∅`, if
+`γ1 = γ2` the first reap empties the set and the second wait's `-1` arm
+is consistent — one payload, the exit unpayable; the U tier cannot refute
+`γ1 = γ2` (two `child_tok`s are two quarters of one generation and agree
+on the pid).  RULED: lane **PIPE-GEN** buys it at the kernel: (i) the
+`WaitInv` lemma (the probe, landed); (ii) `pme ≠ zero_reg` into
+`ProofKforkB5`'s park block, published by the `proc_priv` lemma that
+knows the parent is a live process (or the nearest fact that implies it
+— measure); (iii) the pure conjunct `⌜γ ∉ cs⌝` through the four landed
+kernel statements `SpecKfork.kfork_post` → `SpecSysFork.wp_sys_fork_sconf_body`
+(+ `ProofSysFork`) → `sysc_fork_out`/`ut_fork_out` (`ProofSyscall`) →
+`UexecRet.ufork_ans`; every landed consumer re-discharges by ignoring
+it.  The system and tree audits' cones contain these files: re-measure.
+Then SH-PIPE-ROUND-11 instantiates the arm at `(UkSh.ush_pid N,
+ush_wait_pid_ans)` with `ush_wait0_law_pid` and `pipe_round_answers`'s
+`S1 ≠ S2` has its supplier.
+
 ## 5. Programs
 
 ### 5.1 sh: the PIPE arm (lanes SH-PARSE-PIPE, SH-PIPE)

@@ -586,6 +586,72 @@ theorem isLock_cases [CurCtx] (γ : GName) (lk : BitVec 64) (s : String) (R : Ct
       ∃ lo lc : Nat, inv lockN (lockBody γ lk s R lo lc) ∗ lkFloor curCtx lo ∗ lkFloor curCtx lc := by
   unfold isLock; iintro H; iexact H
 
+/-- **The CANCELLABLE lock handle** (Rocq `WpLock.lock_openable`).  Like
+`isLock`, the two words are identity-mapped kernel RAM at a floor the ambient
+context has passed; unlike `isLock`, the lock's invariant carries a DEAD
+branch `D`.  A leaf that opens it presents any credential `T` that REFUTES
+`D` (a live reference to the object, or the lock token itself) to rule the
+dead branch out; the last holder, instead of closing, may DEPOSIT `D` and
+reclaim the lock's storage.  `isLock` is the permanent `D := False` instance
+(`isLock_lockOpenable`), where the dead branch is unreachable. -/
+def lockOpenable [CurCtx] (γ : GName) (lk : BitVec 64) (s : String)
+    (R : CtxId → IProp GF) (D : IProp GF) : IProp GF := iprop%
+  ⌜lockAddrOk lk⌝ ∗ kmapId lk ∗ kmapId (lk + 16#64) ∗
+  ∃ lo lc : Nat, inv lockN (iprop(lockBody γ lk s R lo lc ∨ D)) ∗
+    lkFloor curCtx lo ∗ lkFloor curCtx lc
+
+instance lockOpenable_persistent [CurCtx] (γ : GName) (lk : BitVec 64) (s : String)
+    (R : CtxId → IProp GF) (D : IProp GF) : Persistent (lockOpenable (GF := GF) γ lk s R D) := by
+  unfold lockOpenable; infer_instance
+
+/-- The projection every leaf uses: geometry, the dead-branch invariant, the
+two floors. -/
+theorem lockOpenable_cases [CurCtx] (γ : GName) (lk : BitVec 64) (s : String)
+    (R : CtxId → IProp GF) (D : IProp GF) :
+    lockOpenable (GF := GF) γ lk s R D ⊢
+      ⌜lockAddrOk lk⌝ ∗ kmapId lk ∗ kmapId (lk + 16#64) ∗
+      ∃ lo lc : Nat, inv lockN (iprop(lockBody γ lk s R lo lc ∨ D)) ∗
+        lkFloor curCtx lo ∗ lkFloor curCtx lc := by
+  unfold lockOpenable; iintro H; iexact H
+
+/-- Today's lock IS the permanent instance of the cancellable one: its dead
+branch is `False`, so nobody may ever destroy it. -/
+theorem isLock_lockOpenable [CurCtx] (γ : GName) (lk : BitVec 64) (s : String)
+    (R : CtxId → IProp GF) :
+    isLock (GF := GF) γ lk s R ⊢ lockOpenable γ lk s R (iprop(False)) := by
+  iintro #H
+  icases isLock_cases γ lk s R $$ H with ⟨%hok, #Hm1, #Hm2, %lo, %lc, #Hinv, #Hflo, #Hflc⟩
+  unfold lockOpenable
+  isplit
+  · ipureintro; exact hok
+  iframe Hm1 Hm2
+  iexists lo, lc
+  iframe Hflo Hflc
+  iapply inv_alter $$ Hinv
+  inext; imodintro; iintro Hb
+  isplitl [Hb]
+  · ileft; iexact Hb
+  · iintro Hq; icases Hq with ⟨Hq | Hq⟩
+    · iexact Hq
+    · iexfalso; iexact Hq
+
+/-- The cancellable producer: an invariant with a dead branch, plus the two
+floors and geometry, gives the openable handle. -/
+theorem lockOpenable_of_dead [CurCtx] (γ : GName) (lk : BitVec 64) (s : String)
+    (R : CtxId → IProp GF) (D : IProp GF) (lo lc : Nat)
+    (hok : lockAddrOk lk) :
+    kmapId lk -∗ kmapId (lk + 16#64) -∗
+    inv lockN (iprop(lockBody γ lk s R lo lc ∨ D)) -∗
+    lkFloor curCtx lo -∗ lkFloor curCtx lc -∗
+    lockOpenable (GF := GF) γ lk s R D := by
+  iintro #Hm1 #Hm2 #Hinv #Hflo #Hflc
+  unfold lockOpenable
+  isplit
+  · ipureintro; exact hok
+  iframe Hm1 Hm2
+  iexists lo, lc
+  iframe Hinv Hflo Hflc
+
 /-- **The lock is born from two words the creator has STORED** (or never
 written): each word cell is certified at its own position, as a key of the
 creator's context; the payload is deposited at the creator's context. -/

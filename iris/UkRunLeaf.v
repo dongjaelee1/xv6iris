@@ -1203,4 +1203,70 @@ Section UkRunLeaf.
     iFrame "Hframe Hstk".
   Qed.
 
+
+  (* ===================================================================== *)
+  (* THE [c.mv] LEAF THAT HANDS THE STEP'S OWN LATER OUT (lane             *)
+  (* SH-PIPE-ROUND-7; design app-pipe SS4.3o, route (a), the first of the  *)
+  (* two generic ADDITIONS).                                               *)
+  (*                                                                       *)
+  (* [wp_uk_btype_later] above and [UkRunBr.wp_uk_btype0_later] are the    *)
+  (* only two leaves of this tier that hand the step's [▷] to the caller,  *)
+  (* and both are BTYPE -- a branch.  A caller that must strip a [▷] at a  *)
+  (* point where the next instruction is a REGISTER MOVE (the pipeline     *)
+  (* era's fork re-entry: the parent redeems its child's exit payload out  *)
+  (* of the escrow with the plain [ChildTok.gen_pay], which costs a later, *)
+  (* and the two instructions it runs next are [0x938 c.mv a1,s3] and      *)
+  (* [0x93a c.mv a0,s2]) had no leaf to do it at.  This is that leaf: the  *)
+  (* statement of [wp_uk_cmv] with the continuation under a [▷], over      *)
+  (* [UkStep.wp_uk_retire_later] -- the very lemma [UkLeaf.wp_uk_cmv]'s    *)
+  (* [wp_uk_retire] is the later-free restatement of -- so the certificate *)
+  (* (the redirect to [RTYPE ... ADD], the two totality facts and the      *)
+  (* value equation) is [UkLeaf.wp_uk_cmv]'s, unchanged.                   *)
+  (* ===================================================================== *)
+  Lemma wp_uk_cmv_later (N : uk_names Σ) (h : CpuId) (m : regfile)
+      (pc : mword 64) (rd rs2 : mword 5) (wval : mword 64) (avail : nat) :
+    unot_sp rd ->
+    uint rd <> 0 ->
+    wval = add_vec zero_reg (m !!! Regidx rs2) ->
+    uinstr_is (ukn_t N) pc true (C_MV (Regidx rd, Regidx rs2)) -∗
+    urun N h m pc avail -∗
+    ▷ (∀ h' : CpuId,
+         urun N h' (<[Regidx rd := regval_into_reg wval]> m)
+           (add_vec_int pc 2) avail -∗
+         mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
+  Proof using .
+    intros Hns H1 H2. iIntros "#Hi Hrun Hcont".
+    iDestruct "Hrun" as (xi C pt Rfd Rut sz M pm fdv cw gn cs pidv) "(%Hlo & %Hpm & %Hlzf & %HRut & Hheap & Hstk & Hufd & Hcwda & Hcha & #Hmy & #Hdep & #Hnpx & Hb)".
+    iDestruct (uinstr_is_uk_instr with "Hheap Hi") as %Hui.
+    iApply (UkStep.wp_uk_retire_later C pt Rfd Rut pm sz Hlo Hpm HRut Hlzf
+              M m pc fdv cw gn cs pidv true (C_MV (Regidx rd, Regidx rs2))
+              (Some (RTYPE (Regidx rs2, zreg, Regidx rd, ADD)))
+              None (Some (rd, wval)) Hui
+              ltac:(intro s; apply exec_execute_C_MV)
+              eq_refl H1
+              (fun s _ _ _ _ _ => UserTotalU.goodmb_execute_C_MV UserFrame.Du_r UserFrame.Du_w
+                          (Regidx rd) (Regidx rs2) s)
+              (fun s _ _ _ _ _ => UserExecFacts.goodmb_execute_RTYPE_total UserFrame.Du_r UserFrame.Du_w rs2
+                          (zero_extend' 5 ('b"00")) rd ADD s
+                          (UserFrame.Du_gpr_of_Z_r (zero_extend' 5 ('b"00")))
+                          (UserFrame.Du_gpr_of_Z_r rs2) (UserFrame.Du_gpr_of_Z rd))
+              with "Hb [Hheap Hstk Hufd Hcwda Hcha Hcont]").
+    2:{ iNext.
+        iApply (urun_close with "Hheap [Hstk] Hufd Hcwda Hcha Hmy Hdep Hnpx Hcont").
+        rewrite (unot_sp_upd rd _ m Hns). iExact "Hstk". }
+    intros s_pc _ _ _ _ Hvals.
+    cbn [uv_exp uv_post uv_jmp uv_wr].
+    change zreg with (Regidx cli_rs1).
+    change (execute (RTYPE (Regidx rs2, Regidx cli_rs1, Regidx rd, ADD)))
+      with (execute_RTYPE (Regidx rs2) (Regidx cli_rs1) (Regidx rd) ADD).
+    rewrite (WpGpr.exec_execute_RTYPE_ADD_gpr rs2 cli_rs1 rd s_pc).
+    unfold WpGpr.gpr_rd_val.
+    rewrite (Hvals rs2).
+    replace (Z.eqb (uint cli_rs1) 0) with true by (vm_compute; reflexivity).
+    replace (Z.eqb (uint rd) 0) with false
+      by (symmetry; apply Z.eqb_neq; exact H1).
+    rewrite H2. reflexivity.
+  Qed.
+
 End UkRunLeaf.

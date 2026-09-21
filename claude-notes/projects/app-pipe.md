@@ -409,9 +409,20 @@ arm is the theorem's one named premise (`pipe_both_law`).
   arm of the reading — the SHORT ROUND, which `PipeDisc` has no
   alternative for and the protocol does not refute — and item 7 is not
   reached.**  See the four Findings blocks.
-- [ ] **SH-PIPE-ROUND-10** (design §4.3v: the first-ender shot refutes the
+- [~] **SH-PIPE-ROUND-10** (design §4.3v: the first-ender shot refutes the
   short round; item 6's split/forks/waits/exit; `sh_pipe_child_law_all`;
   `pipe_adequacy_pipeΣ_final`).  Brief `brief-sh-pipe-round-10.md`.
+  **PARTLY: §4.3v is REFUTED at its second bullet — the `EofFirst` shot
+  has no producer, and the short round is DERIVABLE from the protocol's
+  own birth state (`PipeProto.v` §8: `pipe_short_trace`,
+  `pipe_short_round_payloads`, `pipe_no_short_not_of_inv`), so the law is
+  NAMED as `pipe_no_short` and owed.  Item 6's PARENT lands at three
+  named antecedents (`UShPipeAssembly.v` §8: `pipe_round_lend`,
+  `pipe_round_answers`, `pipe_round_reading_code`, `pipe_round_parent`),
+  and the second of them is a SECOND wall: the reaps at 0xea are
+  pid-erased, so the round gets no payload at all.  Item 7 not reached;
+  whole tree RC=0, four audits at their baselines.**  See the Findings
+  block for the five-item purchase list.
 ## Findings (append as lanes report)## Findings (append as lanes report)## Findings (append as lanes report)
 
 ### PQ-FLAG-2 (2026-09-18) — the write link's second premise, paid by the CODE
@@ -9645,3 +9656,182 @@ then `pipe_round_exit_mode`, `wp_kshr_exit0_paid`, and item 7.
 
 **THE ONE THING THE NEXT LANE NEEDS FIRST.**  A ruling on the short
 round — (R-1) or (R-2) of (d).
+
+### SH-PIPE-ROUND-10 (2026-09-21, design §4.3v as ruled) — §4.3v is REFUTED at its second bullet (the EofFirst shot has no producer, and the short round is DERIVABLE), item 6's parent lands at three named antecedents, and the second of them is a SECOND wall at the fork/wait seam
+
+Branch `app-pipe/sh-pipe-round-10` off main (`d42d5f3fd`).  Two code
+commits, `c55f95503` (the protocol) and `bd5803c8c` (the round's parent,
+with `ufork_ans_same_gen` and one `split_and!` fix on top).  Two
+files moved, both additively and both this lane's: `iris/PipeProto.v`
+(a new §8) and `iris/UShPipeAssembly.v` (a new §8) — every landed
+statement in both is byte-identical.  **Whole tree
+`ec2-lane.sh round10 build` RC=0**; no `Admitted`, no `Axiom`;
+`Proof using` on every result.  **All four audits re-measured on the
+mirror and at their baselines: `audit-only` 13, `audit-echo-only` 14,
+`audit-tree-only` 13, `audit-pipe-only` 14** — and unmovable by
+construction as well: `UShPipeCatRound.v` is `UShPipeAssembly.v`'s only
+importer and nothing imports THAT, and `PipeProto.v`'s additions are new
+leaves that no existing statement names.
+
+**THE FINAL THEOREM IS NOT REACHED, and this lane states it plainly**:
+`pipe_adequacy_pipeΣ_final` does not exist, `UInitPipe.
+sh_pipe_child_law_all` is still owed, `iris/PipeAssumptions.v` is
+untouched (it still audits `pipe_adequacy_pipeΣ_of_child`), and item 7
+was not attempted — because item 6 cannot be closed at today's tree for
+TWO independent reasons, both measured below and both outside this
+lane's files.
+
+**(1) §4.3v IS REFUTED, and the short round is DERIVABLE (commit
+`c55f95503`, `PipeProto.v` §8).**  The ruling's first half is free and
+its second half has no producer:
+
+- `RoFirst` costs nothing.  The writer's observation node
+  (`pipe_wchain_of_inv`'s `pipe_olink` arm) opens the body, and (P3)'s
+  LEFT arm being there IS "no end-of-file has been read".  (The design's
+  `ps_wo`-monotonicity argument is not even needed — and note the
+  ruling's prose has the two flags' polarity inverted throughout:
+  `ps_ro = false` is the SHUT read end.)
+- `EofFirst` cannot be minted.  The reader's end-of-file node would have
+  to know the read end is still OPEN at the state it fires at, and
+  `PipeQueue.pipe_olink` is a `∀ s` with NO premise while `pipe_rlink`
+  carries no `ps_ro` premise either — which is lane PQ-FLAG's own
+  measurement, recorded in design §3.1: `piperead` never loads
+  `pi->readopen`, so the only route is the caller's `pipe_ref γp false q`
+  and the FILE layer cannot supply the end (nobody publishes that a pipe
+  file's two ends are complementary).
+- **And no addition to `pipe_body` can supply it**, because
+  `PipeReg.pipe_reg`'s own contract makes the close link FREE AT BOTH
+  ENDS — "a registered pipe is one whose ends may be closed by anybody at
+  any time without anybody owing anything".  So "the read end is open" is
+  not a consequence of any resource a reader can hold, and R-2's "the
+  protocol records WHO may shut the read end" is not implementable inside
+  the protocol.
+
+Mechanised, all four Closed under the global context:
+
+| result | what it says |
+|---|---|
+| `pipe_short_trace` | the short round is a RUN of the protocol's own transition system: echo's `c` writes at both flags open, the read-end close, echo's observation at a shut read end with its own end still open, the write-end close, cat's `c` reads, cat's end-of-file — every premise the landed links put on every step, in order |
+| `pipe_short_round_realisable` | that run's ghost configuration, built from the pipe's birth state (`pipe_qauth`/`pipe_qfrag` at `pst0`) alone |
+| `pipe_short_round_payloads` | the two symmetric EXIT PAYLOADS of the short round (`pipe_Qc pn (pipe_payL pn L) (pipe_payR pn)`, twice), derivable from nothing |
+| `pipe_no_short_not_of_inv` | hence the law is not a consequence of the invariant, at `PipeReg.pipe_reg_not_free`'s standard (`⊢ \|={⊤}=> ⌜False⌝` follows from the assumption that it is) |
+
+`pipe_no_short pn L` is that law, NAMED and persistent, so the round can
+take it as ONE antecedent and whoever buys the reader-side fact
+discharges it in one place:
+
+```coq
+  Definition pipe_no_short (pn : pnames) (L : list (bv 8)) : iProp Σ :=
+    (□ (∀ c : nat, ⌜(0 < c)%nat /\ (c < length L)%nat⌝ -∗
+          ro_shot pn -∗ eof_shot pn (take c L) ={⊤}=∗ False))%I.
+```
+
+**R-1 (the taint on echo's `ro_shot` arm) is refuted too, and for the
+same reason**: echo at its short write holds `ro_shot` and nothing else,
+so it cannot produce `app_taint` — guarding `pipe_payL`'s third arm with
+the taint moves the hole from the round into `UEchoPipe`'s halt, it does
+not close it.
+
+**(2) ITEM 6's PARENT LANDS, at three antecedents (commit `bd5803c8c`,
+`UShPipeAssembly.v` §8).**
+
+| result | what it is |
+|---|---|
+| `pipe_round_lend` | the round's `Cp ={⊤}=∗ Cr`: `pipe_names_alloc` then `pipe_round_entry` at the honest witnesses `XL := wcur pn 0`, `YR := pws_lb pn (take 1 L)` |
+| `pipe_round_answers` | the two children's payloads out of two `ush_fork_ans` and two reaps, through `ChildTok.gen_pay_timeless` |
+| `pipe_round_reading_code` | the reading with NO leftover arm: the short round is spent against `pipe_no_short`, the other four rows are the round's code (the landed `pipe_round_reading_at` is untouched) |
+| `pipe_round_parent` | the whole parent continuation at 0xea: the two reaps, the reading, the exit at `pipe_round_exit_mode` (coded) / `pipe_round_unwind` (the silent round, which pays `Wcl_at I 3` — `ushf_wq`'s LEFT arm) / `pipe_Wcl_at_of_taint`, then `wp_kshr_exit0_paid` |
+| `uwait_ans_orphan_arm`, `ufork_ans_same_gen` | the two witnesses for (3) below |
+
+`Print Assumptions`: all Closed under the global context except
+`pipe_round_parent`, which is at the standing three
+(`resv_matches`, `resv_is_valid`, `functional_extensionality_dep`).
+
+**(3) THE SECOND WALL: THE REAPS AT 0xea ARE PID-ERASED, and the side
+tokens do not replace the pid route.**  Design §4.2's amendment (SH-PIPE's
+R-2) ends "(If a lane wants the pid route instead, `wp_kshr_fork1` must be
+re-cut to keep `upid`; not taken.)"  The two are NOT alternatives: the
+side tokens tell the two payloads apart ONCE THEY ARE IN HAND, and the
+pid route is what puts them there.  Measured at the statement:
+
+- `UkShPipe.wp_kshpi_wait0` relays `UexecRet.uwait_ans`, which
+  EXISTENTIALLY QUANTIFIES the caller's own pid.  So the reaping arm's row
+  `⌜γ' ∈ cs ∨ pidv = 1⌝` is satisfied by its RIGHT disjunct and says
+  nothing about whose child was reaped — `uwait_ans_orphan_arm` is the
+  witness (an answer that reaped a generation OUTSIDE the set, leaving the
+  set unchanged, is a perfectly good `uwait_ans`) — and the failing arm's
+  `UserChildren.wait_why` is satisfied by its `⌜nullst = false⌝` disjunct
+  for the same reason.  Without those two the round gets NO payload and
+  the walk cannot pay its exit.
+- The pid-carrying leaf `UkShRun.wp_kshr_wait_pid` gives both the named
+  `pidv` and the `⌜ret = -1 -> Sc' = ∅⌝` row the refutation needs, and it
+  asks for `UserChildren.upid`.  `UkFork.wp_uk_ecall_fork`'s CHILD arm
+  mints exactly that (`∃ p, ⌜p <> 1⌝ ∗ upid (ukn_pid N') p`, with the
+  comment "a forked child is the one process that can PROVE it is not
+  <init>, and that is exactly what it spends on wait's reaping arm");
+  `UkShRun.wp_kshr_fork`/`wp_kshr_fork1` DROP it, so
+  `UkShFork.ushf_child_law_at` never hands it to the runcmd child.
+- Two more of the same shape.  `ushf_child_law_at` hands
+  `UserChildren.uch_any` (= `∃ S, uch S`) where `wp_kshr_fork1`'s child
+  arm produced `uch ∅`, so the runcmd child cannot say its own children
+  set is empty; and `UexecRet.ufork_ans` says only `cs' = cs ∪ {[γ]}`, so
+  nothing rules out that the two forks named ONE generation — and then the
+  two reaps deliver ONE payload.  `ufork_ans_same_gen` is that witness (an
+  answer whose generation is ALREADY in the set leaves the set unchanged,
+  and the row permits it).  In `pipe_round_answers` these are the premises
+  `Sc = ∅` and `S1 <> S2`.
+
+**THE PURCHASE LIST, in the order a lane would buy it.**
+1. `UkShRun.wp_kshr_fork`/`wp_kshr_fork1`: RELAY the child's
+   `(∃ p, ⌜p <> 1⌝ ∗ upid (ukn_pid N') p)` instead of dropping it
+   (one row through two continuations).
+2. `UkShFork.ushf_child_law_at`: take `UkSh.ush_pid (ukn_pid N')` and
+   `UserChildren.uch (ukn_ch N') ∅` (instead of `uch_any`).  A premise on
+   a `□ ∀` law is free for its PROVERS (the echo era ignores both) and
+   owed by its one consumer, which is (1).
+3. `UkShPipe.v` (this lane's, under §4.3u's standing grant): a pid form of
+   `wp_kshpi_wait0` over `wp_kshr_wait_pid`, and `⌜r1 <> -1⌝`/`⌜r2 <> -1⌝`
+   plus the two `uwait_ans_pid`/`⌜ret = -1 -> Sc' = ∅⌝` rows on
+   `wp_kshr_pipe_arm_g`'s parent continuation (the walk holds all of them
+   at 0xea — a `-1` fork panics and never reaches it).
+4. `UexecRet.ufork_ans`: one pure conjunct `⌜γ ∉ cs⌝`, discharged where
+   the generation is allocated (`UkFork.wp_uk_ecall_fork`'s parent arm).
+   This is the only one of the four whose discharge site this lane did not
+   check — the children set is a plain `ghost_var` of a `gset gname`
+   (`UserChildren.uch`), so the freshness has to come from the generation
+   map, the way `ChildTok.gen_uniq` gets `gen_pid` for every member at the
+   reap.
+5. The protocol's reader-side fact, for (1) of this block: `ps_ro s = true`
+   on the read side, i.e. `SpecPiperead` entered at the READ end, which
+   needs the file layer to publish that a pipe file's two ends are
+   complementary (`fdstate_ok`/`file_core_noff`'s pipe arm — PQ-FLAG's
+   measured gap).  Then `pipe_no_short` is one invariant access.
+
+**WHAT REMAINS OF THE ROUND AFTER THE FIVE PURCHASES**: the four-way
+split (`∀ γp, Cr -∗ R γp -∗ RcL γp ∗ (RcR γp ∗ (Rk γp ∗ Cx γp))`) and the
+instantiation of `UShPipeChild.wp_kshm_child_pipe_paid_line_at` at it —
+the registrar (`pipe_registrar_at`), the five laws (items 1, 2, 3, 5 and
+`pipe_fork_panic_law`), the two children's exec supplies and
+`pipe_round_parent` — then `sh_pipe_child_law`, `sh_pipe_child_law_all`
+and `pipe_adequacy_pipeΣ_final`.  Nothing in that list is unmeasured; the
+walls are the five above.
+
+**OPERATIONAL, three.**
+- **`⊢ |={⊤}=> P` with no other iProp in the statement does not elaborate**
+  ("Could not find an instance for `FUpd ?PROP`", with the binders printed
+  at nonsense types).  Write `⊢@{iPropI Σ}`.
+- **`iMod` on a `◇ P` against a `|==> Q` goal fails** ("cannot eliminate
+  modality") where the same step against a `={⊤}=∗` goal is fine.  State a
+  redemption lemma (`gen_pay_timeless`'s consumers) at a FANCY update.
+- The boxed-comment quote trap bit twice in one file: in this tree's
+  `(* … *)` boxes every line ends in `*)`, so a quotation that spans two
+  lines swallows the box.  `tools/comment_quote_check.py iris` finds it
+  without a build; both sites were prose quoting a landed comment.
+
+**THE ONE THING THE NEXT LANE NEEDS FIRST.**  The owner's ruling on the
+purchase list — specifically on (1)+(2), which are three landed
+statements outside every pipe lane's files (`UkShRun.v`, `UkShFork.v`)
+and which no amount of work inside the pipe files can replace.  Item 6
+and item 7 are assembly once they land; `pipe_no_short` (purchase 5) can
+be bought independently and is the only one that touches the kernel's
+file layer.

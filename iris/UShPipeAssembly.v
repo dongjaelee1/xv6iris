@@ -1264,6 +1264,27 @@ Section UShPipeAssemblyDiag.
     symmetry. apply difference_disjoint_L. set_solver.
   Qed.
 
+  (* THE WITNESS FOR (iii), the other half: an answer whose generation is
+     ALREADY in the caller's set leaves the set unchanged, and
+     [UexecRet.ufork_ans] permits it -- so two forks CAN name one
+     generation as far as the row is concerned, and then the two reaps
+     deliver ONE payload.  [pipe_round_answers]'s [S1 <> S2] is what buys
+     it off; the honest source is a freshness conjunct on the fork's own
+     row, discharged where the generation is allocated. *)
+  Lemma ufork_ans_same_gen (Qc Rc : iProp Σ) (r : mword 64) (γ : gname)
+      (pidv : mword 32) (cs : gset gname) :
+    r = (sign_extend' 64 pidv : mword 64) ->
+    (1 <= bv_unsigned pidv <= PIDMAX)%Z ->
+    γ ∈ cs ->
+    ChildTok.child_tok γ pidv (fun _ : Z => Qc) -∗
+    UkShPipe.ush_fork_ans cs cs Rc (fun _ : Z => Qc) r.
+  Proof using .
+    intros Hr Hrng Hin. iIntros "Ht".
+    rewrite /UkShPipe.ush_fork_ans. iRight. iExists γ, pidv. iFrame "Ht".
+    iPureIntro. split_and!;
+      [ exact Hr | exact (proj1 Hrng) | exact (proj2 Hrng) | set_solver ].
+  Qed.
+
   (* ONE CHILD'S PAYLOAD, out of the parent's token and the reap's escrow.
      [UkShFork]'s re-entry does exactly this for the echo era's single
      child; a pipeline round does it twice. *)

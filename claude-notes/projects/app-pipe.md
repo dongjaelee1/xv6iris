@@ -8377,8 +8377,10 @@ statements:
   update — the CLAIM, through `out_link`'s `={⊤∖↑uartN Uart0}=∗` — cannot
   hold an `inv` either, and this is a GENERIC statement:
   `RiscvPtsto.riscv_cons_res_timeless` is `ai_cons_timeless`, a FIELD of
-  the machine's `app_iface` record, and `PipeOut.pecl_timeless` is the
-  pipeline's discharge of it.  An `inv` is not timeless.
+  the machine's `app_iface` record (`RiscvPtsto.v:445`), and
+  `AppPipe.pipe_cons_timeless` (= `PipeOut.pecl_timeless`) is the
+  pipeline's discharge of it inside `AppPipe.pipe_ifc`.  An `inv` is not
+  timeless.
 
   **So the only era-fixed invariant every party of a pipeline round
   holds is `AppInv.app_inv fsc_fs`** — it is the FIRST CONJUNCT of both
@@ -8388,9 +8390,11 @@ statements:
   `app_pred app_run (abs_view I)` = `AppPipeClaim.pipe_pred (pgn_cl g)`.
   That slot carries NO `Timeless` obligation (`app_body` is never opened
   with `>`), so the family's body — which is timeless throughout — would
-  fit.  What it costs is that `app_pred app_pipe` must be applied to the
-  WHOLE fixed part `pipe_gn` and not only to `pgn_cl g`, i.e. the era
-  equation `file_app = MkAppcfg echo_names (pipe_pred γ) r` moves.  That
+  fit.  What it costs is `AppPipe.app_pipe`'s own field
+  `app_pred := fun c => pipe_pred (pgn_cl c)` (`AppPipe.v:146`): it must
+  be applied to the WHOLE fixed part `pipe_gn` and not only to
+  `pgn_cl c`, i.e. the era equation
+  `file_app = MkAppcfg echo_names (pipe_pred γ) r` moves.  That
   is `AppPipeClaim.v` / `AppPipe.v` and every file that names the
   equation — none of them this lane's.
 

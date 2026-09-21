@@ -331,9 +331,20 @@ arm is the theorem's one named premise (`pipe_both_law`).
   `pipe_prog_law` discharged modulo `sh_pipe_child_law`;
   `pipe_adequacy_pipeΣ` with the child law as its ONE hypothesis.  Brief
   `brief-pipe-cc.md`.
-- [ ] **PIPE-STAGE-4** (design §4.3m, route β: the family INTO THE CLAIM;
-  the terminal fire freezes `cs`; the terminal round through the record;
-  `UkShPipeFork` retired).  Brief `brief-pipe-stage-4.md`.
+- [~] **PIPE-STAGE-4** (design §4.3m, route β).  **PARTLY LANDED, and
+  the rest REFUTED** (Findings): the terminal FIRE and the FREEZE are
+  theorems — the discriminator the claim needed is a BIT of `pe_cur`
+  (`cur_half … tm`), not the family's mode ghost, so `pecl_blk2_file` is
+  refuted at a terminal round and `pecl`'s terminal arm holds
+  `cs_frozen`; and the read after a terminal prompt refutes a later line
+  PURELY (`pterm_read_absurd`).  The FAMILY cannot follow: the claim is
+  reachable only AT a byte and the family must exist before the round's
+  first byte, which either child may write, so `blk2_inv` cannot be
+  retired — hence §4.3m's bullets 1, 3 and 5 (the record carrying the
+  terminal round, `UkShPipeFork` retired) do not follow.  Successor
+  design in the Findings §7: an ERA-FIXED family invariant in
+  `pipe_links` with a per-round registry in `pipe_era`.  Tree RC=0, 34
+  results Closed.  Brief `brief-pipe-stage-4.md`.
 - [ ] **SH-PIPE-ROUND-6** (after STAGE-4): the assembly at
   `pipe_round_entry`/`pipe_round_exit`; `sh_pipe_child_law_all`;
   `pipe_adequacy_pipeΣ_final`.

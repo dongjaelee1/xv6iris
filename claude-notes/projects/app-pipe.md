@@ -7892,6 +7892,17 @@ second `wait` before `pipe_round_exit`.  The new
 flag and `⌜tm = true -> R = alt_forkc⌝`.  `pipe_round_entry` and
 `pipe_round_unwind` did NOT move.
 
+**OPERATIONAL.**  A confirming re-run of all four audits was launched
+detached on the mirror at the end of the lane and could NOT complete:
+the lane's remote clone `/shared/xv6iris-pipe-stage4` was renamed to
+`/shared/xv6iris-pipe-round6` while it was running (the next lane's
+clone), so `ec2-lane.sh stage4` no longer resolves.  Every number in
+this block was measured BEFORE that, on the lane's own clone, at the
+commits named above; the local worktree and the branch are intact.  If
+the next lane wants the three remaining audits re-measured, they are
+`make audit-echo-only` / `audit-tree-only` / `audit-only` from the repo
+root and their cones do not reach any file this lane touched.
+
 **WHAT THE DESIGN GOT WRONG.**
 1. §4.3m bullet 1 ("`blk2_inv` is RETIRED; `blk2_inv_alloc` … become
    CLAIM STEPS (basic updates on `pecl` inside `out_link`'s fupd)") is

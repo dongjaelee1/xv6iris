@@ -858,7 +858,7 @@ Section UShPanicGen.
     iExists (fun p : nat => lk_blk L (S gen_id) v I a p ∗ Hold)%I.
     iSplitL; [ iFrame "Hc Hh" | ].
     iSplit.
-    - iIntros "!>" (p b) "%Hb".
+    - iIntros "!>" (p b) "%Hb %Hlt".
       iApply (ksh_w1_hold N (mword_of_int 2 : mword 64) b
                 (UserFd.ustd (ukn_fd N) l)
                 (lk_blk L (S gen_id) v I a p)

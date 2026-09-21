@@ -652,6 +652,43 @@ End UShPipeAssemblyFork.
 Lemma alt_execfail_app : EchoDisc.alt_execfail = dg_execL ++ u_prompt.
 Proof using. exact (eq_sym alt_execL_echo). Qed.
 
+(* ===================================================================== *)
+(*  ITEM 6 STOPS AT THE ARM'S SPLIT, AND THIS IS THE ARITHMETIC           *)
+(*  (lane SH-PIPE-ROUND-9; ROUND-8's bill item 6.)                        *)
+(*                                                                       *)
+(*  [UkShPipe.wp_kshr_pipe_arm_g] splits the runcmd child's lend ONCE,    *)
+(*  before either [fork1], into [RcL gp * (RcR gp * (Rk gp * Cx gp))],    *)
+(*  and pays BOTH [panic("fork")] tails from [Cx gp] alone.  The family's *)
+(*  RIGHT CHAIN is what writes `fork\n' ([PipeBoth.rsrc L 3 = alt_forkc], *)
+(*  mode 3) and it is also what writes CAT'S OUTPUT ([rsrc L 1 = L], mode *)
+(*  1) -- by design, since the two are alternatives.  The resource that   *)
+(*  says <<I am the right-chain writer>> is [wcur gR (1/2) * wcur gM      *)
+(*  (1/2)], and there is exactly ONE of it (the other half of each is in  *)
+(*  [blk2_inv]).  So the split must give it to [RcR gp] (or cat cannot    *)
+(*  print) AND to [Cx gp] (or a fork panic cannot print), and it cannot   *)
+(*  do both.  The left chain is no escape: it is hard-wired to            *)
+(*  [dg_execL], whose first byte is not the panic's.                      *)
+(*                                                                       *)
+(*  THE RESOURCES ARE IN HAND AT BOTH PANICS and are DROPPED, exactly as  *)
+(*  in SS4.3s and SS4.3t: [wp_kshr_pipe_arm_g]'s SECOND fork-panic        *)
+(*  continuation already passes the fork answer, whose [r = -1] arm       *)
+(*  carries [RcR gp] (the walk's own statement, and [r = -1] is one of    *)
+(*  its pure premises, so the other disjunct is refutable); its FIRST     *)
+(*  fork-panic continuation passes [RcL gp] and holds [RcR gp] unspent.   *)
+(*  [UkShPipePaid.wp_kshr_pipe_arm_paid] is what drops them, when it      *)
+(*  collapses the two continuations to one law at [Cx gp].                *)
+(* ===================================================================== *)
+Lemma pipe_right_chain_is_shared (L : list (bv 8)) :
+  PipeBoth.rsrc L 1%nat = L /\ PipeBoth.rsrc L 3%nat = alt_forkc.
+Proof using. split; reflexivity. Qed.
+
+Lemma pipe_fork_byte_not_left :
+  alt_forkc !! 0%nat = alt_panic !! 0%nat
+  /\ dg_execL !! 0%nat <> alt_panic !! 0%nat.
+Proof using.
+  split; [ vm_compute; reflexivity | vm_compute; discriminate ].
+Qed.
+
 (* the padded selector's length, at a VARIABLE bound (see the note on
    [PipeBoth.length_pad]: a [wl_line] in the goal is split by
    [rewrite length_app] and [lia] then sees two atoms for one number) *)

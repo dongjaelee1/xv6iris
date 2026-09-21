@@ -403,12 +403,12 @@ arm is the theorem's one named premise (`pipe_both_law`).
 - [ ] **SH-PIPE-ROUND-9** (design §4.3r: the `p < n` guard, the `pipe_links`
   antecedent; ROUND-8's six items; `sh_pipe_child_law_all`;
   `pipe_adequacy_pipeΣ_final`).  Brief `brief-sh-pipe-round-9.md`.
-  **PARTLY: both rulings LANDED tree-wide (whole-tree RC=0, four audits at
-  their baselines); bill items 1, 2, 3, 4 and 5 LANDED (item 3 after the
-  coordinator ruled §4.3s, which this lane also landed in `UCatPipe.v`);
-  items 6/7 are NOT reached, and the leaf they stop at is a SECOND
-  forwarding gap in the same lemma — §4.3t below.**  See the two Findings
-  blocks.
+  **PARTLY: §4.3r's two rulings and §4.3s/§4.3t LANDED tree-wide
+  (whole-tree RC=0, four audits at their baselines); bill items 1, 2, 3, 4
+  and 5 LANDED; item 6 is REFUTED AT THE ARM'S SPLIT (`UkShPipe.
+  wp_kshr_pipe_arm_g` hands the family's one right chain to `RcR` and to
+  `Cx`, and there is one of it) and item 7 is not reached.**  See the
+  three Findings blocks.
 ## Findings (append as lanes report)## Findings (append as lanes report)## Findings (append as lanes report)
 
 ### PQ-FLAG-2 (2026-09-18) — the write link's second premise, paid by the CODE
@@ -9448,3 +9448,105 @@ that are now landed — except that `RcR γp` cannot be written down until
 
 **THE ONE THING THE NEXT LANE NEEDS FIRST.**  §4.3t, one line, in the
 lemma §4.3s already touched.
+
+
+### SH-PIPE-ROUND-9 — PART 3 (2026-09-25, design §4.3t as ruled) — §4.3t lands and item 3 needs nothing else; item 6 is REFUTED AT THE ARM'S SPLIT, and the arithmetic is one resource
+
+One commit, `4601ce158`.  **Whole tree `ec2-lane.sh round9 build`
+RC=0**, and the four audits re-measured over it: `audit-only` **13**,
+`audit-echo-only` **14**, `audit-tree-only` **13**, `audit-pipe-only`
+**14** — all at their baselines, for the third time in this lane.
+
+**(a) §4.3t, LANDED.**  `UCatPipe.pcat_round_at_g`'s `Hw` gains the
+additive persistent antecedent
+`pws_lb pn (take (c + Z.to_nat (bv_unsigned rv)) L) ∨ T`.  The only
+structural change the production forced is that **the read's post is now
+split BEFORE `Hcont` instead of inside it**: right after
+`pcat_read_walk` returns the goal is still an `mWP`, which is the fupd
+site `pws_lb_of_rcur` needs, and one line later the reader's permit is
+inside `UkCat.kcat_wr_mono`'s post-transformer.  The two taint/−1
+branches answer the new antecedent with their own `T`; the count arm
+answers it at `Hto`/`Hd`.  `pcat_round_at` re-derives by INTRODUCING AND
+DROPPING it — **statement byte-identical for the second time**.
+`UShPipeCatRound.pipe_cat_w` already took `YR` as a premise, so **item 3
+needed nothing else**: the mode now fires at cat's first byte and the
+whole of ROUND-8's bill items 1–5 is landed.
+
+**(b) ITEM 6 IS REFUTED AT THE ARM'S SPLIT, and the arithmetic is one
+resource.**  `UkShPipe.wp_kshr_pipe_arm_g` splits the runcmd child's
+lend ONCE, before either `fork1`, into
+`RcL γp ∗ (RcR γp ∗ (Rk γp ∗ Cx γp))`, and pays BOTH `panic("fork")`
+tails from `Cx γp` alone.  But the family's **RIGHT CHAIN is shared by
+design** — `PipeBoth.rsrc L 1 = L` (cat's output, mode 1) and
+`rsrc L 3 = alt_forkc` (sh's fork panic, mode 3) are alternatives of one
+chain (`pipe_right_chain_is_shared`) — and the resource that says "I am
+the right-chain writer" is `wcur gR (1/2) ∗ wcur gM (1/2)`, of which
+there is **exactly one** (the other half of each is inside `blk2_inv`).
+So the split must give it
+
+- to `RcR γp`, or cat cannot print a byte (`UShPipeCatRound.pcat_ch` is
+  that pair), and
+- to `Cx γp`, or neither `panic("fork")` tail can print one
+  (ROUND-8's landed `pipe_fork_panic_law` is at exactly that pair),
+
+and it cannot do both.  The LEFT chain is no escape: `pblk2_cstep_L` is
+hard-wired to `dg_execL`, whose first byte is not the panic's
+(`pipe_fork_byte_not_left`).  Enumerated at the statement, the four
+assignments and what each kills:
+
+| `RcR γp` | `Cx γp` | cat prints | fork-1 panic | fork-2 panic |
+|---|---|---|---|---|
+| right chain | `emp` | yes | **no** | no (law is at `Cx`) |
+| `emp` | right chain | **no** | yes | yes |
+| protocol only | mode half | **no** | **no** | **no** |
+| right chain | right chain | — | — | not derivable from one `Cr` |
+
+**THE RESOURCES ARE IN HAND AT BOTH PANICS AND ARE DROPPED**, exactly as
+in §4.3s and §4.3t.  `wp_kshr_pipe_arm_g`'s **second** fork-panic
+continuation already passes the fork answer, whose `r = -1` arm carries
+`RcR γp` — and `r = -1` is one of that continuation's own pure premises,
+so the other disjunct is refutable; its **first** fork-panic
+continuation passes `RcL γp` and holds `RcR γp` unspent.  What drops
+them is `UkShPipePaid.wp_kshr_pipe_arm_paid`, when it collapses the two
+continuations to one law at `Cx γp`.
+
+**THE REPAIR, additive, two touches and no new walk** — design §4.3u:
+
+1. `UkShPipe.wp_kshr_pipe_arm_g`'s FIRST fork-panic continuation gains
+   `RcR γp` (the walk holds it there; `UkShPipe.v`).
+2. `UkShPipePaid.wp_kshr_pipe_arm_paid` and its relay
+   `UShPipeChild.wp_kshm_child_pipe_paid_at` / `_line_at` state the
+   fork-panic law at `RcR γp ∗ Cx γp` instead of `Cx γp` (the fork-2
+   branch takes `RcR γp` out of the answer's `-1` arm, the fork-1 branch
+   out of (1) and drops `RcL γp`).
+
+Then `Cx γp := emp`, `RcR γp` carries the family's right and mode halves,
+ROUND-8's `pipe_fork_panic_law` applies VERBATIM at both panics, and
+`UShPipeCatRound.pipe_cat_w` has what it needs.  Nothing else in the bill
+moves.  Alternatively (durable-notes' own rule for two continuations of
+which exactly one fires) the split's conclusion becomes an ADDITIVE
+conjunction between the children's lends and the panic lend — same
+effect, a larger statement change.
+
+`UkShPipe.v`, `UkShPipePaid.v` and `UShPipeChild.v` are not this lane's,
+and the standing grant covers `pcat_round_at_g`'s `Hw`,
+`pcat_pay_at`'s `Pay` and `UEchoPipe`'s entry, so the lane STOPS here.
+
+**(c) WHAT ITEM 6 STILL OWES AFTER §4.3u**, all measured, none unknown:
+`Qc := app_taint ∨ PipeProto.pipe_Qc pn PL PR` with
+`PL := (pipe_payL pn L ∗ wcur gL (1/2) 0) ∨ wcur gL (1/2) (length dg_execL)`
+(the second arm carries NO `pipe_payL`, because `XL` IS the `wtok pn` and
+it has been spent into the family) and
+`PR := (∃ c ≤ length L, eof_shot pn (take c L) ∗ wcur gR (1/2) c ∗ wcur gM (1/2) (mode of c)) ∨ (wcur gR (1/2) (length dg_execR) ∗ wcur gM (1/2) 2)`;
+the four-way split at the names allocated BEFORE the walk (`pn` by
+`pipe_names_alloc` at the child law's own `mWP` entry, `gL`/`gR`/`gM` by
+`ghost_var_alloc` there too and passed into the fupd `Cp ={⊤}=∗ Cr` as a
+LINEAR wand, `v` off the era pin — which means `sh_pipe_child_law` takes
+`∃ v, era_pin γ (S gen_id) v` as a THIRD antecedent, which
+`sh_round_holds_pipe` already holds); the two `ush_fork_ans` × two
+`uwait_ans` at `0xea` through `ChildTok.gen_pay_timeless` (`Qc` is
+Timeless); the five-row reading of part 1, whose fifth row
+`blk2_no_L_at_mode1` refutes; and `pipe_round_exit`.
+
+**THE ONE THING THE NEXT LANE NEEDS FIRST.**  §4.3u — two additive
+touches, both on resources the walk already holds and drops.

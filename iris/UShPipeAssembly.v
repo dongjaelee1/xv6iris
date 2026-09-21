@@ -891,6 +891,47 @@ Section UShPipeAssemblyDiag.
               ltac:(apply top_subseteq) with "Hpin Hinv HcL HcR").
   Qed.
 
+  (* =================================================================== *)
+  (*  THE EXIT'S ONE MISSING READING (bill item 6; STOP rule 2 of the     *)
+  (*  brief, answered).  [UShPipeRound2.pround_case] has FOUR arms and    *)
+  (*  the two children's exit payloads offer five combinations: the       *)
+  (*  fifth -- the LEFT child's exec failed ([c1 = length dg_execL]) and  *)
+  (*  cat RAN ([mode 1], [R = L], [c2] arbitrary) -- is not one of them,  *)
+  (*  and it is the one the round has to refute.  It refutes ITSELF, out  *)
+  (*  of the children's own exclusion: a left cursor past zero means the  *)
+  (*  family is holding [XL] (the write permit at zero, which the left    *)
+  (*  diagnostic's first byte deposited), and mode 1 means it is holding  *)
+  (*  [YR] (the reader got a byte) -- and those two are what               *)
+  (*  [PipeProto.pipe_excl_wtok_lb] says cannot coexist.                  *)
+  (* =================================================================== *)
+  Lemma blk2_no_L_at_mode1 (v : era_pins) (I L : list (bv 8))
+      (gL gR gM : gname) (XL YR : iProp Σ) (c1 : nat) :
+    Timeless XL -> Timeless YR ->
+    (0 < c1)%nat ->
+    □ (XL -∗ YR ={↑pipeN}=∗ False) -∗
+    blk2_inv g blk2N (S gen_id) v I L gL gR gM XL YR -∗
+    PipeBoth.wcur gL (1/2) c1 -∗ PipeBoth.wcur gM (1/2) 1%nat ={⊤}=∗ False.
+  Proof using .
+    intros HTX HTY Hc1. iIntros "#Hex #Hinv HcL HcM".
+    iMod (inv_acc ⊤ blk2N _ ltac:(apply top_subseteq) with "Hinv")
+      as "[Hin Hclose]".
+    iDestruct "Hin" as ">Hin". rewrite {1}/blk2_body.
+    iDestruct "Hin" as "[Hfam | Hdone]"; last first.
+    { iDestruct (blk2_done_not_L gL gR c1 with "HcL Hdone") as %[]. }
+    iDestruct "Hfam" as (R sel c1' c2 tm) "(Hf & HgL & HgR & Hxl & Hrm)".
+    iDestruct (wcur_agree with "HcL HgL") as %<-.
+    iDestruct "Hxl" as "[%Hz | HXL]"; [ exfalso; lia | ].
+    rewrite {1}/rmode. iDestruct "Hrm" as (n) "(HgM & %Htmb & Harm)".
+    iDestruct (wcur_agree with "HcM HgM") as %<-.
+    iDestruct "Harm" as "[%Ha | [[%Ha HYR] | [%Ha | %Ha]]]";
+      [ destruct Ha as [Ha _]; discriminate Ha
+      | | destruct Ha as [Ha _]; discriminate Ha
+      | destruct Ha as [Ha _]; discriminate Ha ].
+    iMod (fupd_mask_subseteq (↑pipeN : coPset)) as "_";
+      [ etrans; [ exact blk2N_pipeN | set_solver ] | ].
+    iMod ("Hex" with "HXL HYR") as %[].
+  Qed.
+
 End UShPipeAssemblyDiag.
 
 (* ===================================================================== *)
@@ -958,3 +999,57 @@ Section UShPipeAssemblyReg.
   Qed.
 
 End UShPipeAssemblyReg.
+
+(* ===================================================================== *)
+(*  S7  ITEM 3 IS BLOCKED AT A PREMISE, AND HERE IS THE WITNESS          *)
+(*  (lane SH-PIPE-ROUND-9; design SS4.3r's item 3.)                       *)
+(*                                                                       *)
+(*  ROUND-8 priced item 3 as the copy of [UCatKernel.cat_w_of_link] at    *)
+(*  [Ch c := wcur gR (1/2) c * wcur gM (1/2) 1] over [out_chain_of_step]. *)
+(*  The copy is mechanical; what is NOT available is the premise it must  *)
+(*  be copied at.  [UCatPipe.pcat_round_at_g] is generic in the cursor    *)
+(*  family [Ch], and hands its [Hw] the pure fact                          *)
+(*                                                                       *)
+(*    forall j < cnt, pcont (pcat_line I0) (palt_of pcat_alt)             *)
+(*                      !! (c + j) = Some (fbb j)                        *)
+(*                                                                       *)
+(*  -- a lookup into the ALTERNATIVE, which is [L ++ u_prompt].  The       *)
+(*  two-writer family's right chain at mode 1 steps [PipeBoth.rsrc L 1 =  *)
+(*  L] and nothing else ([pblk2_cstep_R]'s [rsrc L n !! c2 = Some b]),    *)
+(*  and it also demands [Forall nodollar (rsrc L n)].  The three          *)
+(*  conjuncts below are the gap: AT [c + j = length L] THE PREMISE IS     *)
+(*  SATISFIED AND THE STEP IS UNAVAILABLE, and the byte in question is    *)
+(*  the prompt's '$', which the chain's own [nodollar] premise excludes.  *)
+(*                                                                       *)
+(*  NO CHOICE OF [Ch] REPAIRS IT.  What rules that index out is           *)
+(*  [c + cnt <= length L], and that is the READER's fact: it comes from   *)
+(*  [PipeProto.pipe_rQ]'s [acc = take (length acc) (drop c L)].           *)
+(*  [pcat_round_at_g] HAS it -- its content arm derives                   *)
+(*  [L !! (c + j) = Some (gb j)] ([UCatPipe.pcat_acc_line]) and then       *)
+(*  WEAKENS it with [UCatPipe.pcat_round_line] before calling [Hw] --      *)
+(*  and it keeps the reader's permit in [pcat_hold], which [Hw] never      *)
+(*  sees.  So the fact is unreachable from [Ch], whatever [Ch] is.        *)
+(*                                                                       *)
+(*  THE REPAIR IS ONE LINE, in a file this lane does not own: state       *)
+(*  [pcat_round_at_g]'s [Hw] premise at [L] ([pcat_out I0] is already a    *)
+(*  parameter of that lemma) instead of at [pcont ... (palt_of            *)
+(*  pcat_alt)]; the content arm passes [Hbytes] straight through and the  *)
+(*  landed instance [UCatPipe.pcat_round_at] weakens it back with         *)
+(*  [pcat_round_line], so NO STATEMENT outside [pcat_round_at_g]'s own    *)
+(*  premise moves.  It is SS4.3r's [p < n] guard once more, one file over. *)
+(* ===================================================================== *)
+Lemma pcat_hw_gap (l : pline) :
+  pcont l PRan !! length (wl_line (drop 1 (pline_ws l)))
+    = Some (u_prompt !!! 0%nat)
+  /\ wl_line (drop 1 (pline_ws l))
+       !! length (wl_line (drop 1 (pline_ws l))) = None
+  /\ ~ nodollar (u_prompt !!! 0%nat).
+Proof using.
+  split_and!.
+  - cbn [pcont].
+    rewrite (lookup_app_r (wl_line (drop 1 (pline_ws l))) u_prompt
+               (length (wl_line (drop 1 (pline_ws l)))) ltac:(lia)).
+    rewrite Nat.sub_diag. by vm_compute.
+  - apply lookup_ge_None_2. lia.
+  - intro Hq. apply Hq. by vm_compute.
+Qed.

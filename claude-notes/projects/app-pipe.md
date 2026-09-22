@@ -10902,10 +10902,12 @@ antecedent `□ (T -∗ UkSh.sh_deps)` through
 `udepw_law 16`, and `□ Cend` is the payload's own taint arm).  That is
 the second thing §4.3z item 3's antecedent buys.
 
-Beyond it: (the walk's `usz` and the registrar's close law), so the
-second half should be assumed to hold more, and the next lane should
-price each continuation at the STATEMENT before proving it.  A useful
-intermediate target that this lane did NOT reach:
+SO THE COUNT IS THREE uncounted premises in ONE table (the walk's `usz`,
+the registrar's close law, and `pipe_cat_w`'s `YR`), and the lesson is
+the one this lane would put at the top of the next brief: **price every
+row of the instantiation table at the STATEMENT before proving it** —
+two of the three were invisible until the `iApply` was written out.  A
+useful intermediate target that this lane did NOT reach:
 `udepw_law (PS := uprogSG_free) 21 -∗ UShPipeRound.sh_pipe_child_law g`
 — the whole round with the one wall of (6) as its single named premise
 (`udepw_law` is persistent, so the `□` of the law survives it).

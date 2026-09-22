@@ -69,9 +69,9 @@ from the real ELFs) is safe and its console observations satisfy
 = the echo application's fourteen exactly: eleven Rocq primitives
 (`PrimInt63.{int,eqb,land,lor,lsl,lsr,sub}`, `PrimString.{string,get,cat,
 length}`), the two `xv6iris_extras` reservation `Parameter`s, and
-`functional_extensionality_dep`.  Stated at `pipeΣ_full := #[pipeΣ;
-pipeProtoΣ]` (the protocol's cameras were missing from `pipeΣ`; folding
-them in is a one-token tidy).  Zero `Admitted` tree-wide.  Audits:
+`functional_extensionality_dep`.  Stated at `pipeΣ` (the
+protocol's cameras were missing from it; folded in 2026-09-23, commit
+4f2279fb8).  Zero `Admitted` tree-wide.  Audits:
 system 13, echo 14, tree 13, pipe 14 — unmoved by the whole campaign.
 
 **What the discipline says, as landed (§1, §4.3h, §4.3m).**  A session

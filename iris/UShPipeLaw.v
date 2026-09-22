@@ -411,6 +411,83 @@ Section UShPipeLaw.
   Qed.
 
   (* =================================================================== *)
+  (*  S2b'''  THE TWO LAWS THE WALK TAKES, AT THE ROUND'S CREDENTIALS     *)
+  (*                                                                     *)
+  (*  Both are read OFF the credential they are paid with, through        *)
+  (*  [UShPipeAssembly.exf_law_acc]: the family's invariant is born out   *)
+  (*  of the lend and so is not in hand when the law is handed to the     *)
+  (*  walk (ROUND-11 finding (5)).  Everything below is pinned at         *)
+  (*  [UexecExecInst.uprogSG_free] -- the instance the child law's walk   *)
+  (*  runs at ([UShPipeRound.sh_pipe_child_law]) -- because this file     *)
+  (*  binds no [uprogSG] section variable, exactly as [UShPipeRound.v]    *)
+  (*  pins it.                                                            *)
+  (* =================================================================== *)
+
+  (* the [pipe(2)]-failed tail's *)
+  Lemma pl_panic_pipe_law (v : era_pins) (I L : list (bv 8))
+      (ws : list (list (bv 8))) (pn : pnames) (gL gR gM : gname) :
+    PipeLinksLine.pline_at I = PipeDisc.LPipe ws ->
+    PipeLinks.pipe_links g -∗
+    era_pin γ (S gen_id) v -∗
+    UkShDiag.ush_execfail_law_at (PS := uprogSG_free)
+      (wl_line PipeDisc.dg_pipe) 5%nat
+      (pl_Cr v I L pn gL gR gM) (pipe_Wcl_at g I 0%nat).
+  Proof using .
+    intros Hline. iIntros "#Hlk #Hpin".
+    iApply (UShPipeAssembly.exf_law_acc (PS := uprogSG_free)
+              (wl_line PipeDisc.dg_pipe) 5%nat
+              (pl_Cr v I L pn gL gR gM)
+              (PipeBoth.wcur gL (1/2) 0%nat ∗ PipeBoth.wcur gR (1/2) 0%nat)%I
+              (pipe_Wcl_at g I 0%nat)).
+    rewrite /pl_Cr.
+    iIntros "!> (#Hinv & HgL & HgR & _)".
+    iSplitR "HgL HgR"; [ | iFrame "HgL HgR" ].
+    iApply (UShPipeAssembly.pipe_panic_pipe_law (PS := uprogSG_free)
+              g v I L ws gL gR gM (pl_XL pn) (pl_YR pn L)
+              (pl_XL_timeless pn) (pl_YR_timeless pn L) Hline
+              with "Hlk Hpin Hinv").
+  Qed.
+
+  (* ...and the [panic("fork")] tails', taint and all (design SS4.3z item 3) *)
+  Lemma pl_fork_panic_law (v : era_pins) (I L : list (bv 8))
+      (ws : list (list (bv 8))) (pn : pnames) (gL gR gM : gname)
+      (γp : pipe_names) :
+    PipeLinksLine.pline_at I = PipeDisc.LPipe ws ->
+    □ (T -∗ UkSh.sh_deps (PS := uprogSG_free)) -∗
+    PipeLinks.pipe_links g -∗
+    era_pin γ (S gen_id) v -∗
+    (inp_lb v I ∨ T) -∗
+    UkShDiag.ush_execfail_law_at (PS := uprogSG_free)
+      EchoDisc.alt_panic 5%nat
+      (pl_RcR v I L pn gL gR gM γp ∗ emp)
+      (UkShPipeFork.pterm_shape g I 5%nat ∨ T).
+  Proof using Hcons.
+    intros Hline. iIntros "#Hdps #Hlk #Hpin #Hlb".
+    iDestruct (PipeLinks.pipe_links_taint g with "Hlk") as "#Ht".
+    iApply (UShPipeAssembly.exf_law_acc (PS := uprogSG_free)
+              EchoDisc.alt_panic 5%nat
+              (pl_RcR v I L pn gL gR gM γp ∗ emp)%I
+              (PipeBoth.wcur gR (1/2) 0%nat ∗ PipeBoth.wcur gM (1/2) 0%nat)%I
+              (UkShPipeFork.pterm_shape g I 5%nat ∨ T)%I).
+    rewrite /pl_RcR.
+    iIntros "!> [(#Hinv & _ & _ & HgR & HgM) _]".
+    iSplitR "HgR HgM"; [ | iFrame "HgR HgM" ].
+    iApply (UShPipeAssembly.pipe_fork_panic_law_or (PS := uprogSG_free)
+              g Hcons v I L ws gL gR gM (pl_XL pn) (pl_YR pn L)
+              (pl_XL_timeless pn) (pl_YR_timeless pn L) Hline
+              with "Hdps Ht Hpin Hlb Hinv").
+  Qed.
+
+  (* ...AND THE PAYLOAD'S TAINT ARM, which is the walk's
+     [box (app_taint -* Qc (-1))] *)
+  Lemma pl_qc_of_taint (pn : pnames) (L : list (bv 8)) (gL gR gM : gname) :
+    ⊢ app_taint -∗ UShPipeAssembly.pipe_Qc_at g pn L gL gR gM.
+  Proof using Hkill.
+    iIntros "#Ht". rewrite /UShPipeAssembly.pipe_Qc_at. iLeft.
+    rewrite -Hkill. iExact "Ht".
+  Qed.
+
+  (* =================================================================== *)
   (*  S2c  THE FOUR PAYLOAD CONVERSIONS                                   *)
   (*                                                                     *)
   (*  The round's [Qc] is [UShPipeAssembly.pipe_Qc_at]; each of the four  *)

@@ -25,7 +25,9 @@ re-cut the console claim under it has landed).
   same fact stated as reducibility only, and its statement-level TCB is
   8 files / 338 definitions / 2845 lines — it must never drag the ghost
   layer).
-- **The ECHO application** (`AppEcho`): init spawns sh, a user types
+- **The ECHO application** (`AppEcho`; since 2026-09-25 a corollary of the
+  PIPELINE application, [`app-pipe.md`](app-pipe.md) §0.2, whose lines are
+  `echo …` and `echo … | cat` and whose claim adds /cat's pin): init spawns sh, a user types
   `echo` lines at the console -- a different one each round, any words
   (`echo hi`, then `echo bye now`, ...) -- sh forks and execs echo, echo
   prints the arguments back.  Its invariant is THE FILE SYSTEM IS UNMODIFIED — the
@@ -42,7 +44,8 @@ the generic slot).  The echo application constrains the state, so every
 retag that changes the user-visible view, every process creation and
 every reboot has to be paid for.  The scaffold makes those payments
 PARAMETERS of the theorem.  The echo application owes none of them any
-more: `UInitBootAdequacy.echo_adequacy_echoΣ` discharges every one.
+more: `UInitPipeAdequacy.echo_adequacy` (the pipeline theorem read back
+at an echo-only input) discharges every one.
 
 ## 1. The principle: ONE predicate, TWO instances, crossing by transport
 

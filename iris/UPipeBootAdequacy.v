@@ -19,10 +19,11 @@
 (* pipeline claim carries NO per-era state, so the functor list loses    *)
 (* both of the file application's own entries ([fileAppSigma] -- the     *)
 (* deed and the typed-line list -- and [fileOutSigma] -- the per-era     *)
-(* boot-state map).  [pipeSigma] is the ECHO application's list exactly, *)
-(* because the pipeline stage is [EchoOut]'s ghost algebra with          *)
-(* [PipeDisc.sessp] for [EchoDisc.sess] and the claim is echo's with a   *)
-(* PERSISTENT, instance-free /cat conjunct (lane PIPE-CLAIM).            *)
+(* boot-state map).  [pipeSigma] is the ECHO application's list plus the *)
+(* pipe protocol's cameras ([PipeProto.pipeProtoSigma]): the pipeline    *)
+(* stage is [EchoOut]'s ghost algebra with [PipeDisc.sessp] for          *)
+(* [EchoDisc.sess] and the claim is echo's with a PERSISTENT,            *)
+(* instance-free /cat conjunct (lane PIPE-CLAIM).                        *)
 (*                                                                       *)
 (* IS [Hprog] SATISFIABLE?  The file twin's two witnesses are this       *)
 (* file's as well ([App.app_triv_init_boot] at the generic application   *)
@@ -72,6 +73,7 @@ Require Import PipeOut.            (* [pipeOutG] / [pipeOutSigma] -- NOT dead:
                                       the section below generalises over
                                       [pipeOutG] and a missing import makes it
                                       an unbound variable, not an error *)
+Require Import PipeProto.          (* [pipeProtoSigma]: the protocol's functors *)
 Require Import AppPipe.            (* [app_pipe] and its ten discharged laws *)
 
 Local Open Scope Z_scope.
@@ -175,10 +177,7 @@ End PipeAdequacy.
 (*  separation logic to read it; [PipeDisc.v] is the whole specification. *)
 (* ===================================================================== *)
 
-(* the shell's line-choice list, spelled again HERE rather than imported
-   from [UInitBootAdequacy] -- the file twin's reason, verbatim: importing
-   it would put the whole echo program tier into this file's build cone
-   for one line of functor list. *)
+(* the shell's line-choice list *)
 Definition pipeLineΣ : gFunctors := #[ GFunctor (mono_listR (leibnizO Z)) ].
 
 Global Instance subG_pipeLineΣ {Σ} :
@@ -190,6 +189,7 @@ Definition pipeΣ : gFunctors :=
    ; bioslotΣ            (* not in [xv6Σ]: the bio escrow's slot camera    *)
    ; echoOutΣ            (* the console stage's ghosts -- echo's, verbatim *)
    ; pipeOutΣ            (* the pipeline's own: the era map and [pe_cur]     *)
+   ; pipeProtoΣ          (* the pipe protocol's ghosts (lane PIPE-PROTO)     *)
    ; pipeLineΣ           (* the shell's line-choice list                   *)
    ].
 

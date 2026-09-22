@@ -3567,7 +3567,14 @@ Section pipe_out.
       { rewrite pop_removelast_take Hbytes Hcnt. reflexivity. }
       assert (Hi0 : (i0 < nlines (done_of (removelast (ins (open_seg h)))))%nat)
         by (rewrite nlines_done HI1 /i0; lia).
-      apply (Hnm' i0 Hi0).
+      (* the terminal round is at a PIPELINE line -- D4's guard *)
+      assert (Hpipe0 : pline_is_pipe
+                         (pline_of (bodies_of (done_of (removelast
+                                                (ins (open_seg h)))) !!! i0))
+                       = true).
+      { rewrite bodies_of_done HI1.
+        exact (palt_ok_isforkS_pipe _ (palt_of ao) Hokaa Hfkao). }
+      apply (Hnm' i0 Hi0 Hpipe0).
       apply (pmergeable_prefix _
                (alt_cont_p ps' cs'
                   (bodies_of (done_of (removelast (ins (open_seg h))))) i0)).

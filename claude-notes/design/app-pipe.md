@@ -208,6 +208,16 @@ Witnesses: a burst at an echo line and at a pipeline line
   `pipeΣ_full` goes.  CI, the Makefile's `audit-all-only` pairing and
   durable-notes' audit baseline follow.
 
+**AS LANDED (2026-09-25, both stages; worklist `completed/app-combined.md`).**
+`pipe_adequacy_pipeΣ_final` at `pipeΣ`, `UInitPipeAdequacy.echo_adequacy`
+its corollary; `disc_p` at `done_of` with D4 guarded on the line shape;
+the four audits are three (system 13, tree 13, pipe 14 -- unmoved).
+What the theorem says now: for any session of echo and pipeline lines,
+each typed after the previous line's block ended in the prompt (and as a
+burst if the user likes), the console follows the transcript; a fork
+failure at a PIPELINE line ends coverage (§4.3h), a shell restart at an
+echo line does not.
+
 ## 1. The pure model (`iris/PipeDisc.v`)
 
 Iris-free, over `EchoDisc`/`LineWords`, in `FileDisc.v`'s style (a line

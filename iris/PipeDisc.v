@@ -172,6 +172,10 @@ Global Instance pline_inhabited : Inhabited pline := populate (LEcho []).
 Definition pline_ws (l : pline) : list (list (bv 8)) :=
   match l with LEcho ws => ws | LPipe ws => ws end.
 
+(* the line's SHAPE, which is what discipline rule D4 is guarded on *)
+Definition pline_is_pipe (l : pline) : bool :=
+  match l with LEcho _ => false | LPipe _ => true end.
+
 (* THE BODY the console cut keeps, and the LINE the user typed: the body
    and the newline [gets] stops at.  [line_bytes (LEcho ws)] is
    [LineWords.wl_line ws] on the nose. *)
@@ -1250,6 +1254,18 @@ Lemma palt_isforkS_inv (a : palt) :
   palt_isforkS a = true -> exists sel, a = PForkS sel.
 Proof using. destruct a; try discriminate. intros _. by eexists. Qed.
 
+(* only a PIPELINE line admits the terminal fork-failure alternative *)
+Lemma palt_ok_forkS_pipe (l : pline) (sel : list bool) :
+  palt_ok l (PForkS sel) -> pline_is_pipe l = true.
+Proof using. destruct l; [by intros [] | reflexivity]. Qed.
+
+Lemma palt_ok_isforkS_pipe (l : pline) (a : palt) :
+  palt_ok l a -> palt_isforkS a = true -> pline_is_pipe l = true.
+Proof using.
+  intros Ha Hf. destruct (palt_isforkS_inv a Hf) as [sel ->].
+  exact (palt_ok_forkS_pipe l sel Ha).
+Qed.
+
 Lemma palt_panic_forkS (sel : list bool) : palt_panic (PForkS sel) = false.
 Proof using. reflexivity. Qed.
 
@@ -1986,7 +2002,8 @@ Qed.
    that it is decidable and [vm_compute]-able, which is what
    [PipeDiscDec] and the demos of section 8 need. *)
 Definition d4_p (cs : list nat) (I : list (bv 8)) : Prop :=
-  Forall (fun i => pmergeable (pcont (pline_of (bodies_of I !!! i))
+  Forall (fun i => pline_is_pipe (pline_of (bodies_of I !!! i)) = true ->
+                   pmergeable (pcont (pline_of (bodies_of I !!! i))
                                  (palt_at cs i)) ->
                    nlines I = S i /\ rest_of I = [])
     (seq 0 (nlines I)).
@@ -1999,6 +2016,7 @@ Proof using. by vm_compute. Qed.
 
 Lemma d4_p_at (cs : list nat) (I : list (bv 8)) (i : nat) :
   d4_p cs I -> (i < nlines I)%nat ->
+  pline_is_pipe (pline_of (bodies_of I !!! i)) = true ->
   pmergeable (pcont (pline_of (bodies_of I !!! i)) (palt_at cs i)) ->
   nlines I = S i /\ rest_of I = [].
 Proof using.
@@ -2008,6 +2026,7 @@ Qed.
 
 Lemma d4_p_intro (cs : list nat) (I : list (bv 8)) :
   (forall i, (i < nlines I)%nat ->
+     pline_is_pipe (pline_of (bodies_of I !!! i)) = true ->
      pmergeable (pcont (pline_of (bodies_of I !!! i)) (palt_at cs i)) ->
      nlines I = S i /\ rest_of I = []) ->
   d4_p cs I.
@@ -2245,6 +2264,93 @@ Proof using.
       exact Hpt.
 Qed.
 
+(* D4 IS FREE AT AN ECHO-ONLY INPUT: its guard is the line's shape *)
+Lemma d4_p_echo (cs : list nat) (I : list (bv 8)) :
+  echo_only I -> d4_p cs I.
+Proof using.
+  intro He. rewrite /d4_p. apply Forall_forall. intros i Hi Hpipe.
+  exfalso. apply elem_of_seq in Hi. rewrite /nlines in Hi.
+  destruct (lookup_lt_is_Some_2 (bodies_of I) i ltac:(lia)) as [b Hb].
+  rewrite (list_lookup_total_correct _ _ _ Hb)
+          (pline_of_echo b (Forall_lookup_1 _ _ _ _ He Hb)) in Hpipe.
+  discriminate Hpipe.
+Qed.
+
+(* ...AND THE CONVERSE: an echo-disciplined history is pipe-disciplined.
+   Together with [disc_p_disc] the two disciplines agree at every
+   echo-only history, which is what makes the echo application's theorem
+   a corollary of this one ([pipe_phi_echo]). *)
+Lemma disc_disc_p h :
+  Forall disc_seg (cycles_of h) -> disc h -> disc_p h.
+Proof using.
+  intros HD He. apply Forall_lookup. intros i seg Hi.
+  assert (Hds : disc_seg seg) by (exact (Forall_lookup_1 _ _ _ _ HD Hi)).
+  assert (Heo : echo_only (ins seg)) by (by destruct Hds as (? & _ & _)).
+  destruct (Forall_lookup_1 _ _ _ _ He Hi)
+    as (_ & (ps & cs & Hlen & Hlt4 & Hall)).
+  split; [exact (disc_input_p_of_disc_input _ Hds) |].
+  exists ps, cs. split; [exact (alts_ok_p_of_lt4 _ _ Heo Hlen Hlt4) |].
+  split; [exact (d4_p_echo cs (ins seg) Heo) |].
+  intros p Hp.
+  assert (Hple : ins p `prefix_of` ins seg)
+    by (apply ins_prefix;
+        exact (proj1 (Forall_forall _ _) (in_pres_prefix_all seg) p Hp)).
+  assert (Hep : echo_only (ins p)) by (exact (echo_only_prefix _ _ Hple Heo)).
+  assert (Hnl : (nlines (ins p) <= nlines (ins seg))%nat)
+    by (by apply nlines_prefix).
+  assert (Hc4 : forall j, (j < nlines (ins p))%nat -> (cs !!! j < 4)%nat).
+  { intros j Hj.
+    destruct (lookup_lt_is_Some_2 cs j ltac:(lia)) as [c Hc].
+    rewrite (list_lookup_total_correct _ _ _ Hc).
+    exact (Forall_lookup_1 _ _ _ _ Hlt4 Hc). }
+  destruct (Hall p Hp) as [Hok Hpt].
+  assert (Hepd : echo_only (done_of (ins p)))
+    by (exact (echo_only_prefix _ _ (done_of_prefix _) Hep)).
+  assert (Hc4d : forall j, (j < nlines (done_of (ins p)))%nat ->
+                   (cs !!! j < 4)%nat)
+    by (rewrite nlines_done; exact Hc4).
+  split.
+  + by apply (pro_ok_p_ok ps cs (nlines (ins p)) Hc4).
+  + rewrite /disc_pt_p (sessp_sess ps cs (done_of (ins p)) Hepd Hc4d).
+    exact Hpt.
+Qed.
+
+(* THE CONCLUSION, read back at an echo-only input *)
+Lemma expected_rel_p_echo (I out : list (bv 8)) :
+  echo_only I -> expected_rel_p I out -> expected_rel I out.
+Proof using.
+  intros He (ps & cs & Hok & Hao & Hpre).
+  pose proof (alts_ok_p_lt4 _ _ He Hao) as Hlt4.
+  pose proof (alts_ok_p_length _ _ Hao) as Hlen.
+  assert (Hc4 : forall j, (j < nlines I)%nat -> (cs !!! j < 4)%nat).
+  { intros j Hj.
+    destruct (lookup_lt_is_Some_2 cs j ltac:(lia)) as [c Hc].
+    rewrite (list_lookup_total_correct _ _ _ Hc).
+    exact (Forall_lookup_1 _ _ _ _ Hlt4 Hc). }
+  exists ps, cs.
+  split; [by apply (pro_ok_p_ok ps cs (nlines I) Hc4) |].
+  split; [exact Hlt4 |].
+  rewrite -(sessp_sess ps cs I He Hc4). exact Hpre.
+Qed.
+
+Lemma good_out_p_echo (seg : list mobs) :
+  echo_only (ins seg) -> good_out_p seg -> good_out seg.
+Proof using. exact (expected_rel_p_echo (ins seg) (obs_wire Uart0 seg)). Qed.
+
+(* THE ECHO APPLICATION'S CONCLUSION IS THIS ONE'S, at the echo discipline *)
+Lemma pipe_phi_echo (h : list mobs) :
+  pipe_phi h -> disc h -> Forall good_out (cycles_of h).
+Proof using.
+  intros Hp Hd.
+  assert (HD : Forall disc_seg (cycles_of h)).
+  { eapply Forall_impl; [exact Hd |]. intros seg [Hs _]. exact Hs. }
+  pose proof (Hp (disc_disc_p h HD Hd)) as Hg.
+  apply Forall_lookup. intros i seg Hi.
+  apply (good_out_p_echo seg).
+  - destruct (Forall_lookup_1 _ _ _ _ HD Hi) as (Hb & _ & _). exact Hb.
+  - exact (Forall_lookup_1 _ _ _ _ Hg Hi).
+Qed.
+
 (* ====================================================================== *)
 (*  7.  DETERMINACY: TWO WITNESSES PUT THE SAME BYTES ON THE WIRE          *)
 (*                                                                        *)
@@ -2461,7 +2567,7 @@ Lemma pcont_pair_det (ps ps' : list nat) (l : pline)
   (palt_panic a' = true -> (1 < pro_rounds ps')%nat) ->
   (palt_panic a = true -> X <> [] -> (1 < pro_rounds ps)%nat) ->
   (palt_isforkS a = true -> X = []) ->
-  ~ pmergeable (pcont l a') ->
+  (pline_is_pipe l = true -> ~ pmergeable (pcont l a')) ->
   (pcont_all ps' l a' ++ X') `prefix_of` (pcont_all ps l a ++ X) ->
   (palt_panic a = true -> (1 < pro_rounds ps)%nat)
   /\ pcont_all ps' l a' = pcont_all ps l a
@@ -2482,12 +2588,13 @@ Proof using.
   assert (Hfa' : palt_isforkS a' = false).
   { destruct (palt_isforkS a') eqn:Hf; [exfalso | reflexivity].
     destruct (palt_isforkS_inv a' Hf) as [sl ->].
-    exact (Hnm (pmergeable_forkS l sl Ha')). }
+    exact (Hnm (palt_ok_forkS_pipe l sl Ha') (pmergeable_forkS l sl Ha')). }
   assert (Hfa : palt_isforkS a = false).
   { destruct (palt_isforkS a) eqn:Hf; [exfalso | reflexivity].
     destruct (palt_isforkS_inv a Hf) as [sl ->].
     rewrite (Hd4 eq_refl) app_nil_r in Hp.
-    apply Hnm. apply (pmergeable_prefix _ (pcont_all ps l (PForkS sl))).
+    apply (Hnm (palt_ok_forkS_pipe l sl Ha)).
+    apply (pmergeable_prefix _ (pcont_all ps l (PForkS sl))).
     - etrans; [| etrans; [apply prefix_app_r; reflexivity | exact Hp]].
       rewrite /pcont_all. apply prefix_app_r. reflexivity.
     - rewrite /pcont_all palt_panic_forkS app_nil_r.
@@ -2624,7 +2731,7 @@ Lemma alt_seq_p_prefix_det (q' : nat) :
     (forall i, (i < q')%nat -> palt_ok (pline_of (bs' !!! i)) (palt_at cs' i)) ->
     (forall i, (i < q')%nat -> palt_isforkS (palt_at cs i) = true ->
        (S i = q /\ t = [])) ->
-    (forall i, (i < q')%nat ->
+    (forall i, (i < q')%nat -> pline_is_pipe (pline_of (bs' !!! i)) = true ->
        ~ pmergeable (pcont (pline_of (bs' !!! i)) (palt_at cs' i))) ->
     Forall (fun l => wl_nl ∉ l) bs -> Forall (fun l => wl_nl ∉ l) bs' ->
     wl_nl ∉ t' -> wl_nl ∉ t ->
@@ -2692,8 +2799,9 @@ Proof using.
   { intros Hf. destruct (Hd4u 0%nat ltac:(lia) Hf) as [Hq Ht].
     assert (Hp0 : p = 0%nat) by lia.
     by rewrite Hp0 alt_seq_p_0 Ht. }
-  assert (Hnmh : ~ pmergeable
-                   (pcont (pline_of (bs !!! 0%nat)) (palt_at cs' 0%nat))).
+  assert (Hnmh : pline_is_pipe (pline_of (bs !!! 0%nat)) = true ->
+            ~ pmergeable
+                (pcont (pline_of (bs !!! 0%nat)) (palt_at cs' 0%nat))).
   { rewrite -Hhd. exact (Hnmp 0%nat ltac:(lia)). }
   rewrite !alt_cont_p_0 in Hrest.
   destruct (pcont_pair_det ps ps' (pline_of (bs !!! 0%nat))
@@ -2782,6 +2890,7 @@ Lemma sessp_prefix_det (ps ps' cs cs' : list nat) (I' I : list (bv 8)) :
   (forall i, (i < nlines I')%nat -> palt_isforkS (palt_at cs i) = true ->
      (S i = nlines I /\ rest_of I = [])) ->
   (forall i, (i < nlines I')%nat ->
+     pline_is_pipe (pline_of (bodies_of I' !!! i)) = true ->
      ~ pmergeable (pcont (pline_of (bodies_of I' !!! i)) (palt_at cs' i))) ->
   sessp ps' cs' I' `prefix_of` sessp ps cs I ->
   I' `prefix_of` I /\ pro_ok_p ps cs (nlines I')

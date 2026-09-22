@@ -18,15 +18,13 @@
 #   make vtest-passes  build every run's proof, then print the table
 #   make audit      build, then Print Assumptions on the system theorem
 #   make audit-only the same audit, against an already-built tree
-#   make audit-echo / audit-echo-only  the same, for the ECHO APPLICATION
-#                   theorem -- a cone the system audit never walks
 #   make audit-tree / audit-tree-only  the same, for the TREE APPLICATION's
 #                   era-0 obligation -- a cone neither of the other two walks
 #   make audit-file / audit-file-only  the same, for the FILE APPLICATION's
 #                   top-level theorem -- a fourth cone again
-#   make audit-pipe / audit-pipe-only  the same, for the PIPELINE
-#                   APPLICATION's top-level theorem -- a fifth cone again
-#   make audit-all / audit-all-only    BOTH audits, run concurrently
+#   make audit-pipe / audit-pipe-only  the same, for the APPLICATION theorem
+#                   (echo and pipeline lines) -- a cone the system audit never walks
+#   make audit-all / audit-all-only    system + application, run concurrently
 #   make model      compile the Sail-generated Coq model (model-xv6iris/)
 #   make kernel     build the xv6 kernel ELF (xv6-riscv/kernel/kernel)
 #   make user       build the xv6 user-space programs (xv6-riscv/user/_*)
@@ -147,7 +145,7 @@ USER_DUMPS ?= sync:Sync echo:Echo sh:Sh init:Init cat:Cat
 .PHONY: all proofs model kernel user dump dump-force kernel-rocq user-rocq \
         xv6-rev-check sail-rev-check gen-code check-decode update-decode \
         gen-ucode check-ucode \
-        audit audit-only audit-echo audit-echo-only audit-tree audit-tree-only audit-file audit-file-only audit-pipe audit-pipe-only audit-all audit-all-only vtest vtest-check vtest-check-ci vtest-gen vtest-deps \
+        audit audit-only audit-tree audit-tree-only audit-file audit-file-only audit-pipe audit-pipe-only audit-all audit-all-only vtest vtest-check vtest-check-ci vtest-gen vtest-deps \
         hwtest hwtest-gen hwtest-gen-all hwtest-probe \
         vtest-runs vtest-passes vtest-table \
         clean clean-proofs distclean model-gen
@@ -357,19 +355,6 @@ audit: proofs
 audit-only:
 	cd $(IRIS) && $(RUN) coqc $(AUDIT_FLAGS) -noglob SystemAssumptions.v
 
-# The SAME audit for the APPLICATION theorem (iris/EchoAssumptions.v):
-# `Print Assumptions` on UInitBootAdequacy.echo_adequacy_echoSigma.  It is a
-# SEPARATE target because neither theorem's cone contains the other -- the
-# system audit above never walks the Uk*/USh*/UInit*/UEcho* program tier, so it
-# cannot see an undischarged Spec* module Parameter hiding behind a seal there.
-# That file's header has the argument in full.  Same reasons for -noglob and
-# for staying out of iris/_CoqProject as SystemAssumptions.v.
-audit-echo: proofs
-	$(MAKE) audit-echo-only
-
-audit-echo-only:
-	cd $(IRIS) && $(RUN) coqc $(AUDIT_FLAGS) -noglob EchoAssumptions.v
-
 # The SAME audit for the TREE APPLICATION (iris/TreeAssumptions.v): `Print
 # Assumptions` on TreeImg.tree_Happ_init, the era-0 obligation of
 # AppTree.app_tree at the literal mkfs image.  A THIRD target for the reason
@@ -400,16 +385,15 @@ audit-file: proofs
 audit-file-only:
 	cd $(IRIS) && $(RUN) coqc $(AUDIT_FLAGS) -noglob FileAssumptions.v
 
-# The SAME audit for the PIPELINE APPLICATION (iris/PipeAssumptions.v): `Print
-# Assumptions` on UPipeBootAdequacy.pipe_adequacy_pipeSigma, the whole-system
-# theorem at AppPipe.app_pipe -- the `echo ... | cat' application.  A FIFTH
-# target for the reason there is a fourth: no two of the five cones contain
-# each other -- this one walks PipeDisc/PipeDiscDec/PipeOutPure/PipeOut/
-# PipeLinks/AppPipeClaim/AppPipe, which none of the other four do.  That
-# file's header says what it audits, and in particular that the theorem's one
-# open premise (Hprog, al_programs at app_pipe -- sh's round at the pipeline
-# line) is a PREMISE and so is invisible to Print Assumptions by construction.
-# Same reasons for -noglob and for staying out of iris/_CoqProject.
+# The SAME audit for the APPLICATION theorem (iris/PipeAssumptions.v): `Print
+# Assumptions` on UInitPipeAdequacy.pipe_adequacy_pipeSigma_final, the
+# whole-system theorem at AppPipe.app_pipe -- echo and pipeline lines at the
+# console; the echo theorem is its corollary.  A SEPARATE target because
+# neither theorem's cone contains the other -- the system audit above never
+# walks the Uk*/USh*/UInit*/UEcho* program tier, so it cannot see an
+# undischarged Spec* module Parameter hiding behind a seal there.  That file's
+# header has the argument in full.  Same reasons for -noglob and for staying
+# out of iris/_CoqProject as SystemAssumptions.v.
 audit-pipe: proofs
 	$(MAKE) audit-pipe-only
 
@@ -417,7 +401,7 @@ audit-pipe-only:
 	cd $(IRIS) && $(RUN) coqc $(AUDIT_FLAGS) -noglob PipeAssumptions.v
 
 # BOTH audits, and the reason this target exists rather than a habit of typing
-# `make audit-only audit-echo-only`: that line SERIALISES them.  Make runs the
+# `make audit-only audit-pipe-only`: that line SERIALISES them.  Make runs the
 # goals on its command line one after another unless it is itself parallel, so
 # the two would cost the sum of their wall clocks for no reason -- they are
 # independent single-threaded coqc processes over an already-built tree,
@@ -435,7 +419,7 @@ audit-all: proofs
 	$(MAKE) audit-all-only
 
 audit-all-only:
-	$(MAKE) -j2 --output-sync=target audit-only audit-echo-only
+	$(MAKE) -j2 --output-sync=target audit-only audit-pipe-only
 
 # ---- 5. vtest: the device semantics, differentially tested against QEMU ----
 #

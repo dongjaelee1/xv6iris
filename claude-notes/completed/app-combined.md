@@ -1,8 +1,8 @@
 # Project: the COMBINED application — `echo …` and `echo … | cat` under one theorem
 
-**STATUS: OPEN (started 2026-09-25, owner: "combine the two apps … stage
-this work: first relax the input discipline for the pipe app, then allow
-both commands in one combined app").**  Design of record:
+**STATUS: COMPLETE 2026-09-25 (started 2026-09-25, owner: "combine the two
+apps … stage this work: first relax the input discipline for the pipe app,
+then allow both commands in one combined app").**  Design of record:
 [`../design/app-pipe.md`](../design/app-pipe.md) §0.2.  Builds on the GCP
 VM (`claude-notes/remote-build-gcp.md`); one remote tree per checkout.
 
@@ -28,18 +28,21 @@ VM (`claude-notes/remote-build-gcp.md`); one remote tree per checkout.
 - [x] Gate: whole tree green on the VM, `make audit-pipe-only` = 14,
   system 13, echo 14, tree 13.  Commit, push.
 
-## Stage 2 — one application
+## Stage 2 — one application — LANDED 2026-09-25
 
-- [ ] `d4_p` guarded on the line shape; `pcont_pair_det`,
+- [x] `d4_p` guarded on the line shape; `pcont_pair_det`,
   `sessp_prefix_det`, the `d4_p_*` laws and their consumers.
-- [ ] `disc_disc_p`, `good_out_p_good_out`.
-- [ ] `UInitPipeAdequacy.echo_adequacy`; `pipeProtoΣ` folded into
+- [x] `disc_disc_p`, `d4_p_echo`, `expected_rel_p_echo`, `good_out_p_echo`,
+  `pipe_phi_echo`.
+- [x] `UInitPipeAdequacy.echo_adequacy`; `pipeProtoΣ` folded into
   `pipeΣ`; `UInitBootAdequacy.v`, `EchoAssumptions.v`, `audit-echo`
   retired (Makefile, `.github/workflows/ci.yml`, `_CoqProject`).
-- [ ] Notes: `design/applications.md` §0, `README.md`, durable-notes'
+- [x] Notes: `design/applications.md` §0, `README.md`, durable-notes'
   audit baseline, `completed/app-echo.md` banner; this file to
   `completed/`.
-- [ ] Gate as stage 1, with the echo audit gone.
+- [x] Gate as stage 1, with the echo audit gone: tree green, system 13,
+  tree 13, pipe 14; `tools/proof_coverage.py --check` clean (the stray
+  `PipeRound8Assumptions.v` lane journal removed).
 
 ## Findings
 
@@ -51,3 +54,12 @@ VM (`claude-notes/remote-build-gcp.md`); one remote tree per checkout.
   witness is stated at the complete lines of the input before the byte
   (`disc_seg_p'_pt_last`, all four conjuncts through `bodies_of_done`),
   which is what lets `sessp_prefix_det2` run unchanged.
+- **Stage 2 (2026-09-25).**  The D4 guard costs one premise on
+  `pcont_pair_det` (both of its uses already had a `PForkS` alternative
+  in hand, which `palt_ok` refuses at `LEcho`), the same premise threaded
+  through `alt_seq_p_prefix_det` / `sessp_prefix_det` / the `d4_p_*` laws,
+  and one `palt_ok_isforkS_pipe` at the claim's terminal case.  The
+  echo corollary is three pure lemmas (`disc_disc_p`, the direction
+  relax-d2 had deleted; `expected_rel_p_echo`; `pipe_phi_echo`) and an
+  `exact`.  `AppEcho.v` is untouched: its laws are the pipe record's; the
+  record value `app_echo` stays as the mould.

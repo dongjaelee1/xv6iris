@@ -1,8 +1,10 @@
 # Project: the ECHO application — `echo hello world` end to end, file system unmodified
 
 **STATUS: COMPLETE, ARCHIVED 2026-09-16.**  The theorem is closed
-(`UInitBootAdequacy.echo_adequacy_echoΣ`, audited by `make
-audit-echo-only`), nothing is owed by any lane, and the post-QED redesign
+(since 2026-09-25 `UInitPipeAdequacy.echo_adequacy`, a corollary of the
+pipeline application's theorem, audited by `make audit-pipe-only`;
+`UInitBootAdequacy.v` and `EchoAssumptions.v` are retired -- design
+`app-pipe.md` §0.2), nothing is owed by any lane, and the post-QED redesign
 that re-cut the console claim underneath it has landed too
 ([`post-qed-redesign.md`](post-qed-redesign.md), archived beside it).  Its WAIT-EXIT
 design shipped too — see the section at the end of this file for where each

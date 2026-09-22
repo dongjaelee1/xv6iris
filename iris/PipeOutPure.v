@@ -346,14 +346,15 @@ Qed.
 Lemma d4_p_snoc_vacuous (cs : list nat) (I : list (bv 8)) (b : bv 8)
     (i : nat) :
   d4_p cs (I ++ [b]) -> (i < nlines I)%nat ->
+  pline_is_pipe (pline_of (bodies_of (I ++ [b]) !!! i)) = true ->
   pmergeable (pcont (pline_of (bodies_of (I ++ [b]) !!! i))
                (palt_at cs i)) ->
   False.
 Proof using.
-  intros Hd4 Hi Hm.
+  intros Hd4 Hi Hp Hm.
   assert (Hle : (nlines I <= nlines (I ++ [b]))%nat)
     by (apply nlines_prefix; by eexists).
-  destruct (d4_p_at cs (I ++ [b]) i Hd4 ltac:(lia) Hm) as [Hn Hr].
+  destruct (d4_p_at cs (I ++ [b]) i Hd4 ltac:(lia) Hp Hm) as [Hn Hr].
   destruct (decide (b = wl_nl)) as [-> | Hb].
   - rewrite nlines_snoc_nl in Hn. lia.
   - rewrite (rest_of_snoc_other I b Hb) in Hr.
@@ -366,10 +367,11 @@ Qed.
 Lemma d4_p_nomerge_snoc (cs : list nat) (I : list (bv 8)) (b : bv 8) :
   alts_ok_p (I ++ [b]) cs -> d4_p cs (I ++ [b]) ->
   forall i, (i < nlines I)%nat ->
+    pline_is_pipe (pline_of (bodies_of I !!! i)) = true ->
     ~ pmergeable (pcont (pline_of (bodies_of I !!! i))
                     (palt_at (take (nlines I) cs) i)).
 Proof using.
-  intros Hao Hd4 i Hi Hm.
+  intros Hao Hd4 i Hi Hp Hm.
   assert (Hle : (nlines I <= nlines (I ++ [b]))%nat)
     by (apply nlines_prefix; by eexists).
   assert (Hlen : length cs = nlines (I ++ [b]))
@@ -382,16 +384,16 @@ Proof using.
   { destruct (bodies_of_prefix I (I ++ [b]) ltac:(by eexists)) as [z Hz].
     rewrite Hz !list_lookup_total_alt lookup_app_l;
       [reflexivity | rewrite /nlines in Hi; lia]. }
-  rewrite Hpa in Hm. rewrite -Hbod in Hm.
-  exact (d4_p_snoc_vacuous cs I b i Hd4 Hi Hm).
+  rewrite Hpa in Hm. rewrite -Hbod in Hm. rewrite -Hbod in Hp.
+  exact (d4_p_snoc_vacuous cs I b i Hd4 Hi Hp Hm).
 Qed.
 
 Lemma d4_p_take_snoc (cs : list nat) (I : list (bv 8)) (b : bv 8) :
   alts_ok_p (I ++ [b]) cs -> d4_p cs (I ++ [b]) ->
   d4_p (take (nlines I) cs) I.
 Proof using.
-  intros Hao Hd4. apply d4_p_intro. intros i Hi Hm.
-  by destruct (d4_p_nomerge_snoc cs I b Hao Hd4 i Hi Hm).
+  intros Hao Hd4. apply d4_p_intro. intros i Hi Hp Hm.
+  by destruct (d4_p_nomerge_snoc cs I b Hao Hd4 i Hi Hp Hm).
 Qed.
 
 Lemma disc_seg_p'_in (seg : list mobs) (b : bv 8) :
@@ -1730,6 +1732,7 @@ Lemma sessp_prefix_det2 (ps ps' cs cs' : list nat) (I' I : list (bv 8)) :
   (forall i, (i < nlines I')%nat -> palt_isforkS (palt_at cs i) = true ->
      (S i = nlines I /\ rest_of I = [])) ->
   (forall i, (i < nlines I')%nat ->
+     pline_is_pipe (pline_of (bodies_of I' !!! i)) = true ->
      ~ pmergeable (pcont (pline_of (bodies_of I' !!! i)) (palt_at cs' i))) ->
   sessp ps' cs' I' `prefix_of` sessp ps cs I ->
   I' `prefix_of` I /\ pro_ok_p ps cs (nlines I')
@@ -1750,6 +1753,8 @@ Lemma disc_seg_p'_pt_last_raw (seg : list mobs) (c : bv 8) :
     pro_ok_p ps' cs' (nlines (removelast (ins seg)))
     /\ alts_ok_p (removelast (ins seg)) cs'
     /\ (forall i, (i < nlines (removelast (ins seg)))%nat ->
+          pline_is_pipe (pline_of (bodies_of (removelast (ins seg)) !!! i))
+            = true ->
           ~ pmergeable
               (pcont (pline_of (bodies_of (removelast (ins seg)) !!! i))
                  (palt_at cs' i)))
@@ -1790,6 +1795,9 @@ Lemma disc_seg_p'_pt_last (seg : list mobs) (c : bv 8) :
     pro_ok_p ps' cs' (nlines (done_of (removelast (ins seg))))
     /\ alts_ok_p (done_of (removelast (ins seg))) cs'
     /\ (forall i, (i < nlines (done_of (removelast (ins seg))))%nat ->
+          pline_is_pipe
+            (pline_of (bodies_of (done_of (removelast (ins seg))) !!! i))
+            = true ->
           ~ pmergeable
               (pcont (pline_of
                         (bodies_of (done_of (removelast (ins seg))) !!! i))

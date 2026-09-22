@@ -994,18 +994,23 @@ downgrade, never an error.
 
 ## The adequacy-print baseline
 
-THERE ARE TWO AUDIT TARGETS, and neither cone contains the other. `make
+THERE ARE TWO MAIN AUDIT TARGETS, and neither cone contains the other. `make
 audit-only` (`iris/SystemAssumptions.v`) prints
 `xv6_fs_adequacy_xv6Σ` — the chain at the TRIVIAL application, which never
-walks `App`/`AppEcho`/`EchoOut`/`EchoLinks*`/`EchoDisc` or the
-`Uk*`/`USh*`/`UInit*`/`UEcho*` program tier. `make audit-echo-only`
-(`iris/EchoAssumptions.v`, landed 2026-09-14) prints
-`UInitBootAdequacy.echo_adequacy_echoΣ` — the CLOSED application theorem
-(concrete functor list `echoΣ`, the disk at the mkfs image, only the three
-hardware facts left), whose cone DOES walk all of that. **Audit the closed
-corollary, never the `modulo_phi` form**: the axiom list of a theorem you
-cannot instantiate says nothing, and a `Σ`-generic statement no concrete `Σ`
-satisfies is vacuous — fixing the functor list is what checks that. **Run BOTH after a change that touches the program
+walks `App`/`AppEcho`/`AppPipe`/`EchoOut`/`PipeOut`/`EchoDisc`/`PipeDisc` or
+the `Uk*`/`USh*`/`UInit*`/`UEcho*`/`UCat*` program tier. `make
+audit-pipe-only` (`iris/PipeAssumptions.v`) prints
+`UInitPipeAdequacy.pipe_adequacy_pipeΣ_final` — the CLOSED application
+theorem (echo and pipeline lines at the console; concrete functor list
+`pipeΣ`, the disk at the mkfs image, only the three hardware facts left),
+whose cone DOES walk all of that; the echo application's theorem
+(`UInitPipeAdequacy.echo_adequacy`) is its corollary in the same cone, so
+there is no separate echo audit any more. The tree and file applications
+keep their own (`audit-tree-only`, `audit-file-only`). **Audit the closed
+corollary, never a `Σ`-generic or premise-carrying form**: the axiom list
+of a theorem you cannot instantiate says nothing, and a `Σ`-generic
+statement no concrete `Σ` satisfies is vacuous — fixing the functor list is
+what checks that. **Run BOTH after a change that touches the program
 tier**: the system audit cannot see an axiom leaked there, and a grep for
 `Admitted`/`Axiom` cannot see an undischarged `Spec*` module `Parameter`
 sitting behind a sealed functor — only `Print Assumptions` can. `make
@@ -1015,8 +1020,7 @@ and puts each list in the run's step summary under its own heading, so a
 regression in either is visible without anyone remembering to type the
 command.
 
-`make audit-echo-only` must show these FOURTEEN (md5 of the filtered output
-`a78bf9a051fb56b084795d782df04045`): the thirteen below PLUS
+`make audit-pipe-only` must show FOURTEEN: the thirteen below PLUS
 `PrimString.length`, reached through `PStringBytes.pstring_hex_length`, the
 byte-count every hex-imported binary blob is decoded by.
 
@@ -1038,7 +1042,7 @@ From the PROOF only: `functional_extensionality_dep`.
 - **`audit-only` does not rebuild**, so against a stale tree the list is
   archaeology.
 - **ONE AUDIT FILE PER APPLICATION, and a lane never adds its own.** There are
-  five `iris/*Assumptions.v` — system, echo, tree, file, pipe — each with a
+  four `iris/*Assumptions.v` — system, tree, file, pipe — each with a
   `make audit-*-only` target and a commented `_CoqProject` row. A lane whose
   lemmas are not yet in the anchor theorem's cone (they sit behind an open
   premise, so the anchor's print says nothing about them) edits that

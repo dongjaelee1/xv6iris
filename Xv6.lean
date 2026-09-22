@@ -233,6 +233,7 @@ import Xv6.SpecArgint
 import Xv6.SpecArgfd
 import Xv6.SpecFdalloc
 import Xv6.SpecSysDup
+import Xv6.SpecSysClose
 import Xv6.SpecKfork
 import Xv6.SpecUserinit
 import Xv6.SpecEither
@@ -285,6 +286,7 @@ import Xv6.ProofArgint
 import Xv6.ProofArgfd
 import Xv6.ProofFdalloc
 import Xv6.ProofSysDup
+import Xv6.ProofSysClose
 import Xv6.LinkFilealloc
 import Xv6.LinkFiledup
 import Xv6.LinkFileclose
@@ -294,5 +296,6 @@ import Xv6.LinkArgint
 import Xv6.LinkArgfd
 import Xv6.LinkFdalloc
 import Xv6.LinkSysDup
+import Xv6.LinkSysClose
 import Xv6.ProofKfork
 import Xv6.LinkKfork

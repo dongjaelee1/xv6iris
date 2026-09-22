@@ -404,6 +404,30 @@ theorem procOfilesOwe_install (γ : FileNames) (γd : Nat → GName) (pa : BitVe
     rw [ofileLentOrSlot_in γ γd pa (fd :: D) fd v' (List.mem_cons_self)]
     iframe Hc; ipureintro; exact hnz
 
+/-- CLOSE a lent descriptor: its cell out (to be nulled), and back in null with
+the unit and the closed authority (sys_close's store after fileclose). -/
+theorem procOfilesOwe_close (γ : FileNames) (γd : Nat → GName) (pa : BitVec 64) (fs : List (BitVec 64))
+    (D : List Nat) (fd : Nat) (v : BitVec 64) (hnin : fd ∉ D) (hfd : fs[fd]? = some v) :
+    procOfilesOwe (GF := GF) γ γd pa fs (fd :: D) ⊢
+      wordPointsTo (pOfile pa fd) 8 (DFrac.own 1) v ∗
+      (wordPointsTo (pOfile pa fd) 8 (DFrac.own 1) 0#64 -∗ fdSlot γ -∗ fdStAuth γd fd .closed -∗
+        procOfilesOwe γ γd pa (fs.set fd 0#64) D) := by
+  iintro H
+  icases procOfilesOwe_acc γ γd pa fs (fd :: D) D fd v hfd
+      (fun j hj => ⟨fun h => by rcases List.mem_cons.1 h with h | h; exact absurd h hj; exact h,
+        fun h => List.mem_cons_of_mem _ h⟩) $$ H
+    with ⟨Hs, Hw⟩
+  ihave Hs := (show ofileLentOrSlot (GF := GF) γ γd pa (fd :: D) fd v ⊢
+      ⌜v ≠ 0#64⌝ ∗ wordPointsTo (pOfile pa fd) 8 (DFrac.own 1) v from by
+    rw [ofileLentOrSlot_in γ γd pa (fd :: D) fd v (List.mem_cons_self)]) $$ Hs
+  icases Hs with ⟨-, Hc⟩
+  iframe Hc
+  iintro Hc Hu Ha
+  iapply Hw $$ %(0#64) [Hc Hu Ha]
+  rw [ofileLentOrSlot_out γ γd pa D fd 0#64 hnin]
+  iapply ofileSlot_closed γ γd pa fd
+  iframe Hc Hu Ha
+
 /-! ## The block, split at the fd table -/
 
 /-- `procFieldsNoctx` minus the descriptor array. -/

@@ -814,9 +814,37 @@ Section UShPipeRound.
      so the bundle has to be an ANTECEDENT here; [sh_round_holds_pipe]
      already holds it and supplies it.  The Prop [sh_pipe_child_law_all]
      does not move. *)
+  (* ...AND IT TAKES THREE MORE ANTECEDENTS (design SS4.3u's standing
+     grant and SS4.3z item 3; lane SH-PIPE-ROUND-11 finding (6)/(7)).  All
+     three are supplied by [sh_round_holds_pipe] below and the Prop
+     [sh_pipe_child_law_all] does not move:
+
+       [UShEcho.sh_echo_slot T]   the LEFT child's exec supply takes it
+         ([UShEchoPipePay.sh_exec_sup_echo_pipe_at]), exactly as the /cat
+         pin is taken for the right child's.
+       [∃ v, era_pin γ (S gen_id) v]   the era's pin, BEFORE the walk.
+         The round's payload [UShPipeAssembly.pipe_Qc_at] and its lend
+         [PipeBoth.blk2_inv ... v ...] both NAME [v], and both are fixed
+         when [UShPipeChild.wp_kshm_child_pipe_paid_line_at] is applied --
+         while the only [v] inside the walk is the one under the lend's
+         own existential.  [era_pin] is an AGREEMENT ghost, so the two are
+         the same [v].
+       [□ (T -∗ UkSh.sh_deps)]   the FREE WRITE LAW under the taint.  The
+         round's [panic("fork")] law wants [EchoOut.inp_lb v I] (it builds
+         [UkShPipeFork.pterm_shape], whose second conjunct that is), and
+         the lend's own reading of it ([UShPipeLaw.pipe_wcl3_inp]) is
+         [(∃ v, era_pin ∗ inp_lb v I) ∨ T]: at a TAINTED turn there is no
+         bound to read and the five bytes have to go out on the free law.
+         Its only producer needs the era equation and [r], both of which
+         live in [UInitPipe.pipe_Hinit_boot] and neither of which this law
+         carries -- so it is an antecedent.  [udep] is NOT one:
+         [UexecExecMint.udep_free] is closed. *)
   Definition sh_pipe_child_law : iProp Σ :=
     (□ (PipeLinks.pipe_links g -∗
         UShCatPay.sh_cat_slot T -∗
+        UShEcho.sh_echo_slot T -∗
+        (∃ v : era_pins, era_pin γ (S gen_id) v) -∗
+        □ (T -∗ UkSh.sh_deps (PS := uprogSG_free)) -∗
         UkShFork.ushf_child_law_at (PS := uprogSG_free) (SG := uexecSG_xv6)
           Wct ushq_lp 68))%I.
 
@@ -912,13 +940,19 @@ Section UShPipeRound.
       UShEcho.sh_echo_slot T -∗
       UShCatPay.sh_cat_slot T -∗
       (∃ v : era_pins, era_pin γ (S gen_id) v) -∗
+      (* ...AND THE FREE WRITE LAW UNDER THE TAINT (design SS4.3z item 3):
+         the ONE thing the child law's new antecedent list adds to this
+         lemma's own premises.  [UInitPipe.pipe_Hinit_boot] has it -- it is
+         [UexecExecMint.udepw_law_of_sup_write] at the era's supply, the
+         same three lines its [init_deps] is built from. *)
+      □ (T -∗ UkSh.sh_deps (PS := uprogSG_free)) -∗
       sh_pipe_child_law -∗
       UkSh.ush_rest_l_at (PS := uprogSG_free) N γp T Wct Wbf Pm
         PipeUline.ush_line_pipe
         (UInitSh.sh_Rsh (ukn_t N) (ukn_d N) (ukn_s N)).
   Proof using Hkill.
-    iIntros "#Hlk #Hdep #Hslot #Hcat #Hpin #Hchl0".
-    iPoseProof ("Hchl0" with "Hlk Hcat") as "#Hchq".
+    iIntros "#Hlk #Hdep #Hslot #Hcat #Hpin #Hdps #Hchl0".
+    iPoseProof ("Hchl0" with "Hlk Hcat Hslot Hpin Hdps") as "#Hchq".
     iDestruct "Hpin" as (v) "#Hp".
     iPoseProof (pipe_kill_law_t v with "Hp") as "#Hkl".
     iPoseProof (pipe_child_law_echo_t with "Hlk Hdep Hslot") as "#Hchl".

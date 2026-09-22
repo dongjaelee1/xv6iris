@@ -137,6 +137,77 @@ EXEC-CAT, PIPE-CC, PIPE-EXEC-ECHO, PIPE-PID, PIPE-RO, PIPE-GEN, and six
 upstream merges.  Worklist and every lane's Findings:
 `claude-notes/completed/app-pipe.md`.
 
+### 0.2 RULED (2026-09-25, owner): the pipeline application becomes THE application, in two stages
+
+The model already admits both line shapes (§1: `pline = LEcho | LPipe`,
+an echo line's rounds are literally the echo application's,
+`sessp_sess`).  What kept the pipeline theorem from subsuming the echo
+theorem is its DISCIPLINE, narrower than echo's at two corners:
+
+1. **D2.**  Upstream's relax-d2 (2026-09-19) dropped the per-byte echo
+   wait from the echo discipline (`EchoDisc.disc_pt` reads the wire at
+   the input's COMPLETE lines, `LineWords.done_of`) and kept it on the
+   pipe side (`PipeDisc.disc_pt_p` at the whole typed input, worklist
+   UPSTREAM-MERGE-6).  A line typed as a burst is inside `disc` and
+   outside `disc_p`.
+2. **D4 at an echo line.**  §4.3h's item (2) ends coverage at ANY fork
+   failure uniformly, because `d4_p` is read off the continuation's
+   bytes and an echo line's main-loop fork panic (`PEcho 3`, `alt_panic`
+   = `fork\n`) is a shuffle prefix of `alt_forkc`.  The echo discipline
+   admits the shell's restart and the lines after it; `disc_p` does not.
+
+**Stage 1 — RELAX (the pipe side of relax-d2).**  `disc_pt_p ps cs p :=
+sessp ps cs (done_of (ins p)) prefix_of obs_wire Uart0 p`; `pipe_phi`
+textually unchanged, the theorem strictly stronger, the audit unmoved.
+What the proof pays, statement for statement echo's (`EchoOut`,
+`EchoOutPure` at commit `92249f035` are the mould): `PipeOut.pein_pure`
+gains (A1) `Forall log_echoed pops` LAST; `ch_arm_era_p` takes the
+history and records `cs = [echo_of c]` and (K1) `length (ch_log H) + 1 =
+length (ins (open_seg h))`; `pcl_pure` and `pcl_pure_o` gain (A2)
+`EchoOut.dl_ok so (ch_dl H)` LAST (`postage = ostage`, so `dl_ok` and
+its `_0`/`_mono`/`_out`/`_out_full` laws are echo's verbatim; only the
+echo step's `dl_ok_echo_p` is a twin, at `pending_p`); the open steps
+take `cons_hist_ok`/`cons_ev_ok` and refute the drop arm by the ring
+bound (`PipeOutPure.cons_drop_refuted_p`, `flush_lost_zero_p`, twins of
+echo's); `pecl_lt`/`echoed_lt_ins_p` retired; `pecl_step_echo` takes
+(K1) where it took the echoed count; both echo-step sites spend
+`PipeOutPure.next_input_of_complete_p` (echo's `next_input_of_complete`
+at `sessp`) and `D2_next_input_p` is deleted; `disc_seg_p'_pt_last`,
+`disc_p_out` and `PipeDiscDec`'s two `disc_pt_p` sites move to `done_of`
+with `nlines_done`.  `disc_p_disc` stays one-way until stage 2.
+Witnesses: a burst at an echo line and at a pipeline line
+(`demo_p_burst_*`), the anti-vacuity check for the per-line bound.
+
+**Stage 2 — ONE APPLICATION.**
+- `d4_p` is GUARDED ON THE LINE SHAPE: `pline_is_pipe (line i) ->
+  pmergeable (pcont …) -> nlines I = S i /\ rest_of I = []`.  This
+  overrides §4.3h item (2), whose objection ("narrowing would make
+  `d4_p` depend on `ps`") does not apply to a guard on the line: the
+  guard is decidable off `I` alone and `PipeDiscDec`'s canonicalisation
+  is untouched.  `pcont_pair_det`'s premise `~ pmergeable (pcont l a')`
+  becomes `pline_is_pipe l -> ~ pmergeable …`; both of its uses exclude a
+  `PForkS` alternative, which `palt_ok` already refuses at `LEcho`.
+  `sessp_prefix_det` and the `d4_p_*` laws carry the guard.  A fork
+  failure at a PIPELINE line still ends coverage (§4.3h's reason, the
+  stray, is a pipeline-only fact); an echo line's shell restart is
+  covered as the echo application covers it.
+- The bridge, both ways at an echo-only history: `disc_disc_p` (`disc
+  h -> disc_p h`, the direction relax-d2 deleted, now with `d4_p` free
+  at echo lines) beside `disc_p_disc`, and `good_out_p_good_out`
+  (`expected_rel_p` to `expected_rel` at `echo_only`, by `alts_ok_p_lt4`
+  and `sessp_sess`).
+- `UInitPipeAdequacy.echo_adequacy`: the echo theorem's statement (`disc
+  κs -> Forall good_out (cycles_of κs)`) as a corollary of
+  `pipe_adequacy_pipeΣ_final` through the bridge.  `UInitBootAdequacy.v`
+  (the echo-only `App` instance, `echo_laws`, `echo_adequacy_echoΣ`) and
+  `EchoAssumptions.v` with `make audit-echo{,-only}` are RETIRED: the
+  echo cone is inside the pipe cone, so the pipe audit is the echo audit.
+  `AppEcho.v` stays — its laws are the pipe record's (`pipe_pred_split`);
+  the record value `app_echo` goes if nothing else names it.
+  `PipeProto.pipeProtoΣ` is folded into `UPipeBootAdequacy.pipeΣ` and
+  `pipeΣ_full` goes.  CI, the Makefile's `audit-all-only` pairing and
+  durable-notes' audit baseline follow.
+
 ## 1. The pure model (`iris/PipeDisc.v`)
 
 Iris-free, over `EchoDisc`/`LineWords`, in `FileDisc.v`'s style (a line

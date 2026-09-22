@@ -1898,13 +1898,23 @@ Proof using.
   apply (disc_input_p_prefix _ _ ltac:(by eexists) Hd).
 Qed.
 
-(* D1/D2 AT ONE INPUT POSITION, at [EchoDisc.disc_pt]'s statement with
-   [sessp] in place of [sess] *)
+(* D1 AT ONE INPUT POSITION, at [EchoDisc.disc_pt]'s statement with
+   [sessp] in place of [sess]: the transcript of the input's COMPLETE
+   lines ([LineWords.done_of]) is on the wire, so a line may be typed as a
+   burst. *)
 Definition disc_pt_p (ps cs : list nat) (p : list mobs) : Prop :=
-  sessp ps cs (ins p) `prefix_of` obs_wire Uart0 p.
+  sessp ps cs (done_of (ins p)) `prefix_of` obs_wire Uart0 p.
 
 Global Instance disc_pt_p_dec ps cs p : Decision (disc_pt_p ps cs p).
 Proof using. rewrite /disc_pt_p. apply _. Defined.
+
+(* the per-byte rule implies the per-line one ([EchoDisc.disc_pt_of_strict]) *)
+Lemma disc_pt_p_of_strict (ps cs : list nat) (p : list mobs) :
+  sessp ps cs (ins p) `prefix_of` obs_wire Uart0 p -> disc_pt_p ps cs p.
+Proof using.
+  intro H. rewrite /disc_pt_p. etrans; [| exact H].
+  apply sessp_mono, done_of_prefix.
+Qed.
 
 (* the resolution's range condition, where [EchoDisc]'s was [c < 4]: every
    line's alternative is one ITS SHAPE admits.  [Forall2] also pins the
@@ -2196,13 +2206,7 @@ Proof using.
 Qed.
 
 (* THE COMPATIBILITY, at the whole history: a pipeline session that is
-   echo-only is disciplined for the echo application too.
-
-   IT IS ONE WAY.  [disc_pt_p] asks, at every input point, for the
-   transcript of the WHOLE input typed so far; [EchoDisc.disc_pt] asks only
-   for the input's COMPLETE LINES.  So a user who types a line as a burst
-   is inside the echo application's discipline and outside this one --
-   which is by design: the pipeline application keeps the per-byte rule. *)
+   echo-only is disciplined for the echo application too. *)
 Lemma disc_p_disc h :
   Forall disc_seg (cycles_of h) -> disc_p h -> disc h.
 Proof using.
@@ -2230,10 +2234,15 @@ Proof using.
       rewrite (list_lookup_total_correct _ _ _ Hc).
       exact (Forall_lookup_1 _ _ _ _ Hlt4 Hc). }
     destruct (Hall p Hp) as [Hok Hpt].
+    assert (Hepd : echo_only (done_of (ins p)))
+      by (exact (echo_only_prefix _ _ (done_of_prefix _) Hep)).
+    assert (Hc4d : forall j, (j < nlines (done_of (ins p)))%nat ->
+                     (cs !!! j < 4)%nat)
+      by (rewrite nlines_done; exact Hc4).
     split.
     + by apply (pro_ok_p_ok ps cs (nlines (ins p)) Hc4).
-    + apply disc_pt_of_strict.
-      rewrite -(sessp_sess ps cs (ins p) Hep Hc4). exact Hpt.
+    + rewrite /disc_pt -(sessp_sess ps cs (done_of (ins p)) Hepd Hc4d).
+      exact Hpt.
 Qed.
 
 (* ====================================================================== *)
@@ -3022,6 +3031,44 @@ Lemma demo_p_ran_disc : disc_seg_p' pd_seg_ran.
 Proof using.
   eapply (disc_seg_p'_intro pd_seg_ran [3%nat; 0%nat] [palt_code PRan]);
     apply (bool_decide_unpack _); vm_compute; exact I.
+Qed.
+
+(* THE BURST, at both line shapes: the whole line typed with none of it
+   echoed yet is disciplined ([EchoDisc.demo_seg_burst]'s twins). *)
+Definition pd_seg_burst : list mobs :=
+  demo_out u_prologue
+  ++ demo_in (line_bytes pd_l)
+  ++ demo_out (line_bytes pd_l)
+  ++ demo_out pd_ran.
+
+Lemma demo_p_burst_disc : disc_seg_p' pd_seg_burst.
+Proof using.
+  eapply (disc_seg_p'_intro pd_seg_burst [3%nat; 0%nat] [palt_code PRan]);
+    apply (bool_decide_unpack _); vm_compute; exact I.
+Qed.
+
+Lemma demo_p_burst : good_out_p pd_seg_burst.
+Proof using.
+  exists [3%nat; 0%nat], [palt_code PRan].
+  apply (bool_decide_unpack _). vm_compute. exact I.
+Qed.
+
+Definition pd_seg_burst_echo : list mobs :=
+  demo_out u_prologue
+  ++ demo_in (wl_line pd_ws)
+  ++ demo_out (wl_line pd_ws)
+  ++ demo_out (line_alts_of pd_ws !!! 0%nat).
+
+Lemma demo_p_burst_echo_disc : disc_seg_p' pd_seg_burst_echo.
+Proof using.
+  eapply (disc_seg_p'_intro pd_seg_burst_echo [3%nat; 0%nat] [0%nat]);
+    apply (bool_decide_unpack _); vm_compute; exact I.
+Qed.
+
+Lemma demo_p_burst_echo : good_out_p pd_seg_burst_echo.
+Proof using.
+  exists [3%nat; 0%nat], [0%nat].
+  apply (bool_decide_unpack _). vm_compute. exact I.
 Qed.
 
 (* ---- (2) THE LEFT EXEC FAILED ---------------------------------------- *)

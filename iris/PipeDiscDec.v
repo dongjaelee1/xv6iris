@@ -486,7 +486,8 @@ Proof using.
     destruct (pro_canon (S (pro_idx_p cs (nlines_max (in_pres seg))))
                 (length seg) ps HFps) as (ps0 & Hin0 & Hrd0 & Hag0).
     { intros r Hr. rewrite -Hpleq in Hr. split; [lia |].
-      etrans; [apply (sessp_pro_len ps cs (ins pl) r); lia |].
+      etrans; [apply (sessp_pro_len ps cs (done_of (ins pl)) r);
+               rewrite nlines_done; lia |].
       etrans; [apply prefix_length, Hptl |].
       etrans; [apply obs_wire_length |].
       exact (prefix_length _ _ Hplp). }
@@ -497,8 +498,10 @@ Proof using.
     assert (Hidxle : (pro_idx_p cs (nlines (ins p))
                       <= pro_idx_p cs (nlines_max (in_pres seg)))%nat)
       by (apply pro_idx_p_mono, nlines_max_ge, Hp).
-    assert (Hsame : sessp ps0 cs (ins p) = sessp ps cs (ins p)).
-    { apply sessp_ps_ext. intros r Hr. apply Hag0. lia. }
+    assert (Hsame : sessp ps0 cs (done_of (ins p))
+                    = sessp ps cs (done_of (ins p))).
+    { apply sessp_ps_ext. intros r Hr. rewrite nlines_done in Hr.
+      apply Hag0. lia. }
     split.
     + rewrite /pro_ok_p. split; [by eapply pro_cands_Forall | lia].
     + by rewrite /disc_pt_p Hsame.

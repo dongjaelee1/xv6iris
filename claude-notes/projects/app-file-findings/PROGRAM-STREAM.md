@@ -1908,3 +1908,17 @@ probe showed `PS` uncaptured.  Upstream spells it `UexecSG.uprogSG Σ`
 (`UShCatPay.v`, `UCatPipe.v`) — that spelling is now in all four files.
 RULE for durable-notes: under a backtick binder, QUALIFY the class name;
 an unbound name is not an error, it is a new variable.
+
+### Stretch 13, 2026-09-22: ITEM 3 CLOSES — `Hchild_cat` is a lemma; defect 4 is landed with it
+
+Branch `app-file/cat-walk` (whole-tree build pending at the time of writing):
+`UkReadFile`/`UkFileOpen`/`UkCatDeed`/`UCatKernel` bind
+`Context \`{PS : UexecSG.uprogSG Σ}` (defect 4); `UShRound.Hchild_cat` is proved
+at `UkShFork.ushf_child_law_at Wcf ushs_lp_cat 68` from the parked draft, plus
+ONE fix: `ushf_child_law_at` gained `uch (ukn_ch N') ∅` and `ush_pid N'`
+(the pipe campaign's PID/children work) — the pattern takes `Hch _` and
+converts by `UserChildren.uch_any_of`, exactly as `UkShEcho.
+ushf_child_law_holds_at_D` does.  The pipe-tier consumers of `UCatKernel`
+(`UShPipeCatRound`) rebuild green against the generic instance.
+`UShRound.v` HAS NO SECTION HYPOTHESES LEFT; its one `Admitted` is
+`sh_round_holds_file`.

@@ -48,7 +48,15 @@ Landed 2026-09-21:
   the fork's payload and a FRAME as parameters; the `app_taint` antecedent that
   made cat's entry out-of-spec-only is gone.  PROGRAM-STREAM.md stretch 11.
 
-NEXT: 3 (iv) `Hchild_cat` -- BLOCKED FIRST on `line_ok` being FALSE at `cat f`
+- **3 (iv) `Hchild_cat` is a LEMMA (2026-09-22)**, after four defects upstream
+  of it were fixed without moving a landed statement: `line_ok` false at
+  `cat f` (`ExecWords.exec_ok`, the `_x` lemmas, `UkShDiagAt`), the missing
+  frame across cat's entry, the console credential's state-aware block arm
+  (`FileLinksLine.fabs`, `fwc_post{,_at}`), and cat's deed tier pinned to the
+  generic deposit instance (the pipe campaign's §4.3z wall 2; four files bind
+  `PS : UexecSG.uprogSG Σ`).  PROGRAM-STREAM.md stretches 11-13.
+
+NEXT (the text below is the old plan): 5 `sh_round_holds_file`
 (the exec-node lemmas in `UkShEcho`/`UShEcho` are stated at `line_ok`, which
 demands the first word be `echo`; the owner's call whether to generalise them
 now), then the round's open/close conversions (the close is not

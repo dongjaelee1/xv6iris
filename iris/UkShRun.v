@@ -1091,6 +1091,15 @@ Section UkShRun.
          ∨ ∃ (γ : gname) (pidv : mword 32),
              ⌜r = (sign_extend' 64 pidv : mword 64)⌝ ∗
              ⌜(1 <= bv_unsigned pidv <= PIDMAX)%Z⌝ ∗
+             (* ...AND THE GENERATION IS FRESH (design app-pipe SS4.3y,
+                lane SH-PIPE-ROUND-11): the leaf's own row
+                ([UkFork.wp_uk_ecall_fork]'s parent arm, out of
+                [UexecRet.ufork_ans]), relayed instead of dropped.  What it
+                buys is that a caller forking TWICE grows its children set
+                twice, so a pipeline round can tell its two children's
+                payloads apart; every other caller introduces and drops
+                it. *)
+             ⌜γ ∉ Sc⌝ ∗
              child_tok γ pidv Q ∗
              UserChildren.uch (ukn_ch N) (Sc ∪ {[γ]})) -∗
         P (ukn_t N) (ukn_d N) (ukn_s N) -∗ usz (ukn_s N) szv -∗
@@ -1661,6 +1670,9 @@ Section UkShRun.
          ∨ ∃ (γ : gname) (pidv : mword 32),
              ⌜r = (sign_extend' 64 pidv : mword 64)⌝ ∗
              ⌜(1 <= bv_unsigned pidv <= PIDMAX)%Z⌝ ∗
+             (* ...and the generation is fresh (design app-pipe SS4.3y) --
+                see [wp_kshr_fork] *)
+             ⌜γ ∉ Sc⌝ ∗
              child_tok γ pidv Q ∗
              UserChildren.uch (ukn_ch N) (Sc ∪ {[γ]})) -∗
         UserFd.ustd (ukn_fd N) l -∗
@@ -1683,6 +1695,9 @@ Section UkShRun.
          ∨ ∃ (γ : gname) (pidv : mword 32),
              ⌜r = (sign_extend' 64 pidv : mword 64)⌝ ∗
              ⌜(1 <= bv_unsigned pidv <= PIDMAX)%Z⌝ ∗
+             (* ...and the generation is fresh (design app-pipe SS4.3y) --
+                see [wp_kshr_fork] *)
+             ⌜γ ∉ Sc⌝ ∗
              child_tok γ pidv Q ∗
              UserChildren.uch (ukn_ch N) (Sc ∪ {[γ]})) -∗
         P (ukn_t N) (ukn_d N) (ukn_s N) -∗ usz (ukn_s N) szv -∗
@@ -1928,6 +1943,7 @@ Section UkShRun.
                     ∨ ∃ (γ : gname) (pidv : mword 32),
                         ⌜r = (sign_extend' 64 pidv : mword 64)⌝ ∗
                         ⌜(1 <= bv_unsigned pidv <= PIDMAX)%Z⌝ ∗
+                        ⌜γ ∉ Sc⌝ ∗
                         child_tok γ pidv Q ∗
                         UserChildren.uch (ukn_ch N) (Sc ∪ {[γ]}))
                  ∗ P (ukn_t N) (ukn_d N) (ukn_s N) ∗ usz (ukn_s N) szv
@@ -2084,7 +2100,10 @@ Section UkShRun.
       iAssert (UserChildren.uch_any (ukn_ch N)) with "[Hans]" as "Hch".
       { iDestruct "Hans" as "[(_ & Hf & _) | Hpid]".
         - iApply (uch_any_of with "Hf").
-        - iDestruct "Hpid" as (γ pidv) "(_ & _ & _ & Hf)".
+        (* one slot more since design app-pipe SS4.3y: the answer's pid
+           arm carries the generation's freshness, which this index-free
+           corollary drops with the rest of the row. *)
+        - iDestruct "Hpid" as (γ pidv) "(_ & _ & _ & _ & Hf)".
           iApply (uch_any_of with "Hf"). }
       iApply ("Hpar" $! h' m' r
                 with "[%] [%] [%] HP Hsz Hstd [Hcwd] Hch HD Hpayv Hrun");

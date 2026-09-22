@@ -1047,7 +1047,15 @@ Section UkInitMain.
          what init LENT its child, verbatim, and this arm names it. *)
       { iDestruct "Hans" as "[(%Hm1 & Hf & Hrc) | Hpid]".
         - iLeft. iSplitR; [ iPureIntro; exact Hm1 | ]. iFrame "Hf Hrc".
-        - iRight. iExact "Hpid". }
+        (* design app-pipe SS4.3y: the leaf's pid arm carries the forked
+           generation's FRESHNESS now.  /init's round reads no such row --
+           it forks ONE child and reaps it -- so the conjunct is dropped
+           here; this arm's statement is byte-identical. *)
+        - iDestruct "Hpid" as (γc pidv) "(%Hr & %Hrng & _ & Htok & Hf)".
+          iRight. iExists γc, pidv.
+          iSplitR; [ iPureIntro; exact Hr | ].
+          iSplitR; [ iPureIntro; exact Hrng | ].
+          iFrame "Htok Hf". }
       { iFrame "Hcp Hrp Hap". }
     - (* ...and the CHILD under fresh ones.  Its ledger is dropped: init's
          child execs, and nothing before the exec allocates. *)

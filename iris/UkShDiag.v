@@ -8989,6 +8989,9 @@ Section UkShDiagLeaf.
          ∨ ∃ (γ : gname) (pidv : mword 32),
              ⌜r = (sign_extend' 64 pidv : mword 64)⌝ ∗
              ⌜(1 <= bv_unsigned pidv <= PIDMAX)%Z⌝ ∗
+             (* ...and the generation is fresh (design app-pipe SS4.3y) --
+                [UkShRun.wp_kshr_fork1]'s row, relayed verbatim *)
+             ⌜γ ∉ Sc⌝ ∗
              child_tok γ pidv Q ∗
              UserChildren.uch (ukn_ch N) (Sc ∪ {[γ]})) -∗
         UserFd.ustd (ukn_fd N) l -∗
@@ -9007,6 +9010,9 @@ Section UkShDiagLeaf.
          ∨ ∃ (γ : gname) (pidv : mword 32),
              ⌜r = (sign_extend' 64 pidv : mword 64)⌝ ∗
              ⌜(1 <= bv_unsigned pidv <= PIDMAX)%Z⌝ ∗
+             (* ...and the generation is fresh (design app-pipe SS4.3y) --
+                [UkShRun.wp_kshr_fork1]'s row, relayed verbatim *)
+             ⌜γ ∉ Sc⌝ ∗
              child_tok γ pidv Q ∗
              UserChildren.uch (ukn_ch N) (Sc ∪ {[γ]})) -∗
         P (ukn_t N) (ukn_d N) (ukn_s N) -∗ usz (ukn_s N) szv -∗

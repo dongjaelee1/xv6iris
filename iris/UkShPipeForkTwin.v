@@ -269,6 +269,21 @@ Section UkShPipeForkTwin.
     iSplitL "Hpanic".
     { (* ================= THE PANIC: fork failed ======================= *)
       iIntros (hA mA rA) "%Hmsg %HrA Hans Hustd Hpex Hrun".
+      (* design app-pipe SS4.3y: the leaf's panic arm carries the forked
+         generation's FRESHNESS now and this law does not -- the same
+         one-weakening as [UkShFork.wp_kshf_fork_core]'s. *)
+      iAssert ((⌜rA = (mword_of_int (-1) : mword 64)⌝
+                  ∗ UserChildren.uch γch ∅ ∗ Rc)
+               ∨ ∃ (γ : gname) (pidv : mword 32),
+                   ⌜rA = (sign_extend' 64 pidv : mword 64)⌝ ∗
+                   ⌜(1 <= bv_unsigned pidv <= PIDMAX)%Z⌝ ∗
+                   child_tok γ pidv Q ∗
+                   UserChildren.uch γch (∅ ∪ {[γ]}))%I
+        with "[Hans]" as "Hans".
+      { iDestruct "Hans" as "[Hf | Hpid]"; [ by iLeft | ].
+        iDestruct "Hpid" as (γx pidx) "(%Hr & %Hrng & _ & Htok & Hf)".
+        iRight. iExists γx, pidx. iFrame "Htok Hf".
+        iSplitR; [ iPureIntro; exact Hr | iPureIntro; exact Hrng ]. }
       iApply ("Hpanic" $! ∅ hA mA rA with "[%] [%] Hans Hustd Hpex Hrun");
         [ exact Hmsg | exact HrA ]. }
     iSplitL "Hhead Hpid Hre".
@@ -283,7 +298,8 @@ Section UkShPipeForkTwin.
       { rewrite /ushf_fans.
         iDestruct "Hans" as "[(_ & Hf & HRc) | Hpid']".
         - iExists ∅. iFrame "Hf". iLeft. iFrame "HRc". by iPureIntro.
-        - iDestruct "Hpid'" as (γ pidv) "(_ & _ & Htok & Hf)".
+        (* one slot more since design app-pipe SS4.3y *)
+        - iDestruct "Hpid'" as (γ pidv) "(_ & _ & _ & Htok & Hf)".
           iExists (∅ ∪ {[γ]}). iFrame "Hf". iRight.
           iExists γ, pidv. iFrame "Htok". by iPureIntro. }
       iDestruct "Hchx" as (Sw) "[Hch Hfans]".

@@ -919,6 +919,19 @@ Section UkShPipe.
      ∨ (∃ (γ : gname) (pidv : mword 32),
           ⌜r = (sign_extend' 64 pidv : mword 64)
            /\ (1 <= bv_unsigned pidv <= PIDMAX)%Z
+           (* ...AND THE GENERATION IS FRESH (design app-pipe SS4.3y, lane
+              SH-PIPE-ROUND-11): [UexecRet.ufork_ans]'s row, relayed
+              through the five sh-tier statements below this one
+              ([UkFork.wp_uk_ecall_fork], [UkShRun.wp_kshr_fork],
+              [wp_kshr_fork1], [UkShDiag.wp_kshr_fork1_final]) and read
+              here.  It is what makes the round's TWO forks grow the
+              children set TWICE: without it [γ1 = γ2] is permitted, the
+              first reap empties the set and the second wait's [-1] arm is
+              consistent, so the round receives ONE payload
+              ([UShPipeAssembly.ush_fork_ans_sets_differ] is what this
+              buys).  Every consumer carries the answer BY NAME, so no
+              statement above this definition moves. *)
+           /\ γ ∉ Sc
            /\ Sc' = Sc ∪ {[γ]}⌝ ∗
           child_tok γ pidv Q))%I.
 
@@ -1035,6 +1048,11 @@ Section UkShPipe.
           ∨ ∃ (γ : gname) (pidv : mword 32),
               ⌜r = (sign_extend' 64 pidv : mword 64)⌝
               ∗ ⌜(1 <= bv_unsigned pidv <= PIDMAX)%Z⌝
+              (* ...and the generation is fresh (design app-pipe SS4.3y):
+                 [UkShRun.wp_kshr_fork1]'s panic arm, relayed.  This arm
+                 is at [r = -1], so its consumer refutes the disjunct
+                 rather than reading the row. *)
+              ∗ ⌜γ ∉ Sc⌝
               ∗ child_tok γ pidv Qc
               ∗ UserChildren.uch (ukn_ch N) (Sc ∪ {[γ]})) -∗
          UserFd.ustd (ukn_fd N) ld -∗
@@ -1051,6 +1069,8 @@ Section UkShPipe.
           ∨ ∃ (γ : gname) (pidv : mword 32),
               ⌜r = (sign_extend' 64 pidv : mword 64)⌝
               ∗ ⌜(1 <= bv_unsigned pidv <= PIDMAX)%Z⌝
+              (* ...and the generation is fresh -- see the first tail *)
+              ∗ ⌜γ ∉ S1⌝
               ∗ child_tok γ pidv Qc
               ∗ UserChildren.uch (ukn_ch N) (S1 ∪ {[γ]})) -∗
          UserFd.ustd (ukn_fd N) ld -∗
@@ -1380,10 +1400,13 @@ Section UkShPipe.
       { iDestruct "Hans1" as "[(%He & Hch & HRc) | Hpid]".
         - iExists Sc. iFrame "Hch". iLeft. iFrame "HRc". iPureIntro.
           split; [ exact He | reflexivity ].
-        - iDestruct "Hpid" as (γ pidv) "(%Hr & %Hrng & Htok & Hch)".
+        - iDestruct "Hpid" as (γ pidv) "(%Hr & %Hrng & %Hnin & Htok & Hch)".
           iExists (Sc ∪ {[γ]}). iFrame "Hch". iRight. iExists γ, pidv.
           iFrame "Htok". iPureIntro.
-          split; [ exact Hr | split; [ exact Hrng | reflexivity ] ]. }
+          (* NOT [split_and!]: it splits the pid's [1 <= _ <= PIDMAX] into
+             two goals (durable-notes' own note). *)
+          split; [ exact Hr | split; [ exact Hrng
+                 | split; [ exact Hnin | reflexivity ] ] ]. }
       pose proof (UkShRun.ush_st_cs f1 mA sp0 t Hst_f1 HcsA) as Hst_mA.
       (* ---- 0x14c  c.bnez a0,0x17e -- TAKEN ---- *)
       iApply (wp_uk_cbnez N hA mA (mword_of_int 0x14c)
@@ -1457,10 +1480,11 @@ Section UkShPipe.
         { iDestruct "Hans2" as "[(%He & Hch & HRc) | Hpid]".
           - iExists S1. iFrame "Hch". iLeft. iFrame "HRc". iPureIntro.
             split; [ exact He | reflexivity ].
-          - iDestruct "Hpid" as (γ pidv) "(%Hr & %Hrng & Htok & Hch)".
+          - iDestruct "Hpid" as (γ pidv) "(%Hr & %Hrng & %Hnin & Htok & Hch)".
             iExists (S1 ∪ {[γ]}). iFrame "Hch". iRight. iExists γ, pidv.
             iFrame "Htok". iPureIntro.
-            split; [ exact Hr | split; [ exact Hrng | reflexivity ] ]. }
+            split; [ exact Hr | split; [ exact Hrng
+                   | split; [ exact Hnin | reflexivity ] ] ]. }
         pose proof (UkShRun.ush_st_cs f2 mD sp0 t Hst_f2 HcsD) as Hst_mD.
         (* ---- 0x182  c.bnez a0,0x1a6 -- TAKEN ---- *)
         iApply (wp_uk_cbnez N hD mD (mword_of_int 0x182)

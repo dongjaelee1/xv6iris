@@ -249,5 +249,7 @@ import Xv6.ProofKexit
 import Xv6.LinkKexit
 import Xv6.ProofKwait
 import Xv6.LinkKwait
+import Xv6.ProofPipeclose
+import Xv6.LinkPipeclose
 import Xv6.ProofKfork
 import Xv6.LinkKfork

@@ -429,7 +429,7 @@ Persistent, so every holder of either end shares it.  Built via
 `lockOpenable_of_dead`: the lock's invariant has a DEAD arm, and the licence
 to open it is a resource (a reference, or the lock token). -/
 def isPipe (γl : GName) (γp : PipeNames) (pi : BitVec 64) : IProp GF := iprop%
-  ⌜lockAddrOk pi⌝ ∗ kmapId pi ∗ kmapId (pi + 16#64) ∗
+  ⌜lockAddrOk pi⌝ ∗ ⌜pageValid pi⌝ ∗ kmapId pi ∗ kmapId (pi + 16#64) ∗
   ∃ lo lc : Nat,
     inv lockN (iprop(lockBody γl pi "pipe" (pipeResAt γp pi) lo lc ∨ pipeDead γl γp)) ∗
     lkFloor curCtx lo ∗ lkFloor curCtx lc
@@ -443,6 +443,20 @@ theorem isPipe_valid (γl : GName) (γp : PipeNames) (pi : BitVec 64) :
   iintro ⟨%h, _⟩
   ipureintro; exact h
 
+/-- kalloc's guarantee travels with the object: the page is re-freeable. -/
+theorem isPipe_pageValid (γl : GName) (γp : PipeNames) (pi : BitVec 64) :
+    isPipe (GF := GF) γl γp pi -∗ ⌜pageValid pi⌝ := by
+  unfold isPipe
+  iintro ⟨_, %h, _⟩
+  ipureintro; exact h
+
+/-- The two lock words' identity-map claims (what the freed-page reassembly needs). -/
+theorem isPipe_kmaps (γl : GName) (γp : PipeNames) (pi : BitVec 64) :
+    isPipe (GF := GF) γl γp pi -∗ kmapId pi ∗ kmapId (pi + 16#64) := by
+  unfold isPipe
+  iintro ⟨_, _, #H1, #H2, _⟩
+  iframe H1 H2
+
 /-- The lock's FLOOR rides inside `isPipe`, exactly as it rides inside
 `isLock`; no client of the pipe ever names `lo`/`lc`. -/
 theorem isPipe_inv (γl : GName) (γp : PipeNames) (pi : BitVec 64) :
@@ -450,7 +464,7 @@ theorem isPipe_inv (γl : GName) (γp : PipeNames) (pi : BitVec 64) :
       inv lockN (iprop(lockBody γl pi "pipe" (pipeResAt γp pi) lo lc ∨ pipeDead γl γp)) ∗
       lkFloor curCtx lo ∗ lkFloor curCtx lc := by
   unfold isPipe
-  iintro ⟨_, _, _, H⟩
+  iintro ⟨_, _, _, _, H⟩
   iexact H
 
 /-- What acquire / holding / release take.  The credential is left to the
@@ -459,7 +473,7 @@ theorem isPipe_openable (γl : GName) (γp : PipeNames) (pi : BitVec 64) :
     isPipe (GF := GF) γl γp pi -∗
     lockOpenable γl pi "pipe" (pipeResAt γp pi) (pipeDead γl γp) := by
   unfold isPipe
-  iintro ⟨%hok, #Hm1, #Hm2, %lo, %lc, #Hinv, #Hflo, #Hflc⟩
+  iintro ⟨%hok, %_, #Hm1, #Hm2, %lo, %lc, #Hinv, #Hflo, #Hflc⟩
   iapply (lockOpenable_of_dead γl pi "pipe" (pipeResAt γp pi) (pipeDead γl γp) lo lc hok)
     $$ Hm1 Hm2 Hinv Hflo Hflc
 

@@ -2099,3 +2099,67 @@ two leaves and everything between them and the round (`FileOpen.file_create_sup`
 (A, a shortcut) split `init_cons_sup`'s `Cns` so that the exec-time credential
 has no `never` arm — but `init_cons_leaves_file_of_leg` and the dance are stated
 at `init_cons_cred`, so this moves the generic dance.  Not taken.
+
+## PROGRAM STREAM, stretch 17 (2026-09-22) — stretch 16's design point, RULED and LANDED: the console credential over `option Z`, and the name predicate reaches `open(O_CREATE)`
+
+Branch `app-file/cons-cred`.  Option C was taken, and it exposed a second,
+real gap before it could be proved.
+
+**The gap.**  Under `cons_never` the file claim's console component says
+`cons_absent v` at every view (the sealed arm of `AppEcho.cons_state`), and
+`FileOpen.file_acre_commit` -- the create's parent leg -- is stated at
+`FsAbsCreateFire.acre_commit_at_gen`, which quantifies the created NAME.  At
+`cons_made jc` a create at `console` was refuted because the row was present
+(`cons_present_astep` against `cre_pre`'s absence); at `cons_never` nothing
+refutes it, and `echo x > console` really would put a plain file where the
+sealed claim promises absence.  The discipline pins the redirect target to
+`f`, but that fact never reached the AU: RULING NM's name predicate
+(`FsAbsCreateNm`) had been threaded to `mknod` only, and `sys_open`'s create
+entry pinned it at `fun _ => True` (`open_acre_file_of_triv`).
+
+**RULING NM-OPEN (landed).**  `SysOpenDefs.open_au_create_at`'s parent leg is
+`acre_commit_at_nm … (npar_nm M pv) (npar_cur M pv P) Farm`; `open_au_pre_create
+… pl Nm …`; `open_acre_inst` by hand as `mknod_acre_inst`; `_of_all` bridges
+by `acre_commit_at_nm_of`.  `SpecSysOpen`: the five arm sites at the guarded
+predicate, `cre_fail_to_open` at `npar_nm M pv`, the trivial bridge deleted.
+`ProofSysOpenEntryC`: the `iAssert` bridge gone, `cre_commits_of_file` and
+`wp_create_sconf` at `npar_nm Mim pvv`, the name premise paid by
+`npar_nm_intro Mim pvv (bview plen bp) nm Hpof H` (`PathElems.path_elems`
+qualified), the entry's own premise restated.  `ProofSysOpenCreArm.socr_exists`
+/ `socr_exists_key` gain `Nm` (instantiated at `npar_nm Mim pvv` by their
+callers).  `FsAbsInvFire.fsabs_open_pre_create` at `Nm`.  Producers:
+`TreeMove.tree_open_create_au` bridges (`acre_commit_at_gen_nm_of`);
+`FileOpen.file_open_create_au` NARROWS instead (`acre_commit_at_gen_nm_mono`
+from `npar_nm M pv` to `redir_name_ok` by `npar_nm_elim` + `Hlast`), then
+moves the cursor with the new `FsAbsCreateNm.acre_commit_at_gen_nm_cur_mono`.
+Consumers of the arms (`UkTreeCreate`, `FileOpen.file_open_create_fail_pay`,
+…) refund or ignore the leg and did not move.
+
+**THE OWNER'S RULING ON THE NAMES:** a pattern, "out*"-like, not one literal.
+`FileDeltas.redir_prefix := fname_f`, `redir_name_ok nm := prefix redir_prefix
+nm`, `redir_name_ok_f`, `redir_name_ok_ne_console` (`vm_compute` +
+`discriminate` with the suffix free).  The rename of `f` itself is a cleanup
+item (worklist, NAME-PATTERN): the literal "f" is computed on in 22 files.
+
+**RULING CONS-CRED (landed).**  `AppFileCons.cons_fact jo av`,
+`cons_fact_present`, `cons_flag r jo`, `file_cons_cred c r jo := cons_flag ∨
+file_taint`, `file_cons_cred_of_{made,never,taint}`, `file_cons_cred_law` (the
+made arm is `echo_cons_law` through `file_pred_cons`, the sealed arm
+`file_cons_never_law`, the taint arm itself).  `FileOpen`: 123 `jc` sites
+rewritten to `jo` mechanically; by hand: the UNARM leg (`cons_fact_present`
+pins `jo = Some j`, then the landed `cons_present_unarm_fresh_nd`), the ACRE
+other-name arm (`redir_name_ok_ne_console`, no console fact), `file_trunc_free`
+(premise dropped -- never spent), `file_cons_law` kept as the made-arm
+corollary (`UInitConsFile` applies it seven times).  `UkFileOpen`, `UkCatDeed`,
+`UCatKernel`, `UShRound`: pure threading (`AppFileCons` imported where it was
+not).  `UInitFileCC.file_cons_cred_of_init`; `file_cons_sup_of_sh_slot` takes
+`□ (∀ jo, file_cons_cred (fgn_cl g) r jo -∗ init_sh_slot T (sh_pay_at …))`.
+The taint arm needs no round-from-taint: at `None`, every claim read in the
+chain answers with the taint it was handed.
+
+**Build notes.**  `vbt.sh`'s stdout is lost under `run-on-gcp -q` in this
+session (both foreground and background); `vbl.sh` runs it and reads the
+remote `/tmp/xv6iris2-vb.log` in a second call.  A Coq comment with a `"` in
+it is a string: `"the console's row …"` broke `AppFileCons.v`'s header.
+`FsAbsCreateNm` is deep: its one added lemma rebuilt 141 files.
+

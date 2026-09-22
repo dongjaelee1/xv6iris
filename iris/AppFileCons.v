@@ -44,6 +44,35 @@ Require Import FsCatPin.          (* [CAT_INO] *)
 Require Import ConsoleInv.        (* [CONSOLE] *)
 Local Open Scope Z_scope.
 
+(* ====================================================================== *)
+(*  THE CONSOLE'S FACT, INDEXED BY WHAT /init's mknod DECIDED              *)
+(*                                                                        *)
+(*  /init's restart loop hands every child ONE credential about the       *)
+(*  console ([UInitCons.init_cons_cred]): its row was MADE at inum [j]     *)
+(*  ([AppEcho.cons_made]), or its key was SEALED because the mknod failed  *)
+(*  ([AppEcho.cons_never]), or the era is tainted.  What the file claim's  *)
+(*  consumers spend it as is always the same fact -- the console's row is *)
+(*  not the one I am touching -- and the sealed arm answers it as        *)
+(*  well as the made one.  So the consumers are stated at ONE fact over   *)
+(*  [option Z]: present at [j], or absent.                                *)
+(* ====================================================================== *)
+Definition cons_fact (jo : option Z) (av : aview) : Prop :=
+  match jo with
+  | Some j => cons_present_at j av
+  | None => cons_absent av
+  end.
+
+(* a present console pins the index: whoever is present is the flag's *)
+Lemma cons_fact_present (jo : option Z) (av : aview) (j : Z) :
+  cons_fact jo av -> cons_present_at j av -> jo = Some j.
+Proof.
+  destruct jo as [j0 |]; cbn [cons_fact]; intros H Hj.
+  - pose proof (cons_present_astep j av Hj) as H1.
+    pose proof (cons_present_astep j0 av H) as H2.
+    rewrite H1 in H2. injection H2 as ->. reflexivity.
+  - rewrite /cons_absent (cons_present_astep j av Hj) in H. discriminate H.
+Qed.
+
 Section AppFileCons.
   Context {Σ : gFunctors}.
   Context `{!echoOutG Σ, !inG Σ (mono_listR (leibnizO Z)), !fileAppG Σ}.
@@ -353,6 +382,60 @@ Section AppFileCons.
       rewrite Hj1 in Hj2. injection Hj2 as Heq. exact Heq. }
     subst j. destruct Hpv0 as (_ & Hrow0 & _).
     intros ->. by rewrite Hrow0 in Hfree.
+  Qed.
+
+  (* ---- THE CREDENTIAL THE FILE CLAIM'S CONSUMERS TAKE ([cons_fact]'s
+     iProp side): the flag at the index, with the era's taint beside it
+     the way every claim law carries it.  [UInitCons.init_cons_cred] is
+     [∃ jo, file_cons_cred jo] (the bridge lives with the /init tier). ---- *)
+  Definition cons_flag (jo : option Z) : iProp Σ :=
+    match jo with
+    | Some j => cons_made (fn_cons r) j
+    | None => cons_never (fn_cons r)
+    end.
+
+  Global Instance cons_flag_persistent (jo : option Z) : Persistent (cons_flag jo).
+  Proof using . destruct jo; rewrite /cons_flag; apply _. Qed.
+
+  Definition file_cons_cred (jo : option Z) : iProp Σ :=
+    (cons_flag jo ∨ file_taint c)%I.
+
+  Global Instance file_cons_cred_persistent (jo : option Z) :
+    Persistent (file_cons_cred jo).
+  Proof using . rewrite /file_cons_cred. apply _. Qed.
+
+  Lemma file_cons_cred_of_made (j : Z) :
+    cons_made (fn_cons r) j -∗ file_cons_cred (Some j).
+  Proof using . iIntros "#H". rewrite /file_cons_cred /cons_flag. by iLeft. Qed.
+
+  Lemma file_cons_cred_of_never :
+    cons_never (fn_cons r) -∗ file_cons_cred None.
+  Proof using . iIntros "#H". rewrite /file_cons_cred /cons_flag. by iLeft. Qed.
+
+  Lemma file_cons_cred_of_taint (jo : option Z) :
+    file_taint c -∗ file_cons_cred jo.
+  Proof using . iIntros "#H". rewrite /file_cons_cred. by iRight. Qed.
+
+  (* THE LAW, at both flags: [AppEcho.echo_cons_law] read through
+     [AppFile.file_pred_cons] on the made arm, [file_cons_never_law] on the
+     sealed one, and the taint arm answers with itself. *)
+  Lemma file_cons_cred_law (jo : option Z) :
+    file_cons_cred jo -∗
+    □ (∀ v : aview, file_pred c r v -∗
+         file_pred c r v ∗ (⌜cons_fact jo v⌝ ∨ file_taint c)).
+  Proof using .
+    iIntros "#[Hf | HT]"; last first.
+    { iIntros "!>" (v) "Hp". iFrame "Hp". by iRight. }
+    destruct jo as [j |]; iEval (rewrite /cons_flag) in "Hf"; cbn [cons_fact].
+    - iDestruct (echo_cons_law c.1 (fn_cons r) j with "Hf") as "#Hl".
+      iIntros "!>" (v) "Hp".
+      iDestruct (file_pred_cons c r v with "Hp") as "[He Hback]".
+      iDestruct ("Hl" $! v with "He") as "[He Hc]".
+      iSplitL "He Hback"; [ iApply ("Hback" with "He") | ].
+      rewrite /file_taint. iExact "Hc".
+    - iDestruct (file_cons_never_law) as "#Hn".
+      iDestruct ("Hn" with "Hf") as "#Hl".
+      iIntros "!>" (v) "Hp". iApply ("Hl" with "Hp").
   Qed.
 
 End AppFileCons.

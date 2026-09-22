@@ -45,6 +45,7 @@ Require Import UsysMemOk.
 Require Import UkCat.
 Require Import UserOff.            (* [foff_pub] *)
 Require Import UkFileOpen.
+Require Import AppFileCons.      (* [file_cons_cred]: the console credential over [option Z] *)
 Require Import AppCfg AppInv AppFile FileOpen FsCfg FsImgCheck.
 Require Import ArgPath.          (* [arg_path_of] -- the open's path row *)
 Require Import PathElems.        (* [path_elems] *)
@@ -116,7 +117,7 @@ Section UkCatDeed.
   Lemma wp_kcat_read_deed (a : Z) (cnt : nat) (f : nat -> bv 8)
       (h : CpuId) (m : regfile) (avail : nat)
       (fd : nat) (wb : bool) (i : Z) (γo : gname)
-      (c : file_fixed) (r : file_names) (q : Qp) (jc : Z)
+      (c : file_fixed) (r : file_names) (q : Qp) (jo : option Z)
       (bs : list (bv 8)) :
     file_app = MkAppcfg file_names (file_pred c) r ->
     0 <= a -> a < Z64 ->
@@ -127,7 +128,7 @@ Section UkCatDeed.
     (fd < NOFILE)%nat ->
     cat_code γt -∗
     UserFd.ufd (ukn_fd N) fd (FdOpen true wb (FdInode i γo OffParked)) -∗
-    cons_made (fn_cons r) jc -∗
+    file_cons_cred c r jo -∗
     app_inv fsc_fs -∗
     fdq r q (Some (i, bs)) -∗
     ubytes γd a cnt f -∗
@@ -231,7 +232,7 @@ Section UkCatDeed.
        then has nothing left to solve but the seven hypotheses, each
        against a wand whose type is already ground.  Cost: seconds. *)
     iPoseProof (wp_uk_read_deed_learns_mapped N h1 m1 (mword_of_int 0x3c6)
-                  (Z.of_nat cnt) cnt f avail fd wb i γo c r q jc bs Heq
+                  (Z.of_nat cnt) cnt f avail fd wb i γo c r q jo bs Heq
                   Hnum Hcntr Hcnt0 Hcapk Ha0r Hfdlt Hal4)
       as "Hleaf".
     iApply ("Hleaf" with "Hi3c6 Hrun Hufdh Hm Hinv Hd Hbs").
@@ -270,7 +271,7 @@ Section UkCatDeed.
   Lemma wp_kcat_read_deed_held (a : Z) (cnt : nat) (f : nat -> bv 8)
       (h : CpuId) (m : regfile) (avail : nat)
       (fd : nat) (wb : bool) (i : Z) (γo : gname)
-      (c : file_fixed) (r : file_names) (q : Qp) (jc : Z)
+      (c : file_fixed) (r : file_names) (q : Qp) (jo : option Z)
       (bs : list (bv 8)) (p : nat) :
     file_app = MkAppcfg file_names (file_pred c) r ->
     0 <= a -> a < Z64 ->
@@ -282,7 +283,7 @@ Section UkCatDeed.
     □ (app_taint -∗ file_taint c) -∗ □ (file_taint c -∗ app_taint) -∗
     cat_code γt -∗
     UserFd.ufd (ukn_fd N) fd (FdOpen true wb (FdInode i γo OffHeld)) -∗
-    cons_made (fn_cons r) jc -∗
+    file_cons_cred c r jo -∗
     app_inv fsc_fs -∗
     fdq r q (Some (i, bs)) -∗
     UserOff.uoff γo p -∗
@@ -386,7 +387,7 @@ Section UkCatDeed.
        then has nothing left to solve but the seven hypotheses, each
        against a wand whose type is already ground.  Cost: seconds. *)
     iPoseProof (wp_uk_read_deed_learns_held N h1 m1 (mword_of_int 0x3c6)
-                  (Z.of_nat cnt) cnt f avail fd wb i γo c r q jc bs p Heq
+                  (Z.of_nat cnt) cnt f avail fd wb i γo c r q jo bs p Heq
                   Hnum Hcntr Hcnt0 Hcapk Ha0r Hfdlt Hal4)
       as "Hleaf".
     iApply ("Hleaf" with "Hbr Hrb Hi3c6 Hrun Hufdh Hm Hinv Hd Hu Hbs").
@@ -444,13 +445,13 @@ Section UkCatDeed.
 
   Lemma kcat_r_of_deed (a : Z) (cnt : nat)
       (fd : nat) (wb : bool) (i : Z) (γo : gname)
-      (c : file_fixed) (r : file_names) (q : Qp) (jc : Z)
+      (c : file_fixed) (r : file_names) (q : Qp) (jo : option Z)
       (bs : list (bv 8)) :
     file_app = MkAppcfg file_names (file_pred c) r ->
     0 <= a -> a < Z64 ->
     (fd < NOFILE)%nat ->
     cat_code γt -∗
-    cons_made (fn_cons r) jc -∗
+    file_cons_cred c r jo -∗
     app_inv fsc_fs -∗
     UkCat.kcat_r N (mword_of_int (Z.of_nat fd)) a cnt
       (kcat_deed_hold fd wb i γo r q bs)
@@ -485,7 +486,7 @@ Section UkCatDeed.
       assert (Hh32 : bv_half_modulus 32 = 2147483648%Z)
         by (vm_compute; reflexivity).
       rewrite Hh32. lia. }
-    iApply (wp_kcat_read_deed a cnt f h m avail fd wb i γo c r q jc bs
+    iApply (wp_kcat_read_deed a cnt f h m avail fd wb i γo c r q jo bs
               Heq Ha0 Hahi Ha1 Ha2 Hfdv Hfdlt
               with "Hcode Hufdh Hm Hinv Hd Hbs Hrun").
     (* the count's bound arrives here (lane OFF-LINK); putting it into
@@ -501,14 +502,14 @@ Section UkCatDeed.
 
   Lemma kcat_r_of_deed_held (a : Z) (cnt : nat)
       (fd : nat) (wb : bool) (i : Z) (γo : gname)
-      (c : file_fixed) (r : file_names) (q : Qp) (jc : Z)
+      (c : file_fixed) (r : file_names) (q : Qp) (jo : option Z)
       (bs : list (bv 8)) (p : nat) :
     file_app = MkAppcfg file_names (file_pred c) r ->
     0 <= a -> a < Z64 ->
     (fd < NOFILE)%nat ->
     □ (app_taint -∗ file_taint c) -∗ □ (file_taint c -∗ app_taint) -∗
     cat_code γt -∗
-    cons_made (fn_cons r) jc -∗
+    file_cons_cred c r jo -∗
     app_inv fsc_fs -∗
     UkCat.kcat_r N (mword_of_int (Z.of_nat fd)) a cnt
       (kcat_deed_hold_held fd wb i γo r q bs p)
@@ -543,7 +544,7 @@ Section UkCatDeed.
       assert (Hh32 : bv_half_modulus 32 = 2147483648%Z)
         by (vm_compute; reflexivity).
       rewrite Hh32. lia. }
-    iApply (wp_kcat_read_deed_held a cnt f h m avail fd wb i γo c r q jc bs p
+    iApply (wp_kcat_read_deed_held a cnt f h m avail fd wb i γo c r q jo bs p
               Heq Ha0 Hahi Ha1 Ha2 Hfdv Hfdlt
               with "Hbr Hrb Hcode Hufdh Hm Hinv Hd Hu Hbs Hrun").
     (* the count's bound arrives here (lane OFF-LINK); putting it into
@@ -586,7 +587,7 @@ Section UkCatDeed.
   (* =================================================================== *)
   Lemma kcat_r_of_deed_at (a : Z) (cnt : nat)
       (fd : nat) (wb : bool) (i : Z) (γo : gname)
-      (c : file_fixed) (r : file_names) (q : Qp) (jc : Z)
+      (c : file_fixed) (r : file_names) (q : Qp) (jo : option Z)
       (bs : list (bv 8)) (off0 : nat) :
     file_app = MkAppcfg file_names (file_pred c) r ->
     0 <= a -> a < Z64 ->
@@ -598,7 +599,7 @@ Section UkCatDeed.
             gb j = bs !!! (off + j)%nat⌝ -∗
          ⌜off = off0⌝) -∗
     cat_code γt -∗
-    cons_made (fn_cons r) jc -∗
+    file_cons_cred c r jo -∗
     app_inv fsc_fs -∗
     UkCat.kcat_r N (mword_of_int (Z.of_nat fd)) a cnt
       (kcat_deed_hold fd wb i γo r q bs)
@@ -615,7 +616,7 @@ Section UkCatDeed.
     iIntros "#Hoff #Hcode #Hm #Hinv".
     iApply (UkCat.kcat_r_mono_out N (mword_of_int (Z.of_nat fd)) a cnt
               _ _ _ with "[] []"); last first.
-    { iApply (kcat_r_of_deed a cnt fd wb i γo c r q jc bs Heq Ha0 Hahi Hfdlt
+    { iApply (kcat_r_of_deed a cnt fd wb i γo c r q jo bs Heq Ha0 Hahi Hfdlt
                 with "Hcode Hm Hinv"). }
     iIntros (rv gb) "[$ [$ [Hok | HT]]]"; [| by iRight ].
     iDestruct "Hok" as (off) "[%Hc %Hb]".

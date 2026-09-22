@@ -326,6 +326,28 @@ Section FileInitCC.
   #[local] Typeclasses Opaque UInitSh.sh_pay_at.
   #[local] Typeclasses Opaque UkSh.ush_rest_l_at.
 
+  (* THE CREDENTIAL /init HANDS DOWN, READ AS THE FILE CLAIM'S: the three
+     arms of [UInitCons.init_cons_cred] are the two flags of
+     [AppFileCons.file_cons_cred] beside its taint arm -- [None] serves the
+     sealed console and the tainted era alike, since the file claim's
+     consumers only ever spend the flag as "not the row I am touching". *)
+  Lemma file_cons_cred_of_init (g : file_gn) (r : file_names) :
+    UInitCons.init_cons_cred (file_taint (fgn_cl g)) (fn_cons r) -∗
+    ∃ jo : option Z, file_cons_cred (fgn_cl g) r jo.
+  Proof using .
+    rewrite /UInitCons.init_cons_cred. iIntros "#[Hn | [[%j Hm] | HT]]".
+    - iExists None. iApply (file_cons_cred_of_never with "Hn").
+    - iExists (Some j). iApply (file_cons_cred_of_made with "Hm").
+    - iExists None. iApply (file_cons_cred_of_taint with "HT").
+  Qed.
+
+  (* THE SLOT IS BUILT UNDER THE CREDENTIAL (the design point of
+     PROGRAM-STREAM stretch 16, option C): the round inside [sh_pay_at]
+     needs the console's flag ([UShRound.sh_round_holds_file]), and the
+     flag is decided by /init's own mknod MID-WALK, so what /init's boot
+     supplies is not the slot but a wand from the flag to it.  The exec
+     supply is then built under the credential in every arm, the sealed
+     and the tainted ones at [None]. *)
   Lemma file_cons_sup_of_sh_slot (HR : riscvGS Σ) (GEN : GenId)
       `{HBs : !bioslotG Σ, HFd : !fdslotG Σ, HIr : !irefslotG Σ,
         HPav : !pavG Σ, HWc : !wchG Σ, HF : !fileG Σ}
@@ -341,9 +363,11 @@ Section FileInitCC.
     udep (PS := uprogSG_free) -∗
     □ (file_taint (fgn_cl g) -∗ UkSh.sh_deps (PS := uprogSG_free)) -∗
     UShKernel.sh_prompt_law (PS := uprogSG_free) (UShRound.Wcf g r s0) -∗
-    UInitSh.init_sh_slot (file_taint (fgn_cl g))
-      (UInitSh.sh_pay_at UkShRedirBody.ush_line_file (file_taint (fgn_cl g))
-         (file_cc HR GEN g r s0) UInitSh.sh_Rsh n0) -∗
+    □ (∀ jo : option Z,
+         file_cons_cred (fgn_cl g) r jo -∗
+         UInitSh.init_sh_slot (file_taint (fgn_cl g))
+           (UInitSh.sh_pay_at UkShRedirBody.ush_line_file (file_taint (fgn_cl g))
+              (file_cc HR GEN g r s0) UInitSh.sh_Rsh n0)) -∗
     UkInit.init_cons_sup fsc_cons (file_taint (fgn_cl g))
       (UInitCons.init_cons_cred (file_taint (fgn_cl g)) (fn_cons r)) st
       (file_cc HR GEN g r s0).
@@ -351,7 +375,8 @@ Section FileInitCC.
     intros Hpsok_free Hn0 Hst Hlkp.
     iIntros "#Hdep #Hdp #Hplaw #Hcore". rewrite /UkInit.init_cons_sup. iSplit.
     - iIntros "!> #Hcns".
-      iDestruct "Hcore" as "#Hcore'".
+      iDestruct (file_cons_cred_of_init g r with "Hcns") as (jo) "#Hcred".
+      iDestruct ("Hcore" $! jo with "Hcred") as "#Hcore'".
       iApply (UInitSh.init_exec_sup_of_sh_slot_at FileDisc.disc_input_f
                 (proj1 (FileReadInst.file_gets_holds))
                 (proj1 (proj2 (FileReadInst.file_gets_holds)))

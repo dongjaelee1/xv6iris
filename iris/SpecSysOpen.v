@@ -825,7 +825,7 @@ Section SysOpenArms.
            ⌜avx !! d = Some (MkAnode (ADir entsx) nlx)⌝ ∗
            ⌜entsx !! nm = Some i⌝ ∗
            cre_rcpt_kept vom Fex avx d nm i ∗
-           pf_at (acre_commit_at Γ appE (AFile [])
+           pf_at (acre_commit_at_nm Γ appE (AFile []) (npar_nm M pv)
                      (P (length (npar_elems pl))) Farm) Fok ∗
            (* the name was already there: create's child legs are whole --
               and at a TRUNCATING open the ARM's half went into the
@@ -883,7 +883,7 @@ Section SysOpenArms.
      ∨ (∃ pl : list (bv 8),
           ⌜arg_path_of M pv pl⌝ ∗
           ((npar_walk_dead_era γfs P Pmiss pl
-             ∗ pf_at (acre_commit_at Γ appE (AFile [])
+             ∗ pf_at (acre_commit_at_nm Γ appE (AFile []) (npar_nm M pv)
                      (P (length (npar_elems pl))) Farm) Fok
              ∗ pf_at (dlookup_commit_at Γ appE) Fex
              ∗ pf_at (aopen_commit_at Γ appE) Fo
@@ -915,7 +915,7 @@ Section SysOpenArms.
                      ⌜av !! d = Some (MkAnode (ADir ents) nl)⌝ ∗
                      ⌜ents !! nm = Some i⌝ ∗
                      cre_rcpt_kept vom Fex av d nm i
-                     ∗ pf_at (acre_commit_at Γ appE (AFile [])
+                     ∗ pf_at (acre_commit_at_nm Γ appE (AFile []) (npar_nm M pv)
                      (P (length (npar_elems pl))) Farm) Fok
                      (* create's child legs: whole, or the do-then-undo
                         PAIR -- the fold does not separate the two here
@@ -928,7 +928,7 @@ Section SysOpenArms.
                              ⌜arow_at av' i a⌝ ∗ Fo.(pf_recv) av' i a)))
                   ∨ (* (c) nothing observed: the nlink guard, out of
                        inodes, dirlink failure, "/" *)
-                  (pf_at (acre_commit_at Γ appE (AFile [])
+                  (pf_at (acre_commit_at_nm Γ appE (AFile []) (npar_nm M pv)
                      (P (length (npar_elems pl))) Farm) Fok
                    ∗ pf_at (dlookup_commit_at Γ appE) Fex
                    ∗ pf_at (aopen_commit_at Γ appE) Fo
@@ -1236,7 +1236,7 @@ Section SysOpenArms.
               ⌜avx !! d = Some (MkAnode (ADir entsx) nlx)⌝ ∗
               ⌜entsx !! nm = Some i⌝ ∗
               cre_rcpt_kept vom Fex avx d nm i ∗
-              pf_at (acre_commit_at Γ appE (AFile [])
+              pf_at (acre_commit_at_nm Γ appE (AFile []) (npar_nm M pv)
                      (P (length (npar_elems pl))) Farm) Fok ∗
               cre_child_kept Γ vom Farm Fun ∗
               (∃ (av : aview) (nl : nat),
@@ -1601,21 +1601,11 @@ Section SysOpenArms.
   (* ------------------------------------------------------------------ *)
   (*  create's FAILURE FOLD, READ INTO THIS FILE'S OWN ARMS               *)
   (*                                                                      *)
-  (* THE NAME PREDICATE IS TRIVIAL HERE (lane INIT-FILE, section 3.4):
-     sys_open's create entry tracks no name of its own, so its parent leg
-     is the commit at every name and the bridge is one line. *)
-  Lemma open_acre_file_of_triv Γ (Pd : Z -> iProp Σ)
-      (Farm : pfam Σ (aview -> Z -> iProp Σ))
-      (Fok : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ)) :
-    pf_at (acre_commit_at_nm Γ appE (AFile [])
-             (fun _ : fname => True%type) Pd Farm) Fok -∗
-    pf_at (acre_commit_at Γ appE (AFile []) Pd Farm) Fok.
-  Proof using .
-    iIntros "H". iApply (pf_at_mono with "[] H"). iIntros "H".
-    iApply (acre_commit_at_of_nm Γ appE (AFile [])
-              (fun _ : fname => True%type) Pd Farm Fok.(pf_recv)
-              (fun _ => I) with "H").
-  Qed.
+  (* THE NAME PREDICATE (RULING NM, the thread's open half): sys_open's
+     create entry holds its parent leg at [npar_nm M pv] -- the name
+     argument 0's last element spells -- on BOTH sides of the fold, exactly
+     as [SpecSysMknod] does; a narrowed predicate cannot be widened back,
+     so the refunded leg keeps the guarded reading. *)
 
   (*  [SpecCreate.cre_fail_arms] at [T_FILE] IS [open_post_fail_create]'s  *)
   (*  inner three, arm for arm, and the only thing the fold adds is        *)
@@ -1647,7 +1637,7 @@ Section SysOpenArms.
     (* the walk this fold is the payout of ran on the caller's argument 0 *)
     arg_path_of M pv pl ->
     cre_fail_arms Γ γfs (bv_unsigned T_FILE) ma mi
-      (fun _ : fname => True%type) (fun _ : absnode => True%type) P Pmiss
+      (npar_nm M pv) (fun _ : absnode => True%type) P Pmiss
       Farm Fdots Fun Fok Fex pl -∗
     pf_at (aopen_commit_at Γ appE) Fo -∗
     (* the piece at the ONE-PATH permit, which is how the create entry
@@ -1661,17 +1651,15 @@ Section SysOpenArms.
     iRight. iExists pl. iSplitR; [ iPureIntro; exact Hpl | ].
     iDestruct "Hcf" as "[(Hd & Hac & Hdl & Hcl) | Hr]".
     - (* the parent leg comes home at the NAME PREDICATE this entry is at
-         ([FsAbsCreateNm.acre_commit_at_of_nm] at [fun _ => True]) *)
-      iDestruct (open_acre_file_of_triv with "Hac") as "Hac".
-      (* ...and so is the NODE PREDICATE (lane INIT-FILE, the UNARM
-         ruling): the child's two legs come home at the unarm for every
-         node, which is the one line this entry owes. *)
+         (the guarded [npar_nm M pv], on the nose); the NODE PREDICATE
+         (lane INIT-FILE, the UNARM ruling) is trivial: the child's two
+         legs come home at the unarm for every node, which is the one line
+         this entry owes. *)
       iDestruct (cre_child_unfired_of_ndp Γ (AFile [])
                    (fun _ : absnode => True%type) Farm Fun (fun _ => I)
                    with "Hcl") as "Hcl".
       iLeft. iFrame "Hd Hac Hdl Ho Ht Hcl".
     - iRight. iDestruct "Hr" as (d) "(HP & Hac & Hrest & Hcl)".
-      iDestruct (open_acre_file_of_triv with "Hac") as "Hac".
       iAssert (cre_child_unfired Γ (AFile []) Farm Fun
                ∨ ∃ ic : Z, cre_child_pair Farm Fun ic)%I
         with "[Hcl]" as "Hcl".

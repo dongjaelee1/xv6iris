@@ -80,6 +80,23 @@ Proof using . vm_compute. discriminate. Qed.
 Lemma fname_console_ne_f : fname_console <> fname_f.
 Proof using . intros H. exact (fname_f_ne_console (eq_sym H)). Qed.
 
+(* THE NAMES sh MAY CREATE (the owner's ruling of 2026-09-22).  The create
+   the kernel asks the file claim to absorb is at a name of THIS shape and
+   nowhere else ([FsAbsCreateNm]'s name predicate, threaded through
+   open(O_CREATE)) -- a PREFIX PATTERN, so that the model's one file is an
+   inhabitant and the console's name is not, whichever the prefix.  Today
+   the prefix is the file name itself; a wider one ("out*") is a change
+   of this one constant and of nothing below it. *)
+Definition redir_prefix : fname := fname_f.
+Definition redir_name_ok (nm : fname) : Prop := prefix redir_prefix nm.
+
+Lemma redir_name_ok_f : redir_name_ok fname_f.
+Proof using . exists []. by rewrite app_nil_r. Qed.
+
+Lemma redir_name_ok_ne_console (nm : fname) :
+  redir_name_ok nm -> nm <> fname_console.
+Proof using . intros [k ->] H. vm_compute in H. discriminate H. Qed.
+
 (* ====================================================================== *)
 (*  1.  THE TWO SHAPES, AND THE FOUR READINGS OF THEM                      *)
 (* ====================================================================== *)

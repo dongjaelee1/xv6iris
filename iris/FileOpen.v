@@ -56,6 +56,7 @@ Require Import UserPtTree.       (* [uptd] / [uva_wmapped]: the read's -1 arm's
 Require Import FsAbsReadFire.    (* [aread_commit_at] / [read_arms] *)
 Require Import FsAbsEra.         (* [ep_start], [np_elems], [um_start_of] *)
 Require Import SysMknodDefs.     (* [npar_cur], [npar_elems] *)
+Require Import FsAbsCreateNm.    (* [npar_nm], [acre_commit_at_gen_nm_of] *)
 Require Import ArgPath.          (* [arg_path_of], [arg_path_of_uniq] *)
 Require Import SysOpenDefs.      (* [open_au_create_at], [open_trunc_piece] *)
 Require Import UserOff.     (* [foff_pub]: what the publish hands the caller *)
@@ -75,6 +76,7 @@ Require Import EchoOut.          (* [echoOutG] *)
 Require Import AppEcho.          (* [echo_taint] at the projection *)
 Require Import AppFile.          (* the claim, the deed, the two phases *)
 Require Import FileDeltas.       (* the pure legs *)
+Require Import AppFileCons.      (* [cons_fact], [file_cons_cred] and its law *)
 Require Import FsAbsDefs.        (* [aview] / [anode] / [arow_at] *)
 Import Defs.
 
@@ -181,34 +183,36 @@ Section FileOpen.
      the create's UNARM leg spends: a row [ialloc] just armed is not the
      console's, and nothing in the FILE deed says so (the deed is about
      `f`). *)
+  (* ...the landed statement, now the made-arm corollary of
+     [AppFileCons.file_cons_cred_law]; the create's legs below read the
+     claim at the option-indexed credential directly. *)
   Lemma file_cons_law (c : file_fixed) (r : file_names) (jc : Z) :
     cons_made (fn_cons r) jc -∗
     □ (∀ v : aview, file_pred c r v -∗
          file_pred c r v ∗ (⌜cons_present_at jc v⌝ ∨ file_taint c)).
   Proof using .
-    iIntros "#Hm". iDestruct (echo_cons_law c.1 (fn_cons r) jc with "Hm") as "#Hl".
-    iIntros "!>" (v) "Hp".
-    iDestruct (file_pred_cons c r v with "Hp") as "[He Hback]".
-    iDestruct ("Hl" $! v with "He") as "[He Hc]".
-    iSplitL "He Hback"; [ iApply ("Hback" with "He") | ].
-    rewrite /file_taint. iExact "Hc".
+    iIntros "#Hm".
+    iDestruct (file_cons_cred_law c r (Some jc) with "[]") as "#Hl";
+      [ iApply (file_cons_cred_of_made with "Hm") | ].
+    iIntros "!>" (v) "Hp". iDestruct ("Hl" $! v with "Hp") as "[Hp Hc]".
+    iFrame "Hp". cbn [cons_fact]. iExact "Hc".
   Qed.
 
   (* everything a leg of the create reads off the claim at one view *)
-  Definition fclaim_facts (jc : Z) (s : dst) (v : aview) : Prop :=
-    f_ok v s /\ file_fs_pure v /\ cons_present_at jc v.
+  Definition fclaim_facts (jo : option Z) (s : dst) (v : aview) : Prop :=
+    f_ok v s /\ file_fs_pure v /\ cons_fact jo v.
 
   Lemma file_claim_read (γfs : fs_names) (c : file_fixed) (r : file_names)
-      (jc : Z) (s : dst) (q : Qp) (I : gmap Z fs_node) :
+      (jo : option Z) (s : dst) (q : Qp) (I : gmap Z fs_node) :
     file_app = MkAppcfg file_names (file_pred c) r ->
-    app_inv γfs -∗ cons_made (fn_cons r) jc -∗ fdq r q s -∗
+    app_inv γfs -∗ file_cons_cred c r jo -∗ fdq r q s -∗
     ghost_map_auth (γtop (fs_gamma_L γfs)) (1/2) I ={appE}=∗
       ghost_map_auth (γtop (fs_gamma_L γfs)) (1/2) I ∗ fdq r q s ∗
-      (⌜fclaim_facts jc s (abs_view I)⌝ ∨ file_taint c).
+      (⌜fclaim_facts jo s (abs_view I)⌝ ∨ file_taint c).
   Proof using .
     intros Heq. iIntros "#Hinv #Hm Hd Hka".
     iDestruct (file_deed_law_q c r q) as "#Hlaw".
-    iDestruct (file_cons_law c r jc with "Hm") as "#Hcl".
+    iDestruct (file_cons_cred_law c r jo with "Hm") as "#Hcl".
     iMod (inv_acc appE appN with "Hinv") as "[Hbody Hclose]"; [ set_solver | ].
     iEval (rewrite /app_body) in "Hbody".
     iDestruct "Hbody" as (I') "(>Hh & Hp & >%Hdom & #Hx)".
@@ -220,7 +224,7 @@ Section FileOpen.
     { iNext. iApply ("Hlaw" with "Hd Hp"). }
     iDestruct "Hpc" as "[Hp [Hd Hc1]]". iMod "Hc1". iMod "Hd".
     iAssert (▷ (file_pred c r (abs_view I)
-                ∗ (⌜cons_present_at jc (abs_view I)⌝ ∨ file_taint c)))%I
+                ∗ (⌜cons_fact jo (abs_view I)⌝ ∨ file_taint c)))%I
       with "[Hp]" as "Hpd".
     { iNext. iApply ("Hcl" with "Hp"). }
     iDestruct "Hpd" as "[Hp Hc2]". iMod "Hc2".
@@ -244,17 +248,17 @@ Section FileOpen.
      reads its claim exactly as it did before, at a deed it no longer
      holds. *)
   Lemma file_claim_read_esc (γfs : fs_names) (c : file_fixed) (r : file_names)
-      (jc : Z) (n : nat) (s : dst) (g : gname) (I : gmap Z fs_node) :
+      (jo : option Z) (n : nat) (s : dst) (g : gname) (I : gmap Z fs_node) :
     file_app = MkAppcfg file_names (file_pred c) r ->
-    app_inv γfs -∗ cons_made (fn_cons r) jc -∗ esc_key c r n s g -∗
+    app_inv γfs -∗ file_cons_cred c r jo -∗ esc_key c r n s g -∗
     esc_tok g -∗
     ghost_map_auth (γtop (fs_gamma_L γfs)) (1/2) I ={appE}=∗
       ghost_map_auth (γtop (fs_gamma_L γfs)) (1/2) I ∗ esc_tok g ∗
-      (⌜fclaim_facts jc s (abs_view I)⌝ ∨ file_taint c).
+      (⌜fclaim_facts jo s (abs_view I)⌝ ∨ file_taint c).
   Proof using .
     intros Heq. iIntros "#Hinv #Hm #Hwit Htok Hka".
     iDestruct (file_escrow_law c r) as "#Hlaw".
-    iDestruct (file_cons_law c r jc with "Hm") as "#Hcl".
+    iDestruct (file_cons_cred_law c r jo with "Hm") as "#Hcl".
     iMod (inv_acc appE appN with "Hinv") as "[Hbody Hclose]"; [ set_solver | ].
     iEval (rewrite /app_body) in "Hbody".
     iDestruct "Hbody" as (I') "(>Hh & Hp & >%Hdom & #Hx)".
@@ -267,7 +271,7 @@ Section FileOpen.
     { iNext. iApply ("Hlaw" with "Hwit Htok Hp"). }
     iDestruct "Hpc" as "[Hp [Htok Hc1]]". iMod "Hc1". iMod "Htok".
     iAssert (▷ (file_pred c r (abs_view I)
-                ∗ (⌜cons_present_at jc (abs_view I)⌝ ∨ file_taint c)))%I
+                ∗ (⌜cons_fact jo (abs_view I)⌝ ∨ file_taint c)))%I
       with "[Hp]" as "Hpd".
     { iNext. iApply ("Hcl" with "Hp"). }
     iDestruct "Hpd" as "[Hp Hc2]". iMod "Hc2".
@@ -363,10 +367,10 @@ Section FileOpen.
   Definition fesc_res (r : file_names) (s : dst) (g : gname) : iProp Σ :=
     (ftkt r s ∗ esc_tok g)%I.
 
-  Definition file_arm_fam (c : file_fixed) (r : file_names) (jc : Z) (s : dst)
+  Definition file_arm_fam (c : file_fixed) (r : file_names) (jo : option Z) (s : dst)
       (g : gname) : pfam Σ (aview -> Z -> iProp Σ) :=
     MkPfam (fun (av : aview) (_ : Z) =>
-              ((⌜fclaim_facts jc s av⌝ ∗ fesc_res r s g) ∨ file_taint c)%I)
+              ((⌜fclaim_facts jo s av⌝ ∗ fesc_res r s g) ∨ file_taint c)%I)
            (fesc_res r s g).
 
   Definition file_unarm_fam (c : file_fixed) (r : file_names) (s : dst)
@@ -384,32 +388,32 @@ Section FileOpen.
      downstream spends to identify the row the truncate reaches: the child
      is [AFile []] at nlink 1 ([cre_pre]), so it is none of the four pinned
      binaries by LENGTH, and it is `f`'s own inum only if `f` is empty. *)
-  Definition file_cre_recv (c : file_fixed) (r : file_names) (jc : Z)
+  Definition file_cre_recv (c : file_fixed) (r : file_names) (jo : option Z)
       (s : dst) (g : gname) : aview -> Z -> fname -> Z -> iProp Σ :=
     fun (av : aview) (d : Z) (nm : fname) (i : Z) =>
-      ((⌜nm <> fname_f /\ fclaim_facts jc s av⌝ ∗ fesc_res r s g)
+      ((⌜nm <> fname_f /\ fclaim_facts jo s av⌝ ∗ fesc_res r s g)
        ∨ (⌜s = None /\ d = ROOTINO /\ nm = fname_f⌝ ∗ fown r (Some (i, [])))
        ∨ file_taint c)%I.
 
-  Definition file_cre_fam (c : file_fixed) (r : file_names) (jc : Z)
+  Definition file_cre_fam (c : file_fixed) (r : file_names) (jo : option Z)
       (s : dst) (g : gname) : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ) :=
-    MkPfam (file_cre_recv c r jc s g) True%I.
+    MkPfam (file_cre_recv c r jo s g) True%I.
 
   (* ---- 3b.  THE ARM LEG: free, and it MINTS THE PERMIT ---- *)
 
   Lemma file_arm_commit (γfs : fs_names) (c : file_fixed) (r : file_names)
-      (jc : Z) (n : nat) (s : dst) (g : gname) (bsc : list (bv 8)) :
+      (jo : option Z) (n : nat) (s : dst) (g : gname) (bsc : list (bv 8)) :
     file_app = MkAppcfg file_names (file_pred c) r ->
-    app_inv γfs -∗ cons_made (fn_cons r) jc -∗ esc_key c r n s g -∗
+    app_inv γfs -∗ file_cons_cred c r jo -∗ esc_key c r n s g -∗
     fesc_res r s g -∗
     aarm_commit_at (fs_gamma_L γfs) appE (AFile bsc)
-      (file_arm_fam c r jc s g).(pf_recv).
+      (file_arm_fam c r jo s g).(pf_recv).
   Proof using .
     intros Heq. iIntros "#Hinv #Hm #Hwit [Htk Htok]".
     assert (Hnd : forall e : gmap fname Z, AFile bsc <> ADir e)
       by (intros e Hc; discriminate Hc).
     rewrite /aarm_commit_at. iIntros (I i) "%Hnone %Hsome Hka".
-    iMod (file_claim_read_esc γfs c r jc n s g I Heq
+    iMod (file_claim_read_esc γfs c r jo n s g I Heq
             with "Hinv Hm Hwit Htok Hka") as "(Hka & Htok & [%Hf | #HT])";
       last first.
     { iModIntro. iFrame "Hka". iSplitR.
@@ -437,10 +441,10 @@ Section FileOpen.
      console's is the flag's ([file_cons_law]); `f`'s is the DEED'S OWN
      INUM, which is why the deed's state carries it. *)
   Lemma file_unarm_commit (γfs : fs_names) (c : file_fixed) (r : file_names)
-      (jc : Z) (n : nat) (s : dst) (g : gname) :
+      (jo : option Z) (n : nat) (s : dst) (g : gname) :
     file_app = MkAppcfg file_names (file_pred c) r ->
-    app_inv γfs -∗ cons_made (fn_cons r) jc -∗ esc_key c r n s g -∗
-    aunarm_of_arm (fs_gamma_L γfs) appE (file_arm_fam c r jc s g)
+    app_inv γfs -∗ file_cons_cred c r jo -∗ esc_key c r n s g -∗
+    aunarm_of_arm (fs_gamma_L γfs) appE (file_arm_fam c r jo s g)
       (file_unarm_fam c r s g).(pf_recv).
   Proof using .
     intros Heq. iIntros "#Hinv #Hm #Hwit". rewrite /aunarm_of_arm.
@@ -453,7 +457,7 @@ Section FileOpen.
       iIntros (I') "%Hav Hka'". iModIntro. iFrame "Hka'". cbn [pf_recv].
       by iRight. }
     destruct Hf0 as (Hok0 & Hpure0 & Hcons0).
-    iMod (file_claim_read_esc γfs c r jc n s g I Heq
+    iMod (file_claim_read_esc γfs c r jo n s g I Heq
             with "Hinv Hm Hwit Htok Hka") as "(Hka & Htok & [%Hf | #HT])";
       last first.
     { iModIntro. iFrame "Hka". iSplitR.
@@ -467,13 +471,11 @@ Section FileOpen.
         exact (file_fs_pure_unarm_fresh i av0 (abs_view I) Hfree Hpure0 Hpure).
       - exact (cons_absent_unarm i (abs_view I)).
       - intros j Hj.
-        (* the console is at ONE inum, so [j] is the flag's *)
-        assert (Hjc : j = jc).
-        { pose proof (cons_present_astep j (abs_view I) Hj) as H1.
-          pose proof (cons_present_astep jc (abs_view I) Hcons) as H2.
-          congruence. }
-        subst j.
-        exact (cons_present_unarm_fresh_nd jc i av0 (abs_view I) Hfree
+        (* the console is at ONE inum, so [j] is the flag's -- and at the
+           sealed flag there is no [j] at all ([cons_fact_present]) *)
+        pose proof (cons_fact_present jo (abs_view I) j Hcons Hj) as Hjo.
+        subst jo. cbn [cons_fact] in Hcons0.
+        exact (cons_present_unarm_fresh_nd j i av0 (abs_view I) Hfree
                  Hcons0 Hj).
       - intros s' Hs'. rewrite (f_ok_det (abs_view I) s' s Hs' Hok).
         exact (f_ok_unarm_fresh i av0 (abs_view I) s Hfree Hok0 Hok). }
@@ -494,21 +496,22 @@ Section FileOpen.
      when the leg fired, so at a PRESENT deed the `f` case is refuted
      outright. *)
   Lemma file_acre_commit (γfs : fs_names) (c : file_fixed) (r : file_names)
-      (jc : Z) (n : nat) (s : dst) (g : gname)
+      (jo : option Z) (n : nat) (s : dst) (g : gname)
       (ls : list wordline) (ws : wordline) :
     file_app = MkAppcfg file_names (file_pred c) r ->
     ws ∈ ls -> EchoDisc.line_ok ws ->
-    app_inv γfs -∗ cons_made (fn_cons r) jc -∗ esc_key c r n s g -∗
+    app_inv γfs -∗ file_cons_cred c r jo -∗ esc_key c r n s g -∗
     fl_lb c ls -∗
-    acre_commit_at_gen (fs_gamma_L γfs) appE (fun _ _ => AFile [])
+    acre_commit_at_gen_nm (fs_gamma_L γfs) appE (fun _ _ => AFile [])
+      redir_name_ok
       (fun d : Z => ⌜d = ROOTINO⌝%I)
-      (file_arm_fam c r jc s g) (file_cre_fam c r jc s g).(pf_recv).
+      (file_arm_fam c r jo s g) (file_cre_fam c r jo s g).(pf_recv).
   Proof using .
     intros Heq Hin Hok. iIntros "#Hinv #Hm #Hwit #Hlb".
     assert (Hnd : forall e : gmap fname Z, AFile [] <> ADir e)
       by (intros e Hc; discriminate Hc).
-    rewrite /acre_commit_at_gen.
-    iIntros (I d i nm ents nl) "%Hpre %Hdots Harm %Hd Hka". subst d.
+    rewrite /acre_commit_at_gen_nm.
+    iIntros (I d i nm ents nl) "%Hpre %Hdots %HNm Harm %Hd Hka". subst d.
     rewrite /cre_arm_fired. iDestruct "Harm" as (av0) "[%Hfree Hrec]".
     cbn [pf_recv].
     iDestruct "Hrec" as "[[%Hf0 [Htk Htok]] | #HT]"; last first.
@@ -517,7 +520,7 @@ Section FileOpen.
       iIntros (I') "%Hav Hka'". iModIntro. iFrame "Hka'".
       rewrite /file_cre_fam /file_cre_recv. cbn [pf_recv].
       iRight. iRight. iExact "HT". }
-    iMod (file_claim_read_esc γfs c r jc n s g I Heq
+    iMod (file_claim_read_esc γfs c r jo n s g I Heq
             with "Hinv Hm Hwit Htok Hka") as "(Hka & Htok & [%Hf | #HT])";
       last first.
     { iModIntro. iFrame "Hka". iSplitR; [ done |]. iSplitR.
@@ -554,10 +557,9 @@ Section FileOpen.
       + iRight. iLeft. iFrame "Hown". iPureIntro. split_and!; reflexivity.
       + iRight. iRight. iExact "HT".
     - (* ANY OTHER NAME: the claim is carried, the escrow comes back *)
-      assert (Hnc : nm <> fname_console).
-      { intros ->. destruct Hpre as (Hdr & Hfr & _).
-        pose proof (cons_present_astep jc (abs_view I) Hcons) as Hst.
-        rewrite /astep /aents Hdr /= /anode_ents /= in Hst. congruence. }
+      (* ...and NOT the console's: the NAME PREDICATE says so (RULING NM's
+         open half), which is what lets the sealed flag absorb it too *)
+      pose proof (redir_name_ok_ne_console nm HNm) as Hnc.
       iModIntro. iFrame "Hka". iSplitR; [ done |]. iSplitR.
       { iApply (file_app_step_free_at c r ROOTINO I _ Heq).
         - exact (file_fs_pure_create ROOTINO nm ents nl i (AFile [])
@@ -782,17 +784,17 @@ Section FileOpen.
       : pfam Σ (aview -> Z -> list (bv 8) -> iProp Σ) :=
     MkPfam (file_trunc_recv c r s) True%I.
 
-  Lemma file_trunc_free (av0 av : aview) (i : Z) (s : dst) (jc : Z) :
+  Lemma file_trunc_free (av0 av : aview) (i : Z) (s : dst) :
     av0 !! i = Some (MkAnode (AFile []) 1%nat) ->
     file_fs_pure av0 ->
     f_ok av0 s ->
-    file_fs_pure av -> f_ok av s -> cons_present_at jc av ->
+    file_fs_pure av -> f_ok av s ->
     file_fs_pure (delta_trunc i av)
     /\ (cons_absent av -> cons_absent (delta_trunc i av))
     /\ (forall j, cons_present_at j av -> cons_present_at j (delta_trunc i av))
     /\ f_ok (delta_trunc i av) s.
   Proof using .
-    intros Hrow0 Hpure0 Hok0 Hpure Hok Hcons.
+    intros Hrow0 Hpure0 Hok0 Hpure Hok.
     destruct (f_inum_not_pinned av0 i [] Hpure0 Hrow0
                 ltac:(rewrite /EchoDisc.line_max; cbn [length]; lia))
       as (N1 & N2 & N3 & N4).
@@ -814,12 +816,12 @@ Section FileOpen.
   Qed.
 
   Lemma file_trunc_of_cre (γfs : fs_names) (c : file_fixed) (r : file_names)
-      (jc : Z) (n : nat) (s : dst) (g : gname) (i : Z) :
+      (jo : option Z) (n : nat) (s : dst) (g : gname) (i : Z) :
     file_app = MkAppcfg file_names (file_pred c) r ->
-    app_inv γfs -∗ cons_made (fn_cons r) jc -∗
+    app_inv γfs -∗ file_cons_cred c r jo -∗
     (∃ (av0 : aview) (ents : gmap fname Z) (nl0 : nat),
        ⌜cre_pre av0 ROOTINO fname_f ents nl0 i (AFile [])⌝ ∗
-       (file_cre_fam c r jc s g).(pf_recv) av0 ROOTINO fname_f i) -∗
+       (file_cre_fam c r jo s g).(pf_recv) av0 ROOTINO fname_f i) -∗
     atrunc_commit_i (fs_gamma_L γfs) appE i (file_trunc_recv c r s).
   Proof using .
     intros Heq. iIntros "#Hinv #Hm Hperm".
@@ -838,7 +840,7 @@ Section FileOpen.
          is the identity there *)
       iDestruct "Hfb" as "[%Hfb [Hd Ht]]".
       destruct Hfb as (Hs & _ & _). subst s.
-      iMod (file_claim_read γfs c r jc (Some (i, [])) (1/2) I Heq
+      iMod (file_claim_read γfs c r jo (Some (i, [])) (1/2) I Heq
               with "Hinv Hm Hd Hka") as "(Hka & Hd & [%Hf | #HT])"; last first.
       { iModIntro. iFrame "Hka". iSplitR.
         { iApply (file_app_step_taint c r i I _ Heq). iExact "HT". }
@@ -846,7 +848,7 @@ Section FileOpen.
         rewrite /file_trunc_recv. iRight. iExact "HT". }
       destruct Hf as (Hok & Hpure & Hcons).
       destruct (file_trunc_free (abs_view I) (abs_view I) i (Some (i, []))
-                  jc (proj2 Hok) Hpure Hok Hpure Hok Hcons)
+                  (proj2 Hok) Hpure Hok Hpure Hok)
         as (Hp1 & Hp2 & Hp3 & Hp4).
       iModIntro. iFrame "Hka". iSplitR "Hd Ht".
       { iApply (file_app_step_free_at c r i I _ Heq).
@@ -881,14 +883,14 @@ Section FileOpen.
      [s = Some (i, bs)] it IDENTIFIES the row, and the move
      [Some (i, bs) -> Some (i, [])] is the escrow's fire and resync. *)
   Lemma file_trunc_of_exists (γfs : fs_names) (c : file_fixed) (r : file_names)
-      (jc : Z) (n : nat) (s : dst) (g : gname)
+      (jo : option Z) (n : nat) (s : dst) (g : gname)
       (ls : list wordline) (ws : wordline)
       (i : Z) (avx : aview) (entsx : gmap fname Z) (nlx : nat) :
     file_app = MkAppcfg file_names (file_pred c) r ->
     avx !! FsImg.ROOTINO = Some (MkAnode (ADir entsx) nlx) ->
     entsx !! fname_f = Some i ->
     ws ∈ ls -> EchoDisc.line_ok ws ->
-    app_inv γfs -∗ cons_made (fn_cons r) jc -∗ esc_key c r n s g -∗
+    app_inv γfs -∗ file_cons_cred c r jo -∗ esc_key c r n s g -∗
     fl_lb c ls -∗
     ((⌜fclaim_free avx⌝ ∗ (⌜f_ok avx s⌝ ∨ esc_spent g)) ∨ file_taint c) -∗
     fesc_res r s g -∗
@@ -924,7 +926,7 @@ Section FileOpen.
     assert (Hji : j = i)
       by (destruct Hokx as (Hstj & _); rewrite Hstj in Hstx; by injection Hstx).
     subst j.
-    iMod (file_claim_read_esc γfs c r jc n (Some (i, bs)) g I Heq
+    iMod (file_claim_read_esc γfs c r jo n (Some (i, bs)) g I Heq
             with "Hinv Hm Hwit Htok Hka") as "(Hka & Htok & [%Hf | #HT])";
       last first.
     { iModIntro. iFrame "Hka". iSplitR.
@@ -982,19 +984,19 @@ Section FileOpen.
   Qed.
 
   Lemma file_trunc_piece (γfs : fs_names) (c : file_fixed) (r : file_names)
-      (jc : Z) (n : nat) (s : dst) (g : gname)
+      (jo : option Z) (n : nat) (s : dst) (g : gname)
       (ls : list wordline) (ws : wordline)
       (M : gmap Z (bv 8)) (pv : mword 64) (pl : list (bv 8)) :
     file_app = MkAppcfg file_names (file_pred c) r ->
     arg_path_of M pv pl ->
     list_basics.last (path_elems pl) = Some fname_f ->
     ws ∈ ls -> EchoDisc.line_ok ws ->
-    app_inv γfs -∗ cons_made (fn_cons r) jc -∗ esc_key c r n s g -∗
+    app_inv γfs -∗ file_cons_cred c r jo -∗ esc_key c r n s g -∗
     fl_lb c ls -∗
     pf_at (atrunc_of_permit (fs_gamma_L γfs) appE
              (trunc_permit_of (fs_gamma_L γfs)
                 (trunc_tie_arg M pv (fun (_ : nat) (d : Z) => ⌜d = ROOTINO⌝%I))
-                (file_arm_fam c r jc s g) (file_cre_fam c r jc s g)
+                (file_arm_fam c r jo s g) (file_cre_fam c r jo s g)
                 (file_dlk_fam c r n s g)))
       (file_trunc_fam c r s).
   Proof using .
@@ -1015,7 +1017,7 @@ Section FileOpen.
                  with "Hcur") as "%Hd". subst d.
     iDestruct "Hrest" as "[Hfresh | [Hex Harm]]".
     - (* THE FRESH RUN: create's own receipt AT THE TIED NAME *)
-      iApply (file_trunc_of_cre γfs c r jc n s g i Heq with "Hinv Hm [Hfresh]").
+      iApply (file_trunc_of_cre γfs c r jo n s g i Heq with "Hinv Hm [Hfresh]").
       rewrite /cre_acre_fired. iExact "Hfresh".
     - (* THE EXISTS RUN: the observation's reading -- pure AND ESCROWED --
          beside the arm piece's refund, which is the escrow's token *)
@@ -1024,7 +1026,7 @@ Section FileOpen.
       rewrite /file_dlk_fam. cbn [pf_recv].
       rewrite /pf_at. iDestruct "Harm" as "[_ Harm]".
       rewrite /file_arm_fam. cbn [pf_refund].
-      iApply (file_trunc_of_exists γfs c r jc n s g ls ws i avx entsx nlx
+      iApply (file_trunc_of_exists γfs c r jo n s g ls ws i avx entsx nlx
                 Heq Hrx Hex Hin Hokw with "Hinv Hm Hwit Hlb Hrec Harm").
   Qed.
 
@@ -1050,7 +1052,7 @@ Section FileOpen.
      kernel reports the found node's type, which is what refutes create's
      F-OK's found DEVICE. *)
   Lemma file_open_create_au (γfs : fs_names) (c : file_fixed) (r : file_names)
-      (jc : Z) (n : nat) (s : dst) (g : gname)
+      (jo : option Z) (n : nat) (s : dst) (g : gname)
       (ls : list wordline) (ws : wordline)
       (cw : Z) (M : gmap Z (bv 8)) (pv vom : mword 64) (pl : list (bv 8)) :
     file_app = MkAppcfg file_names (file_pred c) r ->
@@ -1059,13 +1061,13 @@ Section FileOpen.
     um_start_of cw pl = ROOTINO ->
     list_basics.last (path_elems pl) = Some fname_f ->
     ws ∈ ls -> EchoDisc.line_ok ws ->
-    app_inv γfs -∗ cons_made (fn_cons r) jc -∗ fl_lb c ls -∗
+    app_inv γfs -∗ file_cons_cred c r jo -∗ fl_lb c ls -∗
     esc_key c r n s g -∗ fesc_res r s g -∗
     open_au_create_at (fs_gamma_L γfs) γfs cw M pv vom
       (fun (_ : nat) (d : Z) => ⌜d = ROOTINO⌝%I)
       (fun _ _ => True%I)
-      (file_arm_fam c r jc s g) (file_unarm_fam c r s g)
-      (file_cre_fam c r jc s g)
+      (file_arm_fam c r jo s g) (file_unarm_fam c r s g)
+      (file_cre_fam c r jo s g)
       (file_dlk_fam c r n s g)
       (file_odlk_fam c r n s g)
       (file_trunc_fam c r s).
@@ -1088,32 +1090,40 @@ Section FileOpen.
       iSplitR.
       { (* THE TRUNCATE, at the permit create pays (section 3f'') *)
         rewrite /open_trunc_piece. destruct (om_trunc vom); [| done].
-        iApply (file_trunc_piece γfs c r jc n s g ls ws M pv pl
+        iApply (file_trunc_piece γfs c r jo n s g ls ws M pv pl
                   Heq Hpath Hlast Hin Hok with "Hinv Hm Hwit Hlb"). }
       (* THE CHILD'S TWO LEGS: the escrow goes in HERE and comes back out
          through whichever of the parent leg and the unarm fired *)
       rewrite /cre_child_unfired. iSplitL "Hres".
       - rewrite /pf_at /file_arm_fam /=. iSplit; [| iExact "Hres"].
-        iApply (file_arm_commit γfs c r jc n s g [] Heq
+        iApply (file_arm_commit γfs c r jo n s g [] Heq
                   with "Hinv Hm Hwit Hres").
       - rewrite /pf_at /file_unarm_fam /=. iSplit; [| done].
-        iApply (file_unarm_commit γfs c r jc n s g Heq with "Hinv Hm Hwit"). }
+        iApply (file_unarm_commit γfs c r jo n s g Heq with "Hinv Hm Hwit"). }
     (* THE PARENT LEG, at the guarded cursor: the move between the two
        readings is the ISO, and it costs nothing at this prefix *)
     rewrite /pf_at /file_cre_fam /=. iSplit; [| done].
-    rewrite /acre_commit_at.
-    iApply (acre_commit_at_gen_mono (fs_gamma_L γfs) appE
-              (fun _ _ => AFile [])
+    rewrite /acre_commit_at_nm.
+    (* THE NAME: the kernel pins it at argument 0's last element, which
+       is `f` here, an inhabitant of the pattern the file claim answers at *)
+    iApply (acre_commit_at_gen_nm_mono (fs_gamma_L γfs) appE
+              (fun _ _ => AFile []) redir_name_ok (npar_nm M pv)).
+    { intros nm Hnm.
+      pose proof (npar_nm_elim M pv pl nm Hpath Hnm) as Hn.
+      rewrite /nlast_elem Hlast in Hn. injection Hn as <-.
+      exact redir_name_ok_f. }
+    iApply (acre_commit_at_gen_nm_cur_mono (fs_gamma_L γfs) appE
+              (fun _ _ => AFile []) redir_name_ok
               (fun d : Z => ⌜d = ROOTINO⌝%I)
               (npar_cur M pv (fun (_ : nat) (d : Z) => ⌜d = ROOTINO⌝%I))
-              (file_arm_fam c r jc s g)
-              (file_cre_fam c r jc s g).(pf_recv)
+              (file_arm_fam c r jo s g)
+              (file_cre_fam c r jo s g).(pf_recv)
               with "[] [] []").
     - iIntros "!>" (d) "H". rewrite /npar_cur.
       iApply ("H" $! pl). iPureIntro. exact Hpath.
     - iIntros "!>" (d) "%Hd". rewrite /npar_cur. iIntros (pl0) "_".
       by iPureIntro.
-    - iApply (file_acre_commit γfs c r jc n s g ls ws Heq Hin Hok
+    - iApply (file_acre_commit γfs c r jo n s g ls ws Heq Hin Hok
                 with "Hinv Hm Hwit Hlb").
   Qed.
 
@@ -1122,7 +1132,7 @@ Section FileOpen.
      own piece at every mode, so this is the same statement under one more
      premise, kept only so a caller at 0x201 need not read the guard. *)
   Lemma file_open_create_au_notrunc (γfs : fs_names) (c : file_fixed)
-      (r : file_names) (jc : Z) (n : nat) (s : dst) (g : gname)
+      (r : file_names) (jo : option Z) (n : nat) (s : dst) (g : gname)
       (ls : list wordline) (ws : wordline)
       (cw : Z) (M : gmap Z (bv 8)) (pv vom : mword 64) (pl : list (bv 8)) :
     file_app = MkAppcfg file_names (file_pred c) r ->
@@ -1132,20 +1142,20 @@ Section FileOpen.
     list_basics.last (path_elems pl) = Some fname_f ->
     om_trunc vom = false ->
     ws ∈ ls -> EchoDisc.line_ok ws ->
-    app_inv γfs -∗ cons_made (fn_cons r) jc -∗ fl_lb c ls -∗
+    app_inv γfs -∗ file_cons_cred c r jo -∗ fl_lb c ls -∗
     esc_key c r n s g -∗ fesc_res r s g -∗
     open_au_create_at (fs_gamma_L γfs) γfs cw M pv vom
       (fun (_ : nat) (d : Z) => ⌜d = ROOTINO⌝%I)
       (fun _ _ => True%I)
-      (file_arm_fam c r jc s g) (file_unarm_fam c r s g)
-      (file_cre_fam c r jc s g)
+      (file_arm_fam c r jo s g) (file_unarm_fam c r s g)
+      (file_cre_fam c r jo s g)
       (file_dlk_fam c r n s g)
       (file_odlk_fam c r n s g)
       (file_trunc_fam c r s).
   Proof using .
     intros Heq Hpath Hnp Hstart Hlast Htr Hin Hok.
     iIntros "#Hinv #Hm #Hlb #Hwit Hres".
-    iApply (file_open_create_au γfs c r jc n s g ls ws cw M pv vom pl
+    iApply (file_open_create_au γfs c r jo n s g ls ws cw M pv vom pl
               Heq Hpath Hnp Hstart Hlast Hin Hok with "Hinv Hm Hlb Hwit Hres").
   Qed.
 
@@ -1207,11 +1217,11 @@ Section FileOpen.
      READ here -- identifying the row is the truncate's business, and an
      unfired permit is worth only what was parked in it -- so the lemma is
      at any tie. *)
-  Lemma file_permit_pay (c : file_fixed) (r : file_names) (jc : Z) (n : nat)
+  Lemma file_permit_pay (c : file_fixed) (r : file_names) (jo : option Z) (n : nat)
       (s : dst) (g : gname) (T : Z -> fname -> iProp Σ) (i : Z)
       (Γ : fs_view_names Σ) :
     trunc_permit_of Γ T
-      (file_arm_fam c r jc s g) (file_cre_fam c r jc s g)
+      (file_arm_fam c r jo s g) (file_cre_fam c r jo s g)
       (file_dlk_fam c r n s g) i -∗
     file_esc_pay c r s g.
   Proof using .
@@ -1246,12 +1256,12 @@ Section FileOpen.
      ∨ file_taint c)%I.
 
   Lemma file_permit_tied (c : file_fixed) (r : file_names) (n : nat)
-      (s : dst) (g : gname) (jc : Z) (pl : list (bv 8)) (i : Z)
+      (s : dst) (g : gname) (jo : option Z) (pl : list (bv 8)) (i : Z)
       (Γ : fs_view_names Σ) :
     list_basics.last (path_elems pl) = Some fname_f ->
     trunc_permit_ex Γ
       (trunc_tie_at pl (fun (_ : nat) (d : Z) => ⌜d = ROOTINO⌝%I))
-      (file_arm_fam c r jc s g) (file_dlk_fam c r n s g) i -∗
+      (file_arm_fam c r jo s g) (file_dlk_fam c r n s g) i -∗
     file_permit_read c r s g i.
   Proof using .
     intros Hlast. iIntros "H". rewrite /trunc_permit_ex.
@@ -1321,13 +1331,13 @@ Section FileOpen.
   Qed.
 
   (* ...and off the keyed piece, whose refund carries it *)
-  Lemma file_kept_pay (c : file_fixed) (r : file_names) (jc : Z) (n : nat)
+  Lemma file_kept_pay (c : file_fixed) (r : file_names) (jo : option Z) (n : nat)
       (s : dst) (g : gname)
       (γfs : fs_names) (vom : mword 64) (pl : list (bv 8)) (i : Z) :
     om_trunc vom = true ->
     cre_trunc_kept (fs_gamma_L γfs) vom pl
       (fun (_ : nat) (d : Z) => ⌜d = ROOTINO⌝%I)
-      (file_arm_fam c r jc s g) (file_cre_fam c r jc s g)
+      (file_arm_fam c r jo s g) (file_cre_fam c r jo s g)
       (file_dlk_fam c r n s g)
       i (file_trunc_fam c r s) -∗
     file_esc_pay c r s g.
@@ -1336,18 +1346,18 @@ Section FileOpen.
     rewrite /cre_trunc_kept /open_trunc_at Htr /pf_at /cre_ft_kept.
     cbn [pf_refund]. iDestruct "H" as "[_ [_ Hk]]".
     rewrite /cre_permit.
-    iApply (file_permit_pay c r jc n s g _ i (fs_gamma_L γfs) with "Hk").
+    iApply (file_permit_pay c r jo n s g _ i (fs_gamma_L γfs) with "Hk").
   Qed.
 
   (* ...and the same piece read AT THE TIE, which the device arm wants *)
-  Lemma file_kept_tied (c : file_fixed) (r : file_names) (jc : Z) (n : nat)
+  Lemma file_kept_tied (c : file_fixed) (r : file_names) (jo : option Z) (n : nat)
       (s : dst) (g : gname)
       (γfs : fs_names) (vom : mword 64) (pl : list (bv 8)) (i : Z) :
     om_trunc vom = true ->
     list_basics.last (path_elems pl) = Some fname_f ->
     cre_trunc_kept_ex (fs_gamma_L γfs) vom pl
       (fun (_ : nat) (d : Z) => ⌜d = ROOTINO⌝%I)
-      (file_arm_fam c r jc s g) (file_dlk_fam c r n s g)
+      (file_arm_fam c r jo s g) (file_dlk_fam c r n s g)
       i (file_trunc_fam c r s) -∗
     file_permit_read c r s g i.
   Proof using .
@@ -1355,16 +1365,16 @@ Section FileOpen.
     rewrite /cre_trunc_kept_ex /open_trunc_at Htr /pf_at /cre_ft_kept.
     cbn [pf_refund]. iDestruct "H" as "[_ [_ Hk]]".
     rewrite /cre_permit_ex.
-    iApply (file_permit_tied c r n s g jc pl i (fs_gamma_L γfs) Hlast with "Hk").
+    iApply (file_permit_tied c r n s g jo pl i (fs_gamma_L γfs) Hlast with "Hk").
   Qed.
 
   (* the escrow off create's own child legs, which every arm that fired
      nothing hands back *)
-  Lemma file_legs_pay (c : file_fixed) (r : file_names) (jc : Z) (n : nat)
+  Lemma file_legs_pay (c : file_fixed) (r : file_names) (jo : option Z) (n : nat)
       (s : dst) (g : gname) (Γ : fs_view_names Σ) :
-    (cre_child_unfired Γ (AFile []) (file_arm_fam c r jc s g)
+    (cre_child_unfired Γ (AFile []) (file_arm_fam c r jo s g)
        (file_unarm_fam c r s g)
-     ∨ ∃ ic : Z, cre_child_pair (file_arm_fam c r jc s g)
+     ∨ ∃ ic : Z, cre_child_pair (file_arm_fam c r jo s g)
                    (file_unarm_fam c r s g) ic) -∗
     file_esc_pay c r s g.
   Proof using .
@@ -1386,14 +1396,14 @@ Section FileOpen.
      nothing fired, and through the KEYED PIECE'S REFUND -- the permit --
      where the create fired and the call failed past it. *)
   Lemma file_open_create_fail_pay (γfs : fs_names) (c : file_fixed)
-      (r : file_names) (jc : Z) (n : nat) (s : dst) (g : gname)
+      (r : file_names) (jo : option Z) (n : nat) (s : dst) (g : gname)
       (cw : Z) (M : gmap Z (bv 8)) (pv vom : mword 64) :
     om_trunc vom = true ->
     open_post_fail_create (fs_gamma_L γfs) γfs cw M pv vom
       (fun (_ : nat) (d : Z) => ⌜d = ROOTINO⌝%I)
       (fun _ _ => True%I)
-      (file_arm_fam c r jc s g) (file_unarm_fam c r s g)
-      (file_cre_fam c r jc s g) (file_dlk_fam c r n s g)
+      (file_arm_fam c r jo s g) (file_unarm_fam c r s g)
+      (file_cre_fam c r jo s g) (file_dlk_fam c r n s g)
       (file_odlk_fam c r n s g)
       (file_trunc_fam c r s) -∗
     file_esc_pay c r s g.
@@ -1401,25 +1411,25 @@ Section FileOpen.
     intros Htr. rewrite /open_post_fail_create /open_au_create_at.
     iIntros "[Hau | H]".
     - iDestruct "Hau" as "(_ & _ & _ & _ & _ & Hch)".
-      iApply (file_legs_pay c r jc n s g _ with "[Hch]"). by iLeft.
+      iApply (file_legs_pay c r jo n s g _ with "[Hch]"). by iLeft.
     - iDestruct "H" as (pl0) "[_ [Hd | Hc]]".
       + iDestruct "Hd" as "(_ & _ & _ & _ & _ & Hch)".
-        iApply (file_legs_pay c r jc n s g _ with "[Hch]"). by iLeft.
+        iApply (file_legs_pay c r jo n s g _ with "[Hch]"). by iLeft.
       + iDestruct "Hc" as (d) "[_ [Ha | [Hb | Hc]]]".
         * (* (a) the create FIRED and the open failed past it: the deed is
                in the permit, which the keyed piece's refund carries *)
           iDestruct "Ha" as (av i nm ents nl)
             "(_ & _ & _ & _ & _ & _ & Hkept & _)".
-          iApply (file_kept_pay c r jc n s g γfs vom pl0 i Htr with "Hkept").
+          iApply (file_kept_pay c r jo n s g γfs vom pl0 i Htr with "Hkept").
         * (* (b) the name existed *)
           iDestruct "Hb" as (av i nm ents nl) "(_ & _ & _ & _ & _ & Hfk & _)".
           rewrite /cre_fail_kept Htr.
           iDestruct "Hfk" as "[[Hkept _] | [_ Hlegs]]".
-          { iApply (file_kept_pay c r jc n s g γfs vom pl0 i Htr with "Hkept"). }
-          iApply (file_legs_pay c r jc n s g _ with "Hlegs").
+          { iApply (file_kept_pay c r jo n s g γfs vom pl0 i Htr with "Hkept"). }
+          iApply (file_legs_pay c r jo n s g _ with "Hlegs").
         * (* (c) nothing was observed at all *)
           iDestruct "Hc" as "(_ & _ & _ & _ & Hlegs)".
-          iApply (file_legs_pay c r jc n s g _ with "Hlegs").
+          iApply (file_legs_pay c r jo n s g _ with "Hlegs").
   Qed.
 
   (* ---- WHAT THE FD ARM HANDS THE ROUND, AT THE DESCRIPTOR'S TYPE.  This
@@ -1457,7 +1467,7 @@ Section FileOpen.
      section 6. *)
   Lemma file_open_create_recv (γfs : fs_names) (c : file_fixed)
       (omo : offmode)
-      (r : file_names) (jc : Z) (n : nat) (s : dst) (g : gname) (cw : Z)
+      (r : file_names) (jo : option Z) (n : nat) (s : dst) (g : gname) (cw : Z)
       (M : gmap Z (bv 8)) (pv vom : mword 64) (pl : list (bv 8))
       (sts : list fdstate) (rv : mword 64) (fdv' : list fdstate)
       (E : coPset) :
@@ -1470,8 +1480,8 @@ Section FileOpen.
     open_receipt_create omo (fs_gamma_L γfs) γfs cw M pv vom
       (fun (_ : nat) (d : Z) => ⌜d = ROOTINO⌝%I)
       (fun _ _ => True%I)
-      (file_arm_fam c r jc s g) (file_unarm_fam c r s g)
-      (file_cre_fam c r jc s g) (file_dlk_fam c r n s g)
+      (file_arm_fam c r jo s g) (file_unarm_fam c r s g)
+      (file_cre_fam c r jo s g) (file_dlk_fam c r n s g)
       (file_odlk_fam c r n s g)
       (file_trunc_fam c r s) sts rv fdv' ={E}=∗
       ((⌜rv = (mword_of_int (-1) : mword 64)⌝ ∗ ⌜fdv' = sts⌝
@@ -1484,7 +1494,7 @@ Section FileOpen.
     iIntros "#Hinv #Hwit [(%Hr & %Hfdv & Hf) | Hok]".
     { iMod (file_esc_pay_home γfs c r n s g E HE Heq with "Hinv Hwit [Hf]")
         as "Hpay".
-      { iApply (file_open_create_fail_pay γfs c r jc n s g cw M pv vom Htr
+      { iApply (file_open_create_fail_pay γfs c r jo n s g cw M pv vom Htr
                   with "Hf"). }
       iModIntro. iLeft. iSplitR; [ by iPureIntro |].
       iSplitR; [ by iPureIntro |]. iExact "Hpay". }
@@ -1519,7 +1529,7 @@ Section FileOpen.
              taint *)
         iDestruct "Hdev" as (ma mi) "(%Hrow & _ & Hobs & Hkept & %Hrcpt)".
         rewrite /file_odlk_fam /file_odlk_recv. cbn [pf_recv].
-        iDestruct (file_kept_tied c r jc n s g γfs vom pl i Htr Hlast
+        iDestruct (file_kept_tied c r jo n s g γfs vom pl i Htr Hlast
                      with "Hkept") as "Hperm".
         iDestruct (file_dev_refute c r s g i ma mi nl av Hrow
                      with "Hperm Hobs") as "#HT".
@@ -1539,23 +1549,23 @@ Section FileOpen.
   (* =================================================================== *)
 
   Definition file_read_recv (c : file_fixed) (r : file_names) (q : Qp)
-      (jc : Z) (s : dst) : pfam Σ (aview -> nat -> anode -> nat -> iProp Σ) :=
+      (jo : option Z) (s : dst) : pfam Σ (aview -> nat -> anode -> nat -> iProp Σ) :=
     MkPfam (fun (av : aview) (_ : nat) (_ : anode) (_ : nat) =>
-              ((⌜fclaim_facts jc s av⌝ ∗ fdq r q s)
+              ((⌜fclaim_facts jo s av⌝ ∗ fdq r q s)
                ∨ (fdq r q s ∗ file_taint c))%I)
            (fdq r q s).
 
   Lemma file_read_piece (γfs : fs_names) (c : file_fixed) (r : file_names)
-      (q : Qp) (jc : Z) (s : dst) (i : Z) (γo : gname) :
+      (q : Qp) (jo : option Z) (s : dst) (i : Z) (γo : gname) :
     file_app = MkAppcfg file_names (file_pred c) r ->
-    app_inv γfs -∗ cons_made (fn_cons r) jc -∗ fdq r q s -∗
+    app_inv γfs -∗ file_cons_cred c r jo -∗ fdq r q s -∗
     pf_at (aread_commit_at (fs_gamma_L γfs) appE i γo)
-      (file_read_recv c r q jc s).
+      (file_read_recv c r q jo s).
   Proof using .
     intros Heq. iIntros "#Hinv #Hm Hd". rewrite /pf_at. cbn [pf_recv pf_refund].
     iSplit; [| iExact "Hd" ].
     rewrite /aread_commit_at. iIntros (I off a d) "%Hpre Hka Hoff".
-    iMod (file_claim_read γfs c r jc s q I Heq with "Hinv Hm Hd Hka")
+    iMod (file_claim_read γfs c r jo s q I Heq with "Hinv Hm Hd Hka")
       as "(Hka & Hd & Hc)".
     iModIntro. iFrame "Hka".
     iSplitL "Hoff"; [iApply (off_ret_of_link with "Hoff") |].
@@ -1588,7 +1598,7 @@ Section FileOpen.
          agree against, and it hands the taint straight back
          ([OffGv.off_link_taint] is good at any value). *)
   Definition file_read_recv_hand (c : file_fixed) (r : file_names) (q : Qp)
-      (jc : Z) (s : dst) (γo : gname) (p : nat)
+      (jo : option Z) (s : dst) (γo : gname) (p : nat)
       : pfam Σ (aview -> nat -> anode -> nat -> iProp Σ) :=
     (* [PipeQueue.pipe_wpost]'s shape at this coupling, and ONE disjunction
        rather than two: FIRED, with the offset the read ran at reported and
@@ -1598,13 +1608,13 @@ Section FileOpen.
        say anything about -- and the half comes back UNMOVED beside the
        taint that says why. *)
     MkPfam (fun (av : aview) (off : nat) (_ : anode) (d : nat) =>
-              ((⌜off = p⌝ ∗ ⌜fclaim_facts jc s av⌝ ∗ fdq r q s
+              ((⌜off = p⌝ ∗ ⌜fclaim_facts jo s av⌝ ∗ fdq r q s
                 ∗ uoff γo (p + d)%nat)
                ∨ (fdq r q s ∗ uoff γo p ∗ file_taint c))%I)
            (fdq r q s ∗ uoff γo p).
 
   Lemma file_read_piece_adv (γfs : fs_names) (c : file_fixed) (r : file_names)
-      (q : Qp) (jc : Z) (s : dst) (i : Z) (γo : gname) (p : nat) :
+      (q : Qp) (jo : option Z) (s : dst) (i : Z) (γo : gname) (p : nat) :
     file_app = MkAppcfg file_names (file_pred c) r ->
     (* THE ONE BRIDGE THIS PIECE NEEDS, and it is the application's own
        equation rather than a fact about the file: the box's disconnect is
@@ -1621,9 +1631,9 @@ Section FileOpen.
        claim's becomes the link's when the node declines to move a shadow
        it can no longer say anything about. *)
     □ (app_taint -∗ file_taint c) -∗ □ (file_taint c -∗ app_taint) -∗
-    app_inv γfs -∗ cons_made (fn_cons r) jc -∗ fdq r q s -∗ uoff γo p -∗
+    app_inv γfs -∗ file_cons_cred c r jo -∗ fdq r q s -∗ uoff γo p -∗
     pf_at (aread_commit_adv (fs_gamma_L γfs) appE i γo)
-      (file_read_recv_hand c r q jc s γo p).
+      (file_read_recv_hand c r q jo s γo p).
   Proof using .
     intros Heq. iIntros "#Hbr #Hrb #Hinv #Hm Hd Hu".
     rewrite /pf_at. cbn [pf_recv pf_refund].
@@ -1634,7 +1644,7 @@ Section FileOpen.
     { (* the object was disconnected under the caller: the taint is the
          advanced arm, the node moves nothing, and the receipt takes its
          own right disjunct *)
-      iMod (file_claim_read γfs c r jc s q I Heq with "Hinv Hm Hd Hka")
+      iMod (file_claim_read γfs c r jo s q I Heq with "Hinv Hm Hd Hka")
         as "(Hka & Hd & _)".
       iModIntro. iFrame "Hka".
       iSplitR; [ iApply (off_link_taint with "HT") | ].
@@ -1643,7 +1653,7 @@ Section FileOpen.
        offset the kernel is firing at. *)
     iDestruct (uoff_agree_k γo p (Z.of_nat off) with "Hu Hk") as %Hzp.
     assert (Hoffp : off = p) by lia. subst off.
-    iMod (file_claim_read γfs c r jc s q I Heq with "Hinv Hm Hd Hka")
+    iMod (file_claim_read γfs c r jo s q I Heq with "Hinv Hm Hd Hka")
       as "(Hka & Hd & Hc)".
     iDestruct "Hc" as "[%Hf | #HT2]"; last first.
     { (* THE CLAIM CAME BACK TAINTED, so the node DECLINES TO MOVE: it can
@@ -1685,7 +1695,7 @@ Section FileOpen.
   Qed.
 
   Lemma file_read_post_ok_learn (c : file_fixed) (r : file_names) (q : Qp)
-      (jc : Z) (i : Z) (bs : list (bv 8)) (n : Z)
+      (jo : option Z) (i : Z) (bs : list (bv 8)) (n : Z)
       (rv : mword 64) (M' : gmap Z (bv 8)) (addr : mword 64)
       (k : nat) (g : nat -> bv 8) :
     (forall j : nat, (j < k)%nat ->
@@ -1694,7 +1704,7 @@ Section FileOpen.
        M' !! uint (add_vec_int addr (Z.of_nat j)) = Some (g j)) ->
     (Z.to_nat n <= k)%nat ->
     read_post_ok (fs_gamma_L fsc_fs) i n
-      (file_read_recv c r q jc (Some (i, bs))) rv M' addr -∗
+      (file_read_recv c r q jo (Some (i, bs))) rv M' addr -∗
     (⌜(Z.to_nat (bv_unsigned rv) <= Z.to_nat n)%nat⌝ ∗
      (((∃ off : nat,
             ⌜Z.to_nat (bv_unsigned rv)
@@ -1763,7 +1773,7 @@ Section FileOpen.
      honest statement is the existential, which is exactly what
      [UCatKernel.cat_held_read]'s taint arm asks for. *)
   Lemma file_read_post_ok_learn_hand (c : file_fixed) (r : file_names) (q : Qp)
-      (jc : Z) (i : Z) (bs : list (bv 8)) (n : Z) (γo : gname) (p : nat)
+      (jo : option Z) (i : Z) (bs : list (bv 8)) (n : Z) (γo : gname) (p : nat)
       (rv : mword 64) (M' : gmap Z (bv 8)) (addr : mword 64)
       (k : nat) (g : nat -> bv 8) :
     (forall j : nat, (j < k)%nat ->
@@ -1772,7 +1782,7 @@ Section FileOpen.
        M' !! uint (add_vec_int addr (Z.of_nat j)) = Some (g j)) ->
     (Z.to_nat n <= k)%nat ->
     read_post_ok (fs_gamma_L fsc_fs) i n
-      (file_read_recv_hand c r q jc (Some (i, bs)) γo p) rv M' addr -∗
+      (file_read_recv_hand c r q jo (Some (i, bs)) γo p) rv M' addr -∗
     (⌜(Z.to_nat (bv_unsigned rv) <= Z.to_nat n)%nat⌝ ∗
      ((⌜Z.to_nat (bv_unsigned rv)
         = ard_count (Z.to_nat n) p (length bs)⌝ ∗
@@ -1833,7 +1843,7 @@ Section FileOpen.
   Qed.
 
   Lemma file_read_arms_learn (c : file_fixed) (r : file_names) (q : Qp)
-      (jc : Z) (i : Z) (bs : list (bv 8)) (γo : gname) (P : uptd) (n : Z)
+      (jo : option Z) (i : Z) (bs : list (bv 8)) (γo : gname) (P : uptd) (n : Z)
       (rv : mword 64) (M' : gmap Z (bv 8)) (addr : mword 64)
       (k : nat) (g : nat -> bv 8) :
     (forall j : nat, (j < k)%nat ->
@@ -1842,7 +1852,7 @@ Section FileOpen.
        M' !! uint (add_vec_int addr (Z.of_nat j)) = Some (g j)) ->
     (Z.to_nat n <= k)%nat ->
     read_arms (fs_gamma_L fsc_fs) i γo P n
-      (file_read_recv c r q jc (Some (i, bs))) rv M' addr -∗
+      (file_read_recv c r q jo (Some (i, bs))) rv M' addr -∗
     (((⌜rv = (mword_of_int (-1) : mword 64)⌝
        ∨ (∃ off : nat,
             ⌜Z.to_nat (bv_unsigned rv)
@@ -1866,7 +1876,7 @@ Section FileOpen.
         iDestruct "Hc" as "[[_ Hd] | [Hd #HT]]".
         + iLeft. iFrame "Hd". iLeft. by iPureIntro.
         + iRight. iFrame "Hd". iExact "HT". }
-    iDestruct (file_read_post_ok_learn c r q jc i bs n rv M' addr k g
+    iDestruct (file_read_post_ok_learn c r q jo i bs n rv M' addr k g
                  Hlin Himg Hnk with "Hok") as "[_ [[H Hd] | [Hd HT]]]".
     - iLeft. iFrame "Hd". iRight. iExact "H".
     - iRight. iFrame "Hd". iExact "HT".
@@ -1877,7 +1887,7 @@ Section FileOpen.
      reason from [SpecCopyout] to [FsAbsReadFire.read_post_fail], and a
      program that owns its destination run refutes it there. *)
   Lemma file_read_arms_learn_mapped (c : file_fixed) (r : file_names) (q : Qp)
-      (jc : Z) (i : Z) (bs : list (bv 8)) (γo : gname) (P : uptd) (n : Z)
+      (jo : option Z) (i : Z) (bs : list (bv 8)) (γo : gname) (P : uptd) (n : Z)
       (rv : mword 64) (M' : gmap Z (bv 8)) (addr : mword 64)
       (k : nat) (g : nat -> bv 8) :
     (forall j : nat, (j < k)%nat ->
@@ -1889,7 +1899,7 @@ Section FileOpen.
     (forall j : nat, (j < k)%nat ->
        uva_wmapped P (uint (add_vec_int addr (Z.of_nat j)))) ->
     read_arms (fs_gamma_L fsc_fs) i γo P n
-      (file_read_recv c r q jc (Some (i, bs))) rv M' addr -∗
+      (file_read_recv c r q jo (Some (i, bs))) rv M' addr -∗
     (* ...AND THE COUNT'S BOUND RIDES OUT BESIDE THE ARMS (lane OFF-LINK,
        for CAT-ENTRY-2): a read of [n] bytes returns at most [n] whichever
        arm the receipt took, which is what a caller needs to refute a short
@@ -1904,10 +1914,10 @@ Section FileOpen.
       ∨ (fdq r q (Some (i, bs)) ∗ file_taint c))).
   Proof using .
     intros Hlin Himg Hn Hnk Hmap. iIntros "H".
-    iApply (file_read_post_ok_learn c r q jc i bs n rv M' addr k g
+    iApply (file_read_post_ok_learn c r q jo i bs n rv M' addr k g
               Hlin Himg Hnk).
     iApply (read_arms_mapped (fs_gamma_L fsc_fs) i γo P n
-              (file_read_recv c r q jc (Some (i, bs))) rv M' addr k
+              (file_read_recv c r q jo (Some (i, bs))) rv M' addr k
               Hn Hnk Hmap with "H").
   Qed.
 
@@ -1915,7 +1925,7 @@ Section FileOpen.
      a destination buffer the caller owns there is no [-1] arm at all, so
      the two arms are the content and the taint and both carry the half. *)
   Lemma file_read_arms_learn_mapped_hand (c : file_fixed) (r : file_names)
-      (q : Qp) (jc : Z) (i : Z) (bs : list (bv 8)) (γo : gname) (p : nat)
+      (q : Qp) (jo : option Z) (i : Z) (bs : list (bv 8)) (γo : gname) (p : nat)
       (P : uptd) (n : Z)
       (rv : mword 64) (M' : gmap Z (bv 8)) (addr : mword 64)
       (k : nat) (g : nat -> bv 8) :
@@ -1928,7 +1938,7 @@ Section FileOpen.
     (forall j : nat, (j < k)%nat ->
        uva_wmapped P (uint (add_vec_int addr (Z.of_nat j)))) ->
     read_arms (fs_gamma_L fsc_fs) i γo P n
-      (file_read_recv_hand c r q jc (Some (i, bs)) γo p) rv M' addr -∗
+      (file_read_recv_hand c r q jo (Some (i, bs)) γo p) rv M' addr -∗
     (⌜(Z.to_nat (bv_unsigned rv) <= Z.to_nat n)%nat⌝ ∗
      ((⌜Z.to_nat (bv_unsigned rv)
         = ard_count (Z.to_nat n) p (length bs)⌝ ∗
@@ -1939,10 +1949,10 @@ Section FileOpen.
       ∨ (uoff γo p ∗ fdq r q (Some (i, bs)) ∗ file_taint c))).
   Proof using .
     intros Hlin Himg Hn Hnk Hmap. iIntros "H".
-    iApply (file_read_post_ok_learn_hand c r q jc i bs n γo p rv M' addr k g
+    iApply (file_read_post_ok_learn_hand c r q jo i bs n γo p rv M' addr k g
               Hlin Himg Hnk).
     iApply (read_arms_mapped (fs_gamma_L fsc_fs) i γo P n
-              (file_read_recv_hand c r q jc (Some (i, bs)) γo p) rv M' addr k
+              (file_read_recv_hand c r q jo (Some (i, bs)) γo p) rv M' addr k
               Hn Hnk Hmap with "H").
   Qed.
 

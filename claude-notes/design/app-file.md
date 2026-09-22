@@ -788,6 +788,64 @@ unowned critical item (WRITE-RELAY-3's `TB` guard).  RULES, replacing
   the pipe campaign is mid-flight on the word-list form.  Do it when both
   application theorems are closed, or earlier if a third line shape is
   added.
+- RULING NM-OPEN (2026-09-22, PROGRAM-STREAM stretch 17): RULING NM's open
+  half.  `open(O_CREATE)`'s AU (`SysOpenDefs.open_au_create_at`) quantified
+  the created name freely, and the file claim refuted a create at `console`
+  only because the console's row was PRESENT (`cons_made jc`); under
+  `cons_never` (the sealed console: /init's mknod failed) a plain file called
+  `console` would falsify the sealed claim and nothing in the AU forbade it.
+  THREADED as mknod's: the bundle's parent leg is `acre_commit_at_nm …
+  (npar_nm M pv) (npar_cur M pv P)` (the name under argument 0's guard,
+  `SpecSysMknod.mknod_au_at`'s twin), `open_au_pre_create` takes `Nm`, the
+  arms hand the leg back at the guarded predicate (`open_post_ok_create`,
+  `open_post_fail_create`, `open_receipt_create`;
+  `ProofSysOpenCreArm.socr_exists` gains `Nm`), `ProofSysOpenEntryC` pays
+  create's name premise from the reading (`npar_nm_intro … Hpof`), the
+  trivial bridge `open_acre_file_of_triv` is gone, the generic suppliers
+  bridge through `acre_commit_at_nm_of` (`TreeMove.tree_open_create_au`,
+  `FsAbsInvFire.fsabs_open_pre_create` at `Nm`), and
+  `FsAbsCreateNm.acre_commit_at_gen_nm_cur_mono` is the cursor move under
+  the predicate.
+  **THE OWNER'S RULING ON THE NAMES (2026-09-22): restrict the file names
+  sh may create to a PATTERN, "out*"-like, rather than pin one literal.**
+  `FileDeltas.redir_name_ok nm := prefix redir_prefix nm` with
+  `redir_prefix := fname_f` today; `FileOpen.file_acre_commit` is stated at
+  `acre_commit_at_gen_nm … redir_name_ok`, its other-name arm's `nm <>
+  console` is `redir_name_ok_ne_console`, and `file_open_create_au` narrows
+  the kernel's `npar_nm M pv` to the pattern by `Hlast` (`last (path_elems
+  pl) = Some fname_f`) -- so the create's parent leg no longer needs the
+  console flag at all, at either arm.  **CLEANUP OWED: the rename.**  The
+  file is still called `f`: `fname_f = "f"` is a byte literal computed on
+  in 22 files (sh's argv layouts for `cat f`, `FileDisc.cat_words`, the
+  "open f failed" bytes, path facts), so today the pattern's only
+  inhabitant the discipline uses is `f` itself.  The pattern is shaped so
+  that an `out*` name is a change of `redir_prefix` and `fname_f` and of
+  nothing below the discipline; do it when the theorem is closed.
+- RULING CONS-CRED (2026-09-22; stretch 16's option C, landed in stretch
+  17): the console credential the file claim's consumers take is
+  `AppFileCons.file_cons_cred c r jo := cons_flag r jo ∨ file_taint c`,
+  `cons_flag r (Some j) = cons_made (fn_cons r) j`, `cons_flag r None =
+  cons_never (fn_cons r)`; what is read off the claim is `cons_fact jo v`
+  (`cons_present_at j v` / `cons_absent v`), law `file_cons_cred_law`,
+  and `cons_fact_present` pins the index ("whoever is present is the
+  flag's").  Threaded from `FileOpen.fclaim_facts` / `file_claim_read{,_esc}`
+  through the create's families (`file_arm_fam c r jo …`, `file_cre_fam`),
+  `UkFileOpen`, `UkCatDeed`, `UCatKernel` to `UShRound` (`Hopen_hand`,
+  `cat_exec_sup`, `Hchild_redir`, `Hchild_cat`, `sh_round_holds_file` at
+  `∃ jo, file_cons_cred (fgn_cl g) r jo`).  `UInitFileCC.file_cons_cred_of_init`
+  reads /init's `init_cons_cred T (fn_cons r)` as `∃ jo, file_cons_cred jo`
+  (`None` for the sealed and the tainted arms alike), and
+  `file_cons_sup_of_sh_slot` takes sh's slot AS A WAND FROM THE FLAG
+  (`□ (∀ jo, file_cons_cred jo -∗ init_sh_slot T (sh_pay_at …))`): the flag
+  is decided by /init's own mknod mid-walk, so /init's boot cannot supply
+  the slot outright.  The landed `FileOpen.file_cons_law` (the made arm)
+  survives as a corollary (`UInitConsFile` reads it).  Where the flag is
+  genuinely spent: the create's UNARM leg alone (the armed row is not the
+  console's -- at `Some j` from the receipt at the arm's view, at `None`
+  from `cons_absent_unarm`); `file_trunc_free`'s console premise was never
+  spent and is dropped.  `cons_fact` / `cons_flag` are echo-generic and
+  could move down to `FsConsPin` / `AppEcho`; left in `AppFileCons` to keep
+  the rebuild cone in the file tier.
 - TWO SERIAL STREAMS, at most two lanes on `iris/` at once: the KERNEL
   stream (OFF-LINK-6 + L5 + the `TB` guard, exit criterion: `Hopen_hand`,
   cat's lend and `UEchoFile.ef_chain` compile as `Definition`s; then

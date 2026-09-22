@@ -1617,9 +1617,9 @@ Section UShRound.
      the parse with its lend whole, and the deed flows lend -> call ->
      receipt ([UkShRedirAns.ush_open_call2]'s [Dd]). *)
   Lemma Hopen_hand (N : uk_names Σ) (file : Z) (l : list fdstate)
-      (ls : list wordline) (ws : wordline) (jc : Z) :
+      (ls : list wordline) (ws : wordline) (jo : option Z) :
     ws ∈ ls -> EchoDisc.line_ok ws ->
-    app_inv fsc_fs -∗ cons_made (fn_cons r) jc -∗ fl_lb (fgn_cl g) ls -∗
+    app_inv fsc_fs -∗ file_cons_cred (fgn_cl g) r jo -∗ fl_lb (fgn_cl g) ls -∗
     (* ...AND THE CWD'S CAMERA IS PINNED TOO (the PROGRAM STREAM's rule,
        one class further out than the deposit): [UserCwd.ucwd] takes a
        [ghost_varG Σ Z], [UkShRedirAns]'s section has its own and the
@@ -1676,7 +1676,7 @@ Section UShRound.
       exact Ha1. }
     (* ---- 0xcc8  ecall -- the DEED's create corollary at [OffHeld] ---- *)
     iApply (UkFileOpen.wp_uk_ecall_open_create_deed_d (PSx := uprogSG_free)
-              N OffHeld h1 m1 (mword_of_int 0xcc8) l av (fgn_cl g) r jc s
+              N OffHeld h1 m1 (mword_of_int 0xcc8) l av (fgn_cl g) r jo s
               ls ws FsImg.ROOTINO Img (mword_of_int file : mword 64) pl
               Heq
               ltac:(unfold m1, usysno;
@@ -2178,12 +2178,12 @@ Section UShRound.
 
   (* ---- THE EXEC SUPPLY: [exec /cat] ---- *)
   Lemma cat_exec_sup (I : list (bv 8)) (s : dst) (v' : era_pins)
-      (cs' : list nat) (jc : Z) :
+      (cs' : list nat) (jo : option Z) :
     fline I = LCat ->
     pre_tie cs' s0 I (dst_content s) -> (0 < nlines I)%nat ->
     ⊢ udep (SG := uexecSG_xv6) (PS := uprogSG_free) -∗
       UShCatPay.sh_cat_slot T -∗
-      cons_made (fn_cons r) jc -∗
+      file_cons_cred (fgn_cl g) r jo -∗
       era_pin (fgn_echo g) (S gen_id) v' -∗ cs_lb v' cs' -∗
       f_typed (fgn_cl g) s -∗
       UkShEcho.sh_exec_sup_echo_at (SG := uexecSG_xv6)
@@ -2262,7 +2262,7 @@ Section UShRound.
       subst l3. reflexivity. }
     iPoseProof (UCatKernel.cat_child_of_entry g Hcons cat_ws M sa t gb fdv
                   FsImg.ROOTINO chs pidv v vf ps cs s0 I P (fgn_cl g) r
-                  (1/2)%Qp s rb1 rb2 jc
+                  (1/2)%Qp s rb1 rb2 jo
                   (fun _ : Z => UkShFork.ushf_wq Wcf I) (ftkt r s)
                   (fun _ _ => eq_refl) Heq eq_refl
                   (conj Hr (conj Hn (conj Hfl (conj HP Hpin0))))
@@ -2316,11 +2316,11 @@ Section UShRound.
     ⊢ FileLinks.file_links g -∗
       udep (SG := uexecSG_xv6) (PS := uprogSG_free) -∗
       UShCatPay.sh_cat_slot T -∗
-      (∃ jc : Z, cons_made (fn_cons r) jc) -∗
+      (∃ jo : option Z, file_cons_cred (fgn_cl g) r jo) -∗
       UkShFork.ushf_child_law_at (PS := uprogSG_free) (SG := uexecSG_xv6)
         (ghost_varG0 := offbox_offG) Wcf UkShRedirBody.ushs_lp_cat 68.
   Proof using Heq Hkill Hcons.
-    iIntros "#Hlk #Hdep #Hslot #Hmade". iDestruct "Hmade" as (jc) "#Hmade".
+    iIntros "#Hlk #Hdep #Hslot #Hmade". iDestruct "Hmade" as (jo) "#Hmade".
     iPoseProof "Hslot" as "(#Hinv & _ & #Hgen)".
     rewrite /UkShFork.ushf_child_law_at.
     iIntros "!>" (N' h m dw dv sa len ws gb sz ld n I)
@@ -2384,7 +2384,7 @@ Section UShRound.
               with "Hcode [] [] [] [] Hpcode Hpro Hjt Hstr Hwsp Hsy Hstd Hcwd
                     Hch HM [Hc Hd] Hrun").
     - (* exec /cat *)
-      iApply (cat_exec_sup I s v' cs jc Hfl Htie Hpos
+      iApply (cat_exec_sup I s v' cs jo Hfl Htie Hpos
                 with "Hdep Hslot Hmade Hpin' Hcs Hty").
     - (* the child died before the exec: the lend, whole *)
       iIntros "!> [Hc Hd]". rewrite /UkShFork.ushf_wq. iRight.
@@ -2468,11 +2468,11 @@ Section UShRound.
     ⊢ FileLinks.file_links g -∗
       udep (SG := uexecSG_xv6) (PS := uprogSG_free) -∗
       UShEcho.sh_echo_slot T -∗
-      (∃ jc : Z, cons_made (fn_cons r) jc) -∗
+      (∃ jo : option Z, file_cons_cred (fgn_cl g) r jo) -∗
       UkShRedirBody.sh_redir_child_law (PS := uprogSG_free)
         (SG := uexecSG_xv6) (ghost_varG0 := offbox_offG) Wcf.
   Proof using Heq Hkill.
-    iIntros "#Hlk #Hdep #Hslot #Hmade". iDestruct "Hmade" as (jc) "#Hmade".
+    iIntros "#Hlk #Hdep #Hslot #Hmade". iDestruct "Hmade" as (jo) "#Hmade".
     iPoseProof "Hslot" as "(#Hinv & _ & #Hgen)".
     rewrite /UkShRedirBody.sh_redir_child_law.
     iIntros "!>" (N' h m dw dv sa len ws file fb sz ld n I)
@@ -2557,7 +2557,7 @@ Section UShRound.
               with "Hcode Hjt Hpcode Hpro Hstr Hwsp Hsy Hstd Hcwd Hch HM
                     [] [] [] [] [] [] [] [] [] [Hc Hd] Hrun").
     - (* the open *)
-      iApply (Hopen_hand N' _ _ ls ws jc Hin Hokws with "Hinv Hmade Hfl").
+      iApply (Hopen_hand N' _ _ ls ws jo Hin Hokws with "Hinv Hmade Hfl").
     - (* the receipt, read *)
       iIntros "!>" (ty) "HK".
       iMod (redir_K_inum ty ⊤ ltac:(set_solver) with "Hinv HK") as "[HK Hi]".
@@ -2718,7 +2718,7 @@ Section UShRound.
       UShEcho.sh_echo_slot T -∗
       UShCatPay.sh_cat_slot T -∗
       (∃ v : era_pins, era_pin (fgn_echo g) (S gen_id) v) -∗
-      (∃ jc : Z, cons_made (fn_cons r) jc) -∗
+      (∃ jo : option Z, file_cons_cred (fgn_cl g) r jo) -∗
       UkSh.ush_rest_l_at (PS := uprogSG_free) (ghost_varG0 := offbox_offG)
         N γp T Wcf Wbf
         (UShLine.ush_mid_at (lk_rres FI) (fgn_echo g) γp)

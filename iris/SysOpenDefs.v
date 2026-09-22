@@ -929,7 +929,7 @@ Section OpenDefs.
      fused delta at the child [AFile []], the exists observation, and
      open's own two commits *)
   Definition open_au_pre_create Γ (γfs : fs_names) (cw : Z)
-      (pl : list (bv 8)) (vom : mword 64)
+      (pl : list (bv 8)) (Nm : fname -> Prop) (vom : mword 64)
       (P Pmiss : nat -> Z -> iProp Σ)
       (Farm Fun : pfam Σ (aview -> Z -> iProp Σ))
       (Fok Fex : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ))
@@ -937,7 +937,11 @@ Section OpenDefs.
       (Ft : pfam Σ (aview -> Z -> list (bv 8) -> iProp Σ)) : iProp Σ :=
     (ep_start γfs cw P Pmiss pl
      (* THE PARENT CURSOR rides the commit (lane TL-3K, WALL A fix (i)) *)
-     ∗ pf_at (acre_commit_at Γ appE (AFile [])
+     (* ...AND THE NAME PREDICATE (RULING NM, the thread's open half):
+        create files exactly the name argument 0's last element spells, so
+        the caller's claim is asked to absorb a create there and nowhere
+        else.  [SpecSysMknod.mknod_au_pre]'s [Nm], one syscall over. *)
+     ∗ pf_at (acre_commit_at_nm Γ appE (AFile []) Nm
                 (P (length (npar_elems pl))) Farm) Fok
      ∗ pf_at (dlookup_commit_at Γ appE) Fex
      ∗ pf_at (aopen_commit_at Γ appE) Fo
@@ -989,7 +993,10 @@ Section OpenDefs.
       (Fo : pfam Σ (aview -> Z -> anode -> iProp Σ))
       (Ft : pfam Σ (aview -> Z -> list (bv 8) -> iProp Σ)) : iProp Σ :=
     ((∀ pl : list (bv 8), ⌜arg_path_of M pv pl⌝ -∗ ep_start γfs cw P Pmiss pl)
-     ∗ pf_at (acre_commit_at Γ appE (AFile []) (npar_cur M pv P) Farm) Fok
+     (* the name UNDER THE SAME GUARD the cursor carries
+        ([FsAbsCreateNm.npar_nm]): whatever argument 0 reads *)
+     ∗ pf_at (acre_commit_at_nm Γ appE (AFile []) (npar_nm M pv)
+                (npar_cur M pv P) Farm) Fok
      ∗ pf_at (dlookup_commit_at Γ appE) Fex
      ∗ pf_at (aopen_commit_at Γ appE) Fo
      ∗ open_trunc_piece Γ vom
@@ -1019,18 +1026,20 @@ Section OpenDefs.
       (Farm : pfam Σ (aview -> Z -> iProp Σ))
       (Fok : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ)) :
     arg_path_of M pv pl ->
-    pf_at (acre_commit_at Γ appE (AFile []) (npar_cur M pv P) Farm) Fok -∗
-    pf_at (acre_commit_at Γ appE (AFile [])
+    pf_at (acre_commit_at_nm Γ appE (AFile []) (npar_nm M pv)
+             (npar_cur M pv P) Farm) Fok -∗
+    pf_at (acre_commit_at_nm Γ appE (AFile []) (npar_nm M pv)
              (P (length (npar_elems pl))) Farm) Fok.
   Proof using .
     intros Hpl. iIntros "Hok".
-    rewrite /acre_commit_at. iApply (pf_at_mono with "[] Hok").
-    iIntros "Hok".
-    iApply (acre_commit_at_gen_mono Γ appE (fun _ _ => AFile [])
-              (npar_cur M pv P) (P (length (npar_elems pl))) Farm
-              Fok.(pf_recv) with "[] [] Hok").
-    - iApply (npar_cur_out M pv pl P Hpl).
-    - iApply (npar_cur_in M pv pl P Hpl).
+    rewrite /acre_commit_at_nm. iApply (pf_at_mono with "[] Hok").
+    iIntros "Hok". rewrite /acre_commit_at_gen_nm.
+    iIntros (I d i nm ents nl) "%Hpre %Hnm %HNm Harm HPd Ha".
+    iDestruct (npar_cur_intro M pv pl P d Hpl with "HPd") as "HPd".
+    iMod ("Hok" $! I d i nm ents nl with "[//] [//] [//] Harm HPd Ha")
+      as "(Ha & HPd & Hstep & Hph2)".
+    iDestruct (npar_cur_elim M pv pl P d Hpl with "HPd") as "HPd".
+    iModIntro. by iFrame "Ha HPd Hstep Hph2".
   Qed.
 
   Lemma open_au_create_at_inst Γ (γfs : fs_names) (cw : Z)
@@ -1042,7 +1051,8 @@ Section OpenDefs.
       (Ft : pfam Σ (aview -> Z -> list (bv 8) -> iProp Σ)) :
     arg_path_of M pv pl ->
     open_au_create_at Γ γfs cw M pv vom P Pmiss Farm Fun Fok Fex Fo Ft -∗
-    open_au_pre_create Γ γfs cw pl vom P Pmiss Farm Fun Fok Fex Fo Ft.
+    open_au_pre_create Γ γfs cw pl (npar_nm M pv) vom P Pmiss
+      Farm Fun Fok Fex Fo Ft.
   Proof using .
     iIntros (Hpl) "(Hw & Hok & Hex & Ho & Ht & Hch)".
     rewrite /open_au_pre_create.
@@ -1094,9 +1104,14 @@ Section OpenDefs.
     open_au_create_at Γ γfs cw M pv vom P Pmiss Farm Fun Fok Fex Fo Ft.
   Proof using .
     iIntros "Hw Hok Hex Ho Ht Hch". rewrite /open_au_create_at.
-    iFrame "Hok Hex Ho Ht Hch".
-    iIntros (pl) "_". rewrite /ep_start /npar_walk_pre_era. iIntros (r Hr).
-    iMod ("Hw" $! pl r with "[%]") as "[$ $]"; [exact Hr | done].
+    iFrame "Hex Ho Ht Hch".
+    iSplitR "Hok".
+    { iIntros (pl) "_". rewrite /ep_start /npar_walk_pre_era. iIntros (r Hr).
+      iMod ("Hw" $! pl r with "[%]") as "[$ $]"; [exact Hr | done]. }
+    (* a provider that answers at EVERY name answers at the guarded ones *)
+    iApply (pf_at_mono with "[] Hok"). iIntros "Hok".
+    iApply (acre_commit_at_nm_of Γ appE (AFile []) (npar_nm M pv)
+              (npar_cur M pv P) Farm Fok.(pf_recv) with "Hok").
   Qed.
 
   Lemma open_au_pre_plain_of_all Γ (γfs : fs_names) (cw : Z)
@@ -1115,7 +1130,7 @@ Section OpenDefs.
   Qed.
 
   Lemma open_au_pre_create_of_all Γ (γfs : fs_names) (cw : Z)
-      (pl : list (bv 8)) (vom : mword 64)
+      (pl : list (bv 8)) (Nm : fname -> Prop) (vom : mword 64)
       (P Pmiss : nat -> Z -> iProp Σ)
       (Farm Fun : pfam Σ (aview -> Z -> iProp Σ))
       (Fok Fex : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ))
@@ -1129,12 +1144,16 @@ Section OpenDefs.
     open_trunc_piece Γ vom
       (trunc_permit_of Γ (trunc_tie_at pl P) Farm Fok Fex) Ft -∗
     cre_child_unfired Γ (AFile []) Farm Fun -∗
-    open_au_pre_create Γ γfs cw pl vom P Pmiss Farm Fun Fok Fex Fo Ft.
+    open_au_pre_create Γ γfs cw pl Nm vom P Pmiss Farm Fun Fok Fex Fo Ft.
   Proof using .
     iIntros "Hw Hok Hex Ho Ht Hch". rewrite /open_au_pre_create.
-    iFrame "Hok Hex Ho Ht Hch".
-    rewrite /ep_start /npar_walk_pre_era. iIntros (r Hr).
-    iMod ("Hw" $! pl r with "[%]") as "[$ $]"; [exact Hr | done].
+    iFrame "Hex Ho Ht Hch".
+    iSplitR "Hok".
+    { rewrite /ep_start /npar_walk_pre_era. iIntros (r Hr).
+      iMod ("Hw" $! pl r with "[%]") as "[$ $]"; [exact Hr | done]. }
+    iApply (pf_at_mono with "[] Hok"). iIntros "Hok".
+    iApply (acre_commit_at_nm_of Γ appE (AFile []) Nm
+              (P (length (npar_elems pl))) Farm Fok.(pf_recv) with "Hok").
   Qed.
 
   (* ------------------------------------------------------------------ *)

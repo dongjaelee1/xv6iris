@@ -59,7 +59,21 @@ Landed 2026-09-21:
 - **5 `sh_round_holds_file` is PROVED (2026-09-22)**; `UShRound.v` is closed
   (no `Admitted`, no section hypotheses).  PROGRAM-STREAM.md stretch 14.
 
-NEXT: 4 (INIT-FILE, `file_Hinit_boot`), then the adequacy close.  PROGRESS
+- **4's design point (2026-09-22, branch `app-file/cons-cred`): RULING
+  NM-OPEN and RULING CONS-CRED** (design §3).  The round's `cons_made`
+  premise is now the three-armed credential `file_cons_cred (fgn_cl g) r jo`
+  over `option Z`; `UInitFileCC.file_cons_sup_of_sh_slot` takes sh's slot as
+  a wand from the flag; and the name predicate of RULING NM reaches
+  `open(O_CREATE)` (`SysOpenDefs.open_au_create_at` at `npar_nm M pv`), with
+  the owner's ruling that sh's creatable names are a PATTERN
+  (`FileDeltas.redir_name_ok`, prefix `fname_f` today).  **CLEANUP OWED
+  (NAME-PATTERN):** rename the file to an `out*` name once the theorem is
+  closed -- `redir_prefix` and `fname_f` move, the 22 files computing on the
+  literal "f" follow.  PROGRAM-STREAM.md stretch 17.
+
+NEXT: 4 (INIT-FILE, `file_Hinit_boot`'s body -- it now supplies the slot
+UNDER the flag: `□ (∀ jo, file_cons_cred jo -∗ init_sh_slot …)`, the round
+from `sh_round_holds_file` at that `jo`), then the adequacy close.  PROGRESS
 (2026-09-22, branch `app-file/init-file`): `FileReadInst.file_read_inst_at` /
 `file_read_leaf_holds_at` (the read leaf at the indexed record) and
 `iris/UInitFileCC.v` -- `file_cc`, `file_cc_holds` (all ten laws),

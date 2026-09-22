@@ -1126,7 +1126,11 @@ Section TreeMove.
       - rewrite /pf_at /tree_unarm_fam /=. iSplit; [| done].
         iApply (tree_unarm_commit γfs c r g t Heq with "Hinv"). }
     rewrite /pf_at /tree_acre_fam /=. iSplit; [| done].
-    rewrite /acre_commit_at.
+    rewrite /acre_commit_at_nm.
+    (* the tree claim answers the create at EVERY name, so a fortiori at
+       the one argument 0 spells ([FsAbsCreateNm.acre_commit_at_gen_nm_of]) *)
+    iApply (acre_commit_at_gen_nm_of (fs_gamma_L γfs) appE
+              (fun _ _ => AFile []) (npar_nm M pv)).
     iApply (acre_commit_at_gen_mono (fs_gamma_L γfs) appE
               (fun _ _ => AFile [])
               (fun d : Z => ⌜d = FsImg.ROOTINO⌝%I)

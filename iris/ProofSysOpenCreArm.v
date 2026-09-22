@@ -91,6 +91,7 @@ Require Import SysOpenDefs.
 Require Import UserOff.     (* [foff_pub]: what the publish hands the caller *)
 Require Import SpecSysOpen.   (* the arms this block builds *)
 Require Import FsAbsCreateFire.   (* [acre_commit_at], [dlookup_commit_at]   *)
+Require Import FsAbsCreateNm.    (* [acre_commit_at_nm], [npar_nm]: the create leg at a name predicate *)
 Require Import AppInv.          (* [appN]/[appE]: the application's namespace, the commit mask (app-instances.md round A) *)
 Require Import PieceFam.       (* [pfam]/[pf_at]: the one-shot piece's pair *)
 Require Import FsAbsDefs.            (* LAST (FsAbs's own rule) *)
@@ -173,7 +174,8 @@ Section ProofSysOpenCreArm.
   (* ARM F-OK's payout: the exists observation fired, the create commit
      refunded.  Both of open's own commits are SPENT by the tail on this
      flavour, so neither rides here. *)
-  Definition socr_exists (vom : mword 64) (P : nat -> Z -> iProp Σ)
+  Definition socr_exists (vom : mword 64) (Nm : fname -> Prop)
+      (P : nat -> Z -> iProp Σ)
       (Phiarm Phiun : pfam Σ (aview -> Z -> iProp Σ))
       (Phiok Phiex : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ))
       (pl : list (bv 8)) (i0 : Z) : iProp Σ :=
@@ -183,7 +185,9 @@ Section ProofSysOpenCreArm.
        ⌜ents !! nm = Some i0⌝ ∗
        cre_cur_kept vom P (length (npar_elems pl)) d ∗
        cre_rcpt_kept vom Phiex av d nm i0 ∗
-       pf_at (acre_commit_at (fs_gamma_L fsc_fs) appE (AFile [])
+       (* ...at the NAME PREDICATE the entry holds its parent leg at
+          (RULING NM, the open half): [npar_nm M pv] at the syscall tier *)
+       pf_at (acre_commit_at_nm (fs_gamma_L fsc_fs) appE (AFile []) Nm
                 (P (length (npar_elems pl))) Phiarm) Phiok ∗
        (* the name was already there: create's child legs are whole -- and
           at a TRUNCATING open the ARM's went into the permit *)
@@ -312,7 +316,8 @@ Section ProofSysOpenCreArm.
               with "Htc Hk").
   Qed.
 
-  Lemma socr_exists_key `{GEN : GenId} (vom : mword 64) (P : nat -> Z -> iProp Σ)
+  Lemma socr_exists_key `{GEN : GenId} (vom : mword 64) (Nm : fname -> Prop)
+      (P : nat -> Z -> iProp Σ)
       (Phiarm Phiun : pfam Σ (aview -> Z -> iProp Σ))
       (Phiok Phiex : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ))
       (Phit : pfam Σ (aview -> Z -> list (bv 8) -> iProp Σ))
@@ -323,20 +328,20 @@ Section ProofSysOpenCreArm.
     ents !! nm = Some i0 ->
     P (length (npar_elems pl)) d -∗
     Phiex.(pf_recv) av d nm i0 -∗
-    pf_at (acre_commit_at (fs_gamma_L fsc_fs) appE (AFile [])
+    pf_at (acre_commit_at_nm (fs_gamma_L fsc_fs) appE (AFile []) Nm
              (P (length (npar_elems pl))) Phiarm) Phiok -∗
     cre_child_unfired (fs_gamma_L fsc_fs) (AFile []) Phiarm Phiun -∗
     open_trunc_piece (fs_gamma_L fsc_fs) vom
       (trunc_permit_of (fs_gamma_L fsc_fs) (trunc_tie_at pl P)
          Phiarm Phiok Phiex) Phit -∗
-    socr_exists vom P Phiarm Phiun Phiok Phiex pl i0
+    socr_exists vom Nm P Phiarm Phiun Phiok Phiex pl i0
     ∗ open_trunc_at (fs_gamma_L fsc_fs) vom i0
         (socr_ft_ex pl P Phiarm Phiex i0 Phit).
   Proof using .
     intros Hl Hrow Hent. iIntros "HP HPhi Hac Hcl Htc".
     rewrite /socr_ft_ex /cre_child_unfired.
     iDestruct "Hcl" as "[Harm Hun]".
-    iAssert (socr_exists vom P Phiarm Phiun Phiok Phiex pl i0
+    iAssert (socr_exists vom Nm P Phiarm Phiun Phiok Phiex pl i0
              ∗ (if om_trunc vom
                 then cre_permit_ex (fs_gamma_L fsc_fs) pl P Phiarm Phiex i0
                 else emp))%I with "[HP HPhi Hac Harm Hun]" as "[HR Hk]".
@@ -622,8 +627,8 @@ Section ProofSysOpenCreArm.
     (forall (ents : gmap fname Z) (nl : nat), a0 <> MkAnode (ADir ents) nl) ->
     open_arms_plain omo (fs_gamma_L fsc_fs) fsc_fs (pv_cwi (us_V U)) gf pj pidv
       Mim pvv vom
-      (socr_P (socr_exists vom P Phiarm Phiun Phiok Phiex pl i0) i0)
-      (socr_Pm (socr_exists vom P Phiarm Phiun Phiok Phiex pl i0))
+      (socr_P (socr_exists vom (npar_nm Mim pvv) P Phiarm Phiun Phiok Phiex pl i0) i0)
+      (socr_Pm (socr_exists vom (npar_nm Mim pvv) P Phiarm Phiun Phiok Phiex pl i0))
       (socr_Phio_tag i0 a0 Phio)
       (socr_ft_ex pl P Phiarm Phiex i0 Phit) sts U r
     ={⊤}=∗ open_arms_create omo (fs_gamma_L fsc_fs) fsc_fs (pv_cwi (us_V U)) gf pj pidv
@@ -666,7 +671,7 @@ Section ProofSysOpenCreArm.
         iDestruct "Hfired" as (ix avx ax) "(%Hax & [%Heq HP2])".
         destruct Heq as [Hix _]. subst ix.
         iExists avx, ax. iSplitR; [by iPureIntro |]. iExact "HP2".
-    - iDestruct (socr_ok_exists_arm omo (socr_exists vom P Phiarm Phiun Phiok Phiex pl i0)
+    - iDestruct (socr_ok_exists_arm omo (socr_exists vom (npar_nm Mim pvv) P Phiarm Phiun Phiok Phiex pl i0)
                    i0 a0 Phio (socr_ft_ex pl P Phiarm Phiex i0 Phit)
                    gf pj pidv Mim pvv vom U sts r Hnd with "Hok")
         as "[HR Hrest]".

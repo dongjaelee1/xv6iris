@@ -435,9 +435,9 @@ Section FsAbsInvFire.
   Qed.
 
   Lemma fsabs_open_pre_create (γfs : fs_names) (cw : Z) (pl : list (bv 8))
-      (vom : mword 64) :
+      (Nm : FsTree.fname -> Prop) (vom : mword 64) :
     app_sup -∗
-    open_au_pre_create (fs_gamma_L γfs) γfs cw pl vom (fun _ _ => True%I)
+    open_au_pre_create (fs_gamma_L γfs) γfs cw pl Nm vom (fun _ _ => True%I)
       (fun _ _ => True%I) (pfam_triv (fun _ _ => True%I)) (pfam_triv (fun _ _ => True%I)) (pfam_triv (fun _ _ _ _ => True%I)) (pfam_triv (fun _ _ _ _ => True%I))
       (pfam_triv (fun _ _ _ => True%I)) (pfam_triv (fun _ _ _ => True%I)).
   Proof using .

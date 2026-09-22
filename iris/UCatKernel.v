@@ -51,6 +51,7 @@ Require Import UexecSG UexecSlot UexecRet.
 Require Import UkCat.
 Require Import UkCatCat.
 Require Import UkFileOpen.
+Require Import AppFileCons.      (* [file_cons_cred]: the console credential over [option Z] *)
 Require Import UkCatDeed.
 Require Import AppCfg AppInv AppFile FileOpen FsCfg FsImgCheck.
 Require Import ConsoleInv.
@@ -203,7 +204,7 @@ Section UCatKernel.
   (*  which is precisely why [Hold] is a FUNCTION of the position.        *)
   (* =================================================================== *)
   Lemma cat_pinned_read_at (c : file_fixed) (r : file_names) (q : Qp)
-      (jc : Z) (i : Z) (bs : list (bv 8)) (fd : nat) (wb : bool)
+      (jo : option Z) (i : Z) (bs : list (bv 8)) (fd : nat) (wb : bool)
       (γo : gname) (off0 : nat) :
     file_app = MkAppcfg file_names (file_pred c) r ->
     (fd < NOFILE)%nat ->
@@ -214,7 +215,7 @@ Section UCatKernel.
             gb j = bs !!! (off + j)%nat⌝ -∗
          ⌜off = off0⌝) -∗
     cat_code γt -∗
-    cons_made (fn_cons r) jc -∗
+    file_cons_cred c r jo -∗
     app_inv fsc_fs -∗
     UkCat.kcat_r N (mword_of_int (Z.of_nat fd)) CatSyms.buf 512%nat
       (UkCatDeed.kcat_deed_hold N fd wb i γo r q bs)
@@ -233,7 +234,7 @@ Section UCatKernel.
     iApply (UkCat.kcat_r_mono_out N (mword_of_int (Z.of_nat fd))
               CatSyms.buf 512%nat _ _ _ with "[] []"); last first.
     { iApply (UkCatDeed.kcat_r_of_deed_at N CatSyms.buf 512%nat fd wb i γo
-                c r q jc bs off0 Heq
+                c r q jo bs off0 Heq
                 ltac:(vm_compute; discriminate)
                 ltac:(vm_compute; reflexivity)
                 Hfdlt
@@ -1900,12 +1901,12 @@ Section UCatEntry.
      Everything the leaf needs is persistent, so the [□] costs nothing. ---- *)
   Lemma cat_held_read_of_deed (N' : uk_names Σ) (c : file_fixed)
       (r : file_names) (q1 : Qp) (i : Z) (bs : list (bv 8))
-      (fd : nat) (gamo : gname) (jc : Z) :
+      (fd : nat) (gamo : gname) (jo : option Z) :
     file_app = MkAppcfg file_names (file_pred c) r ->
     (fd < NOFILE)%nat ->
     □ (app_taint -∗ file_taint c) -∗ □ (file_taint c -∗ app_taint) -∗
     UCodeCat.cat_code (ukn_t N') -∗
-    cons_made (fn_cons r) jc -∗
+    file_cons_cred c r jo -∗
     app_inv fsc_fs -∗
     cat_held_read N' (cat_hold_at N' r q1 i bs OffHeld fd gamo) c fd bs.
   Proof using .
@@ -1913,7 +1914,7 @@ Section UCatEntry.
     rewrite /cat_held_read. iModIntro. iIntros (p) "%Hple".
     iApply (UkCat.kcat_r_mono_out with "[] [-]"); last first.
     { iApply (UkCatDeed.kcat_r_of_deed_held N' CatSyms.buf 512%nat fd false i
-                gamo c r q1 jc bs p Heq
+                gamo c r q1 jo bs p Heq
                 ltac:(vm_compute; discriminate) ltac:(vm_compute; reflexivity)
                 Hfdlt with "Hbr Hrb Hcode Hm Hinv"). }
     iIntros (ret gb) "[%Hbnd [(%Hc & %Hby & Hh) | [Hh #HT]]]".
@@ -2172,7 +2173,7 @@ Section UCatEntry.
   Lemma cat_pay_filed_some (W : uvis) (v : era_pins) (vf : file_era)
       (ps0 cs0 : list nat) (s0 : fstate) (I0 : list (bv 8)) (P : nat)
       (c : file_fixed) (r : file_names) (q : Qp) (i : Z)
-      (bs : list (bv 8)) (rb rb2 : bool) (jc : Z) (Q : Z -> iProp Σ)
+      (bs : list (bv 8)) (rb rb2 : bool) (jo : option Z) (Q : Z -> iProp Σ)
       (F : iProp Σ) :
     file_app = MkAppcfg file_names (file_pred c) r ->
     c = fgn_cl g ->
@@ -2196,7 +2197,7 @@ Section UCatEntry.
        nothing), so this cannot be the wand above at [F]. *)
     □ (file_taint c -∗ Q (-1)) -∗
     □ (app_taint -∗ file_taint c) -∗ □ (file_taint c -∗ app_taint) -∗
-    cons_made (fn_cons r) jc -∗
+    file_cons_cred c r jo -∗
     app_inv fsc_fs -∗
     era_pin (fgn_echo g) (S gen_id) v -∗
     file_era_pin g (S gen_id) vf -∗
@@ -2237,7 +2238,7 @@ Section UCatEntry.
                 Hnone with "Hcode Hinv Hcwf").
     - (* the held read's law *)
       iIntros (N' fd gamo) "#Hcode %Hlt".
-      iApply (cat_held_read_of_deed N' c r (q / 2)%Qp i bs fd gamo jc Heq
+      iApply (cat_held_read_of_deed N' c r (q / 2)%Qp i bs fd gamo jo Heq
                 Hlt with "Hbr Hrb Hcode Hmade Hinv").
     - (* the content arm: [cat_out_len] IS [length bs] *)
       iIntros "!> Hc Hd HF". iApply ("HQ" with "[Hc Hd] HF").
@@ -2332,7 +2333,7 @@ Section UCatEntry.
       (v : era_pins) (vf : file_era) (ps0 cs0 : list nat) (s0 : fstate)
       (I0 : list (bv 8)) (P : nat)
       (c : file_fixed) (r : file_names) (q : Qp) (s : dst)
-      (rb rb2 : bool) (jc : Z) (Q : Z -> iProp Σ) (F : iProp Σ) :
+      (rb rb2 : bool) (jo : option Z) (Q : Z -> iProp Σ) (F : iProp Σ) :
     (forall x y : Z, Q x = Q y) ->
     file_app = MkAppcfg file_names (file_pred c) r ->
     c = fgn_cl g ->
@@ -2360,7 +2361,7 @@ Section UCatEntry.
        and returns, one fraction of it -- the rest is [F]) *)
     □ (catq_cat c r q s v vf ps0 cs0 s0 I0 P (-1) -∗ F -∗ Q (-1)) -∗
     □ (file_taint c -∗ Q (-1)) -∗
-    cons_made (fn_cons r) jc -∗
+    file_cons_cred c r jo -∗
     app_inv fsc_fs -∗
     era_pin (fgn_echo g) (S gen_id) v -∗
     file_era_pin g (S gen_id) vf -∗
@@ -2390,7 +2391,7 @@ Section UCatEntry.
                ∗ F)%I _ with "[]").
     { iIntros "[[Hd Hc] HF]". iFrame "Hd Hc HF". }
     destruct s as [[i bs] |].
-    - iApply (cat_pay_filed_some W' v vf ps0 cs0 s0 I0 P c r q i bs rb rb2 jc Q F
+    - iApply (cat_pay_filed_some W' v vf ps0 cs0 s0 I0 P c r q i bs rb rb2 jo Q F
                 Heq Hgc Hst Htie
                 ltac:(rewrite Hcww; exact Hcw)
                 ltac:(rewrite Hfdw; exact Hl1)

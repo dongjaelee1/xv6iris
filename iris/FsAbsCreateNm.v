@@ -143,6 +143,27 @@ Section CreateNm.
     iApply (acre_commit_at_gen_of_nm Γ E (fun _ _ => c) Nm Pd Farm Φ HNm).
   Qed.
 
+
+  (* ...and the CURSOR moves under it exactly as it does without it
+     ([FsAbsCreateFire.acre_commit_at_gen_mono]): the name predicate is
+     pure and rides through. *)
+  Lemma acre_commit_at_gen_nm_cur_mono Γ (E : coPset) (cf : Z -> Z -> absnode)
+      (Nm : fname -> Prop) (Pd Pd' : Z -> iProp Σ)
+      (Farm : pfam Σ (aview -> Z -> iProp Σ))
+      (Φ : aview -> Z -> fname -> Z -> iProp Σ) :
+    □ (∀ d : Z, Pd' d -∗ Pd d) -∗ □ (∀ d : Z, Pd d -∗ Pd' d) -∗
+    acre_commit_at_gen_nm Γ E cf Nm Pd Farm Φ -∗
+    acre_commit_at_gen_nm Γ E cf Nm Pd' Farm Φ.
+  Proof using .
+    rewrite /acre_commit_at_gen_nm. iIntros "#Hin #Hout H".
+    iIntros (I d i nm ents nl) "%Hpre %Hnm %HNm Harm HPd Ha".
+    iDestruct ("Hin" $! d with "HPd") as "HPd".
+    iMod ("H" $! I d i nm ents nl with "[//] [//] [//] Harm HPd Ha")
+      as "(Ha & HPd & Hstep & Hph2)".
+    iDestruct ("Hout" $! d with "HPd") as "HPd".
+    iModIntro. by iFrame "Ha HPd Hstep Hph2".
+  Qed.
+
   (* ...and the predicate NARROWS freely: a provider at a wider [Nm]
      provides at a narrower one. *)
   Lemma acre_commit_at_gen_nm_mono Γ (E : coPset) (cf : Z -> Z -> absnode)

@@ -327,7 +327,11 @@ Section ProofSysOpenEntryC.
        at this buffer, so what reaches this block is already create's
        [FsAbsEra.ep_start] at the one path. *)
     ep_start fsc_fs (pv_cwi (us_V U)) P Pmiss (bview plen bp) -∗
-    pf_at (acre_commit_at (fs_gamma_L fsc_fs) appE (AFile [])
+    (* ...AND THE PARENT LEG AT THE NAME argument 0 spells (RULING NM, the
+       open half): the guarded [npar_nm Mim pvv], which [Hpof] reads at
+       this buffer's last element. *)
+    pf_at (acre_commit_at_nm (fs_gamma_L fsc_fs) appE (AFile [])
+             (npar_nm Mim pvv)
              (P (length (npar_elems (bview plen bp)))) Phiarm) Phiok -∗
     pf_at (dlookup_commit_at (fs_gamma_L fsc_fs) appE) Phiex -∗
     pf_at (aopen_commit_at (fs_gamma_L fsc_fs) appE) Phio -∗
@@ -500,26 +504,19 @@ Section ProofSysOpenEntryC.
        leg is guarded on exactly that test ([SpecCreate.cre_dots_leg]), so
        the builder produces it out of the type inequality and nothing has to
        be manufactured here. *)
-    (* THE NAME PREDICATE IS TRIVIAL AT THIS ENTRY (lane INIT-FILE,
-       section 3.4): sys_open's create tracks no name of its own, so its
-       parent leg goes down through the bridge at [fun _ => True]. *)
-    iAssert (pf_at (acre_commit_at_nm (fs_gamma_L fsc_fs) appE (AFile [])
-                      (fun _ : fname => True%type)
-                      (P (length (npar_elems (bview plen bp)))) Phiarm) Phiok)
-      with "[Hac]" as "Hac".
-    { iApply (pf_at_mono with "[] Hac"). iIntros "H".
-      iApply (acre_commit_at_nm_of (fs_gamma_L fsc_fs) appE (AFile [])
-                (fun _ : fname => True%type)
-                (P (length (npar_elems (bview plen bp)))) Phiarm
-                Phiok.(pf_recv) with "H"). }
-    (* ...AND SO IS THE NODE PREDICATE (lane INIT-FILE, the UNARM ruling):
+    (* THE NAME PREDICATE (RULING NM, the thread's open half): the parent
+       leg is held at [npar_nm Mim pvv] -- the name argument 0's last
+       element spells -- and create's own premise for it is paid from the
+       reading [Hpof] ([FsAbsCreateNm.npar_nm_intro]), as sys_mknod pays
+       it. *)
+    (* THE NODE PREDICATE IS TRIVIAL (lane INIT-FILE, the UNARM ruling):
        this entry's caller answers the unarm at every node, so the pair
-       goes down through the bridge at [fun _ => True] too. *)
+       goes down through the bridge at [fun _ => True]. *)
     iDestruct (cre_child_unfired_ndp_of (fs_gamma_L fsc_fs) (AFile [])
                  (fun _ : absnode => True%type) Phiarm Phiun
                  with "Hclegs") as "Hclegs".
     iDestruct (cre_commits_of_file (fs_gamma_L fsc_fs) 0 0
-                 (fun _ : fname => True%type) (fun _ : absnode => True%type)
+                 (npar_nm Mim pvv) (fun _ : absnode => True%type)
                  (P (length (npar_elems (bview plen bp))))
                  Phiarm Phiun Phiok with "Hac Hclegs") as "Hcre".
     iApply (Create.wp_create_sconf (CID := CID5) gs jx gl pd pav pu
@@ -527,10 +524,14 @@ Section ProofSysOpenEntryC.
               FsAbsCreateFire.T_FILE (mword_of_int 0) (mword_of_int 0)
               (upd_usM U _) MAXOPBLOCKS Sb ns pidv dqb dqs dqbs dqn
               N5 (K - 24)%nat eb b lks
-              (fun _ : fname => True%type) (fun _ : absnode => True%type)
+              (npar_nm Mim pvv) (fun _ : absnode => True%type)
               P Pmiss Phiarm (pfam_triv (fun _ _ _ _ => True%I)) Phiun
               Phiok Phiex
-              (fun _ _ => I) (fun _ => I) (fun _ _ => I)
+              (fun (nm : fname)
+                   (H : list_basics.last (PathElems.path_elems (bview plen bp))
+                        = Some nm) =>
+                 npar_nm_intro Mim pvv (bview plen bp) nm Hpof H)
+              (fun _ => I) (fun _ _ => I)
               HKcr HdevR Hnib0 Hgeom Hsize Hbm0 Hbmcov
               Hbmlog Hist0 Hcovb Hbmgeo Hiregb Hpcstr
               ltac:(assert (E31 : (2 ^ 31 = 2147483648)%Z)
@@ -824,25 +825,24 @@ Section ProofSysOpenEntryC.
       (* THE PERMIT IS PAID HERE (lane F-OPEN-3): the tie, the exists
          observation's receipt and the ARM PIECE THE RUN NEVER FIRED --
          create's [dirlookup] found the name. *)
-      iAssert (socr_exists vom P Phiarm Phiun Phiok Phiex (bview plen bp)
+      iAssert (socr_exists vom (npar_nm Mim pvv) P Phiarm Phiun Phiok Phiex (bview plen bp)
                  (bv_unsigned inum)
                ∗ open_trunc_at (fs_gamma_L fsc_fs) vom (bv_unsigned inum)
                    (socr_ft_ex (bview plen bp) P Phiarm Phiex (bv_unsigned inum) Phit))%I
         with "[Hcauf Htc]" as "[HR Htc]".
       { iDestruct (cre_ok_file_exists with "Hcauf") as (d nm av ents nl)
           "(%Hl & %Hrow & %Hent & HP & HPhi & Hac & Hcl)".
-        iDestruct (open_acre_file_of_triv with "Hac") as "Hac".
         iDestruct (cre_child_unfired_of_ndp (fs_gamma_L fsc_fs) (AFile [])
                      (fun _ : absnode => True%type) Phiarm Phiun
                      (fun _ => I) with "Hcl") as "Hcl".
-        iApply (socr_exists_key vom P Phiarm Phiun Phiok Phiex Phit
+        iApply (socr_exists_key vom (npar_nm Mim pvv) P Phiarm Phiun Phiok Phiex Phit
                   (bview plen bp) (bv_unsigned inum) d nm av ents nl
                   Hl Hrow Hent with "HP HPhi Hac Hcl Htc"). }
       iAssert (wp_next true (proc_addr jx)
                  (so_cont_au omo gf ns1 dqb dqs (proc_addr jx) pidv Mim pvv vom U sts
-                    (socr_P (socr_exists vom P Phiarm Phiun Phiok Phiex (bview plen bp)
+                    (socr_P (socr_exists vom (npar_nm Mim pvv) P Phiarm Phiun Phiok Phiex (bview plen bp)
                                (bv_unsigned inum)) (bv_unsigned inum))
-                    (socr_Pm (socr_exists vom P Phiarm Phiun Phiok Phiex (bview plen bp)
+                    (socr_Pm (socr_exists vom (npar_nm Mim pvv) P Phiarm Phiun Phiok Phiex (bview plen bp)
                                 (bv_unsigned inum)))
                     (socr_Phio_tag (bv_unsigned inum)
                        (abs_row (era_node dn bm data)) Phio)
@@ -865,9 +865,9 @@ Section ProofSysOpenEntryC.
                 gil gisl kk qi ss gy loy tly inum dn bm om lo ns1 u1 pidv dqb dqs
                 U sts m P1 sp0 K eb b lks w4 w5 w6 w24 bp1
                 data Mim pvv vom (bview plen bp)
-                (socr_P (socr_exists vom P Phiarm Phiun Phiok Phiex (bview plen bp)
+                (socr_P (socr_exists vom (npar_nm Mim pvv) P Phiarm Phiun Phiok Phiex (bview plen bp)
                            (bv_unsigned inum)) (bv_unsigned inum))
-                (socr_Pm (socr_exists vom P Phiarm Phiun Phiok Phiex (bview plen bp)
+                (socr_Pm (socr_exists vom (npar_nm Mim pvv) P Phiarm Phiun Phiok Phiex (bview plen bp)
                             (bv_unsigned inum)))
                 (socr_Phio_tag (bv_unsigned inum)
                    (abs_row (era_node dn bm data)) Phio)

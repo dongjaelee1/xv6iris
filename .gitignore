@@ -3,3 +3,4 @@
 # sail-riscv checkout used by tools/regen_sail_model.sh
 /sail-riscv/
 .claude/worktrees/
+/xv6-riscv/

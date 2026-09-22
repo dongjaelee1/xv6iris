@@ -126,6 +126,8 @@ Require Import AppPipeClaim.
 Require Import AppPipeCons.
 Require Import UInitConsPipe.
 Require Import UShPipeRound.
+Require Import PipeProto.          (* [pipeProtoG]: the protocol's ghosts *)
+Require Import UShPipeLaw.         (* the child law's DISCHARGE (SH-PIPE-ROUND-14) *)
 Require Import UkShPipeFork.   (* [pterm_wc] -- design SS4.3p's WIDENED era credential *)
 Require Import UShPipeCatSlot.  (* [pipe_sh_cat_slot] -- the /cat pin, off
                                    the era equation (lane SH-PIPE-ROUND-6) *)
@@ -502,6 +504,17 @@ Section PipeInitBoot.
   Context `{!inG Σ (mono_listR (leibnizO Z))}.
   Context `{!echoOutG Σ}.
   Context `{!pipeOutG Σ}.
+  (* THE PROTOCOL'S GHOSTS (lane SH-PIPE-ROUND-14).  Nothing ABOVE this
+     line uses them -- [sh_pipe_child_law_all]'s Prop does not mention
+     [pipeProtoG], so its type does NOT move and neither
+     [pipe_prog_law_of_child] nor [pipe_adequacy_pipeSigma_of_child] does
+     -- but the DISCHARGE below allocates a [pnames] record
+     ([UShPipeLaw.pl_round_alloc] through [PipeProto.pipe_names_alloc])
+     and so needs the class.  See the lane's Findings: the functor list
+     [UPipeBootAdequacy.pipeSigma] does NOT contain [pipeProtoSigma], so
+     [pipeProtoG pipeSigma] has no instance and the discharge is stated at
+     the extended list in [UInitPipeAdequacy.v]. *)
+  Context `{!pipeProtoG Σ}.
 
   (* NAME THE LEAF, DO NOT SEARCH ([UShPipeRound.v]'s measured note, and
      it is the one that bites here): [iIntros "#H"] / [iAssert ... as "#H"]
@@ -1005,6 +1018,26 @@ Section PipeInitBoot.
            (c : pipe_gn),
       @riscvF_app_iface Σ (@riscv_fixedGS Σ HR) = pipe_ifc c ->
       ⊢ UShPipeRound.sh_pipe_child_law c.
+
+  (* =================================================================== *)
+  (*  S6  ...AND IT IS DISCHARGED (lane SH-PIPE-ROUND-14)                 *)
+  (*                                                                     *)
+  (*  [UShPipeLaw.pl_child_law] is the whole round: the protocol's names  *)
+  (*  and the two-writer family's three cursors minted at the child law's *)
+  (*  own [mWP] entry, the registrar, the four-way split, the two         *)
+  (*  diagnostics and the three continuations.  All this lemma does is    *)
+  (*  project the record equation into the two the round is stated at.    *)
+  (* =================================================================== *)
+  Theorem sh_pipe_child_law_all_holds : sh_pipe_child_law_all.
+  Proof using HU HX pipeProtoG0.
+    intros HR GEN HBs HFd HIr HPav HWc HF c Hiface.
+    assert (Hkill : @app_taint Σ (@riscv_fixedGS Σ HR)
+                    = echo_taint (pgn_cl c))
+      by (rewrite /app_taint Hiface; by cbn [pipe_ifc ai_kill pipe_kill]).
+    assert (Hcons : @riscv_cons_res Σ (@riscv_fixedGS Σ HR) = pecl c)
+      by (rewrite /riscv_cons_res Hiface; by cbn [pipe_ifc ai_cons pipe_cons]).
+    exact (UShPipeLaw.pl_child_law c Hcons Hkill).
+  Qed.
 
 End PipeInitBoot.
 

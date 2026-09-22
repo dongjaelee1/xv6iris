@@ -347,6 +347,25 @@ Lemma pl_L_pos (ws : list (list (bv 8))) :
   (0 < length (wl_line (drop 1 ws)))%nat.
 Proof using . rewrite /wl_line length_app. cbn [length]. lia. Qed.
 
+(* ...AND THE LEDGER FACT THE REGISTRAR ASKS FOR (lane SH-PIPE-ROUND-14).
+   [pl_pipe_call]'s [fd_lowest_closed l = None] is not among the child
+   law's premises and it does not have to be: [UserFd.ustd] carries
+   [length l = NSTD] and the law's three rows are rows 0, 1 and 2, so the
+   whole of the tracked ledger is open. *)
+Lemma pl_fd_lowest_none (l : list fdstate) :
+  length l = NSTD ->
+  UkSh.ush_fd0c l -> UkSh.ush_fd1p l -> UkSh.ush_fd2p l ->
+  fd_lowest_closed l = None.
+Proof using.
+  intros Hlen [wr0 H0] [rb1 H1] [rb2 H2].
+  destruct l as [| a [| b [| c [| d tl]]]];
+    try (exfalso; cbn in Hlen; unfold NSTD in Hlen; lia).
+  cbn in H0, H1, H2.
+  injection H0 as ->. injection H1 as ->. injection H2 as ->.
+  reflexivity.
+Qed.
+
+
 Section UShPipeLaw.
   (* [UShPipeRound.v]'s binder list VERBATIM (the file whose law this
      discharges), PLUS [pipeProtoG] for the protocol's own ghosts -- which
@@ -467,6 +486,19 @@ Section UShPipeLaw.
   Global Instance pl_YR_persistent pn L : Persistent (pl_YR pn L) | 0.
   Proof using . rewrite /pl_YR. apply _. Qed.
 
+  (* NAME THE LEAF, DO NOT SEARCH ([UShPipeRound.v]'s measured rule, met
+     here by lane SH-PIPE-ROUND-14): an [iAssert ... as "#"] or an
+     [iPoseProof ... as "#"] on a [UkShDiag.ush_execfail_law_at] sends the
+     [Persistent] search into the law's own wand tower and does NOT come
+     back -- measured, [Set Default Timeout 300] fired on exactly that
+     [iAssert] and on nothing else in the file.  The instance EXISTS
+     ([UkShDiag.ush_execfail_law_at_persistent]); the hint net does not
+     reach it through the transparent definition. *)
+  #[local] Instance pl_exf_at_pers0 (PSx : UexecSG.uprogSG Σ)
+      (dg : list (bv 8)) (n : nat) (Cr Cd : iProp Σ) :
+    Persistent (UkShDiag.ush_execfail_law_at (PS := PSx) dg n Cr Cd) | 0
+    := UkShDiag.ush_execfail_law_at_persistent (PS := PSx) dg n Cr Cd.
+
   Definition pl_Cr (v : era_pins) (I L : list (bv 8)) (pn : pnames)
       (gL gR gM : gname) : iProp Σ :=
     (PipeBoth.blk2_inv g blk2N (S gen_id) v I L gL gR gM
@@ -534,12 +566,14 @@ Section UShPipeLaw.
      is bound by the WALK's own continuation, so the handle cannot be
      framed in from outside.  It is PERSISTENT, so adding it costs
      [pl_split] nothing (the parent keeps its own copy) and no other row
-     moves.  NOT taken here, because the round that would spend it does
-     not land in this lane. *)
+     moves.  TAKEN (lane SH-PIPE-ROUND-14): [pl_cat_kround] below spends
+     it at exactly that place, and at [UShPipeCatRound.pipe_cat_w]'s
+     [Hex]. *)
   Definition pl_RcR (v : era_pins) (I L : list (bv 8)) (pn : pnames)
       (gL gR gM : gname) (γp : pipe_names) : iProp Σ :=
     (PipeBoth.blk2_inv g blk2N (S gen_id) v I L gL gR gM
        (pl_XL pn) (pl_YR pn L)
+     ∗ PipeProto.pipe_inv pn γp L
      ∗ rtok pn ∗ PipeProto.side_R pn
      ∗ PipeBoth.wcur gR (1/2) 0%nat ∗ PipeBoth.wcur gM (1/2) 0%nat)%I.
 
@@ -557,7 +591,7 @@ Section UShPipeLaw.
     iSplitL "HgL HsL Hw Hlb".
     { iFrame "Hinv Hpi HsL HgL Hw Hlb". }
     iSplitL "HgR HgM Hr HsR".
-    { iFrame "Hinv Hr HsR HgR HgM". }
+    { iFrame "Hinv Hpi Hr HsR HgR HgM". }
     iSplitR; [ iExact "Hpi" | done ].
   Qed.
 
@@ -621,7 +655,7 @@ Section UShPipeLaw.
               (PipeBoth.wcur gR (1/2) 0%nat ∗ PipeBoth.wcur gM (1/2) 0%nat)%I
               (UkShPipeFork.pterm_shape g I 5%nat ∨ T)%I).
     rewrite /pl_RcR.
-    iIntros "!> [(#Hinv & _ & _ & HgR & HgM) _]".
+    iIntros "!> [(#Hinv & _ & _ & _ & HgR & HgM) _]".
     iSplitR "HgR HgM"; [ | iFrame "HgR HgM" ].
     iApply (UShPipeAssembly.pipe_fork_panic_law_or (PS := uprogSG_free)
               g Hcons v I L ws gL gR gM (pl_XL pn) (pl_YR pn L)
@@ -751,28 +785,294 @@ Section UShPipeLaw.
   Qed.
 
   (* =================================================================== *)
-  (*  S2d''  CAT'S ROUND AT THE FAMILY'S RIGHT CHAIN -- MEASURED, AND     *)
-  (*         NOT LANDED (lane SH-PIPE-ROUND-13).                          *)
+  (*  S2d2  CAT'S ROUND AT THE FAMILY'S RIGHT CHAIN (lane                 *)
+  (*        SH-PIPE-ROUND-14; SH-PIPE-ROUND-13 wrote the text).           *)
   (*                                                                     *)
-  (*  The right child's whole bill was written out here and every leaf    *)
-  (*  it needs is landed: [pl_Cend] / [pl_qc_of_cend] are its exit,       *)
-  (*  [UShPipeAssembly.pipe_execR_law] at [F := side_R pn] read off       *)
-  (*  [pl_RcR] through [exf_law_acc] is its exec-failed diagnostic,       *)
-  (*  [pl_cat_argv_bytes] its argv, [UCatPipe.pcat_round_at_g] (repaired  *)
-  (*  by this lane) its round and [UShPipeCatRound.pipe_cat_w] (weakened  *)
-  (*  by this lane) that round's [Hw].                                    *)
-  (*                                                                     *)
-  (*  WHAT STOPPED IT is an INSTANCE seam, and it is design SS4.3z item   *)
-  (*  2's wedge one file further out.  [UShPipeCatRound.v] now binds a    *)
-  (*  [uprogSG] section variable (this lane), which removed the WEDGE --  *)
-  (*  the file used to take 30-50 minutes and 3.9 GB without finishing    *)
-  (*  and now fails in minutes -- but the two sides still do not unify:   *)
-  (*  [pipe_cat_w]'s conclusion at [(PS := uprogSG_free)] does not apply  *)
-  (*  to a [UkCat.kcat_wr (PS := uprogSG_free)] goal stated here.  The    *)
-  (*  next lane should print both types side by side ([Set Printing       *)
-  (*  Implicit]) before writing another line of it.  See the lane's       *)
-  (*  Findings block for the full text of what was written.              *)
+  (*  What stopped ROUND-13 was ONE unification and it was not the one    *)
+  (*  design SS4.3ab guessed: [UShPipeCatRound.v] bound neither           *)
+  (*  [ghost_varG Sigma Z] nor [ghost_varG Sigma (gset gname)], so        *)
+  (*  [UkCat.kcat_wr]'s two [ghost_var] classes were resolved through the *)
+  (*  [xv6G] bundle and BAKED IN, while [UCatPipe.v] binds both as        *)
+  (*  section variables and THIS file binds [ghost_varG Sigma Z] itself.  *)
+  (*  [uexecSG] was the same term on both sides all along.                *)
   (* =================================================================== *)
+
+  (* THE RIGHT CHILD'S TWO ROWS.  [UkShCat.ush_fd0p] says fd 0 is this
+     pipe's read end -- what [UCatPipe.pcat_round_at_g] reads -- and cat
+     also WRITES: [UShPipeCatRound.pipe_cat_w] needs fd 1 to be the
+     console, which [ush_fd0p] alone does not say.  [Fd0] is a parameter
+     of both [UkShCat.wp_kshr_exec_cat_at] and
+     [UShCatPay.sh_exec_sup_cat_wq_holds_at], so the conjunction is free. *)
+  Definition pl_cat_fd0 (gp : pipe_names) (l : list fdstate) : Prop :=
+    UkShCat.ush_fd0p gp l
+    /\ exists rb : bool,
+         l !! 1%nat = Some (FdOpen rb true (FdDevice ConsoleInv.CONSOLE)).
+
+  (* ...AND CAT'S TWO DIAGNOSTIC TAILS, OUT OF THE TAINT.
+     [UCatPipe.pcat_round_at_g]'s [Hdg] and [Hdgw] had NO producer
+     anywhere in the tree.  Both are [UkCat.kcat_pay_seq]s (16 and 17
+     bytes) and [UkCat.kcat_pay_seq_of_law] builds either out of the
+     era's FREE WRITE LAW and a BOXED [-1] payload -- which is exactly
+     what a tainted pipeline round has: [UkSh.sh_deps] IS [udepw_law 16]
+     and the payload's taint arm is [pl_qc_of_taint]. *)
+  Lemma pl_kcat_dg (N' : uk_names Σ) :
+    □ (ukn_pay N' (-1)) -∗ UkSh.sh_deps (PS := uprogSG_free) -∗
+    UkCatCat.kcat_dg_cr (PS := uprogSG_free) N'
+    ∗ UkCatCat.kcat_dg_cw (PS := uprogSG_free) N'.
+  Proof using .
+    iIntros "#HC #Hwr". rewrite /UkSh.sh_deps.
+    rewrite /UkCatCat.kcat_dg_cr /UkCatCat.kcat_dg_cw.
+    iSplitL.
+    - iApply (UkCat.kcat_pay_seq_of_law (PS := uprogSG_free) N'
+                _ _ 16%nat (ukn_pay N' (-1)) 0%nat with "HC Hwr").
+    - iApply (UkCat.kcat_pay_seq_of_law (PS := uprogSG_free) N'
+                _ _ 17%nat (ukn_pay N' (-1)) 0%nat with "HC Hwr").
+  Qed.
+
+  (* =================================================================== *)
+  (*  ...AND THE ROUND ITSELF, which is what the right child's EXEC       *)
+  (*  SUPPLY pays with ([UShCatPay.sh_exec_sup_cat_wq_holds_at]'s         *)
+  (*  [Hround], quantified over the EXEC'D image's own record [N'']).     *)
+  (*                                                                     *)
+  (*  THE SIDE TOKEN MUST NOT RIDE IN THE CURSOR FAMILY.  [Hw] and        *)
+  (*  [Hend] are both BOXED, but the third component of the answer -- the *)
+  (*  wand [Cend -* ukn_pay N'' (-1)] -- is LINEAR and is built inside    *)
+  (*  [Cr]'s own scope, so [PipeProto.side_R pn] is captured THERE        *)
+  (*  ([pl_qc_of_cend]) and the family stays the bare cursor              *)
+  (*  ([UShPipeCatRound.pcat_ch]).  Putting it in [Ch] needs a            *)
+  (*  [UkCat.kcat_wr_mono] at every turn and is strictly worse.           *)
+  (* =================================================================== *)
+  Lemma pl_cat_kround (v : era_pins) (I L : list (bv 8))
+      (ws : list (list (bv 8))) (pn : pnames) (gL gR gM : gname)
+      (gp : pipe_names) :
+    PipeLinksLine.pline_at I = PipeDisc.LPipe ws ->
+    L = wl_line (drop 1 ws) ->
+    line_ok ws ->
+    □ (T -∗ UkSh.sh_deps (PS := uprogSG_free)) -∗
+    PipeLinks.pipe_links g -∗
+    era_pin γ (S gen_id) v -∗
+    □ (∀ (N'' : uk_names Σ) (l : list fdstate),
+         ⌜ukn_pay N''
+          = (fun _ : Z => UShPipeAssembly.pipe_Qc_at g pn L gL gR gM)⌝ -∗
+         ⌜pl_cat_fd0 gp l⌝ -∗
+         UserFd.ustd (ukn_fd N'') l -∗
+         pl_RcR v I L pn gL gR gM gp -∗
+         ∃ Ir Cend : iProp Σ,
+           UkCatCat.kcat_round (PS := uprogSG_free) N''
+             (mword_of_int 0) Ir Cend
+           ∗ Ir ∗ (Cend -∗ ukn_pay N'' (-1))).
+  Proof using Hcons Hkill.
+    intros Hpl HL Hok.
+    assert (HLne : L <> []).
+    { rewrite HL. intro Hq. pose proof (pl_L_pos ws) as Hp.
+      rewrite Hq in Hp. cbn [length] in Hp. lia. }
+    (* the line's bytes carry no '$' -- the right chain's own premise *)
+    assert (Hwf1 : wl_wf (drop 1 ws)).
+    { pose proof (line_ok_wf ws Hok) as Hwf.
+      rewrite /wl_wf in Hwf |- *.
+      apply Forall_lookup. intros i x Hx.
+      rewrite lookup_drop in Hx.
+      exact (Forall_lookup_1 _ _ _ _ Hwf Hx). }
+    assert (Hnd : Forall PipeDisc.nodollar L).
+    { rewrite HL.
+      exact (proj1 (PipeDisc.pd_wl_line_shape (drop 1 ws) Hwf1)). }
+    (* the family's two witness obligations, [pipe_execR_law]'s verbatim *)
+    assert (Hwit2 : forall sel : list bool,
+               sel_wf2 dg_execR sel -> pblk2_wit I dg_execR sel)
+      by (intros sel Hs; exact (PipeBoth.pblk2_wit_both I ws sel Hpl Hs)).
+    assert (Hwit1 : forall sel : list bool,
+               count_true sel = 0%nat -> (length sel <= length L)%nat ->
+               pblk2_wit I L sel).
+    { rewrite HL. intros sel Hc Hlen.
+      exact (UShPipeAssembly.pblk2_wit_ran_at I ws sel Hpl Hc Hlen). }
+    (* [UCatPipe.pcat_line] and [PipeLinksLine.pline_at] ARE the same term *)
+    assert (Hout : UCatPipe.pcat_out I = L).
+    { rewrite /UCatPipe.pcat_out.
+      assert (Hcl : UCatPipe.pcat_line I = PipeDisc.LPipe ws) by exact Hpl.
+      rewrite Hcl. cbn [PipeDisc.pline_ws]. by rewrite HL. }
+    iIntros "#Hdps #Hlk #Hpin".
+    iDestruct (PipeLinks.pipe_links_taint g with "Hlk") as "#Ht".
+    iIntros "!>" (N'' l) "%Hpeq %Hfd0 Hstd Hcr".
+    destruct Hfd0 as [[wb Hl0] [rb Hl1]].
+    rewrite /pl_RcR.
+    iDestruct "Hcr" as "(#Hinv & #Hpi & Hrt & HsR & HgR & HgM)".
+    iDestruct (PipeProto.pipe_excl_wtok_lb_pipeN pn gp L HLne with "Hpi")
+      as "#Hex".
+    iAssert (UkCatCat.kcat_round (PS := uprogSG_free) N'' (mword_of_int 0)
+               (UCatPipe.pcat_round_inv_g g N'' pn l
+                  (UShPipeCatRound.pcat_ch g gR gM))
+               (pl_Cend pn L gR gM))%I as "#Hround".
+    { iApply (UCatPipe.pcat_round_at_g (PS := uprogSG_free) g Hcons Hkill
+                N'' pn gp L l wb I
+                (UShPipeCatRound.pcat_ch g gR gM) (pl_Cend pn L gR gM)
+                Hout Hl0 with "Hpi [] [] [] []").
+      - (* [Hdg]: cat's `read error' tail, off the taint *)
+        iIntros "!> #HT".
+        iAssert (□ (ukn_pay N'' (-1)))%I as "#HC".
+        { iModIntro. rewrite Hpeq.
+          iApply (pl_qc_of_taint pn L gL gR gM).
+          rewrite Hkill. iExact "HT". }
+        iPoseProof ("Hdps" with "HT") as "#Hwr".
+        (* NAME the conjunct, do not FRAME it (lane SH-PIPE-ROUND-14): an
+           [iDestruct ... as "[$ _]"] here sends the proofmode's [Frame]
+           search into [UkCat.kcat_pay_seq], a sixteen-deep fixpoint, and
+           it does NOT come back -- measured, [Set Default Timeout 300]
+           fires on exactly this command and on nothing else in the file. *)
+        iDestruct (pl_kcat_dg N'' with "HC Hwr") as "[Hcr _]".
+        iExact "Hcr".
+      - (* [Hdgw]: cat's `write error' tail AND the free write law *)
+        iIntros "!> #HT".
+        iAssert (□ (ukn_pay N'' (-1)))%I as "#HC".
+        { iModIntro. rewrite Hpeq.
+          iApply (pl_qc_of_taint pn L gL gR gM).
+          rewrite Hkill. iExact "HT". }
+        iPoseProof ("Hdps" with "HT") as "#Hwr".
+        iDestruct (pl_kcat_dg N'' with "HC Hwr") as "[_ Hcw]".
+        iSplitL "Hcw"; [ iExact "Hcw" | ].
+        rewrite /UkSh.sh_deps. iExact "Hwr".
+      - (* [Hw]: the turn's write, at the family's RIGHT chain, mode 1 *)
+        iIntros "!>" (c nb rv fbb) "%Hrv %Hbytes Hjust Hstd2 Hc".
+        destruct Hbytes as [Hcap Hlkp].
+        iApply (UShPipeCatRound.pipe_cat_w (PS := uprogSG_free) g Hcons
+                  N'' v I L gL gR gM (pl_XL pn) (pl_YR pn L) l rb
+                  c nb rv fbb Hnd Hwit2 Hwit1 Hl1 Hrv Hcap
+                  with "Hex Ht Hpin Hinv [Hjust] [] Hstd2 Hc").
+        + (* the reader's bound, or the taint, or the EMPTY turn *)
+          destruct (decide (Z.to_nat (bv_unsigned rv) = 0%nat))
+            as [Hz | Hz].
+          { iRight. iRight. by iPureIntro. }
+          iDestruct "Hjust" as "[#Hlb | #HT]"; [ | iRight; by iLeft ].
+          iLeft. rewrite /pl_YR.
+          assert (E1 : take 1%nat L
+                       = take 1%nat
+                           (take (c + Z.to_nat (bv_unsigned rv))%nat L)).
+          { rewrite take_take. f_equal.
+            rewrite Nat.min_l; [ reflexivity | lia ]. }
+          iApply (PipeProto.pws_lb_weaken pn
+                    (take (c + Z.to_nat (bv_unsigned rv))%nat L)
+                    (take 1%nat L)
+                    ltac:(rewrite E1; eexists; symmetry; apply take_drop)
+                    with "Hlb").
+        + iLeft. iPureIntro. exact (conj Hcap Hlkp).
+      - (* [Hend]: end of file, and what the round hands back *)
+        iIntros "!>" (c) "Heof Hhold Hc".
+        rewrite /pl_Cend /UCatPipe.pcat_hold.
+        iDestruct "Hhold" as "[_ Hrc]".
+        iExists c. iFrame "Heof Hrc Hc". }
+    iExists (UCatPipe.pcat_round_inv_g g N'' pn l
+               (UShPipeCatRound.pcat_ch g gR gM)),
+            (pl_Cend pn L gR gM).
+    iFrame "Hround".
+    iSplitL "Hstd Hrt HgR HgM".
+    - (* the round's invariant AT CURSOR 0 *)
+      rewrite /UCatPipe.pcat_round_inv_g. iExists 0%nat.
+      rewrite /UCatPipe.pcat_hold /UShPipeCatRound.pcat_ch.
+      iFrame "Hstd".
+      iSplitL "Hrt"; [ iLeft; iExact "Hrt" | ].
+      iLeft. iFrame "HgR HgM".
+    - (* ...AND THE EXIT, where the SIDE TOKEN is captured *)
+      rewrite Hpeq. iIntros "Hce".
+      iApply (pl_qc_of_cend pn L gL gR gM). iFrame "Hce HsR".
+  Qed.
+
+  (* =================================================================== *)
+  (*  S2d3  THE RIGHT CHILD (ROUND-11's table, the `right child' row)     *)
+  (*                                                                     *)
+  (*  [pl_left_child]'s twin one command over: sh's SECOND [fork1] child  *)
+  (*  runs [runcmd] on the pipeline line's RIGHT command (`cat') with fd  *)
+  (*  0 the pipe's read end.  [UShCatPay.wp_kshr_exec_cat_paid] is the    *)
+  (*  arm and its supply composed; [pl_cat_kround] is the entry's         *)
+  (*  payment, [UShPipeAssembly.pipe_execR_law] at [F := side_R pn] read  *)
+  (*  off [pl_RcR] through [exf_law_acc] is the exec-failed diagnostic,   *)
+  (*  and [pl_cat_argv_bytes] its argv.                                   *)
+  (* =================================================================== *)
+  Lemma pl_right_child (v : era_pins) (I L : list (bv 8))
+      (ws : list (list (bv 8))) (pn : pnames) (gL gR gM : gname)
+      (gp : pipe_names) (s0 szv : Z) (len : nat) (f : nat -> bv 8)
+      (ld : list fdstate) (n : nat)
+      (N' : uk_names Σ) (h' : CpuId) (m' : regfile) (q : Z) :
+    UkShPipeRound.ushq_line_at ws f 0%nat len ->
+    L = wl_line (drop 1 ws) ->
+    PipeLinksLine.pline_at I = PipeDisc.LPipe ws ->
+    pl_cat_fd0 gp ld ->
+    UkSh.ush_fd2p ld ->
+    ukn_pay N' = (fun _ : Z => UShPipeAssembly.pipe_Qc_at g pn L gL gR gM) ->
+    m' !!! Regidx (mword_of_int 10 : mword 5) = (mword_of_int q : mword 64) ->
+    UShCatPay.sh_cat_slot T -∗
+    □ (T -∗ UkSh.sh_deps (PS := uprogSG_free)) -∗
+    era_pin γ (S gen_id) v -∗
+    PipeLinks.pipe_links g -∗
+    UCodeShK.shk_code (ukn_t N') -∗
+    UkSh.ush_jtab (ukn_t N') -∗
+    UkShRun.ush_cmd (ukn_d N') q
+      (UkShRun.UExec (UkShMain.ush_args s0
+         (UkShPipeRound.ushq_cut (wl_toks ws) len f
+            (length (wl_body ws) + 3 + 3)%nat)
+         [((length (wl_body ws) + 3)%nat,
+           (length (wl_body ws) + 3 + 3)%nat)])) -∗
+    usz (ukn_s N') szv -∗
+    UserFd.ustd (ukn_fd N') ld -∗
+    UserCwd.ucwd (ukn_cwd N') FsImg.ROOTINO -∗
+    UserChildren.uch (ukn_ch N') (∅ : gset gname) -∗
+    pl_RcR v I L pn gL gR gM gp -∗
+    urun (SG := uexecSG_xv6) (PS := uprogSG_free) N' h' m'
+      (mword_of_int ShSyms.runcmd) (6 + (2 + (UkShDiag.ush_Dg + n))) -∗
+    mWP (Loop : expr riscv_lang).
+  Proof using Hcons Hkill uartGhostG0.
+    intros Hline HL Hpl Hfd0 Hfd2 Hpeq Ha0.
+    assert (Hok : line_ok ws) by exact (proj1 (proj1 Hline)).
+    assert (HLne : L <> []).
+    { rewrite HL. intro Hq. pose proof (pl_L_pos ws) as Hp.
+      rewrite Hq in Hp. cbn [length] in Hp. lia. }
+    iIntros "#Hcat #Hdps #Hpin #Hlk #Hcode #Hjt #Htree Hsz Hstd Hcwd Hch
+             Hcr Hrun".
+    pose proof (ukn_const_of_eq N' _ Hpeq (fun x y => eq_refl)) as Hc.
+    iDestruct (PipeLinks.pipe_links_taint g with "Hlk") as "#Ht".
+    (* ---- THE ENTRY'S PAYMENT: cat's round at fd 0 ---- *)
+    iPoseProof (pl_cat_kround v I L ws pn gL gR gM gp Hpl HL Hok
+                  with "Hdps Hlk Hpin") as "#Hround".
+    (* ---- ...AND THE ARM.  The exec-failed law is a GOAL of this
+       application and not an [iAssert]: it is stated at a
+       [UkShDiag.ush_execfail_law_at] and an [iAssert ... as "#"] on one
+       does not return in this cone (see [pl_exf_at_pers0]). ---- *)
+    iApply (UShCatPay.wp_kshr_exec_cat_paid (PS := uprogSG_free)
+              (pl_cat_fd0 gp)
+              (length (wl_body ws) + 3)%nat
+              (length (wl_body ws) + 3 + 3)%nat T
+              (UShPipeAssembly.pipe_Qc_at g pn L gL gR gM)
+              (pl_RcR v I L pn gL gR gM gp)
+              (PipeBoth.wcur gR (1/2) 16%nat ∗ PipeBoth.wcur gM (1/2) 2%nat
+               ∗ PipeProto.side_R pn)%I
+              N' Hc h' m' q szv s0
+              (UkShPipeRound.ushq_cut (wl_toks ws) len f
+                 (length (wl_body ws) + 3 + 3)%nat)
+              ld n
+              Hpeq Ha0 (pl_cat_argv_bytes ws f len Hline) Hfd0 Hfd2
+              with "[] Hround Hcat [] Hcode [] [] Hjt Htree Hsz Hstd Hcwd
+                    [Hch] Hcr Hrun").
+    - iIntros "!> Ht2". iApply (pl_qc_of_taint pn L gL gR gM with "Ht2").
+    - iApply (UexecExecMint.udep_free).
+    - (* THE EXEC-FAILED LAW, read off the credential *)
+      iApply (UShPipeAssembly.exf_law_acc (PS := uprogSG_free)
+                PipeDisc.alt_execR 16%nat
+                (pl_RcR v I L pn gL gR gM gp)
+                (PipeBoth.wcur gR (1/2) 0%nat ∗ PipeBoth.wcur gM (1/2) 0%nat
+                 ∗ PipeProto.side_R pn)%I
+                (PipeBoth.wcur gR (1/2) 16%nat
+                 ∗ PipeBoth.wcur gM (1/2) 2%nat
+                 ∗ PipeProto.side_R pn)%I).
+      rewrite /pl_RcR.
+      iIntros "!> (#Hinv & #Hpi & _ & HsR & HgR & HgM)".
+      iSplitR "HgR HgM HsR"; [ | iFrame "HgR HgM HsR" ].
+      iApply (UShPipeAssembly.pipe_execR_law (PS := uprogSG_free)
+                g Hcons v I L ws gL gR gM (pl_XL pn) (pl_YR pn L)
+                (PipeProto.side_R pn)
+                (pl_XL_timeless pn) (pl_YR_timeless pn L) Hpl HL
+                with "[] Ht Hpin Hinv").
+      iApply (PipeProto.pipe_excl_wtok_lb_pipeN pn gp L HLne with "Hpi").
+    - iIntros "!> Hc2". iApply (pl_qc_of_cdR pn L gL gR gM with "Hc2").
+    - iApply (UserChildren.uch_any_of (ukn_ch N') ∅ with "Hch").
+  Qed.
 
   (* =================================================================== *)
   (*  S2e  THE LEFT CHILD (ROUND-11's table, the `left child' row)        *)
@@ -950,6 +1250,245 @@ Section UShPipeLaw.
       iApply (UkShPipeFork.pterm_wc_of g I 3%nat with "Hc").
     - iIntros "Hc".
       iApply (UShPipeAssembly.pipe_panic_exit_pay g I with "Hc").
+  Qed.
+
+  (* =================================================================== *)
+  (*  S2g  THE CHILD LAW, DISCHARGED (lane SH-PIPE-ROUND-14)              *)
+  (*                                                                     *)
+  (*  [UShPipeRound.sh_pipe_child_law g] at its five antecedents, which   *)
+  (*  is ROUND-11's instantiation table applied once.  Everything it      *)
+  (*  names is landed: [pl_round_alloc] mints the protocol's names and    *)
+  (*  the family's three cursors BEFORE the walk (the payload names all   *)
+  (*  four), [pl_pipe_call] is the registrar, [pl_split_k] the four-way   *)
+  (*  split, [pl_panic_pipe_law] / [pl_fork_panic_law] the two            *)
+  (*  diagnostics, [pl_left_child] / [pl_right_child] / [pl_parent] the   *)
+  (*  three continuations, and the walk is                                *)
+  (*  [UShPipeChild.wp_kshm_child_pipe_paid_line_at_sz] at [Usz := emp]   *)
+  (*  -- the break read off the parse's own leftover, SH-PIPE-ROUND-12's  *)
+  (*  [usz] vacuity.                                                     *)
+  (* =================================================================== *)
+  Local Lemma pl_fupd_mwp (e : expr riscv_lang) : (|={⊤}=> mWP e) ⊢ mWP e.
+  Proof using . rewrite /wp_triv. iIntros "H". iApply fupd_wp. iExact "H". Qed.
+
+  (* THE PARENT'S ROW OF THE SPLIT.  [pl_split]'s landed third slot is the
+     protocol handle alone and [UShPipeAssembly.pipe_round_parent] also
+     reads the FAMILY; [PipeBoth.blk2_inv] is an [inv] and so persistent,
+     so the split may hand a copy to the parent as well.  [pl_split] is
+     untouched. *)
+  Definition pl_Rk (v : era_pins) (I L : list (bv 8)) (pn : pnames)
+      (gL gR gM : gname) (gp : pipe_names) : iProp Σ :=
+    (PipeProto.pipe_inv pn gp L
+     ∗ PipeBoth.blk2_inv g blk2N (S gen_id) v I L gL gR gM
+         (pl_XL pn) (pl_YR pn L))%I.
+
+  Lemma pl_split_k (v : era_pins) (I L : list (bv 8)) (pn : pnames)
+      (gL gR gM : gname) (gp : pipe_names) :
+    pl_Cr v I L pn gL gR gM -∗
+    UShPipeAssembly.pipe_reg_pay pn emp%I L gp -∗
+    pl_RcL v I L pn gL gR gM gp
+    ∗ (pl_RcR v I L pn gL gR gM gp
+       ∗ (pl_Rk v I L pn gL gR gM gp ∗ emp)).
+  Proof using .
+    rewrite /pl_Cr /UShPipeAssembly.pipe_reg_pay /pl_RcL /pl_RcR /pl_Rk
+            /UEchoPipe.ep_pay /UEchoPipe.ep_frame.
+    iIntros "(#Hinv & HgL & HgR & HgM) (Hr & HsR & (#Hpi & [HsL _] & Hw & Hlb))".
+    iSplitL "HgL HsL Hw Hlb".
+    { iFrame "Hinv Hpi HsL HgL Hw Hlb". }
+    iSplitL "HgR HgM Hr HsR".
+    { iFrame "Hinv Hpi Hr HsR HgR HgM". }
+    iSplitR; [ iFrame "Hpi Hinv" | done ].
+  Qed.
+
+  (* THE PARSE'S THREE mallocs, chained at ONE capability bound (168) --
+     [UkShMalloc]'s own [ushm_malloc_le_exec] / [_le_one].  The pipe line's
+     parse calls [malloc] three times ([execcmd], [pipecmd], [execcmd]),
+     twelve units each out of the 4096 the first [morecore] inserts. *)
+  Local Lemma pl_malloc23 (N' : uk_names Σ) (szf : Z) :
+    UkShParse.ushp_malloc_ty_le (PS := uprogSG_free) N' 168
+      (UkShMalloc.ushm_one_ge N' szf 4072)
+      (UkShMalloc.ushm_one_ge N' szf 4060).
+  Proof using .
+    assert (E : (4072 - ((168 + 15) / 16 + 1))%Z = 4060%Z)
+      by (vm_compute; reflexivity).
+    rewrite <- E.
+    exact (UkShMalloc.ushm_malloc_le_one (PS := uprogSG_free) N' 168 szf 4072
+             ltac:(lia) ltac:(lia) ltac:(vm_compute; reflexivity)).
+  Qed.
+
+  (* ...AND THE BREAK, off what the parse LEFT (SH-PIPE-ROUND-12's repair:
+     the walk's [usz] may not be held beside the allocator state). *)
+  Local Lemma pl_usz_of_one (N' : uk_names Σ) (szf : Z) :
+    ⊢ UkShMalloc.ushm_one_ge N' szf 4060 -∗ emp -∗ usz (ukn_s N') szf.
+  Proof using .
+    iIntros "H _".
+    rewrite /UkShMalloc.ushm_one_ge. iDestruct "H" as (R) "[_ H]".
+    rewrite /UkShMalloc.ushm_one. iDestruct "H" as (c) "(_ & _ & _ & _ & _ & $)".
+  Qed.
+
+  Lemma pl_child_law : ⊢ UShPipeRound.sh_pipe_child_law g.
+  Proof using Hcons Hkill uartGhostG0 pipeProtoG0.
+    rewrite /UShPipeRound.sh_pipe_child_law.
+    iIntros "!> #Hlk #Hcat #Hslot #Hpin0 #Hdps".
+    iDestruct "Hpin0" as (v) "#Hpin".
+    iDestruct (PipeLinks.pipe_links_taint g with "Hlk") as "#Ht".
+    rewrite /UkShFork.ushf_child_law_at.
+    iIntros "!>" (N' h m dw dv s0 len wsf gf sz ld n I)
+      "%Hpeq %Hs1 %Hlp %Hlws %Hfbk %Hs0 %Hs64 %Hs38 %Hszlo %Hszal %Hszok
+       %Hrows #Hcode #Hpcode #Hpro #Hjt Hstr Hws Hsy Hstd Hcwd Hch Hpid HM
+       Hcp Hrun".
+    destruct Hlp as (ws & Hwsf & Hline).
+    destruct Hrows as (Hfd0c & Hfd1p & Hfd2p).
+    pose proof (pline_at_of_lp I wsf ws Hlws Hfbk Hwsf (proj1 Hline)) as Hpl.
+    pose proof (ukn_const_of_eq N' _ Hpeq (fun x y => eq_refl)) as Hcst.
+    (* ---- the ledger: its three rows, and that nothing in it is shut ---- *)
+    iDestruct (UserFd.ustd_len with "Hstd") as %Hlen3.
+    pose proof (pl_fd_lowest_none ld Hlen3 Hfd0c Hfd1p Hfd2p) as Hnone.
+    assert (H1lt : (1 < length ld)%nat)
+      by (rewrite Hlen3; unfold NSTD; lia).
+    assert (H0lt : (0 < length ld)%nat)
+      by (rewrite Hlen3; unfold NSTD; lia).
+    destruct Hfd0c as [wr0 Hl0]. destruct Hfd1p as [rb1 Hl1].
+    (* ---- the family's names and the round's lend ---- *)
+    iApply pl_fupd_mwp.
+    iMod (pl_round_alloc v I (wl_line (drop 1 ws))
+            (pboth_line_of_at I ws Hpl) with "Hpin")
+      as (pn gL gR gM) "(Hpre & Hw & Hr & HsL & HsR & Halloc)".
+    iModIntro.
+    (* ---- the taint's reading of the lend, for the fork-panic law ---- *)
+    iDestruct (UkShPipeFork.pterm_wc_3 g I with "Hcp") as "Hcp".
+    iDestruct (pipe_wcl3_inp I with "Hcp") as "[Hcp #Hinp]".
+    iDestruct (UkShPipeFork.pterm_wc_of g I 3%nat with "Hcp") as "Hcp".
+    iAssert (inp_lb v I ∨ T)%I as "#Hlb".
+    { iDestruct "Hinp" as "[Hx | #HT]"; [ | by iRight ].
+      iDestruct "Hx" as (v0) "[#Hp0 #He0]".
+      iDestruct (era_pin_agree with "Hp0 Hpin") as %->.
+      iLeft. iExact "He0". }
+    (* ---- the registrar ---- *)
+    iPoseProof (pl_pipe_call N' pn ld (wl_line (drop 1 ws))
+                  (fun k H => H) Hnone with "Hpre Hw HsL Hr HsR")
+      as "Hpipe".
+    (* ---- the fork-panic law ([pl_panic_pipe_law] is a GOAL below, for
+       [pl_exf_at_pers0]'s reason) ---- *)
+    iAssert (□ (∀ gp : pipe_names,
+                UkShDiag.ush_execfail_law_at (PS := uprogSG_free)
+                  EchoDisc.alt_panic 5%nat
+                  (pl_RcR v I (wl_line (drop 1 ws)) pn gL gR gM gp ∗ emp)
+                  (UkShPipeFork.pterm_shape g I 5%nat ∨ T)))%I as "#Hlawf".
+    { iIntros "!>" (gp).
+      iApply (pl_fork_panic_law v I (wl_line (drop 1 ws)) ws pn gL gR gM gp
+                Hpl with "Hdps Hlk Hpin Hlb"). }
+    (* ---- ...AND THE WALK ---- *)
+    iApply (UShPipeChild.wp_kshm_child_pipe_paid_line_at_sz
+              (SG := uexecSG_xv6) (PS := uprogSG_free)
+              N' (fun k H => H)
+              (UkShMalloc.ushm_fresh N' sz)
+              (UkShMalloc.ushm_one_ge N' (sz + 65536) 4084)
+              (UkShMalloc.ushm_one_ge N' (sz + 65536) 4072)
+              (UkShMalloc.ushm_one_ge N' (sz + 65536) 4060)
+              (UkShMalloc.ushm_malloc_le_next (PS := uprogSG_free) N'
+                 (sz + 65536))
+              h m dw dv s0 (sz + 65536) FsImg.ROOTINO len gf ws ld
+              (FdOpen true wr0 (FdDevice ConsoleInv.CONSOLE))
+              (FdOpen rb1 true (FdDevice ConsoleInv.CONSOLE))
+              (∅ : gset gname) n
+              (UShPipeAssembly.pipe_reg_pay pn emp%I
+                 (wl_line (drop 1 ws)))
+              (pl_RcL v I (wl_line (drop 1 ws)) pn gL gR gM)
+              (pl_RcR v I (wl_line (drop 1 ws)) pn gL gR gM)
+              (pl_Rk v I (wl_line (drop 1 ws)) pn gL gR gM)
+              (fun _ : pipe_names => emp%I)
+              (fun _ : pipe_names =>
+                 (UkShPipeFork.pterm_shape g I 5%nat ∨ T)%I)
+              (fun _ : Z =>
+                 UShPipeAssembly.pipe_Qc_at g pn
+                   (wl_line (drop 1 ws)) gL gR gM)
+              (UkShPipeFork.pterm_wc g I 3%nat)
+              (pl_Cr v I (wl_line (drop 1 ws)) pn gL gR gM)
+              (pipe_Wcl_at g I 0%nat)
+              emp%I (UkSh.ush_pid N') UkShPipe.ush_wait_pid_ans
+              (UkShMalloc.ushm_malloc_le_exec (PS := uprogSG_free) N'
+                 (fun k H => H) sz ltac:(lia) Hszal Hszok)
+              (pl_malloc23 N' (sz + 65536))
+              (pl_usz_of_one N' (sz + 65536))
+              Hs1 Hline Hs0 Hs64 Hs38 (fun x y => eq_refl) Hl0 Hl1
+              ltac:(discriminate) ltac:(discriminate)
+              ltac:(intros rb wb gn Hq; discriminate Hq)
+              ltac:(intros rb wb gn Hq; discriminate Hq)
+              Hfd2p
+              with "Hcode Hjt Hpcode Hpro Hstr Hws Hsy [] Hstd Hcwd Hch HM
+                    Hcp [] [] Halloc [] Hpipe Hpid [] [] [] Hlawf []
+                    Hrun [] [] []").
+    - (* [Usz := emp] *) done.
+    - (* the payload's taint arm *)
+      iIntros "!> Ht2".
+      iApply (pl_qc_of_taint pn (wl_line (drop 1 ws)) gL gR gM with "Ht2").
+    - (* the lend pays the exit *)
+      iIntros "!> Hc". rewrite Hpeq.
+      iApply (UShPipeAssembly.pipe_lend_exit_pay g I with "Hc").
+    - (* the four-way split *)
+      iIntros (gp) "Hcr Hrg".
+      iApply (pl_split_k v I (wl_line (drop 1 ws)) pn gL gR gM gp
+                with "Hcr Hrg").
+    - (* the two [wait(0)]s' law, at the caller's own pid *)
+      iApply (UkShPipe.ush_wait0_law_pid (PS := uprogSG_free)
+                (fun k H => H) N').
+    - (* the [pipe(2)]-failed tail's own diagnostic law *)
+      iApply (pl_panic_pipe_law v I (wl_line (drop 1 ws)) ws pn gL gR gM
+                Hpl with "Hlk Hpin").
+    - (* the [pipe(2)]-failed tail pays the exit *)
+      iIntros "!> _ Hb". rewrite Hpeq.
+      iApply (UShPipeAssembly.pipe_panic_exit_pay g I with "Hb").
+    - (* ...and the two [panic("fork")] tails *)
+      iIntros "!>" (gp) "_ Hb". rewrite Hpeq.
+      iApply (UShPipeAssembly.pipe_fork_exit_pay g v I with "Hpin Hb").
+    - (* ---- THE LEFT CHILD ---- *)
+      iIntros (N2 h2 m2 g2 gp q)
+        "%Hpeq2 %Ha02 _ #Hcode2 #Hjt2 #Htree2 Hsz2 Hstd2 Hcwd2 Hch2 _ _
+         HcL Hrun2".
+      replace (2 + (UkShDiag.ush_Dg + (68 + n)))%nat
+        with (6 + (2 + (UkShDiag.ush_Dg + (62 + n))))%nat by lia.
+      iApply (pl_left_child v I (wl_line (drop 1 ws)) ws pn gL gR gM gp
+                s0 (sz + 65536) len (length (wl_body ws) + 3 + 3)%nat gf
+                (<[1%nat := FdOpen false true (FdPipe gp)]> ld) (62 + n)%nat
+                N2 h2 m2 q Hline ltac:(lia) eq_refl Hpl
+                ltac:(exists false;
+                      exact (list_lookup_insert ld 1%nat
+                               (FdOpen false true (FdPipe gp)) H1lt))
+                ltac:(destruct Hfd2p as [rb2 H2]; exists rb2;
+                      rewrite list_lookup_insert_ne; [ exact H2 | lia ])
+                Hpeq2 Ha02
+                with "Hslot Hpin Hlk Hcode2 Hjt2 Htree2 Hsz2 Hstd2 Hcwd2
+                      Hch2 HcL Hrun2").
+    - (* ---- THE RIGHT CHILD ---- *)
+      iIntros (N2 h2 m2 g2 gp q)
+        "%Hpeq2 %Ha02 _ #Hcode2 #Hjt2 #Htree2 Hsz2 Hstd2 Hcwd2 Hch2 _ _
+         HcR Hrun2".
+      replace (2 + (UkShDiag.ush_Dg + (68 + n)))%nat
+        with (6 + (2 + (UkShDiag.ush_Dg + (62 + n))))%nat by lia.
+      iApply (pl_right_child v I (wl_line (drop 1 ws)) ws pn gL gR gM gp
+                s0 (sz + 65536) len gf
+                (<[0%nat := FdOpen true false (FdPipe gp)]> ld) (62 + n)%nat
+                N2 h2 m2 q Hline eq_refl Hpl
+                ltac:(split;
+                      [ exists false;
+                        exact (list_lookup_insert ld 0%nat
+                                 (FdOpen true false (FdPipe gp)) H0lt)
+                      | exists rb1; rewrite list_lookup_insert_ne;
+                        [ exact Hl1 | lia ] ])
+                ltac:(destruct Hfd2p as [rb2 H2]; exists rb2;
+                      rewrite list_lookup_insert_ne; [ exact H2 | lia ])
+                Hpeq2 Ha02
+                with "Hcat Hdps Hpin Hlk Hcode2 Hjt2 Htree2 Hsz2 Hstd2
+                      Hcwd2 Hch2 HcR Hrun2").
+    - (* ---- THE PARENT, at 0xea ---- *)
+      iIntros (h2 m2 gp r1 r2 rw1 rw2 S1 S2 S3 S4)
+        "%Hn1 %Hn2 Hf1 Hf2 Hw1 Hw2 Hch2 #Hjt2 Hsz2 Hstd2 Hcwd2 Hrk _ Hpid2
+         Hrun2".
+      iDestruct "Hrk" as "[#Hpi #Hbinv]".
+      iApply (pl_parent v I (wl_line (drop 1 ws)) ws pn gL gR gM gp
+                N' h2 m2 (2 + (UkShDiag.ush_Dg + (68 + n)))%nat
+                r1 r2 rw1 rw2 S1 S2 S3 S4 Hpl eq_refl Hpeq Hn1 Hn2
+                with "Hpin Hbinv Hcode Hf1 Hf2 Hw1 Hw2 Hpi Hrun2").
   Qed.
 
 End UShPipeLaw.

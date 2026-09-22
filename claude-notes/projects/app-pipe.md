@@ -478,9 +478,14 @@ arm is the theorem's one named premise (`pipe_both_law`).
   `UShPipeCatRound.v` now binds a `uprogSG` section variable — but the
   right child's arm does not unify and `sh_pipe_child_law` / item 4 are
   NOT reached.  Findings `### SH-PIPE-ROUND-13`.
-- [ ] **SH-PIPE-ROUND-14** (design §4.3ab: the exec instance bound in cat's
-  round file; the right child from ROUND-13's text; `sh_pipe_child_law`;
-  `pipe_adequacy_pipeΣ_final`).  Brief `brief-sh-pipe-round-14.md`.
+- [x] **SH-PIPE-ROUND-14** (design §4.3ab) — **THE CAMPAIGN'S THEOREM IS
+  CLOSED.**  §4.3ab's ruling REFUTED at the measurement (the second
+  instance was `ghost_varG`, not `uexecSG`); the right child, cat's
+  round, `sh_pipe_child_law`, `UInitPipe.sh_pipe_child_law_all_holds`
+  and `UInitPipeAdequacy.pipe_adequacy_pipeΣ_final` — three hardware
+  premises and NOTHING else, echo's fourteen exactly.  ONE finding for
+  the owner: `UPipeBootAdequacy.pipeΣ` has no `pipeProtoΣ` in it.
+  Findings `### SH-PIPE-ROUND-14`.
 ## Findings (append as lanes report)## Findings (append as lanes report)## Findings (append as lanes report)
 
 ### PQ-FLAG-2 (2026-09-18) — the write link's second premise, paid by the CODE
@@ -11079,3 +11084,184 @@ rule means a SECOND instance somewhere in the chain — most likely `SG`
 (`uexecSG`), which `UShPipeCatRound.v` still does not bind while
 `UkShCat`/`UkShPipe` do and the round pins to `uexecSG_xv6`.  That is one
 more `Context` line to test, and it costs one build.
+
+### SH-PIPE-ROUND-14 (2026-09-22, design §4.3ab) — **THE PIPELINE APPLICATION'S THEOREM IS CLOSED**: `pipe_adequacy_pipeΣ_final` has THREE HARDWARE PREMISES AND NOTHING ELSE and prints echo's FOURTEEN exactly; §4.3ab's ruling is REFUTED at the measurement (the second instance was `ghost_varG`, not `uexecSG`); and the campaign's last finding is one token missing from `UPipeBootAdequacy.pipeΣ`
+
+Branch `app-pipe/sh-pipe-round-14` off main (`dd9d37d5b`).  THREE proof
+commits: `2bf240b2c` (item 1), `cca3633f8` (items 2+3, `UShPipeLaw.v`),
+`4bd068faf` (the theorem).  **Whole-tree `ec2-lane.sh round14 build`
+RC=0**; no `Admitted`, no `Axiom`, `Proof using` on every new result.
+All four audits re-run on the quiescent tree: `audit-pipe-only` **14**,
+`audit-echo-only` **14**, `audit-only` **13**, `audit-tree-only` **13**
+distinct axiom names.
+
+**THE THEOREM** (`iris/UInitPipeAdequacy.v`), verbatim:
+
+```coq
+Theorem pipe_adequacy_pipeΣ_final
+    (gst : gstate)
+    (Hgen0 : gst.(ggen) = 0%nat) (Hpow0 : gst.(gpow) = false)
+    (Hdisk : v_disk (gst.(gdev).(dvirtio)) = FsImgDisk.fsimg_dk) :
+  forall (n : nat) (κs : list mobs) t2 g2,
+    language.nsteps n ([PowerLoopE : language.expr riscv_lang], gst)
+      κs (t2, g2) ->
+    (forall e2, e2 ∈ t2 -> language.reducible (Λ := riscv_lang) e2 g2)
+    /\ PipeDisc.pipe_phi κs.
+```
+
+`Print Assumptions` on it, verbatim — the campaign's standing FOURTEEN
+(11 `PrimString`/`PrimInt63` primitives, the 2 `xv6iris_extras`
+reservation `Parameter`s, `functional_extensionality_dep`):
+
+```
+PrimInt63.sub, PrimString.string, xv6iris_extras.resv_matches,
+xv6iris_extras.resv_is_valid, PrimInt63.lsr, PrimInt63.lsl,
+PrimInt63.lor, PrimString.length, PrimInt63.land, PrimInt63.int,
+PrimString.get, FunctionalExtensionality.functional_extensionality_dep,
+PrimInt63.eqb, PrimString.cat
+```
+
+**ZERO `Context` HYPOTHESES.**  `Hgen0`/`Hpow0`/`Hdisk` are the three
+hardware facts `pipe_adequacy_pipeΣ_of_child` already had; `Hchild` is
+gone.
+
+**(1) §4.3ab IS REFUTED AT THE MEASUREMENT, AND THE REAL SECOND INSTANCE
+IS `ghost_varG` (`2bf240b2c`).**  The ruling said `UShPipeCatRound.v`
+must take `Context `{SG : uexecSG Σ}`.  It must not, and it does not
+need to.  `Set Printing Implicit` on the built tree, side by side:
+
+- `UkCat.kcat_wr`'s implicit list is
+  `{Σ riscvGS0 ufdG0 GEN ghost_varG0 ghost_varG1} N {ctokG0 SG PS}`;
+- BOTH sides elaborate `SG` to `@UexecExecInst.uexecSG_xv6 Σ HRg xv6G0
+  fileG0 GEN` — the SAME closed term.  `uexecSG` was never the seam, and
+  a `Context {SG}` here would CREATE one, because `UCatKernel.cat_fam`,
+  which `pipe_cat_w`'s own proof applies, binds no `uexecSG` either;
+- what differs is `ghost_varG`.  `UShPipeCatRound.v` bound neither
+  `ghost_varG Σ Z` nor `ghost_varG Σ (gset gname)`, so `kcat_wr`'s two
+  `ghost_var` classes resolved THROUGH the `xv6G` bundle
+  (`@Xv6Cameras.offbox_offG Σ (@Xv6G.xv6_offbox Σ xv6G0)` and
+  `@Xv6Cameras.uch_inG Σ (@Xv6G.xv6_uch Σ xv6G0)`) and were BAKED INTO
+  `pipe_cat_w`'s conclusion, while `UCatPipe.v` binds both as SECTION
+  VARIABLES — so `pcat_round_at_g`'s `Hw` carries whatever the CALL SITE
+  has, and the call site (`UShPipeLaw.v`) binds `ghost_varG Σ Z` itself.
+
+TWO `Context` lines, and the file's statements are unchanged modulo the
+two new implicit arguments.  **THE LESSON, and it is cheap to apply: a
+file's binder list is not decoration — every class the file does NOT
+bind is a constant baked into its statements, and the two ways of
+writing the same class do not unify.**
+
+**(2) THE RIGHT CHILD, LANDED (`cca3633f8`), from ROUND-13's text with
+two additions it did not have.**  In `iris/UShPipeLaw.v`:
+
+| result | what it is |
+|---|---|
+| `pl_cat_fd0` | `UkShCat.ush_fd0p γp l ∧ ∃ rb, l !! 1 = Some (FdOpen rb true (FdDevice CONSOLE))` — cat READS the pipe at fd 0 and WRITES the console at fd 1, and `ush_fd0p` alone does not say the second |
+| `pl_kcat_dg` | cat's `read error`/`write error` tails out of the taint, two `UkCat.kcat_pay_seq_of_law` instances at 16 and 17 bytes.  `pcat_round_at_g`'s `Hdg`/`Hdgw` had NO producer anywhere in the tree |
+| `pl_cat_kround` | `UCatPipe.pcat_round_at_g` at `Ch := UShPipeCatRound.pcat_ch g gR gM` and `Cend := pl_Cend`, with `pipe_cat_w` as its `Hw`.  The side token rides the LINEAR `Cend -∗ ukn_pay N'' (-1)` wand (`pl_qc_of_cend`), NOT `Ch`; the empty/bounded/tainted three-way arm of `pipe_cat_w`'s `(YR ∨ PT ∨ ⌜cnt = 0⌝)` is decided by `decide (Z.to_nat (bv_unsigned rv) = 0)` and `pws_lb_weaken` at `take 1 L = take 1 (take (c+cnt) L)` |
+| `pl_RcR` (moved) | gains `PipeProto.pipe_inv pn γp L`, exactly as ROUND-13 measured: the mode's fire wants `pipe_excl_wtok_lb_pipeN` at a `γp` the WALK binds.  Persistent, so `pl_split` keeps its shape |
+| `pl_right_child` | `UShCatPay.wp_kshr_exec_cat_paid` at `Fd0 := pl_cat_fd0 γp`, `a := |wl_body ws| + 3`, `b := a + 3`, with `pipe_execR_law` at `F := side_R pn` read off `pl_RcR` through `exf_law_acc`, `pl_cat_argv_bytes` its argv and `pl_qc_of_cdR` its `□ (Cd -∗ Qc)` |
+
+`Forall nodollar L` is `PipeDisc.pd_wl_line_shape (drop 1 ws)` (the PIPE
+twin of `FileDisc.wl_line_shape`, which ROUND-13 named) off `wl_wf (drop
+1 ws)`, itself `Forall_lookup` + `lookup_drop` on `line_ok_wf ws`;
+`pcat_out I = L` is `exact Hpl` — `UCatPipe.pcat_line` and
+`PipeLinksLine.pline_at` are the SAME term.
+
+**(3) `sh_pipe_child_law g` DISCHARGED (`cca3633f8`), which is ROUND-11's
+instantiation table applied once and nothing more.**  `pl_child_law`,
+in order: `pl_round_alloc` (the protocol's `pnames` and the family's
+three cursors minted at the law's own `mWP` entry, through the one
+`|={⊤}=>` `pl_fupd_mwp` peels); `pipe_wcl3_inp` + `era_pin_agree` for the
+fork-panic law's `inp_lb v I ∨ T`; `pl_pipe_call` the registrar;
+`pl_split_k` the four-way split; the walk
+`UShPipeChild.wp_kshm_child_pipe_paid_line_at_sz` at `Usz := emp`;
+`pl_left_child` / `pl_right_child` / `pl_parent` the three
+continuations.  Three things the table did not have:
+
+- **`fd_lowest_closed ld = None`** (`pl_pipe_call`'s one Coq premise) is
+  NOT an antecedent and does not need to be: `UserFd.ustd` carries
+  `length l = NSTD` and the child law's three rows ARE rows 0, 1, 2, so
+  the whole tracked ledger is open — `pl_fd_lowest_none`, six lines.
+- **the three `malloc`s** chain at ONE capability bound `B = 168`:
+  `ushm_malloc_le_exec` (`ushm_fresh sz → ushm_one_ge (sz+65536) 4084`),
+  `ushm_malloc_le_next` (→ 4072) and `pl_malloc23` (→ 4060, which is
+  `ushm_malloc_le_one 168` with the arithmetic done); the break comes
+  off `UM3` (`pl_usz_of_one`), which is SH-PIPE-ROUND-12's `usz` vacuity
+  repair spent for the first time.
+- **`pl_Rk`**: `pl_split`'s landed third slot is the protocol handle
+  alone and `pipe_round_parent` also reads the FAMILY.  `blk2_inv` is an
+  `inv`, so the split hands the parent a copy too; `pl_split` itself is
+  byte-identical and `pl_split_k` is the new row.
+
+**(4) TWO MEASURED WEDGES, BOTH IN THE PROOFMODE AND BOTH THE SAME
+DISEASE — and this is the operational finding of the lane.**  The first
+attempt ran **53 minutes at 4.1 GB RSS** without finishing, which is
+ROUND-13's signature to the minute.  `Set Default Timeout 300.` (the
+brief's own tool) named both in one build each:
+
+- **`iDestruct … as "[$ _]"` on `pl_kcat_dg`'s pair.**  The `$` sends the
+  proofmode's `Frame` search into `UkCat.kcat_pay_seq`, a SIXTEEN-DEEP
+  FIXPOINT, and it does not come back.  Naming the conjunct and
+  `iExact`ing it is instant.  **A `$` is a search, not a projection.**
+- **`iAssert … as "#"` on a `UkShDiag.ush_execfail_law_at`.**  Same
+  disease for `Persistent`: the instance EXISTS
+  (`ush_execfail_law_at_persistent`) and the hint net does not reach it
+  through the transparent definition — `UShPipeRound.v`'s measured note
+  one file over.  Fixed twice over: `pl_exf_at_pers0` names it at
+  priority 0, and the two laws are handed in as GOALS of the
+  application they feed rather than asserted.
+
+With both repaired, `UShPipeLaw.v` — 1500 lines, `pl_left_child`,
+`pl_parent`, `pl_cat_kround`, `pl_right_child` and `pl_child_law`
+included — compiles in **under a minute**.
+
+**(5) THE ONE FINDING THE OWNER HAS TO RULE ON, and it is a hole in the
+ANTI-VACUITY LIST and not in the theorem: `UPipeBootAdequacy.pipeΣ` does
+not contain `PipeProto.pipeProtoΣ`.**  Measured on the built tree:
+
+```coq
+Goal PipeProto.pipeProtoG pipeΣ. Proof. apply _. Qed.
+(* Error: Cannot infer this placeholder of type "pipeProtoG pipeΣ"
+   (no type class instance found). *)
+```
+
+`pipeΣ` is `#[ xv6Σ ; bioslotΣ ; echoOutΣ ; pipeOutΣ ; pipeLineΣ ]` and
+predates lane PIPE-PROTO; nothing had ever needed `pipeProtoG` at it,
+because no proof had ever reached the child law.  Every round MINTS a
+pipe's protocol ghosts (`PipeProto.pipe_names_alloc`, through
+`pl_round_alloc`), so **`sh_pipe_child_law_all (Σ := pipeΣ)` — the
+premise of the landed `pipe_adequacy_pipeΣ_of_child` — is not provable
+by any argument a round can make.**  It is not a soundness problem: the
+theorem's conclusion mentions no Iris and a LONGER functor list is a
+STRONGER realisability claim, not a weaker one.  This lane therefore
+states the premise-free theorem at
+
+```coq
+Definition pipeΣ_full : gFunctors := #[ pipeΣ ; PipeProto.pipeProtoΣ ].
+```
+
+defined in `UInitPipeAdequacy.v` — this lane's file — rather than
+touching `UPipeBootAdequacy.pipeΣ`, which is not this lane's and whose
+edit would move `pipe_adequacy_pipeΣ`'s own statement.  **THE TIDY
+FOLLOW-UP IS ONE TOKEN**: put `pipeProtoΣ` inside `pipeΣ`, drop
+`pipeΣ_full`, and `pipe_adequacy_pipeΣ_of_child` becomes dischargeable
+where it stands.  Recommended, and it is a one-line lane.
+
+**(6) WHAT MOVED OUTSIDE THIS LANE'S FILE LIST: NOTHING.**  `UkRun.v`,
+`UkRunSys.v`, `UCatPipe.v`, `UShCatPay.v`, `UkShCat.v`,
+`UShPipeAssembly.v`, `UShPipeRound.v`, `UShPipeRound2.v`,
+`UShPipeChild.v` are untouched — the right child and the child law
+needed nothing from any of them that was not already landed, which is
+the strongest thing that can be said about ROUND-9…ROUND-13's pricing.
+`UShPipeCatRound.v` gained two `Context` lines; `UShPipeLaw.v` gained
+the round, the right child and the law (and `pl_RcR`'s one conjunct);
+`UInitPipe.v` gained `Context `{!pipeProtoG Σ}` (nothing above it uses
+it, so `sh_pipe_child_law_all`'s Prop does NOT move) and the theorem;
+`UInitPipeAdequacy.v` the functor list and the final theorem;
+`PipeAssumptions.v` was retargeted and its FRONTIER block is now EMPTY.
+
+**THE ONE THING THE NEXT LANE NEEDS FIRST.**  The owner's word on (5).
+After that the campaign has no proof obligation left: the frontier block
+in `PipeAssumptions.v` is empty because every statement that used to
+stand in it is inside the theorem's own cone.

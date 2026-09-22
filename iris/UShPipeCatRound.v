@@ -82,6 +82,25 @@ Section UShPipeCatRound.
   Context `{!xv6G Σ, !bioslotG Σ, !fdslotG Σ, !fileG Σ,
             !irefslotG Σ, !pavG Σ, !wchG Σ, !ufdG Σ}.
   Context `{GEN : GenId} `{XI : CurCtx}.
+  (* ...AND THE TWO [ghost_var] CLASSES [UkCat.kcat_wr] IS INDEXED BY
+     (lane SH-PIPE-ROUND-14; design SS4.3ab's ruling REFUTED at its own
+     guess -- see below).  [UkCat.kcat_wr]'s implicit list is
+     [{Sigma riscvGS ufdG GEN ghost_varG0 ghost_varG1} N {ctokG SG PS}],
+     and THIS file bound neither [ghost_var] class, so both were resolved
+     THROUGH the [xv6G] bundle ([Xv6Cameras.offbox_offG (Xv6G.xv6_offbox
+     ...)] and [Xv6Cameras.uch_inG (Xv6G.xv6_uch ...)]) and BAKED INTO
+     [pipe_cat_w]'s conclusion.  [UCatPipe.v] binds both as SECTION
+     VARIABLES, so [pcat_round_at_g]'s [Hw] names them at whatever the
+     CALL SITE has -- and the call site ([UShPipeLaw.v]) binds
+     [ghost_varG Sigma Z] itself.  Two different [ghost_varG Sigma Z]
+     terms, one [kcat_wr] each: that is SH-PIPE-ROUND-13's "they print
+     identically and do not unify".  [uexecSG] was NOT the second
+     instance -- both sides elaborate it to [uexecSG_xv6 Sigma HRg xv6G0
+     fileG0 GEN], measured with [Set Printing Implicit] -- and a
+     [Context {SG}] here would in fact CREATE one, because
+     [UCatKernel.cat_fam], which this file's proof applies, binds none. *)
+  Context `{!ghost_varG Σ Z}.
+  Context `{!ghost_varG Σ (gset gname)}.
   Context `{!echoOutG Σ, !inG Σ (mono_listR (leibnizO Z))}.
   Context `{!pipeOutG Σ}.
   (* ...AND THE PROGRAM INSTANCE IS A SECTION VARIABLE (design SS4.3z item

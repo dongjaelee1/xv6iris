@@ -84,6 +84,18 @@ Section UShPipeCatRound.
   Context `{GEN : GenId} `{XI : CurCtx}.
   Context `{!echoOutG Σ, !inG Σ (mono_listR (leibnizO Z))}.
   Context `{!pipeOutG Σ}.
+  (* ...AND THE PROGRAM INSTANCE IS A SECTION VARIABLE (design SS4.3z item
+     2, one file over; lane SH-PIPE-ROUND-13).  The header above said "NO
+     [uprogSG] section variable, for [UCatKernel.v]'s reason" -- and
+     ROUND-12 STRUCK that reason for cat's whole entry chain
+     ([UShCat.v], [UShCatPay.v], [UCatPipe.v], [UCatKernel.v] SS7 all bind
+     one now).  This file is the last of the chain and it was left behind:
+     every [UkCat.kcat_wr] in its statements was elaborating at the
+     AMBIENT [UexecExecInst.uprogSG_gen], while the pipeline round enters
+     cat's image at [uprogSG_free], and the two print identically and do
+     not unify.  A [Context] variable is what stops the resolution search;
+     the geometry never reads the instance, so nothing else moves. *)
+  Context `{PS : UexecSG.uprogSG Σ}.
   Context (g : pipe_gn).
   Local Notation γ := (pgn_cl g).
   Context (Hcons : @riscv_cons_res Σ (@riscv_fixedGS Σ HRg) = pecl g).
@@ -252,7 +264,25 @@ Section UShPipeCatRound.
     pipe_link_taint g -∗
     era_pin γ (S gen_id) v -∗
     blk2_inv g blk2N (S gen_id) v I L gL gR gM XL YR -∗
-    YR -∗
+    (* THE READER'S BOUND, UNDER THE TAINT (design SS4.3aa, item 2).
+       [YR] is used at exactly ONE place below -- inside the left arm of the
+       [Hjust] split, where the family's right chain is actually stepped --
+       and the only supplier the round has is [UCatPipe.pcat_round_at_g]'s
+       [Hw] antecedent, which offers [pws_lb pn (take (c + cnt) L) or T].
+       So the premise is taken under the same disjunction and the taint arm
+       goes through [pcat_chain_taint] like the other two.  The landed form
+       re-derives by [iLeft].
+
+       ...AND A THIRD ARM, [cnt = 0] (lane SH-PIPE-ROUND-13).  The round's
+       supplier holds [pws_lb pn (take (c + cnt) L)], which entails
+       [YR = pws_lb pn (take 1 L)] only when [0 < c + cnt]; at a turn that
+       delivered NO byte there is no bound to weaken.  There is also nothing
+       to step: at [cnt = 0] the chain IS the cursor
+       ([SpecConsolewrite.cons_out_chain_0]) and [out_chain_of_step] never
+       looks at the step.  So the empty turn is its own arm, and the supplier
+       takes it by [decide (cnt = 0)] rather than by proving a bound it
+       cannot have. *)
+    (YR ∨ PT ∨ ⌜(Z.to_nat (bv_unsigned rv) = 0)%nat⌝) -∗
     (⌜(Z.to_nat (bv_unsigned rv) <= 512)%nat
       /\ forall j : nat, (j < Z.to_nat (bv_unsigned rv))%nat ->
            L !! (c0 + j)%nat = Some (fbb j)⌝
@@ -310,7 +340,14 @@ Section UShPipeCatRound.
                cons_out_chain (S gen_id) M (m !!! Regidx a1_idx)
                  (fun j : nat => pcat_ch gR gM (c0 + j)%nat) 0%nat cnt)%I
       with "[Hc Hjust]" as "Hmk".
-    { iDestruct "Hjust" as "[[%_ %Hline] | #HT]"; last first.
+    { iDestruct "HYR" as "[#HYRy | [#HTy | %Hcz0]]".
+      3: { (* the EMPTY turn: no byte, no step, and the chain is the cursor *)
+           iIntros (M) "_". rewrite Hcz0 cons_out_chain_0 Nat.add_0_r.
+           iExact "Hc". }
+      2: { iIntros (M) "_".
+           iApply (pcat_chain_taint gR gM M (m !!! Regidx a1_idx) c0 cnt 0%nat
+                     with "Ht HTy"). }
+      iDestruct "Hjust" as "[[%_ %Hline] | #HT]"; last first.
       { iIntros (M) "_".
         iApply (pcat_chain_taint gR gM M (m !!! Regidx a1_idx) c0 cnt 0%nat
                   with "Ht HT"). }
@@ -327,7 +364,7 @@ Section UShPipeCatRound.
                 ltac:(intros j _ Hj; apply HM; lia)
                 with "[] [Hcur]").
       - iApply (pcat_out_step v I L gL gR gM XL YR c0 Hnd Hwit2 Hwit1
-                  with "Hex Ht Hpin Hinv HYR").
+                  with "Hex Ht Hpin Hinv HYRy").
       - rewrite Nat.add_0_r /pcat_ch. iLeft. iExact "Hcur". }
     (* ---- THE RUN: the prefix the call writes, and its two halves ---- *)
     pose (nr := (512 - cnt)%nat).

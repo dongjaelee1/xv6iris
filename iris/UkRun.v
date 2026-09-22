@@ -618,6 +618,71 @@ Section UkRun.
   Qed.
 
   (* ------------------------------------------------------------------- *)
+  (* THE ROW-AWARE DEPOSIT (design/app-pipe.md SS4.3aa, lane                *)
+  (* SH-PIPE-ROUND-13).  [udepw] quantifies the descriptor TABLE            *)
+  (* universally, so a payer of [udepw N m pc 21] has to cover the close of *)
+  (* an ARBITRARY table's argument-0 row -- including some other pipe's.    *)
+  (* No verified program can do that: [PipeReg.pipe_reg] pays exactly ONE   *)
+  (* pipe's close, so the only producer of [udepw_law 21] is the taint      *)
+  (* ([UexecExecMint.udepw_law_of_sup_close]), and the pipeline round --    *)
+  (* which closes four pipe rows per turn -- had no untainted route at all. *)
+  (*                                                                        *)
+  (* THE ROW IS ALREADY PINNED AT THE CALL SITE and was simply being thrown *)
+  (* away: [udepw_cl_mint] below takes [fd_st_of_key a0 fdv = st] as a Coq  *)
+  (* premise (the close leaves derive it from the caller's own handle,      *)
+  (* [UserFd.ufd_agree]), and that is exactly the fact a row-aware payer    *)
+  (* needs.  So this is [udepw] with that equation moved INSIDE the table   *)
+  (* binder as an antecedent: a payer owes the row only at the tables whose *)
+  (* argument-0 descriptor IS the [st] the deposit is indexed by.  Strictly *)
+  (* weaker than [udepw] ([udepw_row_of_udepw]), so every landed consumer   *)
+  (* re-discharges unchanged, and payable from a registration               *)
+  (* ([UexecExecMint.udepw_row_of_reg_close]).                              *)
+  (* ------------------------------------------------------------------- *)
+  Definition udepw_row (N : uk_names Σ) (m : regfile) (pc : mword 64)
+      (n : Z) (st : fdstate) : iProp Σ :=
+    (∀ (M : gmap Z (bv 8)) (pm : gmap (mword 27) uperm) (sz : Z)
+       (fdv : list fdstate) (cw : Z) (gn : gname) (cs : gset gname) (pidv : mword 32),
+       ⌜fd_st_of_key (m !!! Regidx (mword_of_int 10 : mword 5)) fdv = st⌝ -∗
+       my_pay gn (ukn_pay N) -∗
+       uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz -∗ ufd_auth (ukn_fd N) fdv -∗
+       uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz ∗ ufd_auth (ukn_fd N) fdv ∗
+       (⌜psok n /\ n <> USYS_exec⌝
+        ∨ |==> sbundle_pay uslot n (ukn_pay N)
+            (uvis_of_run m pc M pm sz fdv cw gn cs pidv false)))%I.
+
+  (* the forgetful direction: a payer for every table pays at this one *)
+  Lemma udepw_row_of_udepw (N : uk_names Σ) (m : regfile) (pc : mword 64)
+      (n : Z) (st : fdstate) :
+    udepw N m pc n -∗ udepw_row N m pc n st.
+  Proof using .
+    rewrite /udepw /udepw_row.
+    iIntros "H" (M pm sz fdv cw gn cs pidv) "_ Hp Hh Hf".
+    iDestruct ("H" $! M pm sz fdv cw gn cs pidv with "Hp Hh Hf")
+      as "(Hh & Hf & [%Hok | Hb])"; iFrame "Hh Hf";
+      [ by iLeft | iRight; by iModIntro ].
+  Qed.
+
+  (* ...and the mint, [udepw_mint] with the row equation handed over *)
+  Lemma udepw_row_mint (N : uk_names Σ) (m : regfile) (pc : mword 64)
+      (n : Z) (st : fdstate) (M : gmap Z (bv 8)) (pm : gmap (mword 27) uperm)
+      (sz : Z) (fdv : list fdstate) (cw : Z) (gn : gname) (cs : gset gname)
+      (pidv : mword 32) :
+    fd_st_of_key (m !!! Regidx (mword_of_int 10 : mword 5)) fdv = st ->
+    udep -∗ my_pay gn (ukn_pay N) -∗ udepw_row N m pc n st -∗
+    uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz -∗ ufd_auth (ukn_fd N) fdv ==∗
+    uheap (ukn_t N) (ukn_d N) (ukn_s N) M pm sz ∗ ufd_auth (ukn_fd N) fdv ∗
+    sbundle_pay uslot n (ukn_pay N) (uvis_of_run m pc M pm sz fdv cw gn cs pidv false).
+  Proof using .
+    intros Hkey. iIntros "#Hdep #Hmp Hsb Hheap Hufd".
+    iDestruct ("Hsb" $! M pm sz fdv cw gn cs pidv with "[%] Hmp Hheap Hufd")
+      as "(Hheap & Hufd & Hd)"; [ exact Hkey | ].
+    iFrame "Hheap Hufd".
+    iDestruct "Hd" as "[%Hok | Hb]";
+      [ iApply (udep_dep n _ (ukn_pay N) (proj1 Hok) (proj2 Hok) with "Hdep")
+      | iExact "Hb" ].
+  Qed.
+
+  (* ------------------------------------------------------------------- *)
   (* THE CLOSE LEAF'S DEPOSIT, IN THE TWO SHAPES A CALLER CAN HAVE IT       *)
   (* (design/pipe.md, "The byte queue").                                    *)
   (*                                                                        *)
@@ -643,7 +708,7 @@ Section UkRun.
       (st : fdstate) : iProp Σ :=
     (⌜forall (rb wb : bool) (gp : pipe_names),
         st <> FdOpen rb wb (FdPipe gp)⌝
-     ∨ udepw N m pc 21)%I.
+     ∨ udepw_row N m pc 21 st)%I.
 
   Lemma udepw_cl_nonpipe (N : uk_names Σ) (m : regfile) (pc : mword 64)
       (st : fdstate) :
@@ -666,6 +731,16 @@ Section UkRun.
   Lemma udepw_cl_of_udepw (N : uk_names Σ) (m : regfile) (pc : mword 64)
       (st : fdstate) :
     udepw N m pc 21 -∗ udepw_cl N m pc st.
+  Proof using .
+    iIntros "H". rewrite /udepw_cl. iRight.
+    iApply (udepw_row_of_udepw N m pc 21 st with "H").
+  Qed.
+
+  (* ...AND THE ROW-AWARE ONE, which is what a registered pipe end can pay
+     ([UexecExecMint.udepw_row_of_reg_close] is the producer). *)
+  Lemma udepw_cl_of_row (N : uk_names Σ) (m : regfile) (pc : mword 64)
+      (st : fdstate) :
+    udepw_row N m pc 21 st -∗ udepw_cl N m pc st.
   Proof using . iIntros "H". rewrite /udepw_cl. by iRight. Qed.
 
   (* ...AND THE MINT, at the key the leaf has destructed its run into.  The
@@ -698,7 +773,7 @@ Section UkRun.
         rewrite Ha0 Hfd Hkey. exact Hnp. }
       iApply (udep_close_dep (uvis_of_run m pc M pm sz fdv cw gn cs pidv false)
                 (ukn_pay N) Hnpk with "Hdep").
-    - iApply (udepw_mint N m pc 21 M pm sz fdv cw gn cs pidv
+    - iApply (udepw_row_mint N m pc 21 st M pm sz fdv cw gn cs pidv Hkey
                 with "Hdep Hmp Hsb Hheap Hufd").
   Qed.
 

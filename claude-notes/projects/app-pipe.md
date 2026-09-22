@@ -469,10 +469,15 @@ arm is the theorem's one named premise (`pipe_both_law`).
   walk's `usz` (REPAIRED here) and the pipe arm's CLOSE DEPOSIT, which is
   a `UkRun`/`UkRunSys` premise shape and NOT this lane's file (Findings
   `### SH-PIPE-ROUND-12`).  `pipe_adequacy_pipeΣ_final` is NOT reached.
-- [ ] **SH-PIPE-ROUND-13** (design §4.3aa: the row-aware close deposit —
-  a pipe row's close paid by the registry; `pipe_cat_w` under the taint;
-  the right child; `pipe_adequacy_pipeΣ_final`).  Brief
-  `brief-sh-pipe-round-13.md`.
+- [x] **SH-PIPE-ROUND-13** (design §4.3aa) — items 1 and 2 LANDED (the
+  row-aware close deposit, and it cost `UkRunSys.v` NOTHING;
+  `UShPipeLaw.pl_pipe_call` has no antecedent left; `pipe_cat_w` at
+  `(YR ∨ PT ∨ ⌜cnt = 0⌝)`).  Item 3 landed its REPAIRS and not its arm:
+  `UCatPipe.pcat_round_at_g`'s `Hw` AS LANDED IS UNSATISFIABLE and is
+  repaired (`pcat_w_taint`), its `cat_code` premise is struck, and
+  `UShPipeCatRound.v` now binds a `uprogSG` section variable — but the
+  right child's arm does not unify and `sh_pipe_child_law` / item 4 are
+  NOT reached.  Findings `### SH-PIPE-ROUND-13`.
 ## Findings (append as lanes report)## Findings (append as lanes report)## Findings (append as lanes report)
 
 ### PQ-FLAG-2 (2026-09-18) — the write link's second premise, paid by the CODE
@@ -10923,3 +10928,151 @@ premises, one whole-tree rebuild — and it is the honest fix, since
 round may take `udepw_law 21` as a further antecedent of
 `sh_pipe_child_law` — which `UInitPipe.pipe_Hinit_boot` CANNOT supply,
 so that route ends at an axiom and should be refused.
+
+### SH-PIPE-ROUND-13 (2026-09-22, design §4.3aa) — THE ROW-AWARE CLOSE DEPOSIT LANDS AND IT COSTS `UkRunSys.v` NOTHING; `pipe_cat_w` goes under the taint; and item 3 turns up TWO walls of its own — `pcat_round_at_g`'s `Hw` AS LANDED IS UNSATISFIABLE, and cat's console turn was the last file of §4.3z item 2's chain still pinned at the ambient instance
+
+Branch `app-pipe/sh-pipe-round-13` off main (`d743dd27a`).  THREE proof
+commits: `1fa435313` (item 1), `88b5fbb9c` (item 2), `2f0829db1` (item 3's
+repairs).  **Whole-tree `ec2-lane.sh round13 build` RC=0 at each commit**;
+no `Admitted`, no `Axiom`, `Proof using` on every new result.  All four
+audits re-run on the quiescent tree and UNMOVED: `audit-only` 13,
+`audit-echo-only` 14, `audit-tree-only` 13, `audit-pipe-only` 14 distinct
+axiom names.
+
+**`pipe_adequacy_pipeΣ_final` IS NOT REACHED.**
+`UInitPipe.sh_pipe_child_law_all` is still a Prop, `iris/PipeAssumptions.v`
+is untouched, `UShPipeRound.sh_pipe_child_law` did not move.  What IS
+different: ROUND-12's wall is gone at the source, and item 3's own two
+walls are now measured rather than guessed.
+
+**(1) ITEM 1 — THE ROW-AWARE CLOSE DEPOSIT, AND IT IS ONE FILE
+(`1fa435313`).**  ROUND-12's finding (6) said the repair is
+`UkRun.v` + `UkRunSys.v` and one whole-tree rebuild.  It is `UkRun.v`
+ALONE: the row is already pinned at the call site and was being thrown
+away.  `udepw_cl_mint` takes `fd_st_of_key a0 fdv = st` as a Coq premise
+(both close leaves derive it from the caller's own handle,
+`UserFd.ufd_agree`) and then hands its payer a `udepw` that never sees it.
+
+- NEW `UkRun.udepw_row N m pc n st` — `udepw` with that equation moved
+  INSIDE the table binder as an antecedent; `udepw_cl`'s right arm is now
+  `udepw_row N m pc 21 st`.  Its right disjunct gains a `|==>` (the mint is
+  under one anyway), which is what lets the producer be
+  `UexecExecInst.xv6_sbundle_close_of_reg` VERBATIM.
+- `udepw_row_of_udepw` / `udepw_row_mint` / `udepw_cl_of_row`;
+  `udepw_cl_of_udepw`, `udepw_cl_nonpipe`, `udepw_cl_nopipe`,
+  `udepw_cl_mint` all byte-identical.  **NOTHING IN `UkRunSys.v` MOVED** —
+  `wp_uk_ecall_close` and `_std` pass their own `Hkey` on and needed no new
+  premise; and the five other consumers in the tree (`UkCat`,
+  `UkPipeMoves`, `UkSh`, `UkShRedir`, `UkShPipe`) take
+  `udepw_cl_nonpipe`/`_nopipe` and did not move either.
+- THE PRODUCER, in `UexecExecMint.v`: `udepw_row_of_reg_close` /
+  `udepw_cl_of_reg_close` — `pipe_reg γp` pays the close of a row that IS
+  that pipe, at the POINT family's `True` payload.
+- THE CHAIN, every landed statement byte-identical:
+  `UShPipeCall.ush_pipe_call_paid_gen` (the three-instruction walk, generic
+  in what the registrar keeps) → `ush_pipe_call_paid_reg` (NO close law) →
+  `ush_pipe_call_paid` (the landed form, dropping the law it no longer
+  needs); `UShPipeAssembly.ush_pipe_call_pipe_pay_reg` likewise; and
+  **`UShPipeLaw.pl_pipe_call` HAS NO ANTECEDENT LEFT**.
+
+**(2) ITEM 2 — `pipe_cat_w` AT `(YR ∨ PT ∨ ⌜cnt = 0⌝)` (`88b5fbb9c`).**
+§4.3aa item 2's `(YR ∨ PT)` is not quite enough and the third arm is
+forced, not cosmetic: the supplier weakens `pws_lb pn (take (c+cnt) L)` to
+`YR = pws_lb pn (take 1 L)` and that needs `0 < c + cnt`, which a turn that
+delivered NO byte does not have.  There is also nothing to step there — at
+`cnt = 0` the chain IS the cursor (`SpecConsolewrite.cons_out_chain_0`) and
+`out_chain_of_step` never looks at the step — so the empty turn is its own
+arm and the supplier takes it by `decide (cnt = 0)`.  `YR` is still used at
+exactly one place, inside the `Hjust` split's left arm.
+
+**(3) ITEM 3's FIRST WALL: `UCatPipe.pcat_round_at_g`'s `Hw` AS LANDED IS
+UNSATISFIABLE (`2f0829db1`).**  Its content premise was `⌜pure⌝ ∨ T` and
+its two READ-TAINT call sites passed `by iRight`.  At those sites `rv` is
+UNBOUNDED — a PIPE read answers -1 when the reader was killed
+(`UkReadPipe.uread_pipe_ans`'s first arm) — while a supplier has to write
+`cnt` bytes out of a 512-byte buffer AND return the count exactly.  Both
+candidates, `UShPipeCatRound.pipe_cat_w` and the file era's
+`UCatKernel.cat_w_of_link`, take `Z.to_nat (bv_unsigned rv) <= 512` as a
+COQ premise, and `rv = -1` refutes it.  **The FILE era never meets this**:
+its read is `ard_count`-bounded on BOTH arms, which is exactly why
+`UCatKernel`'s own `Hw` carries the cap INSIDE its taint arm and has only
+two call sites.  That asymmetry is the finding.
+
+THE REPAIR, landed: NEW `UCatPipe.pcat_w_taint` funds the -1 turn's write
+off the era's free write law and lands on `UkCatCat.kcat_round`'s own
+`write error` disjunct with the round's invariant handed back AT THE CURSOR
+IT CAME IN AT (nothing was printed, so nothing moved) — `kcat_round_of_law`'s
+route, the only one a tainted turn has.  `Hw` loses its taint arm (it is now
+called at ONE site, the real count), and `pcat_round_at_g` gains ONE
+premise, `□ (T -∗ kcat_dg_cw N ∗ udepw_law 16)`, which the pipeline round
+holds already (`sh_pipe_child_law`'s `□ (T -∗ UkSh.sh_deps)` IS
+`udepw_law 16`, and `kcat_dg_cw` is `UkCat.kcat_pay_seq_of_law` at it and at
+the process's own `-1` payload).  `pcat_round_at`'s statement moves by
+exactly that premise and by nothing else; it has NO consumer in the tree.
+
+ALSO STRUCK: `pcat_round_at_g`'s `cat_code` premise.  `UkCat.kcat_r` hands
+the round cat's text at every turn, while the premise's consumer —
+`UShCatPay.sh_exec_sup_cat_wq_holds_at`'s `kcat_round` premise — is
+quantified over the EXEC'D image's own record `N''` and hands out no text at
+all, so an outer premise at `ukn_t N''` has no producer on the caller's side.
+
+**(4) ITEM 3's SECOND WALL: `UShPipeCatRound.v` WAS THE LAST FILE OF §4.3z
+ITEM 2's CHAIN STILL PINNED AT THE AMBIENT INSTANCE, and the symptom is a
+WEDGE.**  ROUND-12 made `UShCat`/`UShCatPay`/`UCatPipe`/`UCatKernel` generic
+in the program instance; `UShPipeCatRound.v`'s header still said "NO
+`uexecSG` and NO `uprogSG` section variable", so every `UkCat.kcat_wr` in
+its statements elaborated at the ambient `UexecExecInst.uprogSG_gen` while
+the round enters cat's image at `uprogSG_free`.  MEASURED, and it is
+ROUND-11's wedge signature to the minute: a consumer of `pipe_cat_w` written
+against `pcat_round_at_g (PS := uprogSG_free)` took **50 minutes and 3.9 GB
+RSS still climbing** without finishing, twice, with `Set Default Timeout 120`
+firing on NO command inside it — so it is not one wedged tactic, it is
+unification churn.  With `Context `{PS : UexecSG.uprogSG Σ}` added to that
+file's section (landed), the same consumer FAILS IN MINUTES with a plain
+`iApply: cannot apply`.  **That one line is the difference between a
+diagnosable error and an unbounded compile**, and it is worth more than the
+lemma it was blocking.
+
+**(5) WHAT WAS WRITTEN AND NOT LANDED, so the next lane does not write it
+again.**  The whole right child was written out and every leaf it needs is
+landed; what does not go through is the last unification.  The shape, in
+full:
+
+- `pl_cat_fd0 γp l := UkShCat.ush_fd0p γp l /\ ∃ rb, l !! 1 = Some (FdOpen
+  rb true (FdDevice CONSOLE))` — `Fd0` is a parameter of both
+  `wp_kshr_exec_cat_at` and `sh_exec_sup_cat_wq_holds_at`, and cat's round
+  needs fd 1 as well as fd 0, which `ush_fd0p` alone does not say.
+- `pl_kcat_dg N' : □ (ukn_pay N' (-1)) -∗ udepw_law 16 -∗ kcat_dg_cr N' ∗
+  kcat_dg_cw N'` — two `UkCat.kcat_pay_seq_of_law` instances at
+  `UkCatLit.cat_lit 0x9c8`/`0x9b0`, 16/17 bytes.  `pcat_round_at_g`'s `Hdg`
+  had NO producer anywhere in the tree before this.
+- `Ch c := UShPipeCatRound.pcat_ch g gR gM c` and `Cend := pl_Cend pn L gR
+  gM`.  **THE SIDE TOKEN MUST NOT RIDE IN `Ch`**: `Hw` and `Hend` are both
+  BOXED, but the third component of `sh_exec_sup_cat_wq_holds_at`'s answer,
+  the wand `Cend -∗ ukn_pay N'' (-1)`, is LINEAR and is built inside `Cr`'s
+  own scope — so `side_R pn` is captured there (`pl_qc_of_cend`) and the
+  family stays the bare cursor.  A first attempt that put it in `Ch` needs a
+  `kcat_wr_mono` at every turn and is strictly worse.
+- `pl_RcR` must gain `PipeProto.pipe_inv pn γp L` (persistent, so `pl_split`
+  is unchanged and the parent keeps its copy): `pipe_cat_w` fires the
+  family's MODE and the fire's exclusion witness comes off
+  `pipe_excl_wtok_lb_pipeN` at the protocol handle, whose `γp` is bound by
+  the WALK's own continuation and therefore cannot be framed in from
+  outside.  REVERTED in the landed tree, and the reason is in the file.
+- `pcat_out I = L` is `reflexivity` away from `PipeLinksLine.pline_at I =
+  LPipe ws`: `pcat_line` and `pline_at` are the same term.
+- `Forall nodollar L` is `FileDisc.wl_line_shape (drop 1 ws)`, and
+  `wl_wf (drop 1 ws)` is `Forall_lookup` + `lookup_drop` off `wl_wf ws`
+  (`stdpp`'s `Forall_forall` is NOT the one in scope — `elem_of_list_lookup`
+  does not rewrite after it).
+
+**THE ONE THING THE NEXT LANE NEEDS FIRST.**  Print the two types side by
+side.  With `Set Printing Implicit`, compare
+`UShPipeCatRound.pipe_cat_w (PS := uprogSG_free) …`'s conclusion against the
+`UkCat.kcat_wr (PS := uprogSG_free) N' (mword_of_int 1) (mword_of_int
+CatSyms.buf) nb …` goal that `UCatPipe.pcat_round_at_g (PS := uprogSG_free)`
+leaves: they print identically and do not unify, which by the tree's own
+rule means a SECOND instance somewhere in the chain — most likely `SG`
+(`uexecSG`), which `UShPipeCatRound.v` still does not bind while
+`UkShCat`/`UkShPipe` do and the round pins to `uexecSG_xv6`.  That is one
+more `Context` line to test, and it costs one build.

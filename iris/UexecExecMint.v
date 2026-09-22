@@ -52,6 +52,9 @@ Require Import SpecConsolewrite. (* [cons_out_chain_of_licence]: its console arm
 Require Import SpecFileclose.    (* [fileclose_cpay_taint]: close's pipe row, paid
                                     out of the application's taint *)
 Require Import PipeQueue.        (* [pipe_wpay_taint]: write's pipe arm, likewise *)
+Require Import PipeNames.        (* [pipe_names] -- the row the registry pays at *)
+Require Import PipeReg.          (* [pipe_reg]: the UNTAINTED payer of a pipe
+                                    row's close (design/app-pipe.md SS4.3aa) *)
 Require Import UsysMemOk.       (* [USYS_exec] *)
 Require Import RegFile.         (* [regfile] -- [udepw]'s register argument *)
 Require Import UkRun.           (* [udep] -- the supplier and its key-free law *)
@@ -380,6 +383,46 @@ Section UexecExecMint.
   Proof using .
     iIntros "#Hkc". rewrite /udepw_law.
     iIntros "!>" (N m pc). iApply (udepw_of_sup_close N m pc with "Hkc").
+  Qed.
+
+  (* ...AND CLOSE'S ROW AT A REGISTERED PIPE END, OUT OF THE REGISTRY AND
+     NOT OUT OF THE TAINT (design/app-pipe.md SS4.3aa, lane
+     SH-PIPE-ROUND-13).  This is the producer the ROW-AWARE deposit
+     ([UkRun.udepw_row]) exists for: the generic [udepw] quantifies the
+     descriptor table universally, so its payer owes the close of ANY
+     table's argument-0 row -- a bill only [app_taint] can settle, which is
+     why no verified program could close a pipe end on the good path.  The
+     row-aware deposit hands the payer the one fact the close leaf already
+     derives from the caller's own handle ([UkRun.udepw_cl_mint]'s
+     [fd_st_of_key a0 fdv = st]), and at a row that IS this pipe the
+     payment is one instance of [PipeReg.pipe_reg]'s [pipe_cpay] at the
+     POINT family's [True] payload ([UexecExecInst.xv6_sbundle_close_of_reg]).
+
+     [pipe_reg] is PERSISTENT, so one registration pays every close of
+     either end in every process that inherits it -- which is exactly what
+     sh's PIPE arm needs (four pipe closes per round, in three processes at
+     three different [uk_names] records). *)
+  Lemma udepw_row_of_reg_close `{PSx : uprogSG Σ} (N : uk_names Σ)
+      (m : regfile) (pc : mword 64) (rb wb : bool) (γp : pipe_names) :
+    pipe_reg γp -∗
+    udepw_row (PS := PSx) N m pc 21 (FdOpen rb wb (FdPipe γp)).
+  Proof using .
+    iIntros "#Hr". rewrite /udepw_row.
+    iIntros (M pm sz fdv cw gn cs pidv) "%Hst #Hmp Hheap Hufd".
+    iFrame "Hheap Hufd". iRight.
+    iApply (xv6_sbundle_close_of_reg _
+              (uvis_of_run m pc M pm sz fdv cw gn cs pidv false)
+              (ukn_pay N) rb wb γp ltac:(exact Hst) with "Hr").
+  Qed.
+
+  (* ...and the shape the close leaves take ([UkRun.udepw_cl]) *)
+  Lemma udepw_cl_of_reg_close `{PSx : uprogSG Σ} (N : uk_names Σ)
+      (m : regfile) (pc : mword 64) (rb wb : bool) (γp : pipe_names) :
+    pipe_reg γp -∗
+    udepw_cl (PS := PSx) N m pc (FdOpen rb wb (FdPipe γp)).
+  Proof using .
+    iIntros "#Hr". iApply udepw_cl_of_row.
+    iApply (udepw_row_of_reg_close N m pc rb wb γp with "Hr").
   Qed.
 
   (* ...AND EXIT'S, AT EVERY KEY, OUT OF THE TAINT (design/pipe.md, "The

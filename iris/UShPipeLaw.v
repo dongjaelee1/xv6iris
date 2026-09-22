@@ -464,6 +464,8 @@ Section UShPipeLaw.
   Proof using . rewrite /pl_XL /PipeProto.wcur. apply _. Qed.
   Global Instance pl_YR_timeless pn L : Timeless (pl_YR pn L).
   Proof using . rewrite /pl_YR /PipeProto.pws_lb. apply _. Qed.
+  Global Instance pl_YR_persistent pn L : Persistent (pl_YR pn L) | 0.
+  Proof using . rewrite /pl_YR. apply _. Qed.
 
   Definition pl_Cr (v : era_pins) (I L : list (bv 8)) (pn : pnames)
       (gL gR gM : gname) : iProp Σ :=
@@ -524,6 +526,16 @@ Section UShPipeLaw.
        (pl_XL pn) (pl_YR pn L)
      ∗ UEchoPipe.ep_pay (PipeBoth.wcur gL (1/2) 0%nat) pn γp L)%I.
 
+  (* THE RIGHT CHILD WILL ALSO NEED THE PROTOCOL'S HANDLE IN HERE (lane
+     SH-PIPE-ROUND-13, measured): [UShPipeCatRound.pipe_cat_w] fires the
+     family's MODE and the fire's exclusion witness
+     [box (XL -* YR ={pipeN}=* False)] comes off
+     [PipeProto.pipe_excl_wtok_lb_pipeN] at [pipe_inv pn gp L] -- and [gp]
+     is bound by the WALK's own continuation, so the handle cannot be
+     framed in from outside.  It is PERSISTENT, so adding it costs
+     [pl_split] nothing (the parent keeps its own copy) and no other row
+     moves.  NOT taken here, because the round that would spend it does
+     not land in this lane. *)
   Definition pl_RcR (v : era_pins) (I L : list (bv 8)) (pn : pnames)
       (gL gR gM : gname) (γp : pipe_names) : iProp Σ :=
     (PipeBoth.blk2_inv g blk2N (S gen_id) v I L gL gR gM
@@ -630,14 +642,15 @@ Section UShPipeLaw.
   (*  S2b''''  THE REGISTRAR, AND THE PREMISE THE ROUND CANNOT PAY        *)
   (*                                                                     *)
   (*  ROUND-11's table row [R] is [UShPipeAssembly.pipe_reg_pay pn emp L] *)
-  (*  and its supplier [ush_pipe_call_pipe_pay].  That lemma takes ONE    *)
-  (*  premise the table never counted: [UkRun.udepw_law 21], the CLOSE    *)
-  (*  law, which is what the answer's two [UkShPipe.ush_cldep] rows are   *)
-  (*  built from ([UShPipeCall.ush_pipe_call_paid]'s last two lines).     *)
-  (*  Four of the PIPE arm's six closes shut a PIPE row, so the rows are  *)
-  (*  not optional -- and at [uprogSG_free] the law has NO PRODUCER but   *)
-  (*  the taint.  It is left as an ANTECEDENT here, at the leaf, so the   *)
-  (*  gap is nameable; see the lane's Findings block for the repair.      *)
+  (*  and its supplier [ush_pipe_call_pipe_pay].  ROUND-12 found that it  *)
+  (*  took ONE premise the table never counted -- [UkRun.udepw_law 21],   *)
+  (*  the CLOSE law, which is what the answer's two [UkShPipe.ush_cldep]  *)
+  (*  rows were built from -- and that at [uprogSG_free] the law has NO   *)
+  (*  producer but the taint.  SS4.3aa's ROW-AWARE close deposit closes   *)
+  (*  that gap at the source: [UkRun.udepw_cl]'s right arm now pins the   *)
+  (*  table's argument-0 row, so the two rows are paid by the very        *)
+  (*  registration the call hands back ([UShPipeCall.                     *)
+  (*  ush_pipe_call_paid_reg]) and this lemma has NO antecedent left.     *)
   (* =================================================================== *)
   Lemma pl_pipe_call (N : uk_names Σ) `{!ukn_const N} (pn : pnames)
       (l : list fdstate) (L : list (bv 8)) :
@@ -645,15 +658,14 @@ Section UShPipeLaw.
     fd_lowest_closed l = None ->
     UShPipeAssembly.pipe_pre pn -∗ wtok pn -∗ PipeProto.side_L pn -∗
     rtok pn -∗ PipeProto.side_R pn -∗
-    UkRun.udepw_law (PS := uprogSG_free) 21 -∗
     UkShPipe.ush_pipe_call (SG := uexecSG_xv6) (PS := uprogSG_free) N l
       (UShPipeAssembly.pipe_reg_pay pn emp%I L).
   Proof using .
     intros Hpsok Hnone.
-    iIntros "Hpre Hw HsL Hr HsR Hcl".
-    iApply (UShPipeAssembly.ush_pipe_call_pipe_pay (PS := uprogSG_free)
+    iIntros "Hpre Hw HsL Hr HsR".
+    iApply (UShPipeAssembly.ush_pipe_call_pipe_pay_reg (PS := uprogSG_free)
               Hpsok N pn emp%I l L Hnone
-              with "Hpre Hw HsL Hr HsR [] Hcl").
+              with "Hpre Hw HsL Hr HsR []").
     done.
   Qed.
 
@@ -737,6 +749,30 @@ Section UShPipeLaw.
     rewrite /UShPipeAssembly.pipe_PR. iLeft. iExists c.
     iFrame "Hrc Heof HcR HcM".
   Qed.
+
+  (* =================================================================== *)
+  (*  S2d''  CAT'S ROUND AT THE FAMILY'S RIGHT CHAIN -- MEASURED, AND     *)
+  (*         NOT LANDED (lane SH-PIPE-ROUND-13).                          *)
+  (*                                                                     *)
+  (*  The right child's whole bill was written out here and every leaf    *)
+  (*  it needs is landed: [pl_Cend] / [pl_qc_of_cend] are its exit,       *)
+  (*  [UShPipeAssembly.pipe_execR_law] at [F := side_R pn] read off       *)
+  (*  [pl_RcR] through [exf_law_acc] is its exec-failed diagnostic,       *)
+  (*  [pl_cat_argv_bytes] its argv, [UCatPipe.pcat_round_at_g] (repaired  *)
+  (*  by this lane) its round and [UShPipeCatRound.pipe_cat_w] (weakened  *)
+  (*  by this lane) that round's [Hw].                                    *)
+  (*                                                                     *)
+  (*  WHAT STOPPED IT is an INSTANCE seam, and it is design SS4.3z item   *)
+  (*  2's wedge one file further out.  [UShPipeCatRound.v] now binds a    *)
+  (*  [uprogSG] section variable (this lane), which removed the WEDGE --  *)
+  (*  the file used to take 30-50 minutes and 3.9 GB without finishing    *)
+  (*  and now fails in minutes -- but the two sides still do not unify:   *)
+  (*  [pipe_cat_w]'s conclusion at [(PS := uprogSG_free)] does not apply  *)
+  (*  to a [UkCat.kcat_wr (PS := uprogSG_free)] goal stated here.  The    *)
+  (*  next lane should print both types side by side ([Set Printing       *)
+  (*  Implicit]) before writing another line of it.  See the lane's       *)
+  (*  Findings block for the full text of what was written.              *)
+  (* =================================================================== *)
 
   (* =================================================================== *)
   (*  S2e  THE LEFT CHILD (ROUND-11's table, the `left child' row)        *)

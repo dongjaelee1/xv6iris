@@ -82,34 +82,116 @@ theorem fa_beqz_nonzero (n : Nat) (hn : n ≠ 0) (hlt : n < 2 ^ 31) :
     bcond bop.BEQ (BitVec.signExtend 64 (BitVec.ofNat 32 n)) 0#64 = false := by
   rw [bcond_beq_eq]; exact beq_eq_false_iff_ne.mpr (fa_ref_nonzero n hn hlt)
 
+/-! ## Pure facts for the count -/
+
+/-- Distinct naturals below `n` are at most `n` (the fd-slot bound). -/
+theorem nodup_lt_length_le : ∀ (n : Nat) (l : List Nat), l.Nodup → (∀ i ∈ l, i < n) → l.length ≤ n := by
+  intro n
+  induction n with
+  | zero =>
+    intro l _ hb
+    cases l with
+    | nil => simp
+    | cons a t => exact absurd (hb a (List.mem_cons_self)) (Nat.not_lt_zero a)
+  | succ n ih =>
+    intro l hn hb
+    by_cases hmem : n ∈ l
+    · have hp : l.Perm (n :: l.erase n) := List.perm_cons_erase hmem
+      have hlen : l.length = (l.erase n).length + 1 := by rw [hp.length_eq]; rfl
+      have hb' : ∀ i ∈ l.erase n, i < n := by
+        intro i hi
+        have h1 := hb i (List.mem_of_mem_erase hi)
+        have hne : i ≠ n := by
+          intro e; subst e; exact hn.not_mem_erase hi
+        omega
+      have := ih _ (hn.erase n) hb'
+      omega
+    · have hb' : ∀ i ∈ l, i < n := fun i hi => by
+        have := hb i hi
+        have : i ≠ n := fun e => hmem (e ▸ hi)
+        omega
+      have := ih l hn hb'
+      omega
+
+/-- `f->ref++`: `addiw a5,a5,1; sw a5,4(s1)` stores `n + 1`. -/
+theorem fd_incr (n : Nat) :
+    BitVec.extractLsb' 0 32 (BitVec.signExtend 64 (BitVec.extractLsb' 0 32
+      (BitVec.signExtend 64 (BitVec.ofNat 32 n) + BitVec.signExtend 64 1#12))) = BitVec.ofNat 32 (n + 1) := by
+  have h : ∀ nw : BitVec 32, BitVec.extractLsb' 0 32 (BitVec.signExtend 64
+      (BitVec.extractLsb' 0 32 (BitVec.signExtend 64 nw + BitVec.signExtend 64 1#12))) = nw + 1#32 := by
+    intro nw; bv_decide
+  rw [h]
+  apply BitVec.eq_of_toNat_eq
+  simp only [BitVec.toNat_add, BitVec.toNat_ofNat]
+  omega
+theorem fd_incr' (n : Nat) :
+    BitVec.extractLsb' 0 32 (BitVec.signExtend 64 (BitVec.extractLsb' 0 32
+      (BitVec.signExtend 64 (BitVec.ofNat 32 n) + 1#64))) = BitVec.ofNat 32 (n + 1) := by
+  rw [← fd_incr n]; rfl
+
+/-- `blez a5` with `ref ≥ 1` is not taken. -/
+theorem fd_bgtz (n : Nat) (h1 : 1 ≤ n) (h : n < 2 ^ 31) :
+    bcond bop.BGE 0#64 (BitVec.signExtend 64 (BitVec.ofNat 32 n)) = false := by
+  show (!(0#64).slt (BitVec.signExtend 64 (BitVec.ofNat 32 n))) = false
+  have h2 : (BitVec.ofNat 32 n).toInt = n := by
+    rw [BitVec.toInt_eq_toNat_of_lt (by rw [BitVec.toNat_ofNat]; omega), BitVec.toNat_ofNat,
+      Nat.mod_eq_of_lt (by omega)]
+  have hlt : (0#64).slt (BitVec.signExtend 64 (BitVec.ofNat 32 n)) = true := by
+    rw [BitVec.slt_iff_toInt_lt, BitVec.toInt_signExtend_of_le (by omega), h2]
+    simp; omega
+  rw [hlt]; rfl
+
 section
 variable {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF] [Xv6G GF] [FileG GF] [CurCtx]
 
 /-! ## Opening the table and a slot -/
 
 theorem ftableRes_elim (γ : FileNames) (ξ : CtxId) :
-    ftableResAt (GF := GF) γ ξ ⊢ ∃ (M : RegMapF (Nat × Qp)) (next : Nat),
-      (γ.ref ↪●MAP M) ∗ ⌜∀ i, next ≤ i → PartialMap.get? M i = none⌝ ∗
-      [∗list] k ∈ List.range NFILE, fslotAt γ ξ k := by
+    ftableResAt (GF := GF) γ ξ ⊢ ∃ (M : RegMapF (Nat × Qp)) (nx : Nat) (Ls : Nat → List (Nat × Qp)),
+      (γ.ref ↪●MAP M) ∗ ⌜(∀ i, nx ≤ i → PartialMap.get? M i = none) ∧ ftableOk M Ls⌝ ∗
+      [∗list] k ∈ List.range NFILE, fslotAt γ ξ k (Ls k) := by
   unfold ftableResAt; iintro H; iexact H
 
-theorem ftableRes_intro (γ : FileNames) (ξ : CtxId) (M : RegMapF (Nat × Qp)) (next : Nat)
-    (hfresh : ∀ i, next ≤ i → PartialMap.get? M i = none) :
-    (γ.ref ↪●MAP M) ∗ ([∗list] k ∈ List.range NFILE, fslotAt (GF := GF) γ ξ k) ⊢ ftableResAt γ ξ := by
+theorem ftableRes_intro (γ : FileNames) (ξ : CtxId) (M : RegMapF (Nat × Qp)) (nx : Nat)
+    (Ls : Nat → List (Nat × Qp))
+    (hfresh : ∀ i, nx ≤ i → PartialMap.get? M i = none) (hok : ftableOk M Ls) :
+    (γ.ref ↪●MAP M) ∗ ([∗list] k ∈ List.range NFILE, fslotAt (GF := GF) γ ξ k (Ls k)) ⊢ ftableResAt γ ξ := by
   unfold ftableResAt
   iintro ⟨Ha, Hs⟩
-  iexists M, next
+  iexists M, nx, Ls
   iframe Ha Hs
-  ipureintro; exact hfresh
+  ipureintro; exact ⟨hfresh, hok⟩
 
-/-- Borrow slot `k` out of the table's big-sep. -/
-theorem fslot_acc (γ : FileNames) (ξ : CtxId) (k : Nat) (hk : k < NFILE) :
-    ([∗list] j ∈ List.range NFILE, fslotAt (GF := GF) γ ξ j) ⊢
-      fslotAt γ ξ k ∗ (fslotAt γ ξ k -∗ [∗list] j ∈ List.range NFILE, fslotAt γ ξ j) :=
-  BigSepL.bigSepL_mem_acc (List.mem_range.2 hk)
+/-- Borrow slot `k` out of the table's big-sep, to put it back with a NEW
+list. -/
+theorem fslot_upd_acc (γ : FileNames) (ξ : CtxId) (Ls : Nat → List (Nat × Qp)) (k : Nat) (hk : k < NFILE) :
+    ([∗list] j ∈ List.range NFILE, fslotAt (GF := GF) γ ξ j (Ls j)) ⊢
+      fslotAt γ ξ k (Ls k) ∗
+      (∀ L' : List (Nat × Qp), fslotAt γ ξ k L' -∗
+        [∗list] j ∈ List.range NFILE, fslotAt γ ξ j (updAt Ls k L' j)) := by
+  have hget : (List.range NFILE)[k]? = some k := by
+    rw [List.getElem?_range hk]
+  iintro H
+  icases BigSepL.bigSepL_lookup_acc_impl (Φ := fun _ j => fslotAt (GF := GF) γ ξ j (Ls j)) hget $$ H
+    with ⟨Hk, Hcl⟩
+  iframe Hk
+  iintro %L' HL'
+  iapply Hcl $$ %(fun _ j => fslotAt γ ξ j (updAt Ls k L' j)) [] [HL']
+  · imodintro
+    iintro %i %y %hy %hne Hy
+    have hik : y ≠ k := by
+      by_cases hi : i < NFILE
+      · rw [List.getElem?_range hi] at hy; cases hy; exact hne
+      · rw [List.getElem?_eq_none (by simp; omega)] at hy; cases hy
+    ihave Hy := (show fslotAt (GF := GF) γ ξ y (Ls y) ⊢ fslotAt γ ξ y (updAt Ls k L' y) from by
+      rw [updAt_ne Ls k y L' hik]) $$ Hy
+    iexact Hy
+  · ihave HL' := (show fslotAt (GF := GF) γ ξ k L' ⊢ fslotAt γ ξ k (updAt Ls k L' k) from by
+      rw [updAt_self]) $$ HL'
+    iexact HL'
 
-theorem fslot_elim (γ : FileNames) (ξ : CtxId) (k : Nat) :
-    fslotAt (GF := GF) γ ξ k ⊢ ∃ (L : List (Nat × Qp)) (C : FContent) (pn : FPNames) (q' : Qp),
+theorem fslot_elim (γ : FileNames) (ξ : CtxId) (k : Nat) (L : List (Nat × Qp)) :
+    fslotAt (GF := GF) γ ξ k L ⊢ ∃ (C : FContent) (pn : FPNames) (q' : Qp),
       ⌜(L.map Prod.fst).Nodup ∧ L.length < 2 ^ 31⌝ ∗
       wordAtN ξ (aFref k) 4 (DFrac.own 1) (BitVec.ofNat 32 L.length) ∗
       ([∗list] e ∈ L, frefRest γ k e) ∗ fdSlots γ L.length ∗
@@ -122,12 +204,45 @@ theorem fslot_intro (γ : FileNames) (ξ : CtxId) (k : Nat) (L : List (Nat × Qp
     wordAtN (GF := GF) ξ (aFref k) 4 (DFrac.own 1) (BitVec.ofNat 32 L.length) ∗
     ([∗list] e ∈ L, frefRest γ k e) ∗ fdSlots γ L.length ∗
     ((⌜L = [] ∧ C.type = FD_NONE⌝ ∗ fileFieldsAt ξ k 1 C ∗ fpayTok γ k 1 pn ∗ fileCore 1 pn C) ∨
-     (⌜L ≠ []⌝ ∗ fileRestAt γ ξ k (qsum L) q' C pn)) ⊢ fslotAt γ ξ k := by
+     (⌜L ≠ []⌝ ∗ fileRestAt γ ξ k (qsum L) q' C pn)) ⊢ fslotAt γ ξ k L := by
   unfold fslotAt
   iintro ⟨H1, H2, H3, H4⟩
-  iexists L, C, pn, q'
+  iexists C, pn, q'
   iframe H1 H2 H3 H4
   ipureintro; exact ⟨hnd, hlt⟩
+
+/-- The authority knows every holder's id. -/
+theorem fref_lookup (γ : FileNames) (M : RegMapF (Nat × Qp)) (id k : Nat) (q : Qp) :
+    (γ.ref ↪●MAP M) ∗ (γ.ref ↪◯MAP[id]{.own (1 : Qp).half} (k, q)) ⊢@{IProp GF}
+      ⌜PartialMap.get? M id = some (k, q)⌝ := by
+  iintro ⟨Ha, He⟩
+  ihave %h := ghost_map_lookup $$ Ha He
+  ipureintro; exact h
+
+/-- `updAt` at the list a slot already has changes nothing. -/
+theorem updAt_same (Ls : Nat → List (Nat × Qp)) (k : Nat) (L : List (Nat × Qp)) (h : Ls k = L) :
+    updAt Ls k L = Ls := by
+  funext j; unfold updAt; by_cases hj : j = k
+  · subst hj; simp [h]
+  · simp [hj]
+
+/-- The alloc step's tie: a free slot's list is empty, so no id maps to it. -/
+theorem ftableOk_alloc (M : RegMapF (Nat × Qp)) (Ls : Nat → List (Nat × Qp)) (nx k : Nat) (hk : k < NFILE)
+    (hfresh : ∀ i, nx ≤ i → PartialMap.get? M i = none) (hok : ftableOk M Ls) (hL : Ls k = []) :
+    ftableOk (PartialMap.insert M nx (k, (1 : Qp))) (updAt Ls k [(nx, (1 : Qp))]) := by
+  intro i v h
+  by_cases hi : i = nx
+  · subst hi
+    rw [LawfulPartialMap.get?_insert_eq rfl] at h
+    cases h
+    refine ⟨hk, ?_⟩
+    rw [updAt_self]; simp
+  · rw [LawfulPartialMap.get?_insert_ne (Ne.symm hi)] at h
+    obtain ⟨hv, hm⟩ := hok i v h
+    refine ⟨hv, ?_⟩
+    by_cases hvk : v.1 = k
+    · rw [hvk, hL] at hm; exact absurd hm List.not_mem_nil
+    · rw [updAt_ne Ls k v.1 _ hvk]; exact hm
 
 /-! ## The fd tokens -/
 

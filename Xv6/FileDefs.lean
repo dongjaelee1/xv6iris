@@ -261,38 +261,53 @@ def qsum : List (Nat × Qp) → Qp
   | [e] => e.2
   | e :: t => e.2 + qsum t
 
+/-- `Ls` with slot `k`'s list replaced. -/
+def updAt (Ls : Nat → List (Nat × Qp)) (k : Nat) (L : List (Nat × Qp)) : Nat → List (Nat × Qp) :=
+  fun j => if j = k then L else Ls j
+
+theorem updAt_self (Ls : Nat → List (Nat × Qp)) (k : Nat) (L : List (Nat × Qp)) : updAt Ls k L k = L := by
+  unfold updAt; simp
+theorem updAt_ne (Ls : Nat → List (Nat × Qp)) (k j : Nat) (L : List (Nat × Qp)) (h : j ≠ k) :
+    updAt Ls k L j = Ls j := by
+  unfold updAt; simp [h]
+
+/-- Every reference the authority records sits in its slot's list. -/
+def ftableOk (M : RegMapF (Nat × Qp)) (Ls : Nat → List (Nat × Qp)) : Prop :=
+  ∀ i v, PartialMap.get? M i = some v → v.1 < NFILE ∧ (i, v.2) ∈ Ls v.1
+
 /-- What the lock keeps of a referenced slot: the content fraction NOT out
 (nothing when `qt = 1`); the witnesses are lifted to `fslotAt`. -/
 def fileRestAt (γ : FileNames) (ξ : CtxId) (k : Nat) (qt q' : Qp) (C : FContent) (pn : FPNames) :
     IProp GF := iprop%
   ⌜qt = 1⌝ ∨ (⌜q' + qt = 1⌝ ∗ fileFieldsAt ξ k q' C ∗ fpayTok γ k q' pn ∗ fileCore q' pn C)
 
-/-- One slot of the table under the lock: its `ref` cell holds the number of
-outstanding references, the lock keeps their other halves, one fd token
-each, and the content fraction not handed out (all of it, untyped, when the
-slot is free). -/
-def fslotAt (γ : FileNames) (ξ : CtxId) (k : Nat) : IProp GF := iprop%
-  ∃ (L : List (Nat × Qp)) (C : FContent) (pn : FPNames) (q' : Qp),
+/-- One slot of the table under the lock, with its list `L` of outstanding
+references: its `ref` cell holds their number, the lock keeps their other
+halves, one fd token each, and the content fraction not handed out (all of
+it, untyped, when the slot is free). -/
+def fslotAt (γ : FileNames) (ξ : CtxId) (k : Nat) (L : List (Nat × Qp)) : IProp GF := iprop%
+  ∃ (C : FContent) (pn : FPNames) (q' : Qp),
     ⌜(L.map Prod.fst).Nodup ∧ L.length < 2 ^ 31⌝ ∗
     wordAtN ξ (aFref k) 4 (DFrac.own 1) (BitVec.ofNat 32 L.length) ∗
     ([∗list] e ∈ L, frefRest γ k e) ∗ fdSlots γ L.length ∗
     ((⌜L = [] ∧ C.type = FD_NONE⌝ ∗ fileFieldsAt ξ k 1 C ∗ fpayTok γ k 1 pn ∗ fileCore 1 pn C) ∨
      (⌜L ≠ []⌝ ∗ fileRestAt γ ξ k (qsum L) q' C pn))
 
+/-- The lock's resource: the authority (with the next fresh id), every
+slot, and the tie between the two (`ftableOk`). -/
 def ftableResAt (γ : FileNames) (ξ : CtxId) : IProp GF := iprop%
-  ∃ (M : RegMapF (Nat × Qp)) (next : Nat),
-    (γ.ref ↪●MAP M) ∗ ⌜∀ i, next ≤ i → PartialMap.get? M i = none⌝ ∗
-    [∗list] k ∈ List.range NFILE, fslotAt γ ξ k
+  ∃ (M : RegMapF (Nat × Qp)) (nx : Nat) (Ls : Nat → List (Nat × Qp)),
+    (γ.ref ↪●MAP M) ∗ ⌜(∀ i, nx ≤ i → PartialMap.get? M i = none) ∧ ftableOk M Ls⌝ ∗
+    [∗list] k ∈ List.range NFILE, fslotAt γ ξ k (Ls k)
 
 instance instCtxMorphFileRestAt (γ : FileNames) (k : Nat) (qt q' : Qp) (C : FContent) (pn : FPNames) :
     CtxMorph (GF := GF) (fun ξ => fileRestAt γ ξ k qt q' C pn) := by
   unfold fileRestAt
   infer_instance
 
-instance instCtxMorphFslotAt (γ : FileNames) (k : Nat) :
-    CtxMorph (GF := GF) (fun ξ => fslotAt γ ξ k) := by
+instance instCtxMorphFslotAt (γ : FileNames) (k : Nat) (L : List (Nat × Qp)) :
+    CtxMorph (GF := GF) (fun ξ => fslotAt γ ξ k L) := by
   unfold fslotAt
-  refine @instCtxMorphExists _ _ _ _ _ (fun L => ?_)
   refine @instCtxMorphExists _ _ _ _ _ (fun C => ?_)
   refine @instCtxMorphExists _ _ _ _ _ (fun pn => ?_)
   refine @instCtxMorphExists _ _ _ _ _ (fun q' => ?_)
@@ -302,8 +317,10 @@ instance instCtxMorphFtableResAt (γ : FileNames) :
     CtxMorph (GF := GF) (ftableResAt γ) := by
   unfold ftableResAt
   refine @instCtxMorphExists _ _ _ _ _ (fun M => ?_)
-  refine @instCtxMorphExists _ _ _ _ _ (fun next => ?_)
-  have h := ctxMorph_bigSepL (GF := GF) (List.range NFILE) (fun _ k ξ => fslotAt γ ξ k) (fun _ k => instCtxMorphFslotAt γ k)
+  refine @instCtxMorphExists _ _ _ _ _ (fun nx => ?_)
+  refine @instCtxMorphExists _ _ _ _ _ (fun Ls => ?_)
+  have h := ctxMorph_bigSepL (GF := GF) (List.range NFILE) (fun _ k ξ => fslotAt γ ξ k (Ls k))
+    (fun _ k => instCtxMorphFslotAt γ k (Ls k))
   infer_instance
 
 /-- The table (persistent): the lock over its resource, and the fd supply. -/

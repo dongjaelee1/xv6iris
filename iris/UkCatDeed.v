@@ -63,6 +63,15 @@ Section UkCatDeed.
   Context `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, !fileG Σ,
             !irefslotG Σ, !pavG Σ, !wchG Σ, !ufdG Σ}.
   Context `{GEN : GenId} `{XI : CurCtx}.
+  (* GENERIC IN THE PROGRAM-DEPOSIT INSTANCE (PROGRAM-STREAM stretch 13,
+     defect 4): with no binder every [urun] here was at the ambient
+     [uprogSG_gen], whose [udep] only an out-of-spec run supplies, so a
+     verified shell (at [uprogSG_free]) could not exec cat.  A caller that
+     resolves ambiently still gets [uprogSG_gen], exactly as before. *)
+  (* SPELLED [UexecSG.uprogSG]: with the class not imported here, a bare
+     [uprogSG] under the backtick is silently GENERALISED into a fresh
+     variable and [PS] gets the wrong type (measured 2026-09-22). *)
+  Context `{PS : UexecSG.uprogSG Σ}.
   Context `{!echoOutG Σ, !inG Σ (mono_listR (leibnizO Z)), !fileAppG Σ}.
   (* NO SEPARATE [ghost_varG] / [ctokG] CONTEXTS.  [Xv6G.xv6G] carries
      both ([xv6_uch], [xv6_ctok]), and declaring a second copy here gives

@@ -458,6 +458,7 @@ CodeMycpu.v
 ProcGeom.v
 SlotGen.v
 WaitInv.v
+WaitFresh.v
 KernelBaseDecode.v
 KernelRvcDecode.v
 KernelDecode00.v

@@ -433,9 +433,13 @@ arm is the theorem's one named premise (`pipe_both_law`).
   OBSERVATION publishes its end too (Findings `### PIPE-RO`).
 - [ ] **SH-PIPE-ROUND-11** (after both): the split, the instantiation,
   `sh_pipe_child_law_all`, `pipe_adequacy_pipeΣ_final`.
-- [ ] **PIPE-GEN** (design §4.3x: purchase 4 at the kernel — `pme ≠ zero_reg`
+- [x] **PIPE-GEN** (design §4.3x: purchase 4 at the kernel — `pme ≠ zero_reg`
   into the park block, `γ ∉ cs` through kfork_post → sys_fork → syscall →
-  ufork_ans).  Brief `brief-pipe-gen.md`.
+  ufork_ans).  Brief `brief-pipe-gen.md`.  LANDED whole (probe, premise,
+  conjunct, U-tier test), and the premise's discharge site is the
+  DISPATCHER, not `ProcInv`; but the ROUND still has no supplier —
+  six sh-tier re-spellings of fork's answer drop the conjunct
+  (Findings `### PIPE-GEN`), which is the next purchase.
 ## Findings (append as lanes report)## Findings (append as lanes report)## Findings (append as lanes report)
 
 ### PQ-FLAG-2 (2026-09-18) — the write link's second premise, paid by the CODE
@@ -10217,3 +10221,177 @@ the handle the round already holds, no new resource and no new premise.
 The four-way split and the instantiation are then assembly at landed
 leaves, and the only wall left in item 6 is lane PIPE-PID's (the reaps at
 `0xea` are pid-erased).
+
+### PIPE-GEN (2026-09-22, design §4.3x) — purchase 4 LANDS WHOLE at the kernel, and the premise's discharge site is the DISPATCHER (nothing in `ProcInv`/`SlotGen` can publish it); but the ROUND still has no supplier: SIX sh-tier re-spellings of fork's answer drop the new conjunct, exactly as they dropped the pid before purchase 1
+
+Branch `app-pipe/pipe-gen` off main (`1748c9a60`).  THREE code commits,
+one per item: `1ccc7da7f` (the probe), `f43e7dc69` (the premise AND the
+conjunct — one purchase, see below), `3ba1f6c32` (the U-tier test).
+ONE new file (`iris/WaitFresh.v`, one line of `iris/_CoqProject`); EIGHT
+landed files edited, every one on §4.3x's own chain or a consumer of a
+statement it moved: `SpecKfork.v`, `ProofKforkB5.v`, `ProofKforkMain.v`,
+`SpecSysFork.v`, `ProofSysFork.v`, `ProofSyscall.v`, `UexecRet.v`,
+`UkFork.v` (+ `UShPipeAssembly.v` for item 4).
+**Whole-tree `ec2-lane.sh gen build` RC=0**, tree quiescent afterwards
+(`make -n` remaining = 0); no `Admitted`, no `Axiom`, `Proof using` on
+every new result.
+
+**ITEM 2'S FACT, MEASURED FIRST (the brief's STOP rule) — and the design
+named the wrong tier.**  §4.3x said the premise would be "published by
+the `proc_priv` lemma that knows the parent is a live process (or the
+nearest fact that implies it)".  There is no such lemma and there cannot
+be one at that tier: `ProcInv.proc_priv γf pa pid U` is a bundle of
+points-to at addresses *derived from* `pa`, `CpuOwn.cpu_own` owns
+`cpus[cid].proc ↦₈ p` and says nothing about the value, and
+`SlotGen.slot_gen pa dq g` is a bare `own` of a singleton with **no
+authority element** — a fragment at address 0 is perfectly valid in the
+logic, so "a slot generation exists at `pa`" cannot imply `pa ≠ 0`.
+(PIPE-PID's "no `proc_priv` lemma in `ProcInv.v` publishes it today" is
+therefore not a gap to fill but a structural fact.)
+**The fact IS there, one tier higher.**  `ProofSyscall.sysc_arm_fork`
+already carries `Hj : (j < NPROC)%nat` and `Hpj : pj = proc_addr j` —
+both off `sysc_proc_ties`' `sct_j`/`sct_pj`, the record the dispatch
+threads because the per-process entries (`sys_wait`, `sys_kill`, …)
+address the running process by INDEX.  So the whole discharge is
+
+```coq
+    assert (Hpjnz : pj <> (zero_reg : mword 64))
+      by (rewrite Hpj; exact (ProcGeom.proc_addr_nonzero j Hj)).
+```
+
+and the premise is a relay through exactly two contracts
+(`wp_sys_fork_sconf_body`, `wp_kfork_sconf_body`) plus two proof-internal
+lemmas (`kfork_arm3`, `kfk_b5`).  **The dispatcher is the lowest party
+that knows WHICH slot is running**; everything below it is stated at an
+opaque pointer on purpose, and that is why the fact had to be bought
+rather than derived.
+
+**WHAT LANDED**
+
+- **`iris/WaitFresh.v` — `children_inv_row_fresh`** (the probe, item 1,
+  `Closed under the global context`).  A NEW LEAF FILE rather than a
+  lemma inside `WaitInv.v` (durable-notes' rule for an additive change to
+  a shared invariant file), which keeps WaitInv's whole cone out of the
+  rebuild:
+
+```coq
+  Lemma children_inv_row_fresh (ps : list (mword 64)) (gs : list gname)
+      (m : gmap gname (mword 64 * gset gname)) (O : orph_map)
+      (j : nat) (pa : mword 64) (g γ0 : gname) (cs : gset gname) :
+    ps !! j = Some (zero_reg : mword 64) ->
+    m !! γ0 = Some (pa, cs) ->
+    pa <> (zero_reg : mword 64) ->
+    children_inv ps gs m O -∗ gen_slot g (proc_addr j) -∗ ⌜ g ∉ cs ⌝.
+```
+
+  `WaitInv.inv_rows` (a row's members at a NONZERO address are the
+  current generations of OCCUPIED slots pointing at it) against
+  `gen_halves_gen_uniq` (the persistent `gen_slot` says any occupied slot
+  carrying that generation is the child's own, whose cell reads 0), then
+  `proc_addr_inj`.  PIPE-PID's scratch probe verbatim, with the binders
+  named.
+
+- **THE PREMISE (item 2), at two contracts and two block lemmas.**
+  `SpecKfork.wp_kfork_sconf_body` and
+  `SpecSysFork.wp_sys_fork_sconf_body` gain `pme <> (zero_reg : mword 64)`
+  / `p <> (zero_reg : mword 64)` after their nesting-level premise;
+  `ProofSysFork` and `ProofKforkMain.wp_kfork_sconf` relay it,
+  `kfork_arm3` (the success arm — arms 1 and 2 return −1 and never touch
+  it) hands it to `ProofKforkB5.kfk_b5`, which spends it ONCE, at the
+  `sd s5,56(s4)` that writes `np->parent = p` under `<wait_lock>`.
+  `ProofKforkB5`'s own comment at the deposit — the one PIPE-PID quoted —
+  is rewritten: the route carries it now.  `WaitInv.children_inv_fork`
+  does **not** move and still takes no premise on the address: the INSERT
+  is free either way, and what the premise buys is only the READING
+  beside it.
+
+- **THE CONJUNCT (item 3), verbatim at each of the four statements:**
+
+| statement | as landed |
+|---|---|
+| `ProofKforkB5.kfk_b5` (exit continuation) | `⌜ ProcDefs.pv_gen (us_V Uc) ∉ csPar ⌝ -∗` |
+| `SpecKfork.kfork_post` (success arm) | `⌜ γ ∉ csP ⌝ ∗` |
+| `SpecSysFork.wp_sys_fork_sconf_body` (pid arm) | `⌜ γ ∉ csP ⌝ ∗` |
+| `UexecRet.ufork_ans` (pid arm) | `⌜γ ∉ cs⌝ ∗` |
+
+  **`SpecSyscall.sysc_fork_out` and `SpecUsertrap.ut_fork_out` did not
+  have to move at all**: both are literally
+  `ufork_ans (sfork_pay f) (sfork_lend f) r cs cs'`, so they gained the
+  row for free — the five-statement chain PIPE-PID measured is really a
+  four-statement one.  Between `kfk_b5`'s exit and `kfork_post` the fact
+  travels as a PURE Coq hypothesis, so `ProofKfork.kfk_tail_succ` (the
+  three lazy reloads) never had to carry it either.
+
+- **THE CONSUMERS, one token each (the complete list).**
+  `ProofSyscall`'s fork arm (`"(%Hpv & %Hpb & %Hnin & Htok & Hrw)"`, and
+  one `iSplitR` to put it back into `ufork_ans`) and
+  `UkFork.wp_uk_ecall_fork`'s parent arm
+  (`"(%Hpv & %Hrng & %Hnin & %Hcs & Htok)"`, dropped).  Nothing else in
+  the tree destructs `ufork_ans`: `UexecApply`'s three rows,
+  `UexecRet.uexec_fork_parent_F`/`uexec_ret_ecall` and
+  `uslot_F_contractive` all NAME the definition rather than spell it, so
+  they are byte-identical and compile unchanged.
+
+- **THE U-TIER TEST (item 4), in `UShPipeAssembly.v`**, both `Closed
+  under the global context`:
+
+```coq
+  Lemma ufork_ans_gens_distinct (Q1 Q2 : Z -> iProp Σ) (Rc1 Rc2 : iProp Σ)
+      (r1 r2 : mword 64) (S1 S2 : gset gname) :
+    r1 <> (mword_of_int (-1) : mword 64) ->
+    r2 <> (mword_of_int (-1) : mword 64) ->
+    UexecRet.ufork_ans Q1 Rc1 r1 (∅ : gset gname) S1 -∗
+    UexecRet.ufork_ans Q2 Rc2 r2 S1 S2 -∗
+    ⌜ exists γ1 γ2 : gname,
+        γ1 <> γ2 /\ S1 = {[γ1]} /\ S2 = S1 ∪ {[γ2]} /\ S1 <> S2 ⌝.
+```
+
+  with `ufork_ans_sets_differ` its `⌜S1 <> S2⌝` projection — the shape
+  `pipe_round_answers` takes its premise at.
+
+**WHAT WAS REFUTED / WHAT THE DESIGN GOT WRONG (three)**
+
+1. **§4.3x (ii)'s "published by the `proc_priv` lemma"** — no such lemma
+   is possible below the dispatcher; see above.  The cost is not a lemma
+   in `ProcInv.v` but a premise on two contracts.
+2. **§4.3x's closing sentence — "`pipe_round_answers`'s `S1 ≠ S2` has its
+   supplier" — IS STILL FALSE, and this is the lane's real finding.**
+   The purchase reaches `UexecRet.ufork_ans`, which is where the brief's
+   chain ends.  But the round's premise is stated at
+   `UkShPipe.ush_fork_ans`, and **SIX landed statements between the two
+   RE-SPELL fork's answer inline and drop the conjunct**, every one of
+   them the same site that dropped the child's pid before §4.3w purchase 1:
+   `UkFork.wp_uk_ecall_fork`'s parent arm (`UkFork.v:862–868`),
+   `UkFork.wp_uk_ecall_fork_argv` (`:1205–1211`),
+   `UkShRun.wp_kshr_fork`'s parent arm (`UkShRun.v:1087–1095`),
+   `UkShRun.wp_kshr_fork1`'s TWO arms (`:1660–1665` panic, `:1682–1688`
+   returning; plus `wp_kshr_fork1_any` at `:1932`),
+   `UkShDiag.wp_kshr_fork1_final` (`:8993`, `:9011`), and the definition
+   `UkShPipe.ush_fork_ans` (`UkShPipe.v:916–923`).  Relaying `⌜γ ∉ Sc⌝`
+   through them is additive and mechanical — and it is PIPE-PID's own
+   mould, one conjunct per row, consumers re-discharged by ignoring — but
+   it is outside this lane's file list, so it is REPORTED AND NOT TAKEN
+   (brief's STOP rule 2 / "no landed statement outside your brief's list
+   moves").  **`ush_fork_ans`'s definition is the only one of the six
+   whose CONSUMERS stay byte-identical** (`UShPipeChild`, `UkShPipePaid`,
+   `UkShPipeRound` all carry it by name), so the relay is five statements
+   plus one definition, not eleven.
+3. **`UShPipeAssembly.ufork_ans_same_gen` is NOT retired, because it is
+   still true** — it is stated at `ush_fork_ans`, not at `ufork_ans`.
+   Its comment is rewritten to say exactly that: it is now the live
+   witness of (2)'s gap rather than of a hole in the kernel.  Retiring it
+   is the next lane's last step.
+
+**ONE BUILD NOTE.**  `SpecKfork` sits ABOVE `UexecRet`, so edit
+`UexecRet` first and build UPWARD (`UexecRet.vo` → `ProofKforkMain.vo` →
+`ProofSysFork.vo` → `ProofSyscall.vo`/`UkFork.vo` → whole tree); done in
+that order the whole-tree pass had only 48 files left to compile.
+
+**THE ONE THING THE NEXT LANE NEEDS FIRST.**  The owner's word on (2):
+the kernel half is bought and green, and SH-PIPE-ROUND-11 cannot use it
+until `⌜γ ∉ Sc⌝` is relayed through the five sh-tier statements and the
+`ush_fork_ans` definition named above.  Until then
+`pipe_round_answers`'s `S1 <> S2` is still a premise with no supplier and
+the round still receives one payload — but the supplier now EXISTS one
+tier down (`UexecRet.ufork_ans`, witnessed by
+`ufork_ans_sets_differ`), which it did not before.

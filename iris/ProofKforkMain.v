@@ -529,6 +529,12 @@ Section KforkArms.
     Mt !!! Regidx csp_rs1 = pa_stk sp0 8 ->
     Mt !!! Regidx Rs4 = npa ->
     Mt !!! Regidx Rs5 = pme ->
+    (* THE PARENT'S ADDRESS IS A PROC SLOT'S, hence not 0 (design app-pipe
+       SS4.3x (ii), lane PIPE-GEN): relayed from this function's own
+       contract and spent inside [ProofKforkB5.kfk_b5], where it is what
+       lets the deposit publish that the child's generation was not
+       already in the parent's row. *)
+    pme <> (zero_reg : mword 64) ->
     Mt !!! Regidx Ra5 = a_tf_word tfsrc 0 ->
     Mt !!! Regidx Ra4 = a_tf_word tfdst 0 ->
     Mt !!! Regidx Ra3 = a_tf_word tfsrc 36 ->
@@ -673,7 +679,7 @@ Section KforkArms.
         mWP (Loop : expr riscv_lang)) -∗
     mWP (Loop : expr riscv_lang).
   Proof using ufdG0.
-    intros HK Hlvl Hbeq Hmsp Hmra Hms0 Hms1 Hms5 HMtsp HMts4 HMts5
+    intros HK Hlvl Hbeq Hmsp Hmra Hms0 Hms1 Hms5 HMtsp HMts4 HMts5 Hpmenz
       HMta5 HMta4 HMta3 Htfsrc Htfdst HMtthr Hnpa HjN Hgamma
       Hofnull Hcwdnull Hpidc Hpidne Hshsz Hshimg Hshperm Hshlz Hbelow.
     subst tfsrc tfdst.
@@ -923,14 +929,18 @@ Section KforkArms.
                 (uvis_of (kfork_child Up) stsP (pv_gen Vc4) ∅ pid_c)
                 (pv_chg (us_V Up)) csP ch rest
                 (sign_extend' 64 pid_c) lks
-                ltac:(lia) ltac:(lia) HjN Hgamma Hrestlen (eq_sym Hbeq) Hmf4s4 Hmf4s5 Hpid4
+                ltac:(lia) ltac:(lia) HjN Hgamma Hrestlen (eq_sym Hbeq) Hmf4s4 Hmf4s5 Hpmenz Hpid4
                 Hurun eq_refl eq_refl eq_refl eq_refl
                 with "Hsc4 Hown4 Hpay Htext Hpc4 Hprocs Hwlock Hft Hpe Hworld Htoken Hfdone
                       Hheld Hhart Hpvcx4 Hcfrag Hcrow Hprow Hsg34 Hpr34 Hgslot Hgpid Hjslot Hmk Hfd Hirsp Hbsl Hkst Hks Hkctx").
       all: try lkbelow.
       (* [b] is symbolic here (B5's own exit index): an ordinary crossing,
          not [wp_next_off_intro] -- the brief's correction (a). *)
-      iIntros (CID5 Hcross5 mf5) "%Hcs5 Hsc5 Hown5 Hpc5 Hprow".
+      (* ...AND THE FRESHNESS THE DEPOSIT PUBLISHED (design app-pipe
+         SS4.3x): PURE, so it lands in the Coq context here and is spent
+         at [kfork_post]'s pid arm below -- the tail between the two
+         ([ProofKfork.kfk_tail_succ]) never has to carry it. *)
+      iIntros (CID5 Hcross5 mf5) "%Hcs5 Hsc5 Hown5 Hpc5 %Hgfresh Hprow".
       (* the row comes back MOVED, at the generation the block records;
          [kfork_post]'s pid arm names it at [Uc']'s field.  The equation is
          restated at the literal spelling the row carries, so the rewrite
@@ -938,6 +948,8 @@ Section KforkArms.
       assert (Hgeq4 : pv_gen (us_V (MkUstate Vc4 (us_M Uc'))) = pv_gen (us_V Uc'))
         by exact Hcgn4.
       iEval (rewrite Hgeq4) in "Hprow".
+      (* the freshness travels at the same spelling *)
+      rewrite Hgeq4 in Hgfresh.
       assert (Hmf5sp : mf5 !!! Regidx csp_rs1 = pa_stk sp0 8)
         by (rewrite (callee_saved_lookup Hcs5 csp_rs1 ltac:(vm_compute; reflexivity));
             rewrite (Hthr4 csp_rs1 ltac:(vm_compute; reflexivity) ltac:(vm_compute; discriminate));
@@ -975,6 +987,9 @@ Section KforkArms.
         iFrame "Hkalloc". iRight. iExists pid_c, (pv_gen (us_V Uc')).
         iSplitR; [iPureIntro; rewrite Hrv; reflexivity |].
         iSplitR; [iPureIntro; exact Hpidc |].
+        (* ...AND THE FRESHNESS (design app-pipe SS4.3x): the row B5 read
+           off the wait-lock invariant, at the generation this arm names. *)
+        iSplitR; [iPureIntro; exact Hgfresh |].
         iSplitL "Htok"; [iExact "Htok" |]. iExact "Hprow".
     - rewrite kfk_childU_0. iExact "HCpriv".
     - iApply "Hb3app".
@@ -1022,7 +1037,7 @@ Section KforkMain.
  m lvl K eb pme b pid_p Up stsP csP Q Rc lks.
   Proof using ufdG0.
     cbv beta delta [wp_kfork_sconf_body]. cbn zeta.
-    intros HK Hlvl Hbelow.
+    intros HK Hlvl Hpmenz Hbelow.
     iIntros "Hcg Hcpu #Htext Hpc #Hprocs #Hplock #Hwlock #Hftbl #Hpe
              #Hitbl #Hitinv #Hireg Henv #Hpav #Hworld #Htoken HRc Hjslot #HKp #Hfdone Hpv Hpfrag Hrow Hcont".
     (* the SIE index the two lock-holding exits come back at *)
@@ -1117,7 +1132,7 @@ Section KforkMain.
                 Mt npa j γl2 pid_c ch (MkUstate Vc' Mc) stsP csP Q Rc tfsrc tfdst lks
                 (wpk_K_ge56 K HK) Hlvl Hbeq
                 eq_refl eq_refl eq_refl eq_refl eq_refl
-                HMtsp HMts4 HMts5 HMta5 HMta4 HMta3 Htfsrc Htfdst HMtthr
+                HMtsp HMts4 HMts5 Hpmenz HMta5 HMta4 HMta3 Htfsrc Htfdst HMtthr
                 Hnpa HjN Hgamma Hofn Hcwdn Hpidc Hpidne Hshsz Hshimg Hshperm Hshlz ltac:(lkbelow)
                 with "Ht Hprocs Hcg Hcpu Hpc Hframe Hpv Hpfrag Hrow HCp Hcgen Hcsg Hcpr Hcfrag Hcrow Hcxb Hmk Hheld Hhart
                       Hfd Hbsl Hkst Hctx Hpay Hke Hwl Hft Hpe Hit Hiti Hireg Hirs Hfdone Hworld Htoken HRc Hjslot

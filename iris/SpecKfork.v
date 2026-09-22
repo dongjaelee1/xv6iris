@@ -277,9 +277,21 @@ Definition kfork_post
          child.  That is what makes the
          resume key's [UexecSlot.uvis_ch] a READING of the map rather than
          a choice of the trap loop's. *)
+      (* ...AND THE CHILD'S GENERATION IS FRESH (design app-pipe SS4.3x,
+         lane PIPE-GEN).  The row move below is a plain ghost update and
+         says only [csP ∪ {[γ]}], which a generation already in the set
+         satisfies; the invariant knows better, and this is where the
+         knowledge leaves the kernel.  Read off [WaitInv.inv_rows] at the
+         [sd s5,56(s4)] that fills the child's parent cell
+         ([WaitFresh.children_inv_row_fresh] through
+         [ProofKforkB5.kfk_b5]), which is why this contract now takes
+         [pme <> zero_reg]: at a zero row address every tie of the
+         invariant is guarded away and the fact is false.  PURE, so it
+         rides the four statements above the kernel untouched. *)
       (∃ (pidv : mword 32) (γ : gname),
          ⌜ rv = (sign_extend' 64 pidv : mword 64) ⌝ ∗
          ⌜ (1 <= bv_unsigned pidv <= PIDMAX)%Z ⌝ ∗
+         ⌜ γ ∉ csP ⌝ ∗
          child_tok γ pidv Q ∗
          ch_frag (pv_chg (us_V Up)) pme (csP ∪ {[γ]})) ) )%I.
 
@@ -302,6 +314,18 @@ Definition wp_kfork_sconf_body
      (lvl+2), and -- once the lock is held -- uvmcopy/freeproc/filedup/idup
      at (S lvl)+1 = lvl+2 again. *)
   (Z.of_nat lvl + 2 < 2 ^ 31)%Z ->
+  (* THE CALLER'S ADDRESS IS A PROC SLOT'S, hence not 0 (design app-pipe
+     SS4.3x (ii), lane PIPE-GEN).  kfork is stated at an opaque [pme] and
+     writes [np->parent = p] under <wait_lock> with it; every tie of the
+     wait-lock invariant is guarded on a nonzero address (WaitInv.v's
+     header), so at [pme = 0] the deposit is dropped and the FRESHNESS
+     the post now reports ([kfork_post]'s [γ ∉ csP]) is false.  A premise
+     because this contract is at an opaque address; its caller has the
+     index -- [SpecSysFork] relays it and [ProofSyscall]'s dispatcher
+     discharges it from [pj = proc_addr j] ([ProcGeom.proc_addr_nonzero]).
+     Nothing else in the contract needs it: the two failure arms and every
+     other row are untouched. *)
+  pme <> (zero_reg : mword 64) ->
   (* THE PARENT HAS A WORKING DIRECTORY.  [ProcInv.cwd_ref] is two-armed on
      the pointer -- a process between [p->cwd = 0] and its next chdir owns
      no reference.  xv6's fork runs [np->cwd = idup(p->cwd)] with no null

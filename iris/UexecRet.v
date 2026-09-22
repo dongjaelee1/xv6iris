@@ -995,6 +995,24 @@ Section UexecRet.
             from "fork returned -1" -- which is what a program's fork-failed
             branch needs to refute the pid arm. *)
          ⌜(1 <= bv_unsigned pidv <= PIDMAX)%Z⌝ ∗
+         (* ...AND THE GENERATION IS FRESH (design app-pipe SS4.3x, lane
+            PIPE-GEN): the child's generation was in NO row of the
+            <wait_lock> children map when kfork put it in the caller's, so
+            the union below is a GROWTH BY ONE and not a no-op.  Without
+            it a parent that forks twice from [∅] cannot tell its two
+            children apart -- at [γ1 = γ2] the set after both forks is a
+            singleton, the first reap empties it, and the second wait's
+            [-1] arm is consistent, so the round receives ONE payload
+            ([UShPipeAssembly.ufork_ans_gens_distinct] is what this buys).
+            The fact is NOT the U tier's to prove: two [child_tok]s are
+            two quarters of one generation and agree on the pid rather
+            than clashing.  It is read off [WaitInv.inv_rows] at the store
+            that fills the child's parent cell
+            ([WaitFresh.children_inv_row_fresh], [ProofKforkB5]) and
+            relayed verbatim through [SpecKfork.kfork_post],
+            [SpecSysFork.wp_sys_fork_sconf_body] and
+            [SpecSyscall.sysc_fork_out]. *)
+         ⌜γ ∉ cs⌝ ∗
          ⌜cs' = cs ∪ {[γ]}⌝ ∗
          child_tok γ pidv Q)%I.
 

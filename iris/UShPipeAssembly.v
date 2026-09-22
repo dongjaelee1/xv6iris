@@ -1264,13 +1264,23 @@ Section UShPipeAssemblyDiag.
     symmetry. apply difference_disjoint_L. set_solver.
   Qed.
 
-  (* THE WITNESS FOR (iii), the other half: an answer whose generation is
-     ALREADY in the caller's set leaves the set unchanged, and
-     [UexecRet.ufork_ans] permits it -- so two forks CAN name one
-     generation as far as the row is concerned, and then the two reaps
-     deliver ONE payload.  [pipe_round_answers]'s [S1 <> S2] is what buys
-     it off; the honest source is a freshness conjunct on the fork's own
-     row, discharged where the generation is allocated. *)
+  (* THE WITNESS FOR (iii), the other half -- AND IT IS NOW A STATEMENT
+     ABOUT THE SH TIER'S ROW ONLY (lane PIPE-GEN).  An answer whose
+     generation is ALREADY in the caller's set leaves the set unchanged,
+     and [UkShPipe.ush_fork_ans] -- sh's own re-spelling of fork's answer,
+     which [UkShRun.wp_kshr_fork1]'s returning arm relays -- still permits
+     it: two forks CAN name one generation as far as THAT row is
+     concerned, and then the two reaps deliver ONE payload.
+       WHAT CHANGED: the U TIER's row no longer permits it.  Lane PIPE-GEN
+     bought [γ ∉ cs] at the kernel and threaded it to
+     [UexecRet.ufork_ans], where [ufork_ans_gens_distinct] below refutes
+     the collision outright.  The five sh-tier statements between the two
+     ([UkFork.wp_uk_ecall_fork]'s parent arm, [UkShRun.wp_kshr_fork],
+     [wp_kshr_fork1], [UkShDiag.wp_kshr_fork1_final] and this definition)
+     each RE-SPELL the answer inline and drop the conjunct, exactly as
+     they dropped the child's pid before purchase 1 -- so this lemma
+     stands, [pipe_round_answers] keeps its [S1 <> S2] premise, and the
+     relay is what a lane must buy next. *)
   Lemma ufork_ans_same_gen (Qc Rc : iProp Σ) (r : mword 64) (γ : gname)
       (pidv : mword 32) (cs : gset gname) :
     r = (sign_extend' 64 pidv : mword 64) ->
@@ -1283,6 +1293,53 @@ Section UShPipeAssemblyDiag.
     rewrite /UkShPipe.ush_fork_ans. iRight. iExists γ, pidv. iFrame "Ht".
     iPureIntro. split_and!;
       [ exact Hr | exact (proj1 Hrng) | exact (proj2 Hrng) | set_solver ].
+  Qed.
+
+  (* THE CONSUMER TEST AT THE U TIER (design app-pipe SS4.3x, item 4):
+     [ufork_ans_same_gen]'s NEGATION, at the row the kernel now proves.
+     Two forks by a process whose children set was EMPTY name two distinct
+     generations and leave two distinct sets -- which is precisely what
+     [pipe_round_answers]'s [S1 <> S2] premise asks for, and precisely
+     what no amount of U-tier reasoning could supply before (two
+     [ChildTok.child_tok]s are two quarters of one generation and AGREE on
+     the pid rather than clashing).  The two [-1] exclusions are the sh
+     walk's own ([UkShRun.wp_kshr_fork1]'s returning arm: fork1 panics at
+     -1, so a caller past the branch forked a live child). *)
+  Lemma ufork_ans_gens_distinct (Q1 Q2 : Z -> iProp Σ) (Rc1 Rc2 : iProp Σ)
+      (r1 r2 : mword 64) (S1 S2 : gset gname) :
+    r1 <> (mword_of_int (-1) : mword 64) ->
+    r2 <> (mword_of_int (-1) : mword 64) ->
+    UexecRet.ufork_ans Q1 Rc1 r1 (∅ : gset gname) S1 -∗
+    UexecRet.ufork_ans Q2 Rc2 r2 S1 S2 -∗
+    ⌜ exists γ1 γ2 : gname,
+        γ1 <> γ2 /\ S1 = {[γ1]} /\ S2 = S1 ∪ {[γ2]} /\ S1 <> S2 ⌝.
+  Proof using .
+    intros Hn1 Hn2. iIntros "H1 H2". rewrite /UexecRet.ufork_ans.
+    iDestruct "H1" as "[[%Hb1 _] | H1]"; [ exfalso; exact (Hn1 (proj1 Hb1)) | ].
+    iDestruct "H2" as "[[%Hb2 _] | H2]"; [ exfalso; exact (Hn2 (proj1 Hb2)) | ].
+    iDestruct "H1" as (g1 p1) "(_ & _ & %Hf1 & %He1 & _)".
+    iDestruct "H2" as (g2 p2) "(_ & _ & %Hf2 & %He2 & _)".
+    iPureIntro. exists g1, g2.
+    assert (HS1 : S1 = {[g1]}) by (rewrite He1; set_solver).
+    rewrite HS1 in Hf2.
+    assert (Hne : g1 <> g2) by set_solver.
+    split_and!; [ exact Hne | exact HS1 | exact He2 | ].
+    intro Hc. rewrite He2 HS1 in Hc. apply Hne. set_solver.
+  Qed.
+
+  (* ...AND THE ROUND'S OWN READING OF IT, in the shape
+     [pipe_round_answers] takes its premise at. *)
+  Lemma ufork_ans_sets_differ (Q1 Q2 : Z -> iProp Σ) (Rc1 Rc2 : iProp Σ)
+      (r1 r2 : mword 64) (S1 S2 : gset gname) :
+    r1 <> (mword_of_int (-1) : mword 64) ->
+    r2 <> (mword_of_int (-1) : mword 64) ->
+    UexecRet.ufork_ans Q1 Rc1 r1 (∅ : gset gname) S1 -∗
+    UexecRet.ufork_ans Q2 Rc2 r2 S1 S2 -∗ ⌜ S1 <> S2 ⌝.
+  Proof using .
+    intros Hn1 Hn2. iIntros "H1 H2".
+    iDestruct (ufork_ans_gens_distinct with "H1 H2") as %Hd;
+      [ exact Hn1 | exact Hn2 | ].
+    iPureIntro. destruct Hd as (g1 & g2 & _ & _ & _ & Hne). exact Hne.
   Qed.
 
   (* ONE CHILD'S PAYLOAD, out of the parent's token and the reap's escrow.

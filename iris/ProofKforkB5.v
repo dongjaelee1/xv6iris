@@ -78,6 +78,9 @@ Require Import FileInvDefs.
 Require Import ProcInv.
 Require Import SchedCtx.
 Require Import WaitInv.
+Require Import WaitFresh.  (* [children_inv_row_fresh] -- the freshness the
+                              deposit below publishes (design app-pipe
+                              SS4.3x, lane PIPE-GEN) *)
 Require Import SpecProcinit.
 Require Import SpecForkretPark.
 Require Import SieCapCtx.   (* [sie_cap_gpr_own_ctx_acc]: the park borrows the running token (L8) *)
@@ -181,6 +184,15 @@ Section ProofKforkB5.
     b = match lvl with O => eb | S _ => false end ->
     Mt !!! Regidx Rs4 = ProcGeom.proc_addr j ->
     Mt !!! Regidx Rs5 = pme ->
+    (* THE PARENT'S ADDRESS IS A PROC SLOT'S, hence not 0 (design app-pipe
+       SS4.3x (ii), lane PIPE-GEN).  This block is stated at an opaque
+       [pme] and the comment at the deposit below used to say the fact was
+       carried by nothing on the route; it is a premise now, relayed from
+       [SpecKfork.wp_kfork_sconf_body] and discharged at the dispatcher.
+       What it buys is the FRESHNESS row on the exit continuation: at
+       [pme = 0] the parent's row is constrained by nothing and the
+       child's generation could already be in it. *)
+    pme <> (zero_reg : mword 64) ->
     Mt !!! Regidx Rs1 = rv ->
     (* THE CHILD'S RUN KEY.  The slot below is captured at [Wk], and [Wk]
        agrees with the record the child is parked at on everything a slot
@@ -296,6 +308,15 @@ Section ProofKforkB5.
         sie_cap_gpr KT1 mf (K - 8)%nat b pme -∗
         cpu_own lvl eb pme b lks -∗
         pc_is (mword_of_int (KF + 0xf6) : mword 64) -∗
+        (* ...AND THE MOVE WAS A GROWTH BY ONE (design app-pipe SS4.3x,
+           lane PIPE-GEN): the child's generation was in NO row of the map
+           when the store below filled its parent cell, so in particular
+           not in the forking process's own
+           ([WaitFresh.children_inv_row_fresh], read off the invariant
+           with <wait_lock> held).  PURE, and it rides out to
+           [SpecKfork.kfork_post]'s success arm and from there to the U
+           tier's [UexecRet.ufork_ans]. *)
+        ⌜ ProcDefs.pv_gen (us_V Uc) ∉ csPar ⌝ -∗
         (* THE PARENT'S ROW, BACK AND MOVED: the child's generation is in
            the set now, which is what makes the resume key's
            [UexecSlot.uvis_ch] a reading of the map rather than a choice. *)
@@ -303,7 +324,7 @@ Section ProofKforkB5.
         mWP (Loop : expr riscv_lang)) -∗
     mWP (Loop : expr riscv_lang).
   Proof using ufdG0.
-    intros HK Hlvl Hj Hgl Hrest Hb Hm20 Hm21 Hm9 Hurun Hkfd Hkgn Hkch Hkpid Hfresh.
+    intros HK Hlvl Hj Hgl Hrest Hb Hm20 Hm21 Hpmenz Hm9 Hurun Hkfd Hkgn Hkch Hkpid Hfresh.
     iIntros "Hcg Hown Hpay #Htext Hpc #Hpinv #Hwl #Hft #Hpe #Hworld #Htoken #Hfdone Hheld Hhart Hpriv Hfrag Hcrow Hprow Hsg34 Hpr34 #Hgslot #Hgpid Hjslot #Hmk
              Hfd Hirsp Hbsl Hkfree #Hks Hctx Hcont".
     (* -------------------------------------------------------------- *)
@@ -553,14 +574,28 @@ Section ProofKforkB5.
        QUARTERS of the child's slot generation, and three quarters beside
        three quarters do not compose ([WaitInv.children_inv_no_entry],
        [SlotGen.slot_gen_tq_excl]), so the cell this store fills read 0.
-       THE PARENT'S ADDRESS IS A PROC SLOT'S and hence nonzero, but this
-       block is stated at an opaque [pme] and nothing on the route carries
-       the fact; at [pme = 0] the entry is [emp], the deposit is dropped
-       and every tie of the invariant is guarded away
-       ([WaitInv.children_inv_fork] takes no premise on it). *)
+       THE PARENT'S ADDRESS IS A PROC SLOT'S and hence nonzero, and this
+       block now CARRIES the fact ([Hpmenz], design app-pipe SS4.3x (ii)):
+       it was stated at an opaque [pme] with nothing on the route saying
+       so, and at [pme = 0] the entry is [emp], the deposit is dropped and
+       every tie of the invariant is guarded away
+       ([WaitInv.children_inv_fork] still takes no premise on it -- the
+       INSERT is free either way).  What the premise buys is the reading
+       below it: [WaitFresh.children_inv_row_fresh], the fact that the
+       generation going in was not in the row already. *)
     iDestruct (WaitInv.children_inv_no_entry ps gs mch O j (ProcDefs.pv_gen (us_V Uc))
                  ltac:(rewrite Hpolen; exact Hj) with "Hci Hsg34") as %Hnoent.
     iDestruct (WaitInv.children_own_lookup with "Hch Hprow") as %Hrowl.
+    (* ...AND THE FRESHNESS, READ OFF THE VERY SAME INVARIANT (design
+       app-pipe SS4.3x, lane PIPE-GEN).  The child's generation is at no
+       OCCUPIED slot (its [gen_slot] is persistent and the cell this store
+       fills read 0), and [WaitInv.inv_rows] says every member of a row at
+       a NONZERO address is the generation of such a slot -- so it is in
+       no row, the parent's included.  [Hpmenz] is where the premise is
+       spent, and the only place. *)
+    iDestruct (WaitFresh.children_inv_row_fresh ps gs mch O j pme
+                 (ProcDefs.pv_gen (us_V Uc)) gpar csPar Hnoent Hrowl Hpmenz
+                 with "Hci Hgslot") as %Hgfresh.
     iApply fupd_wp.
     iMod (WaitInv.children_own_upd mch gpar pme csPar
             (csPar ∪ {[ProcDefs.pv_gen (us_V Uc)]}) with "Hch Hprow")
@@ -820,7 +855,8 @@ Section ProofKforkB5.
     iEval (rewrite -Hb) in "Hown".
     rewrite <- Hb in Hs1. rewrite <- Hb in Hs6. rewrite <- Hb in Hs10.
     iSpecialize ("Hcont" $! CID10 with "[]"); [iPureIntro; wp_next_chain|].
-    iApply ("Hcont" $! mr10 with "[%] Hcg Hown Hpc Hprow"). exact Hcs_0_r10.
+    iApply ("Hcont" $! mr10 with "[%] Hcg Hown Hpc [%] Hprow");
+      [ exact Hcs_0_r10 | exact Hgfresh ].
   Qed.
 
 End ProofKforkB5.

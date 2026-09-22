@@ -750,8 +750,16 @@ Section UShPipeAssemblyDiag.
   (*  [PipeProto.pipe_payL], is what the round reads [PExecL] off         *)
   (*  ([UShPipeRound2.pround_case]'s second disjunct).                    *)
   (* =================================================================== *)
+  (* [F] IS A FRAME (lane SH-PIPE-ROUND-11): the law's family is the
+     lane's to choose, so anything the round needs on the OTHER side of
+     the seventeen bytes rides through it.  The round frames
+     [PipeProto.side_L pn]: the left child's exit payload is
+     [pipe_Qc_at]'s LEFT arm, whose side token comes out of the [ep_pay]
+     the diagnostic consumed, and [wp_kshr_exec_echo_at]'s
+     [box (Cd -* Q (-1))] is boxed, so it cannot capture it linearly.  At
+     [F := emp] the statement is the landed one. *)
   Lemma pipe_execL_law (v : era_pins) (I L : list (bv 8))
-      (ws : list (list (bv 8))) (gL gR gM : gname) (XL YR : iProp Σ) :
+      (ws : list (list (bv 8))) (gL gR gM : gname) (XL YR F : iProp Σ) :
     Timeless XL -> Timeless YR ->
     pline_at I = LPipe ws ->
     □ (XL -∗ YR ={↑pipeN}=∗ False) -∗
@@ -759,8 +767,8 @@ Section UShPipeAssemblyDiag.
     era_pin γ (S gen_id) v -∗
     blk2_inv g blk2N (S gen_id) v I L gL gR gM XL YR -∗
     ush_execfail_law_at EchoDisc.alt_execfail 17%nat
-      (PipeBoth.wcur gL (1/2) 0%nat ∗ XL)
-      (PipeBoth.wcur gL (1/2) 17%nat).
+      (PipeBoth.wcur gL (1/2) 0%nat ∗ XL ∗ F)
+      (PipeBoth.wcur gL (1/2) 17%nat ∗ F).
   Proof using Hcons.
     intros HTX HTY Hline.
     iIntros "#Hex #Ht #Hpin #Hinv".
@@ -774,8 +782,8 @@ Section UShPipeAssemblyDiag.
     iIntros "!>" (N l) "%Hfd2 Hc". destruct Hfd2 as [rb Hl2].
     iExists (fun p : nat =>
                (PipeBoth.wcur gL (1/2) p
-                ∗ (match p with O => XL | _ => True end))%I).
-    iSplitL "Hc"; [ by iDestruct "Hc" as "[$ $]" | ].
+                ∗ (match p with O => XL | _ => True end) ∗ F)%I).
+    iSplitL "Hc"; [ by iDestruct "Hc" as "($ & $ & $)" | ].
     iSplit.
     - iIntros "!>" (p b) "%Hb %Hlt".
       (* THE GUARD IS WHAT MAKES THIS PROVABLE (design SS4.3r).  The
@@ -791,10 +799,10 @@ Section UShPipeAssemblyDiag.
       iApply (ksh_w1_of_step N
                 (fun q : nat =>
                    (PipeBoth.wcur gL (1/2) q
-                    ∗ (match q with O => XL | _ => True end))%I)
+                    ∗ (match q with O => XL | _ => True end) ∗ F)%I)
                 l rb p b Hl2).
       iIntros "!>" (Φ) "Hf HΦ".
-      iDestruct "Hf" as "[HcL HX]".
+      iDestruct "Hf" as "(HcL & HX & HF)".
       iApply (pblk2_cstep_L g Hcons blk2N (↑pipeN) (S gen_id) v I L
                 gL gR gM XL YR p b Φ HTX HTY blk2N_uart blk2N_pipeN
                 Hb' Hwit Hwitt
@@ -804,8 +812,8 @@ Section UShPipeAssemblyDiag.
       { destruct p as [| q]; [ iIntros "_"; iExact "HX" | ].
         iIntros "%Hq". discriminate Hq. }
       (* [iFrame] closes the [True] the family's later indices carry *)
-      iIntros "HcL". iApply "HΦ". iFrame "HcL".
-    - iIntros "!> [$ _]".
+      iIntros "HcL". iApply "HΦ". iFrame "HcL HF".
+    - iIntros "!> ($ & _ & $)".
   Qed.
 
   (* =================================================================== *)
@@ -816,8 +824,10 @@ Section UShPipeAssemblyDiag.
   (*  fixes the family's right source at [dg_execR] and deposits nothing  *)
   (*  (the [YR] arm is mode 1's).                                        *)
   (* =================================================================== *)
+  (* [F] is item 1's frame, one child over: the round frames
+     [PipeProto.side_R pn] here. *)
   Lemma pipe_execR_law (v : era_pins) (I L : list (bv 8))
-      (ws : list (list (bv 8))) (gL gR gM : gname) (XL YR : iProp Σ) :
+      (ws : list (list (bv 8))) (gL gR gM : gname) (XL YR F : iProp Σ) :
     Timeless XL -> Timeless YR ->
     pline_at I = LPipe ws ->
     L = wl_line (drop 1 ws) ->
@@ -826,8 +836,8 @@ Section UShPipeAssemblyDiag.
     era_pin γ (S gen_id) v -∗
     blk2_inv g blk2N (S gen_id) v I L gL gR gM XL YR -∗
     ush_execfail_law_at PipeDisc.alt_execR 16%nat
-      (PipeBoth.wcur gR (1/2) 0%nat ∗ PipeBoth.wcur gM (1/2) 0%nat)
-      (PipeBoth.wcur gR (1/2) 16%nat ∗ PipeBoth.wcur gM (1/2) 2%nat).
+      (PipeBoth.wcur gR (1/2) 0%nat ∗ PipeBoth.wcur gM (1/2) 0%nat ∗ F)
+      (PipeBoth.wcur gR (1/2) 16%nat ∗ PipeBoth.wcur gM (1/2) 2%nat ∗ F).
   Proof using Hcons.
     intros HTX HTY Hline HL.
     iIntros "#Hex #Ht #Hpin #Hinv".
@@ -841,22 +851,26 @@ Section UShPipeAssemblyDiag.
       exact (pblk2_wit_ran_at I ws sel Hline Hc Hlen). }
     (* ---- (1) THE MODE FIRES AT THE FIRST BYTE ---- *)
     iApply (exf_law_fupd PipeDisc.alt_execR 16%nat
-              (PipeBoth.wcur gR (1/2) 0%nat ∗ PipeBoth.wcur gM (1/2) 0%nat)%I
-              (PipeBoth.wcur gR (1/2) 0%nat ∗ PipeBoth.wcur gM (1/2) 2%nat)%I
-              (PipeBoth.wcur gR (1/2) 16%nat ∗ PipeBoth.wcur gM (1/2) 2%nat)%I
+              (PipeBoth.wcur gR (1/2) 0%nat ∗ PipeBoth.wcur gM (1/2) 0%nat
+               ∗ F)%I
+              (PipeBoth.wcur gR (1/2) 0%nat ∗ PipeBoth.wcur gM (1/2) 2%nat
+               ∗ F)%I
+              (PipeBoth.wcur gR (1/2) 16%nat ∗ PipeBoth.wcur gM (1/2) 2%nat
+               ∗ F)%I
               ltac:(lia) with "[] []").
-    { iIntros "!> [HcR HcM]".
+    { iIntros "!> (HcR & HcM & HF)".
       iMod (blk2_mode_fire g ⊤ blk2N (S gen_id) v I L gL gR gM XL YR 2%nat
               HTX HTY ltac:(apply top_subseteq) ltac:(by right; left)
               with "Hinv HcM HcR []") as "[HcM HcR]".
       { iIntros "%Hq". discriminate Hq. }
-      iModIntro. iFrame "HcR HcM". }
+      iModIntro. iFrame "HcR HcM HF". }
     (* ---- (2) THE SIXTEEN BYTES, each [pblk2_cstep_R] at mode 2 ---- *)
     rewrite /ush_execfail_law_at.
     iIntros "!>" (N l) "%Hfd2 Hc". destruct Hfd2 as [rb Hl2].
     iExists (fun p : nat =>
-               (PipeBoth.wcur gR (1/2) p ∗ PipeBoth.wcur gM (1/2) 2%nat)%I).
-    iSplitL "Hc"; [ by iDestruct "Hc" as "[$ $]" | ].
+               (PipeBoth.wcur gR (1/2) p ∗ PipeBoth.wcur gM (1/2) 2%nat
+                ∗ F)%I).
+    iSplitL "Hc"; [ by iDestruct "Hc" as "($ & $ & $)" | ].
     iSplit.
     - iIntros "!>" (p b) "%Hb %Hlt".
       (* as in item 1: the sixteen block bytes, not the alternative's
@@ -867,17 +881,17 @@ Section UShPipeAssemblyDiag.
       iApply (ksh_w1_of_step N
                 (fun q : nat =>
                    (PipeBoth.wcur gR (1/2) q
-                    ∗ PipeBoth.wcur gM (1/2) 2%nat)%I)
+                    ∗ PipeBoth.wcur gM (1/2) 2%nat ∗ F)%I)
                 l rb p b Hl2).
       iIntros "!>" (Φ) "Hf HΦ".
-      iDestruct "Hf" as "[HcR HcM]".
+      iDestruct "Hf" as "(HcR & HcM & HF)".
       iApply (pblk2_cstep_R g Hcons blk2N (↑pipeN) (S gen_id) v I L
                 gL gR gM XL YR 2%nat p b Φ HTX HTY blk2N_uart blk2N_pipeN
                 ltac:(by right) ltac:(cbn [rsrc]; exact Hb')
                 ltac:(cbn [rsrc]; exact dg_execR_nodollar) Hwit2 Hwit1
                 with "Hex [] Ht Hpin Hinv HcR HcM").
       { iApply pblk2_ecl_R_holds. }
-      iIntros "HcR HcM". iApply "HΦ". iFrame "HcR HcM".
+      iIntros "HcR HcM". iApply "HΦ". iFrame "HcR HcM HF".
     - by iIntros "!> $".
   Qed.
 
@@ -1082,18 +1096,53 @@ Section UShPipeAssemblyDiag.
   (* =================================================================== *)
   Context `{!pipeProtoG Σ}.
 
+  (* THE LEFT PAYLOAD IS [PipeProto.pipe_payL] VERBATIM (lane
+     SH-PIPE-ROUND-11), and not its two reachable arms: the left child's
+     exit hands it over through [UEchoPipe.ep_exit_payL], whose
+     conclusion IS that three-armed disjunction.  The middle arm
+     ([wtok pn], i.e. echo never wrote) is not dead in the TYPE and the
+     reading pays it -- at [wtok] the frozen contents are empty
+     ([pipe_round_execL]) and the round unwinds. *)
   Definition pipe_PL (pn : pnames) (L : list (bv 8)) (gL : gname) : iProp Σ :=
-    (((pws_lb pn L ∨ (∃ c : nat, PipeProto.wcur pn c ∗ ro_shot pn))
-        ∗ PipeBoth.wcur gL (1/2) 0%nat)
+    ((PipeProto.pipe_payL pn L ∗ PipeBoth.wcur gL (1/2) 0%nat)
      ∨ PipeBoth.wcur gL (1/2) (length dg_execL))%I.
 
+  (* ...AND THE RIGHT PAYLOAD CARRIES THE READER'S PERMIT where it used
+     to carry the cursor's BOUND as a pure conjunct (lane
+     SH-PIPE-ROUND-11).  The bound is not the right child's to state: cat
+     hands its payload over through [UCatPipe.pcat_round_at_g]'s [Hend],
+     a PURE wand, and [c <= length L] is an invariant access
+     ([pipe_rcur_bound] below).  The permit IS in [Hend]'s hand
+     ([pcat_hold]'s second conjunct), so it travels and the reading --
+     which is a fancy update -- reads the bound off it. *)
   Definition pipe_PR (pn : pnames) (L : list (bv 8)) (gR gM : gname)
       : iProp Σ :=
-    ((∃ c : nat, ⌜(c <= length L)%nat⌝ ∗ eof_shot pn (take c L)
+    ((∃ c : nat, (PipeProto.rcur pn c ∨ PT) ∗ eof_shot pn (take c L)
         ∗ PipeBoth.wcur gR (1/2) c
         ∗ PipeBoth.wcur gM (1/2) (match c with O => 0%nat | _ => 1%nat end))
      ∨ (PipeBoth.wcur gR (1/2) (length dg_execR)
         ∗ PipeBoth.wcur gM (1/2) 2%nat))%I.
+
+  (* THE READER'S CURSOR IS INSIDE THE LINE -- [PipeProto.pws_lb_of_rcur]'s
+     sibling at the BOUND rather than the lower bound, and the same two
+     clauses: (P5) puts the read pointer inside the contents and (P1) puts
+     the contents inside the line. *)
+  Lemma pipe_rcur_bound (pn : pnames) (γp : pipe_names) (L : list (bv 8))
+      (c : nat) :
+    pipe_inv pn γp L -∗ PipeProto.rcur pn c ={⊤}=∗ ⌜(c <= length L)%nat⌝.
+  Proof using .
+    iIntros "#Hinv Hr".
+    iInv "Hinv" as (s0)
+      ">(Hf & Hh & Hbw & Hbr & %Hpre & %Hrle & Heof & Hro)" "Hclose".
+    iDestruct (rcur_agree with "Hbr Hr") as %Hrp.
+    assert (Hle : (c <= length L)%nat).
+    { assert (Hc : (c <= length (ps_ws s0))%nat)
+        by (rewrite -Hrp; exact Hrle).
+      pose proof (prefix_length _ _ Hpre) as Hpl. lia. }
+    iMod ("Hclose" with "[Hf Hh Hbw Hbr Heof Hro]") as "_".
+    { iNext. iExists s0. iFrame "Hf Hh Hbw Hbr Heof Hro". by iPureIntro. }
+    iModIntro. by iPureIntro.
+  Qed.
 
   Definition pipe_Qc_at (pn : pnames) (L : list (bv 8)) (gL gR gM : gname)
       : iProp Σ :=
@@ -1144,8 +1193,13 @@ Section UShPipeAssemblyDiag.
           [ lia | rewrite dg_execR_len; lia | ].
         rewrite /pround_case. right. right. left.
         split_and!; [ reflexivity | reflexivity | reflexivity ]. }
-      iDestruct "HR" as (c) "(%Hcle & #Heof & HcR & HcM)".
-      iDestruct "HpayL" as "[#Hlb | Hsh]".
+      iDestruct "HR" as (c) "(Hrc & #Heof & HcR & HcM)".
+      (* THE CURSOR'S BOUND, off the reader's own permit (the payload
+         carries it since lane SH-PIPE-ROUND-11); at the taint arm the
+         reading is the taint. *)
+      iDestruct "Hrc" as "[Hrc | #HT]"; [ | by iModIntro; iLeft ].
+      iMod (pipe_rcur_bound pn γp L c with "Hinv Hrc") as "%Hcle".
+      iDestruct "HpayL" as "[#Hlb | [Hwt | Hsh]]".
       + (* the whole line is in: PRan *)
         iMod (pipe_round_ran pn γp L (take c L) with "Hinv Hlb Heof") as %Hw.
         assert (Hc : c = length L).
@@ -1157,6 +1211,16 @@ Section UShPipeAssemblyDiag.
         iPureIntro. split_and!; [ lia | lia | ].
         rewrite /pround_case. left.
         split_and!; [ reflexivity | reflexivity | by rewrite EL ].
+      + (* echo never wrote a byte at all -- its whole permit is still the
+           start token -- so the frozen contents are empty and the round
+           UNWINDS ([pipe_round_execL]). *)
+        iMod (pipe_round_execL pn γp L (take c L) with "Hinv Hwt Heof")
+          as "[_ %Hw']".
+        assert (Hc0 : c = 0%nat).
+        { destruct c as [| k]; [ reflexivity | exfalso ].
+          destruct L as [| b L']; [ cbn [length] in HLpos; lia | ].
+          cbn [take] in Hw'. discriminate Hw'. }
+        subst c. iModIntro. iRight. iRight. iLeft. iFrame "HcL HcR HcM".
       + (* the write stopped short: the READ END was shut *)
         iDestruct "Hsh" as (c') "[Hw #Hro]".
         iMod (pipe_round_short pn γp L (take c L) c' with "Hinv Hw Heof")
@@ -1183,7 +1247,7 @@ Section UShPipeAssemblyDiag.
           [ lia | rewrite dg_execL_len; lia | ].
         rewrite /pround_case. right. right. right.
         split_and!; [ reflexivity | reflexivity | reflexivity ]. }
-      iDestruct "HR" as (c) "(%Hcle & _ & HcR & HcM)".
+      iDestruct "HR" as (c) "(_ & _ & HcR & HcM)".
       destruct c as [| k]; last first.
       { (* THE FIFTH ROW, refuted: a left cursor past zero and mode 1 *)
         iMod (blk2_no_L_at_mode1 v I L gL gR gM XL YR (length dg_execL)
@@ -1378,11 +1442,17 @@ Section UShPipeAssemblyDiag.
      reaps are at the caller's own pid -- then the two children's
      symmetric payload is in hand twice, which is what the round's
      reading takes. *)
+  (* ONE PID PER REAP (lane SH-PIPE-ROUND-11).  [UkShPipe.ush_wait_pid_ans]
+     binds the caller's pid EXISTENTIALLY, once per answer, so a round
+     holding two answers holds two binders; nothing here needs them to
+     agree -- each is spent refuting its own reap's [pidv = 1]
+     disjunct. *)
   Lemma pipe_round_answers (Qc : iProp Σ) (RcL RcR : iProp Σ)
       (r1 r2 rw1 rw2 : mword 64) (S1 S2 S3 S4 : gset gname)
-      (pidv : mword 32) :
+      (pidv pidw : mword 32) :
     Timeless Qc ->
     pidv <> (mword_of_int 1 : mword 32) ->
+    pidw <> (mword_of_int 1 : mword 32) ->
     r1 <> (mword_of_int (-1) : mword 64) ->
     r2 <> (mword_of_int (-1) : mword 64) ->
     S1 <> S2 ->
@@ -1391,9 +1461,9 @@ Section UShPipeAssemblyDiag.
     UkShPipe.ush_fork_ans (∅ : gset gname) S1 RcL (fun _ : Z => Qc) r1 -∗
     UkShPipe.ush_fork_ans S1 S2 RcR (fun _ : Z => Qc) r2 -∗
     UexecRet.uwait_ans_pid rw1 S2 S3 pidv -∗
-    UexecRet.uwait_ans_pid rw2 S3 S4 pidv ={⊤}=∗ Qc ∗ Qc.
+    UexecRet.uwait_ans_pid rw2 S3 S4 pidw ={⊤}=∗ Qc ∗ Qc.
   Proof using .
-    intros HT Hpid Hn1 Hn2 HS12 Hm1 Hm2.
+    intros HT Hpid Hpidw Hn1 Hn2 HS12 Hm1 Hm2.
     iIntros "Hf1 Hf2 Hw1 Hw2".
     rewrite /UkShPipe.ush_fork_ans.
     iDestruct "Hf1" as "[[%Hb1 _] | Hf1]";
@@ -1450,7 +1520,7 @@ Section UShPipeAssemblyDiag.
       specialize (Hm2 Hm). rewrite He4 in Hm2.
       rewrite Hb in Hm2. set_solver. }
     iDestruct "Hr2" as (γc) "(%Hrg2 & %Hin2 & Hesc2 & #Hu2)".
-    destruct Hin2 as [Hin2 | Heq2]; [ | exfalso; exact (Hpid Heq2) ].
+    destruct Hin2 as [Hin2 | Heq2]; [ | exfalso; exact (Hpidw Heq2) ].
     assert (Hcb : γc = γb) by (rewrite Hb in Hin2; set_solver).
     subst γc.
     iMod (pipe_redeem Qc γb pb rv2 xs2 HT with "Htb Hesc2") as "HQ2".
@@ -1491,8 +1561,10 @@ Section UShPipeAssemblyDiag.
           [ lia | rewrite dg_execR_len; lia | ].
         rewrite /pround_case. right. right. left.
         split_and!; [ reflexivity | reflexivity | reflexivity ]. }
-      iDestruct "HR" as (c) "(%Hcle & #Heof & HcR & HcM)".
-      iDestruct "HpayL" as "[#Hlb | Hsh]".
+      iDestruct "HR" as (c) "(Hrc & #Heof & HcR & HcM)".
+      iDestruct "Hrc" as "[Hrc | #HT]"; [ | by iModIntro; iLeft ].
+      iMod (pipe_rcur_bound pn γp L c with "Hinv Hrc") as "%Hcle".
+      iDestruct "HpayL" as "[#Hlb | [Hwt | Hsh]]".
       + (* the whole line is in: PRan *)
         iMod (pipe_round_ran pn γp L (take c L) with "Hinv Hlb Heof") as %Hw.
         assert (Hc : c = length L).
@@ -1504,6 +1576,15 @@ Section UShPipeAssemblyDiag.
         iPureIntro. split_and!; [ lia | lia | ].
         rewrite /pround_case. left.
         split_and!; [ reflexivity | reflexivity | by rewrite EL ].
+      + (* echo never wrote a byte: the contents are empty and the round
+           UNWINDS *)
+        iMod (pipe_round_execL pn γp L (take c L) with "Hinv Hwt Heof")
+          as "[_ %Hw']".
+        assert (Hc0 : c = 0%nat).
+        { destruct c as [| k]; [ reflexivity | exfalso ].
+          destruct L as [| b L']; [ cbn [length] in HLpos; lia | ].
+          cbn [take] in Hw'. discriminate Hw'. }
+        subst c. iModIntro. iRight. iLeft. iFrame "HcL HcR HcM".
       + (* the write stopped short: the READ END was shut *)
         iDestruct "Hsh" as (c') "[Hw #Hro]".
         iMod (pipe_round_short pn γp L (take c L) c' with "Hinv Hw Heof")
@@ -1533,7 +1614,7 @@ Section UShPipeAssemblyDiag.
           [ lia | rewrite dg_execL_len; lia | ].
         rewrite /pround_case. right. right. right.
         split_and!; [ reflexivity | reflexivity | reflexivity ]. }
-      iDestruct "HR" as (c) "(%Hcle & _ & HcR & HcM)".
+      iDestruct "HR" as (c) "(_ & _ & HcR & HcM)".
       destruct c as [| k]; last first.
       { (* THE FIFTH ROW, refuted: a left cursor past zero and mode 1 *)
         iMod (blk2_no_L_at_mode1 v I L gL gR gM XL YR (length dg_execL)
@@ -1583,13 +1664,14 @@ Section UShPipeAssemblyDiag.
       (gL gR gM : gname) (XL YR Wq RcL RcR : iProp Σ)
       (h : CpuId) (m : regfile) (av : nat)
       (r1 r2 rw1 rw2 : mword 64) (S1 S2 S3 S4 : gset gname)
-      (pidv : mword 32) :
+      (pidv pidw : mword 32) :
     Timeless XL -> Timeless YR ->
     pline_at I = LPipe ws ->
     L = wl_line (drop 1 ws) ->
     (0 < length L)%nat ->
     ukn_pay N = (fun _ : Z => Wq) ->
     pidv <> (mword_of_int 1 : mword 32) ->
+    pidw <> (mword_of_int 1 : mword 32) ->
     r1 <> (mword_of_int (-1) : mword 64) ->
     r2 <> (mword_of_int (-1) : mword 64) ->
     S1 <> S2 ->
@@ -1608,16 +1690,16 @@ Section UShPipeAssemblyDiag.
     UkShPipe.ush_fork_ans S1 S2 RcR
       (fun _ : Z => pipe_Qc_at pn L gL gR gM) r2 -∗
     UexecRet.uwait_ans_pid rw1 S2 S3 pidv -∗
-    UexecRet.uwait_ans_pid rw2 S3 S4 pidv -∗
+    UexecRet.uwait_ans_pid rw2 S3 S4 pidw -∗
     urun N h m (mword_of_int 0xea) av -∗
     mWP (Loop : expr riscv_lang).
   Proof using .
-    intros HTX HTY Hline HL HLpos Hpayeq Hpid Hn1 Hn2 HS12 Hm1 Hm2.
+    intros HTX HTY Hline HL HLpos Hpayeq Hpid Hpidw Hn1 Hn2 HS12 Hm1 Hm2.
     iIntros "#Hex #Hno #Hinv #Hpin #Hbinv Hw3 Hw0 #Hcode Hf1 Hf2 Hr1 Hr2 Hrun".
     iApply fupd_mwp.
     iMod (pipe_round_answers (pipe_Qc_at pn L gL gR gM) RcL RcR
-            r1 r2 rw1 rw2 S1 S2 S3 S4 pidv _ Hpid Hn1 Hn2 HS12 Hm1 Hm2
-            with "Hf1 Hf2 Hr1 Hr2") as "[HQ1 HQ2]".
+            r1 r2 rw1 rw2 S1 S2 S3 S4 pidv pidw _ Hpid Hpidw Hn1 Hn2 HS12
+            Hm1 Hm2 with "Hf1 Hf2 Hr1 Hr2") as "[HQ1 HQ2]".
     iMod (pipe_round_reading_code pn γp L I v gL gR gM XL YR HTX HTY HLpos
             with "Hex Hno Hinv Hbinv HQ1 HQ2") as "Hrd".
     iAssert (|={⊤}=> Wq)%I with "[Hrd Hw3 Hw0]" as ">Hpayq".

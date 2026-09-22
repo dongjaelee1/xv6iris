@@ -1922,3 +1922,37 @@ ushf_child_law_holds_at_D` does.  The pipe-tier consumers of `UCatKernel`
 (`UShPipeCatRound`) rebuild green against the generic instance.
 `UShRound.v` HAS NO SECTION HYPOTHESES LEFT; its one `Admitted` is
 `sh_round_holds_file`.
+
+## PROGRAM STREAM, stretch 14 (2026-09-22) — ITEM 5: `sh_round_holds_file` PROVED; `UShRound.v` is closed
+
+`sh_round_holds_file` is one application of `UkShRedirBody.ushf_rest_of_body_file`
+to the five laws `UShRound.v` now proves (`sh_kill_law_file`,
+`sh_child_law_file`, `Hchild_redir`, `Hchild_cat`, `Hpanic`), exactly as
+`UShRest.sh_rest_holds` / `UShPipeRound.sh_round_holds_pipe` are of their body
+laws.  RESTATED at `ush_rest_l_at (PS := uprogSG_free) N γp T Wcf Wbf Pm
+UkShRedirBody.ush_line_file (sh_Rsh …)` — the era's three line shapes, which is
+what `UInitSh.sh_pay_of_parts_at Dl` takes (the pipe round did the same) — with
+premises `file_links`, `udep` (free), BOTH slots (`sh_echo_slot T` for the echo
+and redirect children, `UShCatPay.sh_cat_slot T` for cat's), the era pin and
+`(∃ jc, cons_made (fn_cons r) jc)`.  `UShRound.v` has NO `Admitted` and NO
+section hypotheses.
+
+THE ONE WALL, and it was the owed cleanup: the application hung (20 min)
+because the five laws were at TWO `ghost_varG Σ Z` instances — the two file
+children pinned at `Xv6Cameras.offbox_offG` (forced by the kernel's `ucwd` in
+the open), the echo child / kill / panic laws at `UShRound`'s own section
+binder, copied from `UShRest`.  FIXED by deleting the binder (durable-notes'
+prescription; §"A section variable of a class type is a LOCAL INSTANCE"): one
+instance in scope, the 25 explicit pins now name it, `UInitFileCons.v` (which
+binds its own) compiles unchanged.  `UShRest.v`'s own binder is now the odd one
+out; not touched (echo's cone).
+
+WHAT IS LEFT of the file application: item 4 (INIT-FILE: `file_Hinit_boot`,
+the assembly that applies `sh_pay_of_parts_at ush_line_file` to this round --
+`UInitFileCC.v` is uncommitted in `/shared/xv6iris-3-lanes/program-tier` and
+must be re-cut on today's statements: `sh_round_holds_file`'s new premises,
+the state-aware credential, `exec_ok`), then the adequacy close
+(`FileAssumptions.v`, `make audit-file-only` at the closed corollary).
+Upstream's combined application (stage 2, 2026-09-22) states the echo theorem
+as a corollary of the pipe one; whether the FILE theorem joins it (stage 3) is
+the owner's call — its round is generic over the same `ush_rest_l_at` shape.

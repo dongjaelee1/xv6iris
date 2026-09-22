@@ -56,7 +56,11 @@ Landed 2026-09-21:
   generic deposit instance (the pipe campaign's §4.3z wall 2; four files bind
   `PS : UexecSG.uprogSG Σ`).  PROGRAM-STREAM.md stretches 11-13.
 
-NEXT (the text below is the old plan): 5 `sh_round_holds_file`
+- **5 `sh_round_holds_file` is PROVED (2026-09-22)**; `UShRound.v` is closed
+  (no `Admitted`, no section hypotheses).  PROGRAM-STREAM.md stretch 14.
+
+NEXT: 4 (INIT-FILE, `file_Hinit_boot`), then the adequacy close.  (The text
+below is the old plan.)  Old: 5 `sh_round_holds_file`
 (the exec-node lemmas in `UkShEcho`/`UShEcho` are stated at `line_ok`, which
 demands the first word be `echo`; the owner's call whether to generalise them
 now), then the round's open/close conversions (the close is not

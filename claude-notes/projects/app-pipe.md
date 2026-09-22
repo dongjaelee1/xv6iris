@@ -10885,16 +10885,15 @@ statement and with its repair already checked against the proof:
   the write arm intros `%Hret %Hnb0` — but that only helps the non-taint
   arm and is not what is missing.)
 
-AND THE RIGHT CHILD IS SHORT A LEAF NOBODY HAS WRITTEN:
-`UkShCat.cat_argv_bytes (length (wl_body ws) + 3) (length (wl_body ws) +
-3 + 3) (UkShPipeRound.ushq_cut (wl_toks ws) len f ge)` — the `" | cat"`
-tail's three bytes read off the PIPELINE CUT, i.e. `pl_echo_argv_bytes`'s
-twin at the RIGHT command.  Nothing in the tree proves it
-(`UkShPipeLex.ushq_cat` is the word; `UkShPipeRound.ushq_cut_ok_right` is
-about the node, not the bytes), and `UkShCat.wp_kshr_exec_cat_at_holds`
-takes it as a premise.  It is the same proof as the left one's — every
-index it looks at is inside the cut's own fold — and it belongs beside
-`pl_echo_argv_bytes` in `UShPipeLaw.v`.
+THE RIGHT CHILD WAS ALSO SHORT A LEAF NOBODY HAD WRITTEN, and this lane
+LANDED it: `pl_cat_argv_bytes`, `UkShCat.cat_argv_bytes` at the pipeline
+cut's right token — `pl_echo_argv_bytes`'s twin at the `" | cat"` tail,
+which `UkShCat.wp_kshr_exec_cat_at_holds` takes and which nothing in the
+tree proved (`UkShPipeLex.ushq_cat` is the WORD,
+`UkShPipeRound.ushq_cut_ok_right` is about the NODE).  Every index it
+looks at sits ABOVE every token of `wl_toks ws` and BELOW the cut's own
+nul, so the cut IS the line there and the bytes are
+`PipeDisc.suf_pipecat`'s last three.
 
 WHAT IS *NOT* A GAP on the right child, checked: `pcat_round_at_g`'s
 `□ (T -∗ UkCatCat.kcat_dg_cr N)` is payable from THIS LANE'S NEW

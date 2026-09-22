@@ -46,6 +46,9 @@ theorem ticksRes_intro [CurCtx] (t : BitVec 32) :
 def isTickslock [CurCtx] (γt : GName) : IProp GF :=
   isLock γt tickslockAddr "time" ticksResAt
 
+instance isTickslock_persistent [CurCtx] (γt : GName) : Persistent (isTickslock (GF := GF) γt) := by
+  unfold isTickslock; infer_instance
+
 end
 
 end Xv6

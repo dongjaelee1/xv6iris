@@ -307,3 +307,5 @@ import Xv6.ProofSysWait
 import Xv6.LinkSysWait
 import Xv6.ProofKfork
 import Xv6.LinkKfork
+import Xv6.ProofSysPause
+import Xv6.LinkSysPause

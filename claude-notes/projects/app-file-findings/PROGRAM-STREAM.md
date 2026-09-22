@@ -2163,3 +2163,50 @@ remote `/tmp/xv6iris2-vb.log` in a second call.  A Coq comment with a `"` in
 it is a string: `"the console's row …"` broke `AppFileCons.v`'s header.
 `FsAbsCreateNm` is deep: its one added lemma rebuilt 141 files.
 
+## PROGRAM STREAM, stretch 18 (2026-09-22) — item 4's second design point: the reader's pin at count 0, and RULING F0-BOOT
+
+Assembling `file_Hinit_boot` from the pipe's mould stopped at the first
+resource /init owes: `cc_rd (file_cc …) 0`, the reader's pin at the record's
+residue `fwc_rresw_at s0 v []`, whose `f0w` conjunct was the ledger fragment
+the FIRST CONSOLE BYTE mints.  The analysis (why no head arm and no `0 < P`
+premise can repair it, why the two ledgers are the fix, why every writer
+site stays put) is RULING F0-BOOT on the design page.  Landed on branch
+`app-file/cons-cred`: `FileOut.v` (the record, `f0_auth`/`f0_bl`,
+`f0f_auth`/`f0_fd`, `f0_lb` as the pair, `f0_wit`, `fturn_core`/`fturn`/
+`fturn_file`, `file_era_split` at both authorities, the first write at
+`f0_bl`, the three plain steps at `f0f_auth_lb_agree`, the read step and the
+drain handing out both halves), `FileLinks.v` (the first-write law takes
+`f0_bl`), `FileLinksLine.v` (`f0bw`, its agreements, `fwc_rres` at it,
+`f0pre` with it, `fturn_pre` at `fturn_core`, the three head sites),
+`FileLinksAt.v`/`FileLinksAtBan.v`/`FileLinksAtLine.v` (the same at the
+index), `FileReadInst.v` (the residue's construction and the index
+agreement at `f0bw`), `UInitFileCons.v` (`boot_at`, `file_f0pre_at_of_boot`
+== the filing, `file_turn_pre(_at)_of_boot`, `file_Wbl_at_of_boot`,
+`file_rres_at_of_boot`, `file_Wbf_at_of_boot` at `fturn_core` + `boot_at`).
+NAME CLASH met: `fl_auth` is the file-lines ledger's authority
+(`AppFile`), hence `f0f_`.
+
+**The assembly (`iris/UInitFileBoot.v`, `file_Hinit_boot_at`), and its three
+wedges.**  (1) `AppFile.file_boot`'s typed witness is under one `▷` (the
+boot transport is a `|==>`), and `file_prog_law`'s conclusion `|==>
+init_boot_bundle` is no `◇`-absorber (`init_boot_bundle` is an AU bundle,
+not a WP) -- `iMod` on the witness fails with "cannot eliminate modality".
+The way through: case-split UNDER the later (`bi.later_or`) to choose the
+index `s0`, file the ledger now (`UInitFileCons.file_f0bw_of_boot`, no
+witness needed), take the head precondition one step later
+(`file_f0pre_at_of_bw`, a plain wand, under `iNext`), build ONLY the two
+witness-paid payload pieces under `▷` (`cc_rd 0 ∗ cc_wbn 0`, both timeless),
+and let the exec slot absorb the `◇` (`uslot_except_0`, `uslot_bupd`'s twin:
+the slot ends in a WP, `is_except_0_wp`).  The constructor wand is then
+proved at `Pay0 ∗ ▷ Pay1` and `init_boot_bundle_of_pinned` taken at that
+payload.  (2) `uslot_except_0`'s STATEMENT hung (Error 137 under the
+timeout): `uexecSG_xv6 {Σ riscvGS0 xv6G0 fileG0 GEN}` searches `fileG Σ`,
+and the section had no such binder -- bind the six slot classes on the
+lemma, exactly as the assembly lemma does.  (3) `Pay0`'s banner and
+diagnostic laws must be spelled `(PS := uprogSG_free)`: elaborated at the
+ambient instance they print the same and do not unify (a hang inside
+`iExact`).  Also: `iFrame` over `init_boot_pay` hangs (the `Frame` search
+through the dance and the diagnostic law) -- split by hand in the payload's
+order; echo's slot and the shell's slot core read the claim at the ECHO
+purity (`FileFsPure.file_fs_pure_echo`), cat's at the file purity.
+

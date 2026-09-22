@@ -846,6 +846,41 @@ unowned critical item (WRITE-RELAY-3's `TB` guard).  RULES, replacing
   spent and is dropped.  `cons_fact` / `cons_flag` are echo-generic and
   could move down to `FsConsPin` / `AppEcho`; left in `AppFileCons` to keep
   the rebuild cone in the file tier.
+- RULING F0-BOOT (2026-09-22, PROGRAM-STREAM stretch 18): THE ERA'S BOOT
+  STATE IS FILED AT BOOT, BY /init, OUT OF THE DEED IT HOLDS.  The
+  defect: item 4's body has to hand sh the reader's pin at count 0
+  (`UkInit.init_boot_pay`'s `cc_rd Cr 0` = `ush_rd_pin_at (lk_rres FI) …
+  0`), and the file record's residue `FileLinksAt.fwc_rres_at s0 v []`
+  carried `f0w` = the ledger fragment `FileOut.f0_lb vf s0`, which only
+  the era's FIRST CONSOLE BYTE minted (`fecl_step_write_first` appended it
+  to the authority inside the console claim `fecl`).  So at /init's first
+  instruction the reader's residue was uninhabitable, and no ghost tie
+  between the reader's index and the state the writer would later file
+  could exist -- the writer files from its own head arm, the reader
+  cannot see it, and `fban_read_taint_at` / `fri_arms_at` need the two
+  to AGREE outside the claim.  Refused on the way: a head arm on the
+  residue (nothing pins the first read's state to the index), a `0 < P`
+  premise on the three non-first write steps (22 sites would owe a
+  positivity fact the families do not carry), and filing at the era
+  transfer (the console claim's power step never sees the deed).
+  RULED: TWO LEDGERS in `FileOut.file_era`.  `fe_f0` is the BOOT ledger:
+  its authority `f0_auth vf []` rides in `fturn` (init's credential), and
+  `fturn_file` lets /init file `s0` at boot, minting the persistent
+  `f0_bl vf s0`.  `fe_fl` is the FILED ledger, exactly the old one under
+  new names (`f0f_auth` in `fecl`, `f0_fd vf s0` its fragment), minted by
+  the first process byte, which now takes `f0_bl` and deposits the claim's
+  copy `f0_wit vf (fo_f0 so)`.  A WRITER carries `f0_lb vf s0 := f0_bl ∗
+  f0_fd` (so every writer family and its ~50 sites are unchanged: `f0w`
+  still means "filed at s0", and the three plain write steps still learn
+  "filed" from the claim's authority, `f0f_auth_lb_agree`); the READER's
+  residue carries the boot half alone (`FileLinksLine.f0bw`, `f0bw_agree`,
+  `f0w_bw_agree`), which exists at the head.  The head precondition
+  `f0pre`/`f0pre_at` carries `f0bw` beside the deed's typing;
+  `fturn_pre(_at)` is at `fturn_core` (the turn WITHOUT the authority);
+  `UInitFileCons.file_f0pre_at_of_boot` is the filing (`boot_at s0 s`: the
+  typed arm names `dst_content s`, the taint arm `None`), and
+  `file_rres_at_of_boot` is the reader's residue at the head.  The pure
+  model does not move: `fo_f0` is still `None` until the first byte.
 - TWO SERIAL STREAMS, at most two lanes on `iris/` at once: the KERNEL
   stream (OFF-LINK-6 + L5 + the `TB` guard, exit criterion: `Hopen_hand`,
   cat's lend and `UEchoFile.ef_chain` compile as `Definition`s; then

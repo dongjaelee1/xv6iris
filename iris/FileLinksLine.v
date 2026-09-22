@@ -1383,6 +1383,41 @@ Section file_links_line.
     iApply (f0_lb_agree with "Hl Hl'").
   Qed.
 
+  (* THE READER'S BOOT WITNESS (RULING F0-BOOT): the boot ledger's entry
+     alone, which init mints at boot -- so the reader's residue exists at
+     the era's head, where nothing has been filed yet.  A writer's [f0w]
+     is this beside the filed token, and the two agree on the state. *)
+  Definition f0bw (k : nat) (s0 : fstate) : iProp Σ :=
+    (⌜k = S gen_id⌝ ∗ ∃ vf : file_era, file_era_pin g k vf ∗ f0_bl vf s0)%I.
+
+  Global Instance f0bw_persistent k s : Persistent (f0bw k s).
+  Proof using . rewrite /f0bw. apply _. Qed.
+  Global Instance f0bw_timeless k s : Timeless (f0bw k s).
+  Proof using . rewrite /f0bw. apply _. Qed.
+
+  Lemma f0bw_agree (k k' : nat) (s s' : fstate) :
+    f0bw k s -∗ f0bw k' s' -∗ ⌜s = s'⌝.
+  Proof using .
+    iIntros "[-> H] [-> H']".
+    iDestruct "H" as (vf) "[#Hp #Hl]". iDestruct "H'" as (vf') "[#Hp' #Hl']".
+    iDestruct (file_era_pin_agree with "Hp Hp'") as %<-.
+    iApply (f0_bl_agree with "Hl Hl'").
+  Qed.
+
+  Lemma f0w_bw (k : nat) (s : fstate) : f0w k s -∗ f0bw k s.
+  Proof using .
+    iIntros "[-> H]". iDestruct "H" as (vf) "[#Hp #Hl]".
+    iSplitR; [ by iPureIntro | ]. iExists vf. iFrame "Hp".
+    iApply (f0_lb_bl with "Hl").
+  Qed.
+
+  Lemma f0w_bw_agree (k k' : nat) (s s' : fstate) :
+    f0w k s -∗ f0bw k' s' -∗ ⌜s = s'⌝.
+  Proof using .
+    iIntros "H H'". iDestruct (f0w_bw with "H") as "H".
+    iApply (f0bw_agree with "H H'").
+  Qed.
+
   (* the writer's cursor at a NAMED stage *)
   Definition fcur (v : era_pins) (ps cs : list nat) (s0 : fstate)
       (I : list (bv 8)) (P k : nat) : iProp Σ :=
@@ -1394,8 +1429,10 @@ Section file_links_line.
 
   (* THE ERA'S HEAD: nothing written, the boot state not yet filed, and
      the deed's typed witness in its place *)
+  (* ...AND THE HEAD'S PRECONDITION: the typed witness of the boot state
+     beside its (already minted) boot-ledger entry (RULING F0-BOOT) *)
   Definition f0pre : iProp Σ :=
-    (∃ s : fstate, ⌜fstate_ok s⌝ ∗ (f0_typed g s ∨ FT))%I.
+    (∃ s : fstate, ⌜fstate_ok s⌝ ∗ (f0_typed g s ∨ FT) ∗ f0bw (S gen_id) s)%I.
 
   Definition fhead (k : nat) (v : era_pins) (I : list (bv 8)) : iProp Σ :=
     (⌜I = []⌝ ∗ ⌜k = S gen_id⌝ ∗ turn v 0%nat ∗ ps_lb v [] ∗ cs_lb v []
@@ -1538,7 +1575,7 @@ Section file_links_line.
     (∃ (ps0 cs0 : list nat) (s0 : fstate),
        ⌜rd_stage_f ps0 cs0 I⌝
        ∗ turn_lb v (length (proc_before_f ps0 cs0 (Some s0) I))
-       ∗ ps_lb v ps0 ∗ cs_lb v cs0 ∗ f0w (S gen_id) s0)%I.
+       ∗ ps_lb v ps0 ∗ cs_lb v cs0 ∗ f0bw (S gen_id) s0)%I.
 
   Global Instance fwc_rres_persistent v I : Persistent (fwc_rres v I).
   Proof using . rewrite /fwc_rres. tl_leaf. Qed.
@@ -1878,9 +1915,11 @@ Section file_links_line.
       subst i. rewrite /fhead.
       iDestruct "Hh" as "(-> & -> & Htn & #Hps & #Hcs & #HE & Hvf & Hpre)".
       iDestruct "Hvf" as (vf) "#Hvf".
-      iDestruct "Hpre" as (s0) "[%Hok Hty]".
+      iDestruct "Hpre" as (s0) "(%Hok & Hty & Hbw)".
+      iDestruct "Hbw" as "[_ Hbw]". iDestruct "Hbw" as (vf') "[#Hvf' #Hbl]".
+      iDestruct (file_era_pin_agree with "Hvf Hvf'") as %<-.
       iApply ("Hfst" $! (S gen_id) v vf 3%nat b s0 Φ
-                with "[%] [%] [%] Hpin Hvf Htn Hps Hcs HE Hty [HΦ]").
+                with "[%] [%] [%] Hpin Hvf Htn Hps Hcs HE Hbl Hty [HΦ]").
       { exact Hok. }
       { rewrite pro_alts_length. lia. }
       { exact (EchoLinks.wr_ban_head b Hb). }
@@ -2035,9 +2074,11 @@ Section file_links_line.
     rewrite /fhead.
     iDestruct "Hh" as "(-> & -> & Htn & #Hps & #Hcs & #HE & Hvf & Hpre)".
     iDestruct "Hvf" as (vf) "#Hvf".
-    iDestruct "Hpre" as (s0) "[%Hok Hty]".
+    iDestruct "Hpre" as (s0) "(%Hok & Hty & Hbw)".
+    iDestruct "Hbw" as "[_ Hbw]". iDestruct "Hbw" as (vf') "[#Hvf' #Hbl]".
+    iDestruct (file_era_pin_agree with "Hvf Hvf'") as %<-.
     iApply ("Hfst" $! (S gen_id) v vf 0%nat b s0 Φ
-              with "[%] [%] [%] Hpin Hvf Htn Hps Hcs HE Hty [HΦ]").
+              with "[%] [%] [%] Hpin Hvf Htn Hps Hcs HE Hbl Hty [HΦ]").
     { exact Hok. }
     { rewrite pro_alts_length. lia. }
     { rewrite EchoLinks.wr_pro_alts_0 Hb. exact EchoLinks.wr_prompt_head. }
@@ -2280,9 +2321,11 @@ Section file_links_line.
       rewrite /fhead.
       iDestruct "Hh" as "(-> & -> & Htn & #Hps & #Hcs & #HE & Hvf & Hpre)".
       iDestruct "Hvf" as (vf) "#Hvf".
-      iDestruct "Hpre" as (s0) "[%Hok Hty]".
+      iDestruct "Hpre" as (s0) "(%Hok & Hty & Hbw)".
+      iDestruct "Hbw" as "[_ Hbw]". iDestruct "Hbw" as (vf') "[#Hvf' #Hbl]".
+      iDestruct (file_era_pin_agree with "Hvf Hvf'") as %<-.
       iApply ("Hfst" $! (S gen_id) v vf 0%nat b s0 Φ
-                with "[%] [%] [%] Hpin Hvf Htn Hps Hcs HE Hty [HΦ]").
+                with "[%] [%] [%] Hpin Hvf Htn Hps Hcs HE Hbl Hty [HΦ]").
       { exact Hok. }
       { rewrite pro_alts_length. lia. }
       { rewrite EchoLinks.wr_pro_alts_0 Hb. exact EchoLinks.wr_prompt_head. }
@@ -2316,14 +2359,14 @@ Section file_links_line.
 
   (* ---- the era's turn, and what it comes apart into ---- *)
   Definition fturn_pre (k : nat) : iProp Σ :=
-    (⌜k = S gen_id⌝ ∗ FileOut.fturn g k ∗ f0pre)%I.
+    (⌜k = S gen_id⌝ ∗ FileOut.fturn_core g k ∗ f0pre)%I.
 
   Lemma fturn0 (k : nat) :
     fturn_pre k -∗
     (∃ v : era_pins, FPIN k v ∗ dl_cnt v (1/2) 0%nat ∗ inp_lb v [])
     ∗ (∃ v : era_pins, FPIN k v ∗ fwc_ban k v [] 0%nat).
   Proof using .
-    rewrite /fturn_pre /FileOut.fturn.
+    rewrite /fturn_pre /FileOut.fturn_core.
     iIntros "(%Hk & Ht & Hpre)".
     iDestruct "Ht" as (v vf)
       "(#Hpin & #Hvf & Htn & Hdl & #Hcs & #Hps & #HE)".
@@ -2407,7 +2450,7 @@ Section file_links_line.
     iDestruct "Hc" as "[Hl | [[_ Hh] | #HT]]"; last by iExact "HT".
     - iDestruct "Hl" as (ps cs s1 P) "(%Hw & Htn & #Hps & #Hcs & #HE & #Hf)".
       cbn [wr_banp_f] in Hw.
-      iDestruct (f0w_agree with "Hf Hf0") as %<-.
+      iDestruct (f0w_bw_agree with "Hf Hf0") as %<-.
       iDestruct (ps_lb_cmp with "Hps Hps0") as %Hpsc.
       iDestruct (cs_lb_cmp with "Hcs Hcs0") as %Hcsc.
       rewrite Nat.add_0_r.

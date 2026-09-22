@@ -177,33 +177,62 @@ Section UInitFileCons.
   (*  step -- inside the [|==>] of [file_prog_law]'s conclusion.  This    *)
   (*  lemma therefore takes the STRIPPED disjunction.                     *)
   (* =================================================================== *)
-  Lemma file_f0pre_of_typed (s : dst) :
-    (f_typed (fgn_cl g) s ∨ FT) -∗ FileLinksLine.f0pre g.
+  (* THE BOOT FILING (RULING F0-BOOT).  The deed's typed witness names the
+     era's boot state; init files it into the boot ledger it holds in
+     [fturn], and what comes out is the head precondition AT THAT STATE.
+     Under the taint the witness names nothing, so the state is [None]. *)
+  Definition boot_at (s0 : fstate) (s : dst) : iProp Σ :=
+    ((⌜s0 = dst_content s⌝ ∗ f_typed (fgn_cl g) s) ∨ (⌜s0 = None⌝ ∗ FT))%I.
+
+  Global Instance boot_at_persistent s0 s : Persistent (boot_at s0 s).
+  Proof using . rewrite /boot_at. apply _. Qed.
+
+  (* THE FILING, out of the boot ledger's authority alone *)
+  Lemma file_f0bw_of_boot (s0 : fstate) :
+    FileOut.fturn g (S gen_id) ==∗
+    FileOut.fturn_core g (S gen_id) ∗ FileLinksLine.f0bw g (S gen_id) s0.
   Proof using .
-    rewrite /FileLinksLine.f0pre.
-    iIntros "[Hty | #HT]".
-    - destruct s as [[i bs] | ].
-      + iEval (rewrite /f_typed /=) in "Hty".
-        iDestruct "Hty" as (ls) "[#Hlb %Hbt]".
-        iExists (Some bs). iSplitR.
-        { iPureIntro. destruct Hbt as (ws & sel & _ & Hok & Hsel & ->).
-          exact (FileDisc.fcont_ok_subseq ws sel Hok Hsel). }
-        iLeft. iEval (rewrite /FileOut.f0_typed /=).
-        iExists ls. iFrame "Hlb". by iPureIntro.
-      + iExists None. iSplitR; [ iPureIntro; exact I | ].
-        iLeft. iApply (FileOut.f0_typed_none g).
-    - iExists None. iSplitR; [ iPureIntro; exact I | ]. by iRight.
+    iIntros "Ht".
+    iMod (FileOut.fturn_file g (S gen_id) s0 with "Ht") as "[Ht Hbl]".
+    iDestruct "Hbl" as (vf) "[#Hvf #Hbl]".
+    iModIntro. iFrame "Ht". rewrite /FileLinksLine.f0bw.
+    iSplitR; [ by iPureIntro | ]. iExists vf. iFrame "Hvf Hbl".
   Qed.
 
-  Lemma file_turn_pre_of_boot (s : dst) :
-    FileOut.fturn g (S gen_id) -∗ (f_typed (fgn_cl g) s ∨ FT) -∗
-    lk_turn FI (S gen_id).
+  (* ...AND THE HEAD PRECONDITION, out of the witness beside it.  A plain
+     wand, so that /init can take it UNDER THE LATER [AppFile.file_boot]
+     puts on the witness (its boot transport is a [|==>], whose conclusion
+     is no [◇]-absorber). *)
+  Lemma file_f0pre_at_of_bw (s0 : fstate) (s : dst) :
+    FileLinksLine.f0bw g (S gen_id) s0 -∗ boot_at s0 s -∗ f0pre_at g s0.
   Proof using .
-    iIntros "Ht Hty".
+    iIntros "#Hbw Hb". rewrite /FileLinksAt.f0pre_at.
+    iDestruct "Hb" as "[[-> Hty] | [-> #HT]]".
+    - destruct s as [[i bs] | ];
+        cbn [dst_content fmap option_fmap option_map].
+      + iEval (rewrite /f_typed /=) in "Hty".
+        iDestruct "Hty" as (ls) "[#Hlb %Hbt]".
+        iSplitR.
+        { iPureIntro. destruct Hbt as (ws & sel & _ & Hok & Hsel & ->).
+          exact (FileDisc.fcont_ok_subseq ws sel Hok Hsel). }
+        iSplitR; [ | iExact "Hbw" ].
+        iLeft. iEval (rewrite /FileOut.f0_typed /=).
+        iExists ls. iFrame "Hlb". by iPureIntro.
+      + iSplitR; [ iPureIntro; exact I | ].
+        iSplitR; [ | iExact "Hbw" ].
+        iLeft. iApply (FileOut.f0_typed_none g).
+    - iSplitR; [ iPureIntro; exact I | ].
+      iSplitR; [ | iExact "Hbw" ]. by iRight.
+  Qed.
+
+  Lemma file_turn_pre_of_boot (s0 : fstate) :
+    FileOut.fturn_core g (S gen_id) -∗ f0pre_at g s0 -∗ lk_turn FI (S gen_id).
+  Proof using .
+    iIntros "Ht Hpre".
     cbn [lk_turn FileLinkInst.file_link_inst].
     rewrite /FileLinksLine.fturn_pre.
     iSplitR; [ by iPureIntro | ]. iFrame "Ht".
-    iApply (file_f0pre_of_typed s with "Hty").
+    iApply (FileLinksAt.f0pre_at_pack g s0 with "Hpre").
   Qed.
 
   (* =================================================================== *)
@@ -428,33 +457,10 @@ Section UInitFileCons.
      name a state; under it /init takes [s0 := None] ([file_f0pre_at_taint]
      below), which is admissible everywhere and which every [_at] family's
      taint arm accepts. *)
-  Lemma file_f0pre_at_of_typed (s : dst) :
-    f_typed (fgn_cl g) s -∗ f0pre_at g (dst_content s).
-  Proof using .
-    rewrite /FileLinksAt.f0pre_at.
-    destruct s as [[i bs] | ];
-      cbn [dst_content fmap option_fmap option_map]; iIntros "Hty".
-    - iEval (rewrite /f_typed /=) in "Hty".
-      iDestruct "Hty" as (ls) "[#Hlb %Hbt]".
-      iSplitR.
-      { iPureIntro. destruct Hbt as (ws & sel & _ & Hok & Hsel & ->).
-        exact (FileDisc.fcont_ok_subseq ws sel Hok Hsel). }
-      iLeft. iEval (rewrite /FileOut.f0_typed /=).
-      iExists ls. iFrame "Hlb". by iPureIntro.
-    - iSplitR; [ iPureIntro; exact I | ].
-      iLeft. iApply (FileOut.f0_typed_none g).
-  Qed.
-
-  Lemma file_f0pre_at_taint : FT -∗ f0pre_at g None.
-  Proof using .
-    iIntros "#HT". rewrite /FileLinksAt.f0pre_at.
-    iSplitR; [ iPureIntro; exact I | ]. by iRight.
-  Qed.
-
   (* THE TURN, AT THE NAMED STATE.  [FileLinksAtBan.fturn_pre_at] is
      [lk_turn (file_link_inst_at g s0)]. *)
   Lemma file_turn_pre_at_of_boot (s0 : fstate) :
-    FileOut.fturn g (S gen_id) -∗ f0pre_at g s0 -∗
+    FileOut.fturn_core g (S gen_id) -∗ f0pre_at g s0 -∗
     lk_turn (file_link_inst_at g s0) (S gen_id).
   Proof using .
     iIntros "Ht Hpre".
@@ -464,13 +470,13 @@ Section UInitFileCons.
   Qed.
 
   (* ---- (a) [Wbl_at s0 []] IS INHABITED AT /init's FIRST INSTRUCTION ----
-     at [s0] the deed's own content, out of [AppFile.file_boot]'s two
-     halves and nothing else.  This is what ruling H buys: the credential
-     /init holds from its entry and the deed it holds beside it are at ONE
-     state, so [UShRound]'s hold can be stated without [f0_lb] and the
-     round's first prompt has its tie. *)
+     at [s0] the deed's own content, out of the filed turn and nothing
+     else.  This is what ruling H buys: the credential /init holds from
+     its entry and the deed it holds beside it are at ONE state, so
+     [UShRound]'s hold can be stated without [f0_lb] and the round's first
+     prompt has its tie. *)
   Lemma file_Wbl_at_of_boot (s0 : fstate) :
-    FileOut.fturn g (S gen_id) -∗ f0pre_at g s0 -∗
+    FileOut.fturn_core g (S gen_id) -∗ f0pre_at g s0 -∗
     (∃ v : era_pins, era_pin (fgn_echo g) (S gen_id) v
        ∗ dl_cnt v (1/2) 0%nat ∗ inp_lb v [])
     ∗ file_Wbl_at g s0 [].
@@ -480,6 +486,31 @@ Section UInitFileCons.
     iDestruct (lk_turn0 (file_link_inst_at g s0) (S gen_id) with "Hturn")
       as "[Hrd Hwr]".
     iSplitL "Hrd"; [ iExact "Hrd" | iExact "Hwr" ].
+  Qed.
+
+  (* ---- (a') THE READER'S RESIDUE AT THE HEAD (RULING F0-BOOT) ----
+     the turn's three bounds, the boot witness init just minted, and the
+     empty input's (vacuous) line witness.  Nothing is consumed: every
+     piece is persistent, or a lower bound of what init keeps. *)
+  Lemma file_rres_at_of_boot (s0 : fstate) :
+    FileOut.fturn_core g (S gen_id) -∗ f0pre_at g s0 -∗
+    FileOut.fturn_core g (S gen_id)
+    ∗ ∃ v : era_pins, era_pin (fgn_echo g) (S gen_id) v
+        ∗ FileLinksAt.fwc_rresw_at g s0 v [].
+  Proof using .
+    iIntros "Ht #Hpre". rewrite /FileOut.fturn_core.
+    iDestruct "Ht" as (v vf) "(#Hpin & #Hvf & Htn & Hdl & #Hcs & #Hps & #HE)".
+    iEval (rewrite /EchoOut.turn) in "Htn".
+    iDestruct (mono_nat_lb_own_get with "Htn") as "#Hlb0".
+    iSplitL "Htn Hdl".
+    { iExists v, vf. iFrame "Hpin Hvf Htn Hdl Hcs Hps HE". }
+    iExists v. iFrame "Hpin".
+    rewrite /FileLinksAt.fwc_rresw_at /FileLinksAt.fwc_rres_at.
+    iDestruct "Hpre" as "(_ & _ & #Hbw)".
+    iSplitR.
+    - iExists [], []. rewrite proc_before_f_nil. cbn [length].
+      iFrame "Hlb0 Hps Hcs Hbw". iPureIntro. exact FileOut.rd_stage_f_0.
+    - rewrite /FileLinksLine.flw. iLeft. iPureIntro. reflexivity.
   Qed.
 
   (* ---- (b) AFTER THE BANNER'S FIRST BYTE THE SAME NAME COMES BACK ----
@@ -508,26 +539,27 @@ Section UInitFileCons.
   (*  file audit does not see the program tier, so the import is free).   *)
   (* =================================================================== *)
 
-  (* ---- /init's FIRST CREDENTIAL, out of [AppFile.file_boot] and nothing
-          else.  This is what [UInitKernel.init_boot_pay] asks for at the
-          file era ([cc_wbn Cr 0]): the round's banner-owed family at the
-          deed's own content and the empty input. ---- *)
-  Lemma file_Wbf_at_of_boot (s : dst) :
-    FileOut.fturn g (S gen_id) -∗ fown r s -∗ f_typed (fgn_cl g) s -∗
+  (* ---- /init's FIRST CREDENTIAL, out of the filed turn and the deed.
+          This is what [UInitKernel.init_boot_pay] asks for at the file
+          era ([cc_wbn Cr 0]): the round's banner-owed family at the deed's
+          own content and the empty input; under the taint the deed's tie
+          is the taint's. ---- *)
+  Lemma file_Wbf_at_of_boot (s0 : fstate) (s : dst) :
+    FileOut.fturn_core g (S gen_id) -∗ f0pre_at g s0 -∗
+    fown r s -∗ boot_at s0 s -∗
     (∃ v : era_pins, era_pin (fgn_echo g) (S gen_id) v
        ∗ dl_cnt v (1/2) 0%nat ∗ inp_lb v [])
-    ∗ UShRound.Wbf g r (dst_content s) [].
+    ∗ UShRound.Wbf g r s0 [].
   Proof using .
-    iIntros "Ht Hd #Hty".
-    iDestruct "Ht" as (v vf)
-      "(#Hpin & #Hvf & Htn & Hdl & #Hcs & #Hps & #HE)".
-    iDestruct (file_Wbl_at_of_boot (dst_content s)
-                 with "[Htn Hdl] [Hty]") as "[Hrd Hwb]".
-    { rewrite /FileOut.fturn. iExists v, vf.
+    iIntros "Ht Hpre Hd Hb". rewrite /FileOut.fturn_core.
+    iDestruct "Ht" as (v vf) "(#Hpin & #Hvf & Htn & Hdl & #Hcs & #Hps & #HE)".
+    iDestruct (file_Wbl_at_of_boot s0 with "[Htn Hdl] Hpre") as "[Hrd Hwb]".
+    { rewrite /FileOut.fturn_core. iExists v, vf.
       iFrame "Hpin Hvf Htn Hdl Hcs Hps HE". }
-    { iApply (file_f0pre_at_of_typed s with "Hty"). }
     iFrame "Hrd". rewrite /UShRound.Wbf. iFrame "Hwb".
-    iApply (UShRound.sh_done_head g r s v with "Hpin Hcs Hd Hty").
+    iDestruct "Hb" as "[[-> #Hty] | [-> #HT]]".
+    - iApply (UShRound.sh_done_head g r s v with "Hpin Hcs Hd Hty").
+    - iApply (UShRound.sh_deed_taint g r with "HT").
   Qed.
 
 End UInitFileCons.

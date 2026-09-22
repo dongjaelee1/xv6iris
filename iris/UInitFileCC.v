@@ -110,7 +110,8 @@ Section FileInitCC.
         HPav : !pavG Σ, HWc : !wchG Σ, HF : !fileG Σ}
       (g : file_gn) (r : file_names) (s0 : fstate) (n : nat) : iProp Σ :=
     (∃ I : list (bv 8), ⌜length I = n⌝
-       ∗ (∃ v : era_pins, era_pin (fgn_echo g) (S gen_id) v ∗ inp_lb v I)
+       ∗ ((∃ v : era_pins, era_pin (fgn_echo g) (S gen_id) v ∗ inp_lb v I)
+          ∨ file_taint (fgn_cl g))
        ∗ UShRound.sh_done_at g r s0 I)%I.
 
   Lemma file_cc_rd_timeless (HR : riscvGS Σ) (GEN : GenId)
@@ -194,6 +195,58 @@ Section FileInitCC.
   Qed.
 
 
+  (* THE BANNER-OWED FAMILY WITH THE HOLD IS THE RECORD'S [cc_wbn] (item
+     4's assembly, [UInitPipe]'s [Hbto]/[Hbfr] with the deed's hold): the
+     record's banner credential beside the deed's DONE, the two at ONE
+     input by the era's input bound -- or the hold is the taint's. *)
+  Lemma file_wbn_to (HR : riscvGS Σ) (GEN : GenId)
+      `{HBs : !bioslotG Σ, HFd : !fdslotG Σ, HIr : !irefslotG Σ,
+        HPav : !pavG Σ, HWc : !wchG Σ, HF : !fileG Σ}
+      (g : file_gn) (r : file_names) (s0 : fstate) (n : nat) :
+    UserConsole.cc_wbn (file_cc HR GEN g r s0) n -∗
+    UInitBanner.kinit_ban_at (file_link_inst_at g s0) n
+    ∗ file_H HR GEN g r s0 n.
+  Proof using .
+    rewrite /UserConsole.cc_wbn /file_cc /=. iIntros "H".
+    iDestruct "H" as (I) "[%Hlen Hb]".
+    iDestruct (UShRound.Wbf_inp g r s0 I with "Hb") as "[Hb #Hinp]".
+    rewrite /UShRound.Wbf /FileLinkInst.file_Wbl_at.
+    iDestruct "Hb" as "[Hb Hd]". iDestruct "Hb" as (v) "[#Hpin Hb]".
+    iSplitL "Hb".
+    { rewrite /UInitBanner.kinit_ban_at. iExists v, I.
+      iSplitR; [ by iPureIntro | ]. iFrame "Hpin Hb". }
+    rewrite /file_H. iExists I. iSplitR; [ by iPureIntro | ]. iFrame "Hd".
+    iDestruct "Hinp" as "[[Hinp _] | #HT]"; [ iLeft; iExact "Hinp" | by iRight ].
+  Qed.
+
+  Lemma file_wbn_of (HR : riscvGS Σ) (GEN : GenId)
+      `{HBs : !bioslotG Σ, HFd : !fdslotG Σ, HIr : !irefslotG Σ,
+        HPav : !pavG Σ, HWc : !wchG Σ, HF : !fileG Σ}
+      (g : file_gn) (r : file_names) (s0 : fstate) (n : nat) :
+    UInitBanner.kinit_ban_at (file_link_inst_at g s0) n -∗
+    file_H HR GEN g r s0 n -∗
+    UserConsole.cc_wbn (file_cc HR GEN g r s0) n.
+  Proof using .
+    rewrite /UInitBanner.kinit_ban_at /file_H /UserConsole.cc_wbn /file_cc /=.
+    iIntros "Hb Hh".
+    iDestruct "Hb" as (v I) "(%Hlen & #Hpin & Hb)".
+    iDestruct "Hh" as (I') "(%Hlen' & #Hinp' & Hd)".
+    iAssert (FileLinkInst.file_Wbl_at g s0 I) with "[Hb]" as "Hb".
+    { rewrite /FileLinkInst.file_Wbl_at. iExists v. iFrame "Hpin Hb". }
+    iDestruct (FileLinksAtInp.file_wb_inp_at g s0 I with "Hb") as "[Hb #Hinp]".
+    iExists I. iSplitR; [ by iPureIntro | ]. rewrite /UShRound.Wbf. iFrame "Hb".
+    iDestruct "Hinp" as "[[Hinp _] | #HT]"; last first.
+    { iApply (UShRound.sh_deed_taint with "HT"). }
+    iDestruct "Hinp'" as "[Hinp' | #HT]"; last first.
+    { iApply (UShRound.sh_deed_taint with "HT"). }
+    iDestruct "Hinp" as (v1) "[#Hpin1 #Hi]".
+    iDestruct "Hinp'" as (v') "[#Hpin' #Hi']".
+    iDestruct (era_pin_agree (fgn_echo g) (S gen_id) v1 v' with "Hpin1 Hpin'")
+      as %<-.
+    iDestruct (inp_lb_agree v1 I I' ltac:(congruence) with "Hi Hi'") as %<-.
+    iExact "Hd".
+  Qed.
+
   (* ===================================================================== *)
   (*  THE TEN LAWS ([UInitSh.cons_cred_holds_at]) at the file era.          *)
   (*  [UInitPipe.pipe_cc_holds] is the pattern: nine transfers, one step.   *)
@@ -272,6 +325,8 @@ Section FileInitCC.
       { intro J. iIntros "Hc Hd". rewrite (UShRound.Wcf_0 g r s0 J).
         iLeft. iFrame "Hc Hd". }
       iDestruct "Hinp" as "[Hinp | #HT]"; last first.
+      { iApply (Hdone I with "Hc"). iApply (UShRound.sh_deed_taint with "HT"). }
+      iDestruct "Hinp'" as "[Hinp' | #HT]"; last first.
       { iApply (Hdone I with "Hc"). iApply (UShRound.sh_deed_taint with "HT"). }
       iDestruct "Hinp" as (v) "[#Hpin #Hi]".
       iDestruct "Hinp'" as (v') "[#Hpin' #Hi']".

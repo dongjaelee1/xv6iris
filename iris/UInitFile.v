@@ -48,35 +48,16 @@
 (*  landed [FileDeltas] legs, and the console's own MKNOD, by              *)
 (*  [file_pred_split] / [file_pred_join].                                  *)
 (*                                                                       *)
-(*  ===== WHY THE THEOREM BELOW IS NOT CLOSED YET ====================== *)
+(*  ===== CLOSED (2026-09-22) ============================================ *)
 (*                                                                       *)
-(*  Four named things, with their owners; the analysis, file:lemma by     *)
-(*  file:lemma, is in claude-notes/projects/app-file-findings/            *)
-(*  INIT-FILE.md.                                                         *)
-(*                                                                       *)
-(*  (1) THE DEED CANNOT BE TIED TO THE FILED BOOT STATE.                  *)
-(*      [FileLinksLine.f0pre] is existential in the state it offers, so   *)
-(*      the [s0] the banner's first byte files is not the [s0] /init      *)
-(*      named when it handed the turn over, and [UCatOut.cat_tie] -- the  *)
-(*      whole content of sh's [sh_hold] -- is unreachable.  The repair is *)
-(*      an index: [f0pre_at s0] beside [f0pre], through [fhead] and       *)
-(*      [fwc_ban]'s head arm.                                             *)
-(*  (2) [UShRound.sh_hold []] IS NOT INHABITED AT /init's ENTRY, because  *)
-(*      its left arm asks for [FileOut.f0_lb], which no resource in the   *)
-(*      tree produces before the era's first console byte.  It needs an   *)
-(*      era-head arm.  Lane SH-ROUND's.                                   *)
-(*  (3) [UInitSh.cons_cred_holds] at the file families is nine            *)
-(*      generalisations short in [UShLine.v] / [UShPanic.v] (a linear     *)
-(*      frame through the credential laws), [UInitDiag.v] is echo-only    *)
-(*      and needs a [LinkRec] field, there is no [StageRec] instance at   *)
-(*      the file, and [UInitCons.init_cons_laws_at]'s UNARM conjunct      *)
-(*      cannot be discharged at the file claim as it is stated.  Lane     *)
-(*      LINK-GEN's, and one conjunct is a design change.                  *)
-(*  (4) [UInitCons.init_cons_laws_at]'s CREATE-AT-ANOTHER-NAME conjunct   *)
-(*      is FALSE at this claim as stated: its side condition permits a    *)
-(*      create of a DEVICE called `f` in the root, which [AppFile.f_ok]   *)
-(*      at an absent deed refutes.  Its side condition has to exclude     *)
-(*      [FileDisc.fname_f] as well; echo's discharge does not move.       *)
+(*  The four things the earlier header listed are all landed: (1) the    *)
+(*  index (RULING H', [FileLinksAt]), (2) the era-head arm (RULING        *)
+(*  HOLD-POS, [UShRound.sh_done_head]), (3) [UInitFileCC.file_cc_holds]  *)
+(*  and (4) the name predicate (RULING NM / NM-OPEN).  Two more were met  *)
+(*  on the way and are rulings of their own: the console credential over *)
+(*  [option Z] (RULING CONS-CRED) and the boot state filed at boot        *)
+(*  (RULING F0-BOOT).  The assembly is [UInitFileBoot.file_Hinit_boot_at]; *)
+(*  this file applies it and closes the corollary.                       *)
 (* ===================================================================== *)
 From Stdlib Require Import ZArith List.
 From stdpp Require Import gmap list bitvector.definitions.
@@ -102,24 +83,34 @@ Require Import FsImgDisk.
 Require Import AppFile.
 Require Import EchoOut.
 Require Import FileOut.
+Require Import App.                      (* [app_names] / [app_pred] / [app_boot] / [app_turn] *)
 Require Import UFileBootAdequacy.        (* [file_prog_law], [fileΣ] *)
+Require Import AppFileRec.               (* [app_file]'s projections *)
+Require Import UInitFileBoot.            (* [file_Hinit_boot_at]: the assembly *)
 Local Open Scope Z_scope.
 
 Section UInitFile.
   Context {Σ : gFunctors}.
   Context `{!xv6G Σ, !riscvGpreS Σ, !fileGpreS Σ, !pavGpreS Σ,
             !fdslotGpreS Σ, !irefslotGpreS Σ, !bioslotGpreS Σ, !wchGpreS Σ}.
-  Context `{!ufdG Σ}.
+  Context `{HU : !ufdG Σ}.
   Context `{!echoOutG Σ, !inG Σ (mono_listR (leibnizO Z)), !fileAppG Σ,
             !fileOutG Σ}.
 
   (* THE LAW, BY ITS NAME AND NOT BY A COPY OF ITS TEXT.  A restatement
      would be a second thing to keep in step with [App.xv6_app_laws]'s
      field; naming [UFileBootAdequacy.file_prog_law] is what makes the
-     corollary below a one-liner. *)
+     corollary below a one-liner.  The body is [UInitFileBoot.
+     file_Hinit_boot_at] at the record's own two equations. *)
   Theorem file_Hinit_boot : file_prog_law (Σ := Σ).
-  Proof using.
-  Admitted.
+  Proof using HU.
+    intros HR GEN HBs HFd HIr HPav HWc HF c r Heq Hiface Hgen.
+    cbn [app_file app_names app_pred app_ifc] in Heq, Hiface.
+    iIntros "#Hinv Hb Hturn".
+    iApply (file_Hinit_boot_at HR GEN c r Heq Hiface with "Hinv [Hb] [Hturn]").
+    - cbn [app_file app_boot]. iExact "Hb".
+    - cbn [app_file app_turn file_turn]. iExact "Hturn".
+  Qed.
 
 End UInitFile.
 
@@ -127,12 +118,9 @@ End UInitFile.
 (*  THE COROLLARY -- ONE LINE.                                           *)
 (*                                                                       *)
 (*  [UFileBootAdequacy.file_adequacy_fileSigma] with its only remaining   *)
-(*  premise discharged.  ADMITTED TRANSITIVELY (through                   *)
-(*  [file_Hinit_boot]), so this is NOT added to                           *)
-(*  [iris/FileAssumptions.v]: the audit target must keep printing the     *)
-(*  thirteen ambient assumptions and nothing else.  The day K3's proof    *)
-(*  lands, this corollary becomes the campaign's theorem and              *)
-(*  [FileAssumptions.v] is repointed at it -- one line there too.         *)
+(*  premise discharged.  This is the campaign's theorem, and              *)
+(*  [iris/FileAssumptions.v] audits it: the fourteen ambient assumptions  *)
+(*  and nothing else.                                                    *)
 (* ===================================================================== *)
 Corollary file_adequacy_closed
     (g : gstate)

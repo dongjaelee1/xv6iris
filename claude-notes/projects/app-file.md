@@ -71,9 +71,26 @@ Landed 2026-09-21:
   closed -- `redir_prefix` and `fname_f` move, the 22 files computing on the
   literal "f" follow.  PROGRAM-STREAM.md stretch 17.
 
-NEXT: 4 (INIT-FILE, `file_Hinit_boot`'s body -- it now supplies the slot
-UNDER the flag: `□ (∀ jo, file_cons_cred jo -∗ init_sh_slot …)`, the round
-from `sh_round_holds_file` at that `jo`), then the adequacy close.  PROGRESS
+- **4 IS CLOSED and so is the theorem (2026-09-22, branch
+  `app-file/cons-cred`, second landing).**  `iris/UInitFileBoot.v` is the
+  assembly (`file_Hinit_boot_at`, `UInitPipe.pipe_Hinit_boot`'s twin);
+  `UInitFile.file_Hinit_boot` applies it and `UInitFile.file_adequacy_closed`
+  is the campaign's theorem, audited by `FileAssumptions.v` (fourteen).  Two
+  more rulings on the way: RULING F0-BOOT (the reader's pin at count 0 was
+  uninhabitable: the boot state's ledger entry was minted by the first
+  console byte; now /init files it at boot -- two ledgers in
+  `FileOut.file_era`) and the assembly's three wedges (PROGRAM-STREAM
+  stretch 18): the deed's typed witness stays UNDER the transport's `▷`
+  (the theorem's `|==>` absorbs no `◇`; the two timeless payload pieces are
+  built under `▷` and the exec slot absorbs the `◇`, `UInitFileBoot.
+  uslot_except_0`), the slot lemma's instances must be BOUND not searched
+  (`uexecSG_xv6` wants `fileG`), and the payload's laws must be pinned at
+  `uprogSG_free`.
+
+NEXT: nothing on this worklist.  Owed cleanups: SLOT-WS (the fork interface
+speaking the parsed line), NAME-PATTERN (the rename of `f` to an `out*`
+name), and the owner's open question whether the file theorem joins the
+combined application (stage 3).  PROGRESS
 (2026-09-22, branch `app-file/init-file`): `FileReadInst.file_read_inst_at` /
 `file_read_leaf_holds_at` (the read leaf at the indexed record) and
 `iris/UInitFileCC.v` -- `file_cc`, `file_cc_holds` (all ten laws),

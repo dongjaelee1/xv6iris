@@ -429,9 +429,13 @@ Record file_gn := MkFileGn {
 Definition fgn_echo (g : file_gn) : echo_fixed := fst (fgn_cl g).
 
 Record file_era := MkFEra {
-  fe_f0 : gname;   (* mono_list fstate: [] before the era's boot state is
-                      filed, [s0] after; the persistent witness is the lower
-                      bound at [[s0]] *)
+  fe_f0 : gname;   (* mono_list fstate: the era's BOOT STATE, filed by <init>
+                      at its first instruction out of the deed it holds then
+                      (RULING F0-BOOT): [] before, [s0] after; the persistent
+                      witness [f0_bl] is the lower bound at [[s0]] *)
+  fe_fl : gname;   (* mono_list fstate: [] until the era's FIRST PROCESS BYTE
+                      files that state into the console claim, [s0] after;
+                      its lower bound [f0_fd] is the writer's "filed" token *)
 }.
 
 Class fileOutG (Σ : gFunctors) := FileOutG {
@@ -473,10 +477,39 @@ Section file_out.
     iDestruct (ghost_map_elem_agree with "H1 H2") as %Heq. by iPureIntro.
   Qed.
 
+  (* THE BOOT LEDGER (RULING F0-BOOT): its authority rides in init's
+     credential [fturn], and init files the boot state at boot. *)
   Definition f0_auth (v : file_era) (l : list fstate) : iProp Σ :=
     own (fe_f0 v) (●ML (l : list (leibnizO fstate))).
-  Definition f0_lb (v : file_era) (s0 : fstate) : iProp Σ :=
+  Definition f0_bl (v : file_era) (s0 : fstate) : iProp Σ :=
     own (fe_f0 v) (◯ML ([s0] : list (leibnizO fstate))).
+
+  (* THE FILED LEDGER: its authority lives in the console claim, and the
+     era's first process byte files the (already decided) boot state. *)
+  Definition f0f_auth (v : file_era) (l : list fstate) : iProp Σ :=
+    own (fe_fl v) (●ML (l : list (leibnizO fstate))).
+  Definition f0_fd (v : file_era) (s0 : fstate) : iProp Σ :=
+    own (fe_fl v) (◯ML ([s0] : list (leibnizO fstate))).
+
+  (* ...and what a WRITER carries past the era's first byte: the boot
+     state, and that it is filed.  The reader's residue carries the boot
+     half alone ([FileLinksLine.f0bw]), which is what exists at the head. *)
+  Definition f0_lb (v : file_era) (s0 : fstate) : iProp Σ :=
+    (f0_bl v s0 ∗ f0_fd v s0)%I.
+
+  Global Instance f0_bl_persistent v s : Persistent (f0_bl v s).
+  Proof using . rewrite /f0_bl. apply _. Qed.
+  Global Instance f0_bl_timeless v s : Timeless (f0_bl v s).
+  Proof using . rewrite /f0_bl. apply _. Qed.
+  Global Instance f0_fd_persistent v s : Persistent (f0_fd v s).
+  Proof using . rewrite /f0_fd. apply _. Qed.
+  Global Instance f0_fd_timeless v s : Timeless (f0_fd v s).
+  Proof using . rewrite /f0_fd. apply _. Qed.
+  Global Instance f0f_auth_timeless v l : Timeless (f0f_auth v l).
+  Proof using . rewrite /f0f_auth. apply _. Qed.
+
+  Lemma f0_lb_bl (v : file_era) (s0 : fstate) : f0_lb v s0 -∗ f0_bl v s0.
+  Proof using . rewrite /f0_lb. by iIntros "[$ _]". Qed.
 
   Global Instance f0_lb_persistent v s : Persistent (f0_lb v s).
   Proof using . rewrite /f0_lb. apply _. Qed.
@@ -487,10 +520,10 @@ Section file_out.
 
   (* the lower bound READS the era's boot state: a one-element lower bound
      of a list of length at most one pins the list *)
-  Lemma f0_auth_lb_agree (v : file_era) (f0 : option fstate) (s : fstate) :
-    f0_auth v (opt_list f0) -∗ f0_lb v s -∗ ⌜f0 = Some s⌝.
+  Lemma f0f_auth_lb_agree (v : file_era) (f0 : option fstate) (s : fstate) :
+    f0f_auth v (opt_list f0) -∗ f0_fd v s -∗ ⌜f0 = Some s⌝.
   Proof using .
-    rewrite /f0_auth /f0_lb. iIntros "Ha Hb".
+    rewrite /f0f_auth /f0_fd. iIntros "Ha Hb".
     iDestruct (own_valid_2 with "Ha Hb") as %Hv%mono_list_both_valid_L.
     iPureIntro. destruct f0 as [s' |]; cbn [opt_list] in Hv.
     - destruct Hv as [z Hz]. destruct z as [| y z].
@@ -505,10 +538,10 @@ Section file_out.
      lower bounds are comparable and hence equal.  This is what lets the
      ledger check a later drain's state against the one it fixed at the
      era's first. *)
-  Lemma f0_lb_agree (v : file_era) (s s' : fstate) :
-    f0_lb v s -∗ f0_lb v s' -∗ ⌜s = s'⌝.
+  Lemma f0_bl_agree (v : file_era) (s s' : fstate) :
+    f0_bl v s -∗ f0_bl v s' -∗ ⌜s = s'⌝.
   Proof using .
-    rewrite /f0_lb. iIntros "H1 H2".
+    rewrite /f0_bl. iIntros "H1 H2".
     iDestruct (own_valid_2 with "H1 H2") as %Hv.
     iPureIntro.
     destruct (mono_list_lb_op_valid_1_L _ _ Hv) as [[z Hz] | [z Hz]];
@@ -518,31 +551,63 @@ Section file_out.
          rewrite length_app in Hz; cbn [length] in Hz; lia ]).
   Qed.
 
-  Lemma f0_lb_get (v : file_era) (s : fstate) :
-    f0_auth v [s] -∗ f0_auth v [s] ∗ f0_lb v s.
+  Lemma f0_lb_agree (v : file_era) (s s' : fstate) :
+    f0_lb v s -∗ f0_lb v s' -∗ ⌜s = s'⌝.
   Proof using .
-    rewrite /f0_auth /f0_lb. iIntros "Ha".
+    rewrite /f0_lb. iIntros "[H1 _] [H2 _]". iApply (f0_bl_agree with "H1 H2").
+  Qed.
+
+  Lemma f0f_lb_get (v : file_era) (s : fstate) :
+    f0f_auth v [s] -∗ f0f_auth v [s] ∗ f0_fd v s.
+  Proof using .
+    rewrite /f0f_auth /f0_fd. iIntros "Ha".
     iDestruct (own_mono _ _ (◯ML ([s] : list (leibnizO fstate))) with "Ha")
       as "#Hb"; [ apply mono_list_included |].
     iFrame "Ha Hb".
   Qed.
 
-  (* THE ERA'S FIRST PROCESS BYTE FILES THE BOOT STATE, once and for all *)
+  (* INIT FILES THE BOOT STATE AT BOOT, once and for all; the authority is
+     spent, since two lower bounds of a one-entry list agree on their own *)
   Lemma f0_file (v : file_era) (s : fstate) :
-    f0_auth v [] ==∗ f0_auth v [s] ∗ f0_lb v s.
+    f0_auth v [] ==∗ f0_bl v s.
   Proof using .
-    rewrite /f0_auth. iIntros "Ha".
+    rewrite /f0_auth /f0_bl. iIntros "Ha".
     iMod (own_update _ _ (●ML ([s] : list (leibnizO fstate))) with "Ha") as "Ha".
     { apply mono_list_update. by exists [s]. }
-    iModIntro. iApply (f0_lb_get with "Ha").
+    iDestruct (own_mono _ _ (◯ML ([s] : list (leibnizO fstate))) with "Ha")
+      as "#Hb"; [ apply mono_list_included |].
+    iModIntro. iExact "Hb".
   Qed.
 
-  Lemma f0_alloc : ⊢ |==> ∃ v : file_era, f0_auth v [].
+  (* THE ERA'S FIRST PROCESS BYTE FILES THAT STATE INTO THE CLAIM *)
+  Lemma f0f_file (v : file_era) (s : fstate) :
+    f0f_auth v [] ==∗ f0f_auth v [s] ∗ f0_fd v s.
+  Proof using .
+    rewrite /f0f_auth. iIntros "Ha".
+    iMod (own_update _ _ (●ML ([s] : list (leibnizO fstate))) with "Ha") as "Ha".
+    { apply mono_list_update. by exists [s]. }
+    iModIntro. iApply (f0f_lb_get with "Ha").
+  Qed.
+
+  Lemma f0_alloc : ⊢ |==> ∃ v : file_era, f0_auth v [] ∗ f0f_auth v [].
   Proof using .
     iMod (own_alloc (●ML ([] : list (leibnizO fstate)))) as (gf) "Hf";
       [apply mono_list_auth_valid |].
-    iModIntro. iExists (MkFEra gf). rewrite /f0_auth /=. iFrame "Hf".
+    iMod (own_alloc (●ML ([] : list (leibnizO fstate)))) as (gl) "Hl";
+      [apply mono_list_auth_valid |].
+    iModIntro. iExists (MkFEra gf gl). rewrite /f0_auth /fl_auth /=.
+    iFrame "Hf Hl".
   Qed.
+
+  (* THE CLAIM'S COPY OF THE BOOT WITNESS, deposited by the first byte, so
+     that a read or a drain hands out the boot half beside the filed one *)
+  Definition f0_wit (v : file_era) (f0 : option fstate) : iProp Σ :=
+    match f0 with Some s => f0_bl v s | None => emp end.
+
+  Global Instance f0_wit_persistent v f0 : Persistent (f0_wit v f0).
+  Proof using . destruct f0; rewrite /f0_wit; apply _. Qed.
+  Global Instance f0_wit_timeless v f0 : Timeless (f0_wit v f0).
+  Proof using . destruct f0; rewrite /f0_wit; apply _. Qed.
 
   (* ---- THE TYPED WITNESS: what the deed's evidence for the era's boot
          state looks like once it is inside the claim ---- *)
@@ -584,7 +649,8 @@ Section file_out.
            bound of it, so a writer's bound says what the console has HANDED
            OVER and not only what it has echoed. *)
         ∗ dl_list_auth v (LogEntryDefs.ch_dl H)
-        ∗ f0_auth vf (opt_list (fo_f0 so))
+        ∗ f0f_auth vf (opt_list (fo_f0 so))
+        ∗ f0_wit vf (fo_f0 so)
         ∗ f0_typed (f0_st (fo_f0 so))
         ∗ ⌜fecl_pure k ho so H⌝)%I.
 
@@ -610,14 +676,40 @@ Section file_out.
   (* THE CREDENTIAL INIT IS HANDED AT ITS ERA'S FIRST INSTRUCTION:
      [EchoOut.eturn] with the era's SECOND record beside its first, so that
      the first write can file the boot state. *)
-  Definition fturn (k : nat) : iProp Σ :=
+  Definition fturn_core (k : nat) : iProp Σ :=
     (∃ (v : era_pins) (vf : file_era),
        era_pin (fgn_echo g) k v ∗ file_era_pin k vf
        ∗ turn v 0%nat ∗ dl_cnt v (1/2) 0%nat
        ∗ cs_lb v [] ∗ ps_lb v [] ∗ inp_lb v [])%I.
 
+  (* ...WITH THE BOOT LEDGER'S AUTHORITY (RULING F0-BOOT): init files the
+     era's boot state at its first instruction, out of the deed it holds
+     then, and the writer's head and the reader's residue both carry the
+     entry from there ([f0_bl]); the first process byte then only files
+     it into the claim. *)
+  Definition fturn (k : nat) : iProp Σ :=
+    (∃ (v : era_pins) (vf : file_era),
+       era_pin (fgn_echo g) k v ∗ file_era_pin k vf
+       ∗ turn v 0%nat ∗ dl_cnt v (1/2) 0%nat
+       ∗ cs_lb v [] ∗ ps_lb v [] ∗ inp_lb v []
+       ∗ f0_auth vf [])%I.
+
+  Global Instance fturn_core_timeless k : Timeless (fturn_core k).
+  Proof using . rewrite /fturn_core. apply _. Qed.
   Global Instance fturn_timeless k : Timeless (fturn k).
   Proof using . rewrite /fturn. apply _. Qed.
+
+  Lemma fturn_file (k : nat) (s0 : fstate) :
+    fturn k ==∗
+      fturn_core k ∗ ∃ vf : file_era, file_era_pin k vf ∗ f0_bl vf s0.
+  Proof using .
+    rewrite /fturn /fturn_core. iIntros "H".
+    iDestruct "H" as (v vf) "(#Hpin & #Hfp & Ht & Hdl & #Hcs & #Hps & #HE & Hf0)".
+    iMod (f0_file vf s0 with "Hf0") as "#Hbl".
+    iModIntro. iSplitL.
+    - iExists v, vf. iFrame "Hpin Hfp Ht Hdl Hcs Hps HE".
+    - iExists vf. iFrame "Hfp Hbl".
+  Qed.
 
   (* ---- FILING THE LOG ENTRY, AND OPENING ONE, TAKE NOTHING ---- *)
 
@@ -629,8 +721,8 @@ Section file_out.
     intros Hok Hev. rewrite /fecl.
     iIntros "[HT | Hc]"; [by iLeft |]. iRight.
     iDestruct "Hc" as (v vf so)
-      "(Hpin & Hfp & Htn & Hcs & Hps & HE & Hdl & Hdll & Hf0 & Hty & %Hpure)".
-    iExists v, vf, so. iFrame "Hpin Hfp Htn Hcs Hps HE Hf0 Hty".
+      "(Hpin & Hfp & Htn & Hcs & Hps & HE & Hdl & Hdll & Hf0 & #Hbw & Hty & %Hpure)".
+    iExists v, vf, so. iFrame "Hpin Hfp Htn Hcs Hps HE Hf0 Hbw Hty".
     rewrite ch_dl_close. iFrame "Hdl Hdll". iPureIntro.
     by apply (fecl_pure_close k ho so H Hok Hev Hpure).
   Qed.
@@ -647,8 +739,8 @@ Section file_out.
     intros Hn Hd Hb Hdh Hsh Hends Hord Hlt. rewrite /fecl.
     iIntros "[HT | Hc]"; [by iLeft |]. iRight.
     iDestruct "Hc" as (v vf so)
-      "(Hpin & Hfp & Htn & Hcs & Hps & HE & Hdl & Hdll & Hf0 & Hty & %Hpure)".
-    iExists v, vf, so. iFrame "Hpin Hfp Htn Hcs Hps HE Hf0 Hty".
+      "(Hpin & Hfp & Htn & Hcs & Hps & HE & Hdl & Hdll & Hf0 & #Hbw & Hty & %Hpure)".
+    iExists v, vf, so. iFrame "Hpin Hfp Htn Hcs Hps HE Hf0 Hbw Hty".
     rewrite /ConsLog.cons_step. cbn [LogEntryDefs.ch_dl].
     iFrame "Hdl Hdll". iPureIntro.
     by apply (fecl_pure_open k ho so H h c cs Hn Hd Hb Hdh Hsh Hends Hord Hlt
@@ -670,10 +762,10 @@ Section file_out.
     rewrite /fecl. iIntros "[#HT | Hp]".
     { iSplitR; [by iLeft | by iLeft]. }
     iDestruct "Hp" as (v vf so)
-      "(#Hpin & #Hfp & Htn & Hcs & Hps & HE & Hdl & Hdll & Hf0 & #Hty & %Hall)".
+      "(#Hpin & #Hfp & Htn & Hcs & Hps & HE & Hdl & Hdll & Hf0 & #Hbw & #Hty & %Hall)".
     iSplitL.
     - iRight. iExists v, vf, so.
-      iFrame "Hpin Hfp Htn Hcs Hps HE Hdl Hdll Hf0 Hty". by iPureIntro.
+      iFrame "Hpin Hfp Htn Hcs Hps HE Hdl Hdll Hf0 Hbw Hty". by iPureIntro.
     - iRight. iPureIntro. exact (fecl_pure_arm k ho so CH Hall).
   Qed.
 
@@ -691,10 +783,10 @@ Section file_out.
     intros Hsh Hk Hends Hord. rewrite /fecl. iIntros "[#HT | Hp]".
     { iSplitR; [by iLeft | by iLeft]. }
     iDestruct "Hp" as (v vf so)
-      "(#Hpin & #Hfp & Htn & Hcs & Hps & HE & Hdl & Hdll & Hf0 & #Hty & %Hall)".
+      "(#Hpin & #Hfp & Htn & Hcs & Hps & HE & Hdl & Hdll & Hf0 & #Hbw & #Hty & %Hall)".
     iSplitL.
     - iRight. iExists v, vf, so.
-      iFrame "Hpin Hfp Htn Hcs Hps HE Hdl Hdll Hf0 Hty". by iPureIntro.
+      iFrame "Hpin Hfp Htn Hcs Hps HE Hdl Hdll Hf0 Hbw Hty". by iPureIntro.
     - iRight. iPureIntro.
       destruct Hall as (_ & _ & _ & Hin & _ & _).
       destruct Hin as (_ & _ & Hstamp & _ & Hidx & _ & _).
@@ -726,6 +818,7 @@ Section file_out.
     pro_alts !!! a !! 0%nat = Some b ->
     era_pin (fgn_echo g) k v -∗ file_era_pin k vf -∗
     turn v 0%nat -∗ ps_lb v [] -∗ cs_lb v [] -∗ inp_lb v [] -∗
+    f0_bl vf s0 -∗
     (f0_typed s0 ∨ file_taint (fgn_cl g)) -∗
     fecl k ho H ==∗
       fecl k ho (ConsLog.cons_step H (ConsLog.EvOut b))
@@ -733,13 +826,13 @@ Section file_out.
           ∗ f0_lb vf s0) ∨ file_taint (fgn_cl g)).
   Proof using .
     intros Hfok Halt Hhead.
-    iIntros "#Hpin #Hfp Ht #Hpslb #Hcslb #Hilb Hty Hcl".
+    iIntros "#Hpin #Hfp Ht #Hpslb #Hcslb #Hilb #Hf0bl Hty Hcl".
     iDestruct "Hcl" as "[#HT | Hp]".
     { iModIntro. iSplitR; [rewrite /fecl; by iLeft | by iRight]. }
     iDestruct "Hty" as "[#Hty | #HT]"; last first.
     { iModIntro. iSplitR; [rewrite /fecl; by iLeft | by iRight]. }
     iDestruct "Hp" as (v2 vf2 so)
-      "(#Hpin2 & #Hfp2 & Hta & Hcs & Hps & HE & Hdl & Hdll & Hf0 & #Hty0 & %Hall)".
+      "(#Hpin2 & #Hfp2 & Hta & Hcs & Hps & HE & Hdl & Hdll & Hf0 & #Hbw & #Hty0 & %Hall)".
     iDestruct (era_pin_agree with "Hpin2 Hpin") as %->.
     iDestruct (file_era_pin_agree with "Hfp2 Hfp") as %->.
     pose proof Hall as Hall0.
@@ -792,7 +885,7 @@ Section file_out.
       - exfalso. apply Hne. split; [exact Hwnil |].
         by rewrite HEnil fmap_nil rest_of_nil. }
     rewrite Hf0nil in HP. rewrite Hf0nil. cbn [opt_list].
-    iMod (f0_file vf s0 with "Hf0") as "[Hf0 #Hf0lb]".
+    iMod (f0f_file vf s0 with "Hf0") as "[Hf0 #Hf0fl]".
     iMod (turn_update v 0%nat
             (pcount_f (fo_ps so) (fo_cs so) None (fo_E so) (fo_w so))
             1%nat ltac:(lia) with "Ht Hta") as "[Ht Hta]".
@@ -801,11 +894,11 @@ Section file_out.
     iModIntro. iSplitR "Ht".
     - rewrite /fecl. iRight.
       iExists v, vf, (MkFO [a] [] [] [b] (Some s0)).
-      cbn [fo_ps fo_cs fo_E fo_w fo_f0 opt_list].
+      cbn [fo_ps fo_cs fo_E fo_w fo_f0 opt_list f0_wit].
       rewrite (_ : pcount_f [a] [] (Some s0) [] [b] = 1%nat); last first.
       { rewrite /pcount_f fmap_nil proc_before_f_nil. reflexivity. }
       rewrite /ConsLog.cons_step. cbn [LogEntryDefs.ch_dl].
-      rewrite Hcsnil. iFrame "Hpin Hfp Hta Hcs Hps Hdl Hdll Hf0".
+      rewrite Hcsnil. iFrame "Hpin Hfp Hta Hcs Hps Hdl Hdll Hf0 Hf0bl".
       rewrite HEnil. iFrame "HE".
       rewrite (_ : f0_st (Some s0) = s0); [| reflexivity]. iFrame "Hty".
       iPureIntro.
@@ -842,7 +935,7 @@ Section file_out.
               cbn [length] in Hl. lia. }
           destruct Hcases as [-> | ->]; [| by destruct (Hne eq_refl)].
           rewrite pending_at_f_nil pro_of_nil. cbn [length]. lia.
-    - iLeft. iFrame "Ht Hf0lb Hcslb Hilb". iExact "Hpslb2".
+    - iLeft. rewrite /f0_lb. iFrame "Ht Hf0bl Hf0fl Hcslb Hilb". iExact "Hpslb2".
   Qed.
 
 
@@ -868,10 +961,11 @@ Section file_out.
     iDestruct "Hcl" as "[#HT | Hp]".
     { iModIntro. iSplitR; [rewrite /fecl; by iLeft | by iRight]. }
     iDestruct "Hp" as (v2 vf2 so)
-      "(#Hpin2 & #Hfp2 & Hta & Hcs & Hps & HE & Hdl & Hdll & Hf0 & #Hty0 & %Hall)".
+      "(#Hpin2 & #Hfp2 & Hta & Hcs & Hps & HE & Hdl & Hdll & Hf0 & #Hbw & #Hty0 & %Hall)".
     iDestruct (era_pin_agree with "Hpin2 Hpin") as %->.
     iDestruct (file_era_pin_agree with "Hfp2 Hfp") as %->.
-    iDestruct (f0_auth_lb_agree with "Hf0 Hf0lb") as %Hf0eq.
+    iAssert (f0_fd vf s0) as "#Hf0fl"; [ iDestruct "Hf0lb" as "[_ $]" | ].
+    iDestruct (f0f_auth_lb_agree with "Hf0 Hf0fl") as %Hf0eq.
     pose proof Hall as Hall0.
     destruct Hall as (Hpure & Hcsl & Hpsl & _ & _ & _).
     destruct Hpure as (Hacc & Hwpre & Hidx & Hbyte & Hpsb & Hpin & Hcsb' & Hdsc
@@ -910,7 +1004,7 @@ Section file_out.
       cbn [fo_ps fo_cs fo_E fo_w fo_f0].
       rewrite pcount_f_write -HP.
       rewrite /ConsLog.cons_step. cbn [LogEntryDefs.ch_dl].
-      iFrame "Hpin Hfp Hta Hcs Hps HE Hdl Hdll Hf0 Hty0". iPureIntro.
+      iFrame "Hpin Hfp Hta Hcs Hps HE Hdl Hdll Hf0 Hbw Hty0". iPureIntro.
       apply (fecl_pure_out k ho so
                (MkFO (fo_ps so) (fo_cs so) (fo_E so) (fo_w so ++ [b])
                   (fo_f0 so)) H b);
@@ -966,10 +1060,11 @@ Section file_out.
     iDestruct "Hcl" as "[#HT | Hp]".
     { iModIntro. iSplitR; [rewrite /fecl; by iLeft | by iRight]. }
     iDestruct "Hp" as (v2 vf2 so)
-      "(#Hpin2 & #Hfp2 & Hta & Hcs & Hps & HE & Hdl & Hdll & Hf0 & #Hty0 & %Hall)".
+      "(#Hpin2 & #Hfp2 & Hta & Hcs & Hps & HE & Hdl & Hdll & Hf0 & #Hbw & #Hty0 & %Hall)".
     iDestruct (era_pin_agree with "Hpin2 Hpin") as %->.
     iDestruct (file_era_pin_agree with "Hfp2 Hfp") as %->.
-    iDestruct (f0_auth_lb_agree with "Hf0 Hf0lb") as %Hf0eq.
+    iAssert (f0_fd vf s0) as "#Hf0fl"; [ iDestruct "Hf0lb" as "[_ $]" | ].
+    iDestruct (f0f_auth_lb_agree with "Hf0 Hf0fl") as %Hf0eq.
     pose proof Hall as Hall0.
     destruct Hall as (Hpure & Hcsl & Hpsl & _ & _ & _).
     destruct Hpure as (Hacc & Hwpre & Hidx & Hbyte & Hpsb & Hpin & Hcsb' & Hdsc
@@ -1075,7 +1170,7 @@ Section file_out.
                         (fo_f0 so)).
       cbn [fo_ps fo_cs fo_E fo_w fo_f0]. rewrite Hpc2.
       rewrite /ConsLog.cons_step. cbn [LogEntryDefs.ch_dl].
-      iFrame "Hpin Hfp Hta Hcs Hps HE Hdl Hdll Hf0 Hty0". iPureIntro.
+      iFrame "Hpin Hfp Hta Hcs Hps HE Hdl Hdll Hf0 Hbw Hty0". iPureIntro.
       apply (fecl_pure_out k ho so
                (MkFO (fo_ps so) (fo_cs so ++ [a]) (fo_E so) [b] (fo_f0 so))
                H b);
@@ -1134,10 +1229,11 @@ Section file_out.
     iDestruct "Hcl" as "[#HT | Hp]".
     { iModIntro. iSplitR; [rewrite /fecl; by iLeft | by iRight]. }
     iDestruct "Hp" as (v2 vf2 so)
-      "(#Hpin2 & #Hfp2 & Hta & Hcs & Hps & HE & Hdl & Hdll & Hf0 & #Hty0 & %Hall)".
+      "(#Hpin2 & #Hfp2 & Hta & Hcs & Hps & HE & Hdl & Hdll & Hf0 & #Hbw & #Hty0 & %Hall)".
     iDestruct (era_pin_agree with "Hpin2 Hpin") as %->.
     iDestruct (file_era_pin_agree with "Hfp2 Hfp") as %->.
-    iDestruct (f0_auth_lb_agree with "Hf0 Hf0lb") as %Hf0eq.
+    iAssert (f0_fd vf s0) as "#Hf0fl"; [ iDestruct "Hf0lb" as "[_ $]" | ].
+    iDestruct (f0f_auth_lb_agree with "Hf0 Hf0fl") as %Hf0eq.
     pose proof Hall as Hall0.
     destruct Hall as (Hpure & Hcsl & Hpsl & _ & _ & _).
     destruct Hpure as (Hacc & Hwpre & Hidx & Hbyte & Hpsb & Hpinf & Hcsb' & Hdsc
@@ -1356,7 +1452,7 @@ Section file_out.
                         (fo_w so ++ [b]) (fo_f0 so)).
       cbn [fo_ps fo_cs fo_E fo_w fo_f0]. rewrite Hpc2.
       rewrite /ConsLog.cons_step. cbn [LogEntryDefs.ch_dl].
-      iFrame "Hpin Hfp Hta Hcs Hps HE Hdl Hdll Hf0 Hty0". iPureIntro.
+      iFrame "Hpin Hfp Hta Hcs Hps HE Hdl Hdll Hf0 Hbw Hty0". iPureIntro.
       apply (fecl_pure_out k ho so
                (MkFO (fo_ps so ++ [a]) (fo_cs so) (fo_E so)
                   (fo_w so ++ [b]) (fo_f0 so)) CH b);
@@ -1464,7 +1560,7 @@ Section file_out.
     iDestruct "Hcl" as "[#HT | Hp]".
     { iModIntro. iSplitR; [rewrite /fecl; by iLeft |]. iLeft. by iFrame "Hdlr". }
     iDestruct "Hp" as (v2 vf so)
-      "(#Hpin & #Hfp & Hta & Hcs & Hps & HE & Hdl & Hdll & Hf0 & #Hty0 & %Hall)".
+      "(#Hpin & #Hfp & Hta & Hcs & Hps & HE & Hdl & Hdll & Hf0 & #Hbw & #Hty0 & %Hall)".
     iDestruct (era_pin_agree with "Hpin Hpinr") as %->.
     iDestruct (dl_cnt_agree with "Hdl Hdlr") as %Hdleq.
     pose proof Hall as Hall0.
@@ -1540,14 +1636,15 @@ Section file_out.
                    ltac:(intros j Hj; apply Hagree; lia) q' Hq'q).
         apply Hpinf. pose proof (nstarted_prefix Iw (snd <$> fo_E so) HEpre).
         lia. }
-    iAssert (f0_auth vf (opt_list (fo_f0 so))
+    iAssert (f0f_auth vf (opt_list (fo_f0 so))
              ∗ (⌜fo_f0 so = None⌝
                 ∨ ∃ s1 : fstate, ⌜fo_f0 so = Some s1⌝ ∗ f0_lb vf s1))%I
       with "[Hf0]" as "[Hf0 #Hf0w]".
     { destruct (fo_f0 so) as [s1 |] eqn:Hf0; cbn [opt_list].
-      - iDestruct (f0_lb_get with "Hf0") as "[Hf0 #Hlb]".
+      - iDestruct (f0f_lb_get with "Hf0") as "[Hf0 #Hlb]".
         iFrame "Hf0". iRight. iExists s1.
-        iSplitR; [by iPureIntro | iExact "Hlb"].
+        iSplitR; [by iPureIntro |]. rewrite /f0_lb. iFrame "Hlb".
+        iEval (rewrite /f0_wit) in "Hbw". iExact "Hbw".
       - iFrame "Hf0". iLeft. by iPureIntro. }
     iDestruct (cs_lb_get with "Hcs") as "[Hcs #Hcslb]".
     iDestruct (cs_lb_weaken v (fo_cs so) csq ltac:(rewrite /csq; apply prefix_take)
@@ -1575,7 +1672,7 @@ Section file_out.
     iModIntro. iSplitL "Hta Hcs Hps HE Hdl Hdll Hf0".
     { rewrite /fecl. iRight. iExists v, vf, so.
       rewrite /ConsLog.cons_step. cbn [LogEntryDefs.ch_dl].
-      rewrite length_app Hdleq. iFrame "Hpin Hfp Hta Hcs Hps HE Hdl Hdll Hf0 Hty0".
+      rewrite length_app Hdleq. iFrame "Hpin Hfp Hta Hcs Hps HE Hdl Hdll Hf0 Hbw Hty0".
       iPureIntro. exact (fecl_pure_read k ho so CH ws Hpref Hall0). }
     iRight. iFrame "Hdlr".
     iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
@@ -1630,7 +1727,7 @@ Section file_out.
     iDestruct "Hcl" as "[#HT | Hp]".
     { iModIntro. rewrite /fecl. by iLeft. }
     iDestruct "Hp" as (v vf so)
-      "(#Hpin & #Hfp & Hta & Hcs & Hps & HE & Hdl & Hdll & Hf0 & #Hty0 & %Hall)".
+      "(#Hpin & #Hfp & Hta & Hcs & Hps & HE & Hdl & Hdll & Hf0 & #Hbw & #Hty0 & %Hall)".
     pose proof Hall as Hall0.
     destruct Hall as (Hpure & Hcsl & Hpsl & Hin & Hera & HEtie).
     destruct Hpure as (Hacc & Hwpre & Hidx & Hbyte & Hpsb & Hpinf & Hcsb' & Hdsc
@@ -1805,7 +1902,7 @@ Section file_out.
     rewrite (pcount_f_echo (fo_ps so) (fo_cs so) (fo_f0 so) (fo_E so)
                (open_seg h, c) (fo_w so) Hweq).
     rewrite ch_dl_byte.
-    iFrame "Hpin Hfp Hta Hcs Hps HE Hdl Hdll Hf0 Hty0". iPureIntro.
+    iFrame "Hpin Hfp Hta Hcs Hps HE Hdl Hdll Hf0 Hbw Hty0". iPureIntro.
     apply (fecl_pure_byte (obs_boots h) ho h so
              (MkFO (fo_ps so) (fo_cs so) (fo_E so ++ [(open_seg h, c)]) []
                 (fo_f0 so))
@@ -1911,7 +2008,7 @@ Section file_out.
     iDestruct "Hcl" as "[#HT | Hp]".
     - iSplitR; [iLeft; iExact "HT" | iLeft; iExact "HT"].
     - iDestruct "Hp" as (v vf so)
-        "(#Hpin & #Hfp & Hta & Hcs & Hps & HE & Hdl & Hdll & Hf0 & #Hty0 & %Hall)".
+        "(#Hpin & #Hfp & Hta & Hcs & Hps & HE & Hdl & Hdll & Hf0 & #Hbw & #Hty0 & %Hall)".
       pose proof Hall as Hall2.
       destruct Hall2 as (Hpure & Hcsl & Hpsl & Hin & Hera & HEtie).
       destruct Hpure as (Hacc & Hwp & Hidx & Hbyte & Hpsb & Hpinf & Hcsb' & Hdsc
@@ -1924,11 +2021,20 @@ Section file_out.
         assert (Hz : LogEntryDefs.ch_acc CH = [])
           by (rewrite Hacc HE0 Hw0 D_f_nil; reflexivity).
         apply Hne, prefix_nil_inv. rewrite -Hz. exact Hwire. }
+      assert (Hsome' : fo_f0 so = Some (f0_st (fo_f0 so))).
+      { destruct (fo_f0 so) as [sx |] eqn:Hfx; [reflexivity |].
+        exfalso. destruct (proj1 Hf0n eq_refl) as [HE0 Hw0].
+        assert (Hz : LogEntryDefs.ch_acc CH = [])
+          by (rewrite Hacc HE0 Hw0 D_f_nil; reflexivity).
+        apply Hne, prefix_nil_inv. rewrite -Hz. exact Hwire. }
       iEval (rewrite Hsome) in "Hf0".
-      iDestruct (f0_lb_get with "Hf0") as "[Hf0 #Hlb]".
+      iDestruct (f0f_lb_get with "Hf0") as "[Hf0 #Hfl]".
+      iAssert (f0_lb vf (f0_st (fo_f0 so))) as "#Hlb".
+      { rewrite /f0_lb. iFrame "Hfl".
+        iEval (rewrite Hsome' /f0_wit) in "Hbw". iExact "Hbw". }
       iSplitL "Hta Hcs Hps HE Hdl Hdll Hf0".
       { iRight. iExists v, vf, so.
-        iFrame "Hpin Hfp Hta Hcs Hps HE Hdl Hdll Hty0".
+        iFrame "Hpin Hfp Hta Hcs Hps HE Hdl Hdll Hbw Hty0".
         iSplitL "Hf0"; [rewrite Hsome; iExact "Hf0" | by iPureIntro]. }
       iRight. iExists (f0_st (fo_f0 so)), vf.
       iFrame "Hty0 Hfp Hlb".
@@ -2167,10 +2273,10 @@ Section file_out.
          port's claim at the start of their era and init's credential ---- *)
   Lemma file_era_split (k : nat) (v : era_pins) (vf : file_era) :
     era_pin (fgn_echo g) k v -∗ file_era_pin k vf -∗
-    era_full v -∗ f0_auth vf [] -∗
+    era_full v -∗ f0_auth vf [] -∗ f0f_auth vf [] -∗
       fecl k [] (LogEntryDefs.MkCH [] [] [] None) ∗ fturn k.
   Proof using .
-    iIntros "#Hpin #Hfp (Ht & Hcs & Hps & HE & Hdl & Hdll) Hf0".
+    iIntros "#Hpin #Hfp (Ht & Hcs & Hps & HE & Hdl & Hdll) Hf0 Hfla".
     iEval (rewrite -Qp.half_half) in "Ht".
     iDestruct "Ht" as "[Ht1 Ht2]".
     iEval (rewrite -Qp.half_half) in "Hdl".
@@ -2178,13 +2284,14 @@ Section file_out.
     iDestruct (cs_lb_get with "Hcs") as "[Hcs #Hcslb]".
     iDestruct (ps_lb_get with "Hps") as "[Hps #Hpslb]".
     iDestruct (dl_list_lb_get with "Hdll") as "[Hdll #Hdllb]".
-    iSplitL "Ht1 Hcs Hps HE Hdl1 Hdll Hf0".
+    iSplitL "Ht1 Hcs Hps HE Hdl1 Hdll Hfla".
     { rewrite /fecl. iRight. iExists v, vf, fostage0.
       cbn [fo_ps fo_cs fo_E fo_w fo_f0 fostage0 opt_list
            LogEntryDefs.ch_dl length].
       rewrite (_ : pcount_f [] [] None [] [] = 0%nat); [| reflexivity].
-      iFrame "Hpin Hfp Ht1 Hcs Hps HE Hdl1 Hdll Hf0".
+      iFrame "Hpin Hfp Ht1 Hcs Hps HE Hdl1 Hdll Hfla".
       rewrite (_ : f0_st None = None); [| reflexivity].
+      iSplitR; [by rewrite /f0_wit |].
       iSplitR; [by rewrite /f0_typed |]. iPureIntro.
       rewrite /fecl_pure.
       cbn [LogEntryDefs.ch_acc LogEntryDefs.ch_log LogEntryDefs.ch_dl
@@ -2197,7 +2304,7 @@ Section file_out.
       - by cbn [ch_arm_era_f].
       - rewrite /ch_E. cbn [LogEntryDefs.ch_log LogEntryDefs.ch_arm ch_arm_E].
         rewrite app_nil_r echoed_nil /seg_of fmap_nil. reflexivity. }
-    rewrite /fturn. iExists v, vf. iFrame "Hpin Hfp Ht2 Hdl2 Hcslb Hpslb".
+    rewrite /fturn. iExists v, vf. iFrame "Hpin Hfp Ht2 Hdl2 Hcslb Hpslb Hf0".
     iApply (inp_lb_of_dl_lb v [] []); [apply prefix_nil | iExact "Hdllb"].
   Qed.
 
@@ -2226,11 +2333,11 @@ Section file_out.
       iApply f0_pinned_undrained.
       by rewrite (open_seg_power h ObsPowerOff eq_refl).
     - iMod era_full_alloc as (v) "Hfull".
-      iMod f0_alloc as (vf) "Hf0".
+      iMod f0_alloc as (vf) "[Hf0 Hfla]".
       iMod (pin_map_on (fgn_echo g) h v with "Hpm") as "[Hpm #Hpin]".
       iMod (f0_map_on h vf with "Hfm") as "[Hfm #Hfp]".
       iDestruct (file_era_split (S (obs_boots h)) v vf
-                   with "Hpin Hfp Hfull Hf0") as "(Hcl & Hturn)".
+                   with "Hpin Hfp Hfull Hf0 Hfla") as "(Hcl & Hturn)".
       iModIntro. iSplitR "Hcl Hturn".
       + iFrame "Ht Hpm Hfm Hfl".
         iDestruct "Hphi" as "[Hphi | HT]"; [| by iRight].
@@ -2330,7 +2437,7 @@ Section file_out.
     fl_auth (fgn_cl g) ls ==∗
       fl_auth (fgn_cl g) ls' ∗ fl_lb (fgn_cl g) ls'.
   Proof using .
-    intros Hp. rewrite /fl_auth. iIntros "Ha".
+    intros Hp. rewrite /f0f_auth. iIntros "Ha".
     iMod (own_update _ _ (●ML (ls' : list (leibnizO wordline))) with "Ha")
       as "Ha".
     { apply mono_list_update. by destruct Hp as [z ->]; exists z. }

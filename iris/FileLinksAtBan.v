@@ -254,9 +254,11 @@ Section file_links_at_ban.
       subst i. rewrite /fhead_at.
       iDestruct "Hh" as "(-> & -> & Htn & #Hps & #Hcs & #HE & Hvf & Hpre)".
       iDestruct "Hvf" as (vf) "#Hvf".
-      iDestruct "Hpre" as "[%Hok Hty]".
+      iDestruct "Hpre" as "(%Hok & Hty & Hbw)".
+      iDestruct "Hbw" as "[_ Hbw]". iDestruct "Hbw" as (vf') "[#Hvf' #Hbl]".
+      iDestruct (file_era_pin_agree with "Hvf Hvf'") as %<-.
       iApply ("Hfst" $! (S gen_id) v vf 3%nat b s0 Φ
-                with "[%] [%] [%] Hpin Hvf Htn Hps Hcs HE Hty [HΦ]").
+                with "[%] [%] [%] Hpin Hvf Htn Hps Hcs HE Hbl Hty [HΦ]").
       { exact Hok. }
       { rewrite pro_alts_length. lia. }
       { exact (EchoLinks.wr_ban_head b Hb). }
@@ -341,14 +343,14 @@ Section file_links_at_ban.
   (*  4.  THE ERA'S TURN, AT THE NAMED STATE                              *)
   (* =================================================================== *)
   Definition fturn_pre_at (s0 : fstate) (k : nat) : iProp Σ :=
-    (⌜k = S gen_id⌝ ∗ FileOut.fturn g k ∗ f0pre_at g s0)%I.
+    (⌜k = S gen_id⌝ ∗ FileOut.fturn_core g k ∗ f0pre_at g s0)%I.
 
   Lemma fturn0_at (s0 : fstate) (k : nat) :
     fturn_pre_at s0 k -∗
     (∃ v : era_pins, FPIN k v ∗ dl_cnt v (1/2) 0%nat ∗ inp_lb v [])
     ∗ (∃ v : era_pins, FPIN k v ∗ fwc_ban_at g s0 k v [] 0%nat).
   Proof using .
-    rewrite /fturn_pre_at /FileOut.fturn.
+    rewrite /fturn_pre_at /FileOut.fturn_core.
     iIntros "(%Hk & Ht & Hpre)".
     iDestruct "Ht" as (v vf)
       "(#Hpin & #Hvf & Htn & Hdl & #Hcs & #Hps & #HE)".
@@ -378,7 +380,7 @@ Section file_links_at_ban.
     iDestruct "Hc" as "[Hl | [[_ Hh] | #HT]]"; last by iExact "HT".
     - iDestruct "Hl" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE & #Hf)".
       cbn [wr_banp_f] in Hw.
-      iDestruct (f0w_agree with "Hf Hf0") as %<-.
+      iDestruct (f0w_bw_agree with "Hf Hf0") as %<-.
       iDestruct (ps_lb_cmp with "Hps Hps0") as %Hpsc.
       iDestruct (cs_lb_cmp with "Hcs Hcs0") as %Hcsc.
       rewrite Nat.add_0_r.

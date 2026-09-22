@@ -374,8 +374,8 @@ Section file_read_inst.
         rewrite /FileLinksLine.fwc_rres. iExists ps0, cs0, s0.
         rewrite <- HJ. iFrame "Htlb Hps Hcs".
         iSplitR; [ by iPureIntro | ].
-        rewrite /FileLinksLine.f0w. iSplitR; [ by iPureIntro | ].
-        iExists vf. iFrame "Hvf Hf0". }
+        rewrite /FileLinksLine.f0bw. iSplitR; [ by iPureIntro | ].
+        iExists vf. iFrame "Hvf". iApply (FileOut.f0_lb_bl with "Hf0"). }
     iAssert (inp_lb v (I ++ J)) as "#HEn";
       [ rewrite <- HJ; iExact "HEin" | ].
     (* THE WITNESS AT THE FAR END: off the last consumed entry's tag, or
@@ -518,7 +518,7 @@ Section file_read_inst_at.
     iIntros "#Hpin #HE #Hres Hret #Htags #Hsw #Hlb".
     cbn [lk_epin lk_rres lk_rr lk_T FileLinkInst.file_link_inst_at].
     (* the index's own boot-state witness, kept for the agreement *)
-    iAssert (FileLinksLine.f0w g (S gen_id) s0) as "#Hf0".
+    iAssert (FileLinksLine.f0bw g (S gen_id) s0) as "#Hf0".
     { rewrite /FileLinksAt.fwc_rresw_at /FileLinksAt.fwc_rres_at.
       iDestruct "Hres" as "[Hr _]".
       iDestruct "Hr" as (ps0 cs0) "(_ & _ & _ & _ & $)". }
@@ -530,11 +530,11 @@ Section file_read_inst_at.
     iLeft. iDestruct "H" as "[$ H]". iDestruct "H" as (J) "(%HJ & %Hd & %Hg & #HE' & #Hres2)".
     iDestruct (FileLinksAt.fwc_rresw_unpack g v (I ++ J) with "Hres2")
       as (s1) "#Hres3".
-    iAssert (FileLinksLine.f0w g (S gen_id) s1) as "#Hf1".
+    iAssert (FileLinksLine.f0bw g (S gen_id) s1) as "#Hf1".
     { rewrite /FileLinksAt.fwc_rresw_at /FileLinksAt.fwc_rres_at.
       iDestruct "Hres3" as "[Hr _]".
       iDestruct "Hr" as (ps0 cs0) "(_ & _ & _ & _ & $)". }
-    iDestruct (FileLinksLine.f0w_agree g (S gen_id) (S gen_id) s0 s1
+    iDestruct (FileLinksLine.f0bw_agree g (S gen_id) (S gen_id) s0 s1
                  with "Hf0 Hf1") as %<-.
     iExists J. iFrame "HE' Hres3". by iPureIntro.
   Qed.

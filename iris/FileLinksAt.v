@@ -63,9 +63,11 @@ Section file_links_at.
   (*  1.  THE ERA'S HEAD, AT A NAMED STATE                                *)
   (* =================================================================== *)
   Definition f0pre_at (s0 : fstate) : iProp Σ :=
-    (⌜fstate_ok s0⌝ ∗ (f0_typed g s0 ∨ FT))%I.
+    (⌜fstate_ok s0⌝ ∗ (f0_typed g s0 ∨ FT) ∗ f0bw g (S gen_id) s0)%I.
 
   Global Instance f0pre_at_timeless s0 : Timeless (f0pre_at s0).
+  Proof using . rewrite /f0pre_at. apply _. Qed.
+  Global Instance f0pre_at_persistent s0 : Persistent (f0pre_at s0).
   Proof using . rewrite /f0pre_at. apply _. Qed.
 
   (* THE DISPATCH, NOT [apply _].  The tree carries 455 [Timeless]
@@ -87,6 +89,7 @@ Section file_links_at.
     | |- Timeless (f0pre_at _) => apply f0pre_at_timeless
     | |- Timeless (fcur _ _ _ _ _ _ _ _) => apply fcur_timeless
     | |- Timeless (f0w _ _ _) => apply f0w_timeless
+    | |- Timeless (f0bw _ _ _) => apply f0bw_timeless
     | |- Timeless (f0_typed _ _) => apply f0_typed_timeless
     | |- Timeless (file_taint _) => apply file_taint_timeless
     | |- Timeless (turn _ _) => apply turn_timeless
@@ -104,6 +107,7 @@ Section file_links_at.
     | |- Persistent (cs_lb _ _) => apply cs_lb_persistent
     | |- Persistent (inp_lb _ _) => apply inp_lb_persistent
     | |- Persistent (f0w _ _ _) => apply f0w_persistent
+    | |- Persistent (f0bw _ _ _) => apply f0bw_persistent
     | |- Persistent (f0_typed _ _) => apply f0_typed_persistent
     | |- Persistent (file_taint _) => apply file_taint_persistent
     | |- Persistent (file_era_pin _ _ _) => apply file_era_pin_persistent
@@ -250,7 +254,7 @@ Section file_links_at.
     (∃ ps0 cs0 : list nat,
        ⌜rd_stage_f ps0 cs0 I⌝
        ∗ turn_lb v (length (proc_before_f ps0 cs0 (Some s0) I))
-       ∗ ps_lb v ps0 ∗ cs_lb v cs0 ∗ f0w g (S gen_id) s0)%I.
+       ∗ ps_lb v ps0 ∗ cs_lb v cs0 ∗ f0bw g (S gen_id) s0)%I.
 
   (* ---- timelessness, which is what the record's fields need ---- *)
   Global Instance fwc_pro_at_timeless s0 k v I : Timeless (fwc_pro_at s0 k v I).

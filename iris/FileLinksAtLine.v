@@ -134,9 +134,11 @@ Section file_links_at_line.
     rewrite /fhead_at.
     iDestruct "Hh" as "(-> & -> & Htn & #Hps & #Hcs & #HE & Hvf & Hpre)".
     iDestruct "Hvf" as (vf) "#Hvf".
-    iDestruct "Hpre" as "[%Hok Hty]".
+    iDestruct "Hpre" as "(%Hok & Hty & Hbw)".
+    iDestruct "Hbw" as "[_ Hbw]". iDestruct "Hbw" as (vf') "[#Hvf' #Hbl]".
+    iDestruct (file_era_pin_agree with "Hvf Hvf'") as %<-.
     iApply ("Hfst" $! (S gen_id) v vf 0%nat b s0 Φ
-              with "[%] [%] [%] Hpin Hvf Htn Hps Hcs HE Hty [HΦ]").
+              with "[%] [%] [%] Hpin Hvf Htn Hps Hcs HE Hbl Hty [HΦ]").
     { exact Hok. }
     { rewrite pro_alts_length. lia. }
     { rewrite EchoLinks.wr_pro_alts_0 Hb. exact EchoLinks.wr_prompt_head. }
@@ -399,9 +401,11 @@ Section file_links_at_line.
       rewrite /fhead_at.
       iDestruct "Hh" as "(-> & -> & Htn & #Hps & #Hcs & #HE & Hvf & Hpre)".
       iDestruct "Hvf" as (vf) "#Hvf".
-      iDestruct "Hpre" as "[%Hok Hty]".
+      iDestruct "Hpre" as "(%Hok & Hty & Hbw)".
+      iDestruct "Hbw" as "[_ Hbw]". iDestruct "Hbw" as (vf') "[#Hvf' #Hbl]".
+      iDestruct (file_era_pin_agree with "Hvf Hvf'") as %<-.
       iApply ("Hfst" $! (S gen_id) v vf 0%nat b s0 Φ
-                with "[%] [%] [%] Hpin Hvf Htn Hps Hcs HE Hty [HΦ]").
+                with "[%] [%] [%] Hpin Hvf Htn Hps Hcs HE Hbl Hty [HΦ]").
       { exact Hok. }
       { rewrite pro_alts_length. lia. }
       { rewrite EchoLinks.wr_pro_alts_0 Hb. exact EchoLinks.wr_prompt_head. }

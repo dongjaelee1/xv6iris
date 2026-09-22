@@ -88,16 +88,17 @@ Section file_links.
     pro_alts !!! a !! 0%nat = Some b ->
     era_pin (fgn_echo g) k v -∗ file_era_pin g k vf -∗
     turn v 0%nat -∗ ps_lb v [] -∗ cs_lb v [] -∗ inp_lb v [] -∗
+    f0_bl vf s0 -∗
     (f0_typed g s0 ∨ file_taint (fgn_cl g)) -∗
     (((turn v 1%nat ∗ ps_lb v [a] ∗ cs_lb v [] ∗ inp_lb v []
        ∗ f0_lb vf s0) ∨ file_taint (fgn_cl g)) -∗ Φ) -∗
     out_link Uart0 k b Φ.
   Proof using Hcons.
     intros Hfok Halt Hhead.
-    iIntros "#Hpin #Hfp Ht #Hpslb #Hcslb #Hilb Hty HΦ" (o H) "#Hlb Hres".
+    iIntros "#Hpin #Hfp Ht #Hpslb #Hcslb #Hilb #Hbl Hty HΦ" (o H) "#Hlb Hres".
     rewrite !fchist_at0.
     iMod (fecl_step_write_first g k v vf a b s0 (default [] o) H
-            Hfok Halt Hhead with "Hpin Hfp Ht Hpslb Hcslb Hilb Hty Hres")
+            Hfok Halt Hhead with "Hpin Hfp Ht Hpslb Hcslb Hilb Hbl Hty Hres")
       as "(Hres & Hret)".
     iModIntro. iExists o. rewrite fchist_at0. iFrame "Hlb Hres".
     by iApply "HΦ".
@@ -341,6 +342,7 @@ Section file_links.
         ⌜pro_alts !!! a !! 0%nat = Some b⌝ -∗
         era_pin (fgn_echo g) k v -∗ file_era_pin g k vf -∗
         turn v 0%nat -∗ ps_lb v [] -∗ cs_lb v [] -∗ inp_lb v [] -∗
+        f0_bl vf s0 -∗
         (f0_typed g s0 ∨ file_taint (fgn_cl g)) -∗
         (((turn v 1%nat ∗ ps_lb v [a] ∗ cs_lb v [] ∗ inp_lb v []
            ∗ f0_lb vf s0) ∨ file_taint (fgn_cl g)) -∗ Φ) -∗
@@ -421,8 +423,8 @@ Section file_links.
       iApply (file_write_link_pro with "Hpin Hfp Ht Hps Hcs HE Hf0 HΦ");
         try assumption.
     - iIntros "!>" (k v vf a b s0 Φ) "%Hfok %Halt %Hhead".
-      iIntros "Hpin Hfp Ht Hps Hcs HE Hty HΦ".
-      iApply (file_write_link_first with "Hpin Hfp Ht Hps Hcs HE Hty HΦ");
+      iIntros "Hpin Hfp Ht Hps Hcs HE Hbl Hty HΦ".
+      iApply (file_write_link_first with "Hpin Hfp Ht Hps Hcs HE Hbl Hty HΦ");
         try assumption.
     - iIntros "!>" (k b Φ) "HT HΦ".
       iApply (file_write_link_taint with "HT HΦ").

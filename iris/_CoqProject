@@ -1684,6 +1684,7 @@ UEchoFile.v
 UShRedirPay.v
 UShRound.v
 UInitFileCC.v
+UInitFileBoot.v
 UInitFile.v
 PipeKillMark.v
 UEchoPipe.v

@@ -748,6 +748,71 @@ Section UCatPipe.
   Lemma pcat_fupd_mwp (e : expr riscv_lang) : (|={⊤}=> mWP e) ⊢ mWP e.
   Proof using . rewrite /wp_triv. iIntros "H". iApply fupd_wp. iExact "H". Qed.
 
+  (* ------------------------------------------------------------------- *)
+  (*  THE -1 TURN'S WRITE, FUNDED BY THE TAINT (lane SH-PIPE-ROUND-13).    *)
+  (*                                                                      *)
+  (*  A PIPE read can answer -1 -- the reader was KILLED while it waited   *)
+  (*  ([UkReadPipe.uread_pipe_ans]'s first arm) -- and [kcat_round]'s      *)
+  (*  write arm is quantified over EVERY [nb] with [rv = mword_of_int nb], *)
+  (*  so it has to be proved at that answer too.  No count-exact supplier  *)
+  (*  can serve there: [UShPipeCatRound.pipe_cat_w] and the file era's     *)
+  (*  [UCatKernel.cat_w_of_link] both take [Z.to_nat (bv_unsigned rv) <=   *)
+  (*  512] as a COQ premise, and [rv = -1] refutes it.  (The FILE era      *)
+  (*  never meets this: its read is [ard_count]-bounded on BOTH arms,      *)
+  (*  which is why [UCatKernel]'s own [Hw] carries the cap inside its      *)
+  (*  taint arm and has only two call sites.)                              *)
+  (*                                                                      *)
+  (*  So the -1 turn's write is funded HERE, and it is the arm a FREE      *)
+  (*  payer always takes ([UkCatCat.kcat_round_of_law]): the call runs on  *)
+  (*  the era's free write law and lands on [kcat_round]'s own `write      *)
+  (*  error' disjunct, with the round's invariant handed back AT THE       *)
+  (*  CURSOR IT CAME IN AT -- nothing was printed, so nothing moved.       *)
+  (* ------------------------------------------------------------------- *)
+  Lemma pcat_w_taint (l : list fdstate) (Ch : nat -> iProp Σ)
+      (pn : pnames) (c nb : nat) (gb : nat -> bv 8) :
+    UkCatCat.kcat_dg_cw N -∗ udepw_law 16 -∗
+    pcat_hold pn l c -∗ Ch c -∗
+    UkCat.kcat_wr N (mword_of_int 1) (mword_of_int CatSyms.buf) nb
+      (ubytes γd CatSyms.buf 512 gb)
+      (fun wret : mword 64 =>
+         (((⌜wret = (mword_of_int (Z.of_nat nb) : mword 64)⌝
+            ∗ pcat_round_inv_g pn l Ch)
+           ∨ (pcat_round_inv_g pn l Ch ∧ UkCatCat.kcat_dg_cw N))
+          ∗ ubytes γd CatSyms.buf 512 gb)).
+  Proof using .
+    iIntros "Hdgw #Hwr Hhold Hc".
+    iApply (UkCat.kcat_wr_mono N (mword_of_int 1)
+              (mword_of_int CatSyms.buf) nb
+              (ubytes γd CatSyms.buf 512 gb)
+              (fun _ : mword 64 =>
+                 ((pcat_round_inv_g pn l Ch ∧ UkCatCat.kcat_dg_cw N)
+                  ∗ ubytes γd CatSyms.buf 512 gb)%I)
+              _ with "[] [Hdgw Hhold Hc]").
+    { iIntros (r) "[Hd Hb]". iSplitR "Hb"; [ | iExact "Hb" ].
+      iRight. iExact "Hd". }
+    iApply UkCat.kcat_wr_of_w.
+    iApply (UkCat.kcat_w_frame N (mword_of_int 1)
+              (mword_of_int CatSyms.buf) nb
+              (ubytes γd CatSyms.buf 512 gb)
+              ((pcat_round_inv_g pn l Ch ∧ UkCatCat.kcat_dg_cw N)
+               ∗ ubytes γd CatSyms.buf 512 gb)%I
+              (UkCatCat.kcat_dg_cw N ∗ pcat_hold pn l c ∗ Ch c)%I
+              with "[$Hdgw $Hhold $Hc]").
+    iApply (UkCat.kcat_w_of_law N (mword_of_int 1)
+              (mword_of_int CatSyms.buf) nb
+              (ubytes γd CatSyms.buf 512 gb
+               ∗ (UkCatCat.kcat_dg_cw N ∗ pcat_hold pn l c ∗ Ch c))%I
+              ((pcat_round_inv_g pn l Ch ∧ UkCatCat.kcat_dg_cw N)
+               ∗ ubytes γd CatSyms.buf 512 gb)%I
+              ltac:(iIntros "(Hb & Hdg & Hhold & Hc)";
+                    iSplitR "Hb"; [ | iExact "Hb" ];
+                    iSplit;
+                    [ rewrite /pcat_round_inv_g; iExists c;
+                      iFrame "Hhold Hc"
+                    | iExact "Hdg" ])
+              with "Hwr").
+  Qed.
+
   Lemma pcat_round_at_g (pn : pnames) (γp : pipe_names) (L : list (bv 8))
       (l : list fdstate) (wb : bool) (I0 : list (bv 8))
       (Ch : nat -> iProp Σ) (Cend : iProp Σ) :
@@ -769,6 +834,17 @@ Section UCatPipe.
     (* [Hdg]: cat's `read error` tail, payable at a TAINTED era out of the
        free write law ([UkCatCat.kcat_round_of_law]'s route) *)
     □ (T -∗ UkCatCat.kcat_dg_cr N) -∗
+    (* [Hdgw]: cat's `write error' tail and the era's FREE WRITE LAW, both
+       under the taint (lane SH-PIPE-ROUND-13).  This is what funds the -1
+       turn's write, which no count-exact supplier can reach -- see
+       [pcat_w_taint] above for why the pipe round has that turn and the
+       file era does not.  The round pays it out of the two things
+       [UShPipeRound.sh_pipe_child_law] already carries: the child law's
+       [box (T -* UkSh.sh_deps)] antecedent IS [udepw_law 16], and
+       [kcat_dg_cw] is [UkCat.kcat_pay_seq_of_law] at it and at the
+       process's own [-1] payload, whose taint arm is
+       [UShPipeLaw.pl_qc_of_taint]. *)
+    □ (T -∗ UkCatCat.kcat_dg_cw N ∗ udepw_law 16) -∗
     (* [Hw]: the turn's write, at the cursor and back at the cursor plus
        the count -- COUNT-EXACT, so cat's `write error` tail is refuted
        inside the walk and this round never funds [kcat_dg_cw].  Its
@@ -800,12 +876,26 @@ Section UCatPipe.
        content arm below holds it, one line later it is inside
        [UkCat.kcat_wr_mono]'s post-transformer and out of [Hw]'s reach.
        So it is taken here, at the read's own WP point, and forwarded. *)
+    (* ...AND ITS TAINT ARM IS GONE (lane SH-PIPE-ROUND-13).  As landed,
+       [Hw]'s content premise was [pure or T] and the two READ-TAINT call
+       sites passed [by iRight] -- which made [Hw] UNSATISFIABLE by any
+       real supplier: at the taint arm [rv] is unbounded (a pipe read can
+       answer -1), while a supplier has to write [cnt] bytes out of a
+       512-byte buffer AND return the count exactly.  Both candidates,
+       [UShPipeCatRound.pipe_cat_w] and the file era's
+       [UCatKernel.cat_w_of_link], take [Z.to_nat (bv_unsigned rv) <= 512]
+       as a COQ premise, and [rv = -1] refutes it.
+       The two taint sites do not need [Hw] at all: their turn's write is
+       funded by [pcat_w_taint] above, off the era's own free write law,
+       and lands on [kcat_round]'s `write error' disjunct.  So [Hw] is now
+       called at ONE site -- the real count -- and its content premise is
+       the bare pure fact, which the landed [pcat_round_at] supplies by
+       [iLeft]. *)
     □ (∀ (c nb : nat) (rv : mword 64) (fbb : nat -> bv 8),
          ⌜rv = (mword_of_int (Z.of_nat nb) : mword 64)⌝ -∗
-         (⌜(Z.to_nat (bv_unsigned rv) <= 512)%nat
-           /\ forall j : nat, (j < Z.to_nat (bv_unsigned rv))%nat ->
-                L !! (c + j)%nat = Some (fbb j)⌝
-          ∨ T) -∗
+         ⌜(Z.to_nat (bv_unsigned rv) <= 512)%nat
+          /\ forall j : nat, (j < Z.to_nat (bv_unsigned rv))%nat ->
+               L !! (c + j)%nat = Some (fbb j)⌝ -∗
          (pws_lb pn (take (c + Z.to_nat (bv_unsigned rv))%nat L) ∨ T) -∗
          UserFd.ustd γfd l -∗
          Ch c -∗
@@ -824,16 +914,23 @@ Section UCatPipe.
          (eof_shot pn (take c L) ∨ T) -∗
          pcat_hold pn l c -∗
          Ch c -∗ Cend) -∗
-    cat_code γt -∗
     UkCatCat.kcat_round N (mword_of_int 0)
       (pcat_round_inv_g pn l Ch) Cend.
+  (* NO [cat_code] PREMISE (lane SH-PIPE-ROUND-13).  It was never needed:
+     [UkCat.kcat_r] HANDS the round cat's text at every turn, and the body
+     below simply names that copy instead of an outer one.  It had to go --
+     the round's consumer is [UShCatPay.sh_exec_sup_cat_wq_holds_at]'s
+     [kcat_round] premise, which is quantified over the EXEC'D image's own
+     record [N''] and hands out no text at all, so an outer premise at
+     [ukn_t N''] has no producer on the caller's side.  The landed
+     [pcat_round_at] keeps its premise and drops it. *)
   Proof using Hcons Hkill.
     intros HL Hl0.
-    iIntros "#Hinv #Hdg #Hw #Hend #Hcode".
+    iIntros "#Hinv #Hdg #Hdgw #Hw #Hend".
     assert (Hm1s : bv_signed (mword_of_int (-1) : mword 64) = -1)
       by (vm_compute; reflexivity).
     rewrite /UkCatCat.kcat_round. iModIntro.
-    iIntros (h m avail f) "%Ha0 %Ha1 %Ha2 _ HI Hbuf Hrun Hcont".
+    iIntros (h m avail f) "%Ha0 %Ha1 %Ha2 #Hcode HI Hbuf Hrun Hcont".
     rewrite /pcat_round_inv_g.
     iDestruct "HI" as (c) "[[Hstd Hcur] Hc]".
     (* THE PAYMENT: the protocol at the cursor, or the taint *)
@@ -864,26 +961,13 @@ Section UCatPipe.
       - iIntros "_".
         iApply ("Hend" $! c with "[] [Hstd] Hc"); [ by iRight | ].
         rewrite /pcat_hold. iFrame "Hstd". by iRight.
-      - iIntros (nb) "%Hret _".
-        iApply (UkCat.kcat_wr_mono N (mword_of_int 1)
-                  (mword_of_int CatSyms.buf) nb
-                  (ubytes γd CatSyms.buf 512 gb)
-                  (fun wret : mword 64 =>
-                     (⌜wret = (mword_of_int (Z.of_nat nb) : mword 64)⌝
-                      ∗ UserFd.ustd γfd l
-                      ∗ Ch
-                          (c + Z.to_nat (bv_unsigned rv))%nat
-                      ∗ ubytes γd CatSyms.buf 512 gb)%I)
-                  _ with "[] [Hstd Hc]").
-        { iIntros (wret) "(%Hws & Hstd & Hc' & Hb)".
-          iSplitR "Hb"; [ | iExact "Hb" ].
-          iLeft. iSplitR; [ by iPureIntro | ].
-          rewrite /pcat_round_inv_g.
-          iExists (c + Z.to_nat (bv_unsigned rv))%nat.
-          iSplitR "Hc'"; [ | iExact "Hc'" ].
-          rewrite /pcat_hold. iFrame "Hstd". by iRight. }
-        iApply ("Hw" $! c nb rv gb with "[%] [] [] Hstd Hc");
-          [ exact Hret | by iRight | by iRight ]. }
+      - (* THE -1 TURN'S WRITE, off the taint ([pcat_w_taint] above): no
+           count-exact supplier can serve here, and the round's [Hw] is not
+           asked to. *)
+        iIntros (nb) "%Hret _".
+        iDestruct ("Hdgw" with "HT") as "[Hdgc #Hwr]".
+        iApply (pcat_w_taint l Ch pn c nb gb with "Hdgc Hwr [Hstd] Hc").
+        rewrite /pcat_hold. iFrame "Hstd". by iRight. }
     (* THE CONTENT ARM *)
     iDestruct "Hgood" as (acc d) "([%Hlen %Hd] & %Himg2 & HQ & Harm)".
     iDestruct "HQ" as "[Hr %Hacc]".
@@ -915,26 +999,13 @@ Section UCatPipe.
       iSplit; [| iSplit ].
       - iIntros "_". iApply ("Hdg" with "HT").
       - iIntros "%Hz". exfalso. rewrite Hrv Hm1s in Hz. lia.
-      - iIntros (nb) "%Hret _".
-        iApply (UkCat.kcat_wr_mono N (mword_of_int 1)
-                  (mword_of_int CatSyms.buf) nb
-                  (ubytes γd CatSyms.buf 512 gb)
-                  (fun wret : mword 64 =>
-                     (⌜wret = (mword_of_int (Z.of_nat nb) : mword 64)⌝
-                      ∗ UserFd.ustd γfd l
-                      ∗ Ch
-                          (c + Z.to_nat (bv_unsigned rv))%nat
-                      ∗ ubytes γd CatSyms.buf 512 gb)%I)
-                  _ with "[] [Hstd Hc]").
-        { iIntros (wret) "(%Hws & Hstd & Hc' & Hb)".
-          iSplitR "Hb"; [ | iExact "Hb" ].
-          iLeft. iSplitR; [ by iPureIntro | ].
-          rewrite /pcat_round_inv_g.
-          iExists (c + Z.to_nat (bv_unsigned rv))%nat.
-          iSplitR "Hc'"; [ | iExact "Hc'" ].
-          rewrite /pcat_hold. iFrame "Hstd". by iRight. }
-        iApply ("Hw" $! c nb rv gb with "[%] [] [] Hstd Hc");
-          [ exact Hret | by iRight | by iRight ]. }
+      - (* THE -1 TURN'S WRITE, off the taint ([pcat_w_taint] above): no
+           count-exact supplier can serve here, and the round's [Hw] is not
+           asked to. *)
+        iIntros (nb) "%Hret _".
+        iDestruct ("Hdgw" with "HT") as "[Hdgc #Hwr]".
+        iApply (pcat_w_taint l Ch pn c nb gb with "Hdgc Hwr [Hstd] Hc").
+        rewrite /pcat_hold. iFrame "Hstd". by iRight. }
     (* THE COUNT ARM: the answer is [d], and [d] is at most 512 *)
     assert (Hbu : bv_unsigned rv = Z.of_nat d).
     { rewrite Hrv -uint_unsigned. apply uint_moi. unfold Z64. lia. }
@@ -974,10 +1045,9 @@ Section UCatPipe.
         iSplitR "Hc'"; [ | iExact "Hc'" ].
         rewrite /pcat_hold. iFrame "Hstd". iLeft.
         rewrite Hto -Hd. iExact "Hr". }
-      iApply ("Hw" $! c nb rv gb with "[%] [] [] Hstd Hc");
+      iApply ("Hw" $! c nb rv gb with "[%] [%] [] Hstd Hc");
         [ exact Hret | | ].
-      { iLeft. iPureIntro. rewrite Hto. split; [ exact Hd512 | ].
-        exact Hbytes. }
+      { rewrite Hto. split; [ exact Hd512 | ]. exact Hbytes. }
       { iLeft. rewrite Hto -Hd. iExact "Hlb2". }
   Qed.
 
@@ -1008,6 +1078,16 @@ Section UCatPipe.
     (* [Hdg]: cat's `read error` tail, payable at a TAINTED era out of the
        free write law ([UkCatCat.kcat_round_of_law]'s route) *)
     □ (T -∗ UkCatCat.kcat_dg_cr N) -∗
+    (* [Hdgw]: the -1 turn's write, under the taint.  THE ONE PREMISE THIS
+       STATEMENT GAINED (lane SH-PIPE-ROUND-13): a PIPE read can answer -1
+       and [UkCatCat.kcat_round]'s write arm has to be proved at that
+       answer, where no count-exact supplier exists -- see
+       [pcat_w_taint].  Every consumer of a pipe round owes it; it is two
+       things the pipeline round already holds
+       ([UShPipeRound.sh_pipe_child_law]'s [box (T -* UkSh.sh_deps)] IS
+       [udepw_law 16], and [kcat_dg_cw] is [UkCat.kcat_pay_seq_of_law] at
+       it and at the process's own [-1] payload). *)
+    □ (T -∗ UkCatCat.kcat_dg_cw N ∗ udepw_law 16) -∗
     (* [Hw]: the turn's write, at the cursor and back at the cursor plus
        the count -- COUNT-EXACT, so cat's `write error` tail is refuted
        inside the walk and this round never funds [kcat_dg_cw].  Its
@@ -1042,20 +1122,23 @@ Section UCatPipe.
     cat_code γt -∗
     UkCatCat.kcat_round N (mword_of_int 0)
       (pcat_round_inv pn l v ps0 cs0 I0 P) Cend.
-  (* THE STATEMENT ABOVE IS BYTE-IDENTICAL (design SS4.3s): its [Hw] keeps
-     the ALTERNATIVE's lookup, which is what the file-era consumer
-     supplies.  Only the proof moved -- the generic round now asks for
-     the [L] form and [pcat_round_line] is the weakening, applied here
-     where it used to be applied inside. *)
+  (* THE STATEMENT ABOVE MOVED BY EXACTLY ONE PREMISE ([Hdgw]; lane
+     SH-PIPE-ROUND-13) and by nothing else: its [Hw] still keeps the
+     ALTERNATIVE's lookup and its own taint disjunct, which is what the
+     file-era consumer supplies and which [_g]'s [Hw] -- now pure, and
+     called at ONE site -- takes by [iLeft].  The new premise is not
+     optional: without it [UkCatCat.kcat_round]'s write arm at a -1 read
+     has no payer at all, and the landed [_g] was only provable because
+     its [Hw] was stated in a shape no supplier can meet (see [_g]'s own
+     note).  The lemma has no consumer in the tree today. *)
   Proof using Hcons Hkill.
-    intros Hst HL Hl0. iIntros "#Hinv #Hdg #Hw #Hend #Hcode".
+    intros Hst HL Hl0. iIntros "#Hinv #Hdg #Hdgw #Hw #Hend #Hcode".
     iApply (pcat_round_at_g pn γp L l wb I0
               (pcch g v ps0 cs0 I0 pcat_alt P) Cend HL Hl0
-              with "Hinv Hdg [] Hend Hcode").
-    iIntros "!>" (c nb rv fbb) "%Hrv Hjust _ Hstd Hc".
-    iApply ("Hw" $! c nb rv fbb with "[%] [Hjust] Hstd Hc");
+              with "Hinv Hdg Hdgw [] Hend").
+    iIntros "!>" (c nb rv fbb) "%Hrv %Hp _ Hstd Hc".
+    iApply ("Hw" $! c nb rv fbb with "[%] [] Hstd Hc");
       [ exact Hrv | ].
-    iDestruct "Hjust" as "[%Hp | #HT]"; [ | by iRight ].
     destruct Hp as [Hle Hlk]. iLeft. iPureIntro.
     split; [ exact Hle | ].
     exact (pcat_round_line I0 L c (Z.to_nat (bv_unsigned rv)) fbb HL Hlk).

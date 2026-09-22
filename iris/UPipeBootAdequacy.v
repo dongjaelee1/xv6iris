@@ -68,6 +68,7 @@ Require Import App.                (* [xv6_app_adequacy] and the record *)
 Require Import InodeInv.           (* [ROOTINO] *)
 Require Import PipeDisc.           (* [pipe_phi] -- the conclusion, spelled out *)
 Require Import EchoOut.            (* [echoOutG] / [echoOutSigma] *)
+Require Import PipeProto.          (* [pipeProtoSigma]: the pipe protocol's cameras -- every round mints a pipe's ghosts *)
 Require Import PipeOut.            (* [pipeOutG] / [pipeOutSigma] -- NOT dead:
                                       the section below generalises over
                                       [pipeOutG] and a missing import makes it
@@ -191,6 +192,9 @@ Definition pipeΣ : gFunctors :=
    ; echoOutΣ            (* the console stage's ghosts -- echo's, verbatim *)
    ; pipeOutΣ            (* the pipeline's own: the era map and [pe_cur]     *)
    ; pipeLineΣ           (* the shell's line-choice list                   *)
+   ; PipeProto.pipeProtoΣ (* the pipe PROTOCOL's cameras: cursors, the shots,
+                            the side tokens -- every round mints one pipe's
+                            (lane SH-PIPE-ROUND-14 found them missing)     *)
    ].
 
 Corollary pipe_adequacy_pipeΣ

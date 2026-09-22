@@ -118,12 +118,10 @@ End PipeProgLaw.
 (*  Iris at all, and a LONGER functor list is a STRONGER realisability    *)
 (*  claim, not a weaker one.                                             *)
 (*                                                                       *)
-(*  So the premise-free theorem is stated at [pipeSigma] EXTENDED by the  *)
-(*  protocol's own list.  The tidy follow-up is one token inside          *)
-(*  [UPipeBootAdequacy.pipeSigma] itself; that file is not this lane's,   *)
-(*  and doing it there would move [pipe_adequacy_pipeSigma]'s statement.  *)
+(*  The protocol's list is now INSIDE [UPipeBootAdequacy.pipeSigma] (the   *)
+(*  tidy the lane left; done 2026-09-23), so the premise-free theorem is   *)
+(*  stated at [pipeSigma] itself, like the corollaries above it.          *)
 (* ===================================================================== *)
-Definition pipeΣ_full : gFunctors := #[ pipeΣ ; PipeProto.pipeProtoΣ ].
 
 Theorem pipe_adequacy_pipeΣ_final
     (gst : gstate)
@@ -141,8 +139,8 @@ Proof.
   assert (Hdk : fs_blocks (v_disk (gst.(gdev).(dvirtio))) = fsimg_P)
     by (rewrite Hdisk; reflexivity).
   intros n κs t2 g2 Hn.
-  exact (pipe_adequacy_at_img (Σ := pipeΣ_full)
-           (pipe_prog_law_of_child (Σ := pipeΣ_full)
+  exact (pipe_adequacy_at_img (Σ := pipeΣ)
+           (pipe_prog_law_of_child (Σ := pipeΣ)
               sh_pipe_child_law_all_holds)
            gst fsimg_sb fsimg_nib fsimg_cov Hgen0 Hpow0 Himg Hdk
            eq_refl eq_refl n κs t2 g2 Hn).

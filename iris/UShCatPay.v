@@ -181,6 +181,20 @@ Section UShCatPay.
   Context `{!ghost_varG Σ Z}.
   Context `{!ghost_varG Σ (gset gname)}.
   Context `{!uartGhostG Σ}.
+  (* ...EXCEPT [uprogSG], WHICH IS A SECTION VARIABLE (design SS4.3z item
+     2, lane SH-PIPE-ROUND-11 finding (3)).  The entry this file builds
+     ([cat_image_entry_1w]) and the round its payer supplies
+     ([UkCatCat.kcat_round]) are the ENTERED PROGRAM's, and a verified
+     program runs at its own deposit data ([UexecExecInst.uprogSG_free]),
+     not at the ambient generic instance whose only [udep] producer is the
+     taint.  Nothing is pinned here: the round instantiates at
+     [uprogSG_free], the file era at its own, and every landed statement is
+     byte-identical after [(PS := _)].  The DEPOSIT RULE this file applies
+     ([ExecRun.udepw_at_refR_of_sup]) is [uprogSG]-FREE -- [UkRun.
+     udepw_at_ref] names only [uslot] and [sbundle_pay_ref] -- so the
+     conclusion [UkShCat.sh_exec_sup_cat_at] does not move either.
+     [sh_cat_slot] below reads no instance at all and is unchanged. *)
+  Context `{PS : UexecSG.uprogSG Σ}.
 
   Local Notation a0_idx := (mword_of_int 10 : mword 5).
   Local Notation a1_idx := (mword_of_int 11 : mword 5).

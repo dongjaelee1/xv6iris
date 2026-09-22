@@ -386,6 +386,18 @@ Section UCatPipe.
      reason (lane CAT-WALK-2, K2): a variable of either class here would be
      a SECOND instance whose [UkRun.urun] prints identically and does not
      unify with the one [UkReadPipe]'s leaf and [UkCatCat]'s walk run at. *)
+  (* ...AND THAT IS NOW HALF TRUE: [uexecSG] stays ambient, and [uprogSG]
+     is a SECTION VARIABLE (design SS4.3z item 2).  [UkReadPipe]'s leaf and
+     [UkCatCat]'s walk are THEMSELVES [uprogSG]-generic (both bind
+     [Context `{PS : uprogSG Σ}]), so a variable here does not make a
+     second instance -- it makes this file's round generic in the same one,
+     which is what lets an APPLICATION enter cat's paid image at
+     [UexecExecInst.uprogSG_free] (where [UexecExecMint.udep_free] is
+     closed) instead of at the ambient generic instance, whose only [udep]
+     producer is the taint.  Every landed consumer instantiates it
+     explicitly and every landed statement is byte-identical after
+     [(PS := _)]. *)
+  Context `{PS : UexecSG.uprogSG Σ}.
   (* THE FIXED PART IS [PipeOut.pipe_gn] (lane PIPE-2W-2): the echo half
      is [pgn_cl g], so every statement below names [γ] as it did, and the
      record equation is at the pipeline application's own claim. *)
@@ -1162,6 +1174,12 @@ Section UCatPipeEntry.
   Context `{GEN : GenId} `{XI : CurCtx}.
   Context `{!ghost_varG Σ Z}.
   Context `{!ghost_varG Σ (gset gname)}.
+  (* THE PROGRAM INSTANCE IS A SECTION VARIABLE (design SS4.3z item 2):
+     [pcat_pay_at]'s body names [UkCatMain.kcat_pay_all] and
+     [pcat_pay_at_of_round]'s premise [UkCatCat.kcat_round], both of which
+     are [uprogSG]-generic, and the payment interface has to be nameable at
+     the instance the ENTERING APPLICATION runs cat at. *)
+  Context `{PS : UexecSG.uprogSG Σ}.
 
   (* WHAT cat's ENTRY OWES ITS PAYER, at the key the entry is about to
      allocate the record for.  [UCatKernel.cat_pay_at] minus everything

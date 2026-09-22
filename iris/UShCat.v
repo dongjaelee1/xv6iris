@@ -922,20 +922,7 @@ Section UShCat.
   (*  the PAID one ([UCatKernel]'s) are two instantiations and not two     *)
   (*  proofs of the carve.                                                 *)
   (* ------------------------------------------------------------------- *)
-  (* THE DEPOSIT INSTANCE IS A PER-LEMMA BINDER (lane SH-PIPE-ROUND-11;
-     durable-notes' rule for the program tier: "every statement mentioning
-     a deposit or exec instance pins it").  This file binds no [uprogSG],
-     so [udep] and the continuation's [urun] used to elaborate at the
-     GLOBAL instance [UexecExecInst.uprogSG_gen] -- the GENERIC
-     (unverified) program's, whose only producer is
-     [UexecExecMint.udep_gen] out of [AppInv.app_sup], i.e. only under the
-     TAINT.  cat is a VERIFIED program, its twin
-     [UEchoPipe.ep_image_entry] is already PS-generic, and the pipeline
-     round runs its whole child at [uprogSG_free] -- so the premise could
-     not be supplied at all.  ADDITIVE: the conclusion [uslot W] is
-     PS-free, so this is strictly more ways to prove the same thing, and
-     [UCatKernel]'s consumer re-derives at the instance it had. *)
-  Lemma cat_entry_run `{PSx : UexecSG.uprogSG Σ} (W : uvis) (Q : Z -> iProp Σ) :
+  Lemma cat_entry_run (W : uvis) (Q : Z -> iProp Σ) :
     tf_resume_pc (uvis_tf W) = (mword_of_int CatSyms.start : mword 64) ->
     cat_text_sub (uvis_M W) ->
     cat_data_sub (uvis_M W) ->
@@ -967,7 +954,7 @@ Section UShCat.
     (forall (p : mword 27) (q : UserPerm.uperm), uvis_perm W !! p = Some q ->
        bv_unsigned p * 4096 < UserPtTree.pgroundup (uvis_sz W)) ->
     uvis_lazy W = false ->
-    udep (PS := PSx) -∗
+    udep -∗
     UkRun.urun_nopipe (uvis_fd W) -∗
     my_pay (uvis_gen W) Q -∗
     (∀ (N : uk_names Σ) (h : CpuId),
@@ -990,7 +977,7 @@ Section UShCat.
              (udata_lo (uvis_M W) (uvis_perm W) (uvis_sz W)),
           ubyteq (ukn_d N) DfracDiscarded k b) -∗
        ubytes (ukn_d N) CatSyms.buf 512 (fun _ : nat => ubyte0) -∗
-       urun (PS := PSx) N h (tf_resume_gpr0 (uvis_tf W))
+       urun N h (tf_resume_gpr0 (uvis_tf W))
          (mword_of_int CatSyms.start) 42 -∗
        mWP (Loop : expr riscv_lang)) -∗
     uslot W.

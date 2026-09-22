@@ -378,25 +378,7 @@ Section UShCatPay.
     rewrite Halen. unfold PGSIZE. lia.
   Qed.
 
-  (* THE DEPOSIT INSTANCE IS A PER-LEMMA BINDER (lane SH-PIPE-ROUND-11;
-     durable-notes' rule for the program tier).  This file binds no
-     [uprogSG], so [udep] below used to elaborate at the GLOBAL instance
-     [UexecExecInst.uprogSG_gen] -- the generic (unverified) program's,
-     whose only producer is [UexecExecMint.udep_gen] out of
-     [AppInv.app_sup], i.e. only under the TAINT.  cat is a VERIFIED
-     program and its twin [UEchoPipe.ep_image_entry] is already
-     PS-generic, so the pipeline round could not supply the premise at
-     all; at [uprogSG_free] it is [UexecExecMint.udep_free], which
-     is closed.  ADDITIVE: the conclusion is PS-free, so this is strictly
-     more ways to prove the same thing, and the landed instance is this
-     one at [PS := uprogSG_gen], which nothing consumed.  It is PINNED
-     and not a per-lemma BINDER: a [uprogSG] VARIABLE in this file wedges
-     its compile (three workers, 2 GB RSS each, 11 minutes and still
-     growing -- durable-notes' "two non-convertible instances ... do not
-     fail, they wedge", measured here at the per-lemma form the same rule
-     recommends elsewhere). *)
-  Lemma cat_image_entry_1w
-      (a b : nat) (Mn : gmap Z (bv 8)) (sv t : Z)
+  Lemma cat_image_entry_1w (a b : nat) (Mn : gmap Z (bv 8)) (sv t : Z)
       (gn : nat -> bv 8) (sts : list fdstate) (cw : Z) (cs : gset gname)
       (pidv : mword 32) (Q : Z -> iProp Σ) (Pay : iProp Σ) :
     (forall x y : Z, Q x = Q y) ->
@@ -405,7 +387,7 @@ Section UShCatPay.
     uargv_img Mn (t + 8) (UkShMain.ush_args sv gn (UkShCat.cat_toks a b)) ->
     length sts = NOFILE ->
     □ (∀ W' : uvis, ⌜uvis_fd W' = sts⌝ -∗ UCatPipe.pcat_pay_at W' Q Pay) -∗
-    UkRun.urun_nopipe sts -∗ udep (PS := UexecExecInst.uprogSG_free) -∗
+    UkRun.urun_nopipe sts -∗ udep -∗
     image_entry ElfUser.cat_elf Mn (mword_of_int (t + 8) : mword 64) sts
       cw cs pidv Q Pay uslot.
   Proof using xv6G0 ufdG0.
@@ -454,8 +436,7 @@ Section UShCatPay.
       by (rewrite Hargcna; exact Hna).
     iAssert (UkRun.urun_nopipe (uvis_fd W')) as "#Hnpw'";
       [ rewrite Hfd; iExact "Hnpw" | ].
-    iApply (UShCat.cat_entry_run (PSx := UexecExecInst.uprogSG_free)
-              W' Q Hpc Hsub Hsub2 Hx Hroom336 Hal8
+    iApply (UShCat.cat_entry_run W' Q Hpc Hsub Hsub2 Hx Hroom336 Hal8
               Hstkrow Hbuf Hargsrow Havd Havs Hfdlen Hstop Hlzf
               with "Hdep Hnpw' Hmp").
     iIntros (N' h) "%Hpayeq Hstd Hcwf #Hcode #Hro #Hargv #HA Hbuf' Hrun".
@@ -465,8 +446,7 @@ Section UShCatPay.
                  with "[%] [%] Hstd Hcode Hro Hargv HPay")
       as (Ci) "[Hp HCi]";
       [ exact Hpayeq | exact Hargc1 | ].
-    iApply (wp_kcat_start (PS := UexecExecInst.uprogSG_free)
-              N' h (tf_resume_gpr0 (uvis_tf W')) (uvis_av W')
+    iApply (wp_kcat_start N' h (tf_resume_gpr0 (uvis_tf W')) (uvis_av W')
               (UShCat.cat_args W') (fun _ : nat => ubyte0) 0%nat Ci
               Hptr
               ltac:(rewrite /UShCat.cat_args echo_args_length;
@@ -499,7 +479,7 @@ Section UShCatPay.
            ∃ I Cend : iProp Σ,
              UkCatCat.kcat_round N'' (mword_of_int 0) I Cend ∗ I
              ∗ (Cend -∗ ukn_pay N'' (-1))) -∗
-      sh_cat_slot T -∗ udep (PS := UexecExecInst.uprogSG_free) -∗
+      sh_cat_slot T -∗ udep -∗
       UkShCat.sh_exec_sup_cat_at Fd0 a b (fun _ : Z => Qc) Cr.
   Proof using xv6G0 ghost_varG0 ghost_varG1 ufdG0 uartGhostG0.
     iIntros "#Hqt #Hround (#Hinv & #Hcl & #Hgen) #Hdep".
@@ -566,8 +546,7 @@ Section UShCatPay.
   (*  the supply above feeds [UkShCat.wp_kshr_exec_cat_at_holds] and what *)
   (*  comes out is a WP over sh's EXEC arm, with nothing left unsaid.     *)
   (* =================================================================== *)
-  Lemma wp_kshr_exec_cat_paid
-      (Fd0 : list fdstate -> Prop) (a b : nat)
+  Lemma wp_kshr_exec_cat_paid (Fd0 : list fdstate -> Prop) (a b : nat)
       (T : iProp Σ) `{!Persistent T} `{!Timeless T}
       (Qc Cr Cd : iProp Σ)
       (N : uk_names Σ) (Hc : ukn_const N) (h : CpuId) (m : regfile)
@@ -584,7 +563,7 @@ Section UShCatPay.
            ∃ I Cend : iProp Σ,
              UkCatCat.kcat_round N'' (mword_of_int 0) I Cend ∗ I
              ∗ (Cend -∗ ukn_pay N'' (-1))) -∗
-      sh_cat_slot T -∗ udep (PS := UexecExecInst.uprogSG_free) -∗
+      sh_cat_slot T -∗ udep -∗
       shk_code (ukn_t N) -∗
       UkShDiag.ush_execfail_law_at PipeDisc.alt_execR 16%nat Cr Cd -∗
       □ (Cd -∗ Qc) -∗

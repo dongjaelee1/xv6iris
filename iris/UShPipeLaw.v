@@ -488,6 +488,37 @@ Section UShPipeLaw.
   Qed.
 
   (* =================================================================== *)
+  (*  S2b''''  THE REGISTRAR, AND THE PREMISE THE ROUND CANNOT PAY        *)
+  (*                                                                     *)
+  (*  ROUND-11's table row [R] is [UShPipeAssembly.pipe_reg_pay pn emp L] *)
+  (*  and its supplier [ush_pipe_call_pipe_pay].  That lemma takes ONE    *)
+  (*  premise the table never counted: [UkRun.udepw_law 21], the CLOSE    *)
+  (*  law, which is what the answer's two [UkShPipe.ush_cldep] rows are   *)
+  (*  built from ([UShPipeCall.ush_pipe_call_paid]'s last two lines).     *)
+  (*  Four of the PIPE arm's six closes shut a PIPE row, so the rows are  *)
+  (*  not optional -- and at [uprogSG_free] the law has NO PRODUCER but   *)
+  (*  the taint.  It is left as an ANTECEDENT here, at the leaf, so the   *)
+  (*  gap is nameable; see the lane's Findings block for the repair.      *)
+  (* =================================================================== *)
+  Lemma pl_pipe_call (N : uk_names Σ) `{!ukn_const N} (pn : pnames)
+      (l : list fdstate) (L : list (bv 8)) :
+    (forall k : Z, free_num k -> @psok Σ uprogSG_free k) ->
+    fd_lowest_closed l = None ->
+    UShPipeAssembly.pipe_pre pn -∗ wtok pn -∗ PipeProto.side_L pn -∗
+    rtok pn -∗ PipeProto.side_R pn -∗
+    UkRun.udepw_law (PS := uprogSG_free) 21 -∗
+    UkShPipe.ush_pipe_call (SG := uexecSG_xv6) (PS := uprogSG_free) N l
+      (UShPipeAssembly.pipe_reg_pay pn emp%I L).
+  Proof using .
+    intros Hpsok Hnone.
+    iIntros "Hpre Hw HsL Hr HsR Hcl".
+    iApply (UShPipeAssembly.ush_pipe_call_pipe_pay (PS := uprogSG_free)
+              Hpsok N pn emp%I l L Hnone
+              with "Hpre Hw HsL Hr HsR [] Hcl").
+    done.
+  Qed.
+
+  (* =================================================================== *)
   (*  S2c  THE FOUR PAYLOAD CONVERSIONS                                   *)
   (*                                                                     *)
   (*  The round's [Qc] is [UShPipeAssembly.pipe_Qc_at]; each of the four  *)

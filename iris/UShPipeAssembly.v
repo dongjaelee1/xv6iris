@@ -1264,39 +1264,53 @@ Section UShPipeAssemblyDiag.
     symmetry. apply difference_disjoint_L. set_solver.
   Qed.
 
-  (* THE WITNESS FOR (iii), the other half -- AND IT IS NOW A STATEMENT
-     ABOUT THE SH TIER'S ROW ONLY (lane PIPE-GEN).  An answer whose
-     generation is ALREADY in the caller's set leaves the set unchanged,
-     and [UkShPipe.ush_fork_ans] -- sh's own re-spelling of fork's answer,
-     which [UkShRun.wp_kshr_fork1]'s returning arm relays -- still permits
-     it: two forks CAN name one generation as far as THAT row is
-     concerned, and then the two reaps deliver ONE payload.
-       WHAT CHANGED: the U TIER's row no longer permits it.  Lane PIPE-GEN
-     bought [γ ∉ cs] at the kernel and threaded it to
-     [UexecRet.ufork_ans], where [ufork_ans_gens_distinct] below refutes
-     the collision outright.  The five sh-tier statements between the two
-     ([UkFork.wp_uk_ecall_fork]'s parent arm, [UkShRun.wp_kshr_fork],
-     [wp_kshr_fork1], [UkShDiag.wp_kshr_fork1_final] and this definition)
-     each RE-SPELL the answer inline and drop the conjunct, exactly as
-     they dropped the child's pid before purchase 1 -- so this lemma
-     stands, [pipe_round_answers] keeps its [S1 <> S2] premise, and the
-     relay is what a lane must buy next. *)
-  Lemma ufork_ans_same_gen (Qc Rc : iProp Σ) (r : mword 64) (γ : gname)
-      (pidv : mword 32) (cs : gset gname) :
-    r = (sign_extend' 64 pidv : mword 64) ->
-    (1 <= bv_unsigned pidv <= PIDMAX)%Z ->
-    γ ∈ cs ->
-    ChildTok.child_tok γ pidv (fun _ : Z => Qc) -∗
-    UkShPipe.ush_fork_ans cs cs Rc (fun _ : Z => Qc) r.
+  (* THE WITNESS FOR (iii), RETIRED AND REPLACED BY ITS NEGATION (design
+     app-pipe SS4.3y, lane SH-PIPE-ROUND-11).  What stood here was
+     [ufork_ans_same_gen]: an answer whose generation is ALREADY in the
+     caller's set leaves the set unchanged, and [UkShPipe.ush_fork_ans]
+     -- sh's own re-spelling of fork's answer -- PERMITTED it, so two
+     forks could name one generation and the two reaps deliver ONE
+     payload.  Lane PIPE-GEN bought [γ ∉ cs] at the kernel and relayed it
+     to [UexecRet.ufork_ans]; this lane relayed it through the six sh-tier
+     statements between the two ([UkFork.wp_uk_ecall_fork]'s parent arm
+     and its argv twin, [UkShRun.wp_kshr_fork], [wp_kshr_fork1]'s two
+     arms, [UkShDiag.wp_kshr_fork1_final] and [UkShPipe.ush_fork_ans]
+     itself).  So the collision is now REFUTED at sh's own row, and
+     [pipe_round_answers]'s [S1 <> S2] premise has its supplier. *)
+  Lemma ush_fork_ans_grows (Rc : iProp Σ) (Q : Z -> iProp Σ)
+      (r : mword 64) (Sa Sb : gset gname) :
+    r <> (mword_of_int (-1) : mword 64) ->
+    UkShPipe.ush_fork_ans Sa Sb Rc Q r -∗ ⌜ Sa <> Sb ⌝.
   Proof using .
-    intros Hr Hrng Hin. iIntros "Ht".
-    rewrite /UkShPipe.ush_fork_ans. iRight. iExists γ, pidv. iFrame "Ht".
-    iPureIntro. split_and!;
-      [ exact Hr | exact (proj1 Hrng) | exact (proj2 Hrng) | set_solver ].
+    intro Hn. iIntros "H". rewrite /UkShPipe.ush_fork_ans.
+    iDestruct "H" as "[[%Hb _] | H]"; [ exfalso; exact (Hn (proj1 Hb)) | ].
+    iDestruct "H" as (g1 p1) "[%Ha _]".
+    (* the conjuncts are peeled ONE at a time: the pid bound is itself a
+       conjunction, so a flat [(_ & _ & _ & _)] pattern splits it and
+       binds the wrong thing (measured). *)
+    destruct Ha as (_ & Ha). destruct Ha as (_ & Ha).
+    destruct Ha as (Hfresh & HSb).
+    iPureIntro. intro Hc. apply Hfresh.
+    rewrite HSb in Hc. rewrite Hc. set_solver.
+  Qed.
+
+  (* ...AND THE ROUND'S OWN READING, at the shape [pipe_round_answers]
+     takes its premise at: the SECOND fork's answer alone settles it (the
+     first's is what puts [γ1] into [S1]).  This is the lemma
+     [ufork_ans_sets_differ] below is the U-tier twin of. *)
+  Lemma ush_fork_ans_sets_differ (Rc1 Rc2 : iProp Σ) (Q1 Q2 : Z -> iProp Σ)
+      (r1 r2 : mword 64) (S1 S2 : gset gname) :
+    r2 <> (mword_of_int (-1) : mword 64) ->
+    UkShPipe.ush_fork_ans (∅ : gset gname) S1 Rc1 Q1 r1 -∗
+    UkShPipe.ush_fork_ans S1 S2 Rc2 Q2 r2 -∗ ⌜ S1 <> S2 ⌝.
+  Proof using .
+    intro Hn2. iIntros "_ H2".
+    iApply (ush_fork_ans_grows Rc2 Q2 r2 S1 S2 Hn2 with "H2").
   Qed.
 
   (* THE CONSUMER TEST AT THE U TIER (design app-pipe SS4.3x, item 4):
-     [ufork_ans_same_gen]'s NEGATION, at the row the kernel now proves.
+     [ufork_ans_same_gen]'s NEGATION at the U tier's own row (the sh-tier
+     twin is [ush_fork_ans_grows] above).
      Two forks by a process whose children set was EMPTY name two distinct
      generations and leave two distinct sets -- which is precisely what
      [pipe_round_answers]'s [S1 <> S2] premise asks for, and precisely
@@ -1388,7 +1402,13 @@ Section UShPipeAssemblyDiag.
       [ exfalso; exact (Hn2 (proj1 Hb2)) | ].
     iDestruct "Hf1" as (γ1 p1) "[%Ha1 Ht1]".
     iDestruct "Hf2" as (γ2 p2) "[%Ha2 Ht2]".
-    destruct Ha1 as (_ & _ & HS1). destruct Ha2 as (_ & _ & HS2).
+    (* one conjunct more since design app-pipe SS4.3y (the generation's
+       freshness), and the conjuncts are peeled one at a time -- see
+       [ush_fork_ans_grows] on why a flat pattern mis-binds. *)
+    destruct Ha1 as (_ & Ha1'). destruct Ha1' as (_ & Ha1'').
+    destruct Ha1'' as (_ & HS1).
+    destruct Ha2 as (_ & Ha2'). destruct Ha2' as (_ & Ha2'').
+    destruct Ha2'' as (_ & HS2).
     assert (Hne : γ1 <> γ2).
     { intro He. apply HS12. rewrite HS2 HS1 He. set_solver. }
     assert (Hg1 : γ1 ∈ S2) by (rewrite HS2 HS1; set_solver).

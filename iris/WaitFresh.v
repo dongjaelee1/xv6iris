@@ -9,8 +9,10 @@
    that was already there.  A parent that forks twice from an empty set
    cannot then tell its two children apart: at [γ1 = γ2] the set after
    both forks is a singleton, the first reap empties it and the second
-   wait's [-1] arm is consistent.  (Design app-pipe SS4.3x; the witness at
-   the U tier is [UShPipeAssembly.ufork_ans_same_gen].)
+   wait's [-1] arm is consistent.  (Design app-pipe SS4.3x.  The gap is
+   CLOSED above this file since SS4.3y relayed the conjunct through the sh
+   tier: [UShPipeAssembly.ush_fork_ans_grows] is the refutation at sh's
+   own row, and [ufork_ans_sets_differ] at [UexecRet.ufork_ans].)
 
    WHY THE INVARIANT ALREADY KNOWS.  [WaitInv.inv_rows] is the row
    converse: a generation in a row is the CURRENT generation of an

@@ -384,7 +384,10 @@ Section UkShPipePaid.
       iIntros "!>" (h' m' r γp S1) "%Ha0' %Hr' Hans Hstd' Hcx Hrun'".
       iAssert (RcR γp) with "[Hans]" as "HRcR".
       { iDestruct "Hans" as "[(_ & _ & HR) | Hpid]"; [ iExact "HR" | ].
-        iDestruct "Hpid" as (γ pidv) "(%Hr2 & %Hrng & _ & _)".
+        (* one slot more since design app-pipe SS4.3y: the tail's answer
+           carries the generation's freshness, which this refutation does
+           not read. *)
+        iDestruct "Hpid" as (γ pidv) "(%Hr2 & %Hrng & _ & _ & _)".
         iExFalso. iPureIntro.
         apply (ushq_pid_sext_ne_m1 pidv Hrng). rewrite -Hr2. exact Hr'. }
       iApply (wp_kshd_panic_paid_at N 0x1298 EchoDisc.alt_panic

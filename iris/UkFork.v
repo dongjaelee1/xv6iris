@@ -864,6 +864,15 @@ Section UkFork.
          ∨ ∃ (γ : gname) (pidv : mword 32),
              ⌜r = (sign_extend' 64 pidv : mword 64)⌝ ∗
              ⌜(1 <= bv_unsigned pidv <= PIDMAX)%Z⌝ ∗
+             (* ...AND THE GENERATION IS FRESH (design app-pipe SS4.3y,
+                lane SH-PIPE-ROUND-11): [UexecRet.ufork_ans]'s own row,
+                which this arm was RE-SPELLING and dropping.  The child's
+                generation was in no row of the <wait_lock> children map
+                when kfork put it in the caller's, so the union beside it
+                is a GROWTH BY ONE and not a no-op -- which is what lets a
+                parent that forks twice tell its two children apart.  A
+                consumer that does not want it introduces and drops it. *)
+             ⌜γ ∉ Sc⌝ ∗
              child_tok γ pidv Q ∗
              UserChildren.uch (ukn_ch N) (Sc ∪ {[γ]})) -∗
         P (ukn_t N) (ukn_d N) (ukn_s N) -∗ usz (ukn_s N) szv -∗
@@ -1040,6 +1049,7 @@ Section UkFork.
                   ∨ ∃ (γ : gname) (pidv : mword 32),
                       ⌜r = (sign_extend' 64 pidv : mword 64)⌝ ∗
                       ⌜(1 <= bv_unsigned pidv <= PIDMAX)%Z⌝ ∗
+                      ⌜γ ∉ Sc⌝ ∗
                       child_tok γ pidv Q ∗
                       UserChildren.uch (ukn_ch N) (Sc ∪ {[γ]})))%I
         with "[Hcha Hchf Hans]" as ">Hmv".
@@ -1047,11 +1057,11 @@ Section UkFork.
         - destruct Hm1 as [Hm1 Hcs]. iModIntro. iExists Sc.
           iSplitR; [iPureIntro; exact Hcs |]. iFrame "Hcha".
           iLeft. iSplitR; [iPureIntro; exact Hm1 |]. iFrame "Hchf HRc".
-        (* [%Hnin] is the kernel's freshness row (design app-pipe SS4.3x):
-           this arm re-spells fork's answer at the run's own children
-           handle and does not carry it on -- the sh tier's relay
-           ([UkShRun.wp_kshr_fork]) is where a consumer that wants it would
-           pick it up. *)
+        (* [%Hnin] is the kernel's freshness row (design app-pipe SS4.3x),
+           and it is RELAYED now (SS4.3y): this arm re-spells fork's answer
+           at the run's own children handle and carries the conjunct with
+           it, so the sh tier ([UkShRun.wp_kshr_fork]) can relay it on to
+           a round that has to tell two children apart. *)
         - iDestruct "Hpid" as (γ pidk) "(%Hpv & %Hrng & %Hnin & %Hcs & Htok)".
           iMod (uch_update (ukn_ch N) Sc Sc (Sc ∪ {[γ]}) with "Hcha Hchf")
             as "[Hcha Hchf]".
@@ -1059,6 +1069,7 @@ Section UkFork.
           iSplitR; [iPureIntro; exact Hcs |]. iFrame "Hcha".
           iRight. iExists γ, pidk. iSplitR; [iPureIntro; exact Hpv |].
           iSplitR; [iPureIntro; exact Hrng |].
+          iSplitR; [iPureIntro; exact Hnin |].
           iFrame "Htok Hchf". }
       iDestruct "Hmv" as (cs2) "(%Hcs2 & Hcha & Harm)". subst cs'.
       iDestruct ("Hidsback" $! cs2 with "Hcha") as "Hcha".
@@ -1207,6 +1218,9 @@ Section UkFork.
          ∨ ∃ (γ : gname) (pidv : mword 32),
              ⌜r = (sign_extend' 64 pidv : mword 64)⌝ ∗
              ⌜(1 <= bv_unsigned pidv <= PIDMAX)%Z⌝ ∗
+             (* ...and the generation is fresh -- see
+                [wp_uk_ecall_fork] (design app-pipe SS4.3y) *)
+             ⌜γ ∉ Sc⌝ ∗
              child_tok γ pidv Q ∗
              UserChildren.uch (ukn_ch N) (Sc ∪ {[γ]})) -∗
         usz (ukn_s N) szv -∗

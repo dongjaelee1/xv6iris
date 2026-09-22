@@ -256,7 +256,7 @@ in `durable-notes.md` for what belongs where and what gets deleted.
   it and the one kernel pin that blocks it), the stage's f-state history,
   and the three honest limits with their prices.
 
-- **[`app-pipe.md`](design/app-pipe.md)** — THE PIPELINE APPLICATION:
+- **[`app-pipe.md`](design/app-pipe.md)** — THE PIPELINE APPLICATION (COMPLETE 2026-09-23: `pipe_adequacy_pipeΣ_final`, no premise; worklist + findings in `completed/app-pipe.md`):
   `echo … | cat` prints the line — the first application to HOLD A PIPE:
   the registry that replaces the taint for a pipe-holding program (the
   pipe-queue campaign's deferred ruling), the per-pipe protocol invariant

@@ -58,6 +58,85 @@ and the pipe's read and write leaves at the STANDARD slots (§5.4).
    claim** (the file system keeps its pins; a pipe does not survive a
    boot).  The pipe protocol is per era and dies with it.
 
+### 0.1 AS LANDED (2026-09-23): the theorem, and what the campaign actually built
+
+**The theorem.** `UInitPipeAdequacy.pipe_adequacy_pipeΣ_final`: for any
+machine state at generation 0, powered down, with the pinned disk image,
+every execution of the Sail RISC-V model booting xv6 (kernel, /init, /sh
+from the real ELFs) is safe and its console observations satisfy
+`PipeDisc.pipe_phi` — the pipeline discipline over echo lines and
+`echo w1 … wn | cat` lines.  NO `Context` hypothesis.  `Print Assumptions`
+= the echo application's fourteen exactly: eleven Rocq primitives
+(`PrimInt63.{int,eqb,land,lor,lsl,lsr,sub}`, `PrimString.{string,get,cat,
+length}`), the two `xv6iris_extras` reservation `Parameter`s, and
+`functional_extensionality_dep`.  Stated at `pipeΣ_full := #[pipeΣ;
+pipeProtoΣ]` (the protocol's cameras were missing from `pipeΣ`; folding
+them in is a one-token tidy).  Zero `Admitted` tree-wide.  Audits:
+system 13, echo 14, tree 13, pipe 14 — unmoved by the whole campaign.
+
+**What the discipline says, as landed (§1, §4.3h, §4.3m).**  A session
+of echo and pipeline lines; a pipeline round's console block is the line
+(`PRan`), a child's exec-failed diagnostic (`PExecL`/`PExecR`), both
+interleaved byte-wise (`PBoth sel`), sh's `pipe`/`fork` panics; and
+COVERAGE ENDS AT A FORK FAILURE (`PForkS sel`, rule D4 read off the
+BYTES): a pipeline round whose `fork1` failed may leave a stray child
+printing `exec echo failed` at any later time, so the theorem promises
+nothing typed after a fork failure (the fully general stray model is
+unstateable over the wire — a stray `e` is an echoed `e`; §4.3h).  This
+is the FOURTH honest limit, found and mechanised by lane SH-PIPE-ROUND-4.
+
+**What the campaign built that nothing in the tree had** (each with the
+section that rules it and the lane that landed it): a verified program
+holding a pipe untainted, the REGISTRY (§2, PIPE-REG); the pipe as a
+three-process protocol with cursors, the EOF and read-end shots, and —
+found late — the ORDER of the two closes and the reader never running
+ahead (§3, P5/P6: PIPE-PROTO, PIPE-EXEC-ECHO, PIPE-RO); sh's PIPE arm,
+the last unverified arm of `runcmd` (§5.1); the TWO-WRITER FAMILY on the
+console with its per-round ledger and the round's terminal flag (§4.3
+b–e, m: PIPE-2W, PIPE-STAGE-3/4); the exec of `/cat` from sh and echo's
+exec into a pipe (EXEC-CAT, PIPE-EXEC-ECHO); the pipe era's `cons_cred`
+instance (PIPE-CC).  And five things the KERNEL and generic sh tiers were
+missing, each found by an assembly lane at a statement and bought
+additively: the read end published open by the pipe-read spec and the fd
+layer's complementary ends (§4.3w-5, PIPE-RO — without it the "short
+round" was DERIVABLE); the child's pid relayed through sh's fork and wait
+(§4.3w-1..3, PIPE-PID); generation freshness from the dispatcher through
+the fork chain (§4.3x, PIPE-GEN) and relayed through the sh tier (§4.3y);
+the ROW-AWARE close deposit — before it no verified program could close
+a pipe descriptor on the good path (§4.3aa, ROUND-13); and the loop's
+read hypothesis as a fancy update (§4.3k).
+
+**The wall that cost the most** (§4.3f–§4.3o, nine rulings): where the
+TERMINAL round's family lives.  Every carrier of a per-round invariant
+was measured to its leaf — the link record (not timeless; its read field
+pure), the claim (barred by the machine's generic timeless field; and
+reachable only at a byte), the child's escrow (redeemed timeless), an
+era-fixed application invariant (no era-scope fancy update exists) — and
+the answer was the LATER: the escrow token rides the wait's answer and
+one instruction (`c.jr ra`) stands between the redemption and the loop
+head, so the terminal payload travels under `▷` and the pipe era runs
+its loop at the widened credential `pterm_wc` (§4.3o–p).
+
+**Rules the campaign left behind** (durable-notes, 2026-09-20..23): a
+bundle a proof `iIntros "#"` on is `Typeclasses Opaque` with named
+priority-0 leaves; when two types print identically and do not unify it
+is an unbound instance (`ghost_varG`, `uprogSG`, …) — bind it as a
+section variable, never pin a constant; an upstream import sweep computed
+at an older snapshot of our files must be un-swept; the gate waiters key
+on the SHA; a `git commit` after a conflicted merge commits the markers;
+lanes cut from different bases are gated COMBINED before anything is
+called pushable.
+
+**Lanes** (38, Sep 17–23 2026; every one a fresh Opus agent on its own
+worktree and mirror clone, merged only at its own whole-tree green):
+PIPE-STD, PIPE-MODEL(+2,+3), PQ-FLAG(+2), PIPE-REG, PIPE-DEC, SH-PIPE,
+SH-PARSE-PIPE(1–3), PIPE-PROTO(+2), PIPE-NEG1, PIPE-STAGE(+CLAIM, 3, 4, 5),
+ECHO-PIPE(+2), CAT-PIPE, KILL-TAINT, ULINE-LPIPE(+2), PIPE-LINK-INST,
+SH-PIPE-ROUND(-2, -3, -4, …, -14), PIPE-ARM-PAID, PIPE-2W(+2,+3),
+EXEC-CAT, PIPE-CC, PIPE-EXEC-ECHO, PIPE-PID, PIPE-RO, PIPE-GEN, and six
+upstream merges.  Worklist and every lane's Findings:
+`claude-notes/completed/app-pipe.md`.
+
 ## 1. The pure model (`iris/PipeDisc.v`)
 
 Iris-free, over `EchoDisc`/`LineWords`, in `FileDisc.v`'s style (a line

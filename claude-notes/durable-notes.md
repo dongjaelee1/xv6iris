@@ -1729,3 +1729,43 @@ D2_next_input_p` stands, `PipeDisc.disc_p_disc` is one-way (`disc_p h ->
 disc h`), and `EchoOut.inp_lb` now bounds the DELIVERED list (`dl_list_auth`
 is a `pecl` conjunct; a writer step takes its input bound off `Hdll`, never
 off `HE`).  A witness carries pipe → echo and never back.
+
+## Lessons of the pipeline campaign (2026-09-17..23), in one place
+
+The whole-system theorem for `echo … | cat` (`UInitPipeAdequacy.
+pipe_adequacy_pipeΣ_final`) closed after 38 lanes; `design/app-pipe.md`
+§0.1 is the summary.  What generalises:
+
+- **A per-round invariant has no carrier at the boundary between two
+  processes** unless it rides under a LATER: the link record's boundary
+  families are `Timeless`, the claim is timeless by a machine-level field
+  and reachable only at a byte, the child's exit payload is redeemed with
+  `gen_pay_timeless`, and no era-scope fancy update exists to allocate an
+  application invariant.  The later is paid by the instruction between the
+  wait's answer and the loop head (`wp_uk_cjr_later`).  Measure the
+  carrier BEFORE designing a round that needs one (app-pipe §4.3f–o).
+- **When two types print identically and `iApply` fails, it is an
+  unbound instance** (`uprogSG`, `uexecSG`, `ghost_varG`) resolved through
+  a bundle and baked into one side.  `Set Printing Implicit`; bind it as a
+  `Context` variable in the file that states the lemma; never pin a
+  constant (pinning WEDGES the proofmode for an hour).
+- **A "one-token" spec change ripples through every inline re-spelling.**
+  A conjunct added to a kernel post (`γ ∉ cs`, the child's pid) reached
+  the round only after six sh-tier statements that re-spell the same
+  answer inline each got it.  `grep` the answer's SHAPE, not its name.
+- **"No verified program can X on the good path" hides in a universally
+  quantified row.**  The close deposit's right arm quantified the
+  descriptor table one step before the row was pinned; the fix keeps the
+  row inside the binder (`udepw_row`).  Look for `∀ fdv` where the call
+  site already knows `fdv`.
+- **A model fact must be read off the observable bytes, not the
+  resolution** (D4 at `echo fork | cat`); and an ordering fact the
+  machine guarantees (the two ends of a pipe close in an order) must be
+  PUBLISHED by the spec that observes it, or the impossible run is
+  derivable (`pipe_short_trace`).
+- **Operational**: un-sweep an upstream import sweep for files changed
+  since its snapshot; key gate waiters on the SHA; `grep -c … &&` stops a
+  chain at count 0; a scripted commit after a conflicted merge commits
+  the markers; count DISTINCT axiom names (upstream's folded audit file
+  lists some twice); run the four audits sequentially when a lane build
+  shares the box (a concurrent system audit got Killed).

@@ -1768,7 +1768,7 @@ Section pipe_links_line.
     iDestruct "Hl" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE)".
     assert (Hbc : blkcs_p cs 3%nat (length (pab I 3%nat)) = cs ++ [3%nat]).
     { destruct (length (pab I 3%nat)) as [| kk] eqn:Hk; [| reflexivity].
-      exfalso. rewrite pab_pan pd_alt_panic_len in Hk. discriminate. }
+      exfalso. rewrite pab_pan lb_panic_len in Hk. discriminate. }
     rewrite Hbc.
     iLeft. iExists ps, (cs ++ [3%nat]), (P + length (pab I 3%nat))%nat.
     rewrite Nat.add_0_r. iFrame "Htn Hps Hcs HE". iPureIntro.

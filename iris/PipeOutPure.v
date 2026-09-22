@@ -33,7 +33,7 @@
    - F3 is [EchoOutPure.read_window_prefix] VERBATIM: it is about the log
      and the echoed entries and names no discipline.
 
-   DETERMINACY NEEDS NO SECOND WITNESS.  [FileOutPure.sessf_prefix_det2]
+   DETERMINACY NEEDS NO SECOND WITNESS.  [FileDisc.sessf_prefix_det2]
    exists only because a file's transcript reads the era's BOOT STATE, and
    the discipline's witness for it and the claim's own have no reason to be
    equal.  A pipeline round reads no state at all, so
@@ -1716,7 +1716,7 @@ Qed.
 (* ====================================================================== *)
 (*  8.  DETERMINACY                                                        *)
 (*                                                                        *)
-(*  [FileOutPure.sessf_prefix_det2] exists because a file's transcript     *)
+(*  [FileDisc.sessf_prefix_det2] exists because a file's transcript     *)
 (*  reads the era's BOOT STATE and the two witnesses' states have no       *)
 (*  reason to be equal.  A PIPELINE round reads no state, so               *)
 (*  [PipeDisc.sessp_prefix_det] already compares two independent           *)

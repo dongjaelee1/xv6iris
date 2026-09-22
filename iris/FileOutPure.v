@@ -34,10 +34,10 @@
    state for both witnesses; the claim needs the DISCIPLINE's witness (which
    the tag hands over, at a state the trace predicate chose existentially)
    compared against ITS OWN (which init filed off the deed).  There is no
-   reason for the two to be equal, and none is needed:
-   [FileDisc.alt_seq_f_prefix_det] already takes the two states apart, and
-   [sessf_prefix_det2] below is [sessf_prefix_det] at two of them.  The
-   conclusion is an equality of BYTES, which is all the claim ever spends.
+   reason for the two to be equal, and none is needed: the line model's
+   determinacy theorem takes the two states apart, and
+   [FileDisc.sessf_prefix_det2] is it at two of them.  The conclusion is an
+   equality of BYTES, which is all the claim ever spends.
 
    THE DISCIPLINE'S CLOSURE LAWS are here too ([disc_f_out], [disc_f_in],
    [disc_f_power], [disc_f_other], [disc_f_prefix]): [FileDisc] landed
@@ -1336,85 +1336,14 @@ Qed.
 (* ====================================================================== *)
 (*  8.  DETERMINACY AT TWO BOOT STATES                                     *)
 (*                                                                        *)
-(*  [FileDisc.sessf_prefix_det] fixes ONE boot state for both witnesses.   *)
 (*  The claim compares the DISCIPLINE's witness -- whose state the trace    *)
 (*  predicate chose existentially -- against ITS OWN, filed off the deed,   *)
-(*  and the two have no reason to be equal.  They do not have to be:        *)
-(*  [FileDisc.alt_seq_f_prefix_det] already takes the two apart (a          *)
-(*  non-panic alternative's output is a '$'-free run followed by the         *)
-(*  prompt WHATEVER the file holds), so this is that lemma's own            *)
-(*  conclusion lifted to the session.                                      *)
+(*  and the two have no reason to be equal.  They do not have to be: a     *)
+(*  non-panic alternative's output is a '$'-free run followed by the        *)
+(*  prompt WHATEVER the file holds, and [FileDisc.sessf_prefix_det2] (the   *)
+(*  line model's determinacy theorem at two states) is what section 9      *)
+(*  spends.                                                                *)
 (* ====================================================================== *)
-Lemma sessf_prefix_det2 (ps ps' cs cs' : list nat) (s s' : fstate)
-    (I' I : list (bv 8)) :
-  Forall (fun a => (a < length pro_alts)%nat) ps ->
-  pro_ok_f ps' cs' (nlines I') ->
-  alts_ok I cs -> alts_ok I' cs' ->
-  pro_pin_f ps cs I -> disc_input_f I -> disc_input_f I' ->
-  fstate_ok s -> fstate_ok s' ->
-  sessf ps' cs' s' I' `prefix_of` sessf ps cs s I ->
-  I' `prefix_of` I /\ pro_ok_f ps cs (nlines I')
-  /\ sessf ps' cs' s' I' = sessf ps cs s I'.
-Proof using.
-  intros Hps [Hps' Hlt'] Hcs Hcs' Hpin Hd Hd' Hs Hs' Hpre.
-  assert (Hdone' : pro_done ps') by (apply pro_done_rounds; lia).
-  assert (Hpre0 : pro_of ps' `prefix_of` pro_of ps).
-  { destruct (decide (I = [])) as [HI0 | HI].
-    - rewrite HI0 sessf_nil in Hpre. etrans; [| exact Hpre].
-      rewrite /sessf. by apply prefix_app_r.
-    - assert (HdA : pro_done ps).
-      { apply pro_done_rounds.
-        pose proof (Hpin 0%nat (nstarted_pos I HI)) as H0.
-        cbn [pro_idx_f] in H0. lia. }
-      assert (H1 : pro_of ps' `prefix_of` sessf ps cs s I).
-      { etrans; [| exact Hpre]. rewrite /sessf. by apply prefix_app_r. }
-      assert (H2 : pro_of ps `prefix_of` sessf ps cs s I)
-        by (rewrite /sessf; by apply prefix_app_r).
-      destruct (prefix_weak_total _ _ _ H1 H2) as [H | H]; [exact H |].
-      destruct (pro_of_prefix_free ps' ps Hps' Hps HdA H) as [_ Heq].
-      by rewrite Heq. }
-  destruct (pro_of_prefix_free ps ps' Hps Hps' Hdone' Hpre0) as [Hdps Heq0].
-  assert (Hpos : (0 < pro_rounds ps)%nat) by (by apply pro_done_rounds).
-  rewrite /sessf Heq0 in Hpre. apply wl_prefix_app_cancel in Hpre.
-  assert (Hbelow : forall i, (i < nlines I)%nat ->
-            (pro_idx_f cs i < pro_rounds ps)%nat).
-  { intros i Hi. apply Hpin. pose proof (nlines_le_nstarted I). lia. }
-  assert (Htlast : rest_of I <> [] ->
-            (pro_idx_f cs (nlines I) < pro_rounds ps)%nat).
-  { intros Hne. apply Hpin. rewrite /nstarted.
-    case_decide as Hz; [by destruct (Hne Hz) | lia]. }
-  assert (Hlb' : (nlines I' <= length (bodies_of I'))%nat)
-    by (rewrite /nlines; lia).
-  assert (Hlb : (nlines I <= length (bodies_of I))%nat)
-    by (rewrite /nlines; lia).
-  assert (Hline : forall i, (i < nlines I)%nat ->
-            uline_ok (uline_of (bodies_of I !!! i)))
-    by (intros i Hi; exact (proj1 (disc_input_f_at I i Hd Hi))).
-  assert (Hokc : forall i, (i < nlines I)%nat ->
-            ralt_ok (uline_of (bodies_of I !!! i)) (ralt_at cs i))
-    by (intros i Hi; exact (FileDisc.alts_ok_at I cs i Hcs Hi)).
-  assert (Hokc' : forall i, (i < nlines I')%nat ->
-            ralt_ok (uline_of (bodies_of I' !!! i)) (ralt_at cs' i))
-    by (intros i Hi; exact (FileDisc.alts_ok_at I' cs' i Hcs' Hi)).
-  destruct (alt_seq_f_prefix_det (nlines I') ps ps' cs cs' s s'
-              (bodies_of I) (bodies_of I') (nlines I) (rest_of I') (rest_of I)
-              Hps Hps' Hlt' Hpos Hbelow Htlast Hlb' Hlb Hs Hs'
-              Hline Hokc Hokc'
-              (wl_cut_bodies_nonl I) (wl_cut_bodies_nonl I')
-              (wl_cut_rest_nonl I') (wl_cut_rest_nonl I) Hpre)
-    as (Hqle & Htk & Hround & Hseq & Hteq & Htlt).
-  assert (HI' : I' `prefix_of` I).
-  { apply wl_cut_prefix_of.
-    - assert (Hb' : bodies_of I' = take (nlines I') (bodies_of I))
-        by (rewrite -Htk take_ge; [reflexivity | rewrite /nlines; lia]).
-      rewrite Hb'. apply prefix_take.
-    - exact Hteq.
-    - exact Htlt. }
-  split; [exact HI' |]. split; [split; [exact Hps | exact Hround] |].
-  rewrite /sessf Heq0. do 2 f_equal. rewrite Hseq.
-  apply alt_seq_f_bs_ext. intros j Hj. symmetry.
-  exact (fd_lta_take_eq (bodies_of I) (bodies_of I') (nlines I') j Htk Hj).
-Qed.
 
 (* THE DISCIPLINE'S LOWER BOUND AT THE OPEN CYCLE'S LAST INPUT, at the
    cycle's own boot state: D1/D2 read off [disc_seg_f'] at the wire the last

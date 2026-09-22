@@ -1705,7 +1705,7 @@ Section file_out.
 
   (* ---- THE ECHO'S STEP.  [EchoOut.ecl_step_echo] at the file session: the
      discipline's witness is compared with the claim's at ITS OWN boot state
-     ([FileOutPure.sessf_prefix_det2]) and the claim's resolution is PADDED
+     ([FileDisc.sessf_prefix_det2]) and the claim's resolution is PADDED
      to a full one first ([FileOutPure.stage_sessf_pad]), because the
      determinacy theorem is stated at an [alts_ok] and the stage's list runs
      one short at a block boundary. ---- *)

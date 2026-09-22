@@ -1497,6 +1497,7 @@ App.v
 LineWords.v
 FileState.v
 EchoDisc.v
+LineBytes.v
 LineModel.v
 ExecWords.v
 FileDisc.v

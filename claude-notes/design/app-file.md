@@ -180,7 +180,10 @@ mid-round, cat shows a prefix", and one NEGATIVE witness (`demo_f_bad`:
 the vacuity rule of `durable-notes.md`.  The determinacy proof
 (`sessf_prefix_det`) runs on one observation, `cont_shape`: every
 non-panic alternative's output is a `$`-free run followed by the prompt,
-so no table of alternatives is compared.
+so no table of alternatives is compared.  (Since app-both M1, 2026-09-23,
+the proof is `LineModel.lm_sess_prefix_det` at `FileDisc.file_lm`, with
+`cont_shape`/`cont_panic` as the model's byte-shape laws
+`FileDisc.file_lm_laws`; the byte facts are `LineBytes.v`.)
 
 ## 2. The claim (`iris/AppFile.v`)
 

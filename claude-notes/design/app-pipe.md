@@ -285,7 +285,11 @@ transcript is a function of `(ps, cs, I)` and the determinacy proof
 (`sessp_prefix_det`, the twin of `EchoOutPure.sess_prefix_det`) runs on
 the same one observation — every non-panic continuation is a `$`-free run
 followed by the prompt.  (`merge sel d1 d2` contains no `$`: neither
-diagnostic does.)
+diagnostic does.)  Since app-both M1 (2026-09-23) the proof is
+`LineModel.lm_sess_prefix_det` at `PipeDisc.pipe_lm`: `PForkS` is the
+model's coverage-ending arm (`lm_term`), `pmergeable` its `lm_merge`, and
+`pcont_pair_det`/`alt_seq_p_prefix_det` are the generic block and
+sequence steps (`lm_cont_pair_det`, `lm_seq_prefix_det`).
 
 **The theorem's conclusion** is the echo application's, at the new
 session: `pipe_phi h := disc_p h -> forall each cycle, exists ps cs,

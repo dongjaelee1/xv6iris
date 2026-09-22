@@ -58,7 +58,9 @@ proved ONCE over that.
   name families partially applied, so an instance must be definitionally
   the landed thing, not merely equivalent).  Anti-vacuity demos.
   Exit: the three `*_prefix_det` theorems are corollaries; nothing
-  downstream moves.
+  downstream moves.  **DONE 2026-09-23** (the file's and the pipe's are
+  corollaries; echo's stays its own, see RESUME HERE; the demos are the
+  models' own, unchanged).
 - **M2 — the generic families.**  `GenLinksLine.v`: the twelve families,
   the read residue, the turn and the ~60 laws over an `lmodel`, a cursor
   and a state-witness family (`f0w` at the file, `emp` elsewhere), with
@@ -125,10 +127,43 @@ writer equations are NOT stated (echo is the pipe's corollary; its
 `decide`-vs-`bool_decide` panic test makes them lemmas, not
 conversions -- state them only if M2 needs the echo instance directly).
 
-NEXT in M1: the DETERMINACY theorem `lm_sess_prefix_det` over the model
-from byte-shape fields (`lm_cont_shape`: every non-panic continuation is
-a `$`-free run then the prompt; the panic's bytes uniform), with the
-pipe's coverage-ending arm as a field (`lm_forkS`) and its guard
-(`PipeDisc.d4_p`); the three landed `*_prefix_det` become corollaries
-through the equations.  Mould: `FileDisc.sessf_prefix_det` (state
-threaded) and `PipeDisc.sessp_prefix_det` (the guard).  Then M2.
+THIRD CUT (2026-09-23): DETERMINACY ONCE.  `lmodel` gained four fields
+(`lm_line_ok`, `lm_st_ok`; `lm_term` the coverage-ending arm, `lm_merge`
+what it can have written) and a laws record `lm_laws M` (body parses to a
+well-formed line; the step keeps `lm_st_ok`; a panic prints `alt_panic`;
+a coverage-ending arm never panics and prints a mergeable output;
+`lm_merge` is prefix-closed; `lml_cont_shape`: every other continuation is
+a `$`-free run then the prompt AND, put beside the panic line on one
+wire, IS the panic line -- stated in that consequence form because the
+file proves it from a newline-shape disjunction and the pipe from a
+three-way one).  `LineModel.v` §3 (section `determinacy`, `Context (L :
+lm_laws M)`): `lm_cont_pair_det` (the block step, the pipe's four cases
+with D4's two guards), `lm_seq_prefix_det` (the induction, at two states
+and with the round-by-round block equality), `lm_sess_prefix_det` (AT
+TWO STATES `s s'`).  The byte facts both models had proved twice
+(`fd_*`/`pd_*`: the `$`-split, prompt-of-`$`, the out-vs-panic
+collision, the list helpers) moved to a new pure `iris/LineBytes.v`
+(`lb_*`, `nodollar`), registered after `EchoDisc`; `FileDisc` and
+`PipeDisc` `Require Export` it and `Require Import LineModel`.
+`FileDisc` §6 and `PipeDisc` §7 (the two ~700-line determinacy
+sections) are DELETED and replaced by the instances (`file_lm`,
+`pipe_lm`, the session/pointer/range/discipline equations, which moved
+there from `LineModelInst`), the laws (`file_lm_laws`, `pipe_lm_laws`:
+each a `constructor` over the landed byte lemmas) and the landed
+theorems as one-line corollaries: `FileDisc.sessf_prefix_det2` (two
+states; MOVED from `FileOutPure` §8, whose own 70-line proof is gone),
+`FileDisc.sessf_prefix_det` (its `s' := s` case),
+`PipeDisc.sessp_prefix_det` (the D4 guards discharged by
+`palt_isforkS_inv`/`palt_ok_forkS_pipe`).  `LineModelInst.v` keeps only
+the stream-fold equations and `echo_lm`.  Net: -614 lines.  Echo's
+`EchoOutPure.sess_prefix_det` is NOT a corollary: its statement is at
+`cs_ok` (every code below 4 at every index), not the model's range
+condition, and echo is the pipe's corollary in the landed tree; it goes
+with the echo tier at M5.  Gotchas met: a variable named `I` shadows
+`True`'s constructor (`Logic.I`); comments must not contain `"`.
+
+M1 EXIT REACHED once the whole-tree gate passes (this landing).  NEXT:
+M2 -- `GenLinksLine.v`, the twelve families over an `lmodel`, a cursor
+and a state-witness family, with the per-shape block arm hook; read
+`FileLinksLine.v`/`PipeLinksLine.v` side by side first and write the
+family-shape table into this file before coding.

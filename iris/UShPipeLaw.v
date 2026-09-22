@@ -873,7 +873,7 @@ Section UShPipeLaw.
       apply Forall_lookup. intros i x Hx.
       rewrite lookup_drop in Hx.
       exact (Forall_lookup_1 _ _ _ _ Hwf Hx). }
-    assert (Hnd : Forall PipeDisc.nodollar L).
+    assert (Hnd : Forall LineBytes.nodollar L).
     { rewrite HL.
       exact (proj1 (PipeDisc.pd_wl_line_shape (drop 1 ws) Hwf1)). }
     (* the family's two witness obligations, [pipe_execR_law]'s verbatim *)

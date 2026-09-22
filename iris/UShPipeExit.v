@@ -240,7 +240,7 @@ Section pipe_exit.
   (* ...AND THE TWO TOGETHER ARE [pwc_line], i.e. [Wcf I 0] -- what the
      shell's loop re-enters at.  The [pwc_post] arm is read at the round's
      OWN code: a boundary credential filed at a different alternative is
-     refuted on the wire by [PipeDisc.pcont_pair_det], which is the
+     refuted on the wire by [LineModel.lm_cont_pair_det], which is the
      design's own uniqueness argument and is not repeated here. *)
   Lemma pipe_open_not_line (k : nat) (v : era_pins) (w : pipe_era)
       (gb : gname) (tm : bool) (I : list (bv 8)) (a : nat)

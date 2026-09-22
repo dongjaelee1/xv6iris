@@ -1,14 +1,16 @@
 (* ===================================================================== *)
-(*  LineModelInst.v -- THE THREE APPLICATIONS AS LINE MODELS (M1's exit). *)
+(*  LineModelInst.v -- THE STREAM FOLDS AT THE INSTANCES, AND THE ECHO    *)
+(*  MODEL (app-both milestone M1).                                       *)
 (*                                                                       *)
-(*  [FileDisc.sessf], [PipeDisc.sessp] and [EchoDisc.sess] are            *)
-(*  [LineModel.lm_sess] at the instance, by the three equations below.   *)
-(*  The instances are DEFINITIONS over the landed pieces ([FileDisc.cont],*)
-(*  [fsm], [ralt_dec]; [PipeDisc.pcont], [palt_of]; [EchoDisc.            *)
-(*  line_alts_of]), so nothing in the three model files moves; the        *)
-(*  equations are by induction on the round count, since the landed       *)
-(*  fixpoints ([fstate_upto], [pro_idx_f], ...) and the generic ones are  *)
-(*  structurally equal but not convertible at an open index.             *)
+(*  The file's and the pipe's line models live with their models         *)
+(*  ([FileDisc.file_lm], [PipeDisc.pipe_lm], with the session equations  *)
+(*  and the determinacy corollaries).  What is left here is what needs   *)
+(*  the stage files: the stream folds ([FileOutPure.proc_stream_f],       *)
+(*  [PipeOutPure.proc_stream_p]) as [LineModel]'s, by induction -- the   *)
+(*  state is a fixpoint PARAMETER there (at [option fstate] on the file   *)
+(*  side, absent on the pipe side), so those fixes do not convert -- and *)
+(*  the echo model, whose session is [EchoDisc.sess] by an equation      *)
+(*  (its panic test is [decide], the model's [bool_decide]).             *)
 (* ===================================================================== *)
 From Stdlib Require Import ZArith Lia List.
 From stdpp Require Import list bitvector.definitions.
@@ -25,34 +27,8 @@ From stdpp Require Import ssreflect.
 Local Open Scope nat_scope.
 
 (* ====================================================================== *)
-(*  1.  THE FILE APPLICATION                                               *)
+(*  1.  THE FILE APPLICATION'S STREAM                                      *)
 (* ====================================================================== *)
-Definition file_lm : lmodel :=
-  MkLM fstate uline uline_of ralt ralt_dec ralt_panic cont fsm
-       ralt_ok fbody_ok fbody_byte.
-
-Lemma pro_idx_f_lm cs i : pro_idx_f cs i = lm_pro_idx file_lm cs i.
-Proof using. induction i as [| i IH]; [reflexivity |]. cbn. by rewrite IH. Qed.
-
-Lemma fstate_upto_lm cs s bs q :
-  fstate_upto cs s bs q = lm_upto file_lm cs s bs q.
-Proof using. induction q as [| q IH]; [reflexivity |]. cbn. by rewrite IH. Qed.
-
-Lemma alt_cont_f_lm ps cs s bs i :
-  alt_cont_f ps cs s bs i = lm_cont_at file_lm ps cs s bs i.
-Proof using.
-  rewrite /alt_cont_f /lm_cont_at fstate_upto_lm pro_idx_f_lm. reflexivity.
-Qed.
-
-Lemma alt_seq_f_lm ps cs s bs q :
-  alt_seq_f ps cs s bs q = lm_seq file_lm ps cs s bs q.
-Proof using. reflexivity. Qed.
-
-Lemma sessf_lm ps cs s I : sessf ps cs s I = lm_sess file_lm ps cs s I.
-Proof using. rewrite /sessf /lm_sess. by rewrite alt_seq_f_lm. Qed.
-
-(* the stream fold takes the state as a fixpoint PARAMETER (at [option
-   fstate] on the stage side), so these two are inductions, not conversions *)
 Lemma pending_at_f_lm ps cs s0 I :
   pending_at_f ps cs (Some s0) I = lm_pending_at file_lm ps cs s0 I.
 Proof using. reflexivity. Qed.
@@ -74,44 +50,10 @@ Lemma proc_stream_f_lm ps cs s0 I :
 Proof using.
   rewrite /proc_stream_f /lm_proc_stream. by rewrite proc_before_f_lm pending_at_f_lm.
 Qed.
-Lemma alts_ok_lm I cs : alts_ok I cs = lm_alts_ok file_lm I cs.
-Proof using. reflexivity. Qed.
-Lemma disc_input_f_lm I : disc_input_f I = lm_disc_input file_lm I.
-Proof using. reflexivity. Qed.
-
-Lemma fstate_after_lm cs s I : fstate_after cs s I = lm_after file_lm cs s I.
-Proof using. rewrite /fstate_after /lm_after. apply fstate_upto_lm. Qed.
-
-Lemma pro_ok_f_lm ps cs q : pro_ok_f ps cs q <-> lm_pro_ok file_lm ps cs q.
-Proof using. rewrite /pro_ok_f /lm_pro_ok pro_idx_f_lm. reflexivity. Qed.
-
-Lemma pro_pin_f_lm ps cs I : pro_pin_f ps cs I <-> lm_pro_pin file_lm ps cs I.
-Proof using.
-  rewrite /pro_pin_f /lm_pro_pin. split; intros H q Hq; specialize (H q Hq);
-    by rewrite -?pro_idx_f_lm ?pro_idx_f_lm in H |- *.
-Qed.
 
 (* ====================================================================== *)
-(*  2.  THE PIPELINE APPLICATION -- no state                               *)
+(*  2.  THE PIPELINE APPLICATION'S STREAM                                  *)
 (* ====================================================================== *)
-Definition pipe_lm : lmodel :=
-  MkLM unit pline pline_of palt palt_of palt_panic (fun _ => pcont)
-       (fun _ _ _ => tt) palt_ok pbody_ok pbody_byte.
-
-Lemma pro_idx_p_lm cs i : pro_idx_p cs i = lm_pro_idx pipe_lm cs i.
-Proof using. induction i as [| i IH]; [reflexivity |]. cbn. by rewrite IH. Qed.
-
-Lemma alt_cont_p_lm ps cs bs i :
-  alt_cont_p ps cs bs i = lm_cont_at pipe_lm ps cs tt bs i.
-Proof using. rewrite /alt_cont_p /lm_cont_at pro_idx_p_lm. reflexivity. Qed.
-
-Lemma alt_seq_p_lm ps cs bs q :
-  alt_seq_p ps cs bs q = lm_seq pipe_lm ps cs tt bs q.
-Proof using. reflexivity. Qed.
-
-Lemma sessp_lm ps cs I : sessp ps cs I = lm_sess pipe_lm ps cs tt I.
-Proof using. rewrite /sessp /lm_sess. by rewrite alt_seq_p_lm. Qed.
-
 Lemma pending_at_p_lm ps cs I :
   pending_at_p ps cs I = lm_pending_at pipe_lm ps cs tt I.
 Proof using. reflexivity. Qed.
@@ -132,22 +74,21 @@ Lemma proc_stream_p_lm ps cs I :
 Proof using.
   rewrite /proc_stream_p /lm_proc_stream. by rewrite proc_before_p_lm pending_at_p_lm.
 Qed.
-Lemma alts_ok_p_lm I cs : alts_ok_p I cs = lm_alts_ok pipe_lm I cs.
-Proof using. reflexivity. Qed.
-Lemma disc_input_p_lm I : disc_input_p I = lm_disc_input pipe_lm I.
-Proof using. reflexivity. Qed.
-
-Lemma pro_ok_p_lm ps cs q : pro_ok_p ps cs q <-> lm_pro_ok pipe_lm ps cs q.
-Proof using. rewrite /pro_ok_p /lm_pro_ok pro_idx_p_lm. reflexivity. Qed.
 
 (* ====================================================================== *)
 (*  3.  THE ECHO APPLICATION -- the four alternatives are their own code   *)
+(*                                                                        *)
+(*  No byte-shape laws are stated: [EchoOutPure.sess_prefix_det] is       *)
+(*  stated at [cs_ok] (every code below 4, at every index), not at the    *)
+(*  model's range condition, and echo is the pipeline's corollary in the  *)
+(*  landed tree ([PipeDisc.disc_disc_p]).                                 *)
 (* ====================================================================== *)
 Definition echo_lm : lmodel :=
   MkLM unit (list (list (bv 8))) wl_words nat (fun k => k)
        (fun k => bool_decide (k = 3))
        (fun _ ws k => line_alts_of ws !!! k)
-       (fun _ _ _ => tt) (fun _ k => k < 4) body_ok wl_body_byte.
+       (fun _ _ _ => tt) (fun _ k => k < 4) body_ok wl_body_byte
+       line_ok (fun _ => True) (fun _ => false) (fun _ => False).
 
 Lemma pro_idx_lm cs i : pro_idx cs i = lm_pro_idx echo_lm cs i.
 Proof using.

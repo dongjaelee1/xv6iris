@@ -195,6 +195,9 @@ theorem aFtype_eq (k : Nat) : aFtype k = fnode k + BitVec.signExtend 64 0#12 := 
   unfold aFtype; simp
 theorem aFtype_eq' (k : Nat) : fnode k + 0#64 = aFtype k := by
   unfold aFtype; simp
+theorem aFreadable_eq (k : Nat) : aFreadable k = fnode k + BitVec.signExtend 64 8#12 := by
+  unfold aFreadable; rfl
+theorem aFreadable_eq' (k : Nat) : fnode k + 8#64 = aFreadable k := rfl
 theorem aFwritable_eq (k : Nat) : aFwritable k = fnode k + BitVec.signExtend 64 9#12 := by
   unfold aFwritable; rfl
 theorem aFwritable_eq' (k : Nat) : fnode k + 9#64 = aFwritable k := rfl

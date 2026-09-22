@@ -551,6 +551,15 @@ theorem fileRest_join (γ : FileNames) (k : Nat) (s t : List (Nat × Qp)) (id : 
     iframe Hf Ht Hc
     ipureintro; exact hok
 
+/-! ## `pipealloc`: publishing a payload -/
+
+/-- The exclusive holder installs the payload's names with no lock in hand. -/
+theorem fpayTok_update (γ : FileNames) (k : Nat) (pn pn' : FPNames) :
+    fpayTok (GF := GF) γ k 1 pn ⊢ |==> fpayTok γ k 1 pn' := by
+  unfold fpayTok
+  iintro H
+  iapply ghost_var_update pn' (γ.pay k) pn $$ H
+
 end
 
 end Xv6

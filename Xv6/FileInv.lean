@@ -141,6 +141,82 @@ theorem fd_bgtz (n : Nat) (h1 : 1 ≤ n) (h : n < 2 ^ 31) :
     simp; omega
   rw [hlt]; rfl
 
+
+/-! ## `fileclose`'s counter and field arithmetic -/
+
+theorem fc_decr (n : Nat) (h1 : 1 ≤ n) (h : n < 2 ^ 31) :
+    BitVec.extractLsb' 0 32 (BitVec.signExtend 64 (BitVec.extractLsb' 0 32
+      (BitVec.signExtend 64 (BitVec.ofNat 32 n) + BitVec.signExtend 64 4095#12))) = BitVec.ofNat 32 (n - 1) := by
+  have hb : ∀ nw : BitVec 32, BitVec.extractLsb' 0 32 (BitVec.signExtend 64
+      (BitVec.extractLsb' 0 32 (BitVec.signExtend 64 nw + BitVec.signExtend 64 4095#12))) = nw - 1#32 := by
+    intro nw; bv_decide
+  rw [hb]
+  apply BitVec.eq_of_toNat_eq
+  rw [BitVec.toNat_sub, BitVec.toNat_ofNat, BitVec.toNat_ofNat, BitVec.toNat_ofNat,
+    Nat.mod_eq_of_lt (show n < 2 ^ 32 by omega), Nat.mod_eq_of_lt (show n - 1 < 2 ^ 32 by omega)]
+  show (2 ^ 32 - 1 % 2 ^ 32 + n) % 2 ^ 32 = n - 1
+  rw [Nat.mod_eq_of_lt (show 1 < 2 ^ 32 by decide)]
+  omega
+
+theorem fc_decr' (n : Nat) (h1 : 1 ≤ n) (h : n < 2 ^ 31) :
+    BitVec.extractLsb' 0 32 (BitVec.signExtend 64 (BitVec.extractLsb' 0 32
+      (BitVec.signExtend 64 (BitVec.ofNat 32 n) + 0xFFFFFFFFFFFFFFFF#64))) = BitVec.ofNat 32 (n - 1) := by
+  rw [← fc_decr n h1 h]; rfl
+
+theorem fc_sext_decr (n : Nat) (h1 : 1 ≤ n) (h : n < 2 ^ 31) :
+    BitVec.signExtend 64 (BitVec.extractLsb' 0 32
+      (BitVec.signExtend 64 (BitVec.ofNat 32 n) + BitVec.signExtend 64 4095#12)) =
+      BitVec.signExtend 64 (BitVec.ofNat 32 (n - 1)) := by
+  rw [← fc_decr n h1 h]
+  have hb : ∀ x : BitVec 64, BitVec.signExtend 64 (BitVec.extractLsb' 0 32 (BitVec.signExtend 64
+      (BitVec.extractLsb' 0 32 x))) = BitVec.signExtend 64 (BitVec.extractLsb' 0 32 x) := by
+    intro x; bv_decide
+  rw [hb]
+
+/-- `bgtz a5` after `--ref`: taken iff two or more references remained. -/
+theorem fc_bgtz (n : Nat) (h1 : 1 ≤ n) (h : n < 2 ^ 31) :
+    bcond bop.BLT 0#64 (BitVec.signExtend 64 (BitVec.extractLsb' 0 32
+      (BitVec.signExtend 64 (BitVec.ofNat 32 n) + BitVec.signExtend 64 4095#12))) = decide (2 ≤ n) := by
+  rw [fc_sext_decr n h1 h]
+  show (0#64).slt (BitVec.signExtend 64 (BitVec.ofNat 32 (n - 1))) = decide (2 ≤ n)
+  have h2 : (BitVec.ofNat 32 (n - 1)).toInt = ((n - 1 : Nat) : Int) := by
+    rw [BitVec.toInt_eq_toNat_of_lt (by rw [BitVec.toNat_ofNat]; omega), BitVec.toNat_ofNat,
+      Nat.mod_eq_of_lt (by omega)]
+  apply Bool.eq_iff_iff.2
+  rw [BitVec.slt_iff_toInt_lt, BitVec.toInt_signExtend_of_le (by omega), h2, decide_eq_true_iff]
+  simp; omega
+
+theorem fc_bgtz' (n : Nat) (h1 : 1 ≤ n) (h : n < 2 ^ 31) :
+    bcond bop.BLT 0#64 (BitVec.signExtend 64 (BitVec.extractLsb' 0 32
+      (BitVec.signExtend 64 (BitVec.ofNat 32 n) + 0xFFFFFFFFFFFFFFFF#64))) = decide (2 ≤ n) := by
+  rw [← fc_bgtz n h1 h]; rfl
+
+theorem aFtype_eq (k : Nat) : aFtype k = fnode k + BitVec.signExtend 64 0#12 := by
+  unfold aFtype; simp
+theorem aFtype_eq' (k : Nat) : fnode k + 0#64 = aFtype k := by
+  unfold aFtype; simp
+theorem aFwritable_eq (k : Nat) : aFwritable k = fnode k + BitVec.signExtend 64 9#12 := by
+  unfold aFwritable; rfl
+theorem aFwritable_eq' (k : Nat) : fnode k + 9#64 = aFwritable k := rfl
+theorem aFpipe_eq (k : Nat) : aFpipe k = fnode k + BitVec.signExtend 64 16#12 := by
+  unfold aFpipe; rfl
+theorem aFpipe_eq' (k : Nat) : fnode k + 16#64 = aFpipe k := rfl
+theorem aFip_eq (k : Nat) : aFip k = fnode k + BitVec.signExtend 64 24#12 := by
+  unfold aFip; rfl
+theorem aFip_eq' (k : Nat) : fnode k + 24#64 = aFip k := rfl
+
+/-- `writable` as `pipeclose` reads it off `a1 = (uint64) ff.writable`. -/
+theorem fc_wbool (b : BitVec 8) : (b != 0#8) = decide (BitVec.zeroExtend 64 b ≠ 0#64) := by
+  by_cases hb : b = 0#8
+  · subst hb; decide
+  · have h1 : (b != 0#8) = true := by simpa using hb
+    have h2 : BitVec.zeroExtend 64 b ≠ 0#64 := by
+      intro h; apply hb
+      have hz : ∀ x : BitVec 8, BitVec.zeroExtend 64 x = 0#64 → x = 0#8 := by
+        intro x hx; bv_decide
+      exact hz b h
+    rw [h1, decide_eq_true h2]
+
 section
 variable {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF] [Xv6G GF] [FileG GF] [CurCtx]
 

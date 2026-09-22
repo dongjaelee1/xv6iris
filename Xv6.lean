@@ -224,6 +224,7 @@ import Xv6.SpecPipewrite
 import Xv6.SpecPiperead
 import Xv6.SpecFilealloc
 import Xv6.SpecFiledup
+import Xv6.SpecFileclose
 import Xv6.SpecKfork
 import Xv6.SpecUserinit
 import Xv6.SpecEither
@@ -268,7 +269,9 @@ import Xv6.ProofFilealloc
 import Xv6.WordFrac
 import Xv6.FileFrac
 import Xv6.ProofFiledup
+import Xv6.ProofFileclose
 import Xv6.LinkFilealloc
 import Xv6.LinkFiledup
+import Xv6.LinkFileclose
 import Xv6.ProofKfork
 import Xv6.LinkKfork

@@ -398,6 +398,159 @@ theorem file_dup_step (γ : FileNames) (M : RegMapF (Nat × Qp)) (Ls : Nat → L
     exact ⟨dup_keys_nodup s t nx id q hnd hnx, dup_ftableOk M Ls s t nx id k q hk hfresh hok hL (by omega),
       dup_fresh M nx id (k, q.half) hfresh hid⟩
 
+/-! ## `fileclose`: the fd unit back, the content back, the element gone -/
+
+theorem fdSlots_uncons (γ : FileNames) (n : Nat) :
+    fdSlots (GF := GF) γ (n + 1) ⊢ fdSlot γ ∗ fdSlots γ n := by
+  unfold fdSlot fdSlots
+  iintro ⟨%l, %⟨hlen, hnd, hb⟩, H⟩
+  cases l with
+  | nil => exact absurd hlen (by simp)
+  | cons i l =>
+    icases BigSepL.bigSepL_cons.1 $$ H with ⟨Hi, Hl⟩
+    obtain ⟨hi, hnd⟩ := List.nodup_cons.1 hnd
+    isplitl [Hi]
+    · iexists [i]
+      isplitl []
+      · ipureintro
+        refine ⟨rfl, List.nodup_cons.2 ⟨List.not_mem_nil, List.nodup_nil⟩, ?_⟩
+        intro j hj; rw [List.mem_singleton.1 hj]; exact hb i (List.mem_cons_self)
+      · iapply BigSepL.bigSepL_singleton.2; iexact Hi
+    · iexists l
+      iframe Hl
+      ipureintro
+      exact ⟨by simpa using hlen, hnd, fun j hj => hb j (List.mem_cons_of_mem _ hj)⟩
+
+theorem fileCore_none (q : Qp) (pn : FPNames) (C : FContent) (h : C.type = FD_NONE) :
+    ⊢ fileCore (GF := GF) q pn C := by
+  unfold fileCore
+  rw [if_neg (by rw [h]; decide)]
+  iintro; iempintro
+
+theorem close_ftableOk (M : RegMapF (Nat × Qp)) (Ls : Nat → List (Nat × Qp)) (s t : List (Nat × Qp))
+    (id k : Nat) (q : Qp) (hok : ftableOk M Ls) (hL : Ls k = s ++ (id, q) :: t)
+    (hnd : ((s ++ (id, q) :: t).map Prod.fst).Nodup) :
+    ftableOk (PartialMap.delete M id) (updAt Ls k (s ++ t)) := by
+  intro i v h
+  by_cases hi : i = id
+  · subst hi; rw [LawfulPartialMap.get?_delete_eq rfl] at h; simp at h
+  rw [LawfulPartialMap.get?_delete_ne (Ne.symm hi)] at h
+  obtain ⟨hv, hm⟩ := hok i v h
+  refine ⟨hv, ?_⟩
+  by_cases hvk : v.1 = k
+  · rw [hvk, updAt_self]
+    rw [hvk, hL] at hm
+    simp only [List.mem_append, List.mem_cons] at hm ⊢
+    rcases hm with hm | hm | hm
+    · exact Or.inl hm
+    · exact absurd (congrArg Prod.fst hm) hi
+    · exact Or.inr hm
+  · rw [updAt_ne _ _ _ _ hvk]; exact hm
+
+theorem close_keys_nodup (s t : List (Nat × Qp)) (id : Nat) (q : Qp)
+    (hnd : ((s ++ (id, q) :: t).map Prod.fst).Nodup) : ((s ++ t).map Prod.fst).Nodup := by
+  simp only [List.map_append, List.map_cons] at hnd ⊢
+  obtain ⟨hs, hidt, hdis⟩ := List.nodup_append.1 hnd
+  obtain ⟨-, ht⟩ := List.nodup_cons.1 hidt
+  exact List.nodup_append.2 ⟨hs, ht, fun a ha b hb => hdis a ha b (List.mem_cons_of_mem _ hb)⟩
+
+theorem close_fresh (M : RegMapF (Nat × Qp)) (nx id : Nat)
+    (hfresh : ∀ i, nx ≤ i → PartialMap.get? M i = none) :
+    ∀ i, nx ≤ i → PartialMap.get? (PartialMap.delete M id) i = none := by
+  intro i hi
+  by_cases h : id = i
+  · subst h; exact LawfulPartialMap.get?_delete_eq rfl
+  · rw [LawfulPartialMap.get?_delete_ne h]; exact hfresh i hi
+
+/-- `fileclose`'s ghost step on the table: the reference `id ↦ (k, q)` (our
+half and the lock's) is deleted; slot `k`'s list loses it. -/
+theorem file_close_step (γ : FileNames) (M : RegMapF (Nat × Qp)) (Ls : Nat → List (Nat × Qp))
+    (s t : List (Nat × Qp)) (nx id k : Nat) (q : Qp)
+    (hfresh : ∀ i, nx ≤ i → PartialMap.get? M i = none) (hok : ftableOk M Ls)
+    (hL : Ls k = s ++ (id, q) :: t) (hnd : ((s ++ (id, q) :: t).map Prod.fst).Nodup) :
+    (γ.ref ↪●MAP M) ∗ (γ.ref ↪◯MAP[id]{.own (1 : Qp).half} (k, q)) ∗
+    ([∗list] e ∈ s ++ (id, q) :: t, frefRest (GF := GF) γ k e) ⊢
+      |==> ((γ.ref ↪●MAP (PartialMap.delete M id)) ∗
+        ([∗list] e ∈ s ++ t, frefRest γ k e) ∗
+        ⌜((s ++ t).map Prod.fst).Nodup ∧ ftableOk (PartialMap.delete M id) (updAt Ls k (s ++ t)) ∧
+          (∀ i, nx ≤ i → PartialMap.get? (PartialMap.delete M id) i = none)⌝) := by
+  iintro ⟨Ha, He, Hl⟩
+  icases BigSepL.bigSepL_append.1 $$ Hl with ⟨Hs, Hl⟩
+  icases BigSepL.bigSepL_cons.1 $$ Hl with ⟨Hr, Ht⟩
+  ihave Hr := (show frefRest (GF := GF) γ k (id, q) ⊢ (γ.ref ↪◯MAP[id]{.own (1 : Qp).half} (k, q)) from by
+    unfold frefRest; iintro H; iexact H) $$ Hr
+  icases ghost_map_elem_combine γ.ref id (.own (1 : Qp).half) (.own (1 : Qp).half) (k, q) (k, q)
+    $$ He Hr with ⟨Hfull, -⟩
+  ihave Hfull := (show (γ.ref ↪◯MAP[id]{DFrac.own (1 : Qp).half • DFrac.own (1 : Qp).half} (k, q)) ⊢
+      (γ.ref ↪◯MAP[id] (k, q)) from by
+    rw [DFrac.op_own, Qp.half_add_half]) $$ Hfull
+  imod ghost_map_delete id (k, q) $$ Ha Hfull with Ha
+  imodintro
+  iframe Ha
+  isplitl [Hs Ht]
+  · iapply BigSepL.bigSepL_append.2; iframe Hs Ht
+  · ipureintro
+    exact ⟨close_keys_nodup s t id q hnd, close_ftableOk M Ls s t id k q hok hL hnd, close_fresh M nx id hfresh⟩
+
+/-- Not the last reference: the departing fraction is absorbed into the
+lock's leftover (`fileRestAt` at the shorter list's fraction). -/
+theorem fileRest_absorb (γ : FileNames) (k : Nat) (s t : List (Nat × Qp)) (id : Nat) (q q' : Qp)
+    (C C' : FContent) (pn : FPNames) (st : FdState) (hne : s ++ t ≠ []) :
+    fileRestAt (GF := GF) γ curCtx k (qsum (s ++ (id, q) :: t)) q' C' pn ∗
+    fileFieldsAt curCtx k q C ∗ filePaySt γ k q C st ⊢
+      ∃ (C'' : FContent) (pn'' : FPNames) (q'' : Qp), fileRestAt γ curCtx k (qsum (s ++ t)) q'' C'' pn'' := by
+  unfold fileRestAt filePaySt
+  rw [qsum_app_cons s t (id, q) hne]
+  iintro ⟨Hrest, Hf, %pn', %hok, Ht, Hc⟩
+  icases Hrest with ⟨%hone | ⟨%hq, Hf', Ht', Hc'⟩⟩
+  · iexists C, pn', q
+    iright
+    iframe Hf Ht Hc
+    ipureintro; exact hone
+  · icases fileFieldsAt_merge curCtx k q' q C' C $$ [Hf' Hf] with ⟨Hf, %hC⟩
+    · iframe
+    subst hC
+    icases fpayTok_merge γ k q' q pn pn' $$ [Ht' Ht] with ⟨Ht, %hpn⟩
+    · iframe
+    subst hpn
+    ihave Hc := fileCore_merge q' q pn C' $$ [Hc' Hc]
+    · iframe
+    iexists C', pn, q' + q
+    iright
+    iframe Hf Ht Hc
+    ipureintro
+    rw [qp_add_assoc]; exact hq
+
+/-- The last reference: with the lock's leftover, the closer holds the whole
+slot's content. -/
+theorem fileRest_join (γ : FileNames) (k : Nat) (s t : List (Nat × Qp)) (id : Nat) (q q' : Qp)
+    (C C' : FContent) (pn : FPNames) (st : FdState) (hst : s ++ t = []) :
+    fileRestAt (GF := GF) γ curCtx k (qsum (s ++ (id, q) :: t)) q' C' pn ∗
+    fileFieldsAt curCtx k q C ∗ filePaySt γ k q C st ⊢
+      ∃ pn'' : FPNames, ⌜fdstateOk pn''.inum pn''.ooff C st⌝ ∗
+        fileFieldsAt curCtx k 1 C ∗ fpayTok γ k 1 pn'' ∗ fileCore 1 pn'' C := by
+  obtain ⟨rfl, rfl⟩ := List.append_eq_nil_iff.1 hst
+  unfold fileRestAt filePaySt
+  simp only [List.nil_append, qsum_single]
+  iintro ⟨Hrest, Hf, %pn', %hok, Ht, Hc⟩
+  icases Hrest with ⟨%hone | ⟨%hq, Hf', Ht', Hc'⟩⟩
+  · subst hone
+    iexists pn'
+    iframe Hf Ht Hc
+    ipureintro; exact hok
+  · icases fileFieldsAt_merge curCtx k q' q C' C $$ [Hf' Hf] with ⟨Hf, %hC⟩
+    · iframe
+    subst hC
+    icases fpayTok_merge γ k q' q pn pn' $$ [Ht' Ht] with ⟨Ht, %hpn⟩
+    · iframe
+    subst hpn
+    ihave Hc := fileCore_merge q' q pn C' $$ [Hc' Hc]
+    · iframe
+    rw [← hq]
+    iexists pn
+    iframe Hf Ht Hc
+    ipureintro; exact hok
+
 end
 
 end Xv6

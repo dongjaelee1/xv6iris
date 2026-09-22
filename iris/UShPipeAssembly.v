@@ -229,6 +229,68 @@ Section UShPipeAssemblyGen.
     rewrite (lookup_app_l dg u p ltac:(lia)). exact Hb.
   Qed.
 
+  (* ...AND THE LAW IS MONOTONE IN WHAT ITS END PAYS.  One line, and it
+     is what lets a round state ONE payload for a diagnostic that has two
+     suppliers (lane SH-PIPE-ROUND-12: the fork panic's, under the taint
+     and not). *)
+  Lemma exf_law_cd_mono (dg : list (bv 8)) (n : nat) (Cr Cd Cd' : iProp Σ) :
+    □ (Cd -∗ Cd') -∗
+    ush_execfail_law_at dg n Cr Cd -∗
+    ush_execfail_law_at dg n Cr Cd'.
+  Proof using .
+    iIntros "#Hm #Hlaw". rewrite /ush_execfail_law_at.
+    iIntros "!>" (N l) "%Hfd Hc".
+    iDestruct ("Hlaw" $! N l with "[%] Hc") as (Pf) "(H0 & #Hs & #He)";
+      [ exact Hfd | ].
+    iExists Pf. iFrame "H0 Hs".
+    iIntros "!> Hp". iApply ("Hm" with "[Hp]"). iApply ("He" with "Hp").
+  Qed.
+
+  (* ...AND IT IS AN ACCESSOR ON ITS *CREDENTIAL* (lane SH-PIPE-ROUND-12).
+     The round's five diagnostic laws all read [PipeBoth.blk2_inv] out of
+     the credential they are paid with -- the invariant can only be born
+     out of the lend, so it rides INSIDE [Cr] and is NOT available when
+     the law is handed to the walk (lane SH-PIPE-ROUND-11 finding (5)).
+     [Cr'] is what is left after the reading; the law at [Cr'] is
+     PERSISTENT, so the wand may produce it. *)
+  Lemma exf_law_acc (dg : list (bv 8)) (n : nat) (Cr Cr' Cd : iProp Σ) :
+    □ (Cr -∗ ush_execfail_law_at dg n Cr' Cd ∗ Cr') -∗
+    ush_execfail_law_at dg n Cr Cd.
+  Proof using .
+    iIntros "#Hacc". rewrite /ush_execfail_law_at.
+    iIntros "!>" (N l) "%Hfd Hc".
+    iDestruct ("Hacc" with "Hc") as "[#Hl Hc']".
+    iEval (rewrite /ush_execfail_law_at) in "Hl".
+    iApply ("Hl" $! N l with "[%] Hc'"). exact Hfd.
+  Qed.
+
+  (* ...AND UNDER THE TAINT THE DIAGNOSTIC IS FREE (design SS4.3z item 3).
+     A tainted turn's bytes go out on [UkSh.sh_deps] -- [udepw_law 16],
+     the free write law -- at the family [fun _ => emp]; the credential is
+     DROPPED and the end is paid by the taint itself.  This is what makes
+     the round's taint arm ONE law and not a second walk (lane
+     SH-PIPE-ROUND-12, refuting SH-PIPE-ROUND-11 finding (7)). *)
+  Lemma ush_execfail_law_taint (T : iProp Σ) `{!Persistent T}
+      (dg : list (bv 8)) (n : nat) (Cr Cd : iProp Σ) :
+    □ (T -∗ UkSh.sh_deps) -∗ □ (T -∗ Cd) -∗ T -∗
+    ush_execfail_law_at dg n Cr Cd.
+  Proof using .
+    iIntros "#Hdps #Hcd #HT". rewrite /ush_execfail_law_at.
+    iIntros "!>" (N l) "%Hfd _".
+    iExists (fun _ : nat => emp%I).
+    iSplitR; [ done | ]. iSplit.
+    - iIntros "!>" (p b) "%Hb %Hlt". rewrite /ksh_w1.
+      iIntros (ua).
+      iApply (UkSh.ksh_w_of_law N (mword_of_int 2 : mword 64) ua 1%nat
+                (ubyte (ukn_d N) (uint ua) b
+                 ∗ (UserFd.ustd (ukn_fd N) l ∗ emp))%I
+                (ubyte (ukn_d N) (uint ua) b
+                 ∗ (UserFd.ustd (ukn_fd N) l ∗ emp))%I
+                ltac:(iIntros "H"; iExact "H")).
+      iApply ("Hdps" with "HT").
+    - iIntros "!> _". iApply ("Hcd" with "HT").
+  Qed.
+
   (* the mirror, used to read a block byte off its alternative *)
   Lemma exf_lookup_lt (w u : list (bv 8)) (p : nat) (b : bv 8) :
     (p < length w)%nat -> (w ++ u) !! p = Some b -> w !! p = Some b.
@@ -626,6 +688,91 @@ Section UShPipeAssemblyFork.
       iSplitR; [ iPureIntro; split_and!; assumption | ].
       iFrame "Hpin Hlb". rewrite /pwc_fork_exit.
       by iFrame "Hinv HcR HcM Hfz".
+  Qed.
+
+  (* ...AND THE SAME LAW WHEN THE LEND CARRIES NO INPUT BOUND (design
+     SS4.3z item 3; lane SH-PIPE-ROUND-12, which REFUTES lane
+     SH-PIPE-ROUND-11's finding (7)).
+
+     [pipe_fork_panic_law] wants [EchoOut.inp_lb v I], and the ONLY source
+     of it in the child law's premise list is the lend [Wc I 3], whose
+     reading ([UShPipeLaw.pipe_wcl3_inp]) is
+     [(∃ v, era_pin ∗ inp_lb v I) ∨ T]: at a TAINTED turn there is no
+     bound.  ROUND-11 priced the taint arm as a SECOND INSTANTIATION OF
+     THE WHOLE WALK at [T].  It is not: [inp_lb] is needed by THIS LAW
+     AND BY NOTHING ELSE in the round -- [pipe_execL_law],
+     [pipe_execR_law], [pipe_panic_pipe_law] and [blk2_inv_alloc_at] all
+     take only [era_pin] (which the lend carries on BOTH arms) and
+     [blk2_inv] (whose source [PipeLinksLine.pwc_lend] has a taint arm of
+     its own, [PipeBoth.pwc_blk2_of_lend]).  So the round splits on the
+     taint HERE, at one law, and the two arms meet at ONE payload
+     [pterm_shape g I 5 ∨ PT] -- which pays [ukn_pay N (-1)] on both
+     arms, the left through [UkShPipeFork.pterm_wc]'s second disjunct and
+     the right through the taint's own [Wcf I 0]. *)
+  Lemma pipe_fork_panic_law_or (v : era_pins) (I L : list (bv 8))
+      (ws : list (list (bv 8))) (gL gR gM : gname) (XL YR : iProp Σ) :
+    Timeless XL -> Timeless YR ->
+    pline_at I = LPipe ws ->
+    □ (PT -∗ UkSh.sh_deps) -∗
+    pipe_link_taint g -∗
+    era_pin γ (S gen_id) v -∗
+    (inp_lb v I ∨ PT) -∗
+    blk2_inv g blk2N (S gen_id) v I L gL gR gM XL YR -∗
+    ush_execfail_law_at alt_panic 5%nat
+      (PipeBoth.wcur gR (1/2) 0%nat ∗ PipeBoth.wcur gM (1/2) 0%nat)
+      (UkShPipeFork.pterm_shape g I 5%nat ∨ PT).
+  Proof using Hcons.
+    intros HTX HTY Hline.
+    iIntros "#Hdps #Ht #Hpin #Hlb #Hinv".
+    iDestruct "Hlb" as "[#Hi | #HT]".
+    - iApply (exf_law_cd_mono alt_panic 5%nat
+                (PipeBoth.wcur gR (1/2) 0%nat ∗ PipeBoth.wcur gM (1/2) 0%nat)%I
+                (UkShPipeFork.pterm_shape g I 5%nat)
+                (UkShPipeFork.pterm_shape g I 5%nat ∨ PT)%I with "[] []").
+      { iIntros "!> H". iLeft. iExact "H". }
+      iApply (pipe_fork_panic_law v I L ws gL gR gM XL YR HTX HTY Hline
+                with "Ht Hpin Hi Hinv").
+    - iApply (ush_execfail_law_taint PT alt_panic 5%nat
+                (PipeBoth.wcur gR (1/2) 0%nat ∗ PipeBoth.wcur gM (1/2) 0%nat)%I
+                (UkShPipeFork.pterm_shape g I 5%nat ∨ PT)%I
+                with "Hdps [] HT").
+      iIntros "!> H". iRight. iExact "H".
+  Qed.
+
+  (* ===================================================================== *)
+  (*  THE THREE EXIT PAYMENTS the walk asks for as [box] wands             *)
+  (*  (lane SH-PIPE-ROUND-12).  The child's payload is                      *)
+  (*  [UkShFork.ushf_wq (pterm_wc g) I], which [UkShPipeFork.pterm_wq_pay]  *)
+  (*  says IS [pterm_pay g I] -- the terminal round included -- so each of  *)
+  (*  the three places the walk can leave from is one disjunct.             *)
+  (* ===================================================================== *)
+
+  (* the round's LEND, whole: [Cp := pterm_wc g I 3] IS the payload's own
+     left arm ([UShPipeChild]'s note: the wand is PURE) *)
+  Lemma pipe_lend_exit_pay (I : list (bv 8)) :
+    UkShPipeFork.pterm_wc g I 3%nat -∗
+    UkShFork.ushf_wq (UkShPipeFork.pterm_wc g) I.
+  Proof using . iIntros "H". rewrite /UkShFork.ushf_wq. by iLeft. Qed.
+
+  (* the [pipe(2)]-failed tail's: [Bp := pipe_Wcl_at g I 0] *)
+  Lemma pipe_panic_exit_pay (I : list (bv 8)) :
+    pipe_Wcl_at g I 0%nat -∗
+    UkShFork.ushf_wq (UkShPipeFork.pterm_wc g) I.
+  Proof using .
+    iIntros "H". rewrite /UkShFork.ushf_wq. iRight.
+    iApply (UkShPipeFork.pterm_wc_of g I 0%nat with "H").
+  Qed.
+
+  (* ...and the [panic("fork")] tails', on BOTH arms of the taint split *)
+  Lemma pipe_fork_exit_pay (v : era_pins) (I : list (bv 8)) :
+    era_pin γ (S gen_id) v -∗
+    (UkShPipeFork.pterm_shape g I 5%nat ∨ PT) -∗
+    UkShFork.ushf_wq (UkShPipeFork.pterm_wc g) I.
+  Proof using .
+    iIntros "#Hpin H". rewrite (UkShPipeFork.pterm_wq_pay g I).
+    iDestruct "H" as "[H | #HT]".
+    - iApply (UkShPipeFork.pterm_pay_of_shape g I with "H").
+    - iApply (UkShPipeFork.pterm_pay_taint g v I with "Hpin HT").
   Qed.
 
 End UShPipeAssemblyFork.

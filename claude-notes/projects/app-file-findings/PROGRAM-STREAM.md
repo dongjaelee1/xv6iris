@@ -2051,3 +2051,51 @@ UNINDEXED `file_link_inst g` are bridged by `FileLinksAt`'s pack/unpack
 lemmas.  And `UInitFileCons.v` binds its own `ghost_varG Σ Z` (the binder
 `UShRound` just lost) — if the assembly's applications of its lemmas hang,
 that binder is the first suspect, and the fix is the same deletion.
+
+## PROGRAM STREAM, stretch 16 (2026-09-22) — item 4: the credential file is BUILT, and the /init body meets ONE design point
+
+LANDED on branch `app-file/init-file` (whole tree green, nothing stale; audits
+pending at the time of writing): `FileReadInst.file_read_inst_at` /
+`file_read_leaf_holds_at` (the read leaf at the indexed record) and
+`iris/UInitFileCC.v` — `file_H` (the hold, position-indexed, with the era pin
+and the input bound), `file_cc`, `file_cc_rd_timeless` / `file_cc_wb_timeless`,
+`kinit_banner_pay_frame`, `file_wp_line`, `file_cc_holds` (all ten laws;
+conjunct 10 agrees the record's input with the hold's by `era_pin_agree` +
+`inp_lb_agree`), `file_cons_in_of_Cns` (the two console-open leaves at the file
+claim), `file_cons_sup_of_sh_slot` (`init_exec_sup_of_sh_slot_at` at the file's
+five readings; `sh_pay_at` and `ush_rest_l_at` sealed locally, exactly the
+pipe's hang at the same lemma).  The lost `UInitFileCC.v` is thus re-cut.
+
+WHAT IS LEFT is `file_Hinit_boot`'s body (`UInitFile.v`), `pipe_Hinit_boot`'s
+line for line with the file names (stretch 15's recipe), plus the `▷` on
+`file_boot`'s typing stripped by `iMod` (timeless under the bundle's `|==>`,
+`elim_modal_timeless_bupd`) and `s0 := dst_content s` chosen there; the head
+credentials come from `UInitFileCons.file_Wbf_at_of_boot` (which consumes
+`fturn` and the deed and yields the reader's `dl_cnt`, the pin and
+`Wbf s0 []` — the file's `kinit_ban0_of_eturn_at`).
+
+**THE DESIGN POINT: `sh_round_holds_file` takes `(∃ jc, cons_made (fn_cons r)
+jc)`, and the exec supply spends the round in EVERY console arm.**
+`UInitSh.init_exec_sup_of_sh_slot_at` frames `sh_pay_at` unconditionally
+(`UInitSh.v`, its last line) whatever `init_cons_in`'s arm — console present,
+ABSENT (`cons_never`), or taint — so `file_cons_sup_of_sh_slot`'s
+`□ (init_cons_cred -∗ init_exec_sup_lend)` must build the round under
+`cons_never` too, where there is no `cons_made`.  The premise entered the
+round through `Hopen_hand` (the redirect child's open) and cat's held read
+(`cat_held_read_of_deed`), which pass `cons_made jc` down to
+`FileOpen.file_create_sup` / `UkCatDeed.kcat_r_of_deed_held` — the console's
+inum, so that the walk to `f` and `f`'s row are told apart from the console's.
+Under `cons_never` the claim says the console is ABSENT (`cons_absent v`), which
+serves the same purpose.
+
+OPTIONS: (C, recommended — the abstraction is right and it is where the fact
+belongs) generalise the premise from `cons_made jc` to the persistent
+`init_cons_cred T (fn_cons r)` (= `cons_never ∨ ∃ jc, cons_made jc ∨ T`) at the
+two leaves and everything between them and the round (`FileOpen.file_create_sup`,
+`UkFileOpen`, `UkShRedirAns`/`UShRound.Hopen_hand`, `UkCatDeed`'s held read,
+`UCatKernel.cat_held_read_of_deed`, `cat_pay_filed_some`, `cat_child_of_entry`,
+`cat_exec_sup`, `Hchild_cat`, `Hchild_redir`, `sh_round_holds_file`), the
+`cons_never` arm proved from `cons_absent`; the `made` arm is the landed proof.
+(A, a shortcut) split `init_cons_sup`'s `Cns` so that the exec-time credential
+has no `never` arm — but `init_cons_leaves_file_of_leg` and the dance are stated
+at `init_cons_cred`, so this moves the generic dance.  Not taken.

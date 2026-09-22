@@ -10864,14 +10864,26 @@ UkCatCat.kcat_dg_cr N)` is payable from this lane's new
 `sh_pipe_child_law` / `sh_pipe_child_law_all` /
 `pipe_adequacy_pipeΣ_final`.  Every leaf ROUND-11's table names for them
 is landed — BUT this lane found TWO uncounted premises in the FIRST half
-of that table, AND a THIRD at the right child's door: `pipe_cat_w` takes
-`YR = pws_lb pn (take 1 L)` UNCONDITIONALLY while `pcat_round_at_g`'s
-`Hw` can only offer `pws_lb pn (take (c + cnt) L) ∨ T`, which weakens to
-`YR` only when `0 < c + cnt`.  §4.3t's standing grant pre-authorises the
-additive antecedent `⌜0 < c + cnt⌝` on `Hw` — but only if the walk can
-supply it, i.e. only if `pcat_round_at_g` calls `Hw` on the
-read-returned-positive branch alone.  THAT IS THE FIRST THING TO CHECK
-when the right child is attempted; (the walk's `usz` and the registrar's close law), so the
+of that table, AND a THIRD at the right child's door, measured at the
+statement and with its repair already checked against the proof:
+
+  `UShPipeCatRound.pipe_cat_w` takes `YR = pws_lb pn (take 1 L)`
+  UNCONDITIONALLY, while `UCatPipe.pcat_round_at_g`'s `Hw` can only offer
+  `pws_lb pn (take (c + cnt) L) ∨ T` — and TWO of `pcat_round_at_g`'s
+  three `Hw` call sites pass `by iRight` for BOTH the content and the
+  lower bound (they are the read's taint arms).  So `pipe_cat_w` cannot
+  be the `Hw` supplier as stated.  THE REPAIR IS ONE LINE AND THE PROOF
+  DOES NOT MOVE: `HYR` is used at exactly one place in `pipe_cat_w`'s
+  body, inside the LEFT arm of `iDestruct "Hjust" as [[…] | #HT]`, while
+  the taint arm goes through `pcat_chain_taint` and never touches it —
+  so the premise weakens to `(YR ∨ PT) -∗` and the landed form
+  re-derives by `iLeft`.  `UShPipeCatRound.v` is not in this lane's file
+  list, so the weakening is NOT taken here.  (§4.3t's standing grant
+  would also let `Hw` gain `⌜0 < c + cnt⌝`, which the walk CAN supply —
+  the write arm intros `%Hret %Hnb0` — but that only helps the non-taint
+  arm and is not what is missing.)
+
+Beyond it: (the walk's `usz` and the registrar's close law), so the
 second half should be assumed to hold more, and the next lane should
 price each continuation at the STATEMENT before proving it.  A useful
 intermediate target that this lane did NOT reach:

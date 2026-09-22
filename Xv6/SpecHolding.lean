@@ -84,6 +84,21 @@ def wp_holding_locked_gen_body {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc
     ⌜calleeSaved k.regs R' ∧ R' 10#5 = 1#64⌝ -∗ locked γ cpu -∗ Tc -∗ wpLoop cpu)
   ⊢ wpLoop (GF := GF) cpu
 
+/-- **Self-refuting cancellable form of `wp_holding_locked_body`.**  Opens
+through `lockOpenable γ lk s R D`, ruling out the dead branch with the HELD
+`lockedCore` token it already carries for the reads -- no separate
+credential (this is the destroy path, where the caller holds only the lock
+token).  The holder token `locked γ cpu` comes back in the continuation. -/
+def wp_holding_locked_refute_body {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF] [CurCtx]
+    (cpu : CPU) (k : KCtx) (γ : GName) (s : String) (R : CtxId → IProp GF)
+    (D : IProp GF) [Timeless D] (hrefute : ⊢ lockedCore γ cpu -∗ D -∗ (False : IProp GF))
+    (hsie : k.sie = false) (hK : 6 ≤ k.avail) : Prop :=
+  kctx cpu k ∗ pcIs cpu holdingAddr ∗ lockOpenable γ (k.regs 10#5) s R D ∗
+  locked γ cpu ∗
+  (∀ R' : RegMap, kctx cpu (k.withRegs R') -∗ pcIs cpu (jumpPc (k.regs 1#5)) -∗
+    ⌜calleeSaved k.regs R' ∧ R' 10#5 = 1#64⌝ -∗ locked γ cpu -∗ wpLoop cpu)
+  ⊢ wpLoop (GF := GF) cpu
+
 /-- The interface of `holding`. -/
 structure HOLDING : Prop where
   wp_holding_notheld : ∀ {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF] [CurCtx] (cpu : CPU) (k : KCtx)
@@ -98,5 +113,8 @@ structure HOLDING : Prop where
   wp_holding_locked_gen : ∀ {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF] [CurCtx] (cpu : CPU) (k : KCtx)
     (γ : GName) (s : String) (R : CtxId → IProp GF) (D : IProp GF) [Timeless D] (Tc : IProp GF) hrefute hsie hK,
     wp_holding_locked_gen_body (hlc := hlc) (GF := GF) cpu k γ s R D Tc hrefute hsie hK
+  wp_holding_locked_refute : ∀ {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF] [CurCtx] (cpu : CPU) (k : KCtx)
+    (γ : GName) (s : String) (R : CtxId → IProp GF) (D : IProp GF) [Timeless D] hrefute hsie hK,
+    wp_holding_locked_refute_body (hlc := hlc) (GF := GF) cpu k γ s R D hrefute hsie hK
 
 end Xv6

@@ -80,4 +80,41 @@ structure RELEASE_GEN : Prop where
     hrefute hsie hnoff hK reen hreen hon,
     wp_release_gen_body (hlc := hlc) (GF := GF) cpu k γ s R D Tc hrefute hsie hnoff hK reen hreen hon
 
+/-- **The DESTROY form of `release`.**  The last close of a dead object
+(e.g. `pipeclose`) releases the lock and RECLAIMS its two page words.  The
+caller holds only the lock token (no spare reference credential), so the
+holding check and the owner-word clear rule out the dead branch with the
+HELD `lockedCore` (`hrefuteCore`), and the word clear -- which DESTROYS the
+lock -- rules it out with the held lock half (`hrefuteHalf`) and consumes
+the destroy licence: given the parked state half and the surrendered
+payload `R curCtx`, it produces the dead invariant `D` and the caller's
+carry-out `Out`.  The lock's two words come back as raw byte histories, to
+be freed with the page. -/
+def wp_release_cancel_body {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF] [CurCtx]
+    (cpu : CPU) (k : KCtx) (γ : GName) (s : String) (R : CtxId → IProp GF) [CtxMorph R]
+    (D Out : IProp GF) [Timeless D]
+    (hrefuteCore : ⊢ lockedCore γ cpu -∗ D -∗ (False : IProp GF))
+    (hrefuteHalf : ∀ B : Nat, ⊢ lockHalf γ (some (cpu, false)) B -∗ D -∗ (False : IProp GF))
+    (hsie : k.sie = false)
+    (hnoff : 1 ≤ k.noff) (hK : 10 ≤ k.avail)
+    (reen : Bool) (hreen : reen = (decide (k.noff = 1) && k.intena))
+    (hon : reen = true → k.tier = .kpt ∧ trapRes true + 6 ≤ k.avail) : Prop :=
+  kctx cpu k ∗ pcIs cpu releaseAddr ∗ lockOpenable γ (k.regs 10#5) s R D ∗
+  locked γ cpu ∗ R curCtx ∗
+  (∀ B : Nat, lockHalf γ none B -∗ R curCtx ==∗ D ∗ Out) ∗ popArm cpu k reen ∗
+  wpNext (k.popExit reen).sie k.proc cpu (fun cpu' => iprop(∀ R' : RegMap,
+    kctx cpu' (((k.popExit reen).withRegs R').withLocks (k.locks.filter (fun x => x ≠ s))) -∗
+    pcIs cpu' (jumpPc (k.regs 1#5)) -∗ ⌜calleeSaved k.regs R'⌝ -∗
+    (∃ Hs : Nat → Hist, histBytes (k.regs 10#5) 4 (fun _ => DFrac.own 1) Hs) -∗
+    (∃ Hs : Nat → Hist, histBytes (k.regs 10#5 + 16#64) 8 (fun _ => DFrac.own 1) Hs) -∗
+    Out -∗ wpLoop cpu'))
+  ⊢ wpLoop (GF := GF) cpu
+
+/-- The destroy interface of `release`. -/
+structure RELEASE_CANCEL : Prop where
+  wp_release_cancel : ∀ {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF] [CurCtx] (cpu : CPU) (k : KCtx)
+    (γ : GName) (s : String) (R : CtxId → IProp GF) [CtxMorph R] (D Out : IProp GF) [Timeless D]
+    hrefuteCore hrefuteHalf hsie hnoff hK reen hreen hon,
+    wp_release_cancel_body (hlc := hlc) (GF := GF) cpu k γ s R D Out hrefuteCore hrefuteHalf hsie hnoff hK reen hreen hon
+
 end Xv6

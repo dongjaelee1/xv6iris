@@ -1956,3 +1956,65 @@ the state-aware credential, `exec_ok`), then the adequacy close
 Upstream's combined application (stage 2, 2026-09-22) states the echo theorem
 as a corollary of the pipe one; whether the FILE theorem joins it (stage 3) is
 the owner's call — its round is generic over the same `ush_rest_l_at` shape.
+
+## PROGRAM STREAM, stretch 15 (2026-09-22) — ITEM 4 (`file_Hinit_boot`), THE RECIPE, name by name
+
+The lost `UInitFileCC.v` is re-cut from THIS, with `UInitPipe.v` (closed) as the
+mould line for line.  Everything named exists on `main` unless marked NEW.
+
+1. **`file_cc : cons_cred Σ`** (twin of `UInitPipe.pipe_cc`, at
+   `FI := FileLinkInst.file_link_inst_at g s0`, section-indexed by `g r s0`
+   exactly as `UShRound`):
+   `MkConsCred (UShLine.ush_rd_pin_at (lk_rres FI) (fgn_echo g)) <tl>
+   (UShLine.ush_mid_at (lk_rres FI) (fgn_echo g)) UShRound.Wcf UShRound.Wbf
+   <tl> (UInitDiag.kinit_pro_at FI)`.  `Wcf`/`Wbf` are the position-keyed
+   families WITH the deed's hold (RULING HOLD-POS) — the file's analogue of
+   the pipe's widened `pterm_wc`.
+2. **`file_cc_holds`** = `UInitSh.cons_cred_holds_at fsc_cons T
+   FileDisc.disc_input_f FileReadInst.disc_input_f_snoc_ncr
+   FileReadInst.disc_input_f_rest_short UkShRedirBody.ush_line_file
+   FileReadInst.file_disc_line file_cc` (the discipline readings are
+   `file_gets_holds`'s three; `Hws` is gone since SLOT-WS).  Ten conjuncts,
+   one application each, `pipe_cc_holds` being the pattern:
+   (1) `UShLine.ush_read_recv_leaf_holds_at (FileReadInst.file_read_inst g Htag)
+       (fgn_echo g) Wbf … Hstw Htsw (file pin_refl) Hlkp` — the `_hold`
+       form from `UShLineAtHold` if the family's hold must be threaded
+       (R6.1 measured it IS a frame); `Hstw`/`Htsw` are
+       `UInitFileCons.file_taint_of_sup_at` / `file_sup_of_taint_at`;
+   (2)–(4) `UShLineAtHold.ush_mid_of_at_L_hold_ex` /
+       `ush_at_of_mid_taint_L_hold_ex` / `ush_at_of_mid_wb_L_hold_ex` at
+       `Hold := PRE` (conjunct 4 takes `Wbf_inp`);
+   (5) `UShRound.Hwc_f`;  (6) `Hwbwc_f`;  (7) `Hwbl_f`;
+   (8) `UShRound.Hwbr` (or `UShLine.ush_wb_read_holds_at FI … (file ep_refl)`);
+   (9) `UShLineAtHold.ush_posb_of_lend_L_hold_ex … Wcf_inp Wbf_inp`;
+   (10) NEW `file_wp_line` (twin of `pipe_wp_line`: `kinit_pro_at FI n -∗ ∃ I,
+        ⌜length I = n⌝ ∗ Wcl I 0`) then `Wcf I 0` from `Wcl I 0` beside the
+        ERA-HEAD deed: `UShRound.Wcf0_of_pre_line_id` needs `PRE I`, and at
+        the head `I = []`, `PRE []` is `UInitFileCons.file_hold_head_of_boot`
+        (R5.3's "era-head arm").  This is the one conjunct with a real step.
+3. **`file_cons_sup_of_sh_slot`** (twin of `pipe_cons_sup_of_sh_slot`, itself
+   `UInitSh.init_exec_sup_of_sh_slot_at` at the file's five readings): it
+   takes `file_cc_holds`, `udep` (free), `□ (T -∗ sh_deps)`, the prompt law
+   `UShRound.sh_prompt_law_file` (already at `Wcf`; the pipe needed a frame
+   version here, the file's is stated at the hold) and the slot
+   `init_sh_slot T (sh_pay_at ush_line_file T file_cc sh_Rsh 0)`.
+4. **`file_Hinit_boot`** = `pipe_Hinit_boot`'s body: from `Hiface` derive
+   `Htag`/`Hkill`/`Hcons` (`UInitFile.v:35` comment already says
+   "an INSTANTIATION"); `Hpine` from `file_turn`; `Hsup`/`Hmint` off
+   `UInitFileCons.file_sup_of_taint_at` and `UexecExecMint.uslot_mint_all`;
+   `Hfs`/`Hcl` off `file_fs_pure_law` / `file_era0_pins_law`; `Hshdp` as the
+   pipe's; `Htg` = `UShRound.sh_tag_law_file`; `Hlks` =
+   `FileLinks.file_links_holds g Hcons`; `Hslot` =
+   `UShEcho.sh_echo_slot_of_fs_pure_holds` at `Hfs`; `Hcat` =
+   `UShCatPay.sh_cat_slot_of_fs_pure_holds` at the same `Hfs` (one slot
+   projects to both — the file round takes BOTH); `Hmade` from the cons
+   dance (`UInitConsFile.sh_cons_console_file_of_leg` hands the inum);
+   then `init_sh_slot` via `sh_pay_of_parts_at ush_line_file … sh_Rsh 0`
+   applied to `UShRound.sh_round_holds_file g r s0 … γp N` with
+   `Hlks udep_free Hslot Hcat Hpine Hmade`; the dance via
+   `UInitKernel.init_cons_dance_all_{miss,hit}` at
+   `UInitConsFile.init_cons_leaves_file_of_leg` / `init_cons_hit_file_of_leg`;
+   the bundle closes as the pipe's does.  THE INDEX `s0` is the deed's
+   content at boot (`AppFile.dst_content s_deed`; RULING H'), chosen where
+   `file_boot` is opened.
+5. Then `FileAssumptions.v` at the closed corollary and `make audit-file-only`.

@@ -478,6 +478,9 @@ arm is the theorem's one named premise (`pipe_both_law`).
   `UShPipeCatRound.v` now binds a `uprogSG` section variable — but the
   right child's arm does not unify and `sh_pipe_child_law` / item 4 are
   NOT reached.  Findings `### SH-PIPE-ROUND-13`.
+- [ ] **SH-PIPE-ROUND-14** (design §4.3ab: the exec instance bound in cat's
+  round file; the right child from ROUND-13's text; `sh_pipe_child_law`;
+  `pipe_adequacy_pipeΣ_final`).  Brief `brief-sh-pipe-round-14.md`.
 ## Findings (append as lanes report)## Findings (append as lanes report)## Findings (append as lanes report)
 
 ### PQ-FLAG-2 (2026-09-18) — the write link's second premise, paid by the CODE

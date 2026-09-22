@@ -1645,6 +1645,29 @@ Then the right child's chain (`pcat_round_at_g` → `sh_exec_sup_cat_wq_holds_at
 `sh_pipe_child_law g`, `sh_pipe_child_law_all`, `pipe_adequacy_pipeΣ_final`.
 Lane SH-PIPE-ROUND-13.
 
+### 4.3ab RULED (2026-09-23, after SH-PIPE-ROUND-13 part 1): the last instance — cat's round file binds the exec instance too
+
+ROUND-13 landed the row-aware close deposit in `UkRun.v` ALONE (the row
+was pinned at the call site and thrown away: `udepw_row` keeps it inside
+the table binder; a pipe's close is paid by `pipe_reg` through
+`UexecExecMint.udepw_cl_of_reg_close`; `pl_pipe_call` has no antecedent
+left), `pipe_cat_w` under the taint with the empty-turn arm, and the
+repair of `pcat_round_at_g`'s taint arm (unsatisfiable at a pipe read's
+`-1`; the `-1` turn is now funded from the free write law onto the write
+error disjunct).  The right child is WRITTEN OUT in the Findings block
+(`pl_cat_fd0`, `pl_kcat_dg`, `pl_cat_hw`, `pl_cat_kround`, `pl_right_child`,
+with the measured details: the side token rides the linear exit wand,
+`pl_RcR` gains `pipe_inv`, `pcat_out I = L` is reflexivity) and fails at
+exactly one `iApply: cannot apply` whose two types print identically —
+the tree's own sign of a second instance: `UShPipeCatRound.v` now binds
+`PS` (§4.3z's fifth file, found by ROUND-13: a 50-minute unification
+churn until it did) but not `SG` (`uexecSG`), while the round pins
+`uexecSG_xv6`.  RULED: `UShPipeCatRound.v` (and any other file of cat's
+chain that names `kcat_wr`/`kcat_round` without binding it) takes
+`Context `{SG : uexecSG Σ}` as `UkShPipe.v` does; then the right child
+from the Findings' text, `sh_pipe_child_law g`, `sh_pipe_child_law_all`,
+`pipe_adequacy_pipeΣ_final`.  Lane SH-PIPE-ROUND-14.
+
 ## 5. Programs
 
 ### 5.1 sh: the PIPE arm (lanes SH-PARSE-PIPE, SH-PIPE)

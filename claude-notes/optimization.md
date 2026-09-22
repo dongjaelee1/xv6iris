@@ -706,8 +706,8 @@ CID)` at each body site and each cross-module block application. A section whose
 
 ## `Print Assumptions` is a whole-tree walk
 
-It lives in `iris/SystemAssumptions.v` (and, for the echo application theorem,
-`iris/EchoAssumptions.v`), run by `make audit-only` / `make audit-echo-only` and
+It lives in `iris/SystemAssumptions.v` (and, for the application theorem,
+`iris/PipeAssumptions.v`), run by `make audit-only` / `make audit-pipe-only` and
 by CI — deliberately not `_CoqProject` rows, and deliberately not in the serial
 build tail. It forces and walks every opaque body in the cone, and forcing is
 not a read: each term is re-COOKED out of its sections and re-substituted through

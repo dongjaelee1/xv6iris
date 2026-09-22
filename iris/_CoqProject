@@ -1624,8 +1624,6 @@ FileReadInst.v
 UImgWordDefs.v
 UInitSh.v
 UInitBoot.v
-UInitBootAdequacy.v
-# EchoAssumptions.v
 
 UkWriteLeaf.v
 UkWriteCons.v

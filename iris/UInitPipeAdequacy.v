@@ -2,8 +2,7 @@
 (*  UInitPipeAdequacy.v -- [App.al_programs] AT [AppPipe.app_pipe], AND   *)
 (*  THE PIPELINE APPLICATION'S CLOSED THEOREM (lane PIPE-CC).             *)
 (*                                                                       *)
-(*  [UInitBootAdequacy.v]'s place in the echo campaign, one application   *)
-(*  over, and it is a SEPARATE FILE for that file's measured reason:      *)
+(*  A SEPARATE FILE from the assembly, for a measured reason:             *)
 (*  [UInitPipe.v] is a proofmode-heavy u-tier assembly, and pulling       *)
 (*  [RiscvAdequacy] / [SystemAdequacy] / [FsCfgBoot] -- which             *)
 (*  [UPipeBootAdequacy.pipe_prog_law] needs to even ELABORATE (its class  *)
@@ -54,11 +53,12 @@ Require Import FsImgCheck.
 Require Import FsImgDisk.
 Require Import App.
 Require Import InodeInv.
+Require Import EchoDisc.            (* [disc] / [good_out]: the echo corollary *)
 Require Import PipeDisc.
 Require Import EchoOut.
 Require Import PipeOut.
 Require Import AppPipe.
-Require Import PipeProto.           (* [pipeProtoSigma]: the protocol's functors *)
+Require Import PipeProto.           (* [pipeProtoG]: the protocol's ghosts *)
 Require Import UPipeBootAdequacy.   (* [pipe_prog_law] / [pipeSigma] *)
 Require Import UInitPipe.           (* [pipe_Hinit_boot] / the premise *)
 
@@ -74,8 +74,7 @@ Section PipeProgLaw.
 
   Theorem pipe_prog_law_of_child :
     sh_pipe_child_law_all -> pipe_prog_law (Σ := Σ).
-  (* POINTWISE, and through the record's [cbn], for [UInitBootAdequacy]'s
-     measured reason: the record's fields ARE [AppPipe]'s definitions, but
+  (* POINTWISE, and through the record's [cbn], for a measured reason: the record's fields ARE [AppPipe]'s definitions, but
      unification does not delta-unfold a record literal for them, and an
      [exact] of the whole term asks for one conversion of two [box]-heavy
      bundles at once. *)
@@ -93,36 +92,14 @@ Section PipeProgLaw.
 End PipeProgLaw.
 
 (* ===================================================================== *)
-(*  THE CLOSED COROLLARY -- [UPipeBootAdequacy.pipe_adequacy_pipeSigma]    *)
-(*  with its [Hprog] REPLACED by the child law.                           *)
-(*                                                                       *)
-(*  Everything else about it is that theorem's: the functor list is the    *)
-(*  concrete [pipeSigma] (so every ghost class is realised by [subG] and   *)
-(*  the statement is not vacuous), the disk is the literal mkfs image,     *)
-(*  and the conclusion mentions no Iris -- [PipeDisc.pipe_phi] is the      *)
-(*  whole specification.                                                   *)
+(*  THE THEOREM -- [UPipeBootAdequacy.pipe_adequacy_pipeSigma] with its    *)
+(*  [Hprog] discharged by the child law ([UInitPipe.                       *)
+(*  sh_pipe_child_law_all_holds], lane SH-PIPE-ROUND-14): no premise of    *)
+(*  its own, the functor list the concrete [pipeSigma] (so every ghost     *)
+(*  class is realised by [subG] and the statement is not vacuous), the    *)
+(*  disk the literal mkfs image, and a conclusion that mentions no Iris -- *)
+(*  [PipeDisc.pipe_phi] is the whole specification.                        *)
 (* ===================================================================== *)
-(* ===================================================================== *)
-(*  THE FUNCTOR LIST THE ROUND NEEDS (lane SH-PIPE-ROUND-14), AND THE     *)
-(*  CLOSED THEOREM WITH NO PREMISE OF ITS OWN.                            *)
-(*                                                                       *)
-(*  [UPipeBootAdequacy.pipeSigma] predates lane PIPE-PROTO and does NOT   *)
-(*  contain [PipeProto.pipeProtoSigma].  MEASURED on the built tree:      *)
-(*  [Goal PipeProto.pipeProtoG pipeSigma. apply _.] fails with the plain  *)
-(*  no-type-class-instance-found error -- so                              *)
-(*  [UInitPipe.sh_pipe_child_law_all                                      *)
-(*  (Sigma := pipeSigma)], the premise of the corollary below, is not     *)
-(*  provable by any argument that MINTS a pipe's protocol ghosts, which   *)
-(*  every round must ([PipeProto.pipe_names_alloc]).  It is a gap in the  *)
-(*  anti-vacuity list and not in the theorem: the conclusion mentions no  *)
-(*  Iris at all, and a LONGER functor list is a STRONGER realisability    *)
-(*  claim, not a weaker one.                                             *)
-(*                                                                       *)
-(*  The protocol's list is now INSIDE [UPipeBootAdequacy.pipeSigma] (the   *)
-(*  tidy the lane left; done 2026-09-23), so the premise-free theorem is   *)
-(*  stated at [pipeSigma] itself, like the corollaries above it.          *)
-(* ===================================================================== *)
-
 Theorem pipe_adequacy_pipeΣ_final
     (gst : gstate)
     (Hgen0 : gst.(ggen) = 0%nat) (Hpow0 : gst.(gpow) = false)
@@ -140,14 +117,19 @@ Proof.
     by (rewrite Hdisk; reflexivity).
   intros n κs t2 g2 Hn.
   exact (pipe_adequacy_at_img (Σ := pipeΣ)
-           (pipe_prog_law_of_child (Σ := pipeΣ)
-              sh_pipe_child_law_all_holds)
+           (pipe_prog_law_of_child (Σ := pipeΣ) sh_pipe_child_law_all_holds)
            gst fsimg_sb fsimg_nib fsimg_cov Hgen0 Hpow0 Himg Hdk
            eq_refl eq_refl n κs t2 g2 Hn).
 Qed.
 
-Corollary pipe_adequacy_pipeΣ_of_child
-    (Hchild : sh_pipe_child_law_all (Σ := pipeΣ))
+(* ===================================================================== *)
+(*  THE ECHO APPLICATION'S THEOREM IS A COROLLARY (design app-pipe.md     *)
+(*  SS0.2): an echo-disciplined history is pipe-disciplined, and at an    *)
+(*  echo-only input the pipeline conclusion reads back as                 *)
+(*  [EchoDisc.good_out] ([PipeDisc.pipe_phi_echo]).  Same premises, same  *)
+(*  cone, so [iris/PipeAssumptions.v] is this theorem's audit too.        *)
+(* ===================================================================== *)
+Corollary echo_adequacy
     (gst : gstate)
     (Hgen0 : gst.(ggen) = 0%nat) (Hpow0 : gst.(gpow) = false)
     (Hdisk : v_disk (gst.(gdev).(dvirtio)) = FsImgDisk.fsimg_dk) :
@@ -155,8 +137,10 @@ Corollary pipe_adequacy_pipeΣ_of_child
     language.nsteps n ([PowerLoopE : language.expr riscv_lang], gst)
       κs (t2, g2) ->
     (forall e2, e2 ∈ t2 -> language.reducible (Λ := riscv_lang) e2 g2)
-    /\ PipeDisc.pipe_phi κs.
+    /\ (disc κs -> Forall good_out (cycles_of κs)).
 Proof.
-  exact (pipe_adequacy_pipeΣ (pipe_prog_law_of_child (Σ := pipeΣ) Hchild)
-           gst Hgen0 Hpow0 Hdisk).
+  intros n κs t2 g2 Hn.
+  destruct (pipe_adequacy_pipeΣ_final gst Hgen0 Hpow0 Hdisk n κs t2 g2 Hn)
+    as [Hsafe Hphi].
+  split; [exact Hsafe | exact (pipe_phi_echo κs Hphi)].
 Qed.

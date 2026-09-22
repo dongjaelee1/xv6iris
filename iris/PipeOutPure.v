@@ -346,14 +346,15 @@ Qed.
 Lemma d4_p_snoc_vacuous (cs : list nat) (I : list (bv 8)) (b : bv 8)
     (i : nat) :
   d4_p cs (I ++ [b]) -> (i < nlines I)%nat ->
+  pline_is_pipe (pline_of (bodies_of (I ++ [b]) !!! i)) = true ->
   pmergeable (pcont (pline_of (bodies_of (I ++ [b]) !!! i))
                (palt_at cs i)) ->
   False.
 Proof using.
-  intros Hd4 Hi Hm.
+  intros Hd4 Hi Hp Hm.
   assert (Hle : (nlines I <= nlines (I ++ [b]))%nat)
     by (apply nlines_prefix; by eexists).
-  destruct (d4_p_at cs (I ++ [b]) i Hd4 ltac:(lia) Hm) as [Hn Hr].
+  destruct (d4_p_at cs (I ++ [b]) i Hd4 ltac:(lia) Hp Hm) as [Hn Hr].
   destruct (decide (b = wl_nl)) as [-> | Hb].
   - rewrite nlines_snoc_nl in Hn. lia.
   - rewrite (rest_of_snoc_other I b Hb) in Hr.
@@ -366,10 +367,11 @@ Qed.
 Lemma d4_p_nomerge_snoc (cs : list nat) (I : list (bv 8)) (b : bv 8) :
   alts_ok_p (I ++ [b]) cs -> d4_p cs (I ++ [b]) ->
   forall i, (i < nlines I)%nat ->
+    pline_is_pipe (pline_of (bodies_of I !!! i)) = true ->
     ~ pmergeable (pcont (pline_of (bodies_of I !!! i))
                     (palt_at (take (nlines I) cs) i)).
 Proof using.
-  intros Hao Hd4 i Hi Hm.
+  intros Hao Hd4 i Hi Hp Hm.
   assert (Hle : (nlines I <= nlines (I ++ [b]))%nat)
     by (apply nlines_prefix; by eexists).
   assert (Hlen : length cs = nlines (I ++ [b]))
@@ -382,16 +384,16 @@ Proof using.
   { destruct (bodies_of_prefix I (I ++ [b]) ltac:(by eexists)) as [z Hz].
     rewrite Hz !list_lookup_total_alt lookup_app_l;
       [reflexivity | rewrite /nlines in Hi; lia]. }
-  rewrite Hpa in Hm. rewrite -Hbod in Hm.
-  exact (d4_p_snoc_vacuous cs I b i Hd4 Hi Hm).
+  rewrite Hpa in Hm. rewrite -Hbod in Hm. rewrite -Hbod in Hp.
+  exact (d4_p_snoc_vacuous cs I b i Hd4 Hi Hp Hm).
 Qed.
 
 Lemma d4_p_take_snoc (cs : list nat) (I : list (bv 8)) (b : bv 8) :
   alts_ok_p (I ++ [b]) cs -> d4_p cs (I ++ [b]) ->
   d4_p (take (nlines I) cs) I.
 Proof using.
-  intros Hao Hd4. apply d4_p_intro. intros i Hi Hm.
-  by destruct (d4_p_nomerge_snoc cs I b Hao Hd4 i Hi Hm).
+  intros Hao Hd4. apply d4_p_intro. intros i Hi Hp Hm.
+  by destruct (d4_p_nomerge_snoc cs I b Hao Hd4 i Hi Hp Hm).
 Qed.
 
 Lemma disc_seg_p'_in (seg : list mobs) (b : bv 8) :
@@ -417,7 +419,10 @@ Proof using.
   split.
   - rewrite /pro_ok_p. split; [exact HF |].
     by rewrite (pro_idx_p_take cs _ (nlines (ins p)) Hplt).
-  - rewrite /disc_pt_p (sessp_take ps cs (ins p) _ Hplt). exact Hpt.
+  - rewrite /disc_pt_p.
+    assert (Hdn : (nlines (done_of (ins p)) <= nlines (ins seg))%nat)
+      by (rewrite nlines_done; exact Hplt).
+    rewrite (sessp_take ps cs (done_of (ins p)) _ Hdn). exact Hpt.
 Qed.
 
 Lemma disc_p_in (h : list mobs) (b : bv 8) :
@@ -768,59 +773,127 @@ Proof using.
   pose proof (sessp_length_step ps cs I b). lia.
 Qed.
 
-(* F2 at the pipeline session, under the per-byte rule D2 this application
-   keeps ([EchoOutPure.next_input_of_complete] is the echo application's,
-   where the count of echoed inputs is a kernel premise instead). *)
-Lemma D2_next_input_p (ps cs : list nat)
+(* F2 at the pipeline session -- [EchoOutPure.next_input_of_complete] at
+   [sessp]: the process output owed at this stage is complete.  That the
+   echoed list holds every earlier input of the era ([length E = m - 1])
+   is the KERNEL's FIFO discipline and a PREMISE here; that the output is
+   complete is the discipline's, read at [LineWords.done_of]. *)
+Lemma next_input_of_complete_p (ps cs : list nat)
     (E : list (list mobs * bv 8)) (w W : list (bv 8)) (h : list mobs)
     (c : bv 8) (m : nat) :
   E_disc_p E -> E_index E ->
   (forall x, x ∈ E -> hist_ext x.1 h) ->
   obs_ends_in Uart0 h c ->
   length (ins h) = m ->
+  length E = (m - 1)%nat ->
   w `prefix_of` pending_p ps cs E ->
-  sessp ps cs (take (m - 1)%nat (ins h)) `prefix_of` W ->
+  sessp ps cs (done_of (take (m - 1)%nat (ins h))) `prefix_of` W ->
   W `prefix_of` (D_p ps cs E ++ w) ->
-  m = S (length E) /\ w = pending_p ps cs E.
+  w = pending_p ps cs E.
 Proof using.
-  intros HEb HEi Hnew Hends Hm Hw Hlow Hup.
-  assert (Hm1 : (1 <= m)%nat).
-  { destruct Hends as [h0 Hh0]. rewrite -Hm Hh0 ins_app ins_in.
-    rewrite (length_app (ins h0) [c]). cbn [length]. lia. }
+  intros HEb HEi Hnew Hends Hm HlenE Hw Hlow Hup.
   assert (Hprefix : forall j x, E !! j = Some x -> x.1 `prefix_of` h).
   { intros j x Hx. apply (Hnew x). by eapply elem_of_list_lookup_2. }
-  pose proof (E_length_le_hist E h HEi Hprefix) as HlenE.
-  pose proof (E_bytes_of_hist E h HEi Hprefix HlenE) as HEq.
-  assert (Hboth : sessp ps cs (take (m - 1)%nat (ins h))
-                  `prefix_of` sessp ps cs (take (length E) (ins h))).
-  { rewrite -HEq. etrans; [exact Hlow |]. etrans; [exact Hup |].
-    by apply D_p_stage_prefix. }
-  assert (Hle : (m - 1 <= length E)%nat).
-  { destruct (decide (m - 1 <= length E)%nat) as [? | Hgt]; [done | exfalso].
-    apply prefix_length in Hboth.
-    assert (Hpr : take (length E) (ins h) `prefix_of` take (m - 1)%nat (ins h))
-      by (apply prefix_take_le; lia).
-    assert (Hne : take (length E) (ins h) <> take (m - 1)%nat (ins h)).
-    { intro Hq. apply (f_equal length) in Hq.
-      rewrite !length_take in Hq. lia. }
-    pose proof (sessp_length_lt ps cs (take (length E) (ins h))
-                  (take (m - 1)%nat (ins h)) Hpr Hne). lia. }
-  assert (Heq : (m - 1)%nat = length E).
-  { destruct (decide ((m - 1)%nat = length E)) as [? | Hne]; [done | exfalso].
-    assert (Hlt : (m - 1 < length E)%nat) by lia.
-    destruct (lookup_lt_is_Some_2 E (m - 1)%nat Hlt) as [x Hx].
-    destruct (HEi (m - 1)%nat x Hx) as [Hxe Hxlen].
-    assert (Hxin : x ∈ E) by (by eapply elem_of_list_lookup_2).
-    destruct (Hnew x Hxin) as [Hpre Hlen'].
-    assert (Hsame : x.1 = h).
-    { eapply ins_hist_agree; [exact Hpre | exact Hxe | exact Hends |]. lia. }
-    rewrite Hsame in Hlen'. lia. }
-  split; [lia |].
-  apply (anti_symm prefix); [exact Hw |].
-  eapply (prefix_app_cancel (D_p ps cs E)).
-  rewrite (D_p_pending_sessp ps cs E HEb) HEq -Heq.
-  etrans; [exact Hlow | exact Hup].
+  pose proof (E_length_le_hist E h HEi Hprefix) as Hle.
+  pose proof (E_bytes_of_hist E h HEi Hprefix Hle) as HEq.
+  rewrite HlenE in HEq.
+  destruct (decide (rest_of (snd <$> E) = [])) as [Hr | Hr].
+  - apply (anti_symm prefix); [exact Hw |].
+    eapply (prefix_app_cancel (D_p ps cs E)).
+    rewrite (D_p_pending_sessp ps cs E HEb).
+    etrans; [| etrans; [exact Hlow | exact Hup] ].
+    rewrite -HEq (done_of_rest_nil (snd <$> E) Hr). reflexivity.
+  - assert (Hne : (snd <$> E) <> []).
+    { intro Hq. rewrite Hq rest_of_nil in Hr. by apply Hr. }
+    assert (Hp : pending_p ps cs E = []).
+    { rewrite /pending_p /pending_at_p decide_False; [| exact Hne].
+      by rewrite decide_False. }
+    rewrite Hp in Hw. rewrite Hp. by apply prefix_nil_inv.
 Qed.
+
+(* ---- THE DROP ARM IS REFUTED ([EchoOutPure.drop_refuted]'s twins) ----- *)
+
+Lemma disc_drop_byte_p (I : list (bv 8)) (c : bv 8) :
+  disc_input_p I -> c ∈ I ->
+  bv_unsigned c <> 0%Z /\ bv_unsigned c <> 16%Z /\ cons_erase c = false.
+Proof using.
+  intros Hd Hc. pose proof (disc_input_p_byte_val I c Hd Hc) as Hv.
+  split; [lia |]. split; [lia |]. apply (disc_byte_ok_p I c Hd Hc).
+Qed.
+
+(* THE RING BOUND: under D3 an input is its complete lines plus at most
+   one line's worth of bytes *)
+Lemma lines_bytes_disc_bound_p (I : list (bv 8)) (n : nat) :
+  disc_input_p I ->
+  (n = nlines I \/ (rest_of I = [] /\ n = (nlines I - 1)%nat)) ->
+  (length I <= lines_bytes I n + line_max)%nat.
+Proof using.
+  intros Hd Hn.
+  pose proof (lines_bytes_rest I) as Hsum.
+  destruct Hn as [-> | [Hr ->]].
+  - pose proof (disc_input_p_rest_short I Hd). lia.
+  - destruct (decide (0 < nlines I)%nat) as [Hpos | Hz].
+    + rewrite (lines_bytes_last I Hpos) in Hsum.
+      assert (Hk : (nlines I - 1 < length (bodies_of I))%nat)
+        by (rewrite /nlines in Hpos |- *; lia).
+      destruct (lookup_lt_is_Some_2 (bodies_of I) (nlines I - 1)%nat Hk)
+        as [l Hl].
+      rewrite (list_lookup_total_correct _ _ _ Hl) in Hsum.
+      pose proof (pbody_ok_short l (disc_input_p_body I _ l Hd Hl)).
+      rewrite Hr in Hsum. cbn [length] in Hsum. lia.
+    + assert (Hnl : nlines I = 0%nat) by lia.
+      rewrite Hnl lines_bytes_0 Hr in Hsum. cbn [length] in Hsum. lia.
+Qed.
+
+Lemma drop_refuted_p (h : list mobs) (L : list log_entry)
+      (dl : list (list mobs * bv 8)) (Eb w : list (bv 8)) :
+  (length L + 1)%nat = length (ins (open_seg h)) ->
+  Forall log_echoed L ->
+  (128 + length dl <= length (filter log_echoed L))%nat ->
+  (lines_bytes Eb (if decide (rest_of Eb = [] /\ w = [])
+                   then (nlines Eb - 1)%nat else nlines Eb)
+   <= length dl)%nat ->
+  Eb = take (length L) (ins (open_seg h)) ->
+  disc_input_p (ins (open_seg h)) ->
+  False.
+Proof using.
+  intros HK1 HA1 Hring HA2 HEb Hdisc.
+  rewrite (epu_filter_all log_echoed L HA1) in Hring.
+  assert (HlenEb : length Eb = length L)
+    by (rewrite HEb length_take; lia).
+  assert (HdEb : disc_input_p Eb)
+    by (rewrite HEb; exact (disc_input_p_prefix _ _ (prefix_take _ _) Hdisc)).
+  assert (Hb : (length Eb
+                <= lines_bytes Eb (if decide (rest_of Eb = [] /\ w = [])
+                                   then (nlines Eb - 1)%nat else nlines Eb)
+                   + line_max)%nat).
+  { apply (lines_bytes_disc_bound_p Eb _ HdEb). case_decide as Hc.
+    - right. split; [exact (proj1 Hc) | reflexivity].
+    - by left. }
+  rewrite /line_max in Hb. lia.
+Qed.
+
+Lemma cons_drop_refuted_p (h : list mobs) (c : bv 8) (L : list log_entry)
+      (dl : list (list mobs * bv 8)) (Eb w : list (bv 8)) :
+  (length L + 1)%nat = length (ins (open_seg h)) ->
+  Forall log_echoed L ->
+  (lines_bytes Eb (if decide (rest_of Eb = [] /\ w = [])
+                   then (nlines Eb - 1)%nat else nlines Eb)
+   <= length dl)%nat ->
+  Eb = take (length L) (ins (open_seg h)) ->
+  disc_input_p (ins (open_seg h)) ->
+  c ∈ ins (open_seg h) ->
+  cons_drop_ok c L dl -> False.
+Proof using.
+  intros HK1 HA1 HA2 HEb Hdisc Hc Hdrop.
+  destruct (disc_drop_byte_p _ c Hdisc Hc) as (H0 & H16 & Her).
+  destruct Hdrop as [Hz | [Hp | [He | Hring]]].
+  - exact (H0 Hz).
+  - exact (H16 Hp).
+  - rewrite Her in He. discriminate.
+  - exact (drop_refuted_p h L dl Eb w HK1 HA1 Hring HA2 HEb Hdisc).
+Qed.
+
 
 (* ====================================================================== *)
 (*  6.  THE CHOICE LIST: A POINTWISE RANGE CONDITION, AND ITS PADDING      *)
@@ -1659,6 +1732,7 @@ Lemma sessp_prefix_det2 (ps ps' cs cs' : list nat) (I' I : list (bv 8)) :
   (forall i, (i < nlines I')%nat -> palt_isforkS (palt_at cs i) = true ->
      (S i = nlines I /\ rest_of I = [])) ->
   (forall i, (i < nlines I')%nat ->
+     pline_is_pipe (pline_of (bodies_of I' !!! i)) = true ->
      ~ pmergeable (pcont (pline_of (bodies_of I' !!! i)) (palt_at cs' i))) ->
   sessp ps' cs' I' `prefix_of` sessp ps cs I ->
   I' `prefix_of` I /\ pro_ok_p ps cs (nlines I')
@@ -1669,19 +1743,23 @@ Proof using.
   exact (sessp_prefix_det ps ps' cs cs' I' I).
 Qed.
 
-(* THE DISCIPLINE'S LOWER BOUND AT THE OPEN CYCLE'S LAST INPUT: D1/D2 read
-   off [disc_seg_p'] at the wire the last byte was typed on.
+(* THE DISCIPLINE'S LOWER BOUND AT THE OPEN CYCLE'S LAST INPUT: D1 read
+   off [disc_seg_p'] at the wire the last byte was typed on, at the
+   COMPLETE lines of the input before that byte.
    [EchoOutPure.disc_seg'_pt_last]'s twin. *)
-Lemma disc_seg_p'_pt_last (seg : list mobs) (c : bv 8) :
+Lemma disc_seg_p'_pt_last_raw (seg : list mobs) (c : bv 8) :
   disc_seg_p' seg -> obs_ends_in Uart0 seg c ->
   exists ps' cs' : list nat,
     pro_ok_p ps' cs' (nlines (removelast (ins seg)))
     /\ alts_ok_p (removelast (ins seg)) cs'
     /\ (forall i, (i < nlines (removelast (ins seg)))%nat ->
+          pline_is_pipe (pline_of (bodies_of (removelast (ins seg)) !!! i))
+            = true ->
           ~ pmergeable
               (pcont (pline_of (bodies_of (removelast (ins seg)) !!! i))
                  (palt_at cs' i)))
-    /\ sessp ps' cs' (removelast (ins seg)) `prefix_of` obs_wire Uart0 seg.
+    /\ sessp ps' cs' (done_of (removelast (ins seg)))
+         `prefix_of` obs_wire Uart0 seg.
 Proof using.
   intros [Hd (ps & cs & Hao & Hd4 & Hall)] [seg0 ->].
   assert (Hip : seg0 ∈ in_pres (seg0 ++ [ObsUartIn Uart0 c])).
@@ -1693,9 +1771,9 @@ Proof using.
   assert (Hle : (nlines (ins seg0) <= nlines (ins seg0 ++ [c]))%nat)
     by (apply nlines_prefix; by eexists).
   exists ps, (take (nlines (ins seg0)) cs).
-  assert (Heq : sessp ps (take (nlines (ins seg0)) cs) (ins seg0)
-                = sessp ps cs (ins seg0))
-    by (apply sessp_take; lia).
+  assert (Heq : sessp ps (take (nlines (ins seg0)) cs) (done_of (ins seg0))
+                = sessp ps cs (done_of (ins seg0)))
+    by (apply sessp_take; rewrite nlines_done; lia).
   split.
   { destruct Hok as [HF Hlt]. split; [exact HF |].
     rewrite (pro_idx_p_take cs (nlines (ins seg0)) (nlines (ins seg0))
@@ -1708,6 +1786,34 @@ Proof using.
   rewrite Heq. etrans; [exact Hpt |]. rewrite obs_wire_app. by eexists.
 Qed.
 
+(* ...and the same witness read at the COMPLETE lines of that input, which
+   is where the relaxed discipline states it: [done_of] drops no line
+   ([LineWords.bodies_of_done], [nlines_done]). *)
+Lemma disc_seg_p'_pt_last (seg : list mobs) (c : bv 8) :
+  disc_seg_p' seg -> obs_ends_in Uart0 seg c ->
+  exists ps' cs' : list nat,
+    pro_ok_p ps' cs' (nlines (done_of (removelast (ins seg))))
+    /\ alts_ok_p (done_of (removelast (ins seg))) cs'
+    /\ (forall i, (i < nlines (done_of (removelast (ins seg))))%nat ->
+          pline_is_pipe
+            (pline_of (bodies_of (done_of (removelast (ins seg))) !!! i))
+            = true ->
+          ~ pmergeable
+              (pcont (pline_of
+                        (bodies_of (done_of (removelast (ins seg))) !!! i))
+                 (palt_at cs' i)))
+    /\ sessp ps' cs' (done_of (removelast (ins seg)))
+         `prefix_of` obs_wire Uart0 seg.
+Proof using.
+  intros Hd Hends.
+  destruct (disc_seg_p'_pt_last_raw seg c Hd Hends)
+    as (ps' & cs' & Hok & Hao & Hnm & Hlow).
+  exists ps', cs'. rewrite nlines_done bodies_of_done.
+  rewrite /alts_ok_p /plines_of bodies_of_done.
+  rewrite /alts_ok_p /plines_of in Hao.
+  split_and!; [exact Hok | exact Hao | exact Hnm | exact Hlow].
+Qed.
+
 (* [sessp] is never empty once round 0 has settled *)
 Lemma sessp_nonnil (ps cs : list nat) (I : list (bv 8)) :
   Forall (fun a => (a < length pro_alts)%nat) ps -> pro_done ps ->
@@ -1718,4 +1824,41 @@ Proof using.
   assert (Hne : ps <> []) by (intros ->; by apply Exists_nil in Hd).
   pose proof (pro_of_pos ps HF Hne) as Hpos. rewrite H in Hpos.
   cbn [length] in Hpos. lia.
+Qed.
+
+(* ---- THE RECEIVE FLUSH LOSES NOTHING ([EchoOutPure.flush_lost_disc]'s
+   twin): D1 at the empty input asks for the prologue, and there is no
+   room for it on an output-free wire. ---- *)
+Lemma flush_lost_disc_p (seg sf : list mobs) (f : nat) :
+  disc_seg_p' seg -> sf `prefix_of` seg ->
+  obs_wire Uart0 sf = [] -> length (obs_ins Uart0 sf) = f -> f = 0%nat.
+Proof using.
+  intros Hd Hpre Hw Hlen.
+  destruct (decide (f = 0%nat)) as [Hz | Hne]; [exact Hz | exfalso].
+  assert (Hlp : (0 < length (in_pres sf))%nat)
+    by (rewrite in_pres_length /ins; lia).
+  destruct (lookup_lt_is_Some_2 (in_pres sf) 0%nat Hlp) as [p0 Hp0].
+  assert (Hins0 : ins p0 = [])
+    by (apply nil_length_inv; exact (in_pres_lookup_ins sf 0%nat p0 Hp0)).
+  assert (Hp0seg : p0 ∈ in_pres seg).
+  { apply elem_of_list_lookup_2 with 0%nat.
+    destruct (in_pres_mono sf seg Hpre) as [z Hz].
+    rewrite Hz lookup_app_l; [exact Hp0 | lia]. }
+  assert (Hw0 : obs_wire Uart0 p0 = []).
+  { destruct (in_pres_prefix sf 0%nat p0 Hp0) as [z Hz].
+    rewrite Hz obs_wire_app in Hw. by apply app_eq_nil in Hw as [Hw _]. }
+  destruct Hd as [_ (ps & cs & _ & _ & Hall)].
+  destruct (Hall p0 Hp0seg) as [Hok Hpt].
+  destruct Hok as [HF Hlt].
+  apply (sessp_nonnil ps cs [] HF (proj2 (pro_done_rounds ps) ltac:(lia))).
+  apply prefix_nil_inv.
+  rewrite /disc_pt_p Hins0 done_of_nil Hw0 in Hpt. exact Hpt.
+Qed.
+
+Lemma flush_lost_zero_p (h : list mobs) (f : nat) :
+  trace_shape h true -> disc_p h -> ConsLog.flush_lost h f -> f = 0%nat.
+Proof using.
+  intros Hsh Hdisc [Hz | (sf & Hpre & Hw & Hlen)]; [exact Hz |].
+  exact (flush_lost_disc_p (open_seg h) sf f
+           (disc_seg_p'_open_seg h Hsh Hdisc) Hpre Hw Hlen).
 Qed.

@@ -166,12 +166,13 @@ jobs:
             exit 1
           fi
 
-      # ---- 3b. Assumption audits (iris/SystemAssumptions.v, EchoAssumptions.v) ----
+      # ---- 3b. Assumption audits (iris/SystemAssumptions.v, PipeAssumptions.v) ----
       # `Print Assumptions`, the only check that sees through every functor and
       # seal.  TWO THEOREMS, because NEITHER CONE CONTAINS THE OTHER:
       # xv6_fs_adequacy_xv6Σ is the chain at the TRIVIAL application and names
       # no user program, so it never walks the Uk*/USh*/UInit*/UEcho* tier;
-      # echo_adequacy_echoΣ is the same chain at AppEcho.app_echo, closed, and
+      # pipe_adequacy_pipeΣ_final is the same chain at AppPipe.app_pipe (echo
+      # and pipeline lines; the echo theorem is its corollary), closed, and
       # its cone does.  Nor can a grep for `Admitted`/`Axiom` stand in for the
       # second: a Spec*.v module Parameter that no Link*.v discharged sits in
       # the proof term unmentioned by any source line.
@@ -190,7 +191,7 @@ jobs:
       # backgrounds the targets itself only because it needs each audit's
       # output in a log of its own for the summary.
       #
-      # `audit-only`/`audit-echo-only`, not `audit`/`audit-echo`: the latter
+      # `audit-only`/`audit-pipe-only`, not `audit`/`audit-pipe`: the latter
       # depend on `proofs`, whose kernel-rocq prerequisite pulls in the absent
       # kernel ELF (see the note atop this file).  `-s` keeps make's recipe echo
       # out of the captured stdout; coqc's warnings go to stderr and stay in the
@@ -200,18 +201,18 @@ jobs:
       # contract as when they lived in the build log, so read them.  The step
       # fails if either coqc does, and both sections are written either way,
       # which is why the two exit statuses are collected separately.
-      - name: Assumption audits (iris/, Print Assumptions, system + echo in parallel)
+      - name: Assumption audits (iris/, Print Assumptions, system + application in parallel)
         run: |
           rc_sys=0
-          rc_echo=0
+          rc_app=0
           make -s SWITCH="$GITHUB_WORKSPACE" audit-only \
             > "$RUNNER_TEMP/assumptions-system.log" &
           pid_sys=$!
-          make -s SWITCH="$GITHUB_WORKSPACE" audit-echo-only \
-            > "$RUNNER_TEMP/assumptions-echo.log" &
-          pid_echo=$!
-          wait $pid_sys  || rc_sys=$?
-          wait $pid_echo || rc_echo=$?
+          make -s SWITCH="$GITHUB_WORKSPACE" audit-pipe-only \
+            > "$RUNNER_TEMP/assumptions-app.log" &
+          pid_app=$!
+          wait $pid_sys || rc_sys=$?
+          wait $pid_app || rc_app=$?
 
           {
             echo "## Assumption audit"
@@ -226,20 +227,20 @@ jobs:
             cat "$RUNNER_TEMP/assumptions-system.log"
             echo '```'
             echo
-            echo "### \`UInitBootAdequacy.echo_adequacy_echoΣ\`"
+            echo "### \`UInitPipeAdequacy.pipe_adequacy_pipeΣ_final\`"
             echo
-            if [ "$rc_echo" -ne 0 ]; then
-              echo "> :x: exit $rc_echo — output below is partial."
+            if [ "$rc_app" -ne 0 ]; then
+              echo "> :x: exit $rc_app — output below is partial."
               echo
             fi
             echo '```'
-            cat "$RUNNER_TEMP/assumptions-echo.log"
+            cat "$RUNNER_TEMP/assumptions-app.log"
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
-          if [ "$rc_sys" -ne 0 ] || [ "$rc_echo" -ne 0 ]; then
+          if [ "$rc_sys" -ne 0 ] || [ "$rc_app" -ne 0 ]; then
             echo "::error::An assumption audit failed (system: $rc_sys," \
-                 "echo: $rc_echo); see the step summary."
+                 "application: $rc_app); see the step summary."
             exit 1
           fi
 
@@ -287,8 +288,8 @@ jobs:
           #     [Hphi] hypothesis, an iProp entailment) and the FS durability
           #     record.
           #   xv6_fs_adequacy_xv6Sigma   -- [phi] chosen.
-          #   echo_adequacy_echoSigma    -- the chain at [AppEcho.app_echo],
-          #     closed.
+          #   pipe_adequacy_pipeSigma_final -- the chain at [AppPipe.app_pipe],
+          #     closed (the echo theorem is its corollary).
           #
           # NEITHER OF THE MIDDLE TWO CONTAINS THE OTHER: a free [phi] puts
           # the ghost layer in that base, while only the fs one reaches the
@@ -297,16 +298,16 @@ jobs:
           # which live in files the general theorem reaches for other reasons.
           # Do not read containment off the file column.
           #
-          # DO NOT EXPECT THE ECHO ROW TO BE THE BIGGEST just because it is
+          # DO NOT EXPECT THE APPLICATION ROW TO BE THE BIGGEST just because it is
           # the application theorem: it has the most PROOF behind it and the
           # least STATEMENT in front of it.  What it says is a property of the
           # UART trace, so its base is the machine + device model, [ObsTrace]
-          # and [EchoDisc], with no file system in it at all.
+          # and [PipeDisc]/[EchoDisc], with no file system in it at all.
           #
-          # WHAT TO WATCH IS [EchoDisc.v]'s CONTRIBUTION.  For the other three
+          # WHAT TO WATCH IS [PipeDisc.v]'s CONTRIBUTION.  For the other three
           # the statement vocabulary is FS consistency, which this tree defines
           # either way; here THE PREDICATE IS THE SPECIFICATION, so a
-          # Print Assumptions of a theorem about the wrong [disc]/[good_out] is
+          # Print Assumptions of a theorem about the wrong [disc_p]/[good_out_p] is
           # worth nothing and this table is what rules that out.  The counts
           # are not quoted in this comment on purpose: they move with every
           # proof edit, and the tables below print the live ones.
@@ -318,7 +319,7 @@ jobs:
           for thm in RiscvAdequacy.riscv_power_adequacy \
                      SystemAdequacy.xv6_power_adequacy_xv6Σ \
                      SystemAdequacy.xv6_fs_adequacy_xv6Σ \
-                     UInitBootAdequacy.echo_adequacy_echoΣ; do
+                     UInitPipeAdequacy.pipe_adequacy_pipeΣ_final; do
             log="$RUNNER_TEMP/tcb-${thm##*.}.log"
             if ./tools/tcb/tcb-report.sh "xv6iris.$thm" > "$log" 2>&1; then
               python3 tools/tcb/tcb_report.py "$log" --md --target "$thm" \
@@ -411,7 +412,7 @@ jobs:
       # out to a bare `# Foo.v` (see coqproject_files' docstring), which is what
       # distinguishes a deliberate omission -- a descoped tier, or a file some
       # other target builds, as step 3b builds SystemAssumptions.v and
-      # EchoAssumptions.v --
+      # PipeAssumptions.v --
       # from the forgotten row this check is here to catch.  Either way the
       # file is counted by nobody, so a file omitted this way must carry no
       # coverage claims.  A mere coverage change never fails CI.  Runs only on a

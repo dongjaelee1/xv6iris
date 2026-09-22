@@ -473,16 +473,9 @@ Section pipe_links.
     { iApply (pipe_cons_link_of_taint with "HT [HΦ]").
       by iApply pipe_cons_run. }
     iIntros (o H) "#Hlb Hres %Hok %Hev".
-    pose proof Hev as Hev0.
-    destruct Hev0 as (Hnone & _ & _ & Hord & _).
     rewrite pchist_at0.
-    iDestruct (pecl_lt g (S gen_id) h c (default [] o) H Hsh Hk Hends Hord
-                 with "Hres") as "[Hres [#HT | %Hlt]]".
-    { iModIntro. iExists o. iFrame "Hlb".
-      rewrite pchist_at0. iSplitR; [rewrite /pecl; by iLeft |].
-      by iApply pipe_cons_run. }
-    iDestruct (pecl_open g (S gen_id) (default [] o) H h c cs Hnone
-                 (disc_seg_p_open_seg h Hsh Hdisc) Hk Hdisc Hsh Hends Hord Hlt
+    iDestruct (pecl_open g (S gen_id) (default [] o) H h c cs Hok Hev
+                 (disc_seg_p_open_seg h Hsh Hdisc) Hk Hdisc Hsh
                  with "Hres") as "Hres".
     iModIntro. iExists (Some h). cbn [obs_hist_lb_o from_option id].
     rewrite pchist_at0. iFrame "Hlbh Hres".

@@ -120,6 +120,13 @@ Definition wp_sys_fork_sconf_body
   (K_sys_fork <= av)%nat ->
   (* propagates to kfork's own nesting bound *)
   (Z.of_nat lvl + 2 < 2 ^ 31)%Z ->
+  (* THE CALLER'S ADDRESS IS A PROC SLOT'S, hence not 0 (design app-pipe
+     SS4.3x (ii), lane PIPE-GEN): straight through to kfork, which spends
+     it under <wait_lock> to publish the freshness of the child's
+     generation on the pid arm below.  sys_fork itself never reads [p].
+     The dispatcher discharges it from [pj = proc_addr j]
+     ([ProofSyscall]'s [sysc_proc_ties], [ProcGeom.proc_addr_nonzero]). *)
+  p <> (zero_reg : mword 64) ->
   (* straight through to kfork, whose cone floors at wait_lock (8) *)
   locks_below lks "wait_lock" ->
   sie_cap_gpr KT1 m av b p -∗
@@ -232,10 +239,15 @@ Definition wp_sys_fork_sconf_body
          no child, so the resource the parent lent it is still whole. *)
       ( (⌜ mf !!! Regidx (mword_of_int 10 : mword 5) = (mword_of_int (-1) : mword 64) ⌝ ∗
          ch_frag (pv_chg (us_V U)) p csP ∗ Rc)
+        (* ...AND THE CHILD'S GENERATION IS FRESH (design app-pipe SS4.3x,
+           lane PIPE-GEN): kfork's own row, relayed verbatim.  It is what
+           makes the union a growth by one, and hence what lets a parent
+           that forks twice tell its two children apart. *)
         ∨ (∃ (pidv : mword 32) (γ : gname),
               ⌜ mf !!! Regidx (mword_of_int 10 : mword 5)
                 = (sign_extend' 64 pidv : mword 64) ⌝ ∗
               ⌜ (1 <= bv_unsigned pidv <= PIDMAX)%Z ⌝ ∗
+              ⌜ γ ∉ csP ⌝ ∗
               child_tok γ pidv Q ∗
               ch_frag (pv_chg (us_V U)) p (csP ∪ {[γ]})) ) -∗
       mWP (Loop : expr riscv_lang)) -∗

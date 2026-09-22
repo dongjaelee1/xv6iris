@@ -5065,12 +5065,21 @@ Section SyscallArms.
        forking process handed its child, carried separately from the
        continuation so this call can get it back if no child is made. *)
     iDestruct "Hjslot" as "(#Hjkw & HjRc & Hjslot)".
+    (* THE RUNNING PROCESS'S ADDRESS IS A PROC SLOT'S, hence not 0 (design
+       app-pipe SS4.3x (ii), lane PIPE-GEN).  This is the discharge site of
+       the premise kfork takes: the dispatcher is the lowest party that
+       knows WHICH slot is running ([sysc_proc_ties]'s [sct_pj]/[sct_j],
+       here as this arm's own [Hpj]/[Hj]), and everything below it is
+       stated at an opaque pointer.  What the premise buys comes back on
+       the pid arm as [γ ∉ cs]. *)
+    assert (Hpjnz : pj <> (zero_reg : mword 64))
+      by (rewrite Hpj; exact (ProcGeom.proc_addr_nonzero j Hj)).
     iApply (SysFork.wp_sys_fork_sconf γp γw γft γf
               (fcn_procs fn)
 
               M 0%nat (av - 4)%nat true pj true pid U sts cs (sfork_pay fdep)
               (sfork_lend fdep) ∅
-              ltac:(lia) sysc_noff0b
+              ltac:(lia) sysc_noff0b Hpjnz
               (locks_below_empty "wait_lock")
               with "Hcg Hcpu Htext Hpc Hprocs' Hnextpid Hwl Hftable Hpe' Hitable Hitinv Hireg Hkat Hpav Hworld Htoken Hfdone HjRc Hjslot Hjkw Hpriv Hufrag Hrow").
     (* THE PARENT'S DESCRIPTOR STATES COME BACK AT THE VERY LIST THEY WENT
@@ -5111,13 +5120,17 @@ Section SyscallArms.
            child, so what the parent lent comes back through this arm. *)
         iIntros "_". iLeft.
         iSplitR; [iPureIntro; exact (conj Hm1 eq_refl) | iExact "HRcb"].
-      - iDestruct "Hpid" as (pidv γ) "(%Hpv & %Hpb & Htok & Hrw)".
+      - iDestruct "Hpid" as (pidv γ) "(%Hpv & %Hpb & %Hnin & Htok & Hrw)".
         iSplitR; [iPureIntro; right; exists pidv; exact (conj Hpv Hpb) |].
         iExists (cs ∪ {[γ]}). iFrame "Hrw".
         rewrite /sysc_fork_out /ufork_ans. iIntros "_".
         iRight. iExists γ, pidv.
         iSplitR; [iPureIntro; exact Hpv |].
         iSplitR; [iPureIntro; exact Hpb |].
+        (* ...AND THE FRESHNESS, straight out of the kernel's answer
+           (design app-pipe SS4.3x): the conjunct the U tier could never
+           prove for itself. *)
+        iSplitR; [iPureIntro; exact Hnin |].
         iSplitR; [iPureIntro; reflexivity | iExact "Htok"]. }
     iDestruct "Hpack" as (cs') "[Hrow Hans]".
     assert (Hmfsp : mf !!! Regidx csp_rs1 = pa_stk (m !!! Regidx csp_rs1) 4).

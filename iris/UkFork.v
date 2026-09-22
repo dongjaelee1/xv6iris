@@ -1047,7 +1047,12 @@ Section UkFork.
         - destruct Hm1 as [Hm1 Hcs]. iModIntro. iExists Sc.
           iSplitR; [iPureIntro; exact Hcs |]. iFrame "Hcha".
           iLeft. iSplitR; [iPureIntro; exact Hm1 |]. iFrame "Hchf HRc".
-        - iDestruct "Hpid" as (γ pidk) "(%Hpv & %Hrng & %Hcs & Htok)".
+        (* [%Hnin] is the kernel's freshness row (design app-pipe SS4.3x):
+           this arm re-spells fork's answer at the run's own children
+           handle and does not carry it on -- the sh tier's relay
+           ([UkShRun.wp_kshr_fork]) is where a consumer that wants it would
+           pick it up. *)
+        - iDestruct "Hpid" as (γ pidk) "(%Hpv & %Hrng & %Hnin & %Hcs & Htok)".
           iMod (uch_update (ukn_ch N) Sc Sc (Sc ∪ {[γ]}) with "Hcha Hchf")
             as "[Hcha Hchf]".
           iModIntro. iExists (Sc ∪ {[γ]}).

@@ -59,7 +59,11 @@ Landed 2026-09-21:
 - **5 `sh_round_holds_file` is PROVED (2026-09-22)**; `UShRound.v` is closed
   (no `Admitted`, no section hypotheses).  PROGRAM-STREAM.md stretch 14.
 
-NEXT: 4 (INIT-FILE, `file_Hinit_boot`), then the adequacy close.  (The text
+NEXT: 4 (INIT-FILE, `file_Hinit_boot`), then the adequacy close.  NOTE
+(2026-09-22): the lane checkouts under `/shared/xv6iris-3-lanes` are GONE,
+and with them the uncommitted 553-line `UInitFileCC.v` draft; item 4 is
+re-cut from `app-file-findings/INIT-FILE.md` (rounds 1-6 describe it) on
+today's statements, with `UInitPipe.pipe_Hinit_boot` (closed) as the mould.  (The text
 below is the old plan.)  Old: 5 `sh_round_holds_file`
 (the exec-node lemmas in `UkShEcho`/`UShEcho` are stated at `line_ok`, which
 demands the first word be `echo`; the owner's call whether to generalise them

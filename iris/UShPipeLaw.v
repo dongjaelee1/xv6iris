@@ -771,6 +771,83 @@ Section UShPipeLaw.
     { iApply (UserChildren.uch_any_of (ukn_ch N') ∅ with "Hch"). }
   Qed.
 
+  (* =================================================================== *)
+  (*  S2f  THE PARENT (ROUND-11's table, the `parent' row)                *)
+  (*                                                                     *)
+  (*  [UShPipeAssembly.pipe_round_parent] at the round's own resources.   *)
+  (*  [Wq] is the child's exit payload [UkShFork.ushf_wq (pterm_wc g) I]  *)
+  (*  and the two credential wands are this lane's                        *)
+  (*  [pipe_lend_exit_pay] / [pipe_panic_exit_pay];                       *)
+  (*  [S1 <> S2] is SS4.3y's relay read off the SECOND fork's answer      *)
+  (*  ([ush_fork_ans_grows]) -- and it is read through an [iSplit] on a   *)
+  (*  CONJUNCTION, because the landed [ush_fork_ans_sets_differ] consumes *)
+  (*  the answer it reads and the parent needs it afterwards.             *)
+  (* =================================================================== *)
+  Lemma pl_parent (v : era_pins) (I L : list (bv 8))
+      (ws : list (list (bv 8))) (pn : pnames) (gL gR gM : gname)
+      (γp : pipe_names) (N : uk_names Σ) `{!ukn_const N}
+      (h' : CpuId) (m' : regfile) (av : nat)
+      (r1 r2 rw1 rw2 : mword 64) (S1 S2 S3 S4 : gset gname) :
+    PipeLinksLine.pline_at I = PipeDisc.LPipe ws ->
+    L = wl_line (drop 1 ws) ->
+    ukn_pay N = (fun _ : Z => UkShFork.ushf_wq (UkShPipeFork.pterm_wc g) I) ->
+    r1 <> (mword_of_int (-1) : mword 64) ->
+    r2 <> (mword_of_int (-1) : mword 64) ->
+    era_pin γ (S gen_id) v -∗
+    PipeBoth.blk2_inv g blk2N (S gen_id) v I L gL gR gM
+      (pl_XL pn) (pl_YR pn L) -∗
+    shk_code (ukn_t N) -∗
+    UkShPipe.ush_fork_ans (∅ : gset gname) S1
+      (pl_RcL v I L pn gL gR gM γp)
+      (fun _ : Z => UShPipeAssembly.pipe_Qc_at g pn L gL gR gM) r1 -∗
+    UkShPipe.ush_fork_ans S1 S2 (pl_RcR v I L pn gL gR gM γp)
+      (fun _ : Z => UShPipeAssembly.pipe_Qc_at g pn L gL gR gM) r2 -∗
+    UkShPipe.ush_wait_pid_ans rw1 S2 S3 -∗
+    UkShPipe.ush_wait_pid_ans rw2 S3 S4 -∗
+    PipeProto.pipe_inv pn γp L -∗
+    urun (SG := uexecSG_xv6) (PS := uprogSG_free) N h' m'
+      (mword_of_int 0xea) av -∗
+    mWP (Loop : expr riscv_lang).
+  Proof using .
+    intros Hpl HL Hpeq Hn1 Hn2.
+    assert (HLne : L <> []).
+    { rewrite HL. intro Hq. pose proof (pl_L_pos ws) as Hp.
+      rewrite Hq in Hp. cbn [length] in Hp. lia. }
+    assert (HLpos : (0 < length L)%nat)
+      by (rewrite HL; exact (pl_L_pos ws)).
+    iIntros "#Hpin #Hbinv #Hcode Hf1 Hf2 Hw1 Hw2 #Hpi Hrun".
+    (* ---- SS4.3y's relay, WITHOUT consuming the answer ---- *)
+    iAssert (⌜ S1 <> S2 ⌝
+             ∧ UkShPipe.ush_fork_ans S1 S2 (pl_RcR v I L pn gL gR gM γp)
+                 (fun _ : Z => UShPipeAssembly.pipe_Qc_at g pn L gL gR gM)
+                 r2)%I with "[Hf2]" as "Hf2'".
+    { iSplit; [ | iExact "Hf2" ].
+      iApply (UShPipeAssembly.ush_fork_ans_grows
+                (pl_RcR v I L pn gL gR gM γp)
+                (fun _ : Z => UShPipeAssembly.pipe_Qc_at g pn L gL gR gM)
+                r2 S1 S2 Hn2 with "Hf2"). }
+    iDestruct "Hf2'" as "[%HS12 Hf2]".
+    (* ---- the two wait answers' pure rows ---- *)
+    iDestruct "Hw1" as (pidv) "(%Hpv & %Hm1 & Hw1)".
+    iDestruct "Hw2" as (pidw) "(%Hpw & %Hm2 & Hw2)".
+    iApply (UShPipeAssembly.pipe_round_parent (PS := uprogSG_free)
+              g N pn γp I L ws v gL gR gM (pl_XL pn) (pl_YR pn L)
+              (UkShFork.ushf_wq (UkShPipeFork.pterm_wc g) I)
+              (pl_RcL v I L pn gL gR gM γp)
+              (pl_RcR v I L pn gL gR gM γp)
+              h' m' av r1 r2 rw1 rw2 S1 S2 S3 S4 pidv pidw
+              (pl_XL_timeless pn) (pl_YR_timeless pn L)
+              Hpl HL HLpos Hpeq Hpv Hpw Hn1 Hn2 HS12 Hm1 Hm2
+              with "[] [] Hpi Hpin Hbinv [] [] Hcode Hf1 Hf2 Hw1 Hw2 Hrun").
+    - iApply (PipeProto.pipe_excl_wtok_lb_pipeN pn γp L HLne with "Hpi").
+    - iApply (PipeProto.pipe_no_short_of_inv pn γp L with "Hpi").
+    - iIntros "Hc".
+      iApply (UShPipeAssembly.pipe_lend_exit_pay g I).
+      iApply (UkShPipeFork.pterm_wc_of g I 3%nat with "Hc").
+    - iIntros "Hc".
+      iApply (UShPipeAssembly.pipe_panic_exit_pay g I with "Hc").
+  Qed.
+
 End UShPipeLaw.
 
 

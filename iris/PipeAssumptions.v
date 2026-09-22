@@ -97,21 +97,25 @@
 (* ====================================================================== *)
 Require Import UInitPipeAdequacy.
 
+(* ---- THE TARGET, AND IT HAS NO PREMISE (lane SH-PIPE-ROUND-14) ----
+   [pipe_adequacy_pipeΣ_final] is [pipe_adequacy_pipeΣ_of_child] with
+   [Hchild] DISCHARGED ([UInitPipe.sh_pipe_child_law_all_holds]) and the
+   functor list extended by [PipeProto.pipeProtoΣ], which
+   [UPipeBootAdequacy.pipeΣ] does not contain (see that theorem's own
+   header, and the lane's Findings).  Its binder list is now three
+   HARDWARE facts about the initial machine state and nothing else, so
+   the complementary "read the binders too" check has nothing left in it
+   and the list below is the whole trusted base. *)
+Goal True. idtac "---- UInitPipeAdequacy.pipe_adequacy_pipeΣ_final". Abort.
+Print Assumptions pipe_adequacy_pipeΣ_final.
+
+(* ...and the premise-carrying corollary it supersedes, kept because its
+   [pipeΣ] is the anchor's own functor list. *)
+Goal True. idtac "---- UInitPipeAdequacy.pipe_adequacy_pipeΣ_of_child". Abort.
 Print Assumptions pipe_adequacy_pipeΣ_of_child.
 
-(* ---- THE FRONTIER: what [Hchild] is being built out of ---- *)
-Require Import UShPipeRound.
-Require Import UShPipeCatSlot.
-Require Import UInitPipe.
-
-(* the round law, the child law's core *)
-Goal True. idtac "---- UShPipeRound.sh_round_holds_pipe". Abort.
-Print Assumptions UShPipeRound.sh_round_holds_pipe.
-
-(* the /cat pin the round law takes as a premise *)
-Goal True. idtac "---- UShPipeCatSlot.pipe_sh_cat_slot". Abort.
-Print Assumptions UShPipeCatSlot.pipe_sh_cat_slot.
-
-(* the boot that supplies it *)
-Goal True. idtac "---- UInitPipe.pipe_Hinit_boot". Abort.
-Print Assumptions UInitPipe.pipe_Hinit_boot.
+(* ---- THE FRONTIER: EMPTY.  Every statement that used to stand here --
+   [UShPipeRound.sh_round_holds_pipe], [UShPipeCatSlot.pipe_sh_cat_slot],
+   [UInitPipe.pipe_Hinit_boot] -- is inside the target's cone now, so the
+   print above covers it (the file's own rule: drop a line from the
+   frontier once the lemma enters the corollary's cone). ---- *)

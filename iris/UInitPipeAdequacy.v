@@ -58,6 +58,7 @@ Require Import PipeDisc.
 Require Import EchoOut.
 Require Import PipeOut.
 Require Import AppPipe.
+Require Import PipeProto.           (* [pipeProtoSigma]: the protocol's functors *)
 Require Import UPipeBootAdequacy.   (* [pipe_prog_law] / [pipeSigma] *)
 Require Import UInitPipe.           (* [pipe_Hinit_boot] / the premise *)
 
@@ -101,6 +102,52 @@ End PipeProgLaw.
 (*  and the conclusion mentions no Iris -- [PipeDisc.pipe_phi] is the      *)
 (*  whole specification.                                                   *)
 (* ===================================================================== *)
+(* ===================================================================== *)
+(*  THE FUNCTOR LIST THE ROUND NEEDS (lane SH-PIPE-ROUND-14), AND THE     *)
+(*  CLOSED THEOREM WITH NO PREMISE OF ITS OWN.                            *)
+(*                                                                       *)
+(*  [UPipeBootAdequacy.pipeSigma] predates lane PIPE-PROTO and does NOT   *)
+(*  contain [PipeProto.pipeProtoSigma].  MEASURED on the built tree:      *)
+(*  [Goal PipeProto.pipeProtoG pipeSigma. apply _.] fails with the plain  *)
+(*  no-type-class-instance-found error -- so                              *)
+(*  [UInitPipe.sh_pipe_child_law_all                                      *)
+(*  (Sigma := pipeSigma)], the premise of the corollary below, is not     *)
+(*  provable by any argument that MINTS a pipe's protocol ghosts, which   *)
+(*  every round must ([PipeProto.pipe_names_alloc]).  It is a gap in the  *)
+(*  anti-vacuity list and not in the theorem: the conclusion mentions no  *)
+(*  Iris at all, and a LONGER functor list is a STRONGER realisability    *)
+(*  claim, not a weaker one.                                             *)
+(*                                                                       *)
+(*  So the premise-free theorem is stated at [pipeSigma] EXTENDED by the  *)
+(*  protocol's own list.  The tidy follow-up is one token inside          *)
+(*  [UPipeBootAdequacy.pipeSigma] itself; that file is not this lane's,   *)
+(*  and doing it there would move [pipe_adequacy_pipeSigma]'s statement.  *)
+(* ===================================================================== *)
+Definition pipeΣ_full : gFunctors := #[ pipeΣ ; PipeProto.pipeProtoΣ ].
+
+Theorem pipe_adequacy_pipeΣ_final
+    (gst : gstate)
+    (Hgen0 : gst.(ggen) = 0%nat) (Hpow0 : gst.(gpow) = false)
+    (Hdisk : v_disk (gst.(gdev).(dvirtio)) = FsImgDisk.fsimg_dk) :
+  forall (n : nat) (κs : list mobs) t2 g2,
+    language.nsteps n ([PowerLoopE : language.expr riscv_lang], gst)
+      κs (t2, g2) ->
+    (forall e2, e2 ∈ t2 -> language.reducible (Λ := riscv_lang) e2 g2)
+    /\ PipeDisc.pipe_phi κs.
+Proof.
+  assert (Himg : fs_boot_image_wf (v_disk (gst.(gdev).(dvirtio)))
+                   XV6_DISK_BYTES fsimg_sb fsimg_nib fsimg_cov)
+    by (rewrite Hdisk; exact fsimg_image_wf).
+  assert (Hdk : fs_blocks (v_disk (gst.(gdev).(dvirtio))) = fsimg_P)
+    by (rewrite Hdisk; reflexivity).
+  intros n κs t2 g2 Hn.
+  exact (pipe_adequacy_at_img (Σ := pipeΣ_full)
+           (pipe_prog_law_of_child (Σ := pipeΣ_full)
+              sh_pipe_child_law_all_holds)
+           gst fsimg_sb fsimg_nib fsimg_cov Hgen0 Hpow0 Himg Hdk
+           eq_refl eq_refl n κs t2 g2 Hn).
+Qed.
+
 Corollary pipe_adequacy_pipeΣ_of_child
     (Hchild : sh_pipe_child_law_all (Σ := pipeΣ))
     (gst : gstate)

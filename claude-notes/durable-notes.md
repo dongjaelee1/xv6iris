@@ -59,18 +59,45 @@ pointer line per top-level and `design/` file and does NOT list `projects/` or
 
 ## Build
 
-- Working dir `/shared/xv6rocq/iris`; single file
-  `coqc -R . xv6iris -R ../model-xv6iris Riscv -R ../kernel-rocq Kernel -w -notation-overridden <f>.v`;
-  full build `make -f CoqMakefile -j16`. On the VM:
-  [`remote-build-gcp.md`](remote-build-gcp.md).
+- Working dir `/shared/xv6iris/iris`; single file
+  `coqc -q -R . xv6iris -R ../model-xv6iris Riscv -R ../kernel-rocq Kernel -R ../user-rocq User -w -notation-overridden <f>.v`;
+  full build `make -f CoqMakefile -j32`.
+- **The edit-check loop is `rm -f <f>.vos && rocq compile -vos <the same flags>
+  <f>.v`** — it elaborates the file and SKIPS its opaque proofs, seconds rather
+  than the minute-plus a `.vo` costs on a whole-function file, and it is what a
+  settled shape is iterated against. It catches a broken STATEMENT and never a
+  broken tactic script; `-vok` is the other half and costs what the `.vo` does.
+  Delete the `.vos` first: an ordinary `coqc` run leaves an EMPTY one beside the
+  `.vo`, so `-vos` over a built tree reports success having done nothing.
+- **Builds run on this host**, an EC2 r7a.8xlarge (32 vCPU, 246 GB), where the
+  tree and the switch both live. The GCP VM in
+  [`remote-build-gcp.md`](remote-build-gcp.md) is a COLLABORATOR's machine and
+  not a build path from here.
 - **opam switch `/shared/xv6rocq`** (Rocq 9.0.1, coq-iris 4.4.0, coq-stdpp 1.12.0,
-  coq-sail-stdpp 0.20.1). `eval $(opam env --switch=/shared/xv6rocq)` is
-  mandatory in any raw `coqc` — including background shells, which do not
-  inherit it. Rocq ≥ 9.1 is not an option. A make run under the wrong switch
+  coq-sail-stdpp 0.20.1). Its `bin/` is symlinked into `/usr/local/bin`, so
+  `coqc`, `rocq` and `coq_makefile` resolve in every shell, background ones
+  included; where those symlinks are absent, `eval $(opam env
+  --switch=/shared/xv6rocq)` is mandatory in any raw `coqc`. Rocq ≥ 9.1 is not
+  an option. A make run under the wrong switch
   **rewrites `CoqMakefile` with the wrong Rocq version** and every later build
   inherits it; recovery is to delete `CoqMakefile`/`CoqMakefile.conf`.
 - The generated Sail model is not an opam package — rebuild from
   `model-xv6iris/` in order `rv64d_types.v → riscv_extras.v → rv64d.v`.
+- **The image toolchain is Ubuntu's `gcc-riscv64-linux-gnu` (gcc 15) with its
+  `binutils-riscv64-linux-gnu`**, and the cross-compiler version decides the
+  kernel image. Before any dump rule, `readelf -p .comment
+  xv6-riscv/kernel/kernel` names the compiler string the ELF was built with;
+  the reproducibility check is to build the pin in a scratch copy and re-dump
+  it there (`make XV6_DIR=<copy> KDUMP=<scratch> UDUMP=<scratch> <the .v
+  targets>`), then diff against the tracked files — only the source-path
+  comment line may differ. `xv6-riscv/` is a build INPUT pinned at
+  `$(XV6_REV)`, on upstream's `verified` branch; `make xv6-rev-check` says
+  whether the checkout is that revision.
+- **QEMU must be built from git master** (`> 11.1`: xv6's `verified` branch
+  needs the virt machine's second UART at `serial@1000a000`, and `make qemu`
+  refuses a QEMU without it). The distro package does not qualify. The source
+  tree is `/shared/qemu-src`, installed to `/usr/local`; only
+  `riscv64-softmmu` is built.
 - **Grep the build log for plain `Error`.** `make …; echo $?` masks make's exit,
   and the `File "…":`/`Error:` pair spans two lines. For "is anything left to
   compile", grep `ROCQ compile` — Rocq 9 does not print `COQC`, so a `grep -c

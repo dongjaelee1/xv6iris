@@ -26,9 +26,10 @@ in `durable-notes.md` for what belongs where and what gets deleted.
   `XV6_REV`: the mechanical steps and their silent no-ops, how to CLASSIFY a
   change before touching a proof, the relayout tools, the categories of
   breakage, and the finishing checks. Read before any bump.
-- **[`remote-build-gcp.md`](remote-build-gcp.md)** — building on the GCP VM:
-  the two scripts, `run-on-gcp --proofs`, pulling `.vo` back for a local
-  recheck, sharing the machine, preemption and cost.
+- **[`remote-build-gcp.md`](remote-build-gcp.md)** — building on the GCP VM,
+  a COLLABORATOR's machine and not the build path from this host: the two
+  scripts, `run-on-gcp --proofs`, pulling `.vo` back for a local recheck,
+  sharing the machine, preemption and cost.
 - **[`rocq-warm.md`](rocq-warm.md)** — a warm `rocq repl` for the edit loop, so
   a change re-executes only from the edit onwards.
 - **[`kernel-defects.md`](kernel-defects.md)** — how to tell a defect in the

@@ -1,5 +1,8 @@
 # Building on the GCP VM
 
+**This is a COLLABORATOR's machine.** Work from `/shared/xv6iris` builds on its
+own host; see the Build section of [`durable-notes.md`](durable-notes.md).
+
 The proofs compile on a shared Google Cloud VM instead of locally, in minutes
 rather than hours. The agent stays on your machine and the VM does the
 compiling, so a Spot preemption costs you the machine, never the agent.

@@ -62,6 +62,7 @@ import MachCSL.WpSmodeTrapCsr
 import MachCSL.WpSmodeSltu
 import MachCSL.ByteWord
 import MachCSL.WpSmodeMint
+import MachCSL.WpStoreFree
 import MachCSL.WpSmodeAlu2
 import MachCSL.WpSmodeAlu4
 import MachCSL.KCtxMove

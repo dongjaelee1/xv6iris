@@ -16,6 +16,7 @@ payload is, so the chain is written over the context-parametric
 import Xv6.UartTrace
 import MachCSL.CallConv
 import MachCSL.CtxLaws
+import MachCSL.WpStoreFree
 
 namespace Xv6
 
@@ -93,6 +94,22 @@ instance instCtxMorphPageRestAt [CurCtx] (p : BitVec 64) :
 /-- A whole page, owned (the `kfree` precondition; the ambient context). -/
 def pageOwn [CurCtx] (p : BitVec 64) : IProp GF := iprop%
   ∃ bs : List (BitVec 8), ⌜bs.length = 4096⌝ ∗ byteBuf p (DFrac.own 1) bs
+
+/-- **A whole VISIBILITY-FREE page** (the `kfree`-over-reclaimed-memory
+precondition): 4096 mappable visibility-free bytes.  A valued page forgets
+to it; the reclaimed page whose per-byte era keys are gone is one. -/
+def pageFree [CurCtx] (p : BitVec 64) : IProp GF := iprop%
+  ∃ bs : List (BitVec 8), ⌜bs.length = 4096⌝ ∗ bytesFree p bs
+
+/-- An owned (valued) page forgets to a visibility-free one. -/
+theorem pageOwn_pageFree [CurCtx] (p : BitVec 64) :
+    pageOwn (GF := GF) p ⊢ pageFree p := by
+  unfold pageOwn pageFree
+  iintro ⟨%bs, %hbs, Hbuf⟩
+  iexists bs
+  isplit
+  · ipureintro; exact hbs
+  · iapply byteBuf_bytesFree p bs $$ Hbuf
 
 /-! ## The freelist chain -/
 

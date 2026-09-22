@@ -146,6 +146,23 @@ theorem kf_memset (MS : MEMSET) {hlc : HasLC} {GF : BundledGFunctors} [MachGS hl
   simp only [memsetAddr, KernelSyms.«memset»] at h
   exact h
 
+
+set_option maxHeartbeats 1000000 in
+/-- `memset`'s raw (visibility-free) contract at the call site. -/
+theorem kf_memset_free (MS : MEMSET_FREE) {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF] [CurCtx]
+    (c : CPU) (k' : KCtx) (olds : List (BitVec 8)) (n : Nat) (hK' : 2 ≤ k'.avail)
+    (hn : k'.regs 12#5 = BitVec.ofNat 64 n) (hn32 : n < 2 ^ 32) (hl : olds.length = n) :
+    kctx c k' ∗ pcIs c 0x80000c7a#64 ∗ bytesFree (k'.regs 10#5) olds ∗
+    wpNext k'.sie k'.proc c (fun cpu' => iprop(∀ R' : RegMap,
+      kctx cpu' (k'.withRegs R') -∗ pcIs cpu' (jumpPc (k'.regs 1#5)) -∗
+      byteBuf (k'.regs 10#5) (DFrac.own 1) (List.replicate n (BitVec.extractLsb' 0 8 (k'.regs 11#5))) -∗
+      ⌜calleeSaved k'.regs R' ∧ R' 10#5 = k'.regs 10#5⌝ -∗ wpLoop cpu'))
+    ⊢ wpLoop (GF := GF) c := by
+  have h := MS.wp_memset_free (hlc := hlc) (GF := GF) c k' olds n hK' hn hn32 hl
+  unfold wp_memset_free_body at h
+  simp only [memsetAddr, KernelSyms.«memset»] at h
+  exact h
+
 set_option maxHeartbeats 1000000 in
 /-- `acquire`'s contract at the call site. -/
 theorem kf_acquire (AC : ACQUIRE) {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF] [CurCtx]
@@ -407,6 +424,102 @@ theorem kfree_proof (AC : ACQUIRE) (RE : RELEASE) (MS : MEMSET) : KFREE :=
   unfold pageOwn
   icases Hpage with ⟨%bs, %hbs, Hbuf⟩
   iapply (kf_memset MS c16 _ bs 4096 ?hKm ?hnm (by omega) ?hlm) $$ [- $Hk $Hpc]
+  rotate_right 1
+  k_norm_g
+  iframe
+  case hKm => k_norm_g; omega
+  case hnm => k_norm_g
+  case hlm => exact hbs
+  -- back from memset, at whichever hart the thread landed on
+  iapply wpNext_intro_pin
+  iintro %c17 %hp17 %R2 Hk Hpc Hbuf %hcs2
+  have hret1 : jumpPc 2147486254#64 = 0x80000a2e#64 := by
+    simp only [jumpPc, BitVec.reduceAnd]
+  k_norm_g [hret1]
+  unfold calleeSaved at hcs2
+  k_norm_g at hcs2
+  obtain ⟨⟨h2_2, h2_8, h2_9, h2_18, h2_19, h2_20, h2_21, h2_22, h2_23, h2_24, h2_25, h2_26, h2_27⟩, h2_10⟩ := hcs2
+  have hpin : k.sie = false ∨ k.proc = 0#64 → c17 = cpu := fun h => (hp17 h).trans ((hp16 h).trans ((hp15 h).trans ((hp14 h).trans ((hp13 h).trans ((hp12 h).trans ((hp11 h).trans ((hp10 h).trans ((hp9 h).trans ((hp8 h).trans ((hp7 h).trans ((hp6 h).trans ((hp5 h).trans ((hp4 h).trans ((hp3 h).trans ((hp2 h).trans ((hp1 h)))))))))))))))))
+  iapply (kfree_tail AC RE cpu c17 k γl γk on hwf hnoff hK hlk hp hpin
+    R2 h2_2 h2_9 ⟨h2_19, h2_20, h2_21, h2_22, h2_23, h2_24, h2_25, h2_26, h2_27⟩)
+  iframe #
+  iframe⟩
+
+set_option maxHeartbeats 4000000 in
+theorem kfree_free_proof (AC : ACQUIRE) (RE : RELEASE) (MS : MEMSET_FREE) : KFREE_FREE :=
+  ⟨fun {hlc GF} _ _ _ cpu k γl γk on hnoff hK hlk hp => by
+  unfold wp_kfree_free_body
+  simp only [kfreeAddr, KernelSyms.«kfree»]
+  iintro ⟨Hk, Hpc, #Hlk, Hpage, Hav, Hnext⟩
+  icases kctx_kernelText _ _ $$ Hk with ⟨#Htext, Hk⟩
+  icases kctx_wf _ _ $$ Hk with ⟨%hwf, Hk⟩
+  -- prologue
+  iapply (wp_prologue4s2_gen cpu k 0x800009f8#64 (by omega))
+  k_code (text_instr _ _ _ _ rfl rfl) Htext
+  k_norm_g
+  iframe
+  inext
+  iapply wpNext_intro_pin
+  iintro %c1 %hp1 Hk Hpc Hframe
+  -- auipc a5,0x23 ; addi a5,a5,-1132
+  k_step_gen (wp_s_auipc c1 _ 0x80000a04#64 false 35#20 15#5 (by decide)) from (text_instr _ _ _ _ rfl rfl) Htext
+    $$ [- $Hk $Hpc] next c2 hp2
+  iintro Hk Hpc
+  k_step_gen (wp_s_addi c2 _ 0x80000a08#64 false 2964#12 15#5 15#5 (by decide)) from (text_instr _ _ _ _ rfl rfl) Htext
+    $$ [- $Hk $Hpc] with [kf_end_addr] next c3 hp3
+  iintro Hk Hpc
+  -- sltu a4,a0,a5
+  k_step_gen (wp_s_sltu c3 _ 0x80000a0c#64 false 14#5 10#5 15#5 (by decide)) from (text_instr _ _ _ _ rfl rfl) Htext
+    $$ [- $Hk $Hpc] next c4 hp4
+  iintro Hk Hpc
+  -- li a5,17 ; slli a5,a5,0x1b ; addi a5,a5,-1
+  k_step_gen (wp_s_addi c4 _ 0x80000a10#64 true 17#12 15#5 0#5 (by decide)) from (text_instr _ _ _ _ rfl rfl) Htext
+    $$ [- $Hk $Hpc] next c5 hp5
+  iintro Hk Hpc
+  k_step_gen (wp_s_slli c5 _ 0x80000a12#64 true 27#6 15#5 15#5 (by decide)) from (text_instr _ _ _ _ rfl rfl) Htext
+    $$ [- $Hk $Hpc] next c6 hp6
+  iintro Hk Hpc
+  k_step_gen (wp_s_addi c6 _ 0x80000a14#64 true 4095#12 15#5 15#5 (by decide)) from (text_instr _ _ _ _ rfl rfl) Htext
+    $$ [- $Hk $Hpc] next c7 hp7
+  iintro Hk Hpc
+  -- sltu a5,a5,a0
+  k_step_gen (wp_s_sltu c7 _ 0x80000a16#64 false 15#5 15#5 10#5 (by decide)) from (text_instr _ _ _ _ rfl rfl) Htext
+    $$ [- $Hk $Hpc] next c8 hp8
+  iintro Hk Hpc
+  -- or a5,a5,a4
+  k_step_gen (wp_s_or c8 _ 0x80000a1a#64 true 15#5 15#5 14#5 (by decide)) from (text_instr _ _ _ _ rfl rfl) Htext
+    $$ [- $Hk $Hpc] next c9 hp9
+  iintro Hk Hpc
+  -- bnez a5,80000a58
+  k_step_gen (wp_s_branch c9 _ 0x80000a1c#64 true 60#13 15#5 0#5 (by decide) bop.BNE) from (text_instr _ _ _ _ rfl rfl) Htext
+    $$ [- $Hk $Hpc] with [kf_bnez1 (k.regs 10#5) hp] next c10 hp10
+  iintro Hk Hpc
+  -- mv s1,a0
+  k_step_gen (wp_s_add c10 _ 0x80000a1e#64 true 9#5 0#5 10#5 (by decide)) from (text_instr _ _ _ _ rfl rfl) Htext
+    $$ [- $Hk $Hpc] next c11 hp11
+  iintro Hk Hpc
+  -- slli a5,a0,0x34 ; bnez a5,80000a58
+  k_step_gen (wp_s_slli c11 _ 0x80000a20#64 false 52#6 15#5 10#5 (by decide)) from (text_instr _ _ _ _ rfl rfl) Htext
+    $$ [- $Hk $Hpc] next c12 hp12
+  iintro Hk Hpc
+  k_step_gen (wp_s_branch c12 _ 0x80000a24#64 true 52#13 15#5 0#5 (by decide) bop.BNE) from (text_instr _ _ _ _ rfl rfl) Htext
+    $$ [- $Hk $Hpc] with [kf_bnez2 (k.regs 10#5) hp] next c13 hp13
+  iintro Hk Hpc
+  -- lui a2,0x1 ; li a1,1
+  k_step_gen (wp_s_lui c13 _ 0x80000a26#64 true 1#20 12#5 (by decide)) from (text_instr _ _ _ _ rfl rfl) Htext
+    $$ [- $Hk $Hpc] with [kf_c4096] next c14 hp14
+  iintro Hk Hpc
+  k_step_gen (wp_s_addi c14 _ 0x80000a28#64 true 1#12 11#5 0#5 (by decide)) from (text_instr _ _ _ _ rfl rfl) Htext
+    $$ [- $Hk $Hpc] next c15 hp15
+  iintro Hk Hpc
+  -- jal memset
+  k_step_gen (wp_s_jal c15 _ 0x80000a2a#64 false 592#21 1#5 (by decide)) from (text_instr _ _ _ _ rfl rfl) Htext
+    $$ [- $Hk $Hpc] next c16 hp16
+  iintro Hk Hpc
+  -- memset(pa, 1, 4096)
+  unfold pageFree
+  icases Hpage with ⟨%bs, %hbs, Hbuf⟩
+  iapply (kf_memset_free MS c16 _ bs 4096 ?hKm ?hnm (by omega) ?hlm) $$ [- $Hk $Hpc]
   rotate_right 1
   k_norm_g
   iframe

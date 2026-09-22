@@ -1497,10 +1497,12 @@ App.v
 LineWords.v
 FileState.v
 EchoDisc.v
+LineModel.v
 ExecWords.v
 FileDisc.v
 FileDiscDec.v
 PipeDisc.v
+LineModelInst.v
 PipeUline.v
 PipeDiscDec.v
 LogEntryDefs.v

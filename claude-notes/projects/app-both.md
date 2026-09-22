@@ -92,9 +92,30 @@ proved ONCE over that.
 - Cleanups owed to this campaign from before it: SLOT-WS (the fork
   interface at the parsed line — M4 is where it is paid), NAME-PATTERN.
 
-## RESUME HERE (2026-09-22)
+## RESUME HERE (2026-09-22, late)
 
-Nothing built.  Start M1: read `FileDisc.v` §§1–5 (the line model as it
-exists at `fstate`), `PipeDisc.v` §1 (the alternatives with interleavings)
-and `EchoDisc.v` §2 (the session) side by side, and write `LineModel.v`'s
-record so that `FileDisc.sessf` IS `sess file_lmodel` by conversion.
+M1 STARTED.  Landed: `iris/LineModel.v` -- the record `lmodel` (state,
+line, alternatives with their code and panic bit, continuation at a
+state, step) and over it `lm_at`, `lm_pro_idx`, `lm_upto`, `lm_cont_at`,
+`lm_blk`, `lm_seq`, `lm_sess`, `lm_after`, `lm_pro_ok`, `lm_pro_pin`
+(+ `lm_pro_pin_of_ok`); `iris/LineModelInst.v` -- `file_lm`, `pipe_lm`,
+`echo_lm` and the equations `sessf_lm`, `sessp_lm`, `sess_lm`.  FOUND:
+the file's and the pipe's sessions are the generic fold BY CONVERSION
+(`alt_seq_f_lm`/`alt_seq_p_lm` are `reflexivity` -- Coq compares the
+fixpoints structurally), echo's is not (its panic test is `decide`, the
+model's `bool_decide`), hence an equation.  Nothing imports the two files
+yet.
+
+NEXT in M1: lift the rest of the pure layer over `lmodel` -- the
+alternatives' admissibility (`alts_ok` as `Forall2 (fun l c => lm_ok l
+(lm_dec c))`, a new field `lm_ok`), the writer predicates (`wr_pro`,
+`wr_owed`, `wr_sp`, `wr_open`, `wr_sp_t`, `wr_open_t`, `wr_blk_t`,
+`wr_banp`; `proc_before`/`proc_stream`/`pending_at` need the model's
+continuation only), the input discipline (`disc_input` over a per-model
+body predicate), and then the DETERMINACY theorem `lm_sess_prefix_det`
+from byte-shape fields (`lm_cont_shape`: every non-panic continuation is
+a `$`-free run then the prompt; the panic's bytes uniform), with the
+pipe's coverage-ending arm as a field (`lm_forkS`) and its guard.  The
+three landed `*_prefix_det` become corollaries through the equations.
+Then `FileOutPure`'s stage-level facts (`pcount_f`, `write_stage_byte_f`,
+…) are the candidates for M3's generic claim.

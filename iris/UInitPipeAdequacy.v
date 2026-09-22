@@ -83,7 +83,7 @@ Section PipeProgLaw.
     cbn [app_pipe app_names app_pred app_ifc] in Heq, Hiface.
     iIntros "#Hinv Hb Hturn".
     iApply (pipe_Hinit_boot HR GEN c r
-              (Hchild HR GEN HBs HFd HIr HPav HWc HF c) Heq Hiface
+              (Hchild HR GEN HBs HFd HIr HPav HWc HF c Hiface) Heq Hiface
               with "Hinv [Hb] [Hturn]").
     - cbn [app_pipe app_boot]. iExact "Hb".
     - cbn [app_pipe app_turn pipe_turn]. iExact "Hturn".

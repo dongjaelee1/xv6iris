@@ -1873,3 +1873,23 @@ What it settles for the file application:
 * Their design page records `sh_round_holds_file` as `Admitted` "and never
   noticed"; their round takes `sh_echo_slot T` and `□ (T -∗ sh_deps)` as
   antecedents (§4.3z wall 3), the shape ours will take.
+
+### Stretch 13, 2026-09-22: defect 4 measured, and a tool trap that faked the measurement twice
+
+`UCatKernel.v` with the section binder hung (8 min, killed).  `Set Printing
+Implicit` on `About UkCatDeed.kcat_r_of_deed_at` vs `Show` at the hanging
+`iApply` (the FIRST application of a `UkCatDeed` lemma): the goal's `kcat_r`
+is at the section variable `PS`, the lemma's type still at
+`UexecExecInst.uprogSG_gen` — although the binder is in scope for the whole
+of `UkCatDeed.v`.  THE LEMMA WAS LOADED FROM THE BASELINE `.vo`: a full
+`coqc` writes an EMPTY `.vos` beside each `.vo` (durable-notes), and a `-vok`
+compile of the consumer, finding the dependency's `.vos` empty, falls back to
+its (stale, ambient) `.vo`.  The `make Foo.vok` route "rebuilt" the
+dependencies' `.vos` but the consumer still read the `.vo`.  So every `-vok`
+measurement of a change to a DEPENDENCY's statements is meaningless unless
+that dependency's `.vo` is rebuilt first.  RULE: after editing a file whose
+STATEMENTS a consumer applies, rebuild it as `.vo` (`make Foo.vo` under a
+timeout — scratchpad `vbt.sh`) before any `-vok`/`-time` check of the
+consumer; `-vok` iteration is for edits to the consumer's own PROOFS.
+(The same trap almost certainly made 09-21's 16-hour "hang" of the first
+experiment: it too read a stale `UkCatDeed.vo`.)

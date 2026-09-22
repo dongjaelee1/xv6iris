@@ -1534,6 +1534,29 @@ Then SH-PIPE-ROUND-11 instantiates the arm at `(UkSh.ush_pid N,
 ush_wait_pid_ans)` with `ush_wait0_law_pid` and `pipe_round_answers`'s
 `S1 ≠ S2` has its supplier.
 
+### 4.3y RULED (2026-09-22, after PIPE-GEN): the freshness conjunct is relayed through the sh tier — ROUND-11's first item
+
+PIPE-GEN bought purchase 4 whole at the kernel: `WaitFresh.children_inv_row_fresh`
+(the probe), the parent's address nonzero as a premise on the two fork
+contracts, discharged at the DISPATCHER — `ProofSyscall.sysc_arm_fork`
+already carries `j < NPROC` and `pj = proc_addr j`, and nothing below it
+can publish the fact (`slot_gen` has no authority element, so a fragment
+at address 0 is valid; §4.3x's "the `proc_priv` lemma" was the wrong
+tier) — and the conjunct `γ ∉ cs` down to `UexecRet.ufork_ans`
+(`ufork_ans_sets_differ`).  What remains is PIPE-PID's own mould one
+more time: SIX sh-tier statements re-spell fork's answer inline and drop
+the conjunct — `UkFork.wp_uk_ecall_fork`'s parent arm,
+`wp_uk_ecall_fork_argv`, `UkShRun.wp_kshr_fork`'s parent arm,
+`wp_kshr_fork1`'s two arms (+ `_any`), `UkShDiag.wp_kshr_fork1_final`,
+and the definition `UkShPipe.ush_fork_ans` (whose consumers carry it by
+name and stay byte-identical).  RULED: SH-PIPE-ROUND-11 owns those files
+for exactly that additive relay (one conjunct per row, consumers
+re-discharged by ignoring it), retires `UShPipeAssembly.ufork_ans_same_gen`
+(its negation becomes the theorem at `ush_fork_ans`), and then assembles
+the round: `pipe_round_answers`'s `S1 ≠ S2` has its supplier, the split,
+the instantiation of `wp_kshm_child_pipe_paid_line_at`,
+`sh_pipe_child_law`, `sh_pipe_child_law_all`, `pipe_adequacy_pipeΣ_final`.
+
 ## 5. Programs
 
 ### 5.1 sh: the PIPE arm (lanes SH-PARSE-PIPE, SH-PIPE)

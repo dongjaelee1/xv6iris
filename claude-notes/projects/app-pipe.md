@@ -431,8 +431,10 @@ arm is the theorem's one named premise (`pipe_both_law`).
   complementary ends).  Brief `brief-pipe-ro.md`.  LANDED whole, and it
   cost a SIXTH purchase the ruling did not name: the write-side
   OBSERVATION publishes its end too (Findings `### PIPE-RO`).
-- [ ] **SH-PIPE-ROUND-11** (after both): the split, the instantiation,
-  `sh_pipe_child_law_all`, `pipe_adequacy_pipeΣ_final`.
+- [ ] **SH-PIPE-ROUND-11** (design §4.3y: the freshness relay through the
+  six sh-tier statements; then the split, the instantiation,
+  `sh_pipe_child_law_all`, `pipe_adequacy_pipeΣ_final`).  Brief
+  `brief-sh-pipe-round-11.md`.
 - [x] **PIPE-GEN** (design §4.3x: purchase 4 at the kernel — `pme ≠ zero_reg`
   into the park block, `γ ∉ cs` through kfork_post → sys_fork → syscall →
   ufork_ans).  Brief `brief-pipe-gen.md`.  LANDED whole (probe, premise,

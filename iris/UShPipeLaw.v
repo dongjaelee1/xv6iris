@@ -208,6 +208,77 @@ Qed.
 (* ===================================================================== *)
 (*  S2  THE ROUND'S RESOURCES, AND THE FOUR PAYLOAD CONVERSIONS           *)
 (* ===================================================================== *)
+(* =================================================================== *)
+(*  S2d  THE LEFT CHILD'S ARGV BYTES                                    *)
+(*                                                                     *)
+(*  [UkShEcho.wp_kshr_exec_echo_at]'s one reading of the node sh built, *)
+(*  and it is NOT the echo era's ([UkShEcho.                            *)
+(*  echo_argv_bytes_of_line_holds], stated at [UConsLine.ush_line_is ws *)
+(*  f 0 len] -- a line whose bytes ARE [wl_line ws]).  A pipeline       *)
+(*  round's line has [" | cat"] glued on and its cut has ONE MORE       *)
+(*  [ushp_nulfold] layer (the right command's token), so neither the    *)
+(*  premise nor the function is the mould's.  What makes it the same    *)
+(*  proof anyway is that every index the predicate looks at is inside   *)
+(*  the line's BODY, where the two lines agree byte for byte, and the   *)
+(*  outer fold's ONLY nul is at [ge] -- above every word's end.         *)
+(* =================================================================== *)
+Lemma pl_echo_argv_bytes (ws : list (list (bv 8))) (f : nat -> bv 8)
+    (len ge : nat) :
+  UkShPipeRound.ushq_line_at ws f 0%nat len ->
+  (length (wl_body ws) < ge)%nat ->
+  UkShEcho.echo_argv_bytes ws
+    (UkShPipeRound.ushq_cut (wl_toks ws) len f ge).
+Proof using .
+  intros (Hok & Hlen & Hby) Hge.
+  assert (Hblen : (length (wl_body ws) < len)%nat).
+  { rewrite Hlen /PipeDisc.line_bytes /PipeDisc.line_body !length_app.
+    cbn [length]. lia. }
+  (* below the bar the pipeline line's bytes ARE the echo line's *)
+  assert (Hlo : forall j : nat, (j < length (wl_body ws))%nat ->
+                  f j = wl_line ws !!! j).
+  { intros j Hj.
+    pose proof (Hby j ltac:(lia)) as Hfj.
+    rewrite Nat.add_0_l in Hfj. rewrite Hfj.
+    rewrite /PipeDisc.line_bytes /PipeDisc.line_body -app_assoc.
+    rewrite (wl_lta_app_l (wl_body ws) _ j Hj).
+    rewrite /wl_line (wl_lta_app_l (wl_body ws) [wl_nl] j Hj).
+    reflexivity. }
+  split.
+  - intros i j Hi Hj.
+    destruct (lookup_lt_is_Some_2 ws i Hi) as [w Hw].
+    assert (Hwi : ws !!! i = w)
+      by (rewrite list_lookup_total_alt Hw; reflexivity).
+    rewrite /UkShEcho.echo_alen Hwi in Hj.
+    rewrite /UkShEcho.echo_off.
+    pose proof (wl_off_le_body ws 0%nat i w (length w) Hw
+                  ltac:(lia)) as Hle.
+    assert (Hlt : (wl_off 0%nat ws i + j < length (wl_body ws))%nat)
+      by lia.
+    rewrite (UkShPipeRound.ushq_cut_off (wl_toks ws) len f ge
+               (wl_off 0%nat ws i + j)%nat ltac:(lia)).
+    rewrite (wl_cut_in ws f len i w j Hw Hj ltac:(lia)).
+    exact (Hlo _ Hlt).
+  - intros i Hi.
+    destruct (lookup_lt_is_Some_2 ws i Hi) as [w Hw].
+    assert (Hwi : ws !!! i = w)
+      by (rewrite list_lookup_total_alt Hw; reflexivity).
+    rewrite /UkShEcho.echo_off /UkShEcho.echo_alen Hwi.
+    pose proof (wl_off_le_body ws 0%nat i w (length w) Hw
+                  ltac:(lia)) as Hle.
+    rewrite (UkShPipeRound.ushq_cut_off (wl_toks ws) len f ge
+               (wl_off 0%nat ws i + length w)%nat ltac:(lia)).
+    exact (wl_cut_end ws f len i w Hw).
+Qed.
+
+(* ...and the two one-liners every lemma of the round also asks for *)
+Lemma pboth_line_of_at (I : list (bv 8)) (ws : list (list (bv 8))) :
+  PipeLinksLine.pline_at I = PipeDisc.LPipe ws -> pboth_line I.
+Proof using . intro H. by exists ws. Qed.
+
+Lemma pl_L_pos (ws : list (list (bv 8))) :
+  (0 < length (wl_line (drop 1 ws)))%nat.
+Proof using . rewrite /wl_line length_app. cbn [length]. lia. Qed.
+
 Section UShPipeLaw.
   (* [UShPipeRound.v]'s binder list VERBATIM (the file whose law this
      discharges), PLUS [pipeProtoG] for the protocol's own ghosts -- which
@@ -599,79 +670,110 @@ Section UShPipeLaw.
     iFrame "Hrc Heof HcR HcM".
   Qed.
 
+  (* =================================================================== *)
+  (*  S2e  THE LEFT CHILD (ROUND-11's table, the `left child' row)        *)
+  (*                                                                     *)
+  (*  The walk's LEFT continuation, discharged: sh's first [fork1] child  *)
+  (*  runs [runcmd] on the pipeline line's LEFT command with fd 1 the     *)
+  (*  pipe's write end.  [UkShEcho.wp_kshr_exec_echo_at_holds] is the     *)
+  (*  arm, [UShEchoPipePay.sh_exec_sup_echo_pipe_at] its (W)/(E) supply   *)
+  (*  and [UShPipeAssembly.pipe_execL_law] at [F := side_L pn] the        *)
+  (*  exec-failed diagnostic -- the frame is there because the child's    *)
+  (*  exit payload is [pipe_Qc_at]'s SIDE-TAGGED arm while the arm's own  *)
+  (*  [box (Cd -* Q (-1))] is BOXED and cannot capture a linear token.    *)
+  (*  The law is read off [pl_RcL] through [exf_law_acc], and the         *)
+  (*  exclusion witness the family's steps need comes off the protocol's  *)
+  (*  own handle, which rides inside [UEchoPipe.ep_pay].                  *)
+  (* =================================================================== *)
+  Lemma pl_left_child (v : era_pins) (I L : list (bv 8))
+      (ws : list (list (bv 8))) (pn : pnames) (gL gR gM : gname)
+      (γp : pipe_names) (s0 szv : Z) (len ge : nat) (f : nat -> bv 8)
+      (ld : list fdstate) (n : nat)
+      (N' : uk_names Σ) (h' : CpuId) (m' : regfile) (q : Z) :
+    UkShPipeRound.ushq_line_at ws f 0%nat len ->
+    (length (wl_body ws) < ge)%nat ->
+    L = wl_line (drop 1 ws) ->
+    PipeLinksLine.pline_at I = PipeDisc.LPipe ws ->
+    UShEchoPipePay.ush_fd1pipe γp ld ->
+    UkSh.ush_fd2p ld ->
+    ukn_pay N' = (fun _ : Z => UShPipeAssembly.pipe_Qc_at g pn L gL gR gM) ->
+    m' !!! Regidx (mword_of_int 10 : mword 5) = (mword_of_int q : mword 64) ->
+    UShEcho.sh_echo_slot T -∗
+    era_pin γ (S gen_id) v -∗
+    PipeLinks.pipe_links g -∗
+    UCodeShK.shk_code (ukn_t N') -∗
+    UkSh.ush_jtab (ukn_t N') -∗
+    UkShRun.ush_cmd (ukn_d N') q
+      (UkShRun.UExec (UkShMain.ush_args s0
+         (UkShPipeRound.ushq_cut (wl_toks ws) len f ge) (wl_toks ws))) -∗
+    usz (ukn_s N') szv -∗
+    UserFd.ustd (ukn_fd N') ld -∗
+    UserCwd.ucwd (ukn_cwd N') FsImg.ROOTINO -∗
+    UserChildren.uch (ukn_ch N') (∅ : gset gname) -∗
+    pl_RcL v I L pn gL gR gM γp -∗
+    urun (SG := uexecSG_xv6) (PS := uprogSG_free) N' h' m'
+      (mword_of_int ShSyms.runcmd) (6 + (2 + (UkShDiag.ush_Dg + n))) -∗
+    mWP (Loop : expr riscv_lang).
+  Proof using Hcons Hkill.
+    intros Hline Hge HL Hpl Hfd1 Hfd2 Hpeq Ha0.
+    assert (HLne : L <> []).
+    { rewrite HL. intro Hq. pose proof (pl_L_pos ws) as Hp.
+      rewrite Hq in Hp. cbn [length] in Hp. lia. }
+    iIntros "#Hslot #Hpin #Hlk #Hcode #Hjt #Htree Hsz Hstd Hcwd Hch Hcr Hrun".
+    pose proof (ukn_const_of_eq N' _ Hpeq (fun x y => eq_refl)) as Hc.
+    (* ---- THE EXEC SUPPLY ---- *)
+    iPoseProof (UShEchoPipePay.sh_exec_sup_echo_pipe_at
+                  (PipeBoth.wcur gL (1/2) 0%nat) ws
+                  (UShPipeAssembly.pipe_Qc_at g pn L gL gR gM)
+                  (pl_RcL v I L pn gL gR gM γp) T pn γp
+                  (proj1 (proj1 Hline))
+                  with "[] [] [] [] Hslot") as "#Hsup".
+    { iIntros "!> [_ Hp]". rewrite -HL. iExact "Hp". }
+    { rewrite -HL. iIntros "!> He".
+      iApply (pl_qc_of_ep_exit pn L gL gR gM with "He"). }
+    { iIntros "!> Ht". iApply (pl_qc_of_taint pn L gL gR gM with "Ht"). }
+    { iApply (UexecExecMint.udep_free). }
+    (* ---- THE EXEC-FAILED LAW, off the credential ---- *)
+    iAssert (UkShDiag.ush_execfail_law (PS := uprogSG_free)
+               (pl_RcL v I L pn gL gR gM γp)
+               (PipeBoth.wcur gL (1/2) 17%nat ∗ PipeProto.side_L pn))%I
+      as "#Hxl".
+    { rewrite /UkShDiag.ush_execfail_law.
+      iApply (UShPipeAssembly.exf_law_acc (PS := uprogSG_free)
+                EchoDisc.alt_execfail 17%nat
+                (pl_RcL v I L pn gL gR gM γp)
+                (PipeBoth.wcur gL (1/2) 0%nat ∗ pl_XL pn
+                 ∗ PipeProto.side_L pn)%I
+                (PipeBoth.wcur gL (1/2) 17%nat ∗ PipeProto.side_L pn)%I).
+      rewrite /pl_RcL /UEchoPipe.ep_pay /UEchoPipe.ep_frame.
+      iIntros "!> (#Hinv & (#Hpi & [HsL HgL] & Hxl & _))".
+      iSplitR "HgL Hxl HsL"; [ | rewrite /pl_XL; iFrame "HgL Hxl HsL" ].
+      iDestruct (PipeLinks.pipe_links_taint g with "Hlk") as "#Ht".
+      iApply (UShPipeAssembly.pipe_execL_law (PS := uprogSG_free)
+                g Hcons v I L ws gL gR gM (pl_XL pn) (pl_YR pn L)
+                (PipeProto.side_L pn)
+                (pl_XL_timeless pn) (pl_YR_timeless pn L)
+                Hpl with "[] Ht Hpin Hinv").
+      iApply (PipeProto.pipe_excl_wtok_lb_pipeN pn γp L HLne with "Hpi"). }
+    (* ---- ...AND THE ARM ---- *)
+    iApply (UkShEcho.wp_kshr_exec_echo_at_holds (PS := uprogSG_free)
+              (SG := uexecSG_xv6) (UShEchoPipePay.ush_fd1pipe γp) ws
+              (fun _ : Z => UShPipeAssembly.pipe_Qc_at g pn L gL gR gM)
+              (pl_RcL v I L pn gL gR gM γp)
+              (PipeBoth.wcur gL (1/2) 17%nat ∗ PipeProto.side_L pn)%I
+              N' Hc h' m' q szv s0
+              (UkShPipeRound.ushq_cut (wl_toks ws) len f ge) ld n
+              (proj1 (proj1 Hline)) Hpeq Ha0
+              (pl_echo_argv_bytes ws f len ge Hline Hge)
+              Hfd1 Hfd2
+              with "Hcode Hsup Hxl [] Hjt Htree Hsz Hstd Hcwd [Hch] Hcr Hrun").
+    { iIntros "!> Hc". iApply (pl_qc_of_cdL pn L gL gR gM with "Hc"). }
+    { iApply (UserChildren.uch_any_of (ukn_ch N') ∅ with "Hch"). }
+  Qed.
+
 End UShPipeLaw.
 
 
-(* =================================================================== *)
-(*  S2d  THE LEFT CHILD'S ARGV BYTES                                    *)
-(*                                                                     *)
-(*  [UkShEcho.wp_kshr_exec_echo_at]'s one reading of the node sh built, *)
-(*  and it is NOT the echo era's ([UkShEcho.                            *)
-(*  echo_argv_bytes_of_line_holds], stated at [UConsLine.ush_line_is ws *)
-(*  f 0 len] -- a line whose bytes ARE [wl_line ws]).  A pipeline       *)
-(*  round's line has [" | cat"] glued on and its cut has ONE MORE       *)
-(*  [ushp_nulfold] layer (the right command's token), so neither the    *)
-(*  premise nor the function is the mould's.  What makes it the same    *)
-(*  proof anyway is that every index the predicate looks at is inside   *)
-(*  the line's BODY, where the two lines agree byte for byte, and the   *)
-(*  outer fold's ONLY nul is at [ge] -- above every word's end.         *)
-(* =================================================================== *)
-Lemma pl_echo_argv_bytes (ws : list (list (bv 8))) (f : nat -> bv 8)
-    (len ge : nat) :
-  UkShPipeRound.ushq_line_at ws f 0%nat len ->
-  (length (wl_body ws) < ge)%nat ->
-  UkShEcho.echo_argv_bytes ws
-    (UkShPipeRound.ushq_cut (wl_toks ws) len f ge).
-Proof using .
-  intros (Hok & Hlen & Hby) Hge.
-  assert (Hblen : (length (wl_body ws) < len)%nat).
-  { rewrite Hlen /PipeDisc.line_bytes /PipeDisc.line_body !length_app.
-    cbn [length]. lia. }
-  (* below the bar the pipeline line's bytes ARE the echo line's *)
-  assert (Hlo : forall j : nat, (j < length (wl_body ws))%nat ->
-                  f j = wl_line ws !!! j).
-  { intros j Hj.
-    pose proof (Hby j ltac:(lia)) as Hfj.
-    rewrite Nat.add_0_l in Hfj. rewrite Hfj.
-    rewrite /PipeDisc.line_bytes /PipeDisc.line_body -app_assoc.
-    rewrite (wl_lta_app_l (wl_body ws) _ j Hj).
-    rewrite /wl_line (wl_lta_app_l (wl_body ws) [wl_nl] j Hj).
-    reflexivity. }
-  split.
-  - intros i j Hi Hj.
-    destruct (lookup_lt_is_Some_2 ws i Hi) as [w Hw].
-    assert (Hwi : ws !!! i = w)
-      by (rewrite list_lookup_total_alt Hw; reflexivity).
-    rewrite /UkShEcho.echo_alen Hwi in Hj.
-    rewrite /UkShEcho.echo_off.
-    pose proof (wl_off_le_body ws 0%nat i w (length w) Hw
-                  ltac:(lia)) as Hle.
-    assert (Hlt : (wl_off 0%nat ws i + j < length (wl_body ws))%nat)
-      by lia.
-    rewrite (UkShPipeRound.ushq_cut_off (wl_toks ws) len f ge
-               (wl_off 0%nat ws i + j)%nat ltac:(lia)).
-    rewrite (wl_cut_in ws f len i w j Hw Hj ltac:(lia)).
-    exact (Hlo _ Hlt).
-  - intros i Hi.
-    destruct (lookup_lt_is_Some_2 ws i Hi) as [w Hw].
-    assert (Hwi : ws !!! i = w)
-      by (rewrite list_lookup_total_alt Hw; reflexivity).
-    rewrite /UkShEcho.echo_off /UkShEcho.echo_alen Hwi.
-    pose proof (wl_off_le_body ws 0%nat i w (length w) Hw
-                  ltac:(lia)) as Hle.
-    rewrite (UkShPipeRound.ushq_cut_off (wl_toks ws) len f ge
-               (wl_off 0%nat ws i + length w)%nat ltac:(lia)).
-    exact (wl_cut_end ws f len i w Hw).
-Qed.
-
-(* ...and the two one-liners every lemma of the round also asks for *)
-Lemma pboth_line_of_at (I : list (bv 8)) (ws : list (list (bv 8))) :
-  PipeLinksLine.pline_at I = PipeDisc.LPipe ws -> pboth_line I.
-Proof using . intro H. by exists ws. Qed.
-
-Lemma pl_L_pos (ws : list (list (bv 8))) :
-  (0 < length (wl_line (drop 1 ws)))%nat.
-Proof using . rewrite /wl_line length_app. cbn [length]. lia. Qed.
 
 (* ===================================================================== *)
 (*  S3  THE VACUITY CHECK THE ASSEMBLY RAN INTO (lane SH-PIPE-ROUND-12).  *)

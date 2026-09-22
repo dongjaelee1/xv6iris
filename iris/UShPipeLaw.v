@@ -306,6 +306,111 @@ Section UShPipeLaw.
   Qed.
 
   (* =================================================================== *)
+  (*  S2b'  THE ROUND'S NAMES AND ITS LEND (lane SH-PIPE-ROUND-12)        *)
+  (*                                                                     *)
+  (*  ROUND-11's finding (5), as a lemma: the protocol's [pn] and the     *)
+  (*  family's three cursors are minted BEFORE the walk -- the payload    *)
+  (*  [UShPipeAssembly.pipe_Qc_at] names all four and is fixed when       *)
+  (*  [UShPipeChild.wp_kshm_child_pipe_paid_line_at_sz] is applied --     *)
+  (*  while the family's INVARIANT can only be born out of the lend, so   *)
+  (*  it rides inside [Cr] and the fupd the walk takes is the one below.  *)
+  (*  The era pin comes off the child law's own antecedent and agrees     *)
+  (*  with the one under the lend's existential.                          *)
+  (* =================================================================== *)
+  Definition pl_XL (pn : pnames) : iProp Σ := PipeProto.wcur pn 0%nat.
+  Definition pl_YR (pn : pnames) (L : list (bv 8)) : iProp Σ :=
+    PipeProto.pws_lb pn (take 1%nat L).
+
+  Global Instance pl_XL_timeless pn : Timeless (pl_XL pn).
+  Proof using . rewrite /pl_XL /PipeProto.wcur. apply _. Qed.
+  Global Instance pl_YR_timeless pn L : Timeless (pl_YR pn L).
+  Proof using . rewrite /pl_YR /PipeProto.pws_lb. apply _. Qed.
+
+  Definition pl_Cr (v : era_pins) (I L : list (bv 8)) (pn : pnames)
+      (gL gR gM : gname) : iProp Σ :=
+    (PipeBoth.blk2_inv g blk2N (S gen_id) v I L gL gR gM
+       (pl_XL pn) (pl_YR pn L)
+     ∗ PipeBoth.wcur gL (1/2) 0%nat ∗ PipeBoth.wcur gR (1/2) 0%nat
+     ∗ PipeBoth.wcur gM (1/2) 0%nat)%I.
+
+  Lemma pl_round_alloc (v : era_pins) (I L : list (bv 8)) :
+    pboth_line I ->
+    era_pin γ (S gen_id) v -∗
+    |==> ∃ (pn : pnames) (gL gR gM : gname),
+      UShPipeAssembly.pipe_pre pn ∗ wtok pn ∗ rtok pn
+      ∗ PipeProto.side_L pn ∗ PipeProto.side_R pn
+      ∗ (UkShPipeFork.pterm_wc g I 3%nat ={⊤}=∗ pl_Cr v I L pn gL gR gM).
+  Proof using .
+    intros Hline. iIntros "#Hpin".
+    iMod (UShPipeAssembly.pipe_names_alloc)
+      as (pn) "(Hpre & Hw & Hr & HsL & HsR)".
+    iMod (ghost_var_alloc (0%nat)) as (gL) "HgL".
+    iMod (ghost_var_alloc (0%nat)) as (gR) "HgR".
+    iMod (ghost_var_alloc (0%nat)) as (gM) "HgM".
+    iDestruct (ghost_var_split gL 0%nat (1/2) (1/2) with "[HgL]")
+      as "[HgL1 HgL2]"; [ by rewrite Qp.half_half | ].
+    iDestruct (ghost_var_split gR 0%nat (1/2) (1/2) with "[HgR]")
+      as "[HgR1 HgR2]"; [ by rewrite Qp.half_half | ].
+    iDestruct (ghost_var_split gM 0%nat (1/2) (1/2) with "[HgM]")
+      as "[HgM1 HgM2]"; [ by rewrite Qp.half_half | ].
+    iModIntro. iExists pn, gL, gR, gM. iFrame "Hpre Hw Hr HsL HsR".
+    iIntros "Hc".
+    iDestruct (UkShPipeFork.pterm_wc_3 g I with "Hc") as "Hc".
+    rewrite /pipe_Wcl_at (pipe_inst_lcred g (S gen_id) I 3%nat).
+    iDestruct "Hc" as (v') "[#Hpin' Hc]".
+    iDestruct (era_pin_agree with "Hpin' Hpin") as %->.
+    cbn [PipeBoth.pwc_lpr2] in *.
+    iMod (blk2_inv_alloc_at ⊤ v I L gL gR gM (pl_XL pn) (pl_YR pn L)
+            Hline with "HgL1 HgR1 HgM1 [Hc]") as "#Hinv".
+    { iApply (PipeLinksLine.pwc_lend_of_blk0 g (S gen_id) v I 0%nat
+                with "Hc"). }
+    iModIntro. rewrite /pl_Cr. by iFrame "Hinv HgL2 HgR2 HgM2".
+  Qed.
+
+  (* =================================================================== *)
+  (*  S2b''  THE FOUR-WAY SPLIT (ROUND-11's table, rows RcL/RcR/Rk/Cx)    *)
+  (*                                                                     *)
+  (*  What the arm's own split hands the three parties.  The family's     *)
+  (*  invariant is PERSISTENT, so all three get it; the LEFT cursor half  *)
+  (*  rides inside echo's own lend (that is what [UEchoPipe.ep_frame]'s   *)
+  (*  [Wq] slot is for at a pipeline round -- design SS4.3r item 4 puts   *)
+  (*  [emp] in the registrar's and the split puts the half in); the RIGHT *)
+  (*  and MODE halves, the reader's permit and the right side token go to *)
+  (*  cat; the parent keeps the protocol's handle and the [fork1] tails   *)
+  (*  get nothing of their own ([Cx := emp], SS4.3u).                      *)
+  (* =================================================================== *)
+  Definition pl_RcL (v : era_pins) (I L : list (bv 8)) (pn : pnames)
+      (gL gR gM : gname) (γp : pipe_names) : iProp Σ :=
+    (PipeBoth.blk2_inv g blk2N (S gen_id) v I L gL gR gM
+       (pl_XL pn) (pl_YR pn L)
+     ∗ UEchoPipe.ep_pay (PipeBoth.wcur gL (1/2) 0%nat) pn γp L)%I.
+
+  Definition pl_RcR (v : era_pins) (I L : list (bv 8)) (pn : pnames)
+      (gL gR gM : gname) (γp : pipe_names) : iProp Σ :=
+    (PipeBoth.blk2_inv g blk2N (S gen_id) v I L gL gR gM
+       (pl_XL pn) (pl_YR pn L)
+     ∗ rtok pn ∗ PipeProto.side_R pn
+     ∗ PipeBoth.wcur gR (1/2) 0%nat ∗ PipeBoth.wcur gM (1/2) 0%nat)%I.
+
+  Lemma pl_split (v : era_pins) (I L : list (bv 8)) (pn : pnames)
+      (gL gR gM : gname) (γp : pipe_names) :
+    pl_Cr v I L pn gL gR gM -∗
+    UShPipeAssembly.pipe_reg_pay pn emp%I L γp -∗
+    pl_RcL v I L pn gL gR gM γp
+    ∗ (pl_RcR v I L pn gL gR gM γp
+       ∗ (PipeProto.pipe_inv pn γp L ∗ emp)).
+  Proof using .
+    rewrite /pl_Cr /UShPipeAssembly.pipe_reg_pay /pl_RcL /pl_RcR
+            /UEchoPipe.ep_pay /UEchoPipe.ep_frame.
+    iIntros "(#Hinv & HgL & HgR & HgM) (Hr & HsR & (#Hpi & [HsL _] & Hw & Hlb))".
+    iSplitL "HgL HsL Hw Hlb".
+    { iFrame "Hinv Hpi HsL HgL Hw Hlb". }
+    iSplitL "HgR HgM Hr HsR".
+    { iFrame "Hinv Hr HsR HgR HgM". }
+    iSplitR; [ iExact "Hpi" | done ].
+  Qed.
+
+  (* =================================================================== *)
   (*  S2c  THE FOUR PAYLOAD CONVERSIONS                                   *)
   (*                                                                     *)
   (*  The round's [Qc] is [UShPipeAssembly.pipe_Qc_at]; each of the four  *)

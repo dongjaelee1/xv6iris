@@ -10802,6 +10802,8 @@ In `UShPipeLaw.v`, all Closed:
 | `pl_panic_pipe_law` / `pl_fork_panic_law` | the walk's two diagnostic laws at the round's own credentials, both through `exf_law_acc`, both pinned at `uprogSG_free` |
 | `pl_qc_of_taint` | the walk's `□ (app_taint -∗ Qc (-1))` |
 | `pl_pipe_call` | the registrar at `Wq := emp` — **and the second wall, left as its one antecedent** |
+| `pl_left_child` | **THE LEFT CHILD, DISCHARGED**: `UkShEcho.wp_kshr_exec_echo_at_holds` at `uprogSG_free` over `UShEchoPipePay.sh_exec_sup_echo_pipe_at`, with `pipe_execL_law` at `F := side_L pn` read off `pl_RcL` through `exf_law_acc` and the exclusion witness taken off the protocol handle that rides inside `UEchoPipe.ep_pay` |
+| `pl_parent` | **THE PARENT, DISCHARGED**: `pipe_round_parent` at `Wq := ushf_wq (pterm_wc g) I`, the two credential wands this lane's `pipe_lend_exit_pay` / `pipe_panic_exit_pay`, `pipe_no_short` off `Rk γp`, the two pids off `ush_wait_pid_ans`'s own existential, and `S1 ≠ S2` off the second fork's answer |
 
 **(6) THE SECOND WALL, AND IT IS NOT IN THIS LANE'S FILES: A PIPE ROW'S
 CLOSE DEPOSIT HAS NO PRODUCER BUT THE TAINT.**
@@ -10837,19 +10839,39 @@ agreement it already has.  `UkRun.v` and `UkRunSys.v` are not this
 lane's files and the change rebuilds the whole tree, so this lane stops
 here, at the leaf `UShPipeLaw.pl_pipe_call`, per its STOP rule.
 
+TWO MEASUREMENTS MADE WHILE LANDING THEM.  (a) The landed
+`UShPipeAssembly.ush_fork_ans_sets_differ` CONSUMES the answer it reads
+and `pipe_round_parent` needs that answer afterwards; `ush_fork_ans` is
+not persistent, so `pl_parent` reads `S1 ≠ S2` through an `iSplit` on a
+CONJUNCTION.  A `_keep` variant returning the answer beside the pure
+fact is the tidier shape if a second consumer appears.  (b)
+`UShEchoPipePay.sh_exec_sup_echo_pipe_at` has NO `uprogSG` in its
+implicit list at all — `UkShEcho.sh_exec_sup_echo_at` is
+`uprogSG`-FREE, for `udepw_at_ref`'s reason — so the supply's own
+instance does not have to agree with the walk's.  That is the general
+fact item 2 rests on and it is worth stating once: **an exec SUPPLY is
+instance-free; only the ENTRY and the RUN carry the instance.**
+
 **WHAT IS LEFT ON THE BILL after that premise** (measured, not guessed):
-the two exec supplies at their continuations
-(`UkShEcho.wp_kshr_exec_echo_at_holds` over
-`UShEchoPipePay.sh_exec_sup_echo_pipe_at` at `F := side_L pn` through
-`exf_law_fupd`; `UkShCat.wp_kshr_exec_cat_at_holds` over
-`UShCatPay.sh_exec_sup_cat_wq_holds_at` at `Cend := pl_Cend`, with
-`UShPipeCatRound.pipe_cat_w` supplying its `kcat_round` premise — note
-that premise is now at the CHILD's instance, which item 2 made
-possible), the parent at `pipe_round_parent`, and then
+the RIGHT CHILD (`UkShCat.wp_kshr_exec_cat_at_holds` over
+`UShCatPay.sh_exec_sup_cat_wq_holds_at` at `Cend := pl_Cend`, whose
+`kcat_round` premise is `UCatPipe.pcat_round_at_g` with
+`UShPipeCatRound.pipe_cat_w` as its `Hw` — that premise is now at the
+CHILD's instance, which item 2 made possible, and its `□ (T -∗
+UkCatCat.kcat_dg_cr N)` is payable from this lane's new
+`□ (T -∗ UkSh.sh_deps)` antecedent through
+`UkCat.kcat_pay_seq_of_law`), and then
 `sh_pipe_child_law` / `sh_pipe_child_law_all` /
 `pipe_adequacy_pipeΣ_final`.  Every leaf ROUND-11's table names for them
 is landed — BUT this lane found TWO uncounted premises in the FIRST half
-of that table (the walk's `usz` and the registrar's close law), so the
+of that table, AND a THIRD at the right child's door: `pipe_cat_w` takes
+`YR = pws_lb pn (take 1 L)` UNCONDITIONALLY while `pcat_round_at_g`'s
+`Hw` can only offer `pws_lb pn (take (c + cnt) L) ∨ T`, which weakens to
+`YR` only when `0 < c + cnt`.  §4.3t's standing grant pre-authorises the
+additive antecedent `⌜0 < c + cnt⌝` on `Hw` — but only if the walk can
+supply it, i.e. only if `pcat_round_at_g` calls `Hw` on the
+read-returned-positive branch alone.  THAT IS THE FIRST THING TO CHECK
+when the right child is attempted; (the walk's `usz` and the registrar's close law), so the
 second half should be assumed to hold more, and the next lane should
 price each continuation at the STATEMENT before proving it.  A useful
 intermediate target that this lane did NOT reach:

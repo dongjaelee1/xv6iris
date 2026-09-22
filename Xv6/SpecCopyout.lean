@@ -38,7 +38,7 @@ def wp_copyout_body {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF] [Xv6G 
     (∃ (P' : UPtd) (M' : Nat → List (BitVec 8)),
       ⌜P.ext P' ∧
         ((R' 10#5 = 0#64 ∧ M' = umemWrite (viewFaulted P P' M) (k.regs 12#5).toNat bs) ∨
-         (R' 10#5 = -1#64 ∧ ∃ d, d ≤ bs.length ∧
+         (R' 10#5 = -1#64 ∧ ∃ d, d < bs.length ∧
             M' = umemWrite (viewFaulted P P' M) (k.regs 12#5).toNat (bs.take d)))⌝ ∗
       procPtAt P' M') -∗
     ⌜calleeSaved k.regs R'⌝ -∗ wpLoop cpu'))

@@ -347,7 +347,7 @@ def coPost (P : UPtd) (M : Nat → List (BitVec 8)) (A : Nat) (bs : List (BitVec
     (P' : UPtd) (M' : Nat → List (BitVec 8)) (r : BitVec 64) : Prop :=
   P.ext P' ∧
     ((r = 0#64 ∧ M' = umemWrite (viewFaulted P P' M) A bs) ∨
-     (r = -1#64 ∧ ∃ e, e ≤ bs.length ∧ M' = umemWrite (viewFaulted P P' M) A (bs.take e)))
+     (r = -1#64 ∧ ∃ e, e < bs.length ∧ M' = umemWrite (viewFaulted P P' M) A (bs.take e)))
 
 /-! ## The callees -/
 

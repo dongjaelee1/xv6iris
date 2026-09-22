@@ -189,6 +189,7 @@ import Xv6.SpecAllocproc
 import Xv6.SpecKilled
 import Xv6.SpecGrowproc
 import Xv6.UMemLemmas
+import Xv6.UMemWindow
 import Xv6.ProofUvmcreate
 import Xv6.LinkUvmcreate
 import Xv6.UPtWalkaddrLemmas
@@ -217,6 +218,7 @@ import Xv6.SpecKexit
 import Xv6.SpecKwait
 import Xv6.SpecPipeclose
 import Xv6.SpecPipewrite
+import Xv6.SpecPiperead
 import Xv6.SpecKfork
 import Xv6.SpecUserinit
 import Xv6.SpecEither
@@ -255,5 +257,7 @@ import Xv6.ProofPipeclose
 import Xv6.LinkPipeclose
 import Xv6.ProofPipewrite
 import Xv6.LinkPipewrite
+import Xv6.ProofPiperead
+import Xv6.LinkPiperead
 import Xv6.ProofKfork
 import Xv6.LinkKfork

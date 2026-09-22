@@ -277,7 +277,7 @@ theorem ec_copyout_call (CO : COPYOUT) [CurCtx] (c : CPU) (k' : KCtx) (γl : GNa
       (∃ (P' : UPtd) (M' : Nat → List (BitVec 8)),
         ⌜P.ext P' ∧
           ((R' 10#5 = 0#64 ∧ M' = umemWrite (viewFaulted P P' M) (k'.regs 12#5).toNat bs) ∨
-           (R' 10#5 = -1#64 ∧ ∃ d, d ≤ bs.length ∧
+           (R' 10#5 = -1#64 ∧ ∃ d, d < bs.length ∧
               M' = umemWrite (viewFaulted P P' M) (k'.regs 12#5).toNat (bs.take d)))⌝ ∗
         procPtAt P' M') -∗
       ⌜calleeSaved k'.regs R'⌝ -∗ wpLoop cpu'))
@@ -504,7 +504,7 @@ theorem either_copyout_proof (MP : MYPROC) (CO : COPYOUT) (MM : MEMMOVE) : EITHE
     ihave Hout : (∃ (Q : UPtd) (N : Nat → List (BitVec 8)),
         ⌜V.upt.ext Q ∧
           ((R3 10#5 = 0#64 ∧ N = umemWrite (viewFaulted V.upt Q M) (k.regs 11#5).toNat bs) ∨
-           (R3 10#5 = 18446744073709551615#64 ∧ ∃ d, d ≤ bs.length ∧
+           (R3 10#5 = 18446744073709551615#64 ∧ ∃ d, d < bs.length ∧
               N = umemWrite (viewFaulted V.upt Q M) (k.regs 11#5).toNat (List.take d bs)))⌝ ∗
         procPrivExt (procAddr j) pid V Q N) $$ [Hsz Hpg Hspace Hrest]
     case' _ =>

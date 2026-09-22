@@ -570,7 +570,7 @@ theorem kw_copyout (CO : COPYOUT) (c : CPU) (k' : KCtx) (γl : GName) (γk : Kme
       (∃ (P' : UPtd) (M' : Nat → List (BitVec 8)),
         ⌜P.ext P' ∧
           ((R' 10#5 = 0#64 ∧ M' = umemWrite (viewFaulted P P' M) dst.toNat bs) ∨
-           (R' 10#5 = -1#64 ∧ ∃ d, d ≤ bs.length ∧
+           (R' 10#5 = -1#64 ∧ ∃ d, d < bs.length ∧
               M' = umemWrite (viewFaulted P P' M) dst.toNat (bs.take d)))⌝ ∗
         procPtAt P' M') -∗
       ⌜calleeSaved k'.regs R'⌝ -∗ wpLoop cpu'))
@@ -1408,7 +1408,7 @@ theorem kw_reap (CO : COPYOUT) (FP : FREEPROC) (RE : RELEASE)
               simp only [RegMap.set_apply, BitVec.reduceEq, ite_false]; exact hR5_26
             case heH27 =>
               simp only [RegMap.set_apply, BitVec.reduceEq, ite_false]; exact hR5_27
-            case heD => rw [xstateBytes_length] at hdd; exact hdd
+            case heD => rw [xstateBytes_length] at hdd; exact le_of_lt hdd
             case heAns => exact kw_ans_neg (k.regs 10#5) dd
           case haddrw => k_norm_g
           case hsw => k_norm_g

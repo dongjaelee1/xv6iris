@@ -121,7 +121,7 @@ def wp_either_copyout_body {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF]
       (∃ (P' : UPtd) (M' : Nat → List (BitVec 8)),
         ⌜V.upt.ext P' ∧
           ((R' 10#5 = 0#64 ∧ M' = umemWrite (viewFaulted V.upt P' M) (k.regs 11#5).toNat bs) ∨
-           (R' 10#5 = -1#64 ∧ ∃ d, d ≤ bs.length ∧
+           (R' 10#5 = -1#64 ∧ ∃ d, d < bs.length ∧
               M' = umemWrite (viewFaulted V.upt P' M) (k.regs 11#5).toNat (bs.take d)))⌝ ∗
         procPrivExt (procAddr j) pid V P' M')
      else ⌜R' 10#5 = 0#64⌝ ∗ byteBuf (k.regs 11#5) (DFrac.own 1) bs) -∗

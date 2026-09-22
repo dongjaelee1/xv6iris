@@ -252,7 +252,15 @@ Section UShPipeCatRound.
     pipe_link_taint g -∗
     era_pin γ (S gen_id) v -∗
     blk2_inv g blk2N (S gen_id) v I L gL gR gM XL YR -∗
-    YR -∗
+    (* THE READER'S BOUND, UNDER THE TAINT (design SS4.3aa, item 2).
+       [YR] is used at exactly ONE place below -- inside the left arm of the
+       [Hjust] split, where the family's right chain is actually stepped --
+       and the only supplier the round has is [UCatPipe.pcat_round_at_g]'s
+       [Hw] antecedent, which offers [pws_lb pn (take (c + cnt) L) or T].
+       So the premise is taken under the same disjunction and the taint arm
+       goes through [pcat_chain_taint] like the other two.  The landed form
+       re-derives by [iLeft]. *)
+    (YR ∨ PT) -∗
     (⌜(Z.to_nat (bv_unsigned rv) <= 512)%nat
       /\ forall j : nat, (j < Z.to_nat (bv_unsigned rv))%nat ->
            L !! (c0 + j)%nat = Some (fbb j)⌝
@@ -310,7 +318,11 @@ Section UShPipeCatRound.
                cons_out_chain (S gen_id) M (m !!! Regidx a1_idx)
                  (fun j : nat => pcat_ch gR gM (c0 + j)%nat) 0%nat cnt)%I
       with "[Hc Hjust]" as "Hmk".
-    { iDestruct "Hjust" as "[[%_ %Hline] | #HT]"; last first.
+    { iDestruct "HYR" as "[#HYRy | #HTy]"; last first.
+      { iIntros (M) "_".
+        iApply (pcat_chain_taint gR gM M (m !!! Regidx a1_idx) c0 cnt 0%nat
+                  with "Ht HTy"). }
+      iDestruct "Hjust" as "[[%_ %Hline] | #HT]"; last first.
       { iIntros (M) "_".
         iApply (pcat_chain_taint gR gM M (m !!! Regidx a1_idx) c0 cnt 0%nat
                   with "Ht HT"). }
@@ -327,7 +339,7 @@ Section UShPipeCatRound.
                 ltac:(intros j _ Hj; apply HM; lia)
                 with "[] [Hcur]").
       - iApply (pcat_out_step v I L gL gR gM XL YR c0 Hnd Hwit2 Hwit1
-                  with "Hex Ht Hpin Hinv HYR").
+                  with "Hex Ht Hpin Hinv HYRy").
       - rewrite Nat.add_0_r /pcat_ch. iLeft. iExact "Hcur". }
     (* ---- THE RUN: the prefix the call writes, and its two halves ---- *)
     pose (nr := (512 - cnt)%nat).

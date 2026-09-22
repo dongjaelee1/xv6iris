@@ -755,6 +755,17 @@ Section PipeInitBoot.
         iApply (udepw_law_of_sup (PSx := uprogSG_free) 17
                   (or_intror eq_refl)).
         iApply ("Hsup" with "HT"). }
+    (* ...AND sh's OWN FREE WRITE LAW UNDER THE TAINT (design SS4.3z item
+       3): [UkSh.sh_deps] IS [udepw_law 16], and the pipeline round's
+       [panic("fork")] chain goes out on it when the lend carries no input
+       bound.  It is the first bullet of [Hdp] above, read at sh's name --
+       and it can only be built HERE, where the era equation and [r] are. *)
+    iAssert (□ (echo_taint (pgn_cl g) -∗ UkSh.sh_deps (PS := uprogSG_free)))%I
+      as "#Hshdp".
+    { iModIntro. iIntros "#HT". rewrite /UkSh.sh_deps.
+      iApply (udepw_law_of_sup_write (PSx := uprogSG_free) with "[] []").
+      - iApply ("Hsup" with "HT").
+      - rewrite Hkill. iExact "HT". }
     (* ---- the tag's reading, at the PIPELINE discipline ---- *)
     iAssert (UkSh.ush_tag_law (echo_taint (pgn_cl g))) as "#Htg".
     { iApply (UkSh.ush_tag_law_of_at (echo_taint (pgn_cl g))
@@ -807,7 +818,7 @@ Section PipeInitBoot.
         [ iApply UInitSh.sh_pay_state_holds | ].
       iIntros (γp N).
       iApply (UShPipeRound.sh_round_holds_pipe g Hkill γp N
-                with "Hlks [] Hslot Hcat Hpine []").
+                with "Hlks [] Hslot Hcat Hpine Hshdp []").
       - iApply (udep_free).
       - iApply Hchild. }
     (* ...AND THE PROMPT'S LAW AT EVERY LINE BOUNDARY, off the links *)
@@ -977,11 +988,22 @@ Section PipeInitBoot.
   (*  [CurCtx].  [UInitPipeAdequacy.pipe_prog_law_of_child] is what       *)
   (*  spends it.                                                          *)
   (* =================================================================== *)
+  (* ...AND IT TAKES THE RECORD EQUATION (design SS4.3z item 1, lane
+     SH-PIPE-ROUND-11 finding (8)).  Stated at an ARBITRARY [riscvGS Σ]
+     the Prop is UNPROVABLE: every console step of the round is
+     [PipeBoth.pblk2_cstep_L]/[_R], each of which takes
+     [Hcons : riscv_cons_res (riscv_fixedGS HR) = pecl c], and that
+     equation is [pipe_ifc]'s own field -- false at an arbitrary [HR].
+     So the ONE hypothesis is the interface equation, which costs the
+     consumer NOTHING: [pipe_prog_law_of_child] already receives
+     [Hiface] from [pipe_prog_law]'s own binder list, and
+     [pipe_Hinit_boot] already derives [Hcons]/[Htag]/[Hkill] from it. *)
   Definition sh_pipe_child_law_all : Prop :=
     forall (HR : riscvGS Σ) (GEN : GenId)
            (HBs : bioslotG Σ) (HFd : fdslotG Σ) (HIr : irefslotG Σ)
            (HPav : pavG Σ) (HWc : wchG Σ) (HF : fileG Σ)
            (c : pipe_gn),
+      @riscvF_app_iface Σ (@riscv_fixedGS Σ HR) = pipe_ifc c ->
       ⊢ UShPipeRound.sh_pipe_child_law c.
 
 End PipeInitBoot.

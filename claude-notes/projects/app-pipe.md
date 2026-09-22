@@ -460,10 +460,15 @@ arm is the theorem's one named premise (`pipe_both_law`).
   DISPATCHER, not `ProcInv`; but the ROUND still has no supplier —
   six sh-tier re-spellings of fork's answer drop the conjunct
   (Findings `### PIPE-GEN`), which is the next purchase.
-- [ ] **SH-PIPE-ROUND-12** (design §4.3z: the Prop's interface equation;
+- [~] **SH-PIPE-ROUND-12** (design §4.3z: the Prop's interface equation;
   cat's entry chain generic in the program instance; the taint branch's
   antecedents; the assembly; `pipe_adequacy_pipeΣ_final`).  Brief
-  `brief-sh-pipe-round-12.md`.
+  `brief-sh-pipe-round-12.md`.  ITEMS 1–3 LANDED whole and the taint
+  branch turned out to be ONE LAW (ROUND-11's (7) refuted); the ASSEMBLY
+  stops at TWO walls neither design nor table counted — the paid child
+  walk's `usz` (REPAIRED here) and the pipe arm's CLOSE DEPOSIT, which is
+  a `UkRun`/`UkRunSys` premise shape and NOT this lane's file (Findings
+  `### SH-PIPE-ROUND-12`).  `pipe_adequacy_pipeΣ_final` is NOT reached.
 ## Findings (append as lanes report)## Findings (append as lanes report)## Findings (append as lanes report)
 
 ### PQ-FLAG-2 (2026-09-18) — the write link's second premise, paid by the CODE
@@ -10666,3 +10671,251 @@ the tainted instantiation is a second application of
 is one more antecedent on `sh_pipe_child_law` (`□ (T -∗ UkSh.sh_deps)`,
 supplied by `pipe_Hinit_boot`'s own `Hsup`).  Everything else on the
 bill is in (5)'s table and every leaf it names is landed.
+
+### SH-PIPE-ROUND-12 (2026-09-22, design §4.3z) — ALL THREE WALLS OF ROUND-11 ARE DOWN and the taint branch is ONE LAW, not a second walk; six of the eight rows of ROUND-11's table are DISCHARGED; but the ASSEMBLY stops at THREE premises neither the design nor that table counted, and the one that ends the lane is NOT in its files: `UkRun`'s CLOSE DEPOSIT for a PIPE ROW has no producer but the taint
+
+Branch `app-pipe/sh-pipe-round-12` off main (`8f6d6f39f`).  Twelve proof
+commits: `edab7a94b` (item 1), `ddd0b71a0` (item 2), `6510cca1c`
+(item 3), `a9ae65f9f` (the `usz` wall, mechanised), `ce0bdf5a4` (its
+repair), `ab7843054` (the taint arm), `214023167` (the prologue and the
+split), `51891f13c` (the two diagnostic laws), `7f8299733` (the
+registrar and the second wall), `7f922f4b8` (the LEFT CHILD),
+`31c3242a9` (the PARENT), and the right command's argv bytes.
+**Whole-tree `ec2-lane.sh round12 build` RC=0 at every commit**; no
+`Admitted`, no `Axiom`, `Proof using` on every new result.
+
+**THE FINAL THEOREM IS NOT REACHED.**  `pipe_adequacy_pipeΣ_final` does
+not exist, `UInitPipe.sh_pipe_child_law_all` is still a Prop and not a
+theorem, and `iris/PipeAssumptions.v` is untouched.  What IS different
+is that the three walls ROUND-11 stopped at are gone and the bill for
+the rest is now measured to the leaf.
+
+**(1) §4.3z ITEM 1 — THE PROP TAKES THE INTERFACE EQUATION (`edab7a94b`).**
+`sh_pipe_child_law_all` now carries
+`riscvF_app_iface (riscv_fixedGS HR) = pipe_ifc c`.  It costs the
+consumer NOTHING: `UInitPipeAdequacy.pipe_prog_law_of_child` already
+receives `Hiface` out of `pipe_prog_law`'s binder list and passes it on;
+`pipe_Hinit_boot`, which already derives `Hcons`/`Htag`/`Hkill` from that
+equation, does not move at all.  PIPE-CC's "no record equation" is
+struck.  Two lines, exactly as ruled.
+
+**(2) §4.3z ITEM 2 — CAT'S ENTRY CHAIN IS GENERIC, AND IT COSTS FOUR
+SECTION VARIABLES AND NOTHING ELSE (`ddd0b71a0`).**  `Context `{PS :
+UexecSG.uprogSG Σ}` in `UShCat`'s entry section, `UCatPipe`'s round
+section and its `UCatPipeEntry`, and `UShCatPay`.  **NO `(PS := _)` WAS
+NEEDED ANYWHERE IN THE TREE** and no landed statement moved:
+
+- Coq discharges only the section variables a body USES, so the pure
+  geometry (`UShCat` §§1–5, `cat_args`, `cat_args_det`) and
+  `UShCatPay.sh_cat_slot` are the same terms they were —
+  `UShPipeRound.sh_pipe_child_law`, stated at `sh_cat_slot`, is
+  byte-identical;
+- the DEPOSIT RULE the supply applies (`ExecRun.udepw_at_refR_of_sup`
+  over `UkRun.udepw_at_ref`) is `uprogSG`-FREE — it names only `uslot`
+  and `sbundle_pay_ref` — so `UkShCat.sh_exec_sup_cat_at`, the
+  conclusion of `sh_exec_sup_cat_wq_holds_at`, does not move either.
+  **That is the whole reason the repair is cheap**: the round can enter
+  cat's image at `uprogSG_free` while the exec deposit stays at the
+  ambient instance, exactly as `UShEchoPipePay` does for echo;
+- every landed consumer (`UCatKernel` §7, `UShRound`, `UShPipeCatRound`,
+  `UShPipeCatSlot`, `UShPipeLaw`) binds no `uprogSG`, so resolution
+  supplies the ambient instance it was already elaborating at.
+
+REFUTED, at the statement: `UCatPipe.v`'s and `UShCat.v`'s headers said a
+`uprogSG` section variable "would be a SECOND instance whose
+`UkRun.urun` prints identically and does not unify with the one
+`UkReadPipe`'s leaf and `UkCatCat`'s walk run at".  Both of those files
+bind `Context `{PS : uprogSG Σ}` THEMSELVES, so the variable unifies with
+theirs.  ROUND-11's measured WEDGE (eight minutes at 2.0 GB, eleven at
+2.3 GB × 3) was an artefact of the HALF-pin it tried — a per-lemma
+variable on `cat_entry_run` over a `pcat_pay_at` still at the ambient
+instance.  With the whole chain generic, `UShCat.vo`, `UCatKernel.vo` and
+`UShCatPay.vo` compile in the usual time and no `Set Default Timeout`
+fires.  (Upstream note stands: `UShRound.sh_round_holds_file`, the file
+era's only consumer of `Hchild_cat`, is `Admitted`.)
+
+**(3) §4.3z ITEM 3 — THE THREE ANTECEDENTS (`6510cca1c`), AND THE TAINT
+BRANCH IS **ONE LAW** (`ab7843054`).**  `sh_pipe_child_law` gains
+`UShEcho.sh_echo_slot T`, `∃ v, era_pin γ (S gen_id) v` and
+`□ (T -∗ UkSh.sh_deps (PS := uprogSG_free))`; `sh_round_holds_pipe`
+supplies them and gains the third as its own premise;
+`UInitPipe.pipe_Hinit_boot` builds it in three lines out of `Hsup`
+(`UexecExecMint.udepw_law_of_sup_write` at `uprogSG_free`, `init_deps`'s
+own first bullet).  The Prop does not move.  `udep` is NOT among them:
+`udep_free` is closed.
+
+**ROUND-11's FINDING (7) IS REFUTED.**  It priced the credential's taint
+arm as "a SECOND instantiation of the same walk in which every lend,
+every law and every payload is `T`".  It is not, and the measurement is
+one line: `EchoOut.inp_lb` is wanted by `pipe_fork_panic_law` **and by
+nothing else in the round**.  `pipe_execL_law`, `pipe_execR_law` and
+`pipe_panic_pipe_law` take `era_pin` (which `pipe_wcl3_inp` yields on
+BOTH arms — the pin is outside the lend's taint disjunct, at
+`PipeLinkInst.pipe_inst_lcred`) and `blk2_inv`, whose source
+`PipeLinksLine.pwc_lend` has a taint arm of its own
+(`PipeBoth.pwc_blk2_of_lend`), so **the family is born under the taint
+too**.  So the round splits at ONE law and the two arms meet at ONE
+payload.  Landed in `UShPipeAssembly.v`:
+
+| result | what it is |
+|---|---|
+| `exf_law_cd_mono` | the execfail law is monotone in what its end pays |
+| `exf_law_acc` | ...and it is an ACCESSOR ON ITS CREDENTIAL — the round's laws read `blk2_inv` out of the `Cr` they are paid with, which is what ROUND-11's finding (5) forces |
+| `ush_execfail_law_taint` | under the taint the diagnostic is FREE: the bytes go out on `UkSh.sh_deps` at the family `fun _ => emp`, the credential is DROPPED and the end is paid by the taint |
+| `pipe_fork_panic_law_or` | the `panic("fork")` law at `inp_lb v I ∨ PT`, paying `pterm_shape g I 5 ∨ PT` |
+| `pipe_lend_exit_pay` / `pipe_panic_exit_pay` / `pipe_fork_exit_pay` | the walk's three `□` exit payments into `UkShFork.ushf_wq (pterm_wc g) I` |
+
+**(4) THE FIRST WALL THE DESIGN NEVER COUNTED, MECHANISED AND REPAIRED:
+THE PAID CHILD WALK ASKS FOR ONE `usz` TOO MANY (`a9ae65f9f`,
+`ce0bdf5a4`).**  `UShPipeChild.wp_kshm_child_pipe_paid_at` / `_line_at`
+— and the free twin `UkShPipeRound.wp_kshm_child_pipe` they share a
+shape with — take BOTH `usz γs szv` AND `UM0`, the allocator state the
+pipe line's THREE `malloc`s are funded from.  Every allocator state in
+the tree carries a `usz`: `UkShMalloc.ushm_fresh sz` and `ushm_one sz R`
+both end in `usz γs sz`, and `UserHeap.uheap` — inside `urun` — holds the
+other half of the same `ghost_var`.  **Three halves is `False`**, so the
+premise list cannot be met at any real allocator state and the round's
+entry point was unusable as stated.  Two Closed lemmas at the end of
+`UShPipeLaw.v` are the evidence (`usz_three_absurd`,
+`pipe_paid_entry_absurd`).  The child law hands its prover exactly ONE
+program-side half, so there is no third to give.
+
+REPAIRED under §4.3u's standing grant: `wp_kshm_child_pipe_paid_at_sz`
+is the walk generic in WHERE the break comes from — a resource parameter
+`Usz` in the slot `usz γs szv` occupied plus the Coq premise
+`⊢ UM3 -∗ Usz -∗ usz γs szv`, read after `parsecmd` returns.  At
+`Usz := usz γs szv` and the trivial reading that IS the landed
+`wp_kshm_child_pipe_paid_at`, **byte-identical**, now a corollary; at
+`Usz := emp` and `UM3 := ushm_one_ge N (sz + 65536) _` the round reads
+the break off the parse's leftover, whose `usz γs (sz + 65536)` IS the
+`szv` the pipe arm wants.  `wp_kshm_child_pipe_paid_line_at_sz` is the
+round's entry point.  `_paid`, `_paid_line` and `_paid_line_at` do not
+move.
+
+**(5) THE ASSEMBLY, AS FAR AS IT GOES (`214023167`, `pl_pipe_call`).**
+In `UShPipeLaw.v`, all Closed:
+
+| result | what it is |
+|---|---|
+| `pl_XL` / `pl_YR` (+ `Timeless`) | PIPE-EXEC-ECHO's two exclusion witnesses, named |
+| `pl_Cr` / `pl_RcL` / `pl_RcR` | ROUND-11's table rows, as definitions |
+| `pl_round_alloc` | ROUND-11's finding (5) as a lemma: `pnames` and the family's three cursor ghosts minted BEFORE the walk, the era pin off the child law's antecedent AGREEING with the one under the lend's existential, and the fupd `pterm_wc g I 3 ={⊤}=∗ pl_Cr …` that allocates the invariant alone |
+| `pl_split` | the arm's split at `Cx := emp`: `blk2_inv` (persistent) to all three, the LEFT cursor half into echo's lend through `ep_frame`'s `Wq` slot, the RIGHT/MODE halves + reader's permit + right side token to cat, `pipe_inv` to the parent |
+| `pl_panic_pipe_law` / `pl_fork_panic_law` | the walk's two diagnostic laws at the round's own credentials, both through `exf_law_acc`, both pinned at `uprogSG_free` |
+| `pl_qc_of_taint` | the walk's `□ (app_taint -∗ Qc (-1))` |
+| `pl_pipe_call` | the registrar at `Wq := emp` — **and the second wall, left as its one antecedent** |
+| `pl_left_child` | **THE LEFT CHILD, DISCHARGED**: `UkShEcho.wp_kshr_exec_echo_at_holds` at `uprogSG_free` over `UShEchoPipePay.sh_exec_sup_echo_pipe_at`, with `pipe_execL_law` at `F := side_L pn` read off `pl_RcL` through `exf_law_acc` and the exclusion witness taken off the protocol handle that rides inside `UEchoPipe.ep_pay` |
+| `pl_parent` | **THE PARENT, DISCHARGED**: `pipe_round_parent` at `Wq := ushf_wq (pterm_wc g) I`, the two credential wands this lane's `pipe_lend_exit_pay` / `pipe_panic_exit_pay`, `pipe_no_short` off `Rk γp`, the two pids off `ush_wait_pid_ans`'s own existential, and `S1 ≠ S2` off the second fork's answer |
+
+**(6) THE SECOND WALL, AND IT IS NOT IN THIS LANE'S FILES: A PIPE ROW'S
+CLOSE DEPOSIT HAS NO PRODUCER BUT THE TAINT.**
+`UShPipeAssembly.ush_pipe_call_pipe_pay` — ROUND-11's table row `R` —
+takes `UkRun.udepw_law (PS := uprogSG_free) 21`, and the table never
+counted it.  It is not optional: `UShPipeCall.ush_pipe_call_paid` spends
+it on exactly the answer's two `UkShPipe.ush_cldep` rows
+(`ush_cldep_of_law`, its last two lines), and FOUR of the PIPE arm's six
+closes shut a PIPE row (`close(p[0])`, `close(p[1])` in each of the two
+children and again in the parent).  At `uprogSG_free`, `psok 21` is
+`free_num 21` = `False` — 21 left the free set with the byte queue — and
+the ONLY producer of `udepw_law 21` in the tree is
+`UexecExecMint.udepw_law_of_sup_close`, which takes `app_taint`; for the
+pipeline claim `app_sup` IS the taint (`AppPipeCons.pipe_sup_of_taint`),
+so there is no untainted route.  Read plainly: **no verified program can
+close a pipe descriptor on the good path today.**
+
+THE RESOURCE THAT SHOULD PAY IT EXISTS AND THE REGISTRAR ALREADY HANDS
+IT OUT.  `PipeReg.pipe_reg γp = □ (∀ w, pipe_cpay (pn_queue γp) w emp)`,
+and `UexecExecInst.xv6_sbundle`'s 21-branch is literally
+`fileclose_cpay (fd_st_of_key (xk_a W 0) (uvis_fd W)) (cl_P f)` — i.e.
+`pipe_cpay` at the key's own row.  What blocks it is ONE quantifier:
+`UkRun.udepw_cl N m pc st`'s right arm is the generic `udepw N m pc 21`,
+whose `fdv` is UNIVERSALLY QUANTIFIED, so a payer must cover the close of
+an arbitrary table's arbitrary row — including some other pipe's.  The
+agreement that pins the row is derived ONE STEP LATER, inside
+`UkRunSys.wp_uk_ecall_close` (`iDestruct (ufd_agree with "Hufd Hh")`, its
+line 1540), and `UkRun.udepw_cl_mint` already takes exactly that fact as
+`fd_st_of_key a0 fdv = st`.  So the repair is a ROW-AWARE close deposit
+— `udepw_cl`'s right arm quantified over tables in which `fdv !! fd =
+Some st` — plus the one line in `wp_uk_ecall_close` that hands the
+agreement it already has.  `UkRun.v` and `UkRunSys.v` are not this
+lane's files and the change rebuilds the whole tree, so this lane stops
+here, at the leaf `UShPipeLaw.pl_pipe_call`, per its STOP rule.
+
+TWO MEASUREMENTS MADE WHILE LANDING THEM.  (a) The landed
+`UShPipeAssembly.ush_fork_ans_sets_differ` CONSUMES the answer it reads
+and `pipe_round_parent` needs that answer afterwards; `ush_fork_ans` is
+not persistent, so `pl_parent` reads `S1 ≠ S2` through an `iSplit` on a
+CONJUNCTION.  A `_keep` variant returning the answer beside the pure
+fact is the tidier shape if a second consumer appears.  (b)
+`UShEchoPipePay.sh_exec_sup_echo_pipe_at` has NO `uprogSG` in its
+implicit list at all — `UkShEcho.sh_exec_sup_echo_at` is
+`uprogSG`-FREE, for `udepw_at_ref`'s reason — so the supply's own
+instance does not have to agree with the walk's.  That is the general
+fact item 2 rests on and it is worth stating once: **an exec SUPPLY is
+instance-free; only the ENTRY and the RUN carry the instance.**
+
+**WHAT IS LEFT ON THE BILL after that premise** (measured, not guessed):
+the RIGHT CHILD (`UkShCat.wp_kshr_exec_cat_at_holds` over
+`UShCatPay.sh_exec_sup_cat_wq_holds_at` at `Cend := pl_Cend`, whose
+`kcat_round` premise is `UCatPipe.pcat_round_at_g` with
+`UShPipeCatRound.pipe_cat_w` as its `Hw` — that premise is now at the
+CHILD's instance, which item 2 made possible, and its `□ (T -∗
+UkCatCat.kcat_dg_cr N)` is payable from this lane's new
+`□ (T -∗ UkSh.sh_deps)` antecedent through
+`UkCat.kcat_pay_seq_of_law`), and then
+`sh_pipe_child_law` / `sh_pipe_child_law_all` /
+`pipe_adequacy_pipeΣ_final`.  Every leaf ROUND-11's table names for them
+is landed — BUT this lane found TWO uncounted premises in the FIRST half
+of that table, AND a THIRD at the right child's door, measured at the
+statement and with its repair already checked against the proof:
+
+  `UShPipeCatRound.pipe_cat_w` takes `YR = pws_lb pn (take 1 L)`
+  UNCONDITIONALLY, while `UCatPipe.pcat_round_at_g`'s `Hw` can only offer
+  `pws_lb pn (take (c + cnt) L) ∨ T` — and TWO of `pcat_round_at_g`'s
+  three `Hw` call sites pass `by iRight` for BOTH the content and the
+  lower bound (they are the read's taint arms).  So `pipe_cat_w` cannot
+  be the `Hw` supplier as stated.  THE REPAIR IS ONE LINE AND THE PROOF
+  DOES NOT MOVE: `HYR` is used at exactly one place in `pipe_cat_w`'s
+  body, inside the LEFT arm of `iDestruct "Hjust" as [[…] | #HT]`, while
+  the taint arm goes through `pcat_chain_taint` and never touches it —
+  so the premise weakens to `(YR ∨ PT) -∗` and the landed form
+  re-derives by `iLeft`.  `UShPipeCatRound.v` is not in this lane's file
+  list, so the weakening is NOT taken here.  (§4.3t's standing grant
+  would also let `Hw` gain `⌜0 < c + cnt⌝`, which the walk CAN supply —
+  the write arm intros `%Hret %Hnb0` — but that only helps the non-taint
+  arm and is not what is missing.)
+
+THE RIGHT CHILD WAS ALSO SHORT A LEAF NOBODY HAD WRITTEN, and this lane
+LANDED it: `pl_cat_argv_bytes`, `UkShCat.cat_argv_bytes` at the pipeline
+cut's right token — `pl_echo_argv_bytes`'s twin at the `" | cat"` tail,
+which `UkShCat.wp_kshr_exec_cat_at_holds` takes and which nothing in the
+tree proved (`UkShPipeLex.ushq_cat` is the WORD,
+`UkShPipeRound.ushq_cut_ok_right` is about the NODE).  Every index it
+looks at sits ABOVE every token of `wl_toks ws` and BELOW the cut's own
+nul, so the cut IS the line there and the bytes are
+`PipeDisc.suf_pipecat`'s last three.
+
+WHAT IS *NOT* A GAP on the right child, checked: `pcat_round_at_g`'s
+`□ (T -∗ UkCatCat.kcat_dg_cr N)` is payable from THIS LANE'S NEW
+antecedent `□ (T -∗ UkSh.sh_deps)` through
+`UkCat.kcat_pay_seq_of_law` (`kcat_dg_cr` is a `kcat_pay_seq` at
+`udepw_law 16`, and `□ Cend` is the payload's own taint arm).  That is
+the second thing §4.3z item 3's antecedent buys.
+
+SO THE COUNT IS THREE uncounted premises in ONE table (the walk's `usz`,
+the registrar's close law, and `pipe_cat_w`'s `YR`), and the lesson is
+the one this lane would put at the top of the next brief: **price every
+row of the instantiation table at the STATEMENT before proving it** —
+two of the three were invisible until the `iApply` was written out.  A
+useful intermediate target that this lane did NOT reach:
+`udepw_law (PS := uprogSG_free) 21 -∗ UShPipeRound.sh_pipe_child_law g`
+— the whole round with the one wall of (6) as its single named premise
+(`udepw_law` is persistent, so the `□` of the law survives it).
+
+**THE ONE THING THE NEXT LANE NEEDS FIRST.**  The owner's word on (6):
+either the row-aware close deposit in `UkRun`/`UkRunSys` (two files, two
+premises, one whole-tree rebuild — and it is the honest fix, since
+`pipe_reg` exists precisely to pay this), or a ruling that the pipeline
+round may take `udepw_law 21` as a further antecedent of
+`sh_pipe_child_law` — which `UInitPipe.pipe_Hinit_boot` CANNOT supply,
+so that route ends at an axiom and should be refused.

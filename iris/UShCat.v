@@ -893,6 +893,21 @@ Section UShCat.
   Context `{!ghost_varG Σ Z}.
   Context `{!ghost_varG Σ (gset gname)}.
   Context `{!uartGhostG Σ}.
+  (* ...AND THE PROGRAM INSTANCE *IS* A SECTION VARIABLE after all (design
+     SS4.3z item 2, lane SH-PIPE-ROUND-11 finding (3)).  The paragraph
+     above was right about [uexecSG] and wrong about [uprogSG]: cat's paid
+     image is entered by an APPLICATION, whose entry must run at the
+     program's own deposit data ([UexecExecInst.uprogSG_free], where
+     [UexecExecMint.udep_free] is CLOSED) and not at the ambient generic
+     one, whose only [udep] producer is [AppInv.app_sup] -- the TAINT, for
+     the echo and pipeline claims.  A SECTION VARIABLE is not a pinned
+     constant: it is what stops the resolution search, and every landed
+     consumer instantiates it explicitly at the instance it was resolving
+     to anyway (so every landed statement is byte-identical after
+     [(PS := _)]).  The geometry above -- sections 1-5, all of it pure --
+     never reads the instance and is outside this section.  [uexecSG]
+     stays ambient: this file's [uslot] IS the kernel's. *)
+  Context `{PS : UexecSG.uprogSG Σ}.
 
   (* THE VECTOR sh's node DETERMINES.  Not cat's: [UShEcho.echo_args_det]
      is a fact about the malloc'd node SH BUILT and mentions no image at

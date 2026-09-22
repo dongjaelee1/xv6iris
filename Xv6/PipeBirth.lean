@@ -38,7 +38,7 @@ variable {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF] [Xv6G GF] [Kernel
 /-! ## Four bytes as a word (the inverse of `word4_to_bytes`) -/
 
 /-- The doubleword of four bytes, little-endian (the first byte lowest). -/
-private def bytes4ToWord (bs : List (BitVec 8)) : BitVec 32 :=
+def bytes4ToWord (bs : List (BitVec 8)) : BitVec 32 :=
   bs.foldr (fun b acc => acc <<< 8 ||| BitVec.setWidth 32 b) 0#32
 
 private theorem list4 {α : Type _} (l : List α) (h : l.length = 4) :
@@ -90,17 +90,14 @@ private theorem p4_byte4_to (a : BitVec 64) (dq : DFrac) (ppn : BitVec 44)
   ipureintro
   exact hf.2.2.1
 
-/-- **Four bytes at a 4-aligned address are a 4-byte word.** -/
-theorem word4_of_bytes (a : BitVec 64) (dq : DFrac) (bs : List (BitVec 8)) (hl : bs.length = 4)
-    (hal : a.toNat % 4 = 0) :
-    byteBuf (GF := GF) a dq bs ⊢ ∃ w : BitVec 32, wordPointsTo a 4 dq w := by
-  obtain ⟨b0, b1, b2, b3, rfl⟩ := list4 bs hl
+/-- Four bytes at a 4-aligned address are the word they spell. -/
+theorem word4_of_bytes_val (a : BitVec 64) (dq : DFrac) (b0 b1 b2 b3 : BitVec 8) (hal : a.toNat % 4 = 0) :
+    byteBuf (GF := GF) a dq [b0, b1, b2, b3] ⊢ wordPointsTo a 4 dq (bytes4ToWord [b0, b1, b2, b3]) := by
   obtain ⟨e0, e1, e2, e3⟩ := nthByte_bytes4 b0 b1 b2 b3
   have hz : a + BitVec.ofNat 64 0 = a := by simp
   unfold byteBuf
   simp only [Iris.Algebra.BigOpL.bigOpL_cons, Iris.Algebra.BigOpL.bigOpL_nil, Nat.reduceAdd, hz]
   iintro ⟨H0, H1, H2, H3, _⟩
-  iexists (bytes4ToWord [b0, b1, b2, b3])
   icases wordPointsTo_cases a 1 dq b0 $$ H0 with ⟨%ppn, #Hcl, %hf0, Hb0⟩
   ihave ⟨%hr1, Hc1⟩ := p4_byte4_to a dq ppn b1 1 (by omega) hal $$ Hcl H1
   ihave ⟨%hr2, Hc2⟩ := p4_byte4_to a dq ppn b2 2 (by omega) hal $$ Hcl H2
@@ -120,6 +117,15 @@ theorem word4_of_bytes (a : BitVec 64) (dq : DFrac) (bs : List (BitVec 8)) (hl :
 /-! ## Carving a fresh page into `struct pipe`'s cells -/
 
 /-- A `kalloc`'d page is 4 KiB aligned, hence 8-aligned. -/
+
+theorem word4_of_bytes (a : BitVec 64) (dq : DFrac) (bs : List (BitVec 8)) (hl : bs.length = 4)
+    (hal : a.toNat % 4 = 0) :
+    byteBuf (GF := GF) a dq bs ⊢ ∃ w : BitVec 32, wordPointsTo a 4 dq w := by
+  obtain ⟨b0, b1, b2, b3, rfl⟩ := list4 bs hl
+  iintro H
+  iexists (bytes4ToWord [b0, b1, b2, b3])
+  iapply word4_of_bytes_val a dq b0 b1 b2 b3 hal $$ H
+
 private theorem pv_align8 {pi : BitVec 64} (h : pageValid pi) : pi.toNat % 8 = 0 := by
   obtain ⟨h1, -, -⟩ := h
   have he : BitVec.extractLsb' 0 3 pi = 0#3 := by revert h1; bv_decide

@@ -1,0 +1,459 @@
+/-
+The per-process file-descriptor table (Rocq FdSlots.v's `fd_st`/`fd_frags`
+and ProcInv.v's `ofile_slot`/`proc_ofiles`/`proc_ofiles_owe`).
+
+A descriptor's STATE (`FdState`) is a ghost variable in two halves: the
+FRAGMENT `fdSt` travels beside the process in the bundle `fdFrags γd sts`
+(what a syscall's contract is stated against), the AUTHORITY `fdStAuth`
+sits beside the descriptor's cell in `ofileSlot`.  A cell is either null --
+and then the descriptor owns its fd-slot unit and the authority says
+`.closed` -- or names a file, with a `fileRef` on it (any fraction) and the
+authority at the file's state.  A descriptor never names an untyped file.
+
+THE DEFICIT.  A syscall that holds one of its own descriptors' references
+in a register (sys_dup: filedup wants the source's reference in hand, and
+fdalloc runs in between, on the array) leaves the array with that
+descriptor's payload on loan: `procOfilesOwe γ γd pa fs D` is the array
+with the payloads of `D` missing (each such cell is only a non-null cell).
+The block is split at the fd table (`procPrivCoreNoctxAt` + the array) so
+the loan can span a call.
+-/
+import Xv6.FileDefs
+import Xv6.FileInv
+
+namespace Xv6
+
+open Iris Iris.ProgramLogic Iris.BI Iris.ProofMode Std MachCSL
+
+set_option linter.unusedSectionVars false
+
+/-! ## A big-sep accessor that may change the predicate away from the slot -/
+
+section
+variable {PROP : Type _} [BI PROP] [BIAffine PROP] {A : Type _}
+
+/-- Take slot `i` out of a big-sep, and put a new element back under a
+predicate that agrees with the old one at every OTHER index. -/
+theorem bigSepL_set_acc_congr (Φ Ψ : Nat → A → PROP) :
+    ∀ (l : List A) (i : Nat) (x : A), l[i]? = some x → (∀ k y, k ≠ i → Φ k y ⊢ Ψ k y) →
+    ([∗list] k ↦ y ∈ l, Φ k y) ⊢ Φ i x ∗ (∀ y, Ψ i y -∗ [∗list] k ↦ z ∈ l.set i y, Ψ k z) := by
+  intro l
+  induction l generalizing Φ Ψ with
+  | nil => intro i x h; simp at h
+  | cons a t ih =>
+    intro i x h hc
+    cases i with
+    | zero =>
+      simp only [List.getElem?_cons_zero, Option.some.injEq] at h
+      subst h
+      simp only [List.set_cons_zero]
+      iintro H
+      icases BigSepL.bigSepL_cons.1 $$ H with ⟨H0, Ht⟩
+      iframe H0
+      iintro %y Hy
+      iapply BigSepL.bigSepL_cons.2
+      iframe Hy
+      iapply (BigSepL.bigSepL_mono_of_forall (fun {k y} => hc (k + 1) y (by omega))) $$ Ht
+    | succ i =>
+      simp only [List.getElem?_cons_succ] at h
+      simp only [List.set_cons_succ]
+      iintro H
+      icases BigSepL.bigSepL_cons.1 $$ H with ⟨H0, Ht⟩
+      icases ih (fun k y => Φ (k + 1) y) (fun k y => Ψ (k + 1) y) i x h
+        (fun k y hk => hc (k + 1) y (by omega)) $$ Ht with ⟨Hi, Hw⟩
+      iframe Hi
+      iintro %y Hy
+      iapply BigSepL.bigSepL_cons.2
+      isplitl [H0]
+      · iapply (hc 0 a (by omega)) $$ H0
+      · iapply Hw $$ %y Hy
+
+end
+
+section
+variable {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF] [Xv6G GF] [FileG GF] [CurCtx]
+
+/-! ## The descriptor states -/
+
+/-- The fragment of descriptor `fd`'s state (the bundle's half). -/
+def fdSt (γd : Nat → GName) (fd : Nat) (st : FdState) : IProp GF :=
+  (γd fd) ↪VAR{.own (1 : Qp).half} st
+
+/-- The authority (the slot's half). -/
+def fdStAuth (γd : Nat → GName) (fd : Nat) (st : FdState) : IProp GF :=
+  (γd fd) ↪VAR{.own (1 : Qp).half} st
+
+theorem fdSt_agree (γd : Nat → GName) (fd : Nat) (st st' : FdState) :
+    fdStAuth (GF := GF) γd fd st ∗ fdSt γd fd st' ⊢ ⌜st = st'⌝ := by
+  unfold fdStAuth fdSt
+  iintro ⟨Ha, Hf⟩
+  ihave %h := ghost_var_agree (γd fd) st _ st' _ $$ Ha Hf
+  ipureintro; exact h
+
+/-- The same, keeping both halves. -/
+theorem fdSt_agree' (γd : Nat → GName) (fd : Nat) (st st' : FdState) :
+    fdStAuth (GF := GF) γd fd st ∗ fdSt γd fd st' ⊢ ⌜st = st'⌝ ∗ fdStAuth γd fd st ∗ fdSt γd fd st' := by
+  unfold fdStAuth fdSt
+  iintro ⟨Ha, Hf⟩
+  ihave %h := ghost_var_agree (γd fd) st _ st' _ $$ Ha Hf
+  iframe Ha Hf
+  ipureintro; exact h
+
+/-- Both halves move the state. -/
+theorem fdSt_update (γd : Nat → GName) (fd : Nat) (st st' st'' : FdState) :
+    fdStAuth (GF := GF) γd fd st ∗ fdSt γd fd st' ⊢ |==> (fdStAuth γd fd st'' ∗ fdSt γd fd st'') := by
+  unfold fdStAuth fdSt
+  iintro ⟨Ha, Hf⟩
+  iapply ghost_var_update_halves st'' (γd fd) st st' $$ Ha Hf
+
+/-- The whole variable splits into the two halves. -/
+theorem fdSt_halves (γd : Nat → GName) (fd : Nat) (st : FdState) :
+    ((γd fd) ↪VAR st) ⊢@{IProp GF} fdStAuth γd fd st ∗ fdSt γd fd st := by
+  unfold fdStAuth fdSt
+  iintro H
+  have h := (ghost_var_fractional (GF := GF) (γd fd) st).fractional (1 : Qp).half (1 : Qp).half
+  rw [Qp.half_add_half] at h
+  iapply h.1 $$ H
+
+/-- The bundle: every descriptor's fragment (FdSlots.v's `fd_frags`, without
+its offset rows). -/
+def fdFrags (γd : Nat → GName) (sts : List FdState) : IProp GF := iprop%
+  ⌜sts.length = NOFILE⌝ ∗ [∗list] fd ↦ st ∈ sts, fdSt γd fd st
+
+theorem fdFrags_len (γd : Nat → GName) (sts : List FdState) :
+    fdFrags (GF := GF) γd sts ⊢ ⌜sts.length = NOFILE⌝ ∗ fdFrags γd sts := by
+  unfold fdFrags
+  iintro ⟨%h, H⟩
+  iframe H
+  isplitl [] <;> ipureintro <;> exact h
+
+theorem fdFrags_acc (γd : Nat → GName) (sts : List FdState) (fd : Nat) (st : FdState)
+    (h : sts[fd]? = some st) :
+    fdFrags (GF := GF) γd sts ⊢ fdSt γd fd st ∗ (∀ st', fdSt γd fd st' -∗ fdFrags γd (sts.set fd st')) := by
+  unfold fdFrags
+  iintro ⟨%hlen, H⟩
+  icases (BigSepL.bigSepL_insert_acc (Φ := fun (j : Nat) (s : FdState) => fdSt (GF := GF) γd j s) h) $$ H
+    with ⟨Hi, Hw⟩
+  iframe Hi
+  iintro %st' Hs
+  isplitl []
+  · ipureintro; rw [List.length_set]; exact hlen
+  · iapply Hw $$ %st' Hs
+
+/-! ## One descriptor's cell, with what it owns -/
+
+/-- `p->ofile[fd] = v`, and its payload (ProcInv.v's `ofile_slot`). -/
+def ofileSlot (γ : FileNames) (γd : Nat → GName) (pa : BitVec 64) (fd : Nat) (v : BitVec 64) :
+    IProp GF := iprop%
+  wordPointsTo (pOfile pa fd) 8 (DFrac.own 1) v ∗
+  ((⌜v = 0#64⌝ ∗ fdSlot γ ∗ fdStAuth γd fd .closed) ∨
+   (∃ (k : Nat) (q : Qp) (st : FdState), ⌜v = fnode k ∧ k < NFILE ∧ st ≠ .closed⌝ ∗
+      fileRef γ k q st ∗ fdStAuth γd fd st))
+
+/-- A null cell owns the unit and the closed authority (the file disjunct is
+refuted: a slot's address is never null). -/
+theorem ofileSlot_null (γ : FileNames) (γd : Nat → GName) (pa : BitVec 64) (fd : Nat) :
+    ofileSlot (GF := GF) γ γd pa fd 0#64 ⊢
+      wordPointsTo (pOfile pa fd) 8 (DFrac.own 1) 0#64 ∗ fdSlot γ ∗ fdStAuth γd fd .closed := by
+  unfold ofileSlot
+  iintro ⟨Hc, ⟨⟨-, Hs, Ha⟩ | ⟨%k, %q, %st, %⟨hv, hk, -⟩, -, -⟩⟩⟩
+  · iframe Hc Hs Ha
+  · exact absurd hv.symm (fnode_nonzero k hk)
+
+theorem ofileSlot_file (γ : FileNames) (γd : Nat → GName) (pa : BitVec 64) (fd k : Nat) (q : Qp)
+    (st : FdState) (hk : k < NFILE) (hst : st ≠ .closed) :
+    wordPointsTo (GF := GF) (pOfile pa fd) 8 (DFrac.own 1) (fnode k) ∗ fileRef γ k q st ∗
+      fdStAuth γd fd st ⊢ ofileSlot γ γd pa fd (fnode k) := by
+  unfold ofileSlot
+  iintro ⟨Hc, Hr, Ha⟩
+  iframe Hc
+  iright
+  iexists k, q, st
+  iframe Hr Ha
+  ipureintro; exact ⟨rfl, hk, hst⟩
+
+theorem ofileSlot_closed (γ : FileNames) (γd : Nat → GName) (pa : BitVec 64) (fd : Nat) :
+    wordPointsTo (GF := GF) (pOfile pa fd) 8 (DFrac.own 1) 0#64 ∗ fdSlot γ ∗ fdStAuth γd fd .closed ⊢
+      ofileSlot γ γd pa fd 0#64 := by
+  unfold ofileSlot
+  iintro ⟨Hc, Hs, Ha⟩
+  iframe Hc
+  ileft
+  iframe Hs Ha
+  ipureintro; rfl
+
+/-- A non-null cell names a file (ProcInv.v's `proc_ofiles_lend`'s core). -/
+theorem ofileSlot_nonnull (γ : FileNames) (γd : Nat → GName) (pa : BitVec 64) (fd : Nat) (v : BitVec 64)
+    (hv : v ≠ 0#64) :
+    ofileSlot (GF := GF) γ γd pa fd v ⊢
+      ∃ (k : Nat) (q : Qp) (st : FdState), ⌜v = fnode k ∧ k < NFILE ∧ st ≠ .closed⌝ ∗
+        wordPointsTo (pOfile pa fd) 8 (DFrac.own 1) v ∗ fileRef γ k q st ∗ fdStAuth γd fd st := by
+  unfold ofileSlot
+  iintro ⟨Hc, ⟨⟨%hz, -, -⟩ | ⟨%k, %q, %st, %hf, Hr, Ha⟩⟩⟩
+  · exact absurd hz hv
+  · iexists k, q, st; iframe Hc Hr Ha; ipureintro; exact hf
+
+/-- A fragment holder reads a cell's nullity off its state alone. -/
+theorem ofileSlot_agree (γ : FileNames) (γd : Nat → GName) (pa : BitVec 64) (fd : Nat) (v : BitVec 64)
+    (st : FdState) :
+    fdSt (GF := GF) γd fd st ∗ ofileSlot γ γd pa fd v ⊢
+      ⌜(v = 0#64 ∧ st = .closed) ∨ (v ≠ 0#64 ∧ st ≠ .closed)⌝ ∗ fdSt γd fd st ∗ ofileSlot γ γd pa fd v := by
+  unfold ofileSlot
+  iintro ⟨Hf, Hc, Hor⟩
+  icases Hor with ⟨⟨%hz, Hs, Ha⟩ | ⟨%k, %q, %st', %⟨hv, hk, hst⟩, Hr, Ha⟩⟩
+  · ihave %he := (show fdStAuth (GF := GF) γd fd .closed ∗ fdSt γd fd st ⊢ ⌜FdState.closed = st⌝ from
+      fdSt_agree γd fd .closed st) $$ [Ha Hf]
+    · iframe
+    subst he
+    iframe Hf Hc
+    isplitl []
+    · ipureintro; exact Or.inl ⟨hz, rfl⟩
+    · ileft; iframe Hs Ha; ipureintro; exact hz
+  · ihave %he := (show fdStAuth (GF := GF) γd fd st' ∗ fdSt γd fd st ⊢ ⌜st' = st⌝ from
+      fdSt_agree γd fd st' st) $$ [Ha Hf]
+    · iframe
+    subst he
+    iframe Hf Hc
+    isplitl []
+    · ipureintro; exact Or.inr ⟨by rw [hv]; exact fnode_nonzero k hk, hst⟩
+    · iright; iexists k, q, st'; iframe Hr Ha; ipureintro; exact ⟨hv, hk, hst⟩
+
+/-! ## The array, with a deficit -/
+
+/-- Descriptor `fd`: on loan (a non-null cell only) or a whole slot. -/
+def ofileLentOrSlot (γ : FileNames) (γd : Nat → GName) (pa : BitVec 64) (D : List Nat) (fd : Nat)
+    (v : BitVec 64) : IProp GF :=
+  if fd ∈ D then iprop(⌜v ≠ 0#64⌝ ∗ wordPointsTo (pOfile pa fd) 8 (DFrac.own 1) v)
+  else ofileSlot γ γd pa fd v
+
+/-- `p->ofile` with the payloads of `D` on loan (ProcInv.v's
+`proc_ofiles_owe`). -/
+def procOfilesOwe (γ : FileNames) (γd : Nat → GName) (pa : BitVec 64) (fs : List (BitVec 64))
+    (D : List Nat) : IProp GF := iprop%
+  ⌜fs.length = NOFILE⌝ ∗ [∗list] fd ↦ v ∈ fs, ofileLentOrSlot γ γd pa D fd v
+
+/-- No deficit: the array itself. -/
+def procOfiles (γ : FileNames) (γd : Nat → GName) (pa : BitVec 64) (fs : List (BitVec 64)) : IProp GF :=
+  procOfilesOwe γ γd pa fs []
+
+theorem ofileLentOrSlot_in (γ : FileNames) (γd : Nat → GName) (pa : BitVec 64) (D : List Nat) (fd : Nat)
+    (v : BitVec 64) (h : fd ∈ D) :
+    ofileLentOrSlot (GF := GF) γ γd pa D fd v = iprop(⌜v ≠ 0#64⌝ ∗ wordPointsTo (pOfile pa fd) 8 (DFrac.own 1) v) := by
+  unfold ofileLentOrSlot; rw [if_pos h]
+
+theorem ofileLentOrSlot_out (γ : FileNames) (γd : Nat → GName) (pa : BitVec 64) (D : List Nat) (fd : Nat)
+    (v : BitVec 64) (h : fd ∉ D) :
+    ofileLentOrSlot (GF := GF) γ γd pa D fd v = ofileSlot γ γd pa fd v := by
+  unfold ofileLentOrSlot; rw [if_neg h]
+
+theorem ofileLentOrSlot_congr (γ : FileNames) (γd : Nat → GName) (pa : BitVec 64) (D D' : List Nat) (fd : Nat)
+    (v : BitVec 64) (h : fd ∈ D ↔ fd ∈ D') :
+    ofileLentOrSlot (GF := GF) γ γd pa D fd v ⊢ ofileLentOrSlot γ γd pa D' fd v := by
+  unfold ofileLentOrSlot
+  by_cases hd : fd ∈ D
+  · rw [if_pos hd, if_pos (h.1 hd)]
+  · rw [if_neg hd, if_neg (fun h' => hd (h.2 h'))]
+
+theorem procOfilesOwe_len (γ : FileNames) (γd : Nat → GName) (pa : BitVec 64) (fs : List (BitVec 64))
+    (D : List Nat) :
+    procOfilesOwe (GF := GF) γ γd pa fs D ⊢ ⌜fs.length = NOFILE⌝ ∗ procOfilesOwe γ γd pa fs D := by
+  unfold procOfilesOwe
+  iintro ⟨%h, H⟩
+  iframe H
+  isplitl [] <;> ipureintro <;> exact h
+
+/-- The accessor: slot `fd` out, a new value back in under a deficit that
+agrees away from `fd` (ProcInv.v's `proc_ofiles_owe_acc`). -/
+theorem procOfilesOwe_acc (γ : FileNames) (γd : Nat → GName) (pa : BitVec 64) (fs : List (BitVec 64))
+    (D D' : List Nat) (fd : Nat) (v : BitVec 64) (hfd : fs[fd]? = some v)
+    (hag : ∀ j, j ≠ fd → (j ∈ D ↔ j ∈ D')) :
+    procOfilesOwe (GF := GF) γ γd pa fs D ⊢
+      ofileLentOrSlot γ γd pa D fd v ∗
+      (∀ v', ofileLentOrSlot γ γd pa D' fd v' -∗ procOfilesOwe γ γd pa (fs.set fd v') D') := by
+  unfold procOfilesOwe
+  iintro ⟨%hlen, H⟩
+  icases bigSepL_set_acc_congr (fun (j : Nat) (w : BitVec 64) => ofileLentOrSlot (GF := GF) γ γd pa D j w)
+      (fun (j : Nat) (w : BitVec 64) => ofileLentOrSlot (GF := GF) γ γd pa D' j w) fs fd v hfd
+      (fun j w hj => ofileLentOrSlot_congr γ γd pa D D' j w (hag j hj)) $$ H with ⟨Hi, Hw⟩
+  iframe Hi
+  iintro %v' Hv
+  isplitl []
+  · ipureintro; rw [List.length_set]; exact hlen
+  · iapply Hw $$ %v' Hv
+
+/-- Read a cell (any deficit), and put it back unchanged. -/
+theorem procOfilesOwe_read (γ : FileNames) (γd : Nat → GName) (pa : BitVec 64) (fs : List (BitVec 64))
+    (D : List Nat) (fd : Nat) (v : BitVec 64) (hfd : fs[fd]? = some v) :
+    procOfilesOwe (GF := GF) γ γd pa fs D ⊢
+      wordPointsTo (pOfile pa fd) 8 (DFrac.own 1) v ∗
+      (wordPointsTo (pOfile pa fd) 8 (DFrac.own 1) v -∗ procOfilesOwe γ γd pa fs D) := by
+  iintro H
+  icases procOfilesOwe_acc γ γd pa fs D D fd v hfd (fun _ _ => Iff.rfl) $$ H with ⟨Hs, Hw⟩
+  have hset : fs.set fd v = fs := by
+    obtain ⟨hlt, he⟩ := List.getElem?_eq_some_iff.mp hfd
+    rw [← he]; exact List.set_getElem_self hlt
+  by_cases hd : fd ∈ D
+  · ihave Hs := (show ofileLentOrSlot (GF := GF) γ γd pa D fd v ⊢
+        ⌜v ≠ 0#64⌝ ∗ wordPointsTo (pOfile pa fd) 8 (DFrac.own 1) v from by
+      rw [ofileLentOrSlot_in γ γd pa D fd v hd]) $$ Hs
+    icases Hs with ⟨%hnz, Hc⟩
+    iframe Hc
+    iintro Hc
+    iapply (show procOfilesOwe (GF := GF) γ γd pa (fs.set fd v) D ⊢ procOfilesOwe γ γd pa fs D from by
+      rw [hset])
+    iapply Hw $$ %v [Hc]
+    rw [ofileLentOrSlot_in γ γd pa D fd v hd]
+    iframe Hc; ipureintro; exact hnz
+  · ihave Hs := (show ofileLentOrSlot (GF := GF) γ γd pa D fd v ⊢ ofileSlot γ γd pa fd v from by
+      rw [ofileLentOrSlot_out γ γd pa D fd v hd]) $$ Hs
+    ihave Hs := (show ofileSlot (GF := GF) γ γd pa fd v ⊢
+        wordPointsTo (pOfile pa fd) 8 (DFrac.own 1) v ∗
+        ((⌜v = 0#64⌝ ∗ fdSlot γ ∗ fdStAuth γd fd .closed) ∨
+         (∃ (k : Nat) (q : Qp) (st : FdState), ⌜v = fnode k ∧ k < NFILE ∧ st ≠ .closed⌝ ∗
+            fileRef γ k q st ∗ fdStAuth γd fd st)) from by unfold ofileSlot; iintro H; iexact H) $$ Hs
+    icases Hs with ⟨Hc, Hor⟩
+    iframe Hc
+    iintro Hc
+    iapply (show procOfilesOwe (GF := GF) γ γd pa (fs.set fd v) D ⊢ procOfilesOwe γ γd pa fs D from by
+      rw [hset])
+    iapply Hw $$ %v [Hc Hor]
+    rw [ofileLentOrSlot_out γ γd pa D fd v hd]
+    unfold ofileSlot
+    iframe Hc Hor
+
+/-- LEND: a non-null descriptor not on loan gives up its reference and
+authority; the deficit grows by it (ProcInv.v's `proc_ofiles_lend`). -/
+theorem procOfilesOwe_lend (γ : FileNames) (γd : Nat → GName) (pa : BitVec 64) (fs : List (BitVec 64))
+    (D : List Nat) (fd : Nat) (v : BitVec 64) (hnin : fd ∉ D) (hfd : fs[fd]? = some v) (hnz : v ≠ 0#64) :
+    procOfilesOwe (GF := GF) γ γd pa fs D ⊢
+      ∃ (k : Nat) (q : Qp) (st : FdState), ⌜v = fnode k ∧ k < NFILE ∧ st ≠ .closed⌝ ∗
+        fileRef γ k q st ∗ fdStAuth γd fd st ∗ procOfilesOwe γ γd pa fs (fd :: D) := by
+  iintro H
+  icases procOfilesOwe_acc γ γd pa fs D (fd :: D) fd v hfd
+      (fun j hj => ⟨fun h => List.mem_cons_of_mem _ h,
+        fun h => by rcases List.mem_cons.1 h with h | h; exact absurd h hj; exact h⟩) $$ H
+    with ⟨Hs, Hw⟩
+  have hset : fs.set fd v = fs := by
+    obtain ⟨hlt, he⟩ := List.getElem?_eq_some_iff.mp hfd
+    rw [← he]; exact List.set_getElem_self hlt
+  ihave Hs := (show ofileLentOrSlot (GF := GF) γ γd pa D fd v ⊢ ofileSlot γ γd pa fd v from by
+    rw [ofileLentOrSlot_out γ γd pa D fd v hnin]) $$ Hs
+  icases ofileSlot_nonnull γ γd pa fd v hnz $$ Hs with ⟨%k, %q, %st, %hf, Hc, Hr, Ha⟩
+  iexists k, q, st
+  iframe Hr Ha
+  isplitl []
+  · ipureintro; exact hf
+  iapply (show procOfilesOwe (GF := GF) γ γd pa (fs.set fd v) (fd :: D) ⊢ procOfilesOwe γ γd pa fs (fd :: D) from by
+    rw [hset])
+  iapply Hw $$ %v [Hc]
+  rw [ofileLentOrSlot_in γ γd pa (fd :: D) fd v (List.mem_cons_self)]
+  iframe Hc; ipureintro; exact hnz
+
+/-- REPAY: a reference and its authority settle a descriptor on loan
+(ProcInv.v's `proc_ofiles_repay`). -/
+theorem procOfilesOwe_repay (γ : FileNames) (γd : Nat → GName) (pa : BitVec 64) (fs : List (BitVec 64))
+    (D : List Nat) (fd k : Nat) (q : Qp) (st : FdState) (hnin : fd ∉ D) (hfd : fs[fd]? = some (fnode k))
+    (hk : k < NFILE) (hst : st ≠ .closed) :
+    procOfilesOwe (GF := GF) γ γd pa fs (fd :: D) ∗ fileRef γ k q st ∗ fdStAuth γd fd st ⊢
+      procOfilesOwe γ γd pa fs D := by
+  iintro ⟨H, Hr, Ha⟩
+  icases procOfilesOwe_acc γ γd pa fs (fd :: D) D fd (fnode k) hfd
+      (fun j hj => ⟨fun h => by rcases List.mem_cons.1 h with h | h; exact absurd h hj; exact h,
+        fun h => List.mem_cons_of_mem _ h⟩) $$ H
+    with ⟨Hs, Hw⟩
+  have hset : fs.set fd (fnode k) = fs := by
+    obtain ⟨hlt, he⟩ := List.getElem?_eq_some_iff.mp hfd
+    rw [← he]; exact List.set_getElem_self hlt
+  ihave Hs := (show ofileLentOrSlot (GF := GF) γ γd pa (fd :: D) fd (fnode k) ⊢
+      ⌜fnode k ≠ 0#64⌝ ∗ wordPointsTo (pOfile pa fd) 8 (DFrac.own 1) (fnode k) from by
+    rw [ofileLentOrSlot_in γ γd pa (fd :: D) fd (fnode k) (List.mem_cons_self)]) $$ Hs
+  icases Hs with ⟨-, Hc⟩
+  iapply (show procOfilesOwe (GF := GF) γ γd pa (fs.set fd (fnode k)) D ⊢ procOfilesOwe γ γd pa fs D from by
+    rw [hset])
+  iapply Hw $$ %(fnode k) [Hc Hr Ha]
+  rw [ofileLentOrSlot_out γ γd pa D fd (fnode k) hnin]
+  iapply ofileSlot_file γ γd pa fd k q st hk hst
+  iframe Hc Hr Ha
+
+/-- INSTALL (fdalloc's arm): a null descriptor not on loan takes a pointer;
+its unit and closed authority come out and it joins the deficit. -/
+theorem procOfilesOwe_install (γ : FileNames) (γd : Nat → GName) (pa : BitVec 64) (fs : List (BitVec 64))
+    (D : List Nat) (fd : Nat) (v' : BitVec 64) (hfd : fs[fd]? = some 0#64) (hnz : v' ≠ 0#64) :
+    procOfilesOwe (GF := GF) γ γd pa fs D ⊢
+      ⌜fd ∉ D⌝ ∗ wordPointsTo (pOfile pa fd) 8 (DFrac.own 1) 0#64 ∗ fdSlot γ ∗ fdStAuth γd fd .closed ∗
+      (wordPointsTo (pOfile pa fd) 8 (DFrac.own 1) v' -∗ procOfilesOwe γ γd pa (fs.set fd v') (fd :: D)) := by
+  iintro H
+  icases procOfilesOwe_acc γ γd pa fs D (fd :: D) fd 0#64 hfd
+      (fun j hj => ⟨fun h => List.mem_cons_of_mem _ h,
+        fun h => by rcases List.mem_cons.1 h with h | h; exact absurd h hj; exact h⟩) $$ H
+    with ⟨Hs, Hw⟩
+  by_cases hd : fd ∈ D
+  · ihave Hs := (show ofileLentOrSlot (GF := GF) γ γd pa D fd 0#64 ⊢
+        ⌜(0#64 : BitVec 64) ≠ 0#64⌝ ∗ wordPointsTo (pOfile pa fd) 8 (DFrac.own 1) 0#64 from by
+      rw [ofileLentOrSlot_in γ γd pa D fd 0#64 hd]) $$ Hs
+    icases Hs with ⟨%hz, -⟩
+    exact absurd rfl hz
+  · ihave Hs := (show ofileLentOrSlot (GF := GF) γ γd pa D fd 0#64 ⊢ ofileSlot γ γd pa fd 0#64 from by
+      rw [ofileLentOrSlot_out γ γd pa D fd 0#64 hd]) $$ Hs
+    icases ofileSlot_null γ γd pa fd $$ Hs with ⟨Hc, Hfd, Ha⟩
+    iframe Hc Hfd Ha
+    isplitl []
+    · ipureintro; exact hd
+    iintro Hc
+    iapply Hw $$ %v' [Hc]
+    rw [ofileLentOrSlot_in γ γd pa (fd :: D) fd v' (List.mem_cons_self)]
+    iframe Hc; ipureintro; exact hnz
+
+/-! ## The block, split at the fd table -/
+
+/-- `procFieldsNoctx` minus the descriptor array. -/
+def procFieldsNoOfile (pa : BitVec 64) (dq : DFrac) (V : ProcPriv) : IProp GF := iprop%
+  wordPointsTo (pKstack pa) 8 dq V.kstack ∗
+  wordPointsTo (pSz pa) 8 dq V.sz ∗
+  wordPointsTo (pPagetable pa) 8 dq V.pagetable ∗
+  wordPointsTo (pTrapframe pa) 8 dq V.trapframe ∗
+  wordPointsTo (pCwd pa) 8 dq V.cwd ∗
+  pnameCells pa dq V.name
+
+/-- `procPrivNoctxAt` minus the descriptor array (ProcInv.v's `proc_priv_core`). -/
+def procPrivCoreNoctxAt (ξ : CtxId) (pa : BitVec 64) (pid : BitVec 32) (V : ProcPriv)
+    (M : Nat → List (BitVec 8)) : IProp GF := iprop%
+  ⌜V.sz.toNat ≤ uvmMaxsz ∧ umBelow V.sz V.upt ∧
+    V.pagetable = pageAddr V.upt.root ∧ V.trapframe = pageAddr V.upt.tfp⌝ ∗
+  @wordPointsTo hlc GF _ ⟨ξ, KTier.kpt⟩ (pPid pa) 4 pidPriv pid ∗
+  @procFieldsNoOfile hlc GF _ ⟨ξ, KTier.kpt⟩ pa (DFrac.own 1) V ∗
+  @procPtAt hlc GF _ ⟨ξ, KTier.kpt⟩ V.upt M ∗
+  @tfPageAt hlc GF _ ⟨ξ, KTier.kpt⟩ V.upt.tfp V.tf
+
+theorem procPrivNoctxAt_split (ξ : CtxId) (pa : BitVec 64) (pid : BitVec 32) (V : ProcPriv)
+    (M : Nat → List (BitVec 8)) :
+    procPrivNoctxAt (GF := GF) ξ pa pid V M ⊣⊢
+      procPrivCoreNoctxAt ξ pa pid V M ∗ @ofileCells hlc GF _ ⟨ξ, KTier.kpt⟩ pa (DFrac.own 1) V.ofile := by
+  unfold procPrivNoctxAt procPrivCoreNoctxAt procFieldsNoctx procFieldsNoOfile
+  constructor
+  · iintro ⟨%h, Hpid, ⟨Hk, Hs, Hpg, Htf, Hof, Hcwd, Hnm⟩, Hpt, Htfp⟩
+    iframe Hpid Hk Hs Hpg Htf Hof Hcwd Hnm Hpt Htfp
+    ipureintro; exact h
+  · iintro ⟨⟨%h, Hpid, ⟨Hk, Hs, Hpg, Htf, Hcwd, Hnm⟩, Hpt, Htfp⟩, Hof⟩
+    iframe Hpid Hk Hs Hpg Htf Hof Hcwd Hnm Hpt Htfp
+    ipureintro; exact h
+
+/-- The core does not mention the array, so it survives any store into it. -/
+theorem procPrivCoreNoctxAt_ofile (ξ : CtxId) (pa : BitVec 64) (pid : BitVec 32) (V : ProcPriv)
+    (M : Nat → List (BitVec 8)) (fs : List (BitVec 64)) :
+    procPrivCoreNoctxAt (GF := GF) ξ pa pid V M = procPrivCoreNoctxAt ξ pa pid { V with ofile := fs } M := rfl
+
+/-- **The fd-aware private block** (ProcInv.v's `proc_priv`): the core at
+the ambient context, and the array with every descriptor's payload. -/
+def procPrivFd (γ : FileNames) (γd : Nat → GName) (pa : BitVec 64) (pid : BitVec 32) (V : ProcPriv)
+    (M : Nat → List (BitVec 8)) : IProp GF := iprop%
+  procPrivCoreNoctxAt curCtx pa pid V M ∗ procOfiles γ γd pa V.ofile
+
+theorem procPrivFd_split (γ : FileNames) (γd : Nat → GName) (pa : BitVec 64) (pid : BitVec 32) (V : ProcPriv)
+    (M : Nat → List (BitVec 8)) :
+    procPrivFd (GF := GF) γ γd pa pid V M ⊣⊢ procPrivCoreNoctxAt curCtx pa pid V M ∗ procOfilesOwe γ γd pa V.ofile [] :=
+  .rfl
+
+end
+
+end Xv6

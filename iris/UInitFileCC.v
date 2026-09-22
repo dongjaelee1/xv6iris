@@ -79,6 +79,8 @@ Require Import FileLinkInst.
 Require Import FileReadInst.       (* [file_read_leaf_holds_at]: the read leaf at the index *)
 Require Import UShRound.           (* the round, its families and their laws *)
 Require Import UInitFileCons.      (* the claim's laws at /init *)
+Require Import UInitConsFile.      (* the console's two open leaves at the file claim *)
+Require Import AppFileCons.        (* [file_cons_never_law] *)
 Require Import UkShRedirBody.      (* [ush_line_file]: the era's three line shapes *)
 Local Open Scope Z_scope.
 
@@ -277,6 +279,94 @@ Section FileInitCC.
         as %<-.
       iDestruct (inp_lb_agree v I I' ltac:(congruence) with "Hi Hi'") as %<-.
       iApply (Hdone I with "Hc Hd").
+  Qed.
+
+
+  (* ===================================================================== *)
+  (*  THE CONSOLE'S TWO OPEN LEAVES, out of /init's console credential      *)
+  (*  ([UInitPipe.pipe_cons_in_of_Cns] at the file claim).                  *)
+  (* ===================================================================== *)
+  Lemma file_cons_in_of_Cns (HR : riscvGS Σ) (GEN : GenId)
+      `{HBs : !bioslotG Σ, HFd : !fdslotG Σ, HIr : !irefslotG Σ,
+        HPav : !pavG Σ, HWc : !wchG Σ, HF : !fileG Σ}
+      (g : file_gn) (r : file_names)
+      (Heq : @file_app Σ HF = MkAppcfg file_names (file_pred (fgn_cl g)) r) :
+    app_inv fsc_fs -∗ UInitCons.init_cons_cred (file_taint (fgn_cl g)) (fn_cons r) -∗
+    (□ (∀ N : uk_names Σ,
+          UkSh.ush_open_console_leaf (PS := uprogSG_free) N (file_taint (fgn_cl g)))
+     ∨ (□ (∀ N : uk_names Σ,
+             UkSh.ush_open_absent_leaf (PS := uprogSG_free) N
+               (file_taint (fgn_cl g)) (cons_never (fn_cons r)))
+        ∗ cons_never (fn_cons r))
+     ∨ file_taint (fgn_cl g)).
+  Proof using .
+    iIntros "#Hinv #Hc". rewrite /UInitCons.init_cons_cred.
+    iDestruct "Hc" as "[#Hn | [[%i #Hm] | #HT]]".
+    - iRight. iLeft. iSplitR; [ | iExact "Hn" ].
+      iApply (UInitConsFile.sh_cons_absent_file g r (cons_never (fn_cons r))
+                ltac:(apply _) ltac:(apply _) Heq with "[] Hinv").
+      rewrite /UShConsK.sh_cons_never_law. rewrite Heq.
+      cbn [AppCfg.app_pred AppCfg.app_run AppCfg.app_names].
+      iApply (AppFileCons.file_cons_never_law (fgn_cl g) r).
+    - iLeft.
+      iApply (UInitConsFile.sh_cons_console_file_of_leg g r i Heq
+                with "[] Hm Hinv").
+      iApply UInitConsFile.file_cons_create_leg_holds.
+    - iRight. iRight. iExact "HT".
+  Qed.
+
+  (* ===================================================================== *)
+  (*  THE CONSOLE SUPPLY OUT OF sh's SLOT ([UInitPipe.pipe_cons_sup_of_sh_   *)
+  (*  slot] at the file era's five readings and its credential).            *)
+  (* ===================================================================== *)
+  (* SEALED, as [UInitPipe.v:444] / [UInitSh.v:139]: with the discipline and
+     the line constructor VARIABLES, a [Persistent]/[IntoWand] search on
+     [sh_pay_at] descends into [ush_rest_l_at]'s wand tower and does not
+     return. *)
+  #[local] Typeclasses Opaque UInitSh.sh_pay_at.
+  #[local] Typeclasses Opaque UkSh.ush_rest_l_at.
+
+  Lemma file_cons_sup_of_sh_slot (HR : riscvGS Σ) (GEN : GenId)
+      `{HBs : !bioslotG Σ, HFd : !fdslotG Σ, HIr : !irefslotG Σ,
+        HPav : !pavG Σ, HWc : !wchG Σ, HF : !fileG Σ}
+      (g : file_gn) (r : file_names) (s0 : fstate)
+      (Heq : @file_app Σ HF = MkAppcfg file_names (file_pred (fgn_cl g)) r)
+      (Hcons : @riscv_cons_res Σ (@riscv_fixedGS Σ HR) = fecl g)
+      (Htag : @riscv_rx_tag Σ (@riscv_fixedGS Σ HR) = FileOut.ftag g)
+      (st : fdstate) (n0 : nat) :
+    (forall k : Z, free_num k -> @psok Σ uprogSG_free k) ->
+    8 * Z.of_nat (2 + (8 + (16 + (UkSh.ush_Dbody + n0)))) <= 0xFE0 ->
+    st = FdOpen true true (FdDevice ConsoleInv.CONSOLE) ->
+    (⊢ FileLinks.file_links g) ->
+    udep (PS := uprogSG_free) -∗
+    □ (file_taint (fgn_cl g) -∗ UkSh.sh_deps (PS := uprogSG_free)) -∗
+    UShKernel.sh_prompt_law (PS := uprogSG_free) (UShRound.Wcf g r s0) -∗
+    UInitSh.init_sh_slot (file_taint (fgn_cl g))
+      (UInitSh.sh_pay_at UkShRedirBody.ush_line_file (file_taint (fgn_cl g))
+         (file_cc HR GEN g r s0) UInitSh.sh_Rsh n0) -∗
+    UkInit.init_cons_sup fsc_cons (file_taint (fgn_cl g))
+      (UInitCons.init_cons_cred (file_taint (fgn_cl g)) (fn_cons r)) st
+      (file_cc HR GEN g r s0).
+  Proof using .
+    intros Hpsok_free Hn0 Hst Hlkp.
+    iIntros "#Hdep #Hdp #Hplaw #Hcore". rewrite /UkInit.init_cons_sup. iSplit.
+    - iIntros "!> #Hcns".
+      iDestruct "Hcore" as "#Hcore'".
+      iApply (UInitSh.init_exec_sup_of_sh_slot_at FileDisc.disc_input_f
+                (proj1 (FileReadInst.file_gets_holds))
+                (proj1 (proj2 (FileReadInst.file_gets_holds)))
+                UkShRedirBody.ush_line_file
+                (proj2 (proj2 (FileReadInst.file_gets_holds)))
+                (file_taint (fgn_cl g)) fsc_cons st (cons_never (fn_cons r))
+                (file_cc HR GEN g r s0) UInitSh.sh_Rsh n0
+                Hpsok_free Hn0 Hst
+                (file_cc_holds HR GEN g r s0 Heq Hcons Htag Hlkp)
+                with "Hdep Hdp Hplaw [] Hcore'").
+      iApply (file_cons_in_of_Cns HR GEN g r Heq with "[] Hcns").
+      iDestruct "Hcore'" as "(#Hinv & _)". iExact "Hinv".
+    - iIntros "!> #HT".
+      iApply (UInitCons.init_cons_cred_of_taint (file_taint (fgn_cl g)) (fn_cons r)
+                with "HT").
   Qed.
 
 End FileInitCC.

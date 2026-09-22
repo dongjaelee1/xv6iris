@@ -117,4 +117,38 @@ structure RELEASE_CANCEL : Prop where
     hrefuteCore hrefuteHalf hsie hnoff hK reen hreen hon,
     wp_release_cancel_body (hlc := hlc) (GF := GF) cpu k γ s R D Out hrefuteCore hrefuteHalf hsie hnoff hK reen hreen hon
 
+/-- **The self-refuting NON-freeing form of `release`.**  Like
+`wp_release_gen_body`, but instead of a separate credential `Tc` refuting the
+dead branch `D`, it rules that branch out with the HELD lock token it already
+carries: the holding check and the owner-word clear use `hrefuteCore` over the
+held `lockedCore`, and the word clear -- which closes NORMALLY, depositing the
+payload `R curCtx` and freeing the lock without reclaiming its words -- uses
+`hrefuteHalf` over the held some-state lock half.  The caller keeps nothing
+special.  For a releaser that spent its reference into the deposited payload
+(e.g. `pipeclose`'s non-freeing arm), so it has no `Tc` but still holds the
+lock.  This is the exact analogue of `wp_release_cancel_body` that closes
+normally instead of destroying. -/
+def wp_release_refute_body {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF] [CurCtx]
+    (cpu : CPU) (k : KCtx) (γ : GName) (s : String) (R : CtxId → IProp GF) [CtxMorph R]
+    (D : IProp GF) [Timeless D]
+    (hrefuteCore : ⊢ lockedCore γ cpu -∗ D -∗ (False : IProp GF))
+    (hrefuteHalf : ∀ B : Nat, ⊢ lockHalf γ (some (cpu, false)) B -∗ D -∗ (False : IProp GF))
+    (hsie : k.sie = false)
+    (hnoff : 1 ≤ k.noff) (hK : 10 ≤ k.avail)
+    (reen : Bool) (hreen : reen = (decide (k.noff = 1) && k.intena))
+    (hon : reen = true → k.tier = .kpt ∧ trapRes true + 6 ≤ k.avail) : Prop :=
+  kctx cpu k ∗ pcIs cpu releaseAddr ∗ lockOpenable γ (k.regs 10#5) s R D ∗
+  locked γ cpu ∗ R curCtx ∗ popArm cpu k reen ∗
+  wpNext (k.popExit reen).sie k.proc cpu (fun cpu' => iprop(∀ R' : RegMap,
+    kctx cpu' (((k.popExit reen).withRegs R').withLocks (k.locks.filter (fun x => x ≠ s))) -∗
+    pcIs cpu' (jumpPc (k.regs 1#5)) -∗ ⌜calleeSaved k.regs R'⌝ -∗ wpLoop cpu'))
+  ⊢ wpLoop (GF := GF) cpu
+
+/-- The self-refuting non-freeing interface of `release`. -/
+structure RELEASE_REFUTE : Prop where
+  wp_release_refute : ∀ {hlc : HasLC} {GF : BundledGFunctors} [MachGS hlc GF] [CurCtx] (cpu : CPU) (k : KCtx)
+    (γ : GName) (s : String) (R : CtxId → IProp GF) [CtxMorph R] (D : IProp GF) [Timeless D]
+    hrefuteCore hrefuteHalf hsie hnoff hK reen hreen hon,
+    wp_release_refute_body (hlc := hlc) (GF := GF) cpu k γ s R D hrefuteCore hrefuteHalf hsie hnoff hK reen hreen hon
+
 end Xv6

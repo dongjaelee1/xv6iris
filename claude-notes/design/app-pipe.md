@@ -1557,6 +1557,53 @@ the round: `pipe_round_answers`'s `S1 ≠ S2` has its supplier, the split,
 the instantiation of `wp_kshm_child_pipe_paid_line_at`,
 `sh_pipe_child_law`, `sh_pipe_child_law_all`, `pipe_adequacy_pipeΣ_final`.
 
+### 4.3z RULED (2026-09-22, after SH-PIPE-ROUND-11 part 1): the child law's Prop carries the interface equation; cat's entry chain is generic in the program instance; the taint branch's antecedent
+
+ROUND-11 landed the freshness relay (`pipe_round_answers`'s `S1 ≠ S2`
+has its supplier), the round's leaves and `UShPipeLaw` (the pure bridge
+`pline_at I = LPipe ws`, the family at pre-allocated cursors, the four
+payload conversions), and stopped at three walls:
+
+1. **`UInitPipe.sh_pipe_child_law_all` as stated is unprovable**: it
+   quantifies an arbitrary `riscvGS Σ` with no record equation, while
+   every console step of the round takes `Hcons : riscv_cons_res
+   (riscv_fixedGS HR) = pecl c`.  RULED: the Prop takes
+   `riscvF_app_iface (riscv_fixedGS HR) = pipe_ifc c` as its one
+   hypothesis; `pipe_Hinit_boot` passes the `Hiface` it already has and
+   derives `Hcons`/`Htag`/`Hkill` from (`UInitPipe.v:690–697`).  Two lines.
+   PIPE-CC's "no record equation" is struck.
+2. **cat's paid entry chain cannot be entered by any application**:
+   `UShCat.cat_entry_run`, `UShCatPay.cat_image_entry_1w`,
+   `sh_exec_sup_cat_wq_holds_at`, `wp_kshr_exec_cat_paid` name `udep` in
+   files binding no `uprogSG`, so it elaborates at the ambient
+   `uprogSG_gen`, whose only `udep` producer is `app_sup` — the taint, for
+   this claim.  echo's `ep_image_entry` is generic (`Context `{PS :
+   uprogSG Σ}` in `UEchoPipe.v`, as `UkShPipe.v`) and the round enters it
+   at `uprogSG_free`, where `udep_free` is closed.  Pinning cat's chain at
+   `uprogSG_free` WEDGES the proofmode (`pcat_pay_at`'s body names
+   `kcat_round` at `UCatPipe`'s ambient instance).  RULED: cat's chain
+   becomes GENERIC in the program instance the way echo's is — `Context
+   `{PS : uprogSG Σ}` in the sections of `UShCat.v` (upstream's; the
+   geometry never reads the instance), `UShCatPay.v`, `UCatPipe.v`, and
+   `UCatKernel.v`'s cat entry (§7) — with every landed consumer
+   instantiating explicitly (the file era's at its ambient instance,
+   byte-identical after `(PS := _)`), and the round instantiating at
+   `uprogSG_free`.  A section variable is not a pinned constant: it is
+   what stops the resolution search.  (The FILE application's
+   `sh_round_holds_file` is `Admitted` upstream and never noticed; note
+   it for upstream.)
+3. **The credential's taint arm puts a tainted walk on the bill**:
+   `pipe_fork_panic_law` needs `inp_lb v I`, whose only source is the
+   lend's reading `(∃ v, era_pin ∗ inp_lb v I) ∨ T`, so the assembly
+   splits on the taint at its first step.  RULED: `sh_pipe_child_law`
+   takes the two further antecedents `UShEcho.sh_echo_slot T` and `□ (T
+   -∗ UkSh.sh_deps)` (four in all with the /cat pin and the era pin;
+   `udep` is not needed — `udep_free` is closed), and
+   `sh_round_holds_pipe` supplies them (the echo era's loop has both).
+
+Lane **SH-PIPE-ROUND-12**: 1, 2, 3, then the assembly per ROUND-11's
+instantiation table, `sh_pipe_child_law_all`, `pipe_adequacy_pipeΣ_final`.
+
 ## 5. Programs
 
 ### 5.1 sh: the PIPE arm (lanes SH-PARSE-PIPE, SH-PIPE)

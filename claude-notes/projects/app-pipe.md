@@ -460,6 +460,10 @@ arm is the theorem's one named premise (`pipe_both_law`).
   DISPATCHER, not `ProcInv`; but the ROUND still has no supplier —
   six sh-tier re-spellings of fork's answer drop the conjunct
   (Findings `### PIPE-GEN`), which is the next purchase.
+- [ ] **SH-PIPE-ROUND-12** (design §4.3z: the Prop's interface equation;
+  cat's entry chain generic in the program instance; the taint branch's
+  antecedents; the assembly; `pipe_adequacy_pipeΣ_final`).  Brief
+  `brief-sh-pipe-round-12.md`.
 ## Findings (append as lanes report)## Findings (append as lanes report)## Findings (append as lanes report)
 
 ### PQ-FLAG-2 (2026-09-18) — the write link's second premise, paid by the CODE

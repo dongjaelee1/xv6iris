@@ -10674,11 +10674,13 @@ bill is in (5)'s table and every leaf it names is landed.
 
 ### SH-PIPE-ROUND-12 (2026-09-22, design §4.3z) — ALL THREE WALLS OF ROUND-11 ARE DOWN and the taint branch is ONE LAW, not a second walk; but the ASSEMBLY stops at TWO premises neither the design nor ROUND-11's instantiation table counted, and the second of them is NOT in this lane's files: `UkRun`'s CLOSE DEPOSIT for a PIPE ROW has no producer but the taint
 
-Branch `app-pipe/sh-pipe-round-12` off main (`8f6d6f39f`).  Eight
+Branch `app-pipe/sh-pipe-round-12` off main (`8f6d6f39f`).  Eleven proof
 commits: `edab7a94b` (item 1), `ddd0b71a0` (item 2), `6510cca1c`
 (item 3), `a9ae65f9f` (the `usz` wall, mechanised), `ce0bdf5a4` (its
 repair), `ab7843054` (the taint arm), `214023167` (the prologue and the
-split), `6d63…`/`pl_pipe_call` (the registrar and the second wall).
+split), `51891f13c` (the two diagnostic laws), `7f8299733` (the
+registrar and the second wall), `7f922f4b8` (the LEFT CHILD),
+`31c3242a9` (the PARENT).
 **Whole-tree `ec2-lane.sh round12 build` RC=0 at every commit**; no
 `Admitted`, no `Axiom`, `Proof using` on every new result.
 

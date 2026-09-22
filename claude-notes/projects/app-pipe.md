@@ -10847,7 +10847,15 @@ the two exec supplies at their continuations
 that premise is now at the CHILD's instance, which item 2 made
 possible), the parent at `pipe_round_parent`, and then
 `sh_pipe_child_law` / `sh_pipe_child_law_all` /
-`pipe_adequacy_pipeΣ_final`.  Every leaf those need is landed.
+`pipe_adequacy_pipeΣ_final`.  Every leaf ROUND-11's table names for them
+is landed — BUT this lane found TWO uncounted premises in the FIRST half
+of that table (the walk's `usz` and the registrar's close law), so the
+second half should be assumed to hold more, and the next lane should
+price each continuation at the STATEMENT before proving it.  A useful
+intermediate target that this lane did NOT reach:
+`udepw_law (PS := uprogSG_free) 21 -∗ UShPipeRound.sh_pipe_child_law g`
+— the whole round with the one wall of (6) as its single named premise
+(`udepw_law` is persistent, so the `□` of the law survives it).
 
 **THE ONE THING THE NEXT LANE NEEDS FIRST.**  The owner's word on (6):
 either the row-aware close deposit in `UkRun`/`UkRunSys` (two files, two

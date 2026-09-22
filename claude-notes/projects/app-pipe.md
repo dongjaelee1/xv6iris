@@ -10885,6 +10885,24 @@ statement and with its repair already checked against the proof:
   the write arm intros `%Hret %Hnb0` — but that only helps the non-taint
   arm and is not what is missing.)
 
+AND THE RIGHT CHILD IS SHORT A LEAF NOBODY HAS WRITTEN:
+`UkShCat.cat_argv_bytes (length (wl_body ws) + 3) (length (wl_body ws) +
+3 + 3) (UkShPipeRound.ushq_cut (wl_toks ws) len f ge)` — the `" | cat"`
+tail's three bytes read off the PIPELINE CUT, i.e. `pl_echo_argv_bytes`'s
+twin at the RIGHT command.  Nothing in the tree proves it
+(`UkShPipeLex.ushq_cat` is the word; `UkShPipeRound.ushq_cut_ok_right` is
+about the node, not the bytes), and `UkShCat.wp_kshr_exec_cat_at_holds`
+takes it as a premise.  It is the same proof as the left one's — every
+index it looks at is inside the cut's own fold — and it belongs beside
+`pl_echo_argv_bytes` in `UShPipeLaw.v`.
+
+WHAT IS *NOT* A GAP on the right child, checked: `pcat_round_at_g`'s
+`□ (T -∗ UkCatCat.kcat_dg_cr N)` is payable from THIS LANE'S NEW
+antecedent `□ (T -∗ UkSh.sh_deps)` through
+`UkCat.kcat_pay_seq_of_law` (`kcat_dg_cr` is a `kcat_pay_seq` at
+`udepw_law 16`, and `□ Cend` is the payload's own taint arm).  That is
+the second thing §4.3z item 3's antecedent buys.
+
 Beyond it: (the walk's `usz` and the registrar's close law), so the
 second half should be assumed to hold more, and the next lane should
 price each continuation at the STATEMENT before proving it.  A useful

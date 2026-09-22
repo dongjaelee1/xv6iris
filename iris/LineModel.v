@@ -51,6 +51,13 @@ Record lmodel := MkLM {
      round starts in; and the state it leaves *)
   lm_cont : lm_st -> lm_line -> lm_alt -> list (bv 8);
   lm_step : lm_st -> lm_line -> lm_alt -> lm_st;
+  (* which alternatives a line admits (the range condition the stage's
+     choice list is checked against) *)
+  lm_ok : lm_line -> lm_alt -> Prop;
+  (* THE INPUT DISCIPLINE's two readings of a body: a complete body parses
+     to an admissible line; a partial one is body bytes *)
+  lm_body_ok : list (bv 8) -> Prop;
+  lm_body_byte : bv 8 -> Prop;
 }.
 
 Section line_model.
@@ -111,6 +118,106 @@ Section line_model.
 
   Definition lm_pro_pin (ps cs : list nat) (I : list (bv 8)) : Prop :=
     forall q, q < nstarted I -> lm_pro_idx cs q < pro_rounds ps.
+
+  (* ---- the stage's range condition and the input discipline ---- *)
+  Definition lm_alts_ok (I : list (bv 8)) (cs : list nat) : Prop :=
+    Forall2 (fun l c => lm_ok M l (lm_dec M c)) (lm_of M <$> bodies_of I) cs.
+
+  Definition lm_disc_input (I : list (bv 8)) : Prop :=
+    Forall (lm_body_ok M) (bodies_of I)
+    /\ Forall (lm_body_byte M) (rest_of I)
+    /\ S (length (rest_of I)) < line_max.
+
+  (* ---- THE STREAM the writer walks: what is pending after the input so
+          far, and what was due before each byte of it ---- *)
+  Definition lm_pending_at (ps cs : list nat) (s : lm_st M) (I : list (bv 8))
+    : list (bv 8) :=
+    if decide (I = []) then pro_of ps
+    else if decide (rest_of I = [])
+         then lm_cont_at ps cs s (bodies_of I) (nlines I - 1) else [].
+
+  Fixpoint lm_proc_before_from (ps cs : list nat) (s : lm_st M)
+      (pre I : list (bv 8)) : list (bv 8) :=
+    match I with
+    | [] => []
+    | b :: I' => lm_pending_at ps cs s pre
+                 ++ lm_proc_before_from ps cs s (pre ++ [b]) I'
+    end.
+
+  Definition lm_proc_before (ps cs : list nat) (s : lm_st M) (I : list (bv 8))
+    : list (bv 8) := lm_proc_before_from ps cs s [] I.
+
+  Definition lm_proc_stream (ps cs : list nat) (s : lm_st M) (I : list (bv 8))
+    : list (bv 8) :=
+    lm_proc_before ps cs s I ++ lm_pending_at ps cs s I.
+
+  (* ---- THE WRITER'S STAGES, as every console family names them ---- *)
+  Definition lm_wr_pro (ps cs : list nat) (s : lm_st M) (I : list (bv 8))
+      (P : nat) : Prop :=
+    lm_pro_pin ps cs I
+    /\ rest_of I = []
+    /\ nlines I = length cs
+    /\ (I = [] \/ lm_panic M (lm_at cs (nlines I - 1)) = true)
+    /\ ~ pro_done (pro_from (lm_pro_idx cs (nlines I)) ps)
+    /\ P = length (lm_proc_stream ps cs s I).
+
+  Definition lm_wr_blk (ps cs : list nat) (s : lm_st M) (I : list (bv 8))
+      (P : nat) : Prop :=
+    lm_pro_pin ps cs I
+    /\ rest_of I = []
+    /\ nlines I = S (length cs)
+    /\ P = length (lm_proc_before ps cs s I).
+
+  Definition lm_wr_open (ps cs : list nat) (s : lm_st M) (I : list (bv 8))
+      (P : nat) : Prop :=
+    lm_pro_pin ps cs I
+    /\ rest_of I = []
+    /\ nlines I = length cs
+    /\ lm_pro_idx cs (nlines I) < pro_rounds ps
+    /\ P = length (lm_proc_stream ps cs s I).
+
+  Definition lm_wr_owed (ps cs : list nat) (s : lm_st M) (I : list (bv 8))
+      (P : nat) : Prop :=
+    lm_wr_pro ps cs s I P \/ lm_wr_blk ps cs s I P.
+
+  Definition lm_wr_sp (ps cs : list nat) (s : lm_st M) (I : list (bv 8))
+      (P : nat) : Prop :=
+    lm_wr_open ps cs s I (S P)
+    /\ lm_proc_stream ps cs s I !! P = Some (u_prompt !!! 1).
+
+  (* the banner-owed cursor stands after the OPEN round's [j] failed
+     sub-rounds; the pre-bytes are the panic's when a line was typed *)
+  Definition lm_wr_pre (I : list (bv 8)) : list (bv 8) :=
+    if decide (I = []) then [] else alt_panic.
+
+  Definition lm_wr_ban (ps cs : list nat) (s : lm_st M) (I : list (bv 8))
+      (P : nat) : Prop :=
+    lm_pro_pin ps cs I
+    /\ rest_of I = []
+    /\ nlines I = length cs
+    /\ (I = [] \/ lm_panic M (lm_at cs (nlines I - 1)) = true)
+    /\ (exists j : nat,
+          pro_from (lm_pro_idx cs (nlines I)) ps = pro_fail j
+          /\ P = length (lm_proc_before ps cs s I) + length (lm_wr_pre I)
+                 + pro_round * j).
+
+  Definition lm_wr_tail (ps cs : list nat) : Prop :=
+    pro_from (S (lm_pro_idx cs (length cs))) ps = [].
+
+  Definition lm_wr_blk_t ps cs s I P : Prop := lm_wr_blk ps cs s I P /\ lm_wr_tail ps cs.
+  Definition lm_wr_sp_t ps cs s I P : Prop := lm_wr_sp ps cs s I P /\ lm_wr_tail ps cs.
+  Definition lm_wr_open_t ps cs s I P : Prop := lm_wr_open ps cs s I P /\ lm_wr_tail ps cs.
+
+  Definition lm_wr_banp (ps cs : list nat) (s : lm_st M) (I : list (bv 8))
+      (P i : nat) : Prop :=
+    match i with
+    | O => lm_wr_ban ps cs s I P
+    | S _ => exists ps' : list nat, ps = ps' ++ [3] /\ lm_wr_ban ps' cs s I P
+    end.
+
+  (* the choice list of a block with [i] bytes out: the first byte files it *)
+  Definition lm_blkcs (cs : list nat) (a i : nat) : list nat :=
+    match i with O => cs | S _ => cs ++ [a] end.
 
   (* ---- structure ---- *)
   Lemma lm_seq_0 ps cs s bs : lm_seq ps cs s bs 0 = [].

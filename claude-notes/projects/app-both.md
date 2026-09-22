@@ -106,16 +106,29 @@ fixpoints structurally), echo's is not (its panic test is `decide`, the
 model's `bool_decide`), hence an equation.  Nothing imports the two files
 yet.
 
-NEXT in M1: lift the rest of the pure layer over `lmodel` -- the
-alternatives' admissibility (`alts_ok` as `Forall2 (fun l c => lm_ok l
-(lm_dec c))`, a new field `lm_ok`), the writer predicates (`wr_pro`,
-`wr_owed`, `wr_sp`, `wr_open`, `wr_sp_t`, `wr_open_t`, `wr_blk_t`,
-`wr_banp`; `proc_before`/`proc_stream`/`pending_at` need the model's
-continuation only), the input discipline (`disc_input` over a per-model
-body predicate), and then the DETERMINACY theorem `lm_sess_prefix_det`
+SECOND CUT (same day): `lmodel` gained `lm_ok` (admissibility),
+`lm_body_ok`/`lm_body_byte` (the input discipline's two readings);
+`LineModel.v` now has `lm_alts_ok`, `lm_disc_input`, the stream folds
+(`lm_pending_at`, `lm_proc_before_from`, `lm_proc_before`,
+`lm_proc_stream`) and the writer's stages (`lm_wr_pro/blk/open/owed/sp/
+ban/tail/blk_t/sp_t/open_t/banp`, `lm_wr_pre`, `lm_blkcs`).
+`LineModelInst.v` (registered after `PipeOutPure`): `alts_ok`,
+`disc_input_{f,p}`, `pending_at_{f,p}` by conversion; the stream folds by
+induction (the state is a fixpoint PARAMETER: the file's at `option
+fstate`, the pipe's absent, so those fixes do not convert).
+`LineModelWr.v` (after `PipeLinksLine`, since the `wr_*` predicates live
+in the Iris-tier link files): all fifteen file/pipe writer equations,
+the base ones by rewriting the stream equations, the derived ones
+(`owed`, `sp`, `blk_t`, `banp`) through the base ones (`banp`'s S arm by
+`functional_extensionality`, already an axiom of the tree).  Echo's
+writer equations are NOT stated (echo is the pipe's corollary; its
+`decide`-vs-`bool_decide` panic test makes them lemmas, not
+conversions -- state them only if M2 needs the echo instance directly).
+
+NEXT in M1: the DETERMINACY theorem `lm_sess_prefix_det` over the model
 from byte-shape fields (`lm_cont_shape`: every non-panic continuation is
 a `$`-free run then the prompt; the panic's bytes uniform), with the
-pipe's coverage-ending arm as a field (`lm_forkS`) and its guard.  The
-three landed `*_prefix_det` become corollaries through the equations.
-Then `FileOutPure`'s stage-level facts (`pcount_f`, `write_stage_byte_f`,
-…) are the candidates for M3's generic claim.
+pipe's coverage-ending arm as a field (`lm_forkS`) and its guard
+(`PipeDisc.d4_p`); the three landed `*_prefix_det` become corollaries
+through the equations.  Mould: `FileDisc.sessf_prefix_det` (state
+threaded) and `PipeDisc.sessp_prefix_det` (the guard).  Then M2.

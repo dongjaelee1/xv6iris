@@ -1502,7 +1502,6 @@ ExecWords.v
 FileDisc.v
 FileDiscDec.v
 PipeDisc.v
-LineModelInst.v
 PipeUline.v
 PipeDiscDec.v
 LogEntryDefs.v
@@ -1510,6 +1509,7 @@ ConsLog.v
 EchoOutPure.v
 FileOutPure.v
 PipeOutPure.v
+LineModelInst.v
 PipeBothPure.v
 EchoOut.v
 EchoLinks.v
@@ -1693,6 +1693,7 @@ UEchoPipe.v
 UShEchoPipePay.v
 UCatPipe.v
 PipeLinksLine.v
+LineModelWr.v
 PipeBoth.v
 PipeForkGap.v
 PipeLinkInst.v

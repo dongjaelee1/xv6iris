@@ -2018,3 +2018,36 @@ mould line for line.  Everything named exists on `main` unless marked NEW.
    content at boot (`AppFile.dst_content s_deed`; RULING H'), chosen where
    `file_boot` is opened.
 5. Then `FileAssumptions.v` at the closed corollary and `make audit-file-only`.
+
+### Stretch 15, continued: item 4's ONE design point, settled from the landed statements
+
+Conjuncts 1–9 of `file_cc_holds` are mechanical (the names above; 2–4 and 9
+through the family-GENERIC `UShLine.ush_{lease_of,at_of_mid_taint,
+at_of_mid_wb,posb_of_lend}_at`, as the pipe does with its non-uniform
+`pterm_wc` — the `UShLineAtHold` hold forms are not needed there; conjunct 8
+drops `DONE` off `Wbf` and is `Hwbr`).  Conjunct 10 is not: it hands out
+`Wcf I 0`, which CONTAINS THE DEED'S HOLD, from the prologue credential
+`cc_wp n` alone — so `cc_wp` must carry the hold:
+
+    cc_wp  n := UInitDiag.kinit_pro_at FI n ∗ H n,   H n := ∃ I, ⌜length I = n⌝ ∗ DONE I
+    cc_wbn n  = ∃ I, ⌜length I = n⌝ ∗ Wbf I  =  (kinit_ban_at FI n ∗ H n)  up to shape
+    conjunct 10:  file_wp_line (pro → Wcl I 0, `pipe_wp_line`'s twin) ∗ DONE I → Wcf I 0 (left arm)
+
+and the three prologue laws (`UInitDiag.kinit_banner_law_pro_holds_at`,
+`kinit_execfail_law_holds_at`, `kinit_forkfail_law_holds_at`), stated at the
+BARE `kinit_pro_at`/`kinit_ban_at`, must FRAME `H n` through the writer.  The
+writer is `UkInit.kinit_banner_pay stc len f Rt := ustd -∗ ∃ Ch, □ (∀ j, kinit_w1
+… (Ch j) (Ch (S j))) ∗ Ch 0 ∗ (Ch len -∗ ustd ∗ Rt)`, and `UkInit.kinit_w1_frame`
+exists (`:1329`), so NEW `kinit_banner_pay_frame : kinit_banner_pay … Rt -∗ H -∗
+kinit_banner_pay … (Rt ∗ H)` is ten lines (`Ch' j := Ch j ∗ H`).  R6.1's
+measurement that the PROMPT law's hold is a frame is the same fact one law over;
+the fork-failed law's post is `emp`, so its frame is dropped.
+
+TWO INSTANCE FACTS for the assembly: everything is at the INDEXED record
+`file_link_inst_at g s0` with `s0 := dst_content s` for the `s` that
+`file_boot` opens (`UInitFileCons.file_Wbf_at_of_boot` already produces
+`Wbf g r (dst_content s) []`); `UInitFileCons`/`FileReadInst` lemmas at the
+UNINDEXED `file_link_inst g` are bridged by `FileLinksAt`'s pack/unpack
+lemmas.  And `UInitFileCons.v` binds its own `ghost_varG Σ Z` (the binder
+`UShRound` just lost) — if the assembly's applications of its lemmas hang,
+that binder is the first suspect, and the fix is the same deletion.

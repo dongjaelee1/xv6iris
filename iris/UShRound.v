@@ -61,10 +61,8 @@ Require Import IrefSlots.
 Require Import ProcAvail.
 Require Import FileInvDefs.
 Require Import UserFd.
-Require Import UserPerm.
-Require Import UserCwd.
 Require Import UserChildren.
-Require Import UmodeArith UmodeAbi.
+Require Import UmodeAbi.
 Require Import ProcGeom.
 Require Import UexecRet.
 Require Import ExecEntry.
@@ -101,17 +99,12 @@ Require Import UkShRedirBody.            (* [ushs_fd1f], [sh_redir_child_law] *)
 Require Import UkShRedirChild.           (* the redirect child's walk, 0x9c0 to its exits *)
 Require Import UserOff.
 Require Import ElfUser.
-Require Import UserHeap.
 Require Import UkSh.
 Require Import UkShDiag.
 Require Import UkShLoop.
 Require Import UShLexRedir.  (* [ush_line_lexable_redir_holds] -- the
                                 redirect line's lexability, PROVED *)
-Require Import UkShMalloc.
-Require Import UkShParse.
-Require Import UCodeShP.
 Require Import UCodeShK.
-Require Import UkShRedirLine.
 Require Import UkShRedirAns.
 Require Import UkShEcho.
 Require Import UkShFork.

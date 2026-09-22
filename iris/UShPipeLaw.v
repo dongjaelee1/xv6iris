@@ -270,6 +270,74 @@ Proof using .
     exact (wl_cut_end ws f len i w Hw).
 Qed.
 
+(* ===================================================================== *)
+(*  S2d'  ...AND THE RIGHT COMMAND'S (lane SH-PIPE-ROUND-12).             *)
+(*                                                                       *)
+(*  [pl_echo_argv_bytes]'s twin at the ` | cat' tail, which                *)
+(*  [UkShCat.wp_kshr_exec_cat_at_holds] takes and which NOTHING in the     *)
+(*  tree proved: [UkShPipeLex.ushq_cat] is the WORD and                    *)
+(*  [UkShPipeRound.ushq_cut_ok_right] is about the NODE.  Every index it   *)
+(*  looks at sits ABOVE every token of [wl_toks ws] (so the parser's       *)
+(*  nul-fold misses it) and BELOW the cut's own nul (so the outer fold     *)
+(*  misses it too), which makes the cut the LINE there -- and the line's   *)
+(*  bytes at those three indices are [PipeDisc.suf_pipecat]'s last three.  *)
+(* ===================================================================== *)
+Lemma pl_cat_argv_bytes (ws : list (list (bv 8))) (f : nat -> bv 8)
+    (len : nat) :
+  UkShPipeRound.ushq_line_at ws f 0%nat len ->
+  UkShCat.cat_argv_bytes (length (wl_body ws) + 3)%nat
+    (length (wl_body ws) + 3 + 3)%nat
+    (UkShPipeRound.ushq_cut (wl_toks ws) len f
+       (length (wl_body ws) + 3 + 3)%nat).
+Proof using .
+  intros Hline.
+  pose proof Hline as (Hok & Hlen & Hby).
+  pose proof (UkShPipeRound.ushq_line_is_of_at ws f 0%nat len Hline) as Hli.
+  destruct (UkShPipeLex.ush_line_toks_holds_pipe ws UkShPipeLex.ushq_cat f
+              0%nat len Hli) as (Hq & Ht & _ & _ & _).
+  assert (Ef : (fun j : nat => f (0 + j)%nat) = f) by reflexivity.
+  rewrite Ef in Hq, Ht.
+  rewrite UkShPipeLex.ushq_cat_len in Hq.
+  assert (Hlenv : len = (length (wl_body ws) + 7)%nat).
+  { rewrite Hlen /PipeDisc.line_bytes /PipeDisc.line_body -app_assoc
+            !length_app PipeDisc.suf_pipecat_len. cbn [length]. lia. }
+  split_and!.
+  - rewrite UkShCat.cmd_cat_len. reflexivity.
+  - intros j Hj. rewrite UkShCat.cmd_cat_len in Hj.
+    rewrite (UkShPipeRound.ushq_cut_off (wl_toks ws) len f
+               (length (wl_body ws) + 3 + 3)%nat
+               (length (wl_body ws) + 3 + j)%nat ltac:(lia)).
+    rewrite (UkShMain.ushp_nulfold_miss (wl_toks ws)
+               (UkShParseCmd.ushp_ext len f)
+               (length (wl_body ws) + 3 + j)%nat
+               ltac:(intros q t Hqt;
+                     destruct (UkShPipeRound.ushq_args_below len f
+                                 (length (wl_body ws) + 1)%nat
+                                 (length (wl_body ws) + 3 + 3)%nat
+                                 (wl_toks ws) Hq Ht q t Hqt) as [_ Hhi];
+                     lia)).
+    rewrite /UkShParseCmd.ushp_ext
+      (bool_decide_eq_true_2 ((length (wl_body ws) + 3 + j) < len)%nat
+         ltac:(lia)).
+    pose proof (Hby (length (wl_body ws) + 3 + j)%nat ltac:(lia)) as Hfj.
+    rewrite Nat.add_0_l in Hfj. rewrite Hfj.
+    rewrite /PipeDisc.line_bytes /PipeDisc.line_body -app_assoc.
+    rewrite !list_lookup_total_alt.
+    rewrite (lookup_app_r (wl_body ws) (PipeDisc.suf_pipecat ++ [wl_nl])
+               (length (wl_body ws) + 3 + j)%nat ltac:(lia)).
+    replace (length (wl_body ws) + 3 + j - length (wl_body ws))%nat
+      with (3 + j)%nat by lia.
+    rewrite (lookup_app_l PipeDisc.suf_pipecat [wl_nl] (3 + j)%nat
+               ltac:(rewrite PipeDisc.suf_pipecat_len; lia)).
+    rewrite /UkShCat.cmd_cat.
+    destruct j as [| [| [| j]]];
+      [ vm_compute; reflexivity | vm_compute; reflexivity
+      | vm_compute; reflexivity | exfalso; lia ].
+  - rewrite /UkShPipeRound.ushq_cut.
+    cbn [UkShParseCmd.ushp_nulfold snd].
+    rewrite /UkShParseCmd.ushp_setb Nat.eqb_refl. reflexivity.
+Qed.
+
 (* ...and the two one-liners every lemma of the round also asks for *)
 Lemma pboth_line_of_at (I : list (bv 8)) (ws : list (list (bv 8))) :
   PipeLinksLine.pline_at I = PipeDisc.LPipe ws -> pboth_line I.

@@ -63,8 +63,8 @@ NEXT: 4 (INIT-FILE, `file_Hinit_boot`), then the adequacy close.  PROGRESS
 (2026-09-22, branch `app-file/init-file`): `FileReadInst.file_read_inst_at` /
 `file_read_leaf_holds_at` (the read leaf at the indexed record) and
 `iris/UInitFileCC.v` -- `file_cc`, `file_cc_holds` (all ten laws),
-`kinit_banner_pay_frame`, `file_wp_line` -- are .vo-BUILT; left:
-`file_cons_sup_of_sh_slot` (the pipe's twin) and `file_Hinit_boot`'s body
+`kinit_banner_pay_frame`, `file_wp_line`, `file_cons_in_of_Cns`,
+`file_cons_sup_of_sh_slot` -- are .vo-BUILT; left: `file_Hinit_boot`'s body
 (`pipe_Hinit_boot`'s, name by name -- PROGRAM-STREAM.md stretch 15).  NOTE
 (2026-09-22): the lane checkouts under `/shared/xv6iris-3-lanes` are GONE,
 and with them the uncommitted 553-line `UInitFileCC.v` draft; item 4 is

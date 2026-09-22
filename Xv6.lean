@@ -234,6 +234,10 @@ import Xv6.SpecArgfd
 import Xv6.SpecFdalloc
 import Xv6.SpecSysDup
 import Xv6.SpecSysClose
+import Xv6.TicksDefs
+import Xv6.SpecArgaddr
+import Xv6.SpecSysWait
+import Xv6.SpecSysPause
 import Xv6.SpecKfork
 import Xv6.SpecUserinit
 import Xv6.SpecEither
@@ -297,5 +301,9 @@ import Xv6.LinkArgfd
 import Xv6.LinkFdalloc
 import Xv6.LinkSysDup
 import Xv6.LinkSysClose
+import Xv6.ProofArgaddr
+import Xv6.LinkArgaddr
+import Xv6.ProofSysWait
+import Xv6.LinkSysWait
 import Xv6.ProofKfork
 import Xv6.LinkKfork

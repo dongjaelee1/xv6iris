@@ -2092,6 +2092,138 @@ theorem wp_s_sw_zero_release_gen (cpu : CPU) (k : KCtx) (hsie : k.sie = false)
     rw [KCtx.withRegs_self]) $$ Hk
   iapply HK $$ Hk' Hpc %hmem Hcred'
 
+set_option maxHeartbeats 4000000 in
+/-- **The DESTROY word-clear** (the cancellable-lock finisher): like
+`wp_s_sw_zero_release`, but at the free store it DESTROYS the lock invariant
+instead of closing it.  The destroyer surrenders the payload `R` and a lock
+half to the `destroy` licence, which mints the dead certificate `D` (parked
+in the invariant's dead branch, `iright`) and the output `Out`, and walks off
+with the lock's own two words as raw byte histories (for kfree).  The dead
+branch is ruled out at the open by the held `lockedPre` (`hrefute`). -/
+theorem wp_s_sw_zero_release_cancel (cpu : CPU) (k : KCtx) (hsie : k.sie = false)
+    (pc : BitVec 64) (is_rvc : Bool) (imm : BitVec 12) (rs1 : BitVec 5)
+    (γ : GName) (lk : BitVec 64) (s : String) (R : CtxId → IProp GF) [CtxMorph R]
+    (D Out : IProp GF) [Timeless D]
+    (hrefute : ∀ B : Nat, ⊢ lockHalf γ (some (cpu, false)) B -∗ D -∗ (False : IProp GF))
+    (haddr : k.rget cpu rs1 + BitVec.signExtend 64 imm = lk) :
+    instr (GF := GF) pc is_rvc (instruction.STORE (imm, regidx.Regidx 0#5, regidx.Regidx rs1, 4)) ∗
+    kctxL lent cpu k ∗ pcIs cpu pc ∗ lockOpenable γ lk s R D ∗ lockedPre γ cpu ∗ lockCtxHeld ∗ R curCtx ∗
+    (∀ B : Nat, lockHalf γ none B -∗ R curCtx ==∗ D ∗ Out) ∗
+    ▷ wpNext k.sie k.proc cpu (fun cpu' =>
+        iprop(kctxL lent cpu' (k.withLocks (k.locks.filter (fun x => x ≠ s))) -∗
+          pcIs cpu' (pc + instrLen is_rvc) -∗ ⌜s ∈ k.locks⌝ -∗
+          (∃ Hs : Nat → Hist, histBytes lk 4 (fun _ => DFrac.own 1) Hs) -∗
+          (∃ Hs : Nat → Hist, histBytes (lk + 16#64) 8 (fun _ => DFrac.own 1) Hs) -∗
+          Out -∗ wpLoop cpu'))
+    ⊢ wpLoop cpu := by
+  iintro ⟨HI, Hk, Hpc, #Hlk, Hlp, Hheld, HR, Hlic, HΦ⟩
+  icases kctx_wf _ _ $$ Hk with ⟨%hwf, Hk⟩
+  icases lockOpenable_cases γ lk s R D $$ Hlk with ⟨%hok, _⟩
+  have hram : inRam (k.rget cpu rs1 + BitVec.signExtend 64 imm) 4 := by rw [haddr]; exact hok.1
+  have hal : (k.rget cpu rs1 + BitVec.signExtend 64 imm).toNat % 4 = 0 := by rw [haddr]; exact hok.2.1
+  have hwf' : ∀ _ : Unit, ((k.withRegs k.regs).withLocks (k.locks.filter (fun x => x ≠ s))).wf := by
+    intro _
+    obtain ⟨h1, h2, h3, h4, h5⟩ := hwf
+    refine ⟨h1, h2, fun h => by simp [hsie] at h, ?_, h5⟩
+    show (k.locks.filter (fun x => x ≠ s)).length ≤ k.noff
+    exact le_trans (List.length_filter_le _ _) h4
+  have hexec : ∀ c : MConf, SConfAt (GF := GF) curTier c k.root false → c.menvcfg = menvcfgS →
+      execSpecPP (GF := GF) cpu (DFrac.own 1) Privilege.Supervisor c Privilege.Supervisor c
+        (instruction.STORE (imm, regidx.Regidx 0#5, regidx.Regidx rs1, 4)) pc (pc + instrLen is_rvc)
+        (pc + instrLen is_rvc)
+        iprop(transTok cpu curTier k.root ∗ gprFile cpu (tpPin cpu k.regs) ∗ lockSet cpu k.locks ∗
+          (lockOpenable γ lk s R D ∗ lockedPre γ cpu ∗ lockCtxHeld ∗ R curCtx ∗
+            (∀ B : Nat, lockHalf γ none B -∗ R curCtx ==∗ D ∗ Out)))
+        iprop(transTok cpu curTier k.root ∗ ∃ _ : Unit, gprFile cpu (tpPin cpu k.regs) ∗
+          lockSet cpu (k.locks.filter (fun x => x ≠ s)) ∗ (⌜s ∈ k.locks⌝ ∗
+            (∃ Hs : Nat → Hist, histBytes lk 4 (fun _ => DFrac.own 1) Hs) ∗
+            (∃ Hs : Nat → Hist, histBytes (lk + 16#64) 8 (fun _ => DFrac.own 1) Hs) ∗ Out)) := by
+    intro c hok' _ Φ
+    iintro ⟨HmConf, HPC, HnextPC, ⟨HT, HF, Hlocks, #Hlk, Hlp, Hheld, HR, Hlic⟩, HΦ⟩
+    icases lockOpenable_cases γ lk s R D $$ Hlk with ⟨%_, #Hcl, #Hcl', ⟨%lo, %lc, #Hinv, #Hflo, #Hflc⟩⟩
+    icases lockedPre_cases γ cpu $$ Hlp with ⟨%B0, Hhalf0, #HflB⟩
+    have e := execSpecF_sw_au (GF := GF) cpu (DFrac.own 1) c false k.root hok' pc (pc + instrLen is_rvc) imm rs1 0#5
+      (tpPin cpu k.regs) iprop(ownCtx cpu curCtx ∗ lockSet cpu (k.locks.filter (fun x => x ≠ s)) ∗
+        (⌜s ∈ k.locks⌝ ∗ (∃ Hs : Nat → Hist, histBytes lk 4 (fun _ => DFrac.own 1) Hs) ∗
+          (∃ Hs : Nat → Hist, histBytes (lk + 16#64) 8 (fun _ => DFrac.own 1) Hs) ∗ Out))
+      hram hal
+    simp only [KCtx.rget] at haddr
+    have hz : BitVec.extractLsb' 0 32 (RegMap.get (tpPin cpu k.regs) 0#5) = 0#32 := by
+      rw [RegMap.get_zero]; rfl
+    rw [haddr, hz] at e
+    iapply (e Φ)
+    iframe HmConf HPC HnextPC HT HF Hcl
+    isplitl [Hlocks Hhalf0 Hheld HR Hlic]
+    · iintro Hctx
+      unfold writeAU
+      iinv Hinv with Hbody Hclose
+      icases Hbody with ⟨Hbody | >Hdead⟩
+      rotate_left
+      · iexfalso; iapply (hrefute B0) $$ Hhalf0 Hdead
+      unfold lockBody
+      icases Hbody with ⟨%W, %W', %st, %B, >Hw, Hc, >%hst, >Hhalf, >Hfr, Harm⟩
+      icases wordCell_cases lk 4 lo 0 W $$ Hw with ⟨%Hold, Hb, %htail⟩
+      ihave %hag := lockHalf_agree γ st (some (cpu, false)) B B0 $$ [Hhalf Hhalf0]
+      case' _ => iframe
+      obtain ⟨rfl, hB⟩ := hag
+      have hB' := hB.symm
+      subst hB'
+      rw [lkCpuFrag_some]
+      ihave %hmem := lockSet_lkIn cpu k.locks s $$ [Hlocks Hfr]
+      case' _ => iframe
+      iapply fupd_mask_intro LawfulSet.empty_subset
+      iintro Hmask
+      iexists W.hist Hold
+      iframe Hb
+      inext
+      iintro %t Hb #Hau #Htop
+      imod lockHalf_update γ _ _ none B0 B0 B0 $$ [$Hhalf $Hhalf0] with ⟨Hhalf, Hhalf0⟩
+      imod lockSet_delete cpu k.locks s $$ [$Hlocks $Hfr] with Hlocks
+      imod Hlic $$ %B0 Hhalf0 HR with ⟨HD, HOut⟩
+      imod Hmask
+      ihave Hcl := Hclose $$ [HD]
+      case' _ =>
+        inext
+        iright
+        iexact HD
+      imod Hcl
+      imodintro
+      icases wordCell_cases (lk + 16#64) 8 lc 0 W' $$ Hc with ⟨%Holdc, Hhc, %htailc⟩
+      iframe Hctx Hlocks HOut
+      isplit
+      · ipureintro; exact hmem
+      isplitl [Hb]
+      · iexists _
+        iexact Hb
+      · iexists _
+        iexact Hhc
+    · inext
+      iintro HmConf HPC HnextPC ⟨Htrans, Hfrag, HF, Hctx, Hlocks, %hmem, Hword, Hcpu, HOut⟩
+      ihave Htok := ctxTok_intro cpu curCtx none $$ [Hctx Hfrag]
+      case' _ => iframe
+      ihave HT := transTok_intro cpu curTier k.root $$ [Htrans Htok]
+      case' _ => iframe
+      iapply HΦ $$ HmConf HPC HnextPC
+      iframe HT
+      iexists ()
+      iframe HF Hlocks
+      iframe Hword Hcpu HOut
+      ipureintro; exact hmem
+  iapply (wpLoop_k_lock cpu k hsie pc (pc + instrLen is_rvc) is_rvc _
+    (fun _ : Unit => k.regs) (fun _ => rfl) (fun _ => k.locks.filter (fun x => x ≠ s)) hwf' _
+    (fun _ => iprop(⌜s ∈ k.locks⌝ ∗ (∃ Hs : Nat → Hist, histBytes lk 4 (fun _ => DFrac.own 1) Hs) ∗
+      (∃ Hs : Nat → Hist, histBytes (lk + 16#64) 8 (fun _ => DFrac.own 1) Hs) ∗ Out)) hexec)
+  iframe HI Hk Hpc Hlp Hheld HR Hlic
+  isplitl []
+  · iexact Hlk
+  inext
+  iapply wpNext_mono $$ HΦ
+  iintro %cpu' HK %_ Hk Hpc ⟨%hmem, Hword, Hcpu, HOut⟩
+  ihave Hk' := (show kctxL lent cpu' ((k.withRegs k.regs).withLocks (k.locks.filter (fun x => x ≠ s))) ⊢
+      kctxL lent cpu' (k.withLocks (k.locks.filter (fun x => x ≠ s))) from by
+    rw [KCtx.withRegs_self]) $$ Hk
+  iapply HK $$ Hk' Hpc %hmem Hword Hcpu HOut
+
 end lock
 
 

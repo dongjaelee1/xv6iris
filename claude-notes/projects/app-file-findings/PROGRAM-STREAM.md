@@ -1845,3 +1845,31 @@ THE cat CHILD'S DRAFT IS PARKED as
 `claude-notes/projects/app-file-findings/UShRound-cat-child.patch` (439 lines
 against `UShRound.v` at `app-file/cat-walk`): everything in it elaborates and
 checks up to that one `udep`; re-apply it once the chain is generic.
+
+### Stretch 13, 2026-09-22: the pull — the pipe theorem is CLOSED, and it met defect 4 first
+
+`main` now carries `UInitPipeAdequacy.pipe_adequacy_pipeΣ_final` (SH-PIPE-ROUND-14).
+What it settles for the file application:
+
+* **Defect 4 is the pipe campaign's §4.3z wall 2, and their fix is landed for
+  the pieces we share**: `UShCat.v` §6, `UShCatPay.v` and `UCatPipe.v` bind
+  `` Context `{PS : uprogSG Σ} `` and every landed consumer instantiates it
+  explicitly ("a section variable is not a pinned constant: it is what stops
+  the resolution search").  Their cat reads a PIPE, so the deed leaves the
+  FILE app's cat goes through — `UkFileOpen.v`, `UkReadFile.v`, `UkCatDeed.v`
+  and `UCatKernel.v` — stayed ambient; those four are ours, and the first
+  three check with the binder (the experiment of 09-21, re-run per file).
+  `UCatKernel.v` is not yet checked (the tree needed its `.vo` cone rebuilt
+  after the pull before a `-vok` check is meaningful).
+* **Their last hang was a `ghost_varG` instance, not `uexecSG`/`uprogSG`**
+  (`2bf240b2c`): a file binding neither `ghost_varG` class resolves
+  `UkCat.kcat_wr`'s two through the `xv6G` bundle and BAKES them into its
+  conclusions, while a consumer that binds one carries the call site's.
+  `UCatKernel.v` binds NEITHER class and `UkCat`/`UkCatCat`/`UkCatMain`/
+  `UkReadFile` bind BOTH — the same shape.  If `UCatKernel.v` hangs with the
+  `PS` binder, measure with `Set Printing Implicit` on the built tree before
+  adding any binder; a `uexecSG` binder would CREATE a second instance
+  (`UCatKernel.cat_fam` binds none).
+* Their design page records `sh_round_holds_file` as `Admitted` "and never
+  noticed"; their round takes `sh_echo_slot T` and `□ (T -∗ sh_deps)` as
+  antecedents (§4.3z wall 3), the shape ours will take.

@@ -1964,6 +1964,26 @@ Section UShPipeAssemblyReg.
     iFrame "Hinv Hsl HWq Hw". rewrite take_0. iExact "Hlb".
   Qed.
 
+  (* ...AND THE REGISTRAR'S SUPPLY WITH NO CLOSE LAW AT ALL (design
+     SS4.3aa, lane SH-PIPE-ROUND-13): the answer's two [ush_cldep] rows are
+     the two PIPE states the call just made, and the row-aware deposit
+     ([UkRun.udepw_row]) makes them payable from the very registration
+     [pipe_registrar_at] hands back.  The landed form below drops the law it
+     no longer needs -- statement byte-identical. *)
+  Lemma ush_pipe_call_pipe_pay_reg (N : uk_names Σ) `{!ukn_const N}
+      (pn : pnames) (Wq : iProp Σ) (l : list fdstate) (L : list (bv 8)) :
+    fd_lowest_closed l = None ->
+    pipe_pre pn -∗ wtok pn -∗ side_L pn -∗ rtok pn -∗ side_R pn -∗ Wq -∗
+    UkShPipe.ush_pipe_call (SG := uexecSG_xv6) (PS := PS) N l
+      (pipe_reg_pay pn Wq L).
+  Proof using Hpsok_free.
+    intro Hnone.
+    iIntros "Hpre Hw Hsl Hr HR HWq".
+    iApply (UShPipeCall.ush_pipe_call_paid_reg (PS := PS) Hpsok_free N l
+              (pipe_reg_pay pn Wq L) Hnone with "[Hpre Hw Hsl Hr HR HWq]").
+    iApply (pipe_registrar_at pn Wq L with "Hpre Hw Hsl Hr HR HWq").
+  Qed.
+
   Lemma ush_pipe_call_pipe_pay (N : uk_names Σ) `{!ukn_const N}
       (pn : pnames) (Wq : iProp Σ) (l : list fdstate) (L : list (bv 8)) :
     fd_lowest_closed l = None ->
@@ -1973,10 +1993,9 @@ Section UShPipeAssemblyReg.
       (pipe_reg_pay pn Wq L).
   Proof using Hpsok_free.
     intro Hnone.
-    iIntros "Hpre Hw Hsl Hr HR HWq Hcl".
-    iApply (UShPipeCall.ush_pipe_call_paid (PS := PS) Hpsok_free N l
-              (pipe_reg_pay pn Wq L) Hnone with "[Hpre Hw Hsl Hr HR HWq] Hcl").
-    iApply (pipe_registrar_at pn Wq L with "Hpre Hw Hsl Hr HR HWq").
+    iIntros "Hpre Hw Hsl Hr HR HWq _".
+    iApply (ush_pipe_call_pipe_pay_reg N pn Wq l L Hnone
+              with "Hpre Hw Hsl Hr HR HWq").
   Qed.
 
 End UShPipeAssemblyReg.

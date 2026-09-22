@@ -53,6 +53,8 @@ Require Import PipeQueue.           (* [pipe_qfrag] *)
 Require Import PipeReg.             (* [pipe_reg]: what the registrar answers *)
 Require Import ChildTok.
 Require Import UexecExecInst.       (* THE INSTANCE: [uexecSG_xv6] *)
+Require Import UexecExecMint.       (* [udepw_cl_of_reg_close]: a registered
+                                       pipe end pays its own close *)
 Require Import UserPtTree.
 Require Import UserFd.
 Require Import UserHeap.
@@ -109,18 +111,22 @@ Section UShPipeCall.
   (*     [ush_pipe_call_of_leaf], where it already stood BESIDE the taint   *)
   (*     rather than being derived from it.                                *)
   (* ===================================================================== *)
-  Lemma ush_pipe_call_paid (N : uk_names Σ) `{!ukn_const N}
+  (* THE WALK ITSELF, generic in what the registrar keeps: the answer's two
+     [ush_cldep] rows are built from the [pipe_reg] the [Rp] slot carries
+     out, so neither this lemma nor its two corollaries needs a close law.
+     (Lane SH-PIPE-ROUND-13; the landed [ush_pipe_call_paid] is below.) *)
+  Lemma ush_pipe_call_paid_gen (N : uk_names Σ) `{!ukn_const N}
       (l : list fdstate) (R : pipe_names -> iProp Σ) :
     (* the ledger this walk carries: three console rows, nothing shut, so
        both of the leaf's allocations land ABOVE the standard streams and
        the ledger does not move *)
     fd_lowest_closed l = None ->
     (∀ γp : pipe_names,
-       pipe_qfrag (pn_queue γp) pst0 ={⊤}=∗ pipe_reg γp ∗ R γp) -∗
-    udepw_law (PS := PS) 21 -∗
+       pipe_qfrag (pn_queue γp) pst0 ={⊤}=∗
+         pipe_reg γp ∗ (pipe_reg γp ∗ R γp)) -∗
     UkShPipe.ush_pipe_call (SG := uexecSG_xv6) (PS := PS) N l R.
   Proof using Hpsok_free.
-    intros Hnone. iIntros "Hreg #Hcl".
+    intros Hnone. iIntros "Hreg".
     iIntros (h m av dst f) "%Hdst #Hcode Hstd Hbuf Hrun Hcont".
     rewrite shpc_pipe.
     (* ---- 0xc96  c.li a7,4 ---- *)
@@ -146,7 +152,8 @@ Section UShPipeCall.
                   = mword_of_int 0xc9c)
       by (apply bv_eq; vm_compute; reflexivity).
     (* ---- 0xc98  ecall -- the PIPE leaf, AT THE INSTANCE ---- *)
-    iApply (wp_uk_pipe_read_end N h1 m1 (mword_of_int 0xc98) l f av R
+    iApply (wp_uk_pipe_read_end N h1 m1 (mword_of_int 0xc98) l f av
+              (fun γp : pipe_names => (pipe_reg γp ∗ R γp)%I)
               ltac:(unfold usysno;
                     rewrite (upd_eq m (Regidx a7_idx)
                                (mword_of_int 4 : mword 64));
@@ -220,9 +227,62 @@ Section UShPipeCall.
       destruct (Nat.ltb_spec (4 + j) 4) as [Hc | _]; [ lia | ].
       replace (4 + j - 4)%nat with j by lia. reflexivity. }
     iFrame "Hstd Hra Hrb".
-    iSplitR; [ iApply (UkShPipe.ush_cldep_of_law with "Hcl") | ].
-    iSplitR; [ iApply (UkShPipe.ush_cldep_of_law with "Hcl") | ].
+    (* THE TWO CLOSE ROWS, OFF THE REGISTRATION AND NOT OFF A LAW
+       (design/app-pipe.md SS4.3aa).  [ush_cldep] is [UkRun.udepw_cl] at
+       every record and every key, and its right arm is now ROW-AWARE, so
+       the pipe state this very call produced pays its own close. *)
+    iDestruct "HR" as "[#Hrg HR]".
+    iSplitR.
+    { rewrite /UkShPipe.ush_cldep. iIntros "!>" (N' m' pc').
+      iApply (UexecExecMint.udepw_cl_of_reg_close (PSx := PS)
+                N' m' pc' true false γp with "Hrg"). }
+    iSplitR.
+    { rewrite /UkShPipe.ush_cldep. iIntros "!>" (N' m' pc').
+      iApply (UexecExecMint.udepw_cl_of_reg_close (PSx := PS)
+                N' m' pc' false true γp with "Hrg"). }
     iExact "HR".
+  Qed.
+
+  (* ...AND THE ROW-AWARE FORM, WHICH TAKES NO CLOSE LAW AT ALL           *)
+  (* (design/app-pipe.md SS4.3aa, lane SH-PIPE-ROUND-13).  The premise     *)
+  (* [udepw_law 21] below is spent on NOTHING BUT the answer's two          *)
+  (* [ush_cldep] rows, and those rows are at the two PIPE states this very  *)
+  (* call just created -- so with [UkRun.udepw_cl]'s right arm made         *)
+  (* row-aware they are payable from the registration the registrar hands   *)
+  (* back ([UexecExecMint.udepw_cl_of_reg_close]).  [pipe_reg] is           *)
+  (* persistent, so the leaf's own [Rp] slot carries a copy out beside      *)
+  (* whatever the application kept, and the walk is the same three          *)
+  (* instructions.  The landed [ush_pipe_call_paid] is this lemma with the  *)
+  (* law dropped on the floor -- statement byte-identical.                  *)
+  Lemma ush_pipe_call_paid_reg (N : uk_names Σ) `{!ukn_const N}
+      (l : list fdstate) (R : pipe_names -> iProp Σ) :
+    fd_lowest_closed l = None ->
+    (∀ γp : pipe_names,
+       pipe_qfrag (pn_queue γp) pst0 ={⊤}=∗ pipe_reg γp ∗ R γp) -∗
+    UkShPipe.ush_pipe_call (SG := uexecSG_xv6) (PS := PS) N l R.
+  Proof using Hpsok_free.
+    intros Hnone. iIntros "Hreg".
+    iApply (ush_pipe_call_paid_gen N l R Hnone with "[Hreg]").
+    iIntros (γp) "Hfrag".
+    iMod ("Hreg" $! γp with "Hfrag") as "[#Hrg HR]".
+    iModIntro. iFrame "Hrg HR".
+  Qed.
+
+  (* ...and the landed form, which simply drops the close law it no longer
+     needs.  Statement byte-identical (lane SH-PIPE-ROUND-13). *)
+  Lemma ush_pipe_call_paid (N : uk_names Σ) `{!ukn_const N}
+      (l : list fdstate) (R : pipe_names -> iProp Σ) :
+    (* the ledger this walk carries: three console rows, nothing shut, so
+       both of the leaf's allocations land ABOVE the standard streams and
+       the ledger does not move *)
+    fd_lowest_closed l = None ->
+    (∀ γp : pipe_names,
+       pipe_qfrag (pn_queue γp) pst0 ={⊤}=∗ pipe_reg γp ∗ R γp) -∗
+    udepw_law (PS := PS) 21 -∗
+    UkShPipe.ush_pipe_call (SG := uexecSG_xv6) (PS := PS) N l R.
+  Proof using Hpsok_free.
+    intros Hnone. iIntros "Hreg _".
+    iApply (ush_pipe_call_paid_reg N l R Hnone with "Hreg").
   Qed.
 
 End UShPipeCall.

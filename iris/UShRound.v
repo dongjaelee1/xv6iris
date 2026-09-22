@@ -7,7 +7,7 @@
 (*  the loop has THREE child shapes instead of one and carries the DEED   *)
 (*  between rounds (design/app-file.md SS3, SS4.2, SS5.4).                  *)
 (*                                                                       *)
-(*  THIS FILE IS A SKELETON: every proof is [Admitted] and every fact the *)
+(*  EVERY PROOF IN THIS FILE IS CLOSED (2026-09-22).  It began as a SKELETON --  *)
 (*  console tier, the kernel or a sibling lane still owes is a NAMED      *)
 (*  SECTION HYPOTHESIS with its exact statement.                         *)
 (*                                                                       *)
@@ -101,6 +101,7 @@ Require Import ExecWords.                (* [exec_ok]: a word list sh can exec *
 Require Import UkShDiagAt.               (* [ush_execfail_bytes] *)
 Require Import UShCat.                   (* [cat_elf_loadable] *)
 Require Import UShCatPay.                (* [sh_cat_slot], [cat_pl], [sh_cat_pin_resolves] *)
+Require Import UShRest.                  (* [sh_sz_lo] / [sh_sz_al] / [sh_sz_ok] *)
 Require Import UserOff.
 Require Import ElfUser.
 Require Import UkSh.
@@ -436,7 +437,16 @@ Section UShRound.
   Context `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, !fileG Σ,
             !irefslotG Σ, !pavG Σ, !wchG Σ, !ufdG Σ}.
   Context `{GEN : GenId} `{XI : CurCtx}.
-  Context `{!ghost_varG Σ Z}.
+  (* NO [ghost_varG Σ Z] BINDER (2026-09-22; durable-notes, "A section
+     variable of a class type is a LOCAL INSTANCE").  [UShRest]'s binder
+     list, copied here, declared one, and it was a SECOND instance beside
+     [Xv6Cameras.offbox_offG] (through [xv6G]): the redirect and cat
+     children had to be pinned at [offbox_offG] for the kernel's [ucwd],
+     while the echo child, the kill law and the panic law elaborated at the
+     section variable -- and the round, which feeds all five to one lemma,
+     hung on the mismatch.  With the binder gone there is one instance in
+     scope and the explicit [(ghost_varG0 := offbox_offG)] pins below name
+     it. *)
   Context `{!uartGhostG Σ}.
   Context `{!echoOutG Σ, !inG Σ (mono_listR (leibnizO Z)), !fileAppG Σ,
             !fileOutG Σ}.
@@ -2691,15 +2701,48 @@ Section UShRound.
   (*  the file era's families, which is what [UInitSh.sh_pay_of_parts]    *)
   (*  takes and therefore what K3's [file_prog_law] spends.              *)
   (* =================================================================== *)
+  (* PROVED (2026-09-22): one application of [UkShRedirBody.
+     ushf_rest_of_body_file] to the five laws above -- the kill law, the
+     echo child's, the redirect child's ([Hchild_redir]), cat's
+     ([Hchild_cat]) and sh's own fork panic -- exactly as [UShRest.
+     sh_rest_holds] is one application of [UkShFork.ushf_rest_of_body] to
+     echo's three, and [UShPipeRound.sh_round_holds_pipe] of its twin.
+     STATED at [ush_rest_l_at ... ush_line_file] (the era's own three line
+     shapes), which is what [UInitSh.sh_pay_of_parts_at] takes; the
+     premises are the union of the children's: BOTH slots (echo's for the
+     echo and redirect children, cat's for cat's) and [cons_made] (the
+     open and cat's read). *)
   Lemma sh_round_holds_file (N : uk_names Σ) :
-    ⊢ udep (PS := uprogSG_free) -∗
+    ⊢ FileLinks.file_links g -∗
+      udep (SG := uexecSG_xv6) (PS := uprogSG_free) -∗
       UShEcho.sh_echo_slot T -∗
+      UShCatPay.sh_cat_slot T -∗
       (∃ v : era_pins, era_pin (fgn_echo g) (S gen_id) v) -∗
-      (∃ vf : file_era, file_era_pin g (S gen_id) vf) -∗
-      UkSh.ush_rest_l (PS := uprogSG_free) N γp T Wcf Wbf
+      (∃ jc : Z, cons_made (fn_cons r) jc) -∗
+      UkSh.ush_rest_l_at (PS := uprogSG_free) (ghost_varG0 := offbox_offG)
+        N γp T Wcf Wbf
         (UShLine.ush_mid_at (lk_rres FI) (fgn_echo g) γp)
+        UkShRedirBody.ush_line_file
         (UInitSh.sh_Rsh (ukn_t N) (ukn_d N) (ukn_s N)).
   Proof using Hcons Hkill Htag Heq.
-  Admitted.
+    iIntros "#Hlk #Hdep #Hslot #Hcat #Hpin #Hmade".
+    iDestruct "Hpin" as (v) "#Hp".
+    iPoseProof (sh_kill_law_file v with "Hp") as "#Hkl".
+    iPoseProof (sh_child_law_file with "Hlk Hdep Hslot") as "#Hchl".
+    iPoseProof (Hchild_redir with "Hlk Hdep Hslot Hmade") as "#Hred".
+    iPoseProof (Hchild_cat with "Hlk Hdep Hcat Hmade") as "#Hcatl".
+    iPoseProof (Hpanic with "Hlk") as "#Hplaw".
+    iIntros "!>" (l) "%Hc".
+    iPoseProof (UkShRedirBody.ushf_rest_of_body_file
+                  (PS := uprogSG_free) (SG := uexecSG_xv6)
+                  (ghost_varG0 := offbox_offG) (Hpay := Hc)
+                  N γp T Wcf Wbf
+                  (UShLine.ush_mid_at (lk_rres FI) (fgn_echo g) γp)
+                  (fun k H => H) (SpecKexec.kexec_sz ElfUser.sh_elf)
+                  UShRest.sh_sz_lo UShRest.sh_sz_al UShRest.sh_sz_ok Hwbl_f
+                  with "Hkl Hchl Hred Hcatl Hplaw") as "Hb".
+    rewrite /UkSh.ush_rest_l_at.
+    iDestruct ("Hb" $! l with "[%]") as "Hb'"; [ exact Hc | iExact "Hb'" ].
+  Qed.
 
 End UShRound.

@@ -1893,3 +1893,18 @@ timeout — scratchpad `vbt.sh`) before any `-vok`/`-time` check of the
 consumer; `-vok` iteration is for edits to the consumer's own PROOFS.
 (The same trap almost certainly made 09-21's 16-hour "hang" of the first
 experiment: it too read a stale `UkCatDeed.vo`.)
+
+**Defect 4, THE ACTUAL CAUSE (2026-09-22).**  `Context \`{PS : uprogSG Σ}` in
+a file that does not import `UexecSG` does NOT bind a program-deposit
+instance: the backtick GENERALISES the unbound name `uprogSG` into a fresh
+variable `uprogSG : gFunctors → Type`, `PS` gets that bogus type, every
+`urun`/`kcat_r` in the file still resolves the real class at `uprogSG_gen`,
+and nothing is captured — silently.  Seen only once `uprogSG_gen` was removed
+from the hint db locally: "UNDEFINED EVARS … (parameter PS of urun)" with
+BOTH `uprogSG` and `PS` in the context.  That is why the 09-21 experiment
+"hung" (a consumer at the real class against a leaf at the same class but
+with a spurious extra binder is a genuine mismatch) and why the `About`
+probe showed `PS` uncaptured.  Upstream spells it `UexecSG.uprogSG Σ`
+(`UShCatPay.v`, `UCatPipe.v`) — that spelling is now in all four files.
+RULE for durable-notes: under a backtick binder, QUALIFY the class name;
+an unbound name is not an error, it is a new variable.

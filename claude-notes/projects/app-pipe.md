@@ -469,6 +469,10 @@ arm is the theorem's one named premise (`pipe_both_law`).
   walk's `usz` (REPAIRED here) and the pipe arm's CLOSE DEPOSIT, which is
   a `UkRun`/`UkRunSys` premise shape and NOT this lane's file (Findings
   `### SH-PIPE-ROUND-12`).  `pipe_adequacy_pipeΣ_final` is NOT reached.
+- [ ] **SH-PIPE-ROUND-13** (design §4.3aa: the row-aware close deposit —
+  a pipe row's close paid by the registry; `pipe_cat_w` under the taint;
+  the right child; `pipe_adequacy_pipeΣ_final`).  Brief
+  `brief-sh-pipe-round-13.md`.
 ## Findings (append as lanes report)## Findings (append as lanes report)## Findings (append as lanes report)
 
 ### PQ-FLAG-2 (2026-09-18) — the write link's second premise, paid by the CODE

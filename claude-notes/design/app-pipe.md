@@ -1604,6 +1604,47 @@ payload conversions), and stopped at three walls:
 Lane **SH-PIPE-ROUND-12**: 1, 2, 3, then the assembly per ROUND-11's
 instantiation table, `sh_pipe_child_law_all`, `pipe_adequacy_pipeΣ_final`.
 
+### 4.3aa RULED (2026-09-22, after SH-PIPE-ROUND-12 part 1): the ROW-AWARE close deposit — a pipe descriptor's close is paid by the registry; and cat's write takes its bound under the taint
+
+ROUND-12 landed §4.3z whole (the Prop's interface equation; cat's chain
+generic in the program instance — no consumer needed an explicit
+instance, ROUND-11's wedge was the half-pin; the child law's five
+antecedents), repaired the paid child walk's `usz` vacuity (three halves
+of one `ghost_var`; the `_sz` forms, the landed statements corollaries),
+and discharged six of the eight assembly rows.  Two premises remain:
+
+1. **No verified program can close a PIPE descriptor on the good path.**
+   The registrar's answer spends `UkRun.udepw_law (PS := uprogSG_free) 21`
+   on its two `ush_cldep` rows; at `uprogSG_free`, `psok 21 = free_num 21
+   = False`, and the only producer of `udepw_law 21` is
+   `UexecExecMint.udepw_law_of_sup_close`, which takes `app_taint` — the
+   taint, for this claim.  The resource that should pay EXISTS
+   (`PipeReg.pipe_reg γp`; `xv6_sbundle`'s 21-branch is literally
+   `fileclose_cpay (fd_st_of_key (xk_a W 0) (uvis_fd W)) _`); what blocks
+   it is that `UkRun.udepw_cl`'s right arm quantifies the descriptor
+   table universally, while the row-pinning agreement is derived one
+   step later inside `UkRunSys.wp_uk_ecall_close` (`udepw_cl_mint` already
+   takes `fd_st_of_key a0 fdv = st`).  RULED: the ROW-AWARE close deposit
+   — `udepw_cl`'s right arm and `wp_uk_ecall_close` take the row (two
+   premises the call site already has), so that a close of a pipe row is
+   paid by `pipe_reg γp`'s `pipe_cpay` (the registry exists for exactly
+   this) and `udepw_law 21` is discharged at `uprogSG_free` for pipe rows
+   without the taint.  Generic files `UkRun.v`/`UkRunSys.v`, one
+   whole-tree rebuild; every landed consumer re-discharges by supplying
+   the row it holds.  The alternative — `udepw_law 21` as a further
+   antecedent of `sh_pipe_child_law` — is REFUSED: `pipe_Hinit_boot`
+   cannot supply it, so it would end at an axiom.
+2. **`UShPipeCatRound.pipe_cat_w`'s `YR` becomes `(YR ∨ PT)`** — the
+   premise is used at one place, inside the taint-split's left arm, and
+   `pcat_round_at_g`'s `Hw` can only offer `pws_lb pn (take (c + cnt) L) ∨
+   T`; the landed form re-derives by `iLeft`.
+
+Then the right child's chain (`pcat_round_at_g` → `sh_exec_sup_cat_wq_holds_at`
+→ `wp_kshr_exec_cat_at_holds`; its `□ (T -∗ kcat_dg_cr N)` is payable from
+`□ (T -∗ sh_deps)` through `UkCat.kcat_pay_seq_of_law`), the intermediate
+`sh_pipe_child_law g`, `sh_pipe_child_law_all`, `pipe_adequacy_pipeΣ_final`.
+Lane SH-PIPE-ROUND-13.
+
 ## 5. Programs
 
 ### 5.1 sh: the PIPE arm (lanes SH-PARSE-PIPE, SH-PIPE)

@@ -465,3 +465,108 @@ Section file_read_leaf.
   Qed.
 
 End file_read_leaf.
+
+(* ===================================================================== *)
+(*  4.  THE SAME, AT THE INDEXED RECORD (PROGRAM-STREAM stretch 15)       *)
+(*                                                                       *)
+(*  sh's round is stated at [FileLinkInst.file_link_inst_at g s0] (RULING  *)
+(*  H'), whose reader's residue [FileLinksAt.fwc_rresw_at s0] carries the  *)
+(*  era's boot state FIXED where the unindexed one existentially packs it. *)
+(*  The read record at the index is the unindexed one with the boot state  *)
+(*  AGREED across the residue's arm ([FileLinksLine.f0w_agree]): the arms  *)
+(*  never read the index, so this is a bridge and not a second proof.      *)
+(* ===================================================================== *)
+Section file_read_inst_at.
+  Context `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, !fileG Σ,
+            !irefslotG Σ, !pavG Σ, !wchG Σ, !ufdG Σ}.
+  Context `{GEN : GenId} `{XI : CurCtx}.
+  Context `{!ghost_varG Σ Z}.
+  Context `{!ghost_varG Σ (gset gname)}.
+  Context `{!echoOutG Σ, !inG Σ (mono_listR (leibnizO Z)), !fileAppG Σ,
+            !fileOutG Σ}.
+  Context (g : file_gn).
+  Context (Htag : @riscv_rx_tag Σ (@riscv_fixedGS Σ _) = FileOut.ftag g).
+  Context (s0 : fstate).
+
+  Local Notation FI := (FileLinkInst.file_link_inst g).
+  Local Notation FIs := (FileLinkInst.file_link_inst_at g s0).
+
+  Lemma file_pin_refl_at (v : era_pins) :
+    ⊢ era_pin (fgn_echo g) (S gen_id) v -∗ lk_pin FIs (S gen_id) v.
+  Proof using . by iIntros "$". Qed.
+
+  Local Lemma fri_arms_at (cn : cons_names) (v : era_pins) (I : list (bv 8))
+      (ws sl sl' : list (list mobs * bv 8))
+      (hs : list (list mobs)) (dd dc : nat) (g0 : nat -> bv 8) :
+    (dd <= dc)%nat -> length ws = dc ->
+    cons_window sl (length I) dd g0 hs ->
+    sl `prefix_of` sl' ->
+    (forall j : nat, (j < dc)%nat -> ws !! j = sl' !! (length I + j)%nat) ->
+    ⊢ lk_epin FIs (S gen_id) v -∗ inp_lb v I -∗ lk_rres FIs v I -∗
+      lk_rr FIs (S gen_id) v (length I) ws -∗
+      ([∗ list] hh ∈ hs, riscv_rx_tag hh) -∗
+      ucons_swallow cn False sl dd dc -∗
+      ucons_stored_lb cn sl' -∗
+      (dl_cnt v (1/2) (length I + dc)%nat
+       ∗ ∃ J : list (bv 8),
+           ⌜length J = dc⌝ ∗ ⌜rk_disc FI (file_read_inst g Htag) (I ++ J)⌝
+           ∗ ⌜(0 < dd)%nat -> g0 0%nat = J !!! 0%nat⌝
+           ∗ inp_lb v (I ++ J) ∗ lk_rres FIs v (I ++ J))
+      ∨ lk_T FIs.
+  Proof using Htag.
+    intros Hddc Hlws Hwinf Hpre2 Hwsj.
+    iIntros "#Hpin #HE #Hres Hret #Htags #Hsw #Hlb".
+    cbn [lk_epin lk_rres lk_rr lk_T FileLinkInst.file_link_inst_at].
+    (* the index's own boot-state witness, kept for the agreement *)
+    iAssert (FileLinksLine.f0w g (S gen_id) s0) as "#Hf0".
+    { rewrite /FileLinksAt.fwc_rresw_at /FileLinksAt.fwc_rres_at.
+      iDestruct "Hres" as "[Hr _]".
+      iDestruct "Hr" as (ps0 cs0) "(_ & _ & _ & _ & $)". }
+    iDestruct (FileLinksAt.fwc_rresw_at_pack g s0 v I with "Hres") as "#Hres'".
+    iDestruct (rk_arms FI (file_read_inst g Htag) cn v I ws sl sl' hs dd dc g0
+                 Hddc Hlws Hwinf Hpre2 Hwsj
+                 with "Hpin HE Hres' Hret Htags Hsw Hlb") as "[H | #HT]";
+      last by iRight.
+    iLeft. iDestruct "H" as "[$ H]". iDestruct "H" as (J) "(%HJ & %Hd & %Hg & #HE' & #Hres2)".
+    iDestruct (FileLinksAt.fwc_rresw_unpack g v (I ++ J) with "Hres2")
+      as (s1) "#Hres3".
+    iAssert (FileLinksLine.f0w g (S gen_id) s1) as "#Hf1".
+    { rewrite /FileLinksAt.fwc_rresw_at /FileLinksAt.fwc_rres_at.
+      iDestruct "Hres3" as "[Hr _]".
+      iDestruct "Hr" as (ps0 cs0) "(_ & _ & _ & _ & $)". }
+    iDestruct (FileLinksLine.f0w_agree g (S gen_id) (S gen_id) s0 s1
+                 with "Hf0 Hf1") as %<-.
+    iExists J. iFrame "HE' Hres3". by iPureIntro.
+  Qed.
+
+  Definition file_read_inst_at : ReadRec FIs :=
+    MkReadRec FIs disc_input_f
+      (rk_rd FI (file_read_inst g Htag))
+      (rk_rd_taint FI (file_read_inst g Htag))
+      fri_arms_at.
+
+  Lemma file_read_inst_at_disc : rk_disc FIs file_read_inst_at = disc_input_f.
+  Proof using . reflexivity. Qed.
+
+  (* ...AND THE LEAF, at the index: [UShLine.ush_read_recv_leaf_holds_at]
+     at this record, exactly as [file_read_leaf_holds] is at the other. *)
+  Lemma file_read_leaf_holds_at (Wb : list (bv 8) -> iProp Σ)
+      (N : uk_names Σ) (γp : gname) (l : list fdstate) :
+    ukn_pay N
+      = ucons_pay fsc_cons γp (lk_T FIs)
+          (UShLine.ush_rd_x_at (lk_rres FIs) (fgn_echo g) Wb) ->
+    (⊢ app_sup -∗ lk_T FIs) ->
+    (⊢ lk_T FIs -∗ app_sup) ->
+    (⊢ lk_links FIs) ->
+    ⊢ UkSh.ush_read_recv_leaf_at (PS := uprogSG_free) N γp (lk_T FIs)
+        (UShLine.ush_mid_at (lk_rres FIs) (fgn_echo g) γp) disc_input_f
+        fsc_cons l.
+  Proof using Htag.
+    intros Hpeq Hstw Htsw Hlk.
+    iApply (UShLine.ush_read_recv_leaf_holds_at file_read_inst_at (fgn_echo g)
+              Wb N γp l Hpeq Hstw Htsw
+              (fun v => file_pin_refl_at v) Hlk).
+  Qed.
+
+End file_read_inst_at.
+

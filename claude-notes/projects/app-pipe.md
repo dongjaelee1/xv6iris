@@ -10518,9 +10518,10 @@ supplies).
 
 THE FILE APPLICATION NEVER NOTICED, and that is the evidence this is a
 tier-wide gap and not a pipeline one: `UShRound.v`'s `Hchild_cat` — the
-file era's own cat entry — is STILL A HYPOTHESIS that nothing in the
-tree supplies, so **no application has ever entered cat's paid image**,
-and the instance question has never been asked.
+file era's own cat entry — is still a HYPOTHESIS, and the only lemma
+that spends it, `UShRound.sh_round_holds_file`, is **`Admitted`**.  So
+no application has ever entered cat's paid image and the instance
+question has never been asked.
 
 TRIED AND REVERTED (commit `2fb19a8cd`, reverted by `d86fc6716`):
 pinning the entry at `uprogSG_free`.  `UShCat.cat_entry_run` takes a

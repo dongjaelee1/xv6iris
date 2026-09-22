@@ -459,3 +459,52 @@ Proof using . intro H. by exists ws. Qed.
 Lemma pl_L_pos (ws : list (list (bv 8))) :
   (0 < length (wl_line (drop 1 ws)))%nat.
 Proof using . rewrite /wl_line length_app. cbn [length]. lia. Qed.
+
+(* ===================================================================== *)
+(*  S3  THE VACUITY CHECK THE ASSEMBLY RAN INTO (lane SH-PIPE-ROUND-12).  *)
+(*                                                                       *)
+(*  [UShPipeChild.wp_kshm_child_pipe_paid_line_at] -- and the free twin   *)
+(*  [UkShPipeRound.wp_kshm_child_pipe] it is built on -- asks for         *)
+(*  [usz γs szv] AND for [UM0] at the SAME time, with [UM0] the           *)
+(*  allocator state the parse's three [malloc]s are funded from.  Every   *)
+(*  allocator state in the tree ([UkShMalloc.ushm_fresh],                 *)
+(*  [UkShMalloc.ushm_one]) CARRIES [usz γs _], and so does [urun]         *)
+(*  ([UserHeap.uheap]'s [ghost_var γs (1/2) sz]).  Three halves of one    *)
+(*  [ghost_var] is [False], so the premise list cannot be met at any real *)
+(*  allocator state -- which is why the [usz] must come OUT of the        *)
+(*  parse's own leftover [UM3] and not be held beside [UM0].              *)
+(* ===================================================================== *)
+Section PipeChildSzScratch.
+  Context `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, !fileG Σ,
+            !irefslotG Σ, !pavG Σ, !wchG Σ, !ufdG Σ}.
+  Context `{GEN : GenId} `{XI : CurCtx}.
+  Context `{!ghost_varG Σ Z}.
+  Context `{!ghost_varG Σ (gset gname)}.
+
+  Lemma usz_three_absurd (γs : gname) (a b c : Z) :
+    usz γs a -∗ usz γs b -∗ usz γs c -∗ False.
+  Proof using .
+    rewrite /usz. iIntros "H1 H2 H3".
+    iDestruct (ghost_var_valid_2 with "H1 H2") as %[_ <-].
+    iCombine "H1 H2" as "H".
+    iDestruct (ghost_var_valid_2 with "H H3") as %[Hv _].
+    iPureIntro. by apply (Qp.not_add_le_l _ _ Hv).
+  Qed.
+
+  Lemma pipe_paid_entry_absurd (N : uk_names Σ) (h : CpuId) (m : regfile)
+      (pc : mword 64) (avail : nat) (sz szv : Z) :
+    UkShMalloc.ushm_fresh N sz -∗ usz (ukn_s N) szv -∗
+    urun (SG := uexecSG_xv6) (PS := uprogSG_free) N h m pc avail -∗ False.
+  Proof using .
+    iIntros "HM Hsz Hrun".
+    rewrite /UkShMalloc.ushm_fresh. iDestruct "HM" as "(_ & _ & Hsz0)".
+    rewrite /urun.
+    iDestruct "Hrun" as (xi C pt Rfd Rut sz' M pm fdv cw gn cs pidv)
+      "(_ & _ & _ & _ & Hheap & _)".
+    rewrite /uheap.
+    iDestruct "Hheap" as (Mt Md Mslack)
+      "(_ & _ & _ & _ & _ & _ & _ & _ & _ & Hg & _)".
+    iApply (usz_three_absurd (ukn_s N) sz szv sz' with "Hsz0 Hsz Hg").
+  Qed.
+
+End PipeChildSzScratch.

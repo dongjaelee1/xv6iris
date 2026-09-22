@@ -162,7 +162,8 @@ condition, and echo is the pipe's corollary in the landed tree; it goes
 with the echo tier at M5.  Gotchas met: a variable named `I` shadows
 `True`'s constructor (`Logic.I`); comments must not contain `"`.
 
-M1 EXIT REACHED once the whole-tree gate passes (this landing).  NEXT:
+M1 EXIT REACHED: landed as `f284dcfb4` (whole-tree gate EXIT=0, 108
+files; audits 13/13/14/14).  NEXT:
 M2 -- `GenLinksLine.v`, the twelve families over an `lmodel`, a cursor
 and a state-witness family, with the per-shape block arm hook; read
 `FileLinksLine.v`/`PipeLinksLine.v` side by side first and write the

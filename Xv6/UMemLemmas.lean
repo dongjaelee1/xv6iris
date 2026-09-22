@@ -506,6 +506,30 @@ theorem ext_refl (P : UPtd) : P.ext P := ⟨rfl, rfl, fun _ _ h => h⟩
 theorem ext_trans {P P' P'' : UPtd} (h : P.ext P') (h' : P'.ext P'') : P.ext P'' :=
   ⟨h'.1.trans h.1, h'.2.1.trans h.2.1, fun k w hk => h'.2.2 k w (h.2.2 k w hk)⟩
 
+/-- Faulting twice is faulting once: the lazy view after two extensions. -/
+theorem viewFaulted_trans {P P' P'' : UPtd} (M : Nat → List (BitVec 8))
+    (h : P.ext P') (h' : P'.ext P'') :
+    viewFaulted P' P'' (viewFaulted P P' M) = viewFaulted P P'' M := by
+  funext k
+  obtain ⟨-, -, hsub⟩ := h
+  obtain ⟨-, -, hsub'⟩ := h'
+  unfold viewFaulted
+  cases h0 : Iris.Std.PartialMap.get? P.um k with
+  | some w =>
+    have h1 := hsub k w h0
+    have h2 := hsub' k w h1
+    simp [h0, h1, h2]
+  | none =>
+    cases h1 : Iris.Std.PartialMap.get? P'.um k with
+    | some w =>
+      have h2 := hsub' k w h1
+      simp [h0, h1, h2]
+    | none =>
+      cases h2 : Iris.Std.PartialMap.get? P''.um k with
+      | some w => simp [h0, h1, h2]
+      | none => simp [h0, h1, h2]
+
+
 theorem ext_insertLeaf (P : UPtd) (vpn : Nat) (r perm : BitVec 64)
     (hn : get? P.um vpn = none) : P.ext (P.insertLeaf vpn r perm) := by
   refine ⟨rfl, rfl, fun k w hk => ?_⟩

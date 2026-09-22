@@ -81,6 +81,7 @@ import Xv6.LinkMemset
 import Xv6.KallocDefs
 import Xv6.PipeInvDefs
 import Xv6.PipeInv
+import Xv6.PipeRw
 import Xv6.SpecKfree
 import Xv6.SpecKalloc
 import Xv6.SpecFreerange
@@ -215,6 +216,7 @@ import Xv6.LinkKilled
 import Xv6.SpecKexit
 import Xv6.SpecKwait
 import Xv6.SpecPipeclose
+import Xv6.SpecPipewrite
 import Xv6.SpecKfork
 import Xv6.SpecUserinit
 import Xv6.SpecEither
@@ -251,5 +253,7 @@ import Xv6.ProofKwait
 import Xv6.LinkKwait
 import Xv6.ProofPipeclose
 import Xv6.LinkPipeclose
+import Xv6.ProofPipewrite
+import Xv6.LinkPipewrite
 import Xv6.ProofKfork
 import Xv6.LinkKfork

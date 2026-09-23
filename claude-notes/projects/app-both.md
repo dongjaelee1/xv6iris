@@ -338,6 +338,9 @@ NEXT: M4 (the child laws as modules).  PROPOSED REDESIGN (2026-09-23,
 awaiting ruling): the programs' specs over ENDPOINTS (`Out fd S`, `In fd S`
 at a declared stream), with the console/file/pipe files as instances and
 the line shapes as endpoint-provisioning modules -- design/app-both.md §5.
+SUPERSEDED (2026-09-23) by design/program-specs.md: the programs' specs
+as interaction trees (the endpoints are its stream handler); its §4 is
+M4's new step list; `iris/ProgTree.v` (pure, a leaf) is landed.
 
 FileOutPure DEAD CODE REMOVED (2026-09-23): 92 of 169 declarations
 (the whole claim-stage layer -- `D_f`, `pending_f`, `pcount_f`, the

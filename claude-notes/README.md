@@ -266,6 +266,19 @@ in `durable-notes.md` for what belongs where and what gets deleted.
   the contents at EOF, sh's PIPE arm, the two-writer console lease for the
   both-execs-failed arm, and the three honest limits.
 
+- **[`app-both.md`](design/app-both.md)** — ONE APPLICATION: the file lines and
+  the pipeline line together (RULED: Route B, abstract first — the line
+  model, the generic families and the generic claim, then the union as a
+  listing); §5 the endpoint proposal, superseded by `program-specs.md`.
+
+- **[`program-specs.md`](design/program-specs.md)** — THE PROGRAMS' SPECS
+  AS INTERACTION TREES (proposal): why the landed walks are already trees
+  in the wrong vocabulary, where `Out fd S`/`In fd S` stop being general
+  (order across descriptors, the kernel's answers, two writers,
+  granularity), the tree as the ONE spec per program with the endpoints
+  as its stream handler, and the pure half `iris/ProgTree.v` with every
+  line shape computed.
+
 - **[`contexts.md`](design/contexts.md)** — CONTEXTS (`TsoCtx.v`): the three
   tokens (running, stamped, parked under a context), the one domination
   relation and its four mints, `CtxMorph` as the only transport class with

@@ -120,9 +120,12 @@ recorded as the cleanup owed by the union, beside SLOT-WS.
 
 ## 5. The programs' specs over endpoints (proposal for M4, 2026-09-23)
 
-**Status: PROPOSAL, awaiting the owner's ruling.**  Asked by the owner
-(2026-09-23): "what's the generic spec of cat and echo, which can then be
-used for echo to the console, echo to a file, echo piped to cat, etc?"
+**Status: ASSESSED and ABSORBED by [`program-specs.md`](program-specs.md)
+(2026-09-23): the endpoints below are the STREAM HANDLER of a tree-shaped
+spec, not the spec — its §2 says where they stop being general.**  Asked
+by the owner (2026-09-23): "what's the generic spec of cat and echo, which
+can then be used for echo to the console, echo to a file, echo piped to
+cat, etc?"
 
 ### 5.1 What exists: the code walks are already destination-free
 

@@ -557,7 +557,10 @@ Section UkConsOut.
     iPoseProof Hstub as "Hst". rewrite /stub_law.
     iDestruct "Hst" as "#Hst".
     iApply ("Hst" $! h m avail with "Hcode Hrun").
-    iIntros (h1) "%Hal Hec Hrun Hret".
+    iIntros (h1) "%E6 %Hal6 Hec Hrun Hret".
+    assert (Hal : is_aligned_vaddr
+                    (Virtaddr (add_vec_int (mword_of_int (up_write P + 2) : mword 64) 4)) 2
+                  = true) by (rewrite E6; exact Hal6).
     unfold stub_ret.
     iApply (cons_leaf N h1 (<[Regidx a7_idx := (mword_of_int 16 : mword 64)]> m)
               _ avail
@@ -600,7 +603,7 @@ Section UkConsOut.
                  ltac:(rewrite Hka1; exact Hnf)
                  with "Hpost") as "[%Hret HQ]".
     iDestruct "HQ" as "[Hd Hs2]".
-    rewrite Ham1.
+    rewrite Ham1 E6.
     (* ---- THE STUB, back to the caller ---- *)
     iApply ("Hret" $! h' ret with "Hrun").
     iIntros (h3) "Hrun".

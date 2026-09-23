@@ -1645,6 +1645,7 @@ UInitSh.v
 UInitBoot.v
 
 UkWriteLeaf.v
+UkConsOut.v
 UkWriteCons.v
 UkWriteFile.v
 UkWritePipe.v

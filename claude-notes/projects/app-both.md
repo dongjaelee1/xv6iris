@@ -256,6 +256,29 @@ condition, and echo is the pipe's corollary in the landed tree; it goes
 with the echo tier at M5.  Gotchas met: a variable named `I` shadows
 `True`'s constructor (`Logic.I`); comments must not contain `"`.
 
+M2c THIRD CUT, PART 1 (2026-09-23): `FileLinkGen` §5-§6 -- the SAME
+generic section at a named boot state: `f0w_at s0 k s := f0w g k s ∗
+⌜s = s0⌝`, `file_params_at s0` (head `fhead_at g s0`),
+`file_links_gl_at`, `fturn0_gen_at` (at `FileLinksAtBan.fturn_pre_at`),
+`fwc_rresw_at_res`, `file_link_gen_at s0 : LinkRec`; and the packing
+lemmas both ways for the families the consumers spend (`gwc_{pro,ban,
+blk,post,line,sp_t,open_t,lpr}` between `file_params` and
+`file_params_at s0`; `gwc_line`/`gwc_lpr` take the extra arm `file_X`
+explicitly).  So RULING H' costs no second family set.  NEXT (part 2):
+`FileLinkInst.file_link_inst := file_link_gen g`, `file_link_inst_at
+s0 := file_link_gen_at g s0`, the cursor/stage records at the generic
+bodies, `file_Wcl/Wbl_unpack` through `gwc_lpr_unpack`/`gwc_ban_unpack`;
+then the ~35 consumer sites that compute on family bodies
+(`FileLinksAtInp` 6, `FileReadInst` 3, `UInitFileCons` 5, `UShRound`
+~25: `iExists ps, cs, P` becomes `iExists ps, cs, s0, P` with the
+witness `f0w ∗ ⌜s0 = s0⌝`, `wr_X_f` becomes `lm_wr_X file_lm` through
+the equations, `cbn [… file_link_inst_at fwc_X_at]` becomes `cbn […
+file_link_inst_at gen_link_inst gwc_X]`); then delete `FileLinksLine`
+S8-S9's families and laws (keep `f0w`, `f0bw`, `f0pre`, `fhead`, the
+residue, `fturn_pre`), `FileLinksAt`'s families (keep `f0pre_at`,
+`fhead_at` + packing, `fwc_rres(w)_at`), `FileLinksAtBan` (move
+`fturn_pre_at`), `FileLinksAtLine` whole.
+
 M2c SECOND CUT (2026-09-23): the generic gained THE PER-SHAPE LINE ARM
 `X` (a section parameter with `X_tl`; `gwc_line := gwc_pro ∨ (∃ a,
 ⌜lm_aprs⌝ ∗ gwc_post) ∨ X`, and the module's own prompt step `X_dollar`

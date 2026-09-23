@@ -1525,6 +1525,8 @@ EchoLinksBan.v
 LinkRec.v
 GenLinksLine.v
 GenOut.v
+GenLinks.v
+GenLinksGl.v
 StageRec.v
 ReadRec.v
 FileLineWit.v

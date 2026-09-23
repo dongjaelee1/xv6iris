@@ -30,6 +30,14 @@ Require Import FileOutPure.
 Require Import EchoOut.
 Require Import AppFile.
 Require Import FileOut.
+Require Import LineModel.
+Require Import LineModelLinks.
+Require Import LineModelInst.
+Require Import FileHooks.
+Require Import GenOutPure.
+Require Import GenOutHist.
+Require Import GenOut.
+Require Import GenLinks.
 Require Import RiscvPtsto.
 Require Import WpUart.
 Require Import CtxIdDefs.
@@ -58,22 +66,14 @@ Section file_links.
       (Φ : iProp Σ) :
     file_taint (fgn_cl g) -∗ Φ -∗ cons_link Uart0 k ev Φ.
   Proof using Hcons.
-    iIntros "#HT HΦ" (o H) "#Hlb Hres _ _".
-    iModIntro. iExists o.
-    iSplitR; [iExact "Hlb" |].
-    iSplitR "HΦ"; [| iExact "HΦ"].
-    rewrite !fchist_at0 /fecl. by iLeft.
+    exact (gcons_link_of_taint file_lm (file_cparams g) None (file_wa g) Hcons k ev Φ).
   Qed.
 
   Lemma file_write_link_taint (k : nat) (b : bv 8) (Φ : iProp Σ) :
     file_taint (fgn_cl g) -∗ (file_taint (fgn_cl g) -∗ Φ) -∗
     out_link Uart0 k b Φ.
   Proof using Hcons.
-    iIntros "#HT HΦ" (o H) "#Hlb Hres".
-    iModIntro. iExists o.
-    iSplitR; [iExact "Hlb" |].
-    iSplitR "HΦ"; [| by iApply "HΦ"].
-    rewrite !fchist_at0 /fecl. by iLeft.
+    exact (gwrite_link_taint file_lm (file_cparams g) None (file_wa g) Hcons k b Φ).
   Qed.
 
   (* (W-first) THE ERA'S FIRST PROCESS BYTE.  It is the first byte of the
@@ -95,13 +95,16 @@ Section file_links.
     out_link Uart0 k b Φ.
   Proof using Hcons.
     intros Hfok Halt Hhead.
-    iIntros "#Hpin #Hfp Ht #Hpslb #Hcslb #Hilb #Hbl Hty HΦ" (o H) "#Hlb Hres".
-    rewrite !fchist_at0.
-    iMod (fecl_step_write_first g k v vf a b s0 (default [] o) H
-            Hfok Halt Hhead with "Hpin Hfp Ht Hpslb Hcslb Hilb Hbl Hty Hres")
-      as "(Hres & Hret)".
-    iModIntro. iExists o. rewrite fchist_at0. iFrame "Hlb Hres".
-    by iApply "HΦ".
+    iIntros "#Hpin #Hfp Ht #Hpslb #Hcslb #Hilb #Hbl Hty HΦ".
+    iAssert (f0boot g k s0 ∨ file_taint (fgn_cl g))%I with "[Hty]" as "Hbt".
+    { iDestruct "Hty" as "[#Hty | #HT]"; [iLeft | by iRight].
+      iExists vf. by iFrame "Hfp Hbl Hty". }
+    iApply (gwrite_link_first file_lm (file_cparams g) None (file_wa g) Hcons k v a b s0 Φ Hfok Halt Hhead
+              with "Hpin Ht Hpslb Hcslb Hilb Hbt [HΦ]").
+    iIntros "[(Ht & Hps & Hcs & Hil & Hw) | #HT]"; iApply "HΦ"; [iLeft | by iRight].
+    iDestruct "Hw" as (vf') "[#Hfp' #Hlb]".
+    iDestruct (file_era_pin_agree with "Hfp Hfp'") as %<-.
+    iFrame "Ht Hps Hcs Hil Hlb".
   Qed.
 
   (* (W) THE WRITE LINK, INSIDE A BLOCK -- [EchoOut.echo_write_link] with
@@ -120,13 +123,14 @@ Section file_links.
     out_link Uart0 k b Φ.
   Proof using Hcons.
     intros Hn Hpin0 Hb.
-    iIntros "#Hpin #Hfp Ht #Hpslb #Hcslb #Hilb #Hf0lb HΦ" (o H) "#Hlb Hres".
-    rewrite !fchist_at0.
-    iMod (fecl_step_write g k v vf P b ps0 cs0 s0 I0 (default [] o) H
-            Hn Hpin0 Hb with "Hpin Hfp Ht Hpslb Hcslb Hilb Hf0lb Hres")
-      as "(Hres & Hret)".
-    iModIntro. iExists o. rewrite fchist_at0. iFrame "Hlb Hres".
-    by iApply "HΦ".
+    iIntros "#Hpin #Hfp Ht #Hpslb #Hcslb #Hilb #Hf0lb HΦ".
+    rewrite proc_stream_f_lm in Hb.
+    iApply (gwrite_link file_lm (file_cparams g) None (file_wa g) Hcons k v P b ps0 cs0 s0 I0 Φ
+              Hn (proj1 (pro_pin_f_lm _ _ _) Hpin0) Hb
+              with "Hpin Ht Hpslb Hcslb Hilb [] [HΦ]").
+    { iExists vf. iFrame "Hfp Hf0lb". }
+    iIntros "[(Ht & _) | #HT]"; iApply "HΦ"; [iLeft | by iRight].
+    iFrame "Ht Hpslb Hcslb Hilb Hf0lb".
   Qed.
 
   (* (W') THE WRITE LINK AT A BLOCK'S FIRST BYTE.  The alternative's INDEX
@@ -153,13 +157,14 @@ Section file_links.
     out_link Uart0 k b Φ.
   Proof using Hcons.
     intros Hne0 Hr0 Hdiv Hpin0 HPeq Halt Hhead.
-    iIntros "#Hpin #Hfp Ht #Hpslb #Hcslb #Hilb #Hf0lb HΦ" (o H) "#Hlb Hres".
-    rewrite !fchist_at0.
-    iMod (fecl_step_write_blk g k v vf P a b ps0 cs0 s0 I0 (default [] o) H
-            Hne0 Hr0 Hdiv Hpin0 HPeq Halt Hhead
-            with "Hpin Hfp Ht Hpslb Hcslb Hilb Hf0lb Hres") as "(Hres & Hret)".
-    iModIntro. iExists o. rewrite fchist_at0. iFrame "Hlb Hres".
-    by iApply "HΦ".
+    iIntros "#Hpin #Hfp Ht #Hpslb #Hcslb #Hilb #Hf0lb HΦ".
+    rewrite proc_before_f_lm in HPeq. rewrite fstate_upto_lm in Hhead.
+    iApply (gwrite_link_blk file_lm (file_cparams g) file_lm_byte_laws None (file_wa g) Hcons k v P a b ps0 cs0 s0 I0 Φ
+              Hne0 Hr0 Hdiv (proj1 (pro_pin_f_lm _ _ _) Hpin0) HPeq Halt eq_refl Hhead
+              with "Hpin Ht Hpslb Hcslb Hilb [] [HΦ]").
+    { iExists vf. iFrame "Hfp Hf0lb". }
+    iIntros "[(Ht & _ & #Hcs & _ & _) | #HT]"; iApply "HΦ"; [iLeft | by iRight].
+    iFrame "Ht Hpslb Hcs Hilb Hf0lb".
   Qed.
 
   (* (W-pro) THE WRITE LINK AT A PROLOGUE ROUND'S CHOICE BYTE.  Init's own
@@ -185,13 +190,15 @@ Section file_links.
     out_link Uart0 k b Φ.
   Proof using Hcons.
     intros Hr0 Hopen Hdiv Hpin0 Hnd HPeq Halt Hhead.
-    iIntros "#Hpin #Hfp Ht #Hpslb #Hcslb #Hilb #Hf0lb HΦ" (o H) "#Hlb Hres".
-    rewrite !fchist_at0.
-    iMod (fecl_step_write_pro g k v vf P a b ps0 cs0 s0 I0 (default [] o) H
-            Hr0 Hopen Hdiv Hpin0 Hnd HPeq Halt Hhead
-            with "Hpin Hfp Ht Hpslb Hcslb Hilb Hf0lb Hres") as "(Hres & Hret)".
-    iModIntro. iExists o. rewrite fchist_at0. iFrame "Hlb Hres".
-    by iApply "HΦ".
+    iIntros "#Hpin #Hfp Ht #Hpslb #Hcslb #Hilb #Hf0lb HΦ".
+    rewrite proc_stream_f_lm in HPeq. rewrite pro_idx_f_lm in Hnd.
+    iApply (gwrite_link_pro file_lm (file_cparams g) None (file_wa g) Hcons k v P a b ps0 cs0 s0 I0 Φ
+              (or_intror (or_introl I)) Hr0 Hopen Hdiv
+              (proj1 (pro_pin_f_lm _ _ _) Hpin0) Hnd HPeq Halt Hhead
+              with "Hpin Ht Hpslb Hcslb Hilb [] [HΦ]").
+    { iExists vf. iFrame "Hfp Hf0lb". }
+    iIntros "[(Ht & #Hps & _ & _ & _) | #HT]"; iApply "HΦ"; [iLeft | by iRight].
+    iFrame "Ht Hps Hcslb Hilb Hf0lb".
   Qed.
 
   (* (R) THE READ LINK.  Beside the window it exports THE ERA'S INPUT AT THE
@@ -226,50 +233,40 @@ Section file_links.
     (fread_ret k v n ws -∗ Φ) -∗
     cons_link Uart0 k (ConsLog.EvRead ws) Φ.
   Proof using Hcons.
-    iIntros "#Hpin Hdlr HΦ" (o H) "#Hlb Hres _ %Hread".
-    rewrite !fchist_at0.
-    iMod (fecl_step_read g k v n (default [] o) H ws Hread
-            with "Hpin Hdlr Hres") as "(Hres & Hret)".
-    iModIntro. iExists o. rewrite fchist_at0. iFrame "Hlb Hres".
-    iApply "HΦ". rewrite /fread_ret.
-    iDestruct "Hret" as "[Ht | (Hdlr & %Hdl & %Hpref & %Hidx & %Hbyte
-                               & %Hboots & Hilb & %Hdi & Hrest)]"; [by iLeft |].
-    iRight. iFrame "Hdlr".
-    iExists (LogEntryDefs.ch_log H), (LogEntryDefs.ch_dl H).
-    iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
-    iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
-    iSplitR; [by iPureIntro |]. iSplitR; [iPureIntro; exact Hboots |].
-    iSplitL "Hilb"; [iExact "Hilb" |].
-    iSplitR; [by iPureIntro |]. iExact "Hrest".
+    iIntros "#Hpin Hdlr HΦ".
+    iApply (gread_link file_lm (file_cparams g) file_lm_byte_laws None (file_wa g) Hcons k v n ws Φ with "Hpin Hdlr [HΦ]").
+    iIntros "Hret". iApply "HΦ". rewrite /gread_ret /fread_ret.
+    iDestruct "Hret" as "[Hret | (Hdl & %pops & %dl & %Hrok & %Hn & %Hpref & %Hidx
+                                  & %Hdisc & %Hbt & #Hilb & %Hdi & Hws)]"; [by iLeft |].
+    iRight. iFrame "Hdl". iExists pops, dl.
+    iSplitR; [done |]. iSplitR; [done |]. iSplitR; [done |].
+    iSplitR; [done |]. iSplitR; [done |]. iSplitR; [done |].
+    iSplitR; [iExact "Hilb" |]. iSplitR; [done |].
+    iDestruct "Hws" as "[%Hw | (%cs0 & %ps0 & %s0 & #Hcs & #Hps & #Hw & %Hnl
+                                 & #Htl & %Hrd)]"; [by iLeft |].
+    iRight. iDestruct "Hw" as (vf) "[#Hfp #Hlb]".
+    iExists cs0, ps0, vf, s0. rewrite proc_before_f_lm.
+    iFrame "Hcs Hps Hfp Hlb Htl". iPureIntro.
+    split; [exact Hnl | by apply rd_stage_f_lm].
   Qed.
 
   (* ---- the arm's close and its bytes, both free ---- *)
   Lemma file_close_link (k : nat) (Φ : iProp Σ) :
     Φ -∗ cons_link Uart0 k ConsLog.EvClose Φ.
   Proof using Hcons.
-    iIntros "HΦ" (o H) "#Hlb Hres %Hok %Hev".
-    rewrite fchist_at0.
-    iDestruct (fecl_close g k (default [] o) H Hok Hev with "Hres") as "Hres".
-    iModIntro. iExists o. rewrite fchist_at0. by iFrame "Hlb Hres HΦ".
+    exact (gclose_link file_lm (file_cparams g) None (file_wa g) Hcons k Φ).
   Qed.
 
   Lemma file_byte_link (k : nat) (b : bv 8) (Φ : iProp Σ) :
     Φ -∗ cons_link Uart0 k (ConsLog.EvByte b) Φ.
   Proof using Hcons.
-    iIntros "HΦ" (o H) "#Hlb Hres %Hok %Hev".
-    rewrite fchist_at0.
-    iMod (fecl_step_byte g k (default [] o) H b Hok Hev with "Hres") as "Hres".
-    iModIntro. iExists o. rewrite fchist_at0. by iFrame "Hlb Hres HΦ".
+    exact (gbyte_link file_lm (file_cparams g) file_lm_byte_laws None (file_wa g) Hcons k b Φ).
   Qed.
 
   Lemma file_cons_run (k : nat) (cs : list (bv 8)) (Φ : iProp Σ) :
     Φ -∗ cons_run k cs Φ.
   Proof using Hcons.
-    iIntros "HΦ". iInduction cs as [| b cs] "IH" forall (Φ); cbn [cons_run].
-    - by iApply file_close_link.
-    - iSplit.
-      + by iApply file_close_link.
-      + iApply file_byte_link. by iApply "IH".
+    exact (gcons_run file_lm (file_cparams g) file_lm_byte_laws None (file_wa g) Hcons k cs Φ).
   Qed.
 
   (* ==================================================================== *)

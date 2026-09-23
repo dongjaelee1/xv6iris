@@ -338,17 +338,16 @@ NEXT: M4 (the child laws as modules).  RULED 2026-09-23 (owner): M4 is
 design/program-specs.md's plan (the programs' specs as interaction
 trees); its §4 is the step list.  STATUS: cuts 1-3 and 4(a)(b) landed
 (`ProgTree`, `UkTree`, `UkStub`, `UkHandler`, `UkEchoTree`, `UkCatTree`;
-the walks' `_at` forms).  The application tier is being rebuilt (it was
-stale since the 2026-09-16 kernel dump in this checkout); cat's payers
-then move by one lemma each -- `UCatKernel.v` :461/:512 (the write arm's
-premise is `bv_signed ret = Z.of_nat nb`; recover the word by
-`UkCat.moi_of_sint`), :474/:525 (`kcat_wpost_of_eq` for the write post),
-:1051-:1102/:1133/:1222 (the diagnostic tails end in `kcat_exit N 1`:
-`kcat_exit_of_pay`, which needs `ukn_const` at :1546/:1647/:1781/:2051/
-:2384 via `ukn_const_of_eq`/`ukn_const_of_triv`); `UCatPipe.v` :771-:792
-(`pcat_w_taint` restated at `kcat_wpost`, `kcat_wpost_of_both`),
-:1029/:1042/:1051; `UShPipeLaw.v` :820-:831 (`pl_kcat_dg` at the exit
-hole, `ukn_const` binder).  Then cut 4(c).
+the walks' `_at` forms; cat's payers repointed, lane/payers 9f2f7428b:
+`UCatKernel` gains a constancy premise on `cat_pay_absent/present/
+filed_some/filed_none` and `ukn_const` binders on the two taint-open
+lemmas, `UCatPipe.pcat_w_taint`'s post is `kcat_wpost`, `UShPipeLaw.
+pl_kcat_dg` takes `ukn_const`; audits 13/13/14/14 unmoved).  The haltable
+output device (`DOutH`/`DHalt`) is in.  IN FLIGHT, cut 4(c) device lanes
+in sibling checkouts (design §3.4b): lane/cons (`UkConsOut.v`, the
+console at the generic claim), lane/filedev (`UkFileDev.v`, the file at
+the deed), lane/pipedev (`UkPipeDev.v`, the pipe at the protocol); then
+the union's `ep_iface` from the three, and cut 5.
 
 FileOutPure DEAD CODE REMOVED (2026-09-23): 92 of 169 declarations
 (the whole claim-stage layer -- `D_f`, `pending_f`, `pcount_f`, the

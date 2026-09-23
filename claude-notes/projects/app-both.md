@@ -274,6 +274,30 @@ bodies (M2c's two shapes); `Proof using` closure; comments without `"`.
 
 ## RESUME HERE (2026-09-22, late)
 
+M3b THIRD CUT COMPLETE (2026-09-23): `GenOut.v` states and proves the
+WHOLE claim step list once -- sup/close/open/arm, the four writes,
+`gcl_step_read`, `gcl_step_echo` (with `lm_d4_nomerge_snoc`,
+`lm_disc_seg'_pt_last` at `done_of`, `lm_next_input_of_complete`),
+`gcl_step_byte`, `gdrain_ret`/`gcl_drain`.  The hook `gen_wa` ended as:
+`gwa k st` (authority), `gwa_agree` (gW pins `default sd st`), `gwa_ty s`
+(persistent typed witness, the file's `f0_typed`) with `gwa_W : gwa k (Some
+s0) -∗ gwa k (Some s0) ∗ gW k s0 ∗ gwa_ty s0`, `gwa_boot`/`gwa_file` (the
+head's filing).  FOUND at the echo: the determinacy theorem's D4 side
+conditions need NO new model law -- (K1)+(A1) put every index inside the
+padded list (the discipline's input IS the claim's), whose entries are
+non-terminal; the discipline's own D4 below its last byte refutes the
+mergeable case.  Gotchas: under the Iris imports `prefix` is
+`String.prefix` (write `list_relations.prefix`); `Forall2_length`'s first
+explicit argument there is the proof.  NEXT (fourth cut): the FILE
+INSTANCE -- `file_wa g : gen_wa file_lm (file_params g) None` (`gwa k st :=
+∃ vf, file_era_pin k vf ∗ f0f_auth vf (opt_list st) ∗ f0_wit vf st ∗
+f0_typed (default None st)`, boot evidence `⌜k = S gen_id⌝ ∗ ∃ vf,
+file_era_pin k vf ∗ f0_bl vf s0 ∗ f0_typed s0`), then `fecl := gcl …` with
+`fecl_pure`/`fostage`/`fdrain_ret` as equivalences or deleted, and the
+consumers (`FileLinks`, `FileReadInst`, `UInitFile*`, `UShRound`) switched
+-- measure every site that unfolds `fecl`/`fecl_pure`/`fostage` first; the
+pro step's new `0 < P` premise must be supplied at its caller.
+
 M3b THIRD CUT (2026-09-23): THE FOUR WRITES ONCE in `GenOut.v` --
 `gcl_step_write_first` (the head: `gen_wa` gained `gwa_boot`, the boot
 evidence, and `gwa_file`, the filing law), `gcl_step_write`,

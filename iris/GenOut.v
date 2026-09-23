@@ -21,9 +21,9 @@
 (*  to the read and the drain ([gwa_W]), and the era's first process    *)
 (*  byte files the state out of the boot evidence ([gwa_file]).          *)
 (*                                                                       *)
-(*  So far: the claim, the steps that take nothing (the taint's supply,  *)
-(*  the close, the open, the arm), the era's head write, the ordinary    *)
-(*  write and the write at a block's first byte.                         *)
+(*  The claim's whole step list, once: the steps that take nothing (the  *)
+(*  taint's supply, the close, the open, the arm), the four writes, the  *)
+(*  read, the echo, the byte and the drain.                               *)
 (* ===================================================================== *)
 From Stdlib Require Import ZArith Lia List.
 From stdpp Require Import gmap list bitvector.definitions.
@@ -57,9 +57,13 @@ Record gen_wa {Σ : gFunctors} `{!echoOutG Σ} (M : lmodel) (G : gen_params M)
   (* the writer's witness pins the state the stage reads *)
   gwa_agree : forall k st s0,
     gwa k st -∗ gW G k s0 -∗ ⌜default sd st = s0⌝;
-  (* a filed state hands the writer's witness out again *)
+  (* THE STATE'S TYPED WITNESS the drain hands the ledger (at the file,
+     the deed's evidence for the boot content), and a filed state hands
+     the writer's witness and it out again *)
+  gwa_ty : lm_st M -> iProp Σ;
+  gwa_ty_pers : forall s, Persistent (gwa_ty s);
   gwa_W : forall k s0,
-    gwa k (Some s0) -∗ gwa k (Some s0) ∗ gW G k s0;
+    gwa k (Some s0) -∗ gwa k (Some s0) ∗ gW G k s0 ∗ gwa_ty s0;
   (* THE BOOT EVIDENCE the era's first writer holds (at the file: the era's
      second record, the boot ledger's entry, the deed's typed witness), and
      THE FILING LAW: the era's first process byte files the state out of it
@@ -73,9 +77,11 @@ Global Arguments gwa {Σ _ M G sd} _ _ _.
 Global Arguments gwa_tl {Σ _ M G sd} _ _ _.
 Global Arguments gwa_agree {Σ _ M G sd} _ _ _ _.
 Global Arguments gwa_W {Σ _ M G sd} _ _ _.
+Global Arguments gwa_ty {Σ _ M G sd} _ _.
+Global Arguments gwa_ty_pers {Σ _ M G sd} _ _.
 Global Arguments gwa_boot {Σ _ M G sd} _ _ _.
 Global Arguments gwa_file {Σ _ M G sd} _ _ _.
-Global Existing Instance gwa_tl.
+Global Existing Instances gwa_tl gwa_ty_pers.
 
 (* the reader's range condition grows by the alternative a block files
    ([FileOutPure.alts_pre_snoc] once) *)
@@ -1131,7 +1137,7 @@ Section gen_out.
                 ∨ ∃ s1 : lm_st M, ⌜gs_st M so = Some s1⌝ ∗ gW G k s1))%I
       with "[Hwa]" as "[Hwa #Hf0w]".
     { destruct (gs_st M so) as [s1 |] eqn:Hf0.
-      - iDestruct (gwa_W A k s1 with "Hwa") as "[Hwa #Hlb]".
+      - iDestruct (gwa_W A k s1 with "Hwa") as "(Hwa & #Hlb & _)".
         iFrame "Hwa". iRight. iExists s1.
         iSplitR; [by iPureIntro | iExact "Hlb"].
       - iFrame "Hwa". iLeft. by iPureIntro. }
@@ -1586,5 +1592,119 @@ Section gen_out.
       + exact Hfok0.
     - exact Hcsl2.
     - exact (lm_ps_len_ok_echo M sd so (open_seg h, c) Hpsl).
+  Qed.
+
+  (* ...AND THE BYTE, which takes NOTHING: the arm is the history's own
+     field, and everything the step needs is inside the claim and the
+     event's premises.  [FileOut.fecl_step_byte] once. *)
+  Lemma gcl_step_byte (k : nat) (ho : list mobs)
+      (CH : LogEntryDefs.cons_hist) (b : bv 8) :
+    ConsLog.cons_hist_ok CH ->
+    ConsLog.cons_ev_ok CH (ConsLog.EvByte b) ->
+    gcl k ho CH ==∗ gcl k ho (ConsLog.cons_step CH (ConsLog.EvByte b)).
+  Proof using B.
+    intros Hok Hev. iIntros "Hcl".
+    iDestruct (gcl_arm with "Hcl") as "[Hcl [#HT | %Hera]]".
+    { iModIntro. rewrite /gcl. by iLeft. }
+    pose proof Hev as Hev0.
+    destruct Hev0 as (a & Ha & Hlk). destruct a as [[[ha ca] csa] ja].
+    cbn [LogEntryDefs.ca_echo LogEntryDefs.ca_sent] in Hlk.
+    rewrite /garm_era Ha in Hera.
+    destruct Hera as (Hdseg & Hbts & Hdisc & Hsh & Hw & Hcsa0 & HK1).
+    subst ha.
+    destruct Hok as [_ Harm]. rewrite Ha in Harm.
+    cbn [from_option LogEntryDefs.ca_hist LogEntryDefs.ca_byte
+         LogEntryDefs.ca_echo LogEntryDefs.ca_sent] in Harm.
+    destruct Harm as (Hends & Hecho & _ & Hord & Hwire).
+    assert (Hshape : csa = [echo_of ca] /\ ja = 0 /\ b = echo_of ca).
+    { destruct Hecho as [Hnil | [Hech | [Herase _]]].
+      - exfalso. rewrite Hnil in Hlk. by rewrite lookup_nil in Hlk.
+      - rewrite Hech in Hlk.
+        destruct ja as [| j']; cbn in Hlk; [| by rewrite lookup_nil in Hlk].
+        injection Hlk as <-. by split_and!.
+      - exfalso.
+        assert (Hcin : ca ∈ ins (open_seg ho)).
+        { destruct (open_seg_ends_in ho ca Hends) as [h0 Hh0].
+          rewrite Hh0 ins_app ins_in.
+          apply elem_of_app. right. apply elem_of_list_here. }
+        destruct (lm_disc_drop_byte M B _ ca Hdseg Hcin) as (_ & _ & Hno).
+        rewrite Hno in Herase. discriminate. }
+    destruct Hshape as (Hcsa & Hja & Hb).
+    subst b. rewrite Hcsa Hja in Ha.
+    iApply (gcl_step_echo k ho ca ho CH Hdisc Hsh Hbts Hends Hwire Hord HK1 Ha
+              with "Hcl").
+  Qed.
+
+  (* ================================================================== *)
+  (*  6.  THE DRAIN                                                      *)
+  (* ================================================================== *)
+
+  (* WHAT THE DRAIN HANDS THE LEDGER: the trace fact at the era's own
+     state, the state's typed witness, and the writer's witness at it
+     (which carries the era's pin, and how the ledger recognises a later
+     drain of the SAME era).  The state IS filed, because the wire is not
+     empty: a stage that has not filed has written nothing. *)
+  Definition gdrain_ret (k : nat) (seg : list mobs) : iProp Σ :=
+    (T ∨ ∃ s0 : lm_st M,
+          ⌜lm_good_out M s0 seg⌝ ∗ ⌜lm_st_ok M s0⌝ ∗ gwa_ty A s0 ∗ gW G k s0)%I.
+
+  Lemma gcl_drain (k : nat) (h ho : list mobs) (CH : LogEntryDefs.cons_hist)
+      (seg : list mobs) :
+    trace_shape h true ->
+    obs_boots h = k ->
+    ho `prefix_of` h ->
+    ins seg = ins (open_seg h) ->
+    obs_wire Uart0 seg `prefix_of` LogEntryDefs.ch_acc CH ->
+    obs_wire Uart0 seg <> [] ->
+    gcl k ho CH -∗ gcl k ho CH ∗ gdrain_ret k seg.
+  Proof using B.
+    intros Hsh Hk Hpre Hins Hwire Hne. subst k. rewrite /gcl /gdrain_ret.
+    iIntros "Hcl".
+    iDestruct "Hcl" as "[#HT | Hp]".
+    - iSplitR; [iLeft; iExact "HT" | iLeft; iExact "HT"].
+    - iDestruct "Hp" as (v so)
+        "(#Hpin & Hwa & Hta & Hcs & Hps & HE & Hdl & Hdll & %Hall)".
+      pose proof Hall as Hall2.
+      destruct Hall2 as (Hpure & Hcsl & Hpsl & Hin & Hera & HEtie & _).
+      destruct Hpure as (Hacc & Hwp & Hidx & Hbyte & Hpsb & Hpinf & Hcsb' & Hdsc
+                         & Hpre1 & Hpre2 & Hpre3 & Hnofk & Hf0n & Hfok0).
+      assert (Hsome : gs_st M so = Some (gs_state M sd so)).
+      { rewrite /gs_state. destruct (gs_st M so) as [sx |] eqn:Hfx; [reflexivity |].
+        exfalso. destruct (proj1 Hf0n eq_refl) as [HE0 Hw0].
+        assert (Hz : LogEntryDefs.ch_acc CH = []).
+        { rewrite Hacc HE0 Hw0 lm_D_nil. reflexivity. }
+        apply Hne, prefix_nil_inv. rewrite -Hz. exact Hwire. }
+      iEval (rewrite Hsome) in "Hwa".
+      iDestruct (gwa_W A _ (gs_state M sd so) with "Hwa") as "(Hwa & #HW & #Hty)".
+      iEval (rewrite -Hsome) in "Hwa".
+      iSplitL "Hwa Hta Hcs Hps HE Hdl Hdll".
+      { iRight. iExists v, so.
+        iFrame "Hpin Hwa Hta Hcs Hps HE Hdl Hdll". by iPureIntro. }
+      iRight. iExists (gs_state M sd so).
+      iFrame "Hty HW".
+      iSplitR; [| by iPureIntro].
+      iPureIntro.
+      assert (Hbytes : (snd <$> gs_E M so) `prefix_of` ins seg).
+      { destruct Hpre3 as [HEnil | Hbo].
+        - rewrite HEnil fmap_nil. apply prefix_nil.
+        - assert (Hpl : forall j x, gs_E M so !! j = Some x ->
+                          x.1 `prefix_of` open_seg ho)
+            by (intros j x Hx; exact (Forall_lookup_1 _ _ _ _ Hpre1 Hx)).
+          rewrite (E_bytes_of_hist (gs_E M so) (open_seg ho) Hidx Hpl Hpre2).
+          etrans; [apply prefix_take |].
+          rewrite Hins. apply ins_prefix_of, open_seg_prefix_boots;
+            [exact Hpre | by rewrite Hbo | exact Hsh]. }
+      apply (lm_good_out_of_stage M (gK G) B (gs_ps M so) (gs_cs M so)
+               (gs_state M sd so) (gs_E M so) (gs_w M so) seg Hpsb).
+      + apply (lm_alts_pre_mono M (snd <$> gs_E M so)); [exact Hbytes | exact Hcsb'].
+      + pose proof (gcl_pure_rd_stage M sd _ ho so CH Hall) as (_ & _ & _ & Hb).
+        exact Hb.
+      + destruct (lm_cs_len_ok_inv M so Hcsl) as [[[Hw _] _] | [_ Hq]];
+          [by right | left; lia].
+      + exact Hbyte.
+      + exact Hpinf.
+      + exact Hwp.
+      + rewrite -Hacc. exact Hwire.
+      + exact Hbytes.
   Qed.
 End gen_out.

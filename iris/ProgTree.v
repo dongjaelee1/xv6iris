@@ -111,11 +111,18 @@ Proof. destruct t; reflexivity. Qed.
 (*  3.  THE PROGRAMS                                                      *)
 (* ===================================================================== *)
 
-(* [fprintf]: one write per byte (user/printf.c, [putc]) *)
-Fixpoint write_bytes (fd : Z) (bs : bytes) : itree unit :=
+(* THE TWO PROGRAMS ARE WRITTEN WITH THE CONSTRUCTORS, NOT WITH [bind]:
+   every tree takes the tree that FOLLOWS it as an argument, so a payer
+   reading a node sees the next node by one unfolding ([force_eq]) and
+   never has to reassociate a [bind] -- an equation between two
+   cofixpoints, which is not provable as an equality.  [bind] and [iter]
+   stay for what is built from them by hand. *)
+
+(* [fprintf]: one write per byte (user/printf.c, [putc]), then [rest] *)
+Fixpoint write_bytes (fd : Z) (bs : bytes) (rest : proc) : proc :=
   match bs with
-  | [] => Ret tt
-  | b :: r => trigger (EWrite fd [b]) ;;; write_bytes fd r
+  | [] => rest
+  | b :: r => Vis (EWrite fd [b]) (fun _ => write_bytes fd r rest)
   end.
 
 (* --- echo -------------------------------------------------------------
@@ -125,15 +132,15 @@ Fixpoint write_bytes (fd : Z) (bs : bytes) : itree unit :=
      }
      exit(0);
    The return of [write] is ignored. *)
-Fixpoint echo_words (ws : list bytes) : itree unit :=
+Fixpoint echo_words (ws : list bytes) (rest : proc) : proc :=
   match ws with
-  | [] => Ret tt
-  | [w] => trigger (EWrite 1 w) ;;; trigger (EWrite 1 [wl_nl]) ;;; Ret tt
-  | w :: r => trigger (EWrite 1 w) ;;; trigger (EWrite 1 [wl_sp]) ;;; echo_words r
+  | [] => rest
+  | [w] => Vis (EWrite 1 w) (fun _ => Vis (EWrite 1 [wl_nl]) (fun _ => rest))
+  | w :: r => Vis (EWrite 1 w) (fun _ => Vis (EWrite 1 [wl_sp]) (fun _ => echo_words r rest))
   end.
 
 Definition echo_tree (argv : list bytes) : proc :=
-  echo_words (drop 1 argv) ;;; exit_ 0.
+  echo_words (drop 1 argv) (exit_ 0).
 
 (* --- cat --------------------------------------------------------------
      cat(fd):  while ((n = read(fd, buf, 512)) > 0)
@@ -146,33 +153,35 @@ Definition echo_tree (argv : list bytes) : proc :=
                  cat(fd); close(fd); }
                exit(0);                                                   *)
 Definition cat_bufsz : nat := 512.
+Definition cat_dg_read : bytes := sb "cat: read error" ++ [wl_nl].
+Definition cat_dg_write : bytes := sb "cat: write error" ++ [wl_nl].
+Definition cat_dg_open (p : bytes) : bytes := sb "cat: cannot open " ++ p ++ [wl_nl].
 
-Definition cat_fd (fd : Z) : itree unit :=
-  iter (fun (_ : unit) =>
-          a <- trigger (ERead fd cat_bufsz) ;;
-          match a with
-          | RdErr => write_bytes 2 (sb "cat: read error" ++ [wl_nl]) ;;; exit_ 1
-          | RdBytes [] => Ret (inr tt)
-          | RdBytes bs =>
-              r <- trigger (EWrite 1 bs) ;;
-              if decide (r = Z.of_nat (length bs)) then Ret (inl tt)
-              else write_bytes 2 (sb "cat: write error" ++ [wl_nl]) ;;; exit_ 1
-          end) tt.
+(* one turn of cat(fd): the read, then the branch its count selects *)
+CoFixpoint cat_loop (fd : Z) (rest : proc) : proc :=
+  Vis (ERead fd cat_bufsz) (fun a =>
+    match a with
+    | RdErr => write_bytes 2 cat_dg_read (exit_ 1)
+    | RdBytes [] => rest
+    | RdBytes bs =>
+        Vis (EWrite 1 bs) (fun r =>
+          if decide (r = Z.of_nat (length bs)) then Tau (cat_loop fd rest)
+          else write_bytes 2 cat_dg_write (exit_ 1))
+    end).
 
-Fixpoint cat_files (paths : list bytes) : itree unit :=
+Fixpoint cat_files (paths : list bytes) (rest : proc) : proc :=
   match paths with
-  | [] => Ret tt
+  | [] => rest
   | p :: r =>
-      fd <- trigger (EOpen p 0) ;;
-      if decide (fd < 0)
-      then write_bytes 2 (sb "cat: cannot open " ++ p ++ [wl_nl]) ;;; exit_ 1
-      else cat_fd fd ;;; trigger (EClose fd) ;;; cat_files r
+      Vis (EOpen p 0) (fun fd =>
+        if decide (fd < 0) then write_bytes 2 (cat_dg_open p) (exit_ 1)
+        else cat_loop fd (Vis (EClose fd) (fun _ => cat_files r rest)))
   end.
 
 Definition cat_tree (argv : list bytes) : proc :=
   match drop 1 argv with
-  | [] => cat_fd 0 ;;; exit_ 0
-  | paths => cat_files paths ;;; exit_ 0
+  | [] => cat_loop 0 (exit_ 0)
+  | paths => cat_files paths (exit_ 0)
   end.
 
 (* ===================================================================== *)
@@ -463,3 +472,60 @@ Example demo_negative :
   (line_plain w0 (echo_tree (argv_echo ["foo"]))).1.(w_cons)
   <> (line_plain w0 (echo_tree (argv_echo ["bar"]))).1.(w_cons).
 Proof. vm_compute. discriminate. Qed.
+
+(* ===================================================================== *)
+(*  7.  THE ONE-STEP EQUATIONS                                            *)
+(*                                                                        *)
+(*  A cofixpoint is equal to its one-step unfolding ([force_eq]), and that *)
+(*  is all the reasoning the trees ever need: a payer at a node reads the  *)
+(*  node, never compares two trees.  Where a continuation is compared      *)
+(*  pointwise the step is functional extensionality, which the tree        *)
+(*  already assumes.                                                       *)
+(* ===================================================================== *)
+From Stdlib Require Import FunctionalExtensionality.
+
+Lemma bind_ret {R S : Type} (r : R) (f : R -> itree S) : bind (Ret r) f = f r.
+Proof. rewrite (force_eq (bind _ _)), (force_eq (f r)). reflexivity. Qed.
+Lemma bind_tau {R S : Type} (t : itree R) (f : R -> itree S) :
+  bind (Tau t) f = Tau (bind t f).
+Proof. rewrite (force_eq (bind _ _)). reflexivity. Qed.
+Lemma bind_vis {R S X : Type} (e : ev X) (k : X -> itree R) (f : R -> itree S) :
+  bind (Vis e k) f = Vis e (fun x => bind (k x) f).
+Proof. rewrite (force_eq (bind _ _)). reflexivity. Qed.
+Lemma trigger_bind {S X : Type} (e : ev X) (f : X -> itree S) :
+  bind (trigger e) f = Vis e f.
+Proof.
+  unfold trigger. rewrite bind_vis. f_equal. apply functional_extensionality.
+  intros x. apply bind_ret.
+Qed.
+Lemma iter__ret_inl {I R : Type} (step : I -> itree (I + R)) (i : I) :
+  iter_ step (Ret (inl i)) = Tau (iter step i).
+Proof. rewrite (force_eq (iter_ _ _)). reflexivity. Qed.
+Lemma iter__ret_inr {I R : Type} (step : I -> itree (I + R)) (r : R) :
+  iter_ step (Ret (inr r)) = Ret r.
+Proof. rewrite (force_eq (iter_ _ _)). reflexivity. Qed.
+Lemma iter__tau {I R : Type} (step : I -> itree (I + R)) (t : itree (I + R)) :
+  iter_ step (Tau t) = Tau (iter_ step t).
+Proof. rewrite (force_eq (iter_ _ _)). reflexivity. Qed.
+Lemma iter__vis {I R X : Type} (step : I -> itree (I + R)) (e : ev X)
+    (k : X -> itree (I + R)) :
+  iter_ step (Vis e k) = Vis e (fun x => iter_ step (k x)).
+Proof. rewrite (force_eq (iter_ _ _)). reflexivity. Qed.
+Lemma exit_bind {R S : Type} (s : Z) (f : R -> itree S) :
+  bind (exit_ s) f = exit_ s.
+Proof.
+  unfold exit_. rewrite bind_vis. f_equal. apply functional_extensionality.
+  intros v. destruct v.
+Qed.
+Lemma cat_loop_unfold (fd : Z) (rest : proc) :
+  cat_loop fd rest
+  = Vis (ERead fd cat_bufsz) (fun a =>
+      match a with
+      | RdErr => write_bytes 2 cat_dg_read (exit_ 1)
+      | RdBytes [] => rest
+      | RdBytes bs =>
+          Vis (EWrite 1 bs) (fun r =>
+            if decide (r = Z.of_nat (length bs)) then Tau (cat_loop fd rest)
+            else write_bytes 2 cat_dg_write (exit_ 1))
+      end).
+Proof. etransitivity; [apply force_eq |]. reflexivity. Qed.

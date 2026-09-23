@@ -116,6 +116,10 @@ Record gen_wa {Σ : gFunctors} `{!echoOutG Σ} (M : lmodel) (G : gen_cparams M)
   (* THE STREAM EXTENSION: the application's own ledger of the era's
      process stream ([emp] where it keeps none; the pipe's block ledger and
      round ghosts).  Every process byte grows it by that byte. *)
+  (* ...and, where the state needs NO evidence (echo, the pipe: [unit]),
+     that: then any first process byte may file the default state *)
+  gwa_free : Prop;
+  gwa_file_free : gwa_free -> forall k, gwa k None ==∗ gwa k (Some sd);
   gext : nat -> list (bv 8) -> iProp Σ;
   gext_tl : forall k l, Timeless (gext k l);
   gext_grow : forall k l b, gext k l ==∗ gext k (l ++ [b]);
@@ -131,6 +135,8 @@ Global Arguments gwa_boot {Σ _ M G sd} _ _ _.
 Global Arguments gwa_file {Σ _ M G sd} _ _ _.
 Global Arguments gwa_strict {Σ _ M G sd} _.
 Global Arguments gwa_agree_strict {Σ _ M G sd} _ _ _ _ _.
+Global Arguments gwa_free {Σ _ M G sd} _.
+Global Arguments gwa_file_free {Σ _ M G sd} _ _ _.
 Global Arguments gext {Σ _ M G sd} _ _ _.
 Global Arguments gext_tl {Σ _ M G sd} _ _ _.
 Global Arguments gext_grow {Σ _ M G sd} _ _ _ _.
@@ -788,14 +794,15 @@ Section gen_out.
   (* (W-pro) THE WRITE AT A PROLOGUE ROUND'S CHOICE BYTE: init's own
      knowledge of which alternative its restart loop is taking, filed into
      the claim.  [FileOut.fecl_step_write_pro] once.  ONE PREMISE MORE than
-     the file's: [0 < P] (the writer is past the era's head) OR the
-     instance's witness forces filing ([gwa_strict], the file's case).  The
-     model's law only pins the state the stage READS, and at an empty stage
-     the only first byte is the head's ([gcl_step_write_first]). *)
+     the file's: [0 < P] (the writer is past the era's head), OR the
+     instance's witness forces filing ([gwa_strict], the file's case), OR
+     the state needs no evidence and this byte files it ([gwa_free], echo's
+     and the pipe's -- whose era opens with a prologue byte, not a head
+     write).  The byte always leaves the stage FILED at the state it reads. *)
   Lemma gcl_step_write_pro (k : nat) (v : era_pins) (P a : nat) (b : bv 8)
       (ps0 cs0 : list nat) (s0 : lm_st M) (I0 : list (bv 8))
       (ho : list mobs) (CH : LogEntryDefs.cons_hist) :
-    0 < P \/ gwa_strict A ->
+    0 < P \/ gwa_strict A \/ gwa_free A ->
     rest_of I0 = [] ->
     (I0 = [] \/ lm_panic M (lm_at M cs0 (nlines I0 - 1)) = true) ->
     nlines I0 <= length cs0 ->
@@ -819,9 +826,9 @@ Section gen_out.
       "(#Hpin2 & Hwa & Hext & Hta & Hcs & Hps & HE & Hdl & Hdll & %Hall)".
     iDestruct (gcPIN_agree G with "Hpin2 Hpin") as %->.
     iDestruct (gwa_agree A with "Hwa HW") as %Hsteq.
-    iAssert (⌜0 < P \/ gs_st M so <> None⌝)%I as %HP0'.
-    { destruct HP0 as [HP0 | Hstr]; [by iLeft |].
-      iDestruct (gwa_agree_strict A Hstr with "Hwa HW") as %Hs. iRight. iPureIntro. by rewrite Hs. }
+    iAssert (⌜0 < P \/ gs_st M so <> None \/ gwa_free A⌝)%I as %HP0'.
+    { destruct HP0 as [HP0 | [Hstr | Hfree]]; [by iLeft | | by iRight; iRight].
+      iDestruct (gwa_agree_strict A Hstr with "Hwa HW") as %Hs. iRight. iLeft. iPureIntro. by rewrite Hs. }
     assert (Hst : gs_state M sd so = s0) by exact Hsteq.
     pose proof Hall as Hall0.
     destruct Hall as (Hpure & Hcsl & Hpsl & _ & _ & _ & Hdlok).
@@ -1027,12 +1034,17 @@ Section gen_out.
     { rewrite -Hpceq /lm_pcount (length_app (gs_w M so) [b]). cbn [length]. lia. }
     (* the stage is not empty: an empty one has an empty prologue, so the
        cursor would be at zero -- and the writer is past the head *)
-    assert (Hst_some : gs_st M so <> None).
-    { destruct HP0' as [HP0' | Hs]; [| exact Hs].
-      intros Hnone. destruct (proj1 Hf0n Hnone) as [HE0 Hw0].
-      pose proof (gop_empty_stage_ps so Hpsl Hpsb HE0 Hw0) as Hps0.
-      rewrite HE0 Hw0 Hps0 fmap_nil lm_proc_before_nil in HP.
-      cbn [length] in HP. lia. }
+    (* the stage is FILED after this byte: it was already, or the cursor
+       says the era is past its head, or the instance files its default *)
+    iAssert (|==> WA k (Some (gs_state M sd so)))%I with "[Hwa]" as ">Hwa".
+    { rewrite /gs_state. destruct (gs_st M so) as [s1 |] eqn:Hstn;
+        [by iModIntro |].
+      destruct HP0' as [HP0' | [Hs | Hfree]]; [exfalso | by destruct Hs |].
+      - destruct (proj1 Hf0n eq_refl) as [HE0 Hw0].
+        pose proof (gop_empty_stage_ps so Hpsl Hpsb HE0 Hw0) as Hps0.
+        rewrite HE0 Hw0 Hps0 fmap_nil lm_proc_before_nil in HP.
+        cbn [length] in HP. lia.
+      - iApply (gwa_file_free A Hfree k with "Hwa"). }
     iMod (turn_update v P
             (lm_pcount M (gs_ps M so) (gs_cs M so) (gs_state M sd so)
                (gs_E M so) (gs_w M so))
@@ -1042,30 +1054,33 @@ Section gen_out.
     iModIntro. iSplitR "Ht".
     - rewrite /gcl. iRight.
       iExists v, (MkGS M (gs_ps M so ++ [a]) (gs_cs M so) (gs_E M so)
-                    (gs_w M so ++ [b]) (gs_st M so)).
+                    (gs_w M so ++ [b]) (Some (gs_state M sd so))).
       cbn [gs_ps gs_cs gs_E gs_w gs_st].
       rewrite (_ : gs_state M sd (MkGS M (gs_ps M so ++ [a]) (gs_cs M so)
-                                    (gs_E M so) (gs_w M so ++ [b]) (gs_st M so))
+                                    (gs_E M so) (gs_w M so ++ [b]) (Some (gs_state M sd so)))
                    = gs_state M sd so); [| reflexivity].
       rewrite Hpc2.
       rewrite /ConsLog.cons_step. cbn [LogEntryDefs.ch_dl].
-      rewrite (lm_stream_pro so a b Hpinf
-                 ltac:(pose proof (prefix_length _ _ Hcsp); rewrite HlenE Hrl0; lia)).
+      rewrite (_ : lm_stream (MkGS M (gs_ps M so ++ [a]) (gs_cs M so) (gs_E M so)
+                                 (gs_w M so ++ [b]) (Some (gs_state M sd so)))
+                   = lm_stream so ++ [b]);
+        [| exact (lm_stream_pro so a b Hpinf
+                    ltac:(pose proof (prefix_length _ _ Hcsp); rewrite HlenE Hrl0; lia))].
       iFrame "Hpin Hwa Hext Hta Hcs Hps HE Hdl Hdll". iPureIntro.
       apply (gcl_pure_out M sd k ho so
                (MkGS M (gs_ps M so ++ [a]) (gs_cs M so) (gs_E M so)
-                  (gs_w M so ++ [b]) (gs_st M so)) CH b);
+                  (gs_w M so ++ [b]) (Some (gs_state M sd so))) CH b);
         [cbn [gs_cs]; lia | reflexivity | | |
         | (* (A2): the writer is now inside the block's prologue round *)
           apply (lm_dl_ok_out M so (MkGS M (gs_ps M so ++ [a]) (gs_cs M so)
-                                      (gs_E M so) (gs_w M so ++ [b]) (gs_st M so)));
+                                      (gs_E M so) (gs_w M so ++ [b]) (Some (gs_state M sd so))));
           [reflexivity
           | cbn [gs_w]; intro Hq; by destruct (app_eq_nil _ _ Hq) as [_ Hq2]
           | exact Hcase | exact Hdlok]
         | exact Hall0].
       + rewrite /lm_out_pure.
         rewrite (_ : gs_state M sd (MkGS M (gs_ps M so ++ [a]) (gs_cs M so)
-                                      (gs_E M so) (gs_w M so ++ [b]) (gs_st M so))
+                                      (gs_E M so) (gs_w M so ++ [b]) (Some (gs_state M sd so)))
                      = gs_state M sd so); [| reflexivity].
         cbn [gs_ps gs_cs gs_E gs_w gs_st]. split_and!.
         * rewrite Hacc HD. by rewrite app_assoc.
@@ -1085,13 +1100,13 @@ Section gen_out.
         * exact Hpre2.
         * exact Hpre3.
         * exact Hnofk.
-        * split; [intro Hq; by destruct (Hst_some Hq) |].
+        * split; [discriminate |].
           intros [_ Hq]. exfalso.
           by destruct (app_eq_nil (gs_w M so) [b] Hq) as [_ Hb2].
         * exact Hfok0.
       + apply (lm_cs_len_ok_write M
                  (MkGS M (gs_ps M so ++ [a]) (gs_cs M so) (gs_E M so) (gs_w M so)
-                    (gs_st M so)) b); [exact Hcsl | exact Hcase].
+                    (Some (gs_state M sd so))) b); [exact Hcsl | exact Hcase].
       + apply (lm_ps_len_ok_pro M sd so a b);
           [ rewrite /lm_ps_round HlenE; exact HRle
           | rewrite /lm_ps_round HlenE; exact Hndps

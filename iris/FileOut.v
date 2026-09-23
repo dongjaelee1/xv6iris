@@ -396,6 +396,7 @@ Section file_out.
   Definition file_wa : gen_wa file_lm file_cparams None :=
     @MkGWA Σ _ file_lm file_cparams None f0wa _ f0wa_agree_d f0_typed _ f0wa_W
       f0boot f0wa_file True (fun _ => f0wa_agree)
+      False (fun Hf => match Hf with end)
       (fun _ _ => emp%I) _ file_gext_grow.
 
   Definition fecl (k : nat) (ho : list mobs)
@@ -599,7 +600,7 @@ Section file_out.
     iIntros "#Hpin #Hfp Ht #Hpslb #Hcslb #Hilb #Hf0lb Hcl".
     rewrite proc_stream_f_lm in HPeq. rewrite pro_idx_f_lm in Hnd.
     iMod (gcl_step_write_pro file_lm file_cparams None file_wa
-            k v P a b ps0 cs0 s0 I0 ho CH (or_intror I) Hr0 Hopen Hdiv
+            k v P a b ps0 cs0 s0 I0 ho CH (or_intror (or_introl I)) Hr0 Hopen Hdiv
             (proj1 (pro_pin_f_lm _ _ _) Hpin0) Hnd HPeq Halt Hhead
             with "Hpin Ht Hpslb Hcslb Hilb [] Hcl") as "[$ Hret]".
     { iExists vf. iFrame "Hfp Hf0lb". }

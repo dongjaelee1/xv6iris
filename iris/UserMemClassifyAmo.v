@@ -1176,7 +1176,7 @@ Proof.
   rewrite ?HU ?HR ?HW ?HX in Hc0;
   first [ solve [ vm_compute; reflexivity ]
         | solve [ vm_compute in Hc0; discriminate Hc0 ] ].
-Time Qed.
+Qed.
 Lemma u_walk_pure_gen (acc : MemoryAccessType mem_payload)
     (P : uptd) (t : ptree) (mm : PtBytes.pamap) (rs : regstate) (w va : mword 64) :
   (forall s : mstate, exec (is_shadow_stack_access acc) s = Some (false, s)) ->

@@ -1225,7 +1225,6 @@ Section UInitSh.
         iRight. iExact "HT". }
     iClear "Hstd'".
     destruct (init_args_det M na alen afun Hsav Hsro Hargs) as [-> Halen].
-    idtac "MARK-s4b-args-det".
     (* STAGED, AND WITH BOTH CLASS ARGUMENTS GIVEN.  [sh_slot_of_kexec]
        is polymorphic in the PAIR ([UShKernel.v] binds [{SG : uexecSG}]
        and [{PS : uprogSG}] as section variables), so leaving [SG] to
@@ -1253,7 +1252,6 @@ Section UInitSh.
                   (ucons_pay_const cn γp T (UkInit.init_rd (cc_rd Cr) (cc_wbn Cr))) Hok Hcwd0
                   (init_sh_room alen n0 Halen Hn0) Hlen Hlzf Hch0 Hpid1)
       as Hsk.
-    idtac "MARK-s4c-pose-ok".
     iApply (Hsk with "[] Hnpw Hdep Hdp Htag Hplaw [] [] Hcons Hgen' Hmp Hps
                       Hls Hwcp").
     - (* THE KEY'S OWN READING (lane SH-STATE): [sh_pay_state]'s wand

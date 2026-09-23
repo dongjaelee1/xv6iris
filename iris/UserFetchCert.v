@@ -1130,7 +1130,7 @@ Proof.
   rewrite ?HU, ?HR, ?HW, ?HX in Hc0 |- *;
   first [ solve [ vm_compute; reflexivity ]
         | solve [ vm_compute in Hc0; discriminate Hc0 ] ].
-Time Qed.
+Qed.
 
 (* ===================================================================== *)
 (* 7. [u_fetch_pure] -- THE PURE FETCH COMPOSER.                          *)

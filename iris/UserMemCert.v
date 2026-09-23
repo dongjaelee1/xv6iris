@@ -60,7 +60,7 @@ Proof.
   rewrite ?HU, ?HR, ?HW, ?HX in Hc0 |- *;
   first [ solve [ vm_compute; reflexivity ]
         | solve [ vm_compute in Hc0; discriminate Hc0 ] ].
-Time Qed.
+Qed.
 
 (* ===================================================================== *)
 (* 2. THE DATA WINDOW, PURE.                                             *)

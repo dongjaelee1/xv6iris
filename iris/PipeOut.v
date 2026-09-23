@@ -156,11 +156,6 @@ Definition postage : Type := ostage.
 Definition pstream (so : postage) : list (bv 8) :=
   proc_before_p (o_ps so) (o_cs so) (snd <$> o_E so) ++ o_w so.
 
-Lemma pstream_length (so : postage) :
-  length (pstream so)
-  = pcount_p (o_ps so) (o_cs so) (o_E so) (o_w so).
-Proof using. rewrite /pstream /pcount_p length_app. reflexivity. Qed.
-
 Lemma pstream_0 : pstream ostage0 = [].
 Proof using.
   rewrite /pstream /ostage0. cbn [o_ps o_cs o_E o_w].
@@ -172,21 +167,6 @@ Lemma pstream_write (ps cs : list nat) (E : list (list mobs * bv 8))
     (w : list (bv 8)) (b : bv 8) :
   pstream (MkO ps cs E (w ++ [b])) = pstream (MkO ps cs E w) ++ [b].
 Proof using. rewrite /pstream. cbn [o_ps o_cs o_E o_w]. by rewrite app_assoc. Qed.
-
-(* A BLOCK'S FIRST BYTE files an alternative, which the stage before this
-   line does not read. *)
-Lemma pstream_blk (ps cs : list nat) (E : list (list mobs * bv 8))
-    (a : nat) (b : bv 8) :
-  pro_pin_p ps cs (snd <$> E) ->
-  (nlines (removelast (snd <$> E)) <= length cs)%nat ->
-  pstream (MkO ps (cs ++ [a]) E [b]) = pstream (MkO ps cs E []) ++ [b].
-Proof using.
-  intros Hpin Hn. rewrite /pstream. cbn [o_ps o_cs o_E o_w].
-  rewrite app_nil_r.
-  rewrite -(proc_before_p_cs_prefix ps ps cs (cs ++ [a]) (snd <$> E)
-              ltac:(reflexivity) ltac:(by eexists) Hpin Hn).
-  reflexivity.
-Qed.
 
 (* ...and the FILING write, which moves BOTH: the choice list grows by the
    round's code and the block by the prompt's first byte. *)
@@ -201,31 +181,6 @@ Proof using.
   rewrite -(proc_before_p_cs_prefix ps ps cs (cs ++ [a]) (snd <$> E)
               ltac:(reflexivity) ltac:(by eexists) Hpin Hn).
   by rewrite app_assoc.
-Qed.
-
-(* A PROLOGUE ROUND'S CHOICE BYTE likewise: the prologue list grows past
-   the round the stage is standing in. *)
-Lemma pstream_pro (ps cs : list nat) (E : list (list mobs * bv 8))
-    (w : list (bv 8)) (a : nat) (b : bv 8) :
-  pro_pin_p ps cs (snd <$> E) ->
-  pstream (MkO (ps ++ [a]) cs E (w ++ [b])) = pstream (MkO ps cs E w) ++ [b].
-Proof using.
-  intros Hpin. rewrite /pstream. cbn [o_ps o_cs o_E o_w].
-  rewrite app_assoc. f_equal. f_equal.
-  symmetry. apply (proc_before_p_ps_ext ps (ps ++ [a]) cs (snd <$> E));
-    [by eexists | exact Hpin].
-Qed.
-
-(* AN ECHO closes the block it completed: the bytes move from [o_w] into
-   the stream's own account and the ledger does not grow. *)
-Lemma pstream_echo (ps cs : list nat) (E : list (list mobs * bv 8))
-    (x : list mobs * bv 8) :
-  pstream (MkO ps cs (E ++ [x]) [])
-  = pstream (MkO ps cs E (pending_at_p ps cs (snd <$> E))).
-Proof using.
-  rewrite /pstream. cbn [o_ps o_cs o_E o_w].
-  rewrite app_nil_r (fmap_snd_snoc E x) proc_before_p_snoc.
-  reflexivity.
 Qed.
 
 (* ====================================================================== *)
@@ -303,55 +258,6 @@ Proof using.
     + by rewrite (nlines_snoc_other _ _ Hx).
 Qed.
 
-(* ---- (A2)'s ECHO move, [EchoOut.dl_ok_echo] at [pending_p]: the echo
-       leaves the writer owing a whole block, so the clause drops back to
-       the completed lines below the one just closed ---- *)
-Lemma dl_ok_echo_p (so : postage) (x : list mobs * bv 8)
-    (dl : list (list mobs * bv 8)) :
-  alts_pre_p (snd <$> o_E so) (o_cs so) ->
-  o_w so = pending_p (o_ps so) (o_cs so) (o_E so) ->
-  dl_ok so dl ->
-  dl_ok (MkO (o_ps so) (o_cs so) (o_E so ++ [x]) []) dl.
-Proof using.
-  intros Hao Hweq Hdl. rewrite /dl_ok in Hdl |- *.
-  cbn [o_ps o_cs o_E o_w]. rewrite (fmap_snd_snoc (o_E so) x).
-  destruct (decide (rest_of (snd <$> o_E so) = [] /\ o_w so = []))
-    as [[Hr0 Hw0] | Hne].
-  - assert (HEnil : (snd <$> o_E so) = []).
-    { destruct (decide ((snd <$> o_E so) = [])) as [? | Hq]; [done | exfalso].
-      apply (pending_at_p_nonnil (o_ps so) (o_cs so) (snd <$> o_E so)
-               Hao Hq Hr0).
-      rewrite -/(pending_p (o_ps so) (o_cs so) (o_E so)) -Hweq. exact Hw0. }
-    rewrite HEnil. case_decide as Hc2.
-    + destruct Hc2 as [Hr2 _].
-      assert (Hn2 : nlines ([] ++ [x.2]) = 1%nat).
-      { destruct (decide (x.2 = wl_nl)) as [Hx | Hx].
-        - by rewrite Hx nlines_snoc_nl nlines_nil.
-        - exfalso. rewrite (rest_of_snoc_other [] x.2 Hx) rest_of_nil in Hr2.
-          discriminate Hr2. }
-      rewrite Hn2. replace (1 - 1)%nat with 0%nat by lia.
-      rewrite lines_bytes_0. lia.
-    + assert (Hn2 : nlines ([] ++ [x.2]) = 0%nat).
-      { destruct (decide (x.2 = wl_nl)) as [Hx | Hx].
-        - exfalso. apply Hc2. split; [| reflexivity].
-          rewrite Hx. apply rest_of_snoc_nl.
-        - by rewrite (nlines_snoc_other [] x.2 Hx) nlines_nil. }
-      rewrite Hn2 lines_bytes_0. lia.
-  - destruct (decide (x.2 = wl_nl)) as [Hx | Hx].
-    + rewrite Hx. case_decide as Hc2; last first.
-      { exfalso. apply Hc2. split; [apply rest_of_snoc_nl | reflexivity]. }
-      rewrite nlines_snoc_nl.
-      replace (S (nlines (snd <$> o_E so)) - 1)%nat
-        with (nlines (snd <$> o_E so)) by lia.
-      by rewrite (lines_bytes_snoc_nl _ _ (Nat.le_refl _)).
-    + case_decide as Hc2.
-      { exfalso. destruct Hc2 as [Hq _].
-        rewrite (rest_of_snoc_other _ x.2 Hx) in Hq.
-        destruct (app_eq_nil _ _ Hq) as [_ Hq2]. discriminate Hq2. }
-      rewrite (nlines_snoc_other _ x.2 Hx).
-      by rewrite (lines_bytes_snoc_other _ x.2 _ Hx).
-Qed.
-
 (* ---- the prologue resolution's length law, at [pro_idx_p] ---- *)
 
 Definition ps_round_p (so : postage) : nat :=
@@ -397,62 +303,6 @@ Proof using.
   cbn [o_ps o_cs o_E o_w] in HA, HB |- *. split; [exact HA |].
   intros Ho ps' Hp Hne. rewrite (length_app (o_w so) [b]). cbn [length].
   pose proof (HB Ho ps' Hp Hne). lia.
-Qed.
-
-Lemma ps_len_ok_p_blk (so : postage) (a : nat) (b : bv 8) :
-  rest_of (snd <$> o_E so) = [] ->
-  (snd <$> o_E so) <> [] ->
-  length (o_cs so) = (nlines (snd <$> o_E so) - 1)%nat ->
-  ps_len_ok_p so ->
-  ps_len_ok_p (MkO (o_ps so) (o_cs so ++ [a]) (o_E so) [b]).
-Proof using.
-  intros Hr Hne Hq Hok.
-  pose proof (nlines_pos_of_rest_nil (snd <$> o_E so) Hne Hr) as Hpos.
-  pose proof Hok as [HA HB].
-  rewrite /ps_len_ok_p /ps_round_p /ps_opens_p in HA, HB |- *.
-  cbn [o_ps o_cs o_E o_w] in HA, HB |- *.
-  assert (Hold : pro_idx_p (o_cs so) (nlines (snd <$> o_E so))
-                 = pro_idx_p (o_cs so) (nlines (snd <$> o_E so) - 1)%nat).
-  { replace (nlines (snd <$> o_E so))
-      with (S (nlines (snd <$> o_E so) - 1))%nat at 1 by lia.
-    apply pro_idx_p_Sn. apply palt_panic_ge. lia. }
-  assert (Hnew : (pro_idx_p (o_cs so) (nlines (snd <$> o_E so))
-                  <= pro_idx_p (o_cs so ++ [a])
-                       (nlines (snd <$> o_E so)))%nat).
-  { rewrite Hold.
-    replace (nlines (snd <$> o_E so))
-      with (S (nlines (snd <$> o_E so) - 1))%nat at 2 by lia.
-    rewrite pro_idx_p_S
-      (pro_idx_p_app_le (o_cs so) [a] (nlines (snd <$> o_E so) - 1)%nat
-         ltac:(lia)).
-    destruct (palt_panic _); lia. }
-  split.
-  - apply (ps_len_ok_p_empty_above so); [exact Hok |].
-    rewrite /ps_round_p. exact Hnew.
-  - intros Ho ps' Hp Hne2. exfalso.
-    destruct Ho as [Hz | [_ H3]]; [by destruct (Hne Hz) |].
-    assert (Ha3 : palt_panic (palt_of a) = true).
-    { rewrite /palt_at list_lookup_total_alt lookup_app_r in H3; [| lia].
-      rewrite Hq Nat.sub_diag in H3. by cbn in H3. }
-    assert (Heq : pro_idx_p (o_cs so ++ [a]) (nlines (snd <$> o_E so))
-                  = S (pro_idx_p (o_cs so) (nlines (snd <$> o_E so)))).
-    { rewrite Hold
-        -(pro_idx_p_app_le (o_cs so) [a] (nlines (snd <$> o_E so) - 1)%nat
-            ltac:(lia)).
-      replace (nlines (snd <$> o_E so))
-        with (S (nlines (snd <$> o_E so) - 1))%nat at 1 by lia.
-      apply pro_idx_p_Sp.
-      rewrite /palt_at list_lookup_total_alt lookup_app_r; [| lia].
-      rewrite Hq Nat.sub_diag. by cbn. }
-    rewrite Heq in Hne2. apply Hne2.
-    assert (Hnil : pro_from
-                     (S (pro_idx_p (o_cs so) (nlines (snd <$> o_E so))))
-                     (o_ps so) = []) by exact HA.
-    assert (Hnil' : pro_from
-                      (S (pro_idx_p (o_cs so) (nlines (snd <$> o_E so))))
-                      ps' = []).
-    { apply prefix_nil_inv. rewrite -Hnil. by apply pro_from_mono. }
-    by rewrite Hnil Hnil'.
 Qed.
 
 Lemma ps_len_ok_p_blk_w (so : postage) (a : nat) (wq : list (bv 8)) :
@@ -509,74 +359,6 @@ Proof using.
                       ps' = []).
     { apply prefix_nil_inv. rewrite -Hnil. by apply pro_from_mono. }
     by rewrite Hnil Hnil'.
-Qed.
-
-Lemma ps_len_ok_p_echo (so : postage) (x : list mobs * bv 8) :
-  ps_len_ok_p so ->
-  ps_len_ok_p (MkO (o_ps so) (o_cs so) (o_E so ++ [x]) []).
-Proof using.
-  intros Hok. pose proof Hok as [HA HB].
-  rewrite /ps_len_ok_p /ps_round_p /ps_opens_p in HA, HB |- *.
-  cbn [o_ps o_cs o_E o_w] in HA, HB |- *.
-  rewrite (fmap_snd_snoc (o_E so) x).
-  assert (Hmono : (pro_idx_p (o_cs so) (nlines (snd <$> o_E so))
-                   <= pro_idx_p (o_cs so)
-                        (nlines ((snd <$> o_E so) ++ [x.2])))%nat)
-    by (apply pro_idx_p_mono, nlines_app_le).
-  split.
-  - apply (ps_len_ok_p_empty_above so); [exact Hok |].
-    rewrite /ps_round_p. exact Hmono.
-  - intros Ho ps' Hp Hne. exfalso.
-    destruct Ho as [Hz | [Hr H3]].
-    { by destruct (app_eq_nil (snd <$> o_E so) [x.2] Hz) as [_ Hb]. }
-    assert (Hx : x.2 = wl_nl).
-    { destruct (decide (x.2 = wl_nl)) as [Hx | Hx]; [exact Hx | exfalso].
-      rewrite (rest_of_snoc_other (snd <$> o_E so) x.2 Hx) in Hr.
-      by destruct (app_eq_nil (rest_of (snd <$> o_E so)) [x.2] Hr) as [_ Hb]. }
-    rewrite Hx (nlines_snoc_nl (snd <$> o_E so)) in H3.
-    rewrite Hx (nlines_snoc_nl (snd <$> o_E so)) in Hne.
-    replace (S (nlines (snd <$> o_E so)) - 1)%nat
-      with (nlines (snd <$> o_E so)) in H3 by lia.
-    assert (Heq : pro_idx_p (o_cs so) (S (nlines (snd <$> o_E so)))
-                  = S (pro_idx_p (o_cs so) (nlines (snd <$> o_E so))))
-      by (apply pro_idx_p_Sp; exact H3).
-    rewrite Heq in Hne. apply Hne.
-    assert (Hnil : pro_from
-                     (S (pro_idx_p (o_cs so) (nlines (snd <$> o_E so))))
-                     (o_ps so) = []) by exact HA.
-    assert (Hnil' : pro_from
-                      (S (pro_idx_p (o_cs so) (nlines (snd <$> o_E so))))
-                      ps' = []).
-    { apply prefix_nil_inv. rewrite -Hnil. by apply pro_from_mono. }
-    by rewrite Hnil Hnil'.
-Qed.
-
-Lemma ps_len_ok_p_pro (so : postage) (a : nat) (b : bv 8) :
-  (ps_round_p so <= pro_rounds (o_ps so))%nat ->
-  ~ pro_done (pro_from (ps_round_p so) (o_ps so)) ->
-  o_w so = pending_p (o_ps so) (o_cs so) (o_E so) ->
-  ps_len_ok_p so ->
-  ps_len_ok_p (MkO (o_ps so ++ [a]) (o_cs so) (o_E so) (o_w so ++ [b])).
-Proof using.
-  intros Hle Hnd Hw [HA HB].
-  rewrite /ps_len_ok_p /ps_round_p /ps_opens_p in HA, HB, Hle, Hnd |- *.
-  cbn [o_ps o_cs o_E o_w] in HA, HB, Hle, Hnd |- *. split.
-  - replace (S (pro_idx_p (o_cs so) (nlines (snd <$> o_E so))))
-      with (pro_idx_p (o_cs so) (nlines (snd <$> o_E so)) + 1)%nat by lia.
-    rewrite -pro_from_add (pro_from_snoc_le _ (o_ps so) a Hle).
-    cbn [pro_from]. by apply pro_tail_open_snoc.
-  - intros Ho ps' Hp Hne. rewrite (length_app (o_w so) [b]). cbn [length].
-    destruct (decide (length ps' <= length (o_ps so))%nat) as [Hlen | Hlen].
-    + assert (Hp2 : ps' `prefix_of` o_ps so).
-      { destruct (prefix_weak_total ps' (o_ps so) (o_ps so ++ [a]) Hp
-                    ltac:(by eexists)) as [H | H]; [exact H |].
-        rewrite (prefix_length_eq _ _ H ltac:(lia)). reflexivity. }
-      pose proof (prefix_length _ _ (pending_at_p_ps_mono ps' (o_ps so)
-                    (o_cs so) (snd <$> o_E so) Hp2)) as Hlp.
-      rewrite -/(pending_p (o_ps so) (o_cs so) (o_E so)) -Hw in Hlp. lia.
-    + rewrite (prefix_length_eq ps' (o_ps so ++ [a]) Hp) in Hne;
-        last by (rewrite (length_app (o_ps so) [a]); cbn [length]; lia).
-      by destruct (Hne eq_refl).
 Qed.
 
 (* ---- the log's own account of the era, at the pipeline discipline ---- *)
@@ -736,21 +518,6 @@ Definition pcl_pure2 (k : nat) (ho : list mobs) (so : postage)
 
 Definition cur_frac (opn : bool) : Qp := if opn then (1/2)%Qp else 1%Qp.
 
-Lemma pcl_pure2_of (k : nat) (ho : list mobs) (so : postage)
-    (r : nat) (pre : list (bv 8)) (H : LogEntryDefs.cons_hist) :
-  pcl_pure k ho so H -> pcl_pure2 k ho so r pre false H.
-Proof using. intro Hc. by left. Qed.
-
-(* the three readings every step takes, from EITHER disjunct *)
-Lemma pcl_pure2_arm (k : nat) (ho : list mobs) (so : postage)
-    (r : nat) (pre : list (bv 8)) (opn : bool)
-    (H : LogEntryDefs.cons_hist) :
-  pcl_pure2 k ho so r pre opn H -> ch_arm_era_p k ho H.
-Proof using.
-  intros [(_ & (_ & _ & _ & _ & Hera & _)) | (_ & (_ & _ & _ & _ & Hera & _))];
-    exact Hera.
-Qed.
-
 Lemma pcl_pure2_E (k : nat) (ho : list mobs) (so : postage)
     (r : nat) (pre : list (bv 8)) (opn : bool)
     (H : LogEntryDefs.cons_hist) :
@@ -776,23 +543,6 @@ Lemma pcl_pure2_out (k : nat) (ho : list mobs) (so : postage)
 Proof using.
   intros [(_ & (Hout & _)) | (_ & (Hout & _))];
     [by apply pout_pure_o_of | exact Hout].
-Qed.
-
-Lemma pcl_pure2_ps (k : nat) (ho : list mobs) (so : postage)
-    (r : nat) (pre : list (bv 8)) (opn : bool)
-    (H : LogEntryDefs.cons_hist) :
-  pcl_pure2 k ho so r pre opn H -> ps_len_ok_p so.
-Proof using.
-  intros [(_ & (_ & _ & Hps & _)) | (_ & (_ & _ & Hps & _))]; exact Hps.
-Qed.
-
-Lemma pcl_pure2_dl_ok (k : nat) (ho : list mobs) (so : postage)
-    (r : nat) (pre : list (bv 8)) (opn : bool)
-    (H : LogEntryDefs.cons_hist) :
-  pcl_pure2 k ho so r pre opn H -> dl_ok so (LogEntryDefs.ch_dl H).
-Proof using.
-  intros [(_ & (_ & _ & _ & _ & _ & _ & Hd)) | (_ & (_ & _ & _ & _ & _ & _ & Hd))];
-    exact Hd.
 Qed.
 
 (* the open round's own length law, which is [cs_len_ok]'s boundary case *)
@@ -842,16 +592,6 @@ Proof using.
   apply epu_fmap_prefix. by apply prefix_app_r.
 Qed.
 
-Lemma pcl_pure_arm (k : nat) (ho : list mobs) (so : postage)
-    (H : LogEntryDefs.cons_hist) :
-  pcl_pure k ho so H -> ch_arm_era_p k ho H.
-Proof using. by intros (_ & _ & _ & _ & Hera & _). Qed.
-
-Lemma pcl_pure_E (k : nat) (ho : list mobs) (so : postage)
-    (H : LogEntryDefs.cons_hist) :
-  pcl_pure k ho so H -> o_E so = ch_E H.
-Proof using. by intros (_ & _ & _ & _ & _ & HE & _). Qed.
-
 Lemma pcl_pure_rd_stage (k : nat) (ho : list mobs) (so : postage)
     (H : LogEntryDefs.cons_hist) :
   pcl_pure k ho so H -> rd_stage_p (o_ps so) (o_cs so) (snd <$> o_E so).
@@ -881,72 +621,6 @@ Qed.
 
 
 (* ---- the five event steps of the pure part ---- *)
-
-Lemma pcl_pure_close (k : nat) (ho : list mobs) (so : postage)
-    (H : LogEntryDefs.cons_hist) :
-  ConsLog.cons_hist_ok H ->
-  ConsLog.cons_ev_ok H ConsLog.EvClose ->
-  pcl_pure k ho so H ->
-  pcl_pure k ho so (ConsLog.cons_step H ConsLog.EvClose).
-Proof using.
-  intros Hok Hev Hecl.
-  pose proof (ch_E_close H) as Hclose.
-  pose proof (ch_E_close_len H) as Hlen.
-  pose proof (ConsLog.cons_hist_ok_step H ConsLog.EvClose Hok Hev) as Hok'.
-  unfold ConsLog.cons_hist_ok in Hok'. destruct Hok' as [Hlog' _].
-  destruct (LogEntryDefs.ch_arm H) as [[[[h c] cs] j] |] eqn:Ha; cycle 1.
-  { rewrite /ConsLog.cons_step Ha. exact Hecl. }
-  destruct Hecl as (Hout & Hcs & Hps & Hin & Hera & HE & Hdlok).
-  destruct Hin as (_ & Hdsc & Hbts & Hdl & _ & _ & _ & Hall).
-  rewrite /ch_arm_era_p Ha in Hera.
-  destruct Hera as (Hdseg & Hboots & _ & _ & _ & Hcsa & _).
-  (* (A1) AT THE CLOSE: the arm's echo IS the byte and a store arm sends
-     its byte before it closes (K3), so the entry filed is echoed *)
-  destruct Hev as (a & Ha2 & _ & HK3). rewrite Ha in Ha2.
-  injection Ha2 as <-.
-  cbn [LogEntryDefs.ca_echo LogEntryDefs.ca_byte LogEntryDefs.ca_sent
-       le_echo le_byte fst snd] in HK3.
-  assert (Hj : j = 1%nat) by (apply HK3; exact Hcsa).
-  assert (Hech : log_echoed (h, c, take j cs)).
-  { rewrite Hcsa Hj. cbn [take]. exact (log_echoed_echo h c). }
-  destruct Hout as (Hacc & Hw & HEi & HEb & Hpsf & Hpin & Hcsf & Hdse & Hpre
-                    & Hle & Hbo & Hnofk).
-  rewrite /ConsLog.cons_step Ha in Hlog', Hlen |- *.
-  cbn [LogEntryDefs.ch_acc LogEntryDefs.ch_log LogEntryDefs.ch_dl
-       LogEntryDefs.ch_arm] in Hlog', Hlen |- *.
-  assert (Hseg : seg_of (echoed (LogEntryDefs.ch_log H ++ [(h, c, take j cs)]))
-                 = o_E so).
-  { rewrite HE -Hclose /ch_E /ConsLog.cons_step Ha.
-    cbn [LogEntryDefs.ch_log LogEntryDefs.ch_arm ch_arm_E].
-    by rewrite app_nil_r. }
-  split_and!.
-  - by split_and!.
-  - exact Hcs.
-  - exact Hps.
-  - split_and!.
-    + exact Hlog'.
-    + intros e He. apply elem_of_app in He as [He | He].
-      * exact (Hdsc e He).
-      * apply elem_of_list_singleton in He as ->.
-        cbn [le_hist fst snd]. exact Hdseg.
-    + intros e He. apply elem_of_app in He as [He | He].
-      * exact (Hbts e He).
-      * apply elem_of_list_singleton in He as ->.
-        cbn [le_hist fst snd]. exact Hboots.
-    + rewrite (echoed_snoc_yes _ _ Hech).
-      by apply (prefix_app_r _ _ [(le_hist (h, c, take j cs),
-                                   le_byte (h, c, take j cs))]).
-    + by rewrite Hseg.
-    + by rewrite Hseg.
-    + rewrite -(seg_of_snd (echoed _)) Hseg.
-      rewrite /cs_len_ok in Hcs.
-      destruct (decide (o_w so = [] /\ rest_of (snd <$> o_E so) = [])); lia.
-    + apply Forall_app. split; [exact Hall | by rewrite Forall_singleton].
-  - exact I.
-  - rewrite /ch_E. cbn [LogEntryDefs.ch_log LogEntryDefs.ch_arm ch_arm_E].
-    rewrite app_nil_r. by rewrite Hseg.
-  - exact Hdlok.
-Qed.
 
 Lemma pcl_pure_o_close (k : nat) (ho : list mobs) (so : postage)
     (r : nat) (pre : list (bv 8)) (H : LogEntryDefs.cons_hist) :
@@ -1013,18 +687,6 @@ Proof using.
   - rewrite /ch_E. cbn [LogEntryDefs.ch_log LogEntryDefs.ch_arm ch_arm_E].
     rewrite app_nil_r. by rewrite Hseg.
   - exact Hdlok.
-Qed.
-
-Lemma pcl_pure2_close (k : nat) (ho : list mobs) (so : postage)
-    (r : nat) (pre : list (bv 8)) (opn : bool) (H : LogEntryDefs.cons_hist) :
-  ConsLog.cons_hist_ok H ->
-  ConsLog.cons_ev_ok H ConsLog.EvClose ->
-  pcl_pure2 k ho so r pre opn H ->
-  pcl_pure2 k ho so r pre opn (ConsLog.cons_step H ConsLog.EvClose).
-Proof using.
-  intros Hok Hev [(Hf & Hc) | (Ht & Ho)].
-  - left. split; [exact Hf | exact (pcl_pure_close k ho so H Hok Hev Hc)].
-  - right. split; [exact Ht | exact (pcl_pure_o_close k ho so r pre H Hok Hev Ho)].
 Qed.
 
 Lemma pcl_pure_out (k : nat) (ho : list mobs) (so so' : postage)
@@ -1095,37 +757,6 @@ Proof using.
   intros Hpre [(Hf & Hc) | (Ht & Ho)].
   - left. split; [exact Hf | exact (pcl_pure_read k ho so H ws Hpre Hc)].
   - right. split; [exact Ht | exact (pcl_pure_o_read k ho so r pre H ws Hpre Ho)].
-Qed.
-
-Lemma pout_pure_move (k : nat) (ho h : list mobs) (so : postage)
-    (acc : list (bv 8)) (L : list log_entry)
-    (dl : list (list mobs * bv 8)) :
-  trace_shape h true ->
-  obs_boots h = k ->
-  (forall e, e ∈ L -> hist_ext (le_hist e) h) ->
-  pein_pure k L dl (o_cs so) ->
-  seg_of (echoed L) = o_E so ->
-  (length (o_E so) <= length (ins (open_seg h)))%nat ->
-  pout_pure k ho so acc -> pout_pure k h so acc.
-Proof using.
-  intros Hsh Hk Hord Hin Hseg Hle
-    (Hacc & Hwpre & Hidx & Hbyte & Hpsb & Hpin & Hcsb & Hdsc & _ & _ & _
-     & Hnofk).
-  destruct Hin as (Hlog & Hdsc2 & Hstamp & Hdlp & Hidxi & Hbytei & Hbndi & _).
-  split_and!; [exact Hacc | exact Hwpre | exact Hidx | exact Hbyte
-              | exact Hpsb | exact Hpin | exact Hcsb | exact Hdsc
-              | | exact Hle | | exact Hnofk].
-  - rewrite -Hseg. apply Forall_lookup_2. intros j x Hx.
-    rewrite /seg_of list_lookup_fmap in Hx.
-    destruct (echoed L !! j) as [y |] eqn:Hy; [| discriminate].
-    cbn in Hx. injection Hx as Hx. rewrite -Hx. cbn [fst].
-    assert (Hyin : y ∈ echoed L) by (by eapply elem_of_list_lookup_2).
-    destruct (echoed_elem_inv L y Hyin) as (e & He & _ & Hye).
-    apply open_seg_prefix_boots.
-    + rewrite -Hye. cbn [fst]. by destruct (Hord e He) as [Hpre _].
-    + rewrite -Hye. cbn [fst]. rewrite (Hstamp e He). by rewrite Hk.
-    + exact Hsh.
-  - right. exact Hk.
 Qed.
 
 (* the same move at the ROUND-IN-PROGRESS reading: [pout_pure_o] is
@@ -1232,70 +863,6 @@ Proof using.
   - right. exact Hk.
 Qed.
 
-Lemma pcl_pure_open (k : nat) (ho : list mobs) (so : postage)
-    (H : LogEntryDefs.cons_hist) (h : list mobs) (c : bv 8)
-    (cs : list (bv 8)) :
-  ConsLog.cons_hist_ok H ->
-  ConsLog.cons_ev_ok H (ConsLog.EvOpen h c cs) ->
-  disc_seg_p (open_seg h) -> obs_boots h = k ->
-  disc_p h -> trace_shape h true ->
-  pcl_pure k ho so H ->
-  pcl_pure k h so (ConsLog.cons_step H (ConsLog.EvOpen h c cs)).
-(* THE ARM OPENS, and THIS IS WHERE THE DROP IS REFUTED ([EchoOut.
-   ecl_pure_open]'s proof at the pipeline discipline): (K1) with the
-   flush refuted, (A1) turning the log's length into the era's echoed
-   count, and [cons_drop_ok]'s four arms against D3 and (A2). *)
-Proof using.
-  intros Hok Hev Hd Hb Hdh Hsh (Hout & Hc & Hp & Hin & _ & HE & Hdlok).
-  pose proof Hev as (Hn & Hends & Hecho & Hord & Hwire & HK1f & HK2).
-  pose proof (ch_E_open H h c cs Hn) as Hopen.
-  assert (HK1 : (length (LogEntryDefs.ch_log H) + 1)%nat
-                = length (ins (open_seg h))).
-  { destruct HK1f as (f & Hfl & Hcnt).
-    rewrite (flush_lost_zero_p h f Hsh Hdh Hfl) Nat.add_0_r in Hcnt.
-    by rewrite -ins_obs_ins in Hcnt. }
-  pose proof (open_seg_ends_in h c Hends) as Hends'.
-  assert (Hseg : seg_of (echoed (LogEntryDefs.ch_log H)) = o_E so).
-  { rewrite HE /ch_E Hn. cbn [ch_arm_E]. by rewrite app_nil_r. }
-  assert (Hall : Forall log_echoed (LogEntryDefs.ch_log H))
-    by (by destruct Hin as (_ & _ & _ & _ & _ & _ & _ & Hq)).
-  assert (Hcnt : length (o_E so) = (length (ins (open_seg h)) - 1)%nat).
-  { rewrite -Hseg seg_of_length (echoed_all_len _ Hall). lia. }
-  assert (Hle : (length (o_E so) <= length (ins (open_seg h)))%nat) by lia.
-  pose proof (pout_pure_move k ho h so (LogEntryDefs.ch_acc H)
-                (LogEntryDefs.ch_log H) (LogEntryDefs.ch_dl H)
-                Hsh Hb Hord Hin Hseg Hle Hout) as Hout'.
-  assert (Hpl : forall j x, o_E so !! j = Some x -> x.1 `prefix_of` open_seg h).
-  { destruct Hout' as (_ & _ & _ & _ & _ & _ & _ & _ & Hpre1 & _).
-    intros j x Hx. exact (Forall_lookup_1 _ _ _ _ Hpre1 Hx). }
-  assert (Hidx : E_index (o_E so)) by (by destruct Hout as (_ & _ & Hq & _)).
-  assert (Hbytes : (snd <$> o_E so)
-                   = take (length (LogEntryDefs.ch_log H)) (ins (open_seg h))).
-  { rewrite (E_bytes_of_hist (o_E so) (open_seg h) Hidx Hpl Hle).
-    by replace (length (o_E so)) with (length (LogEntryDefs.ch_log H)) by lia. }
-  assert (Hcin : c ∈ ins (open_seg h)).
-  { destruct Hends' as [h0 Hh0]. rewrite Hh0 ins_app ins_in.
-    apply elem_of_app. right. apply elem_of_list_here. }
-  pose proof (disc_drop_byte_p _ c Hd Hcin) as (_ & _ & Hner).
-  assert (Hcs : cs = [echo_of c]).
-  { destruct Hecho as [Hnil | [Hech | [Herase _]]]; [| exact Hech |];
-      last first.
-    { exfalso. rewrite Hner in Herase. discriminate. }
-    exfalso.
-    exact (cons_drop_refuted_p h c (LogEntryDefs.ch_log H)
-             (LogEntryDefs.ch_dl H) (snd <$> o_E so) (o_w so)
-             HK1 Hall Hdlok Hbytes Hd Hcin (HK2 Hnil)). }
-  rewrite /pcl_pure /ConsLog.cons_step.
-  cbn [LogEntryDefs.ch_acc LogEntryDefs.ch_log LogEntryDefs.ch_dl
-       LogEntryDefs.ch_arm].
-  split_and!; [exact Hout' | exact Hc | exact Hp | exact Hin | | | exact Hdlok].
-  - rewrite /ch_arm_era_p. cbn [LogEntryDefs.ch_arm LogEntryDefs.ch_log].
-    split_and!; [exact Hd | exact Hb | exact Hdh | exact Hsh | reflexivity
-                | exact Hcs | exact HK1].
-  - rewrite HE -Hopen /ConsLog.cons_step /ch_E.
-    by cbn [LogEntryDefs.ch_log LogEntryDefs.ch_arm].
-Qed.
-
 Lemma pcl_pure_o_open (k : nat) (ho : list mobs) (so : postage)
     (r : nat) (pre : list (bv 8))
     (H : LogEntryDefs.cons_hist) (h : list mobs) (c : bv 8)
@@ -1355,74 +922,6 @@ Proof using.
                 | exact Hcs | exact HK1].
   - rewrite HE -Hopen /ConsLog.cons_step /ch_E.
     by cbn [LogEntryDefs.ch_log LogEntryDefs.ch_arm].
-Qed.
-
-Lemma pcl_pure2_open (k : nat) (ho : list mobs) (so : postage)
-    (r : nat) (pre : list (bv 8)) (opn : bool)
-    (H : LogEntryDefs.cons_hist) (h : list mobs) (c : bv 8)
-    (cs : list (bv 8)) :
-  ConsLog.cons_hist_ok H ->
-  ConsLog.cons_ev_ok H (ConsLog.EvOpen h c cs) ->
-  disc_seg_p (open_seg h) -> obs_boots h = k ->
-  disc_p h -> trace_shape h true ->
-  pcl_pure2 k ho so r pre opn H ->
-  pcl_pure2 k h so r pre opn (ConsLog.cons_step H (ConsLog.EvOpen h c cs)).
-Proof using.
-  intros Hok Hev Hd Hb Hdh Hsh [(Hf & Hc) | (Ht & Ho)].
-  - left. split; [exact Hf |].
-    exact (pcl_pure_open k ho so H h c cs Hok Hev Hd Hb Hdh Hsh Hc).
-  - right. split; [exact Ht |].
-    exact (pcl_pure_o_open k ho so r pre H h c cs Hok Hev Hd Hb Hdh Hsh Ho).
-Qed.
-
-Lemma pcl_pure_byte (k : nat) (ho ho' : list mobs) (so so' : postage)
-    (H : LogEntryDefs.cons_hist) (b : bv 8) (h : list mobs) (c : bv 8) :
-  LogEntryDefs.ch_arm H = Some (h, c, [echo_of c], 0%nat) ->
-  ho' = h ->
-  (length (o_cs so) <= length (o_cs so'))%nat ->
-  o_E so' = o_E so ++ [(open_seg h, c)] ->
-  pout_pure k ho' so' (LogEntryDefs.ch_acc H ++ [b]) ->
-  cs_len_ok so' -> ps_len_ok_p so' ->
-  dl_ok so' (LogEntryDefs.ch_dl H) ->
-  pcl_pure k ho so H ->
-  pcl_pure k ho' so' (ConsLog.cons_step H (ConsLog.EvByte b)).
-Proof using.
-  intros Ha Hw Hcs' HE' Hout Hc Hp Hdlok' (_ & _ & _ & Hin & Hera & HE & _).
-  destruct Hin as (Hlog & Hdsc & Hbts & Hdl & HEi & HEb & Hcnt & Hall).
-  pose proof (ch_E_byte_echo H b h c Ha) as Hgrow.
-  rewrite /pcl_pure /ConsLog.cons_step Ha.
-  cbn [LogEntryDefs.ch_acc LogEntryDefs.ch_log LogEntryDefs.ch_dl
-       LogEntryDefs.ch_arm].
-  split_and!; [exact Hout | exact Hc | exact Hp
-              | split_and!; [exact Hlog | exact Hdsc | exact Hbts | exact Hdl
-                            | exact HEi | exact HEb | lia | exact Hall]
-              | | | exact Hdlok'].
-  - rewrite /ch_arm_era_p Ha in Hera. rewrite /ch_arm_era_p.
-    cbn [LogEntryDefs.ch_arm LogEntryDefs.ch_log].
-    destruct Hera as (Hds & Hb & Hd & Hshh & _ & Hcsa & Hk1). by split_and!.
-  - rewrite HE' HE -Hgrow /ConsLog.cons_step Ha.
-    by cbn [LogEntryDefs.ch_log LogEntryDefs.ch_arm].
-Qed.
-
-(* AN OUTPUT CLAIM AT [acc = []] STANDS AT THE START OF ITS ERA. *)
-Lemma pout_pure_nil_stage (k : nat) (ho : list mobs) (so : postage) :
-  pout_pure k ho so [] ->
-  pcount_p (o_ps so) (o_cs so) (o_E so) (o_w so) = 0%nat.
-Proof using.
-  intros (Hacc & _).
-  assert (Hlen : (length (D_p (o_ps so) (o_cs so) (o_E so))
-                  + length (o_w so))%nat = 0%nat)
-    by (rewrite -length_app -Hacc; reflexivity).
-  destruct (o_E so) as [| y E1] eqn:HE.
-  - rewrite /pcount_p fmap_nil proc_before_p_nil. cbn [length]. lia.
-  - exfalso.
-    assert (Hup : (0 < length (D_p (o_ps so) (o_cs so) (y :: E1)))%nat).
-    { change (D_p (o_ps so) (o_cs so) (y :: E1))
-        with (pending_at_p (o_ps so) (o_cs so) []
-              ++ [echo_of y.2]
-              ++ D_from_p (o_ps so) (o_cs so) ([] ++ [y.2]) E1).
-      rewrite !length_app. cbn [length]. lia. }
-    lia.
 Qed.
 
 (* ---- the two PHI steps, at [good_out_p] ---- *)
@@ -1612,15 +1111,6 @@ Section pipe_ledger.
   Global Instance blk_auth_timeless w l : Timeless (blk_auth w l).
   Proof using . rewrite /blk_auth. apply _. Qed.
 
-  Lemma blk_lb_get w l : blk_auth w l -∗ blk_auth w l ∗ blk_lb w l.
-  Proof using .
-    rewrite /blk_auth /blk_lb. iIntros "H".
-    iDestruct (own_mono _ _ (◯ML ((blk_enc <$> l)
-                                    : list (leibnizO (list mobs * bv 8))))
-                 with "H") as "#Hl"; [apply mono_list_included |].
-    iFrame "H Hl".
-  Qed.
-
   Lemma blk_auth_grow w l b :
     blk_auth w l ==∗ blk_auth w (l ++ [b]) ∗ blk_lb w (l ++ [b]).
   Proof using .
@@ -1636,27 +1126,6 @@ Section pipe_ledger.
     iFrame "H Hl".
   Qed.
 
-  Lemma blk_lb_prefix w l l' :
-    blk_auth w l -∗ blk_lb w l' -∗ ⌜l' `prefix_of` l⌝.
-  Proof using .
-    rewrite /blk_auth /blk_lb. iIntros "Ha Hl".
-    iDestruct (own_valid_2 with "Ha Hl") as %Hv.
-    iPureIntro. apply mono_list_both_valid_L in Hv.
-    exact (blk_fmap_prefix_inv l' l Hv).
-  Qed.
-
-  (* THE TIE: a writer's bound is a prefix of the claim's list, and at
-     equal length it IS the claim's list.  [turn] is what supplies the
-     length. *)
-  Lemma blk_lb_agree w l l' :
-    length l = length l' -> blk_auth w l -∗ blk_lb w l' -∗ ⌜l' = l⌝.
-  Proof using .
-    intros Hlen. iIntros "Ha Hl".
-    iDestruct (blk_lb_prefix with "Ha Hl") as %Hp. iPureIntro.
-    assert (Hle : (length l <= length l')%nat) by lia.
-    exact (prefix_length_eq l' l Hp Hle).
-  Qed.
-
   (* ---- THE ROUND'S OWN BLOCK LEDGER, at a gname minted per round ---- *)
 
   Definition rblk_auth (gb : gname) (l : list (bv 8)) : iProp Σ :=
@@ -1670,15 +1139,6 @@ Section pipe_ledger.
   Proof using . rewrite /rblk_lb. apply _. Qed.
   Global Instance rblk_auth_timeless gb l : Timeless (rblk_auth gb l).
   Proof using . rewrite /rblk_auth. apply _. Qed.
-
-  Lemma rblk_lb_get gb l : rblk_auth gb l -∗ rblk_auth gb l ∗ rblk_lb gb l.
-  Proof using .
-    rewrite /rblk_auth /rblk_lb. iIntros "H".
-    iDestruct (own_mono _ _ (◯ML ((blk_enc <$> l)
-                                    : list (leibnizO (list mobs * bv 8))))
-                 with "H") as "#Hl"; [apply mono_list_included |].
-    iFrame "H Hl".
-  Qed.
 
   Lemma rblk_auth_grow gb l b :
     rblk_auth gb l ==∗ rblk_auth gb (l ++ [b]) ∗ rblk_lb gb (l ++ [b]).
@@ -1702,15 +1162,6 @@ Section pipe_ledger.
     iDestruct (own_valid_2 with "Ha Hl") as %Hv.
     iPureIntro. apply mono_list_both_valid_L in Hv.
     exact (blk_fmap_prefix_inv l' l Hv).
-  Qed.
-
-  Lemma rblk_lb_agree gb l l' :
-    length l = length l' -> rblk_auth gb l -∗ rblk_lb gb l' -∗ ⌜l' = l⌝.
-  Proof using .
-    intros Hlen. iIntros "Ha Hl".
-    iDestruct (rblk_lb_prefix with "Ha Hl") as %Hp. iPureIntro.
-    assert (Hle : (length l <= length l')%nat) by lia.
-    exact (prefix_length_eq l' l Hp Hle).
   Qed.
 
   Lemma rblk_alloc : ⊢ |==> ∃ gb : gname, rblk_auth gb [].

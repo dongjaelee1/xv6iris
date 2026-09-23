@@ -139,14 +139,6 @@ Proof using.
     [lia | by destruct (Hd eq_refl)].
 Qed.
 
-Lemma pop_nstarted_snoc (I : list (bv 8)) (b : bv 8) :
-  nstarted (I ++ [b]) = S (nlines I).
-Proof using.
-  destruct (decide (b = wl_nl)) as [-> | Hb].
-  - apply nstarted_snoc_nl.
-  - by apply nstarted_snoc_other.
-Qed.
-
 Lemma pop_lta_prefix (cs0 cs : list nat) (i : nat) :
   cs0 `prefix_of` cs -> (i < length cs0)%nat -> cs !!! i = cs0 !!! i.
 Proof using.
@@ -250,13 +242,6 @@ Qed.
 
 Lemma disc_seg_p_no_erase (h : list mobs) (c : bv 8) :
   disc_seg_p h -> obs_ends_in Uart0 h c -> cons_erase c = false.
-Proof using.
-  intros Hd He.
-  apply (disc_byte_ok_p (ins h) c Hd (disc_seg_p_last_in h c Hd He)).
-Qed.
-
-Lemma disc_seg_p_no_ctrl_d (h : list mobs) (c : bv 8) :
-  disc_seg_p h -> obs_ends_in Uart0 h c -> bv_unsigned c <> 4%Z.
 Proof using.
   intros Hd He.
   apply (disc_byte_ok_p (ins h) c Hd (disc_seg_p_last_in h c Hd He)).
@@ -558,24 +543,6 @@ Lemma pending_p_ps_mono ps ps' cs E :
   ps `prefix_of` ps' -> pending_p ps cs E `prefix_of` pending_p ps' cs E.
 Proof using. intro Hp. by apply pending_at_p_ps_mono. Qed.
 
-(* THE ROUND-OPENING BLOCK'S SHAPE, [EchoOutPure.pending_at_round_pre]'s
-   twin: the panic line (a CONSTANT) and then that round's prologue. *)
-Lemma pending_at_p_round_pre (ps cs : list nat) (I : list (bv 8)) :
-  rest_of I = [] ->
-  (I = [] \/ palt_panic (palt_at cs (nlines I - 1)) = true) ->
-  pending_at_p ps cs I
-  = (if decide (I = []) then [] else alt_panic)
-    ++ pro_of (pro_from (pro_idx_p cs (nlines I)) ps).
-Proof using.
-  intros Hm Hopen. rewrite /pending_at_p. case_decide as H0.
-  - subst I. rewrite nlines_nil. by cbn [pro_idx_p pro_from app].
-  - rewrite decide_True; [| exact Hm].
-    assert (H3 : palt_panic (palt_at cs (nlines I - 1)) = true)
-      by (destruct Hopen as [Hn | H3]; [by destruct (H0 Hn) | exact H3]).
-    rewrite /alt_cont_p H3 (pro_idx_p_nlines cs I H0 Hm H3).
-    by rewrite (pcont_panic _ _ H3).
-Qed.
-
 Lemma pro_pin_p_round_le (ps cs : list nat) (I : list (bv 8)) :
   rest_of I = [] ->
   (I = [] \/ palt_panic (palt_at cs (nlines I - 1)) = true) ->
@@ -591,19 +558,6 @@ Proof using.
   assert (Hlt : (nlines I - 1 < nstarted I)%nat)
     by (pose proof (nlines_le_nstarted I); lia).
   pose proof (Hpin (nlines I - 1)%nat Hlt). lia.
-Qed.
-
-Lemma pending_at_p_round_det (ps ps' cs : list nat) (I : list (bv 8)) :
-  rest_of I = [] ->
-  (I = [] \/ palt_panic (palt_at cs (nlines I - 1)) = true) ->
-  pending_at_p ps cs I = pending_at_p ps' cs I ->
-  pro_of (pro_from (pro_idx_p cs (nlines I)) ps)
-  = pro_of (pro_from (pro_idx_p cs (nlines I)) ps').
-Proof using.
-  intros Hm Hopen Heq.
-  rewrite (pending_at_p_round_pre ps cs I Hm Hopen) in Heq.
-  rewrite (pending_at_p_round_pre ps' cs I Hm Hopen) in Heq.
-  by apply app_inv_head in Heq.
 Qed.
 
 (* ---- the append laws ---- *)
@@ -665,13 +619,6 @@ Qed.
 Definition E_disc_p (E : list (list mobs * bv 8)) : Prop :=
   disc_input_p (snd <$> E).
 
-Lemma E_disc_p_take (E : list (list mobs * bv 8)) (n : nat) :
-  E_disc_p E -> E_disc_p (take n E).
-Proof using.
-  rewrite /E_disc_p. intro HE.
-  exact (disc_input_p_prefix _ _ (epu_fmap_prefix snd _ _ (prefix_take _ _)) HE).
-Qed.
-
 Lemma E_disc_p_app_l (E : list (list mobs * bv 8)) (x : list mobs * bv 8) :
   E_disc_p (E ++ [x]) -> E_disc_p E.
 Proof using.
@@ -685,17 +632,6 @@ Lemma E_disc_p_echo (E : list (list mobs * bv 8)) (j : nat)
 Proof using.
   intros HE Hx. apply (echo_of_disc_p (snd <$> E) x.2 HE).
   apply elem_of_list_lookup_2 with j. by rewrite list_lookup_fmap Hx.
-Qed.
-
-Lemma E_disc_p_of_hist (E : list (list mobs * bv 8)) (Sg : list mobs) :
-  E_index E ->
-  (forall j x, E !! j = Some x -> x.1 `prefix_of` Sg) ->
-  disc_input_p (ins Sg) -> E_disc_p E.
-Proof using.
-  intros Hidx Hpre Hd.
-  pose proof (E_length_le_hist E Sg Hidx Hpre) as Hlen.
-  rewrite /E_disc_p (E_bytes_of_hist E Sg Hidx Hpre Hlen).
-  exact (disc_input_p_prefix _ _ (prefix_take _ _) Hd).
 Qed.
 
 (* ====================================================================== *)
@@ -760,18 +696,6 @@ Qed.
 (* ====================================================================== *)
 (*  5.  F2 -- THE NEXT ECHO IS THE NEXT INPUT                              *)
 (* ====================================================================== *)
-
-Lemma sessp_length_lt (ps cs : list nat) (I I' : list (bv 8)) :
-  I `prefix_of` I' -> I <> I' ->
-  (length (sessp ps cs I) < length (sessp ps cs I'))%nat.
-Proof using.
-  intros [k Hk] Hne. destruct k as [| b k].
-  { exfalso. apply Hne. by rewrite Hk app_nil_r. }
-  assert (Hp : (I ++ [b]) `prefix_of` I')
-    by (exists k; by rewrite Hk -app_assoc).
-  pose proof (sessp_length_le ps cs _ _ Hp) as Hle.
-  pose proof (sessp_length_step ps cs I b). lia.
-Qed.
 
 (* F2 at the pipeline session -- [EchoOutPure.next_input_of_complete] at
    [sessp]: the process output owed at this stage is complete.  That the
@@ -1009,13 +933,6 @@ Proof using. rewrite /alts_pad_p. by eexists. Qed.
 Lemma alts_pad_p_take I cs : take (length cs) (alts_pad_p I cs) = cs.
 Proof using. rewrite /alts_pad_p. by rewrite take_app_length. Qed.
 
-Lemma alts_pad_p_length I cs :
-  (length cs <= nlines I)%nat -> length (alts_pad_p I cs) = nlines I.
-Proof using.
-  intro Hle. rewrite /alts_pad_p length_app length_fmap length_drop
-    plines_of_length. lia.
-Qed.
-
 Lemma alts_pad_p_ok I cs :
   alts_pre_p I cs -> alts_ok_p I (alts_pad_p I cs).
 Proof using.
@@ -1201,13 +1118,6 @@ Lemma proc_before_p_app ps cs I k :
   = proc_before_p ps cs I ++ proc_before_from_p ps cs I k.
 Proof using. rewrite /proc_before_p proc_before_from_p_app. by cbn [app]. Qed.
 
-Lemma proc_before_p_snoc ps cs I b :
-  proc_before_p ps cs (I ++ [b]) = proc_stream_p ps cs I.
-Proof using.
-  rewrite proc_before_p_app /proc_stream_p. cbn [proc_before_from_p].
-  by rewrite app_nil_r.
-Qed.
-
 Lemma proc_before_p_prefix ps cs I I' :
   I `prefix_of` I' ->
   proc_before_p ps cs I `prefix_of` proc_before_p ps cs I'.
@@ -1239,15 +1149,6 @@ Definition pcount_p (ps cs : list nat) (E : list (list mobs * bv 8))
 Lemma pcount_p_write ps cs E w b :
   pcount_p ps cs E (w ++ [b]) = S (pcount_p ps cs E w).
 Proof using. rewrite /pcount_p length_app /=. lia. Qed.
-
-Lemma pcount_p_echo ps cs E x w :
-  w = pending_p ps cs E -> pcount_p ps cs (E ++ [x]) [] = pcount_p ps cs E w.
-Proof using.
-  intros ->. rewrite /pcount_p fmap_app /=.
-  rewrite (proc_before_p_snoc ps cs (snd <$> E) x.2)
-          /proc_stream_p /pending_p.
-  rewrite length_app. cbn [length]. lia.
-Qed.
 
 Lemma proc_stream_p_pcount ps cs E w b :
   pending_p ps cs E !! length w = Some b ->
@@ -1346,18 +1247,6 @@ Lemma proc_before_p_ext ps0 ps cs0 cs I :
 Proof using.
   intros Hj. rewrite /proc_before_p. apply proc_before_from_p_ext.
   intros J _ H2 H3. rewrite app_nil_l in H2, H3. by apply Hj.
-Qed.
-
-(* ...and the PROLOGUE list's, which a prologue round's own choice byte
-   spends: every block BELOW the round the stage stands in has settled
-   ([pro_pin_p]), so extending the resolution moves none of them. *)
-Lemma proc_before_p_ps_ext ps ps' cs I :
-  ps `prefix_of` ps' -> pro_pin_p ps cs I ->
-  proc_before_p ps cs I = proc_before_p ps' cs I.
-Proof using.
-  intros Hp Hpin. apply proc_before_p_ext. intros J HJ Hne.
-  apply (pending_at_p_ps_ext ps ps' cs J Hp).
-  apply Hpin. exact (nstarted_strict J I HJ Hne).
 Qed.
 
 Lemma proc_before_p_cs_prefix ps0 ps cs0 cs I0 :
@@ -1468,42 +1357,6 @@ Qed.
 (*  6e.  THE BANNER OF AN ARBITRARY PROLOGUE ROUND                         *)
 (* ====================================================================== *)
 
-Lemma proc_stream_p_round_banner (ps cs : list nat) (I : list (bv 8))
-      (j i : nat) (pre : list (bv 8)) (b : bv 8) :
-  pending_at_p ps cs I
-  = pre ++ pro_of (pro_from (pro_idx_p cs (nlines I)) ps) ->
-  pro_from (pro_idx_p cs (nlines I)) ps = pro_fail j ++ [3%nat] ->
-  u_banner !! i = Some b ->
-  proc_stream_p ps cs I
-    !! (length (proc_before_p ps cs I) + length pre + pro_round * j + i)%nat
-  = Some b.
-Proof using.
-  intros Hshape Hopen Hb.
-  rewrite /proc_stream_p Hshape Hopen.
-  replace (length (proc_before_p ps cs I) + length pre + pro_round * j + i)%nat
-    with (length (proc_before_p ps cs I)
-          + (length pre + (pro_round * j + i)))%nat by lia.
-  rewrite (lookup_app_shift (proc_before_p ps cs I)) (lookup_app_shift pre).
-  by apply pro_of_fail_banner.
-Qed.
-
-Lemma proc_stream_p_round_banner_open (ps cs : list nat) (I : list (bv 8))
-      (j i : nat) (b : bv 8) :
-  rest_of I = [] ->
-  (I = [] \/ palt_panic (palt_at cs (nlines I - 1)) = true) ->
-  pro_from (pro_idx_p cs (nlines I)) ps = pro_fail j ++ [3%nat] ->
-  u_banner !! i = Some b ->
-  proc_stream_p ps cs I
-    !! (length (proc_before_p ps cs I)
-        + length (if decide (I = []) then [] else alt_panic)
-        + pro_round * j + i)%nat
-  = Some b.
-Proof using.
-  intros Hr Ho Hopen Hb.
-  apply (proc_stream_p_round_banner ps cs I j i _ b);
-    [by apply pending_at_p_round_pre | exact Hopen | exact Hb].
-Qed.
-
 (* ====================================================================== *)
 (*  7.  F4 -- PHI's PURE PART                                              *)
 (* ====================================================================== *)
@@ -1525,13 +1378,6 @@ Lemma pro_pin_p_mono ps ps' cs I :
 Proof using.
   intros [z ->] Hpin q Hq. pose proof (Hpin q Hq) as H.
   rewrite pro_rounds_app. lia.
-Qed.
-
-Lemma pro_pin_p_prefix ps cs I I' :
-  I' `prefix_of` I -> pro_pin_p ps cs I -> pro_pin_p ps cs I'.
-Proof using.
-  intros Hp Hpin q Hq. apply Hpin.
-  pose proof (nstarted_prefix I' I Hp). lia.
 Qed.
 
 (* THE CLAIM GIVES [good_out_p] AT THE SEGMENT.  Two premises replace

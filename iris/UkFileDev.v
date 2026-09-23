@@ -43,12 +43,11 @@
 (*      is the SUBSEQUENCE of the line's chunks that landed -- so the    *)
 (*      write law's continuation is an additive pair, [|bs|] or [-1],     *)
 (*      with the cursor one chunk further on in both.                     *)
-(*  (3) THE OPEN'S PATH MUST BE PERSISTENT.  The deed's open leaves read  *)
-(*      the path through [UkRunSys.uimg_view], a BOXED view; a path at a *)
-(*      fraction of the data half cannot supply it.  [op_obl_d] is        *)
-(*      [UkTree.op_obl] restricted to the text half or the discarded data *)
-(*      half -- every path a landed program passes (a literal, argv, sh's *)
-(*      line buffer) is one of the two.                                   *)
+(*  (3) THE OPEN'S PATH IS PERSISTENT.  The deed's open leaves read the   *)
+(*      path through [UkRunSys.uimg_view], a BOXED view, so the hole's    *)
+(*      path source ([UkTree.upath_at]) is the text half or the data half *)
+(*      at [DfracDiscarded] -- every path a landed program passes (a      *)
+(*      literal, argv, sh's line buffer) is one of the two.               *)
 (*                                                                        *)
 (* AND ONE SIDE CONDITION: a read of [0] bytes answers [[]] mid-file,     *)
 (* which is not [chunk_ok] ([c = []] only at end of file), so the read    *)
@@ -313,37 +312,6 @@ Section UkFileDev.
   Definition file_out (i : Z) (γo : gname) (ws : wordline) (b : nat) : iProp Σ :=
     efany c r i γo ws b.
 
-  (* THE OPEN HOLE AT A PERSISTENT PATH (header, item 3): [UkTree.op_obl]
-     with the path's reading restricted to the text half or the discarded
-     data half. *)
-  Definition op_obl_d (path : list (bv 8)) (mode : Z) (K : Z -> iProp Σ)
-      : iProp Σ :=
-    (∀ (h : CpuId) (m : regfile) (avail : nat) (pv : Z) (tx : bool)
-       (dq : dfrac) (f : nat -> bv 8),
-       ⌜tx = true \/ dq = DfracDiscarded⌝ -∗
-       ⌜bytes_of path f⌝ -∗
-       ⌜m !!! Regidx a0_idx = (mword_of_int pv : mword 64)⌝ -∗
-       ⌜m !!! Regidx a1_idx = (mword_of_int mode : mword 64)⌝ -∗
-       up_code P -∗
-       upath_at N tx dq pv (length path) f -∗
-       urun N h m (mword_of_int (up_open P)) avail -∗
-       (∀ (h' : CpuId) (ret : mword 64),
-          ⌜open_ans_ok ret⌝ -∗
-          K (bv_signed ret) -∗
-          upath_at N tx dq pv (length path) f -∗
-          urun N h' (stub_ret m 15 ret) (ret_pc (m !!! Regidx ra_idx)) avail -∗
-          mWP (Loop : expr riscv_lang)) -∗
-       mWP (Loop : expr riscv_lang))%I.
-
-  (* ...and it IS a weakening of the hole *)
-  Lemma op_obl_d_of (path : list (bv 8)) (mode : Z) (K : Z -> iProp Σ) :
-    op_obl N P path mode K -∗ op_obl_d path mode K.
-  Proof using .
-    iIntros "Ho" (h m avail pv tx dq f) "_ %Hf %Ha0 %Ha1 Hc Hp Hrun Hcont".
-    iApply ("Ho" $! h m avail pv tx dq f with "[%] [%] [%] Hc Hp Hrun Hcont");
-      done.
-  Qed.
-
   (* =================================================================== *)
   (*  2.  SMALL FACTS: bounds off the run, the source's two halves        *)
   (* =================================================================== *)
@@ -381,9 +349,9 @@ Section UkFileDev.
   Qed.
 
   Lemma fdev_path_bnd (h : CpuId) (m : regfile) (pc : mword 64) (avail : nat)
-      (tx : bool) (dq : dfrac) (pv : Z) (n : nat) (f : nat -> bv 8) :
+      (tx : bool) (pv : Z) (n : nat) (f : nat -> bv 8) :
     (0 < n)%nat ->
-    urun N h m pc avail -∗ upath_at N tx dq pv n f -∗ ⌜0 <= pv < 2 ^ 38⌝.
+    urun N h m pc avail -∗ upath_at N tx pv n f -∗ ⌜0 <= pv < 2 ^ 38⌝.
   Proof using .
     intros Hn. iIntros "Hrun Hp". destruct tx; rewrite /upath_at.
     - iDestruct "Hp" as "(_ & _ & Hs & _)".
@@ -841,11 +809,10 @@ Section UkFileDev.
   (* =================================================================== *)
 
   (* the path `f` at a persistent reading is a boxed view of its image *)
-  Lemma fdev_fname_view (tx : bool) (dq : dfrac) (pv : Z) (f : nat -> bv 8) :
-    (tx = true \/ dq = DfracDiscarded) ->
-    upath_at N tx dq pv 1 f -∗ uimg_view N (fdev_fimg pv f).
+  Lemma fdev_fname_view (tx : bool) (pv : Z) (f : nat -> bv 8) :
+    upath_at N tx pv 1 f -∗ uimg_view N (fdev_fimg pv f).
   Proof using GEN.
-    intros Hpd. iIntros "Hp". rewrite /upath_at /fdev_fimg.
+    iIntros "Hp". rewrite /upath_at /fdev_fimg.
     assert (Hne : (<[pv + 1 := ubyte0]> ∅ : gmap Z (bv 8)) !! pv = None)
       by (rewrite lookup_insert_ne; [ apply lookup_empty | lia ]).
     destruct tx.
@@ -857,8 +824,7 @@ Section UkFileDev.
       rewrite Z.add_0_r.
       iDestruct "Hs" as "[Hb0 _]". iFrame "Hb0".
       change (Z.of_nat 1) with 1. iFrame "Hn".
-    - destruct Hpd as [Hpd | ->]; [ discriminate Hpd | ].
-      iDestruct "Hp" as "(_ & _ & #Hs & #Hn)".
+    - iDestruct "Hp" as "(_ & _ & #Hs & #Hn)".
       iApply uimg_view_data.
       rewrite big_sepM_insert; [ | exact Hne ].
       rewrite big_sepM_insert; [ | apply lookup_empty ].
@@ -892,14 +858,14 @@ Section UkFileDev.
      ∧ (∀ ret : mword 64, file_taint c -∗
         uk_open_taint_fd γfd l ret -∗ UserCwd.ucwd (ukn_cwd N) cw -∗
         K (bv_signed ret))) -∗
-    op_obl_d fname_f 0 K.
+    op_obl N P fname_f 0 K.
   Proof using Heq Hso.
     intros Hnone Hcw.
     iIntros "#Hinv Hstd Hcwd Hd1 Hd2 HK".
-    iIntros (h m avail pv tx dq f) "%Hpd %Hf %Ha0 %Ha1 Hcode Hp Hrun Hcont".
+    iIntros (h m avail pv tx f) "%Hf %Ha0 %Ha1 Hcode Hp Hrun Hcont".
     change (length fname_f) with 1%nat.
     iDestruct (fdev_path_bnd with "Hrun Hp") as %Hpv; [ lia | ].
-    iDestruct (fdev_fname_view tx dq pv f Hpd with "Hp") as "#Hv".
+    iDestruct (fdev_fname_view tx pv f with "Hp") as "#Hv".
     pose proof (fdev_fname_path pv f Hpv Hf) as Hpath.
     set (m1 := <[Regidx a7_idx := (mword_of_int 15 : mword 64)]> m).
     assert (Ha0r : m1 !!! Regidx a0_idx = (mword_of_int pv : mword 64)).
@@ -994,14 +960,14 @@ Section UkFileDev.
      ∧ (∀ ret : mword 64, file_taint c -∗
         uk_open_taint_fd γfd l ret -∗ UserCwd.ucwd (ukn_cwd N) cw -∗
         K (bv_signed ret))) -∗
-    op_obl_d fname_f mode K.
+    op_obl N P fname_f mode K.
   Proof using Heq Hso.
     intros Hcw Hcr0 Htr0.
     iIntros "#Hinv Hstd Hcwd Hd HK".
-    iIntros (h m avail pv tx dq f) "%Hpd %Hf %Ha0 %Ha1 Hcode Hp Hrun Hcont".
+    iIntros (h m avail pv tx f) "%Hf %Ha0 %Ha1 Hcode Hp Hrun Hcont".
     change (length fname_f) with 1%nat.
     iDestruct (fdev_path_bnd with "Hrun Hp") as %Hpv; [ lia | ].
-    iDestruct (fdev_fname_view tx dq pv f Hpd with "Hp") as "#Hv".
+    iDestruct (fdev_fname_view tx pv f with "Hp") as "#Hv".
     pose proof (fdev_fname_path pv f Hpv Hf) as Hpath.
     set (m1 := <[Regidx a7_idx := (mword_of_int 15 : mword 64)]> m).
     assert (Ha0r : m1 !!! Regidx a0_idx = (mword_of_int pv : mword 64)).

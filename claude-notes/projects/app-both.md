@@ -388,8 +388,53 @@ importers: `EchoOutPure` 23 files (the echo tier's links and every pipe
 file, through `echoed`/`E_index`/`sess_prefix_det`/`cs_ok`),
 `FileOutPure` 9, `PipeOutPure` 16; a `grep -w` measure of their names is
 noisy for `D`/`pending` (common words in comments) -- measure with the
-qualified names or by removing the definition and compiling.  Nothing
-coded yet.
+qualified names or by removing the definition and compiling.
+
+M3a STEP LIST (2026-09-23, after reading `FileOutPure` §2-§10 as the
+port source -- it is the general one, with the state):
+1. `LineModel.v` first: the stage lemmas spend session and discipline
+   facts the model does not carry.  Add `lm_sess_snoc_nl` (port of
+   `sessf_snoc_nl`, via `lm_seq_S` and a `lm_seq_bs_app` twin of
+   `alt_seq_f_bs_app`), `lm_sess_snoc_other`, `lm_sess_step`,
+   `lm_sess_mono`; `lm_disc_input_snoc`, `lm_disc_input_prefix`,
+   `lm_disc_input_body`; and the BYTE facts, which need two new
+   `lm_laws` fields -- `lml_body_bytes : lm_body_ok M l -> Forall
+   (lm_body_byte M) l` and `lml_byte_val : lm_body_byte M b -> the
+   printable set` (`disc_input_f_byte_val`'s disjunction) -- from
+   which `lm_disc_input_byte`, `lm_disc_input_byte_val`,
+   `lm_disc_byte_ok` (no CR, no erase, no ^D) and `lm_echo_of_disc`
+   are proved once; `lm_panic_ge` from `lm_at_ge` plus a third field
+   `lml_dec0_nopanic : lm_panic M (lm_dec M 0) = false` (the out-of-range
+   reading never panics: `ralt_panic_ge`/`palt_panic_ge`).  Update
+   `file_lm_laws`, `pipe_lm_laws`, and give `echo_lm` its laws record if
+   it has none (it is only used through `LineModelInst`).
+2. `GenOutPure.v` (after `LineModelLinks`, before `EchoOutPure`): `gstage
+   M := {gs_ps gs_cs gs_E gs_w gs_st : option (lm_st M)}` with `lm_st0
+   : option (lm_st M) -> lm_st M` (the file's `f0_st`: `default None`
+   needs a default state -- take `lm_st_def M`, a new model field, or
+   quantify the stage over an explicit `s`; DECIDE at the first cut, the
+   file's `feout_pure` ties `gs_st = None` to the empty stage);
+   `lm_D_from`/`lm_D`, `lm_pending`, `lm_E_disc`, `lm_pcount`, and the
+   laws in `FileOutPure`'s order: `D_nil`, `pending(_at)_nil`,
+   `pending_ps_mono`, `pending_at_round_det`, `D_from_pending_ext`,
+   `D_ps_ext`, `D_from_app`, `D_app`; `E_disc_take/app_l/echo/of_hist`;
+   `D_pending_sess`, `D_stage_prefix`; `pcount_write/echo`,
+   `proc_stream_pcount(_inv)`; `pcount_cs_prefix`, `proc_stream_prefix`,
+   `D_from_ext`, `D_cs_prefix`, `write_stage_byte`; `pending_nonnil`,
+   `pending_nil_inv`; the `cs_len_ok` family (inv/intro/mid/echo/write/
+   blk/0), `ps_round`/`ps_opens`/`ps_len_ok` (empty_above/0/write/blk/
+   echo/pro); `lm_out_pure` with `Forall (lm_term = false) cs` (the
+   pipe's `cs_nofork`, vacuous elsewhere) and `_0`; the pad family with a
+   default-alternative hook (`lm_def : lm_line -> nat` + ok/nopanic/
+   noterm laws: `ralt_def`/`palt_def`), `alts_pad_*`, `pro_ok_pad`,
+   `stage_sess_pad`, `good_out_of_stage` (needs `lm_good_out s` from
+   the Disc-tier additions in §4).  The `fop_`/`pop_`/`epu_` list
+   utilities become one copy here.
+3. The three tiers as corollaries + equations; consumers of the tier
+   names (measured above) repointed; `EchoOut` §1/§1b deleted.
+Nothing coded yet; `LineModelLinks` already holds the stream laws
+(`lm_pending_at_*`, `lm_proc_before_*`, `lm_proc_stream_*`,
+`lm_alts_pre_*`, `lm_pending_at_nonnil`), so step 2 imports them.
 
 M2c THIRD CUT, PART 3 (2026-09-23): THE PIPE SIDE SWITCHED, landed as
 `b6e2d6a63`.  Ruled on

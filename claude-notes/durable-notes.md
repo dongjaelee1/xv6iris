@@ -281,6 +281,15 @@ work.
   instantly on its own. Fix: `change` each differing projection to the
   offered term's spelling, then `exact` (`FileReadInst.fri_rd_at`). The same
   file can compile one night and hang the next with no source change.
+- **A pure file must import only pure files.** `FileHooks.v` (pure) imported
+  the Iris-level `EchoLinks` for four pure lemmas; that put
+  `echo_link_rd_persistent : Persistent (echo_link_rd T γ)` in scope in
+  `FileLinks`, whose `Persistent file_link_rd` goal has the SAME boxed shape
+  with `fread_ret` where echo has `read_ret ?T` -- instance search unfolded
+  both receipts against the evar and never returned (no candidate logged at
+  `Set Typeclasses Debug`; `Verbosity 2` names the instance it is stuck on).
+  Fix: the lemmas moved to `EchoDisc`.  A new import that makes an
+  unrelated `apply _` hang is this shape; read `Verbosity 2`.
 - Everything about what makes a file slow is in
   [`optimization.md`](optimization.md).
 

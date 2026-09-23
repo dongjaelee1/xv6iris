@@ -99,15 +99,15 @@ Proof. reflexivity. Qed.
    returns [EchoDisc.alt_panic] at [RFFork] / [RCFork] and [alt_execfail] at
    [RFExec] verbatim, so the shell's own two diagnostics are the SAME bytes
    at either application and their lengths are read once, here, instead of
-   off [EchoLinksLine.line_alts_len3] / [line_alts_len1]. *)
+   off [EchoDisc.line_alts_len3] / [line_alts_len1]. *)
 Lemma alt_panic_len : length alt_panic = 5%nat.
 Proof using .
-  rewrite <- (line_alts_of_3 []). exact (EchoLinksLine.line_alts_len3 []).
+  rewrite <- (line_alts_of_3 []). exact (EchoDisc.line_alts_len3 []).
 Qed.
 
 Lemma alt_execfail_len : length alt_execfail = 19%nat.
 Proof using .
-  rewrite <- (line_alts_of_1 []). exact (EchoLinksLine.line_alts_len1 []).
+  rewrite <- (line_alts_of_1 []). exact (EchoDisc.line_alts_len1 []).
 Qed.
 
 Section UShPanicGen.

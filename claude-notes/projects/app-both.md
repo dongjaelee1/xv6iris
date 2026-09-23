@@ -274,6 +274,38 @@ bodies (M2c's two shapes); `Proof using` closure; comments without `"`.
 
 ## RESUME HERE (2026-09-22, late)
 
+M3b FOURTH CUT (2026-09-23): THE FILE'S CLAIM IS THE GENERIC ONE.
+`FileOut.fecl g := gcl file_lm (file_cparams g) None (file_wa g)`; FileOut
+2.6k -> ~0.9k sentences.  What changed around it:
+- `GenOut` takes `gen_cparams M` (taint, pin, writer's witness, laws, hooks)
+  instead of M2's `gen_params`: the claim needs neither the reader's
+  witness nor the head, and the file's claim must be stated BELOW its link
+  families.  GenOut no longer loads the link tier (`GenLinksLine`,
+  `LinkRec`).  `gen_wa` gained `gwa_strict`/`gwa_agree_strict` (the witness
+  forces filing; the file's is `True`), so the prologue write takes `0 < P
+  \/ gwa_strict A` and the file's wrapper passes `or_intror I` -- no new
+  premise reaches `FileLinks`.
+- `FileHooks.v` (new, pure, after `EchoLinksLine`): `FileLinksLine`'s S0
+  (the hooks and their equations) moved below `FileOut`; every
+  `FileLinksLine` importer gained `Require Import FileHooks`.  EchoLinksLine's
+  `line_alts_len1/len2_/len3/len_ge2/dollar/space` moved to `EchoDisc` (see
+  durable-notes: the pure file had pulled the link tier's instances into
+  `FileLinks` and an `apply _` diverged).
+- `FileOut`: §1 is `rd_stage_f`(+`_0`, `_lm`, moved from FileLinksLine); the
+  instance (`f0cw` the claim's writer witness, `f0wa` the authority,
+  `f0boot`, `file_cparams`, `file_wa`); every step FileLinks/AppFileRec call
+  is a WRAPPER with its old statement over the `gcl_*` step (premises through
+  `pro_pin_f_lm`, `proc_stream_f_lm`, `proc_before_f_lm`, `fstate_upto_lm`,
+  `pro_idx_f_lm`, `disc_f_lm`, `good_out_f_lm`, `rd_stage_f_lm`; the
+  returned witness through `file_era_pin_agree`); `file_era_split` builds
+  `gstage0`.  DELETED: `fein_pure`, `dl_ok_f*`, `ch_arm_era_f`, `fecl_pure*`,
+  `feout_pure_move`, `fecl_arm`, `fecl_step_echo`, `fein_read_pure`,
+  `cs_lb_weaken` and every step proof.  No consumer outside FileOut changed
+  beyond imports.
+NEXT: the pure tier `FileOutPure`'s claim-only names (`feout_pure`,
+`fostage`, `cs_len_ok_f`, …) are now dead -- measure and delete; then the
+pipe's claim (the EXT hook), then M3c.
+
 M3b THIRD CUT COMPLETE (2026-09-23): `GenOut.v` states and proves the
 WHOLE claim step list once -- sup/close/open/arm, the four writes,
 `gcl_step_read`, `gcl_step_echo` (with `lm_d4_nomerge_snoc`,

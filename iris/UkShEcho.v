@@ -1437,7 +1437,7 @@ Section UkShEcho.
      THE DIAGNOSTIC IS A PARAMETER (lane LINK-GEN-4), as it already is one
      level down ([UkShDiag.ush_execfail_law_at dg n]).  An era whose
      exec-failed alternative depends on the LINE -- the file's
-     [FileLinksLine.fexfb], which is [alt_execcat] at an [LCat] line --
+     [FileHooks.fexfb], which is [alt_execcat] at an [LCat] line --
      cannot answer the constant form at every input, and the producer
      ([UShPanic.ush_execfail_law_hold_at]) delivers it at [lk_exfb L I]
      anyway.  So the carrier takes the bytes and their index as functions
@@ -1515,7 +1515,7 @@ Section UkShEcho.
      the slot the loop left says the input's last body PARSES
      ([UkSh.ush_posw]'s third conjunct).  At the file era that is
      [FileDisc.fbody_ok_echo], i.e. "the era filed an [LEcho] line here",
-     from which both the stage and [FileLinksLine.fexfb]'s value follow. *)
+     from which both the stage and [FileHooks.fexfb]'s value follow. *)
   Lemma ushf_child_law_holds_at_D (D : list (bv 8) -> Prop)
       (dg : list (bv 8) -> list (bv 8)) (nn : list (bv 8) -> nat)
       (Wc : list (bv 8) -> nat -> iProp Σ) :

@@ -1519,6 +1519,7 @@ GenOutHist.v
 EchoLinks.v
 EchoLinksPro.v
 EchoLinksLine.v
+FileHooks.v
 EchoLinksBan.v
 LinkRec.v
 GenLinksLine.v

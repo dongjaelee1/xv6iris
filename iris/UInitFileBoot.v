@@ -103,6 +103,7 @@ Require Import AppFileCons.        (* [file_cons_cred] *)
 Require Import AppFileRec.         (* [file_ifc] and its projections *)
 Require Import FileLinks.
 Require Import FileLinksLine.
+Require Import FileHooks.         (* S0 of [FileLinksLine], moved *)
 Require Import FileLinksAt.
 Require Import FileLinksAtInp.     (* [file_wb_inp_at] *)
 Require Import FileLinkInst.

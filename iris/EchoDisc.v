@@ -1271,6 +1271,68 @@ Proof.
   by vm_compute (length u_prompt).
 Qed.
 
+(* ---- THE ALTERNATIVES' LENGTHS.  Three of the four are constants and
+   are read by computation; the good one's is [line_alts_of_0_length]. ---- *)
+Lemma line_alts_len1 (ws : list (list (bv 8))) :
+  length (line_alts_of ws !!! 1%nat) = 19%nat.
+Proof. rewrite line_alts_of_1. by vm_compute. Qed.
+
+Lemma line_alts_len2_ (ws : list (list (bv 8))) :
+  length (line_alts_of ws !!! 2%nat) = 2%nat.
+Proof. rewrite line_alts_of_2. by vm_compute. Qed.
+
+Lemma line_alts_len3 (ws : list (list (bv 8))) :
+  length (line_alts_of ws !!! 3%nat) = 5%nat.
+Proof. rewrite line_alts_of_3. by vm_compute. Qed.
+
+(* every line alternative but the panic is at least the prompt long --
+   at the GOOD one because the output ends in the prompt, whatever the
+   line was *)
+Lemma line_alts_len_ge2 (ws : list (list (bv 8))) (a : nat) :
+  (a < 3)%nat -> (2 <= length (line_alts_of ws !!! a))%nat.
+Proof.
+  intros Ha. destruct a as [| [| [| a]]].
+  - rewrite (line_alts_of_0_length ws). lia.
+  - rewrite (line_alts_len1 ws). lia.
+  - rewrite (line_alts_len2_ ws). lia.
+  - exfalso. lia.
+Qed.
+
+(* ...and its last two bytes ARE the prompt *)
+Lemma line_alts_dollar (ws : list (list (bv 8))) (a : nat) :
+  (a < 3)%nat ->
+  line_alts_of ws !!! a !! (length (line_alts_of ws !!! a) - 2)%nat
+  = Some (u_prompt !!! 0%nat).
+Proof.
+  intros Ha. destruct a as [| [| [| a]]].
+  - rewrite (line_alts_of_0_length ws) (line_alts_of_0 ws).
+    replace (length (wl_line (drop 1 ws)) + 2 - 2)%nat
+      with (length (wl_line (drop 1 ws))) by lia.
+    rewrite lookup_app_r; [| lia]. rewrite Nat.sub_diag. by vm_compute.
+  - rewrite (line_alts_len1 ws) line_alts_of_1. by vm_compute.
+  - rewrite (line_alts_len2_ ws) line_alts_of_2. by vm_compute.
+  - exfalso. lia.
+Qed.
+
+Lemma line_alts_space (ws : list (list (bv 8))) (a : nat) :
+  (a < 3)%nat ->
+  line_alts_of ws !!! a !! (length (line_alts_of ws !!! a) - 1)%nat
+  = Some (u_prompt !!! 1%nat).
+Proof.
+  intros Ha. destruct a as [| [| [| a]]].
+  - rewrite (line_alts_of_0_length ws) (line_alts_of_0 ws).
+    replace (length (wl_line (drop 1 ws)) + 2 - 1)%nat
+      with (length (wl_line (drop 1 ws)) + 1)%nat by lia.
+    rewrite lookup_app_r; [| lia].
+    replace (length (wl_line (drop 1 ws)) + 1
+             - length (wl_line (drop 1 ws)))%nat with 1%nat by lia.
+    by vm_compute.
+  - rewrite (line_alts_len1 ws) line_alts_of_1. by vm_compute.
+  - rewrite (line_alts_len2_ ws) line_alts_of_2. by vm_compute.
+  - exfalso. lia.
+Qed.
+
+
 (* how many shells have already died on their own fork panic BEFORE line
    [i] -- so line [i], if it took alternative 3, opens round
    [S (pro_idx cs i)], and the block that closes line [q-1] reads round

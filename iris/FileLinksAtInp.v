@@ -36,6 +36,7 @@ Require Import FileDisc.
 Require Import AppFile.
 Require Import FileOut.
 Require Import FileLinksLine.
+Require Import FileHooks.         (* S0 of [FileLinksLine], moved *)
 Require Import LinkRec.
 Require Import FileLinksAt.
 Require Import LineModel.

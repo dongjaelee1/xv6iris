@@ -32,6 +32,7 @@ Require Import AppFile.
 Require Import FileOut.
 Require Import FileLinks.
 Require Import FileLinksLine.
+Require Import FileHooks.         (* S0 of [FileLinksLine], moved *)
 Require Import FileLineWit.        (* the consumed input's lines are its last byte's history's *)
 Require Import LinkRec.
 Require Import ReadRec.

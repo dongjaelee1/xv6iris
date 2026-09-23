@@ -35,6 +35,7 @@ Require Import AppFile.
 Require Import FileOut.
 Require Import FileLinks.
 Require Import FileLinksLine.
+Require Import FileHooks.         (* S0 of [FileLinksLine], moved *)
 Require Import FileLinksAt.      (* [fhead_at], [f0pre_at], the indexed residue *)
 Require Import LinkRec.
 Require Import GenLinksLine.

@@ -47,6 +47,7 @@ Require Import EchoOut.
 Require Import AppFile.
 Require Import FileOut.
 Require Import FileLinksLine.
+Require Import FileHooks.         (* S0 of [FileLinksLine], moved *)
 Require Import RiscvPtsto.
 Require Import WpUart.
 Local Open Scope list_scope.

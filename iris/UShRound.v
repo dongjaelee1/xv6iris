@@ -117,6 +117,7 @@ Require Import UkFileOpen.
 Require Import SysOpenDefs.              (* [om_readable] / [om_writable] *)
 Require Import LinkRec.                  (* the era's link record *)
 Require Import FileLinksLine.            (* [fline] / [fexfb] -- the era's line *)
+Require Import FileHooks.         (* S0 of [FileLinksLine], moved *)
 Require Import StageRec.                 (* [ck_lineok] / [sk_apr0] *)
 Require Import LineModel.
 Require Import LineModelLinks.
@@ -903,7 +904,7 @@ Section UShRound.
      ([cs_lb_agree_len]); past its first byte the block has FILED [a]
      (DONE, by [done_tie_snoc]), and a block whose prompt is its first
      byte is still owed (PEND at [a] itself: a two-byte block that ends
-     with the prompt IS the prompt, [FileLinksLine.fabs_prompt]).
+     with the prompt IS the prompt, [FileHooks.fabs_prompt]).
      STATED AT THE STATE-AWARE POST ([GenLinksLine.gwc_post] at
      [FileLinkGen.file_params_at]), so it serves the round whose bytes are
      the file's too ([RCRan]); the record's own block is the corollary
@@ -1418,7 +1419,7 @@ Section UShRound.
     (fown r s ∨ (⌜s = None⌝ ∗ ∃ i : Z, fown r (Some (i, []))) ∨ T)%I.
 
   (* [fab] at an admissible, state-free alternative IS its continuation
-     (the guard in [FileLinksLine.fab] discharged once, so no consumer
+     (the guard in [FileHooks.fab] discharged once, so no consumer
      rewrites under a [decide]) *)
   Local Lemma fab_of_apr (I : list (bv 8)) (a : nat) :
     ralt_ok (fline I) (ralt_dec a) /\ fstate_free (ralt_dec a) = true ->
@@ -1808,7 +1809,7 @@ Section UShRound.
   Qed.
 
   (* ...and at such an input the era's exec-failed bytes ARE the constants
-     ([FileLinksLine.fexfb] is [alt_execcat] only at an [LCat] line), which
+     ([FileHooks.fexfb] is [alt_execcat] only at an [LCat] line), which
      is LINK-GEN-4's open item closed at the same guard. *)
   Lemma file_D_exfb (I : list (bv 8)) :
     file_D I ->
@@ -1817,7 +1818,7 @@ Section UShRound.
   Proof using .
     intros [_ Hln]. cbn [lk_exfb file_link_inst_at FileLinkGen.file_link_gen_at GenLinksLine.gen_link_inst].
     rewrite -fline_lm. rewrite /FileLinkInst.file_lineok in Hln. rewrite Hln.
-    cbn [lmh_exfb gK FileLinkGen.file_params_at FileLinksLine.file_hooks fexfb].
+    cbn [lmh_exfb gK FileLinkGen.file_params_at FileHooks.file_hooks fexfb].
     split; [ reflexivity | ].
     rewrite UShPanic.alt_execfail_len. reflexivity.
   Qed.

@@ -1397,7 +1397,7 @@ Proof.
     [ exact (proj2 Hw) | exact IH ].
 Qed.
 
-(* THE INPUT'S LAST BODY, at the index [FileLinksLine.fline] reads it at
+(* THE INPUT'S LAST BODY, at the index [FileHooks.fline] reads it at
    (the PROGRAM STREAM).  [last_ws] says [default [] (last ...)]; an era
    that types its own lines indexes the same body positionally, and these
    are the same body. *)

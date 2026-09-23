@@ -10,7 +10,8 @@
 (*          ∗ dl_cnt v ½ |ch_dl H| ∗ dl_list_auth v (ch_dl H)            *)
 (*          ∗ ⌜gcl_pure k ho so H⌝                                       *)
 (*                                                                       *)
-(*  with the taint [T] and the pin [PIN] M2's [GenLinksLine.gen_params]  *)
+(*  with the taint [T] and the pin [PIN] of [gen_cparams] (a sub-record *)
+(*  of M2's [GenLinksLine.gen_params])                                   *)
 (*  and the pure claim [GenOutHist.gcl_pure].  What the applications add *)
 (*  is the STATE WITNESS'S AUTHORITY [WA k st] -- at the file, the era's *)
 (*  second record, the filed-ledger authority, the claim's copy of the  *)
@@ -44,33 +45,74 @@ Require Import LineModelLinks.
 Require Import GenOutPure.
 Require Import EchoOut.
 Require Import GenOutHist.
-Require Import GenLinksLine.     (* [gen_params]: the taint, the pin, [gW] *)
 Local Open Scope nat_scope.
+
+(* WHAT THE CLAIM READS OF AN APPLICATION: its taint, its era pin, the
+   writer's state witness, the model's laws and hooks.  A sub-record of M2's
+   [GenLinksLine.gen_params]; the claim needs neither the reader's witness
+   nor the head, so an application's claim can be stated below its link
+   families.  This file does NOT load the link tier ([GenLinksLine],
+   [LinkRec]): their projection-headed global instances made instance
+   search on an unrelated [Persistent (□ …)] goal in [FileLinks] diverge. *)
+Record gen_cparams {Σ : gFunctors} `{!echoOutG Σ} (M : lmodel) := MkGCP {
+  gcL : lm_laws M;
+  gcK : lm_hooks M;
+  gcT : iProp Σ;
+  gcT_pers : Persistent gcT;
+  gcT_tl : Timeless gcT;
+  gcPIN : nat -> era_pins -> iProp Σ;
+  gcPIN_pers : forall k v, Persistent (gcPIN k v);
+  gcPIN_tl : forall k v, Timeless (gcPIN k v);
+  gcPIN_agree : forall k v v', gcPIN k v -∗ gcPIN k v' -∗ ⌜v = v'⌝;
+  gcW : nat -> lm_st M -> iProp Σ;
+  gcW_pers : forall k s, Persistent (gcW k s);
+  gcW_tl : forall k s, Timeless (gcW k s);
+}.
+Global Arguments MkGCP {Σ _} M.
+Global Arguments gcL {Σ _ M} _.
+Global Arguments gcK {Σ _ M} _.
+Global Arguments gcT {Σ _ M} _.
+Global Arguments gcT_pers {Σ _ M} _.
+Global Arguments gcT_tl {Σ _ M} _.
+Global Arguments gcPIN {Σ _ M} _ _ _.
+Global Arguments gcPIN_pers {Σ _ M} _ _ _.
+Global Arguments gcPIN_tl {Σ _ M} _ _ _.
+Global Arguments gcPIN_agree {Σ _ M} _ _ _ _.
+Global Arguments gcW {Σ _ M} _ _ _.
+Global Arguments gcW_pers {Σ _ M} _ _ _.
+Global Arguments gcW_tl {Σ _ M} _ _ _.
+#[export] Existing Instances gcT_pers gcT_tl gcPIN_pers gcPIN_tl gcW_pers gcW_tl.
 
 (* THE STATE WITNESS'S AUTHORITY, and what the steps read off it.  [sd] is
    the instance's default state ([GenOutPure.gs_state]'s): the stage reads
    it until the era's first process byte files the boot state. *)
-Record gen_wa {Σ : gFunctors} `{!echoOutG Σ} (M : lmodel) (G : gen_params M)
+Record gen_wa {Σ : gFunctors} `{!echoOutG Σ} (M : lmodel) (G : gen_cparams M)
     (sd : lm_st M) := MkGWA {
   gwa : nat -> option (lm_st M) -> iProp Σ;
   gwa_tl : forall k st, Timeless (gwa k st);
   (* the writer's witness pins the state the stage reads *)
   gwa_agree : forall k st s0,
-    gwa k st -∗ gW G k s0 -∗ ⌜default sd st = s0⌝;
+    gwa k st -∗ gcW G k s0 -∗ ⌜default sd st = s0⌝;
   (* THE STATE'S TYPED WITNESS the drain hands the ledger (at the file,
      the deed's evidence for the boot content), and a filed state hands
      the writer's witness and it out again *)
   gwa_ty : lm_st M -> iProp Σ;
   gwa_ty_pers : forall s, Persistent (gwa_ty s);
   gwa_W : forall k s0,
-    gwa k (Some s0) -∗ gwa k (Some s0) ∗ gW G k s0 ∗ gwa_ty s0;
+    gwa k (Some s0) -∗ gwa k (Some s0) ∗ gcW G k s0 ∗ gwa_ty s0;
   (* THE BOOT EVIDENCE the era's first writer holds (at the file: the era's
      second record, the boot ledger's entry, the deed's typed witness), and
      THE FILING LAW: the era's first process byte files the state out of it
      and yields the writer's witness *)
   gwa_boot : nat -> lm_st M -> iProp Σ;
   gwa_file : forall k s0,
-    gwa k None -∗ gwa_boot k s0 ==∗ gwa k (Some s0) ∗ gW G k s0;
+    gwa k None -∗ gwa_boot k s0 ==∗ gwa k (Some s0) ∗ gcW G k s0;  (* ...and, where the writer's witness itself says the state is FILED
+     (the file's carries the filed ledger's lower bound), that: then the
+     prologue write needs no cursor premise ([gcl_step_write_pro]).  [False]
+     where the witness is [emp]. *)
+  gwa_strict : Prop;
+  gwa_agree_strict : gwa_strict -> forall k st s0,
+    gwa k st -∗ gcW G k s0 -∗ ⌜st = Some s0⌝;
 }.
 Global Arguments MkGWA {Σ _ M G sd}.
 Global Arguments gwa {Σ _ M G sd} _ _ _.
@@ -81,7 +123,9 @@ Global Arguments gwa_ty {Σ _ M G sd} _ _.
 Global Arguments gwa_ty_pers {Σ _ M G sd} _ _.
 Global Arguments gwa_boot {Σ _ M G sd} _ _ _.
 Global Arguments gwa_file {Σ _ M G sd} _ _ _.
-Global Existing Instances gwa_tl gwa_ty_pers.
+Global Arguments gwa_strict {Σ _ M G sd} _.
+Global Arguments gwa_agree_strict {Σ _ M G sd} _ _ _ _ _.
+#[export] Existing Instances gwa_tl gwa_ty_pers.
 
 (* the reader's range condition grows by the alternative a block files
    ([FileOutPure.alts_pre_snoc] once) *)
@@ -139,7 +183,7 @@ Qed.
 
 Section gen_out.
   Context {Σ : gFunctors} `{!echoOutG Σ}.
-  Context (M : lmodel) (G : gen_params M) (B : lm_byte_laws M) (sd : lm_st M).
+  Context (M : lmodel) (G : gen_cparams M) (B : lm_byte_laws M) (sd : lm_st M).
   Context (A : gen_wa M G sd).
 
   Local Lemma gop_pending_at_nil ps cs s :
@@ -170,8 +214,8 @@ Section gen_out.
     rewrite Hproeq in Hpp. cbn [length] in Hpp. lia.
   Qed.
 
-  Local Notation T := (gT G).
-  Local Notation PIN := (gPIN G).
+  Local Notation T := (gcT G).
+  Local Notation PIN := (gcPIN G).
   Local Notation WA := (gwa A).
 
   (* ================================================================== *)
@@ -271,7 +315,7 @@ Section gen_out.
     (gwa_boot A k s0 ∨ T) -∗
     gcl k ho H ==∗
       gcl k ho (ConsLog.cons_step H (ConsLog.EvOut b))
-      ∗ ((turn v 1 ∗ ps_lb v [a] ∗ cs_lb v [] ∗ inp_lb v [] ∗ gW G k s0)
+      ∗ ((turn v 1 ∗ ps_lb v [a] ∗ cs_lb v [] ∗ inp_lb v [] ∗ gcW G k s0)
          ∨ T).
   Proof using .
     intros Hfok Halt Hhead.
@@ -282,7 +326,7 @@ Section gen_out.
     { iModIntro. iSplitR; [rewrite /gcl; by iLeft | by iRight]. }
     iDestruct "Hp" as (v2 so)
       "(#Hpin2 & Hwa & Hta & Hcs & Hps & HE & Hdl & Hdll & %Hall)".
-    iDestruct (gPIN_agree G with "Hpin2 Hpin") as %->.
+    iDestruct (gcPIN_agree G with "Hpin2 Hpin") as %->.
     pose proof Hall as Hall0.
     destruct Hall as (Hpure & Hcsl & Hpsl & _ & _ & _ & Hdlok).
     destruct Hpure as (Hacc & Hwpre & Hidx & Hbyte & Hpsb & Hpin & Hcsb' & Hdsc
@@ -386,10 +430,10 @@ Section gen_out.
     lm_pro_pin M ps0 cs0 I0 ->
     lm_proc_stream M ps0 cs0 s0 I0 !! P = Some b ->
     PIN k v -∗ turn v P -∗ ps_lb v ps0 -∗ cs_lb v cs0 -∗ inp_lb v I0 -∗
-    gW G k s0 -∗
+    gcW G k s0 -∗
     gcl k ho H ==∗
       gcl k ho (ConsLog.cons_step H (ConsLog.EvOut b))
-      ∗ ((turn v (S P) ∗ ps_lb v ps0 ∗ cs_lb v cs0 ∗ inp_lb v I0 ∗ gW G k s0)
+      ∗ ((turn v (S P) ∗ ps_lb v ps0 ∗ cs_lb v cs0 ∗ inp_lb v I0 ∗ gcW G k s0)
          ∨ T).
   Proof using .
     intros Hn Hpin0 Hb.
@@ -398,7 +442,7 @@ Section gen_out.
     { iModIntro. iSplitR; [rewrite /gcl; by iLeft | by iRight]. }
     iDestruct "Hp" as (v2 so)
       "(#Hpin2 & Hwa & Hta & Hcs & Hps & HE & Hdl & Hdll & %Hall)".
-    iDestruct (gPIN_agree G with "Hpin2 Hpin") as %->.
+    iDestruct (gcPIN_agree G with "Hpin2 Hpin") as %->.
     iDestruct (gwa_agree A with "Hwa HW") as %Hsteq.
     pose proof Hall as Hall0.
     destruct Hall as (Hpure & Hcsl & Hpsl & _ & _ & _ & Hdlok).
@@ -508,11 +552,11 @@ Section gen_out.
     lm_cont M (lm_upto M cs0 s0 (bodies_of I0) (nlines I0 - 1))
       (lm_of M (bodies_of I0 !!! (nlines I0 - 1))) (lm_dec M a) !! 0 = Some b ->
     PIN k v -∗ turn v P -∗ ps_lb v ps0 -∗ cs_lb v cs0 -∗ inp_lb v I0 -∗
-    gW G k s0 -∗
+    gcW G k s0 -∗
     gcl k ho H ==∗
       gcl k ho (ConsLog.cons_step H (ConsLog.EvOut b))
       ∗ ((turn v (S P) ∗ ps_lb v ps0 ∗ cs_lb v (cs0 ++ [a]) ∗ inp_lb v I0
-          ∗ gW G k s0) ∨ T).
+          ∗ gcW G k s0) ∨ T).
   Proof using B.
     intros Hne0 Hr0 Hdiv Hpin0 HPeq Halt Hterm Hhead.
     pose proof (nlines_pos_of_rest_nil I0 Hne0 Hr0) as Hpos0.
@@ -522,7 +566,7 @@ Section gen_out.
     { iModIntro. iSplitR; [rewrite /gcl; by iLeft | by iRight]. }
     iDestruct "Hp" as (v2 so)
       "(#Hpin2 & Hwa & Hta & Hcs & Hps & HE & Hdl & Hdll & %Hall)".
-    iDestruct (gPIN_agree G with "Hpin2 Hpin") as %->.
+    iDestruct (gcPIN_agree G with "Hpin2 Hpin") as %->.
     iDestruct (gwa_agree A with "Hwa HW") as %Hsteq.
     assert (Hst : gs_state M sd so = s0) by exact Hsteq.
     pose proof Hall as Hall0.
@@ -548,7 +592,7 @@ Section gen_out.
                     ltac:(intros Hq; apply Hne; symmetry; exact Hq)) as Hpre.
       apply prefix_length in Hpre.
       rewrite /lm_proc_stream length_app -Hstream in Hpre.
-      pose proof (lm_pending_at_nonnil_at M (gK G) (gs_ps M so) (gs_cs M so)
+      pose proof (lm_pending_at_nonnil_at M (gcK G) (gs_ps M so) (gs_cs M so)
                     (gs_state M sd so) I0 (snd <$> gs_E M so) HI0 Hcsb' Hne0 Hr0)
         as Hne1.
       assert (Hlen1 : 1 <= length (lm_pending_at M (gs_ps M so) (gs_cs M so)
@@ -588,7 +632,7 @@ Section gen_out.
       destruct (lm_cont M (lm_upto M cs0 s0 (bodies_of I0) (nlines I0 - 1))
                   (lm_of M (bodies_of I0 !!! (nlines I0 - 1))) (lm_dec M a))
         as [| z zs] eqn:Hz;
-        [ exfalso; revert Hz; apply (lmh_cont_nonnil (gK G)); by left
+        [ exfalso; revert Hz; apply (lmh_cont_nonnil (gcK G)); by left
         | cbn; lia ]. }
     assert (Hpinq : lm_pro_pin M (gs_ps M so) (gs_cs M so ++ [a])
                       (snd <$> gs_E M so)).
@@ -676,14 +720,14 @@ Section gen_out.
   (* (W-pro) THE WRITE AT A PROLOGUE ROUND'S CHOICE BYTE: init's own
      knowledge of which alternative its restart loop is taking, filed into
      the claim.  [FileOut.fecl_step_write_pro] once.  ONE PREMISE MORE than
-     the file's: [0 < P], the writer is past the era's head.  The file's
-     witness forces the stage's state to be filed; the model's law only
-     pins the state the stage READS, and at an empty stage the only first
-     byte is the head's ([gcl_step_write_first]), which files it. *)
+     the file's: [0 < P] (the writer is past the era's head) OR the
+     instance's witness forces filing ([gwa_strict], the file's case).  The
+     model's law only pins the state the stage READS, and at an empty stage
+     the only first byte is the head's ([gcl_step_write_first]). *)
   Lemma gcl_step_write_pro (k : nat) (v : era_pins) (P a : nat) (b : bv 8)
       (ps0 cs0 : list nat) (s0 : lm_st M) (I0 : list (bv 8))
       (ho : list mobs) (CH : LogEntryDefs.cons_hist) :
-    0 < P ->
+    0 < P \/ gwa_strict A ->
     rest_of I0 = [] ->
     (I0 = [] \/ lm_panic M (lm_at M cs0 (nlines I0 - 1)) = true) ->
     nlines I0 <= length cs0 ->
@@ -693,11 +737,11 @@ Section gen_out.
     a < length pro_alts ->
     pro_alts !!! a !! 0 = Some b ->
     PIN k v -∗ turn v P -∗ ps_lb v ps0 -∗ cs_lb v cs0 -∗ inp_lb v I0 -∗
-    gW G k s0 -∗
+    gcW G k s0 -∗
     gcl k ho CH ==∗
       gcl k ho (ConsLog.cons_step CH (ConsLog.EvOut b))
       ∗ ((turn v (S P) ∗ ps_lb v (ps0 ++ [a]) ∗ cs_lb v cs0 ∗ inp_lb v I0
-          ∗ gW G k s0) ∨ T).
+          ∗ gcW G k s0) ∨ T).
   Proof using .
     intros HP0 Hr0 Hopen Hdiv Hpin0 Hnd HPeq Halt Hhead.
     iIntros "#Hpin Ht #Hpslb #Hcslb #Hilb #HW Hcl".
@@ -705,8 +749,11 @@ Section gen_out.
     { iModIntro. iSplitR; [rewrite /gcl; by iLeft | by iRight]. }
     iDestruct "Hp" as (v2 so)
       "(#Hpin2 & Hwa & Hta & Hcs & Hps & HE & Hdl & Hdll & %Hall)".
-    iDestruct (gPIN_agree G with "Hpin2 Hpin") as %->.
+    iDestruct (gcPIN_agree G with "Hpin2 Hpin") as %->.
     iDestruct (gwa_agree A with "Hwa HW") as %Hsteq.
+    iAssert (⌜0 < P \/ gs_st M so <> None⌝)%I as %HP0'.
+    { destruct HP0 as [HP0 | Hstr]; [by iLeft |].
+      iDestruct (gwa_agree_strict A Hstr with "Hwa HW") as %Hs. iRight. iPureIntro. by rewrite Hs. }
     assert (Hst : gs_state M sd so = s0) by exact Hsteq.
     pose proof Hall as Hall0.
     destruct Hall as (Hpure & Hcsl & Hpsl & _ & _ & _ & Hdlok).
@@ -770,7 +817,7 @@ Section gen_out.
                     = lm_pending_at M (gs_ps M so) (gs_cs M so)
                         (gs_state M sd so) I0).
       { apply prefix_length_eq; [exact Hpmono | rewrite -Hpend0; lia]. }
-      pose proof (lm_pending_at_round_det M (gL G) ps0 (gs_ps M so) (gs_cs M so)
+      pose proof (lm_pending_at_round_det M (gcL G) ps0 (gs_ps M so) (gs_cs M so)
                     (gs_state M sd so) I0 Hr0 HopenC Hpe) as Hpro.
       assert (Hdone : pro_done (pro_from (lm_pro_idx M (gs_cs M so) (nlines I0))
                         (gs_ps M so))).
@@ -848,12 +895,12 @@ Section gen_out.
                       = lm_wr_pre I0
                         ++ pro_of (pro_from (lm_pro_idx M (gs_cs M so) (nlines I0))
                              (gs_ps M so ++ [a])))
-      by (apply (lm_pending_at_round_pre M (gL G)); [exact Hr0 | exact HopenC]).
+      by (apply (lm_pending_at_round_pre M (gcL G)); [exact Hr0 | exact HopenC]).
     assert (Hshape : lm_pending_at M (gs_ps M so) (gs_cs M so) (gs_state M sd so) I0
                      = lm_wr_pre I0
                        ++ pro_of (pro_from (lm_pro_idx M (gs_cs M so) (nlines I0))
                             (gs_ps M so)))
-      by (apply (lm_pending_at_round_pre M (gL G)); [exact Hr0 | exact HopenC]).
+      by (apply (lm_pending_at_round_pre M (gcL G)); [exact Hr0 | exact HopenC]).
     assert (Hpendb : lm_pending_at M (gs_ps M so ++ [a]) (gs_cs M so)
                        (gs_state M sd so) I0 !! length (gs_w M so) = Some b).
     { pose proof (pro_of_snoc_head
@@ -891,7 +938,7 @@ Section gen_out.
     { destruct (decide (I0 = [])) as [Hz | Hnz].
       { right; right. by rewrite HlenE. }
       left. rewrite Hweq -Hpseq.
-      exact (lm_pending_at_nonnil_at M (gK G) (gs_ps M so) (gs_cs M so)
+      exact (lm_pending_at_nonnil_at M (gcK G) (gs_ps M so) (gs_cs M so)
                (gs_state M sd so) I0 (snd <$> gs_E M so) HI0 Hcsb' Hnz Hr0). }
     assert (HD : lm_D M (gs_ps M so ++ [a]) (gs_cs M so) (gs_state M sd so)
                    (gs_E M so)
@@ -913,7 +960,8 @@ Section gen_out.
     (* the stage is not empty: an empty one has an empty prologue, so the
        cursor would be at zero -- and the writer is past the head *)
     assert (Hst_some : gs_st M so <> None).
-    { intros Hnone. destruct (proj1 Hf0n Hnone) as [HE0 Hw0].
+    { destruct HP0' as [HP0' | Hs]; [| exact Hs].
+      intros Hnone. destruct (proj1 Hf0n Hnone) as [HE0 Hw0].
       pose proof (gop_empty_stage_ps so Hpsl Hpsb HE0 Hw0) as Hps0.
       rewrite HE0 Hw0 Hps0 fmap_nil lm_proc_before_nil in HP.
       cbn [length] in HP. lia. }
@@ -1042,7 +1090,7 @@ Section gen_out.
            ∗ ⌜lm_disc_input M (snd <$> (LogEntryDefs.ch_dl CH ++ ws))⌝
            ∗ (⌜ws = []⌝
               ∨ ∃ (cs0 ps0 : list nat) (s0 : lm_st M),
-                  cs_lb v cs0 ∗ ps_lb v ps0 ∗ gW G k s0
+                  cs_lb v cs0 ∗ ps_lb v ps0 ∗ gcW G k s0
                   ∗ ⌜nlines (snd <$> (LogEntryDefs.ch_dl CH ++ ws))
                      <= S (length cs0)⌝
                   ∗ turn_lb v (length (lm_proc_before M ps0 cs0 s0
@@ -1055,7 +1103,7 @@ Section gen_out.
     { iModIntro. iSplitR; [rewrite /gcl; by iLeft |]. iLeft. by iFrame "Hdlr". }
     iDestruct "Hp" as (v2 so)
       "(#Hpin & Hwa & Hta & Hcs & Hps & HE & Hdl & Hdll & %Hall)".
-    iDestruct (gPIN_agree G with "Hpin Hpinr") as %->.
+    iDestruct (gcPIN_agree G with "Hpin Hpinr") as %->.
     iDestruct (dl_cnt_agree with "Hdl Hdlr") as %Hdleq.
     pose proof Hall as Hall0.
     destruct Hall as (Hpure & Hcsl & Hpsl & Hin & Hera & HEtie & Hdlok).
@@ -1134,7 +1182,7 @@ Section gen_out.
         lia. }
     iAssert (WA k (gs_st M so)
              ∗ (⌜gs_st M so = None⌝
-                ∨ ∃ s1 : lm_st M, ⌜gs_st M so = Some s1⌝ ∗ gW G k s1))%I
+                ∨ ∃ s1 : lm_st M, ⌜gs_st M so = Some s1⌝ ∗ gcW G k s1))%I
       with "[Hwa]" as "[Hwa #Hf0w]".
     { destruct (gs_st M so) as [s1 |] eqn:Hf0.
       - iDestruct (gwa_W A k s1 with "Hwa") as "(Hwa & #Hlb & _)".
@@ -1429,8 +1477,8 @@ Section gen_out.
                     \/ gs_w M so = []).
     { destruct (lm_cs_len_ok_inv M so Hcsl) as [[[Hw _] _] | [_ Hq]];
         [by right | left; lia]. }
-    set (csP := lm_alts_pad M (gK G) (snd <$> gs_E M so) (gs_cs M so)).
-    destruct (lm_stage_sess_pad M (gK G) B (gs_ps M so) (gs_cs M so)
+    set (csP := lm_alts_pad M (gcK G) (snd <$> gs_E M so) (gs_cs M so)).
+    destruct (lm_stage_sess_pad M (gcK G) B (gs_ps M so) (gs_cs M so)
                 (gs_state M sd so) (gs_E M so) (gs_w M so)
                 Hcsb' Hrl Hlast Hbyte Hpinf Hwpre)
       as (HokP & HpinP & HDP & HwP & HstP).
@@ -1458,10 +1506,10 @@ Section gen_out.
         destruct (lookup_lt_is_Some_2 (gs_cs M so) i Hlt) as [a Ha].
         rewrite (list_lookup_total_correct _ _ _ Ha).
         by rewrite (Forall_lookup_1 _ _ _ _ Hnofk Ha).
-      - rewrite /csP (lm_alts_pad_term M (gK G) (snd <$> gs_E M so) (gs_cs M so) i
+      - rewrite /csP (lm_alts_pad_term M (gcK G) (snd <$> gs_E M so) (gs_cs M so) i
                         ltac:(lia) Hi).
         done. }
-    destruct (lm_sess_prefix_det M (gL G) (gs_ps M so) ps' csP cs'
+    destruct (lm_sess_prefix_det M (gcL G) (gs_ps M so) ps' csP cs'
                 (gs_state M sd so) sdd
                 (done_of (removelast (ins (open_seg h)))) (snd <$> gs_E M so)
                 Hpsb Hok' HokP Hao' HpinP Hbyte Hdi1 Hfok0 Hsdok Hd4c Hnm' Hbelow)
@@ -1488,14 +1536,14 @@ Section gen_out.
         as [Hle | Hgt].
       - rewrite HweqP /lm_pending /csP.
         symmetry. apply (lm_pending_at_cs_ext M (gs_ps M so) (gs_cs M so)
-                           (lm_alts_pad M (gK G) (snd <$> gs_E M so) (gs_cs M so))
+                           (lm_alts_pad M (gcK G) (snd <$> gs_E M so) (gs_cs M so))
                            (gs_state M sd so) (snd <$> gs_E M so));
           [apply lm_alts_pad_prefix | exact Hle].
       - exfalso.
         destruct (lm_cs_len_ok_inv M so Hcsl) as [[[Hwn Hr] Hq] | [_ Hq]];
           [| lia].
         assert (HEn : (snd <$> gs_E M so) = []).
-        { apply (lm_pending_nil_inv M (gK G) (gs_ps M so) csP (gs_state M sd so)
+        { apply (lm_pending_nil_inv M (gcK G) (gs_ps M so) csP (gs_state M sd so)
                    (gs_E M so));
             [exact (lm_alts_pre_of_alts_ok M _ _ HokP) | exact Hr
             | by rewrite -HweqP Hwn]. }
@@ -1504,7 +1552,7 @@ Section gen_out.
     assert (Hrnd : lm_pro_idx M (gs_cs M so) (nlines (snd <$> gs_E M so))
                    < pro_rounds (gs_ps M so)).
     { destruct HokPres as [_ Hres]. rewrite nlines_done HI in Hres.
-      rewrite (lm_alts_pad_pro_idx M (gK G) B (snd <$> gs_E M so) (gs_cs M so)
+      rewrite (lm_alts_pad_pro_idx M (gcK G) B (snd <$> gs_E M so) (gs_cs M so)
                  (nlines (snd <$> gs_E M so)) ltac:(lia)) in Hres.
       exact Hres. }
     (* the two laws at the new entry *)
@@ -1530,7 +1578,7 @@ Section gen_out.
       injection Hy as <-. cbn [fst]. reflexivity. }
     assert (Hdisc2 : lm_E_disc M (gs_E M so ++ [(open_seg h, c)]))
       by exact (lm_E_disc_of_hist M B _ (open_seg h) Hidx2 Hpl2 Hdseg).
-    pose proof (lm_cs_len_ok_echo M (gK G) sd so (open_seg h, c) Hcsb' Hweq Hcsl)
+    pose proof (lm_cs_len_ok_echo M (gcK G) sd so (open_seg h, c) Hcsb' Hweq Hcsl)
       as Hcsl2.
     assert (Hpin2 : lm_pro_pin M (gs_ps M so) (gs_cs M so)
                       ((snd <$> gs_E M so) ++ [c])).
@@ -1560,7 +1608,7 @@ Section gen_out.
              CH (echo_of c) h c Harm eq_refl);
       [cbn [gs_cs]; lia | reflexivity | | |
       | (* (A2): the echo leaves the writer owing a whole block *)
-        exact (lm_dl_ok_echo M (gK G) sd so (open_seg h, c) (LogEntryDefs.ch_dl CH)
+        exact (lm_dl_ok_echo M (gcK G) sd so (open_seg h, c) (LogEntryDefs.ch_dl CH)
                  Hcsb' Hweq Hdlok)
       | exact Hall0].
     - rewrite /lm_out_pure.
@@ -1646,7 +1694,7 @@ Section gen_out.
      empty: a stage that has not filed has written nothing. *)
   Definition gdrain_ret (k : nat) (seg : list mobs) : iProp Σ :=
     (T ∨ ∃ s0 : lm_st M,
-          ⌜lm_good_out M s0 seg⌝ ∗ ⌜lm_st_ok M s0⌝ ∗ gwa_ty A s0 ∗ gW G k s0)%I.
+          ⌜lm_good_out M s0 seg⌝ ∗ ⌜lm_st_ok M s0⌝ ∗ gwa_ty A s0 ∗ gcW G k s0)%I.
 
   Lemma gcl_drain (k : nat) (h ho : list mobs) (CH : LogEntryDefs.cons_hist)
       (seg : list mobs) :
@@ -1694,7 +1742,7 @@ Section gen_out.
           etrans; [apply prefix_take |].
           rewrite Hins. apply ins_prefix_of, open_seg_prefix_boots;
             [exact Hpre | by rewrite Hbo | exact Hsh]. }
-      apply (lm_good_out_of_stage M (gK G) B (gs_ps M so) (gs_cs M so)
+      apply (lm_good_out_of_stage M (gcK G) B (gs_ps M so) (gs_cs M so)
                (gs_state M sd so) (gs_E M so) (gs_w M so) seg Hpsb).
       + apply (lm_alts_pre_mono M (snd <$> gs_E M so)); [exact Hbytes | exact Hcsb'].
       + pose proof (gcl_pure_rd_stage M sd _ ho so CH Hall) as (_ & _ & _ & Hb).

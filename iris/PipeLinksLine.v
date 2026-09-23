@@ -72,7 +72,7 @@ Local Open Scope list_scope.
 (*  S0  THE LINE, AND ITS ALTERNATIVES' OUTPUT                            *)
 (* ===================================================================== *)
 
-(* the line the last COMPLETE body of [I] parses to ([FileLinksLine.fline]) *)
+(* the line the last COMPLETE body of [I] parses to ([FileHooks.fline]) *)
 Definition pline_at (I : list (bv 8)) : pline :=
   pline_of (bodies_of I !!! (nlines I - 1)%nat).
 

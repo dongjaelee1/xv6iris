@@ -1002,7 +1002,7 @@ Definition ralt_ok (l : uline) (a : ralt) : Prop :=
      so which alternatives this line admits is unobservable to every FILE
      statement; it is [LCat]'s five because that makes [fsm], [cont] and
      every per-line choice ([FileOutPure.ralt_def],
-     [FileLinksLine.fpan_of]/[fexf_of]/[fnoc_of]) agree with [LCat]'s arm
+     [FileHooks.fpan_of]/[fexf_of]/[fnoc_of]) agree with [LCat]'s arm
      verbatim, and so costs each landed proof one copied line.  The PIPE
      application reads its own [PipeDisc.palt_ok]/[pcont], never these. *)
   | LPipe _ =>

@@ -76,13 +76,13 @@ Section UkHandler.
     ei_out : nat -> list bytes -> iProp Σ;
     ei_in : nat -> bytes -> iProp Σ;
     ei_files : (bytes -> option bytes) -> iProp Σ;
-    (* a write of a chunk one alternative begins with: the count comes
-       back exactly, the device keeps the alternatives that had it *)
+    (* a write of a chunk the chosen alternative begins with: the count
+       comes back exactly, the device owes that alternative's rest *)
     ei_write : forall (fdm : fdmap) (fd : Z) (d : nat) (alts : list bytes)
-                 (bs : bytes) (K : Z -> iProp Σ),
-        fdm fd = Some d -> alts_after bs alts <> [] ->
+                 (a bs : bytes) (K : Z -> iProp Σ),
+        fdm fd = Some d -> a ∈ alts -> bs `prefix_of` a ->
         ei_fds fdm -∗ ei_out d alts -∗
-        (ei_fds fdm -∗ ei_out d (alts_after bs alts) -∗ K (Z.of_nat (length bs))) -∗
+        (ei_fds fdm -∗ ei_out d [drop (length bs) a] -∗ K (Z.of_nat (length bs))) -∗
         wr_obl N P fd bs K;
     (* a read: some chunk of what is left, empty only at end of file *)
     ei_read : forall (fdm : fdmap) (fd : Z) (d : nat) (Sin : bytes) (n : nat)
@@ -233,13 +233,14 @@ Section UkHandler.
         rewrite env_set_dev_pe_dev (dev_res_set I (pe_dev E) (ds ∖ {[d]}) d _ Hnot).
         iExact "Hrest".
       + (* EWrite *)
-        destruct Hc as (d & alts & Hfd & Hd & Hne & Hk).
+        destruct Hc as (d & alts & a & Hfd & Hd & Ha & Hpre & Hk).
         assert (Hin : d ∈ ds) by (apply (Hdom fd); exact Hfd).
         iDestruct (dev_res_take I _ ds d Hin with "Hdev") as "[Hdr Hrest]".
         rewrite Hd.
-        iApply (ei_write I (pe_fd E) fd d alts bs with "Hfds Hdr"); [exact Hfd | exact Hne |].
+        iApply (ei_write I (pe_fd E) fd d alts a bs with "Hfds Hdr");
+          [exact Hfd | exact Ha | exact Hpre |].
         iIntros "Hfds Hout".
-        iExists (env_set_dev E d (DOut (alts_after bs alts))), ds.
+        iExists (env_set_dev E d (DOut [drop (length bs) a])), ds.
         iSplit; [done |].
         iSplit; [done |]. iFrame "Hfds Hfiles".
         rewrite (dev_res_take I _ ds d Hin). iSplitL "Hout".

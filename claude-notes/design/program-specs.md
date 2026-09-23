@@ -189,8 +189,12 @@ byte, exactly as the line model's block-first link files it; a file or a
 pipe owes one.  An input device is a stream (`DIn S`).  `conforms E t`
 (coinductive) says every path of `t`
 
-- writes a prefix of one of its device's alternatives, leaving
-  `alts_after bs alts` (the alternatives that had it, minus it);
+- writes a prefix of an alternative the PROOF CHOOSES among its device's
+  (`cf_write` takes the alternative; what is owed after is that one's
+  rest, a singleton) -- the console commits to an alternative at its
+  first byte and the landed payers choose it from the branch they are
+  in, so the choice has to be the conformance proof's, not the bytes'
+  (two alternatives may share a prefix);
 - reads ANY chunking of its input (`chunk_ok`: at most the count, empty
   only at end of file);
 - at an open of a present file is ready for BOTH answers -- a descriptor
@@ -210,8 +214,8 @@ proof about the tree and nothing else.
 
 The logic's half of an environment is a resource per device
 (`env_res E`) with laws AT THE HOLES: an `Out` device funds
-`wr_obl fd bs K` when `alts_after bs alts ≠ []`, returns exactly
-`|bs|` and leaves `DOut (alts_after bs alts)`; an `In` device funds
+`wr_obl fd bs K` for a chunk of the chosen alternative `a ∈ alts`,
+returns exactly `|bs|` and leaves `DOut [drop |bs| a]`; an `In` device funds
 `rd_obl fd n K` with a `chunk_ok` answer and leaves `DIn S'`; the
 files fund `op_obl` (the ledger's `ualloc` says which descriptor came
 back, the deed says the content); `cl_obl` and `ex_obl` from the ledger
@@ -236,6 +240,45 @@ Then ONE lemma closes every program at every line shape:
 
 by `tree_pay_coind` at the invariant `∃ E', env_res E' ∗ ⌜conforms E' t⌝`.
 §5's `Out fd S` is `DOut [S]`; the endpoint laws are its instance.
+
+### 3.4b The instance is ONE, for the union (cut 4(c))
+
+`ep_iface` is stated over all laws at once, so the instance is not one
+per destination but one per APPLICATION, whose devices are a registry
+`d ↦ console | file (inode) | pipe (names)`:
+
+- `ei_fds fdm`: the process's own resources -- its ledger (`UserFd.ustd`)
+  with each bound descriptor's row at the kernel object its device
+  names, and its exit payload (`ukn_pay N s`), which is what `ei_exit`
+  spends beside the exit stub law.
+- `ei_out d alts` at the console: the generic claim's cursor
+  (`GenLinksLine.gcur`) at the era's stage, FILED at an alternative `a`
+  with `alts = [drop p (its continuation)]`, or UNFILED at the block's
+  first byte with `alts` = the admissible alternatives' continuations
+  (`lm_cont` at the round's state); the write law is
+  `UCatKernel.cat_w_of_link` generalised -- one `GenLinks.gwrite_link_blk`
+  for the first byte (which files `a`) and `gwrite_link` per later byte,
+  through the console write leaf (`UkWriteLeaf.uwrite_chain_sup`,
+  `uwrite_no_short` for the exact count) run between the stub law's
+  entry and return.  At a file: the deed and the held offset
+  (`FileWrite.file_wq`, as `UEchoFile` spends it).  At a pipe's write
+  end: `PipeProto.wcur` and `pws_lb` (as `UEchoPipe`), with the haltable
+  spec (`DOutH`: the reader may have gone, the answer is -1 and the
+  device stays halted) still to add to `conforms` and the interface.
+- `ei_in d S`: at a file, the held descriptor at offset `p` with the
+  deed's content (`UCatKernel`'s `Hold p`, `UkCatDeed.kcat_r_of_deed_at`);
+  at a pipe's read end, `PipeProto.rcur` (`UCatPipe`); the read law
+  answers `chunk_ok` from the kernel's count.
+- `ei_files`: the application's file claim (the deed at `f`, the tree
+  layer later); `ei_open` from the deed's open leaves
+  (`UkFileOpen`, `kcat_o_of_deed*`), the descriptor from the ledger's
+  `ualloc`; `ei_close` from `wp_uk_ecall_close` at the handle.
+
+An output device of a process that may legitimately write nothing (the
+left `cat f` of a pipeline whose open failed) owes `[content; []]`: the
+alternatives are the branches' outputs, per device, and their PAIRING
+across devices (content on the pipe with no diagnostic on the console)
+is the line model's, not the process's.
 
 ### 3.5 The line model's continuation becomes a theorem
 

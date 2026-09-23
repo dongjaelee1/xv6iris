@@ -69,10 +69,12 @@ pointer line per top-level and `design/` file and does NOT list `projects/` or
   broken tactic script; `-vok` is the other half and costs what the `.vo` does.
   Delete the `.vos` first: an ordinary `coqc` run leaves an EMPTY one beside the
   `.vo`, so `-vos` over a built tree reports success having done nothing.
-- **Builds run on this host**, an EC2 r7a.8xlarge (32 vCPU, 246 GB), where the
-  tree and the switch both live. The GCP VM in
-  [`remote-build-gcp.md`](remote-build-gcp.md) is a COLLABORATOR's machine and
-  not a build path from here.
+- **Builds run on the GCP VM** (owner's instruction, 2026-09-23):
+  `gcp-rocq/vmbuild.sh <checkout> <log>` for a checkout's `iris/` cone,
+  `gcp-rocq/run-on-gcp --proofs` for the whole tree, `--check Foo.v` for the
+  edit loop; see [`remote-build-gcp.md`](remote-build-gcp.md). This host (an
+  EC2 r7a.8xlarge) runs at most a single-file `coqc` against `.vo` pulled back
+  with `--pull-vo`; never a tree build here.
 - **opam switch `/shared/xv6rocq`** (Rocq 9.0.1, coq-iris 4.4.0, coq-stdpp 1.12.0,
   coq-sail-stdpp 0.20.1). Its `bin/` is symlinked into `/usr/local/bin`, so
   `coqc`, `rocq` and `coq_makefile` resolve in every shell, background ones

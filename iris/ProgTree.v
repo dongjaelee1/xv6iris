@@ -553,12 +553,12 @@ Proof. etransitivity; [apply force_eq |]. reflexivity. Qed.
 (*  What a line shape provisions, abstractly: descriptors bound to        *)
 (*  DEVICES, each device an endpoint spec -- an input stream, or an       *)
 (*  output owed as a SET of alternatives (the console: which one is       *)
-(*  decided by the first byte, as the line model's block-first link does; *)
+(*  decided at the first byte, as the line model's block-first link does; *)
 (*  a file or a pipe: one alternative).  [conforms E t] says every path   *)
-(*  of [t] writes a prefix of one of its device's alternatives, reads any *)
-(*  chunking of its input, is ready for either answer of an open (the     *)
-(*  kernel may refuse a present file), and exits only with every output   *)
-(*  fully written.  It is the PURE half of a handler: the logic's half    *)
+(*  of [t] writes a prefix of an alternative IT CHOOSES (after which that *)
+(*  one's rest is all that is owed), reads any chunking of its input, is  *)
+(*  ready for either answer of an open (the kernel may refuse a present   *)
+(*  file), and exits only with every output fully written.  It is the PURE half of a handler: the logic's half    *)
 (*  funds the holes of a conforming tree from the endpoints' resources,   *)
 (*  once, by coinduction.                                                 *)
 (* ===================================================================== *)
@@ -582,10 +582,6 @@ Definition env_bind (E : penv) (fd : Z) (d : option nat) : penv :=
 Definition env_fresh (E : penv) (d : nat) : Prop :=
   forall fd, pe_fd E fd <> Some d.
 
-(* the alternatives a chunk [bs] can be the head of, with the chunk taken *)
-Definition alts_after (bs : bytes) (alts : list bytes) : list bytes :=
-  drop (length bs) <$> filter (fun a => bs `prefix_of` a) alts.
-
 (* a read's answer: a chunk of at most [n], empty only at end of file *)
 Definition chunk_ok (n : nat) (S c S' : bytes) : Prop :=
   S = c ++ S' /\ (length c <= n)%nat /\ (c = [] -> S = []).
@@ -600,9 +596,9 @@ Definition cf_step (R : penv -> proc -> Prop) (E : penv) (t : proc) : Prop :=
   | Vis e k =>
       match e as e return (ans e -> proc) -> Prop with
       | EWrite fd bs => fun k =>
-          exists d alts, pe_fd E fd = Some d /\ pe_dev E d = DOut alts
-            /\ alts_after bs alts <> []
-            /\ R (env_set_dev E d (DOut (alts_after bs alts))) (k (Z.of_nat (length bs)))
+          exists d alts a, pe_fd E fd = Some d /\ pe_dev E d = DOut alts
+            /\ a ∈ alts /\ bs `prefix_of` a
+            /\ R (env_set_dev E d (DOut [drop (length bs) a])) (k (Z.of_nat (length bs)))
       | ERead fd n => fun k =>
           exists d S, pe_fd E fd = Some d /\ pe_dev E d = DIn S
             /\ forall c S', chunk_ok n S c S' -> R (env_set_dev E d (DIn S')) (k (RdBytes c))
@@ -623,10 +619,13 @@ Definition cf_step (R : penv -> proc -> Prop) (E : penv) (t : proc) : Prop :=
 CoInductive conforms : penv -> proc -> Prop :=
   | cf_tau E t :
       conforms E t -> conforms E (Tau t)
-  | cf_write E fd d alts bs k :
+  (* a write CHOOSES the alternative it is a prefix of (the console files
+     one at its first byte, and the proof knows which from its branch, as
+     the landed payers do); what is owed is then that one's rest *)
+  | cf_write E fd d alts a bs k :
       pe_fd E fd = Some d -> pe_dev E d = DOut alts ->
-      alts_after bs alts <> [] ->
-      conforms (env_set_dev E d (DOut (alts_after bs alts))) (k (Z.of_nat (length bs))) ->
+      a ∈ alts -> bs `prefix_of` a ->
+      conforms (env_set_dev E d (DOut [drop (length bs) a])) (k (Z.of_nat (length bs))) ->
       conforms E (Vis (EWrite fd bs) k)
   | cf_read E fd d S n k :
       pe_fd E fd = Some d -> pe_dev E d = DIn S ->
@@ -658,7 +657,7 @@ Lemma conforms_unfold (E : penv) (t : proc) : conforms E t -> cf_step conforms E
 Proof.
   intros H. destruct H; simpl.
   - exact H.
-  - exists d, alts. auto.
+  - exists d, alts, a. auto.
   - exists d, S. auto.
   - left. split; [reflexivity |]. exists content. auto.
   - right. auto.
@@ -667,21 +666,6 @@ Proof.
 Qed.
 
 (* ---- echo conforms to a console owing its line -------------------- *)
-
-Lemma alts_after_one (bs S' : bytes) : alts_after bs [bs ++ S'] = [S'].
-Proof.
-  unfold alts_after.
-  rewrite filter_cons_True; [| by eexists].
-  rewrite filter_nil. simpl. by rewrite drop_app_length.
-Qed.
-
-Lemma alts_after_mem (bs S' : bytes) (alts : list bytes) :
-  bs ++ S' ∈ alts -> S' ∈ alts_after bs alts.
-Proof.
-  intros Hin. unfold alts_after. apply elem_of_list_fmap.
-  exists (bs ++ S'). split; [by rewrite drop_app_length |].
-  apply elem_of_list_filter. split; [by eexists | exact Hin].
-Qed.
 
 Lemma env_set_dev_dev (E : penv) (d : nat) (x : dspec) :
   pe_dev (env_set_dev E d x) d = x.
@@ -696,8 +680,8 @@ Proof.
   intros d'. destruct (decide (d' = d)); reflexivity.
 Qed.
 
-(* a run of one-byte writes owed by a device: what is owed after it is
-   what was owed after the run, in every alternative that had it *)
+(* a run of one-byte writes on an alternative the device owes: what is
+   owed after it is that alternative's rest, in any set that has it *)
 Lemma write_bytes_conforms (E : penv) (fd : Z) (d : nat) (bs S' : bytes)
     (alts : list bytes) (rest : proc) :
   pe_fd E fd = Some d -> pe_dev E d = DOut alts -> bs ++ S' ∈ alts ->
@@ -707,22 +691,19 @@ Proof.
   revert E alts. induction bs as [| b bs IH]; intros E alts Hfd Hd Hin Hrest.
   - simpl in Hin. simpl.
     specialize (Hrest alts Hin).
-    (* the update is the identity here *)
     assert (env_set_dev E d (DOut alts) = E) as Heq.
     { destruct E as [f g files]. unfold env_set_dev. simpl in *. f_equal.
       apply functional_extensionality. intros d'.
       destruct (decide (d' = d)) as [-> | ]; [by rewrite Hd | reflexivity]. }
     by rewrite Heq in Hrest.
   - simpl.
-    eapply cf_write with (d := d) (alts := alts); [exact Hfd | exact Hd | |].
-    { intros Hnil.
-      pose proof (alts_after_mem [b] (bs ++ S') alts) as Hm.
-      rewrite <- app_comm_cons in Hm. specialize (Hm Hin).
-      rewrite Hnil in Hm. inversion Hm. }
-    apply (IH (env_set_dev E d (DOut (alts_after [b] alts))) (alts_after [b] alts)).
+    eapply cf_write with (d := d) (alts := alts) (a := b :: bs ++ S');
+      [exact Hfd | exact Hd | exact Hin | by exists (bs ++ S') |].
+    simpl.
+    apply (IH (env_set_dev E d (DOut [bs ++ S'])) [bs ++ S']).
     + exact Hfd.
     + apply env_set_dev_dev.
-    + apply alts_after_mem. by rewrite <- app_comm_cons.
+    + by left.
     + intros alts' Hin'. rewrite env_set_dev_set_dev. exact (Hrest alts' Hin').
 Qed.
 
@@ -747,24 +728,24 @@ Proof.
   revert rest. induction ws as [| w r IH]; intros rest Hne Hrest; [done |].
   destruct r as [| w' r'].
   - simpl. unfold wl_line. simpl. rewrite app_nil_r.
-    eapply cf_write with (d := 0%nat) (alts := [w ++ [wl_nl]]); [done | done | |].
-    { rewrite alts_after_one. done. }
-    rewrite alts_after_one, cons_env_set.
-    eapply cf_write with (d := 0%nat) (alts := [[wl_nl] ++ []]); [done | done | |].
-    { rewrite alts_after_one. done. }
-    rewrite alts_after_one, cons_env_set. exact Hrest.
+    eapply cf_write with (d := 0%nat) (alts := [w ++ [wl_nl]]) (a := w ++ [wl_nl]);
+      [done | done | by left | by eexists |].
+    rewrite drop_app_length, cons_env_set.
+    eapply cf_write with (d := 0%nat) (alts := [[wl_nl]]) (a := [wl_nl]);
+      [done | done | by left | by eexists |].
+    simpl. rewrite cons_env_set. exact Hrest.
   - simpl. unfold wl_line. rewrite wl_body_cons, wl_tail_cons.
     rewrite <- app_assoc.
-    eapply cf_write with (d := 0%nat) (alts := [w ++ (wl_sp :: wl_body (w' :: r') ++ [wl_nl])]);
-      [done | done | |].
-    { rewrite alts_after_one. done. }
-    rewrite alts_after_one, cons_env_set.
+    eapply cf_write with (d := 0%nat) (alts := [w ++ (wl_sp :: wl_body (w' :: r') ++ [wl_nl])])
+      (a := w ++ (wl_sp :: wl_body (w' :: r') ++ [wl_nl]));
+      [done | done | by left | by eexists |].
+    rewrite drop_app_length, cons_env_set.
     change (wl_sp :: wl_body (w' :: r') ++ [wl_nl])
       with ([wl_sp] ++ (wl_body (w' :: r') ++ [wl_nl])).
-    eapply cf_write with (d := 0%nat) (alts := [[wl_sp] ++ (wl_body (w' :: r') ++ [wl_nl])]);
-      [done | done | |].
-    { rewrite alts_after_one. done. }
-    rewrite alts_after_one, cons_env_set.
+    eapply cf_write with (d := 0%nat) (alts := [[wl_sp] ++ (wl_body (w' :: r') ++ [wl_nl])])
+      (a := [wl_sp] ++ (wl_body (w' :: r') ++ [wl_nl]));
+      [done | done | by left | by eexists |].
+    rewrite drop_app_length, cons_env_set.
     apply IH; [done | exact Hrest].
 Qed.
 
@@ -847,15 +828,14 @@ Proof.
     simpl in HS. destruct S'; [| discriminate HS].
     exact (Hrest alts Hin).
   - rewrite HS in Hin.
-    eapply cf_write with (d := 0%nat) (alts := alts).
+    eapply cf_write with (d := 0%nat) (alts := alts) (a := (b :: c') ++ S').
     { cbv [cat_env cat_env0 pe_fd pe_dev]. by rewrite decide_True; [| by left]. }
     { cbv [cat_env pe_fd pe_dev]. by rewrite decide_True. }
-    { intros Hnone. pose proof (alts_after_mem (b :: c') S' alts Hin) as Hm.
-      rewrite Hnone in Hm. inversion Hm. }
-    rewrite cat_env_out. cbv beta.
+    { exact Hin. }
+    { by eexists. }
+    rewrite drop_app_length, cat_env_out. cbv beta.
     rewrite decide_True; [| reflexivity].
-    apply cf_tau. apply CIH; [| exact Hrest].
-    apply alts_after_mem. exact Hin.
+    apply cf_tau. apply CIH; [by left | exact Hrest].
 Qed.
 
 Theorem cat_stdin_conforms (S : bytes) files :

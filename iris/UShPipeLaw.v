@@ -817,18 +817,22 @@ Section UShPipeLaw.
      era's FREE WRITE LAW and a BOXED [-1] payload -- which is exactly
      what a tainted pipeline round has: [UkSh.sh_deps] IS [udepw_law 16]
      and the payload's taint arm is [pl_qc_of_taint]. *)
-  Lemma pl_kcat_dg (N' : uk_names Σ) :
+  Lemma pl_kcat_dg (N' : uk_names Σ) `{!ukn_const N'} :
     □ (ukn_pay N' (-1)) -∗ UkSh.sh_deps (PS := uprogSG_free) -∗
     UkCatCat.kcat_dg_cr (PS := uprogSG_free) N'
     ∗ UkCatCat.kcat_dg_cw (PS := uprogSG_free) N'.
   Proof using .
     iIntros "#HC #Hwr". rewrite /UkSh.sh_deps.
     rewrite /UkCatCat.kcat_dg_cr /UkCatCat.kcat_dg_cw.
+    iAssert (□ UkCat.kcat_exit (PS := uprogSG_free) N' 1)%I as "#HC1".
+    { iModIntro. iApply (UkCat.kcat_exit_of_pay with "HC"). }
     iSplitL.
     - iApply (UkCat.kcat_pay_seq_of_law (PS := uprogSG_free) N'
-                _ _ 16%nat (ukn_pay N' (-1)) 0%nat with "HC Hwr").
+                _ _ 16%nat (UkCat.kcat_exit (PS := uprogSG_free) N' 1)
+                0%nat with "HC1 Hwr").
     - iApply (UkCat.kcat_pay_seq_of_law (PS := uprogSG_free) N'
-                _ _ 17%nat (ukn_pay N' (-1)) 0%nat with "HC Hwr").
+                _ _ 17%nat (UkCat.kcat_exit (PS := uprogSG_free) N' 1)
+                0%nat with "HC1 Hwr").
   Qed.
 
   (* =================================================================== *)
@@ -895,6 +899,7 @@ Section UShPipeLaw.
     iIntros "#Hdps #Hlk #Hpin".
     iDestruct (PipeLinks.pipe_links_taint g with "Hlk") as "#Ht".
     iIntros "!>" (N'' l) "%Hpeq %Hfd0 Hstd Hcr".
+    pose proof (ukn_const_of_eq N'' _ Hpeq (fun x y => eq_refl)) as Hcn.
     destruct Hfd0 as [[wb Hl0] [rb Hl1]].
     rewrite /pl_RcR.
     iDestruct "Hcr" as "(#Hinv & #Hpi & Hrt & HsR & HgR & HgM)".

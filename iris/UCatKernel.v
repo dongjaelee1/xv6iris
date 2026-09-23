@@ -458,7 +458,9 @@ Section UCatKernel.
         iApply ("Hend" $! p p2 with "[%] [%] [] Hstd Hhold Hc");
           [ exact Hple | exact Hp2 | ].
         iRight. iExact "HT".
-      - iIntros (nb) "%Hret _".
+      - iIntros (nb) "%Hret' _".
+        assert (Hret : ret = (mword_of_int (Z.of_nat nb) : mword 64))
+          by (rewrite -Hret'; symmetry; apply UkCat.moi_of_sint).
         iApply (UkCat.kcat_wr_mono N (mword_of_int 1)
                   (mword_of_int CatSyms.buf) nb
                   (ubytes γd CatSyms.buf 512 gb)%I
@@ -471,7 +473,7 @@ Section UCatKernel.
                   _ with "[Hhold] [Hstd Hc]").
         { iIntros (wret) "(%Hws & Hstd & _ & Hb)".
           iSplitR "Hb"; [ | iExact "Hb" ].
-          iLeft. iSplitR; [ by iPureIntro | ].
+          iApply UkCatCat.kcat_wpost_of_eq. iSplitR; [ by iPureIntro | ].
           rewrite /cat_round_inv. iFrame "Hstd".
           iExists p2. iSplitR; [ by iPureIntro | ]. iFrame "Hhold".
           rewrite /UCatOut.cch. iRight. rewrite <- Hgc. iExact "HT". }
@@ -509,7 +511,9 @@ Section UCatKernel.
         [ exact Hple | exact Hnext | ].
       iLeft. iPureIntro. rewrite Hu0. cbn [Z.to_nat].
       rewrite Nat.add_0_r. exact (conj Hpe Hpe).
-    - iIntros (nb) "%Hret %Hnb0".
+    - iIntros (nb) "%Hret' %Hnb0".
+      assert (Hret : ret = (mword_of_int (Z.of_nat nb) : mword 64))
+        by (rewrite -Hret'; symmetry; apply UkCat.moi_of_sint).
       iApply (UkCat.kcat_wr_mono N (mword_of_int 1)
                 (mword_of_int CatSyms.buf) nb
                 (ubytes γd CatSyms.buf 512 gb)%I
@@ -522,7 +526,7 @@ Section UCatKernel.
                 _ with "[Hhold] [Hstd Hc]").
       { iIntros (wret) "(%Hws & Hstd & Hc' & Hb)".
         iSplitR "Hb"; [ | iExact "Hb" ].
-        iLeft. iSplitR; [ by iPureIntro | ].
+        iApply UkCatCat.kcat_wpost_of_eq. iSplitR; [ by iPureIntro | ].
         rewrite /cat_round_inv. iFrame "Hstd".
         iExists (p + Z.to_nat (bv_unsigned ret))%nat.
         iSplitR; [ by iPureIntro | ]. iFrame "Hhold". iExact "Hc'". }
@@ -1052,7 +1056,7 @@ Section UCatKernel.
      ∗ UCatOut.cch g v vf ps0 cs0 s0 I0 a P
          (p + UkCatMain.cm_msg_q + UserHeap.ua_len ga
           + (UkCatMain.cm_msg_len - S (S UkCatMain.cm_msg_q)))%nat
-     -∗ ukn_pay N (-1)) -∗
+     -∗ UkCat.kcat_exit N 1) -∗
     UserFd.ustd γfd l -∗
     UCatOut.cch g v vf ps0 cs0 s0 I0 a P p -∗
     UkCatMain.kcat_dg_open N ga.
@@ -1130,7 +1134,7 @@ Section UCatKernel.
     file_era_pin g (S gen_id) vf -∗
     (UserFd.ustd γfd l
      ∗ UCatOut.cch g v vf ps0 cs0 s0 I0 (ralt_enc RCRan) P 19%nat
-     -∗ ukn_pay N (-1)) -∗
+     -∗ UkCat.kcat_exit N 1) -∗
     UserFd.ustd γfd l -∗
     UCatOut.cch g v vf ps0 cs0 s0 I0 (ralt_enc RCRan) P 0%nat -∗
     UkCatMain.kcat_dg_open N ga.
@@ -1219,7 +1223,7 @@ Section UCatKernel.
     file_era_pin g (S gen_id) vf -∗
     (UserFd.ustd γfd l
      ∗ UCatOut.cch g v vf ps0 cs0 s0 I0 (ralt_enc RCNoOpen) P 19%nat
-     -∗ ukn_pay N (-1)) -∗
+     -∗ UkCat.kcat_exit N 1) -∗
     UserFd.ustd γfd l -∗
     UCatOut.cch g v vf ps0 cs0 s0 I0 (ralt_enc RCNoOpen) P 0%nat -∗
     UkCatMain.kcat_dg_open N ga.
@@ -1541,6 +1545,7 @@ Section UCatEntry.
     intros Hnone. iIntros "#Hrd #Hop #Hwr".
     rewrite /cat_pay_at. iIntros (N') "%Hpayeq %H2 %H3 %H4 Hstd _ _ _ _ _ _".
     pose proof (Hpayeq : UkRun.ukn_triv N') as Hti.
+    pose proof (ukn_const_of_triv N' Hti) as Htc.
     iExists (UserFd.ustd (ukn_fd N') (take NSTD (uvis_fd W))).
     iFrame "Hstd".
     iApply (UkCatMain.kcat_pay_all_of_law N' (UShCat.cat_args W)
@@ -1616,7 +1621,7 @@ Section UCatEntry.
      app_taint], and [AppFile.file_sup_of_taint] turns the application's
      own [file_taint] into the first of those. ---- *)
   Lemma cat_taint_open_of_law (N' : uk_names Σ) (c : file_fixed)
-      (l : list fdstate) (Co : iProp Σ) :
+      (l : list fdstate) (Co : iProp Σ) `{!ukn_const N'} :
     fd_lowest_closed l = None ->
     □ (file_taint c -∗ Co) -∗
     □ (file_taint c -∗ ukn_pay N' (-1)) -∗
@@ -1660,7 +1665,7 @@ Section UCatEntry.
      AND CAT-GEOM-3 REDUCED TO TWO [(⊢ _)] PREMISES; with those two
      generalised to [□ _] (item 1) there is nothing left to name. *)
   Lemma cat_taint_open_of_taint (N' : uk_names Σ) (c : file_fixed)
-      (r : file_names) (l : list fdstate) (Co : iProp Σ) :
+      (r : file_names) (l : list fdstate) (Co : iProp Σ) `{!ukn_const N'} :
     file_app = MkAppcfg file_names (file_pred c) r ->
     fd_lowest_closed l = None ->
     □ (file_taint c -∗ Co) -∗
@@ -1692,6 +1697,7 @@ Section UCatEntry.
       (ps0 cs0 : list nat) (s0 : fstate) (I0 : list (bv 8)) (P : nat)
       (c : file_fixed) (r : file_names) (q : Qp) (rb : bool)
       (Q : Z -> iProp Σ) (s : dst) (F : iProp Σ) :
+    (forall x y : Z, Q x = Q y) ->
     file_app = MkAppcfg file_names (file_pred c) r ->
     c = fgn_cl g ->
     UCatOut.cat_stage ps0 cs0 s0 I0 P ->
@@ -1723,7 +1729,7 @@ Section UCatEntry.
       (fdq r q None
        ∗ UCatOut.cch g v vf ps0 cs0 s0 I0 (ralt_enc RCRan) P 0%nat ∗ F).
   Proof using Hcons.
-    intros Heq Hgc Hst Htie Hs Hcw Hl2 Hnone.
+    intros HQc Heq Hgc Hst Htie Hs Hcw Hl2 Hnone.
     iIntros "#Hinv #Hpin #Hfp #Hend #Hqt #Htaint".
     rewrite /cat_pay_at.
     iIntros (N') "%Hpayeq %Hargc2 %Harg1 %Hpath Hstd Hcwf #Hcode #Hro
@@ -1782,7 +1788,9 @@ Section UCatEntry.
                 (take NSTD (uvis_fd W)) rb ga s Hst Htie Hs Hl2 Hglen
                 ltac:(rewrite (Hgb 0%nat ltac:(lia)); vm_compute; reflexivity)
                 with "Hpin Hfp [HD HF] Hstd Hc").
-      iIntros "[_ Hc]". rewrite Hpayeq.
+      iIntros "[_ Hc]".
+      pose proof (ukn_const_of_eq N' Q Hpayeq HQc) as Htc.
+      iApply UkCat.kcat_exit_of_pay. rewrite Hpayeq.
       iDestruct "HD" as "[Hd | #HT]";
         [ iApply ("Hend" with "Hc Hd HF") | iApply ("Hqt" with "HT") ].
     - (* ---- THE OPEN SUCCEEDED: only the taint can say so ---- *)
@@ -1934,6 +1942,7 @@ Section UCatEntry.
       (c : file_fixed) (r : file_names) (q1 q2 : Qp) (i : Z)
       (bs : list (bv 8)) (om : offmode) (rb rb2 : bool) (Q : Z -> iProp Σ)
       (F : iProp Σ) :
+    (forall x y : Z, Q x = Q y) ->
     c = fgn_cl g ->
     UCatOut.cat_stage ps0 cs0 s0 I0 P ->
     cat_tie cs0 s0 I0 (Some (i, bs)) ->
@@ -1991,7 +2000,7 @@ Section UCatEntry.
       (fdq r q1 (Some (i, bs)) ∗ fdq r q2 (Some (i, bs))
        ∗ UCatOut.cch g v vf ps0 cs0 s0 I0 (ralt_enc RCRan) P 0%nat ∗ F).
   Proof using Hcons.
-    intros Hgc Hst Htie Hcw Hl1 Hl2 Hnone.
+    intros HQc Hgc Hst Htie Hcw Hl1 Hl2 Hnone.
     iIntros "#Hpin #Hfp Hopen Hheld #Hqp #Hqt #Hqn #Htaint".
     rewrite /cat_pay_at.
     iIntros (N') "%Hpayeq %Hargc2 %Harg1 %Hpath Hstd Hcwf #Hcode #Hro
@@ -2051,7 +2060,9 @@ Section UCatEntry.
       iApply (cat_dg_open_noopen g Hcons N' v vf ps0 cs0 s0 I0 P
                 (take NSTD (uvis_fd W)) rb2 ga Hst Hl2 Hglen Hfb
                 with "Hpin Hfp [HD HF] Hstd [Hc]").
-      + iIntros "[_ Hc]". rewrite Hpayeq.
+      + iIntros "[_ Hc]".
+        pose proof (ukn_const_of_eq N' Q Hpayeq HQc) as Htc.
+        iApply UkCat.kcat_exit_of_pay. rewrite Hpayeq.
         iDestruct "HD" as "[Hd | #HT]";
           [ iApply ("Hqn" with "Hc Hd HF") | iApply ("Hqt" with "HT") ].
       + iApply (UCatOut.cch_0_alt g v vf ps0 cs0 s0 I0
@@ -2175,6 +2186,7 @@ Section UCatEntry.
       (c : file_fixed) (r : file_names) (q : Qp) (i : Z)
       (bs : list (bv 8)) (rb rb2 : bool) (jo : option Z) (Q : Z -> iProp Σ)
       (F : iProp Σ) :
+    (forall x y : Z, Q x = Q y) ->
     file_app = MkAppcfg file_names (file_pred c) r ->
     c = fgn_cl g ->
     UCatOut.cat_stage ps0 cs0 s0 I0 P ->
@@ -2211,7 +2223,7 @@ Section UCatEntry.
       (fdq r q (Some (i, bs))
        ∗ UCatOut.cch g v vf ps0 cs0 s0 I0 (ralt_enc RCRan) P 0%nat ∗ F).
   Proof using Hcons.
-    intros Heq Hgc Hst Htie Hcw Hl1 Hl2 Hnone.
+    intros HQc Heq Hgc Hst Htie Hcw Hl1 Hl2 Hnone.
     iIntros "#HQ #HQt #Hbr #Hrb #Hmade #Hinv #Hpin #Hfp #Htaint".
     iApply (cat_pay_at_mono W _
               (fdq r (q / 2) (Some (i, bs)) ∗ fdq r (q / 2) (Some (i, bs))
@@ -2229,7 +2241,7 @@ Section UCatEntry.
       rewrite Qp.div_2. iExact "Hd". }
     iApply (cat_pay_present W v vf ps0 cs0 s0 I0 P c r (q / 2)%Qp (q / 2)%Qp
               i bs OffHeld rb rb2 _ F
-              Hgc Hst Htie Hcw Hl1 Hl2 Hnone
+              HQc Hgc Hst Htie Hcw Hl1 Hl2 Hnone
               with "Hpin Hfp [] [] [] [] [] Htaint").
     - (* the open's law, at cat's own cwd *)
       iIntros (N') "#Hcode Hcwf".
@@ -2261,6 +2273,7 @@ Section UCatEntry.
       (ps0 cs0 : list nat) (s0 : fstate) (I0 : list (bv 8)) (P : nat)
       (c : file_fixed) (r : file_names) (q : Qp) (rb : bool)
       (Q : Z -> iProp Σ) (F : iProp Σ) :
+    (forall x y : Z, Q x = Q y) ->
     file_app = MkAppcfg file_names (file_pred c) r ->
     c = fgn_cl g ->
     UCatOut.cat_stage ps0 cs0 s0 I0 P ->
@@ -2280,10 +2293,10 @@ Section UCatEntry.
       (fdq r q None
        ∗ UCatOut.cch g v vf ps0 cs0 s0 I0 (ralt_enc RCRan) P 0%nat ∗ F).
   Proof using Hcons.
-    intros Heq Hgc Hst Htie Hcw Hl2 Hnone.
+    intros HQc Heq Hgc Hst Htie Hcw Hl2 Hnone.
     iIntros "#HQ #HQt #Hinv #Hpin #Hfp #Htaint".
     iApply (cat_pay_absent W v vf ps0 cs0 s0 I0 P c r q rb _ None F
-              Heq Hgc Hst Htie eq_refl Hcw Hl2 Hnone
+              HQc Heq Hgc Hst Htie eq_refl Hcw Hl2 Hnone
               with "Hinv Hpin Hfp [] HQt Htaint").
     iIntros "!> Hc Hd HF". iApply ("HQ" with "[Hc Hd] HF").
     rewrite /catq_cat /UCatOut.catq_filed
@@ -2381,6 +2394,7 @@ Section UCatEntry.
                cat_taint_open N' c (take NSTD (uvis_fd W')) (Q (-1)))%I
       as "#Htaint".
     { iIntros (N') "%Hpq". rewrite Hfdw.
+      pose proof (ukn_const_of_eq N' Q Hpq HQc) as Htc.
       iApply (cat_taint_open_of_taint N' c r (take NSTD sts) (Q (-1))
                 Heq Hnone with "HQt [] Hkc").
       rewrite Hpq. iExact "HQt". }
@@ -2392,14 +2406,14 @@ Section UCatEntry.
     { iIntros "[[Hd Hc] HF]". iFrame "Hd Hc HF". }
     destruct s as [[i bs] |].
     - iApply (cat_pay_filed_some W' v vf ps0 cs0 s0 I0 P c r q i bs rb rb2 jo Q F
-                Heq Hgc Hst Htie
+                HQc Heq Hgc Hst Htie
                 ltac:(rewrite Hcww; exact Hcw)
                 ltac:(rewrite Hfdw; exact Hl1)
                 ltac:(rewrite Hfdw; exact Hl2)
                 ltac:(rewrite Hfdw; exact Hnone)
                 with "HQ HQt Hbr Hkc Hmade Hinv Hpin Hfp Htaint").
     - iApply (cat_pay_filed_none W' v vf ps0 cs0 s0 I0 P c r q rb2 Q F
-                Heq Hgc Hst Htie
+                HQc Heq Hgc Hst Htie
                 ltac:(rewrite Hcww; exact Hcw)
                 ltac:(rewrite Hfdw; exact Hl2)
                 ltac:(rewrite Hfdw; exact Hnone)

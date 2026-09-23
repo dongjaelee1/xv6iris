@@ -541,11 +541,34 @@ Section file_read_inst_at.
     iExists J. iFrame "HE' Hres3". by iPureIntro.
   Qed.
 
+  (* THE READ LINK AND ITS TAINT ROUTE ARE THE UNINDEXED RECORD'S: the two
+     records' links, pin, receipt and taint are the same terms.  Each field
+     is [change]d to [FI]'s spelling before the [exact], because unifying
+     the whole entailment tries [FIs =?= FI] first (two different records,
+     unfolded field by field) and does not come back. *)
+  Local Lemma fri_rd_at (k n : nat) (v : era_pins)
+      (ws : list (list mobs * bv 8)) (Φ : iProp Σ) :
+    ⊢ lk_links FIs -∗ lk_pin FIs k v -∗ dl_cnt v (1/2) n -∗
+      (lk_rr FIs k v n ws -∗ Φ) -∗ cons_link Uart0 k (ConsLog.EvRead ws) Φ.
+  Proof using Htag xv6G0.
+    change (lk_links FIs) with (lk_links FI).
+    change (lk_pin FIs k v) with (lk_pin FI k v).
+    change (lk_rr FIs k v n ws) with (lk_rr FI k v n ws).
+    exact (rk_rd FI (file_read_inst g Htag) k n v ws Φ).
+  Qed.
+
+  Local Lemma fri_rd_taint_at (k : nat) (ws : list (list mobs * bv 8))
+      (Φ : iProp Σ) :
+    ⊢ lk_links FIs -∗ lk_T FIs -∗ (lk_T FIs -∗ Φ) -∗
+      cons_link Uart0 k (ConsLog.EvRead ws) Φ.
+  Proof using Htag xv6G0.
+    change (lk_links FIs) with (lk_links FI).
+    change (lk_T FIs) with (lk_T FI).
+    exact (rk_rd_taint FI (file_read_inst g Htag) k ws Φ).
+  Qed.
+
   Definition file_read_inst_at : ReadRec FIs :=
-    MkReadRec FIs disc_input_f
-      (rk_rd FI (file_read_inst g Htag))
-      (rk_rd_taint FI (file_read_inst g Htag))
-      fri_arms_at.
+    MkReadRec FIs disc_input_f fri_rd_at fri_rd_taint_at fri_arms_at.
 
   Lemma file_read_inst_at_disc : rk_disc FIs file_read_inst_at = disc_input_f.
   Proof using . reflexivity. Qed.

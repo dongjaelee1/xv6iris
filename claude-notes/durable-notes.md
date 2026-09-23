@@ -272,6 +272,15 @@ work.
   and do not give it an abbreviation. Better, where the definition has one
   expensive subterm repeated by the indexing: **spell it so that subterm occurs
   ONCE.**
+- **A record literal that hangs is localised by rewriting it as `refine (Mk …
+  _ _ _)` plus one `exact` per field under `-time`**; `Timeout` may not fire
+  inside it. A field whose type differs from the offered term's ONLY in a
+  record argument (`lk_links FIs` vs `lk_links FI`, two different `LinkRec`s
+  whose projections agree) makes the unifier try `FIs =?= FI` first and
+  unfold both records field by field — while each projection converts
+  instantly on its own. Fix: `change` each differing projection to the
+  offered term's spelling, then `exact` (`FileReadInst.fri_rd_at`). The same
+  file can compile one night and hang the next with no source change.
 - Everything about what makes a file slow is in
   [`optimization.md`](optimization.md).
 

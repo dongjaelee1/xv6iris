@@ -286,7 +286,8 @@ Section UkCatMain.
   (* ([UkCatCat.kcat_round]) and the close that spends its handle.          *)
   (* ===================================================================== *)
 
-  (* THE `cat: cannot open %s` RUN, at fd 2, ending in the exit's payload.
+  (* THE `cat: cannot open %s` RUN, at fd 2, ending in the exit hole at
+     status 1 (program-specs cut 3; it used to end in the payload).
      Three runs and not one, because that is what
      [UkCatFprintf.wp_kcat_fprintf_s] prints: the format up to the
      directive, the argument's own bytes, and the format after it. *)
@@ -296,7 +297,7 @@ Section UkCatMain.
        ∗ UkCat.kcat_pay_seq N (mword_of_int 2) (ua_bytes g) 0%nat (ua_len g)
            Cm1 Cm2
        ∗ UkCat.kcat_pay_seq N (mword_of_int 2) cm_lit (S (S cm_msg_q))
-           (cm_msg_len - S (S cm_msg_q))%nat Cm2 (ukn_pay N (-1)))%I.
+           (cm_msg_len - S (S cm_msg_q))%nat Cm2 (UkCat.kcat_exit N 1))%I.
 
   (* ONE CALL OF cat(fd): a round law, the cursor it starts at, and what
      the round's normal exit leaves. *)
@@ -357,8 +358,10 @@ Section UkCatMain.
     □ (ukn_pay N (-1)) -∗
     udepw_law 5 -∗ udepw_law 15 -∗ udepw_law 16 -∗
     kcat_file g (ustd γfd l) (ustd γfd l).
-  Proof using .
+  Proof using Hpay.
     intros Hnone. iIntros "#HC #Hrd #Hop #Hwr".
+    iAssert (□ UkCat.kcat_exit N 1)%I as "#HC1".
+    { iModIntro. iApply (UkCat.kcat_exit_of_pay with "HC"). }
     assert (Hm1s : bv_signed (mword_of_int (-1) : mword 64) = -1)
       by (vm_compute; reflexivity).
     rewrite /kcat_file.
@@ -375,8 +378,8 @@ Section UkCatMain.
       + iApply (UkCat.kcat_pay_seq_of_law N (mword_of_int 2) (ua_bytes g)
                   (ua_len g) emp%I 0%nat with "[] Hwr"). by iIntros "!>".
       + iApply (UkCat.kcat_pay_seq_of_law N (mword_of_int 2) cm_lit
-                  (cm_msg_len - S (S cm_msg_q))%nat (ukn_pay N (-1))
-                  (S (S cm_msg_q)) with "HC Hwr").
+                  (cm_msg_len - S (S cm_msg_q))%nat (UkCat.kcat_exit N 1)
+                  (S (S cm_msg_q)) with "HC1 Hwr").
     - (* it succeeded: a round for the content, then the close *)
       iIntros "%Hpos".
       iDestruct "Harm" as "[Hok | %Hm1]"; last first.
@@ -401,7 +404,7 @@ Section UkCatMain.
       □ (ukn_pay N (-1)) -∗
       udepw_law 5 -∗ udepw_law 15 -∗ udepw_law 16 -∗
       kcat_pay args i k (ustd γfd l) (ukn_pay N (-1)).
-  Proof using .
+  Proof using Hpay.
     intros Hnone. induction k as [| k IH]; intros i Hik;
       iIntros "#HC #Hrd #Hop #Hwr".
     - cbn [kcat_pay]. iIntros "_". iExact "HC".
@@ -417,7 +420,7 @@ Section UkCatMain.
     □ (ukn_pay N (-1)) -∗
     udepw_law 5 -∗ udepw_law 15 -∗ udepw_law 16 -∗
     kcat_pay_all args (ustd γfd l) (ukn_pay N (-1)).
-  Proof using .
+  Proof using Hpay.
     intros Hnone. iIntros "#HC #Hrd #Hop #Hwr".
     rewrite /kcat_pay_all. iSplit.
     - iIntros "_". iExists emp%I. iSplitR.
@@ -448,7 +451,7 @@ Section UkCatMain.
     uargv γd av args -∗
     urun N h m (mword_of_int 0xde) (10 + (12 + (4 + n))) -∗
     mWP (Loop : expr riscv_lang).
-  Proof using Hpay.
+  Proof using .
     intros Hi Hnz Hs2.
     iIntros "Hdg #Hcode #Hro #Hargv Hrun".
     iDestruct "Hdg" as (Cm1 Cm2) "(Hdg1 & Hdg2 & Hdg3)".
@@ -603,7 +606,7 @@ Section UkCatMain.
       apply bv_eq; vm_compute; reflexivity. }
     iApply (wp_kcat_fprintf_s N cm_msg cm_msg_len cm_msg_q cm_lit
               (ua_ptr g) (ua_len g) (ua_bytes g) h5 m5 n
-              emp%I Cm1 Cm2 (ukn_pay N (-1))
+              emp%I Cm1 Cm2 (UkCat.kcat_exit N 1)
               Hcm0 Hcmhi Hcmq2 Hcmpq Hcmps
               (fun j Hj Hne => cm_nopct_ok j Hj Hne)
               Hcm1d Hcm1u Hcm1x Hcm2set
@@ -647,8 +650,12 @@ Section UkCatMain.
               with "[] Hrun").
     { iApply (uis_cat_f2 with "Hcode"). }
     iIntros (h8) "Hrun".
-    iApply (wp_kcat_exit N h8 _ (10 + (12 + (4 + n)))
-              with "Hcode Hpayv Hrun").
+    (* THE EXIT HOLE, at the status [c.li a0,1] left in a0 *)
+    iApply ("Hpayv" $! h8 _ (10 + (12 + (4 + n)))%nat with "[%] Hcode Hrun").
+    rewrite (upd_ne _ (Regidx ra_idx) (Regidx a0_idx) _
+               ltac:(vm_compute; discriminate)).
+    rewrite (upd_eq _ (Regidx a0_idx) (regval_into_reg _)).
+    vm_compute. reflexivity.
   Qed.
 
   (* --------------------------------------------------------------------- *)
@@ -692,7 +699,7 @@ Section UkCatMain.
        urun N h' m' (mword_of_int 0xc2) (8 + (10 + (12 + (4 + n)))) -∗
        mWP (Loop : expr riscv_lang)) -∗
     mWP (Loop : expr riscv_lang).
-  Proof using Hpay.
+  Proof using .
     intros Hav0 Havhi Hptr Hg Hinv.
     assert (Hilt : (i < length args)%nat)
       by exact (lookup_lt_Some args i g Hg).
@@ -1043,15 +1050,19 @@ Section UkCatMain.
   (* An ordinary induction, not a Löb: argc bounds the count and [uargv]     *)
   (* carries it.                                                             *)
   (* --------------------------------------------------------------------- *)
-  Lemma wp_kcat_main_loop (sp0 : mword 64) (av : Z) (args : list uarg)
-      (k : nat) :
+  (* ...AT ANY END (program-specs cut 3): the chain ends in [Cend] and the
+     normal exit [exit(0)] spends it through the exit hole at status 0, so
+     the walk names no payload and needs no [Hpay]. *)
+  Lemma wp_kcat_main_loop_at (sp0 : mword 64) (av : Z) (args : list uarg)
+      (Cend : iProp Σ) (k : nat) :
     0 <= av -> av + 8 * Z.of_nat (length args) <= 2 ^ 38 ->
     (forall (j : nat) (g : uarg), args !! j = Some g -> ua_ptr g <> 0) ->
     forall (i : nat) (h : CpuId) (m : regfile) (f : nat -> bv 8) (n : nat)
            (Ci : iProp Σ),
       (i + S k)%nat = length args ->
       cm_inv sp0 av (length args) i m ->
-      kcat_pay args i (S k) Ci (ukn_pay N (-1)) -∗
+      kcat_pay args i (S k) Ci Cend -∗
+      (Cend -∗ UkCat.kcat_exit N 0) -∗
       cat_code γt -∗
       cat_rodata γt -∗
       uargv γd av args -∗
@@ -1059,11 +1070,11 @@ Section UkCatMain.
       ubytes γd CatSyms.buf 512 f -∗
       urun N h m (mword_of_int 0xa6) (8 + (10 + (12 + (4 + n)))) -∗
       mWP (Loop : expr riscv_lang).
-  Proof using Hpay.
+  Proof using .
     intros Hav0 Havhi Hptr.
     induction k as [| k IH ];
       intros i h m f n Ci Hik Hinv;
-      iIntros "Hpay #Hcode #Hro #Hargv HCi Hbuf Hrun";
+      iIntros "Hpay Hex #Hcode #Hro #Hargv HCi Hbuf Hrun";
       destruct cat_syms_pins
         as (_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & Hexit);
       cbn [kcat_pay];
@@ -1122,9 +1133,15 @@ Section UkCatMain.
       { iApply (uis_cat_c8 with "Hcode"). }
       iIntros (h4) "Hrun".
       cbn [kcat_pay] in *.
-      iApply (wp_kcat_exit N h4 _ (8 + (10 + (12 + (4 + n))))
-                with "Hcode [Hpay HCm] Hrun").
-      iApply ("Hpay" with "HCm").
+      iDestruct ("Hex" with "[Hpay HCm]") as "Hx".
+      { iApply ("Hpay" with "HCm"). }
+      (* THE EXIT HOLE, at the status [c.li a0,0] left in a0 *)
+      iApply ("Hx" $! h4 _ (8 + (10 + (12 + (4 + n))))%nat
+                with "[%] Hcode Hrun").
+      rewrite (upd_ne _ (Regidx ra_idx) (Regidx a0_idx) _
+                 ltac:(vm_compute; discriminate)).
+      rewrite (upd_eq _ (Regidx a0_idx) (regval_into_reg _)).
+      vm_compute. reflexivity.
     - (* more files to come ---- *)
       assert (Hne : (S i)%nat <> length args) by lia.
       assert (Ht : true
@@ -1148,7 +1165,31 @@ Section UkCatMain.
       { iApply (uis_cat_c2 with "Hcode"). }
       iIntros (h2) "Hrun".
       iApply (IH (S i) h2 m1 f1 n Cm ltac:(lia) Hinv1
-                with "Hpay Hcode Hro Hargv HCm Hbuf Hrun").
+                with "Hpay Hex Hcode Hro Hargv HCm Hbuf Hrun").
+  Qed.
+
+  (* the landed statement: the end is the payload *)
+  Lemma wp_kcat_main_loop (sp0 : mword 64) (av : Z) (args : list uarg)
+      (k : nat) :
+    0 <= av -> av + 8 * Z.of_nat (length args) <= 2 ^ 38 ->
+    (forall (j : nat) (g : uarg), args !! j = Some g -> ua_ptr g <> 0) ->
+    forall (i : nat) (h : CpuId) (m : regfile) (f : nat -> bv 8) (n : nat)
+           (Ci : iProp Σ),
+      (i + S k)%nat = length args ->
+      cm_inv sp0 av (length args) i m ->
+      kcat_pay args i (S k) Ci (ukn_pay N (-1)) -∗
+      cat_code γt -∗
+      cat_rodata γt -∗
+      uargv γd av args -∗
+      Ci -∗
+      ubytes γd CatSyms.buf 512 f -∗
+      urun N h m (mword_of_int 0xa6) (8 + (10 + (12 + (4 + n)))) -∗
+      mWP (Loop : expr riscv_lang).
+  Proof using Hpay.
+    intros Hav0 Havhi Hptr i h m f n Ci Hik Hinv. iIntros "Hpay".
+    iApply (wp_kcat_main_loop_at sp0 av args (ukn_pay N (-1)) k Hav0 Havhi
+              Hptr i h m f n Ci Hik Hinv with "Hpay []").
+    iIntros "H". iApply (UkCat.kcat_exit_of_pay with "H").
   Qed.
 
   (* ===================================================================== *)
@@ -1159,12 +1200,13 @@ Section UkCatMain.
   (* two spill sequences after it and not one.  Neither path returns, so    *)
   (* nothing is ever loaded back and main has no continuation.              *)
   (* ===================================================================== *)
-  Lemma wp_kcat_main (h : CpuId) (m : regfile) (av : Z) (args : list uarg)
-      (f : nat -> bv 8) (n : nat) (Ci : iProp Σ) :
+  Lemma wp_kcat_main_at (h : CpuId) (m : regfile) (av : Z) (args : list uarg)
+      (f : nat -> bv 8) (n : nat) (Ci Cend : iProp Σ) :
     (forall (j : nat) (g : uarg), args !! j = Some g -> ua_ptr g <> 0) ->
     m !!! Regidx a0_idx = mword_of_int (Z.of_nat (length args)) ->
     m !!! Regidx a1_idx = mword_of_int av ->
-    kcat_pay_all args Ci (ukn_pay N (-1)) -∗
+    kcat_pay_all args Ci Cend -∗
+    (Cend -∗ UkCat.kcat_exit N 0) -∗
     cat_code γt -∗
     cat_rodata γt -∗
     uargv γd av args -∗
@@ -1173,9 +1215,9 @@ Section UkCatMain.
     urun N h m (mword_of_int CatSyms.main)
       (6 + (8 + (10 + (12 + (4 + n))))) -∗
     mWP (Loop : expr riscv_lang).
-  Proof using Hpay.
+  Proof using .
     intros Hptr Ha0 Ha1.
-    iIntros "Hpay #Hcode #Hro #Hargv HCi Hbuf Hrun".
+    iIntros "Hpay Hex #Hcode #Hro #Hargv HCi Hbuf Hrun".
     iDestruct (uargv_align with "Hargv") as %[Hal Hargc].
     change (2 ^ 31) with 2147483648 in Hargc.
     destruct cat_syms_pins
@@ -1427,8 +1469,8 @@ Section UkCatMain.
       { rewrite Ha0_5. apply bv_eq; vm_compute; reflexivity. }
       iDestruct "Hpay" as "[Hp0 _]".
       iDestruct ("Hp0" with "[%]") as (Cm) "[Hrun0 Hfin]"; [ exact Hle | ].
-      iDestruct "Hrun0" as (I Cend) "(#Hround & HI & Hend)".
-      iApply (wp_kcat_cat N (mword_of_int 0) f h10 m5 n I Cend Ha0_5z
+      iDestruct "Hrun0" as (I Cend0) "(#Hround & HI & Hend)".
+      iApply (wp_kcat_cat N (mword_of_int 0) f h10 m5 n I Cend0 Ha0_5z
                 with "Hround Hcode Hro HI Hbuf Hrun").
       iIntros (h11 m6 f') "_ HCend Hbuf Hrun".
       rewrite (_ : ret_pc (m5 !!! Regidx ra_idx)
@@ -1457,9 +1499,15 @@ Section UkCatMain.
                 with "[] Hrun").
       { iApply (uis_cat_da with "Hcode"). }
       iIntros (h13) "Hrun".
-      iApply (wp_kcat_exit N h13 _ (8 + (10 + (12 + (4 + n))))
-                with "Hcode [HCi Hend HCend Hfin] Hrun").
-      iApply "Hfin". iFrame "HCi". iApply ("Hend" with "HCend").
+      iDestruct ("Hex" with "[HCi Hend HCend Hfin]") as "Hx".
+      { iApply "Hfin". iFrame "HCi". iApply ("Hend" with "HCend"). }
+      (* THE EXIT HOLE, at the status [c.li a0,0] left in a0 *)
+      iApply ("Hx" $! h13 _ (8 + (10 + (12 + (4 + n))))%nat
+                with "[%] Hcode Hrun").
+      rewrite (upd_ne _ (Regidx ra_idx) (Regidx a0_idx) _
+                 ltac:(vm_compute; discriminate)).
+      rewrite (upd_eq _ (Regidx a0_idx) (regval_into_reg _)).
+      vm_compute. reflexivity.
     - (* AT LEAST ONE FILE: set up the walk over argv ---- *)
       assert (Hnt : false
                     = uv_btaken BGE (m3 !!! Regidx a5_idx)
@@ -1689,9 +1737,9 @@ Section UkCatMain.
       assert (Hkeq : (length args - 1)%nat = S (length args - 2)%nat)
         by lia.
       iEval (rewrite Hkeq) in "Hpay".
-      iApply (wp_kcat_main_loop sp0 av args (length args - 2)%nat
+      iApply (wp_kcat_main_loop_at sp0 av args Cend (length args - 2)%nat
                 Hav0' Havhi' Hptr 1%nat h14 m9 f n Ci ltac:(lia)
-                with "Hpay Hcode Hro Hargv HCi Hbuf Hrun").
+                with "Hpay Hex Hcode Hro Hargv HCi Hbuf Hrun").
       unfold cm_inv.
       split.
       { rewrite /m9 (upd_ne m8 (Regidx s3_idx) (Regidx csp_rs1) _
@@ -1722,12 +1770,8 @@ Section UkCatMain.
       exact (upd_eq m8 (Regidx s3_idx) (regval_into_reg _)).
   Qed.
 
-  (* ===================================================================== *)
-  (* start(argc, argv) @0xf6 -- the wrapper that makes it safe for main not *)
-  (* to call exit.  main always does, so the [jal exit] at 0x102 is never   *)
-  (* reached and nothing here has to say what it would do.                  *)
-  (* ===================================================================== *)
-  Lemma wp_kcat_start (h : CpuId) (m : regfile) (av : Z) (args : list uarg)
+  (* the landed statement: the end is the payload *)
+  Lemma wp_kcat_main (h : CpuId) (m : regfile) (av : Z) (args : list uarg)
       (f : nat -> bv 8) (n : nat) (Ci : iProp Σ) :
     (forall (j : nat) (g : uarg), args !! j = Some g -> ua_ptr g <> 0) ->
     m !!! Regidx a0_idx = mword_of_int (Z.of_nat (length args)) ->
@@ -1738,12 +1782,40 @@ Section UkCatMain.
     uargv γd av args -∗
     Ci -∗
     ubytes γd CatSyms.buf 512 f -∗
-    urun N h m (mword_of_int CatSyms.start)
-      (2 + (6 + (8 + (10 + (12 + (4 + n)))))) -∗
+    urun N h m (mword_of_int CatSyms.main)
+      (6 + (8 + (10 + (12 + (4 + n))))) -∗
     mWP (Loop : expr riscv_lang).
   Proof using Hpay.
     intros Hptr Ha0 Ha1.
     iIntros "Hpay #Hcode #Hro #Hargv HCi Hbuf Hrun".
+    iApply (wp_kcat_main_at h m av args f n Ci (ukn_pay N (-1)) Hptr Ha0 Ha1
+              with "Hpay [] Hcode Hro Hargv HCi Hbuf Hrun").
+    iIntros "H". iApply (UkCat.kcat_exit_of_pay with "H").
+  Qed.
+
+  (* ===================================================================== *)
+  (* start(argc, argv) @0xf6 -- the wrapper that makes it safe for main not *)
+  (* to call exit.  main always does, so the [jal exit] at 0x102 is never   *)
+  (* reached and nothing here has to say what it would do.                  *)
+  (* ===================================================================== *)
+  Lemma wp_kcat_start_at (h : CpuId) (m : regfile) (av : Z) (args : list uarg)
+      (f : nat -> bv 8) (n : nat) (Ci Cend : iProp Σ) :
+    (forall (j : nat) (g : uarg), args !! j = Some g -> ua_ptr g <> 0) ->
+    m !!! Regidx a0_idx = mword_of_int (Z.of_nat (length args)) ->
+    m !!! Regidx a1_idx = mword_of_int av ->
+    kcat_pay_all args Ci Cend -∗
+    (Cend -∗ UkCat.kcat_exit N 0) -∗
+    cat_code γt -∗
+    cat_rodata γt -∗
+    uargv γd av args -∗
+    Ci -∗
+    ubytes γd CatSyms.buf 512 f -∗
+    urun N h m (mword_of_int CatSyms.start)
+      (2 + (6 + (8 + (10 + (12 + (4 + n)))))) -∗
+    mWP (Loop : expr riscv_lang).
+  Proof using .
+    intros Hptr Ha0 Ha1.
+    iIntros "Hpay Hex #Hcode #Hro #Hargv HCi Hbuf Hrun".
     destruct cat_syms_pins
       as (Hstart & Hmain & _ & _ & _ & _ & _ & _ & _ & _ & _).
     rewrite Hstart.
@@ -1847,7 +1919,7 @@ Section UkCatMain.
     iIntros (h4) "Hrun".
     set (m3 := <[Regidx ra_idx
                  := regval_into_reg (mword_of_int 0x102 : mword 64)]> m2).
-    iApply (wp_kcat_main h4 m3 av args f n Ci Hptr
+    iApply (wp_kcat_main_at h4 m3 av args f n Ci Cend Hptr
               ltac:(rewrite <- Ha0;
                     rewrite /m3 (upd_ne m2 (Regidx ra_idx) (Regidx a0_idx) _
                                    ltac:(vm_compute; discriminate));
@@ -1864,7 +1936,30 @@ Section UkCatMain.
                     rewrite /m1;
                     exact (upd_ne m (Regidx csp_rs1) (Regidx a1_idx) _
                              ltac:(vm_compute; discriminate)))
-              with "Hpay Hcode Hro Hargv HCi Hbuf Hrun").
+              with "Hpay Hex Hcode Hro Hargv HCi Hbuf Hrun").
+  Qed.
+
+  (* the landed statement: the end is the payload *)
+  Lemma wp_kcat_start (h : CpuId) (m : regfile) (av : Z) (args : list uarg)
+      (f : nat -> bv 8) (n : nat) (Ci : iProp Σ) :
+    (forall (j : nat) (g : uarg), args !! j = Some g -> ua_ptr g <> 0) ->
+    m !!! Regidx a0_idx = mword_of_int (Z.of_nat (length args)) ->
+    m !!! Regidx a1_idx = mword_of_int av ->
+    kcat_pay_all args Ci (ukn_pay N (-1)) -∗
+    cat_code γt -∗
+    cat_rodata γt -∗
+    uargv γd av args -∗
+    Ci -∗
+    ubytes γd CatSyms.buf 512 f -∗
+    urun N h m (mword_of_int CatSyms.start)
+      (2 + (6 + (8 + (10 + (12 + (4 + n)))))) -∗
+    mWP (Loop : expr riscv_lang).
+  Proof using Hpay.
+    intros Hptr Ha0 Ha1.
+    iIntros "Hpay #Hcode #Hro #Hargv HCi Hbuf Hrun".
+    iApply (wp_kcat_start_at h m av args f n Ci (ukn_pay N (-1)) Hptr Ha0 Ha1
+              with "Hpay [] Hcode Hro Hargv HCi Hbuf Hrun").
+    iIntros "H". iApply (UkCat.kcat_exit_of_pay with "H").
   Qed.
 
 End UkCatMain.

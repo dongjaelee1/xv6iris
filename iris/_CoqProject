@@ -304,6 +304,8 @@ UkRunLeaf.v
 UkRunMem.v
 UkRunSys.v
 UkTree.v
+UkStub.v
+UkHandler.v
 UkRunExecRef.v
 UkFork.v
 UkSync.v
@@ -327,6 +329,7 @@ UkCatVprintfS.v
 UkCatFprintf.v
 UkCatCat.v
 UkCatMain.v
+UkCatTree.v
 UkProgAbi.v
 UkInit.v
 UkInitPutc.v

@@ -334,13 +334,21 @@ M3c DONE (2026-09-23; `3bad7720c`, `506ce7da7`, `3993b1ed5`).
   deferral, echo's tier moves at M5.
 - Gotcha: `iSplit` on the `glinks` body diverges (GenLinksLine's Persistent
   warning); use `iSplitR`.
-NEXT: M4 (the child laws as modules).  PROPOSED REDESIGN (2026-09-23,
-awaiting ruling): the programs' specs over ENDPOINTS (`Out fd S`, `In fd S`
-at a declared stream), with the console/file/pipe files as instances and
-the line shapes as endpoint-provisioning modules -- design/app-both.md §5.
-SUPERSEDED (2026-09-23) by design/program-specs.md: the programs' specs
-as interaction trees (the endpoints are its stream handler); its §4 is
-M4's new step list; `iris/ProgTree.v` (pure, a leaf) is landed.
+NEXT: M4 (the child laws as modules).  RULED 2026-09-23 (owner): M4 is
+design/program-specs.md's plan (the programs' specs as interaction
+trees); its §4 is the step list.  STATUS: cuts 1-3 and 4(a)(b) landed
+(`ProgTree`, `UkTree`, `UkStub`, `UkHandler`, `UkEchoTree`, `UkCatTree`;
+the walks' `_at` forms).  The application tier is being rebuilt (it was
+stale since the 2026-09-16 kernel dump in this checkout); cat's payers
+then move by one lemma each -- `UCatKernel.v` :461/:512 (the write arm's
+premise is `bv_signed ret = Z.of_nat nb`; recover the word by
+`UkCat.moi_of_sint`), :474/:525 (`kcat_wpost_of_eq` for the write post),
+:1051-:1102/:1133/:1222 (the diagnostic tails end in `kcat_exit N 1`:
+`kcat_exit_of_pay`, which needs `ukn_const` at :1546/:1647/:1781/:2051/
+:2384 via `ukn_const_of_eq`/`ukn_const_of_triv`); `UCatPipe.v` :771-:792
+(`pcat_w_taint` restated at `kcat_wpost`, `kcat_wpost_of_both`),
+:1029/:1042/:1051; `UShPipeLaw.v` :820-:831 (`pl_kcat_dg` at the exit
+hole, `ukn_const` binder).  Then cut 4(c).
 
 FileOutPure DEAD CODE REMOVED (2026-09-23): 92 of 169 declarations
 (the whole claim-stage layer -- `D_f`, `pending_f`, `pcount_f`, the

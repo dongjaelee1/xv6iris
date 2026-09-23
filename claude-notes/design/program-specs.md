@@ -172,30 +172,70 @@ unfolded; cat's `□ kcat_round` IS `tree_pay` at `iter` (what the round
 law's persistence bought, the `▷` under `Vis` buys).  The five entries of
 §1(4) become two, stated at no destination.
 
-### 3.3 Handlers, once per (event, destination)
+### 3.3 Conformance: the pure half of a handler (built)
 
-A handler is what answers `ev_obl` at a destination, with its own state:
+The tree's events are FIRST-ORDER (`ev`, with the answer type
+`ans e`) rather than the itree library's type-indexed family: a node
+then injects without an axiom, and `conforms` (seven constructors) is
+read at a node by `conforms_unfold` -- dependent elimination into the
+step function `cf_step`, which computes -- never by `inversion`, which
+silently drops the continuation's equality.
 
-    console:  the claim's cursor at the line's alternative (`ck_cur`/`ech`/
-              `cch` — a write at the alternative's continuation)
-    file:     the deed and the held offset (`FileWrite.file_wq`, `Hold p`)
-    pipe:     `PipeProto`'s write and read cursors (`wcur`/`rcur`)
+What a line shape provisions, abstractly, is an ENVIRONMENT
+(`ProgTree.penv`): descriptors bound to devices, each device an endpoint
+spec, and the files.  An output device owes a SET of alternatives
+(`DOut alts`) -- the console, where which one is decided by the first
+byte, exactly as the line model's block-first link files it; a file or a
+pipe owes one.  An input device is a stream (`DIn S`).  `conforms E t`
+(coinductive) says every path of `t`
 
-The lemma proved once: a handler that answers every event of `t` pays
-`tree_pay t` (Löb over the tree).  The six destination files reduce to
-handler facts that name no program — the deed open at `fname_f`, the
-kill arm's taint, the ordering at the held offset, the kernel's answer
-set per destination (console: always the count; pipe: the count or `-1`
-with the reader gone; file: the count or `-1` at a full disk, which the
-application refutes).
+- writes a prefix of one of its device's alternatives, leaving
+  `alts_after bs alts` (the alternatives that had it, minus it);
+- reads ANY chunking of its input (`chunk_ok`: at most the count, empty
+  only at end of file);
+- at an open of a present file is ready for BOTH answers -- a descriptor
+  the process did not hold, bound to a fresh device at the content, or
+  the kernel's `-1` -- and at an absent file for `-1`;
+- exits only with every output device's alternatives containing `[]`.
 
-### 3.4 `Out fd S` / `In fd S` are the STREAM handler
+The alternative set is what makes a BRANCHING program fit one console:
+`cat_file_conforms` puts `cat f` against `DOut [content; diagnostic]`
+and both the content path and the refused-open path conform, which is
+`FileDisc.RCRan`/`RCNoOpen` read off the tree.  `echo_conforms` (echo
+against a console owing its line) and `cat_stdin_conforms` (cat copies
+ANY input, coinductively) are the other two theorems; each is a pure
+proof about the tree and nothing else.
 
-§5's two laws are exactly a handler for a tree whose events on `fd` are
-writes in order: `Out fd S` answers `EWrite fd bs` when `bs` is `S`'s
-next chunk.  They stay, as the derived layer a line shape provisions
-where one process owns one stream (every landed shape but `PBoth`).
-The pipe: `pipe()` mints `Out w S ∗ In r S` over the protocol.
+### 3.4 Handlers, once per (device kind), and the once-glue (cut 4)
+
+The logic's half of an environment is a resource per device
+(`env_res E`) with laws AT THE HOLES: an `Out` device funds
+`wr_obl fd bs K` when `alts_after bs alts ≠ []`, returns exactly
+`|bs|` and leaves `DOut (alts_after bs alts)`; an `In` device funds
+`rd_obl fd n K` with a `chunk_ok` answer and leaves `DIn S'`; the
+files fund `op_obl` (the ledger's `ualloc` says which descriptor came
+back, the deed says the content); `cl_obl` and `ex_obl` from the ledger
+row and the payload.  Their instances are the landed destination files
+with the program stripped out: the console from the claim's cursor
+family (`ck_cur`/`ech`/`cch`: the block-first byte files the alternative,
+each later byte advances), the file from the deed at the held offset,
+the pipe from `PipeProto`'s two cursors.  Two things they need that
+nothing has yet:
+
+- the STUB LAW of a program instance: `li a7, n; ecall; c.jr ra` at the
+  instance's entry, proved once from three `uinstr_is` facts, so that a
+  handler runs the ecall leaf between the hole's entry and its return
+  (today `UkEcho.wp_kecho_write_chain{,_txt}` are that law with one leaf
+  baked in, per program and per leaf);
+- a FREE read leaf with the count bound (§3.2's deferral), if a free
+  handler for reads is wanted; the real destinations have the bound.
+
+Then ONE lemma closes every program at every line shape:
+
+    conforms E t → env_res E ⊢ tree_pay t
+
+by `tree_pay_coind` at the invariant `∃ E', env_res E' ∗ ⌜conforms E' t⌝`.
+§5's `Out fd S` is `DOut [S]`; the endpoint laws are its instance.
 
 ### 3.5 The line model's continuation becomes a theorem
 
@@ -216,23 +256,35 @@ claim (M1–M3) do not move; the conversion discipline is theirs.
 
 ## 4. Order of work (replaces app-both M4's step list; each cut lands green)
 
-1. `ProgTree.v` — landed as a leaf, with the demos.
-2. `UkTree.v` (Iris, at `UkRunSys`): `ev_obl` at a program-instance
-   record, `tree_pay`, the handler lemma; `kecho_w`, `kcat_wr`/`kcat_r`/
-   `kcat_o`/`kcat_cl` shown equal to the generic holes at their program's
-   instance, so the walks do not move.
-3. The walks' statements at `tree_pay (echo_tree …)` /
-   `tree_pay (cat_tree …)`; the free chains (the vacuity guards) at the
-   free handler.
-4. The three handlers (console from `GenLinks`/`gcl`'s cursor; file from
-   the deed; pipe from the protocol); the six destination files reduced
-   to instantiations.
+1. `ProgTree.v` — DONE: the trees (constructor form), the interpreter
+   and demos, the one-step equations, §3.3's conformance layer with the
+   three programs' theorems.
+2. `UkTree.v` — DONE: `uprog`, the five holes, `tree_pay` as
+   `bi_greatest_fixpoint` over `leibnizO proc`, `tree_pay_coind`.
+   `UkEchoTree.v`: `kecho_pay_all` at `tree_pay (echo_tree …)`.
+3. The walks at the tree — DONE for both.  echo: `UkEcho.kecho_exit`,
+   the `_at` walks over an abstract `Cend` with the exit hole, the landed
+   statements as corollaries, `UkEchoTree.wp_kecho_start_tree`.  cat:
+   `UkCat.kcat_exit`, the diagnostic tails at the hole, `kcat_round`'s
+   write arm at the signed count with the additive `kcat_wpost`, the
+   `_at` walks, `UkCatTree.v` (the round at `cat_loop`, the file chain,
+   `wp_kcat_start_tree`).  The application-tier payers of `kcat_round`
+   and the diagnostic tails move by one lemma each (`kcat_wpost_of_eq`,
+   `kcat_exit_of_pay`; the sites are listed in the worklist).
+4. §3.4: (a) DONE — `UkStub.v`: `stub_law`/`exit_stub_law` from three
+   `uinstr_is` facts (`stub_run`), the seven instances; (b) DONE —
+   `UkHandler.v`: `ep_iface` (the laws at the holes; the open law's two
+   continuations are an additive conjunction), `env_res`,
+   `tree_pay_of_conforms`; (c) NEXT: the console, file and pipe
+   instances from the six destination files, which then reduce to
+   instantiations.  A pipe write end that may lose its reader needs a
+   haltable output spec (`DOutH`: writes answer -1 and stay halted) in
+   `conforms` and the interface; the console and files never halt.
 5. The two entries at a handler parameter; the five landed entries as
    corollaries; then the shape modules (M4) and the union (M5) as planned.
 
-The risk is in step 4's console handler at the two-writer arm, which
-stays pipe-own; steps 2–3 are a restatement of ~15k lines to a smaller
-shape, and nothing above the entries changes statement.
+The risk is in 4(c)'s console instance at the two-writer arm, which
+stays pipe-own; nothing above the entries changes statement.
 
 ## 5. Refuted, or not taken
 

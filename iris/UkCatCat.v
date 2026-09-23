@@ -425,13 +425,16 @@ Section UkCatCat.
   (* kernel; until then it is an ARM of the payment, not a stop -- a payer  *)
   (* that cannot fund it simply cannot build a round.                      *)
   (* ===================================================================== *)
+  (* ...AND EACH TAIL ENDS IN THE EXIT HOLE AT STATUS 1 (program-specs
+     cut 3), not in the payload: the diagnostic is [exit(1)], and a payer
+     of cat's interaction tree funds exactly [UkCat.kcat_exit N 1] there. *)
   Definition kcat_dg_cw : iProp Σ :=
     UkCat.kcat_pay_seq N (mword_of_int 2) (cat_lit 0x9b0) 0%nat 17%nat
-      emp%I (ukn_pay N (-1)).
+      emp%I (UkCat.kcat_exit N 1).
 
   Definition kcat_dg_cr : iProp Σ :=
     UkCat.kcat_pay_seq N (mword_of_int 2) (cat_lit 0x9c8) 0%nat 16%nat
-      emp%I (ukn_pay N (-1)).
+      emp%I (UkCat.kcat_exit N 1).
 
   (* ===================================================================== *)
   (* RULING (g) (lane CAT-ENTRY-2): THE WRITE ARM IS COUNT-EXACT, AND THE    *)
@@ -463,21 +466,50 @@ Section UkCatCat.
   (* and the `cat: write error` code is still WALKED -- it is only no       *)
   (* longer an OBLIGATION of every payer.                                   *)
   (* ===================================================================== *)
+  (* ...RESTATED (program-specs cut 3) SO THAT A PAYER WHO KNOWS THE
+     WRITE'S RETURN CAN FUND IT.  The disjunction above made the payer pick
+     an arm without seeing the returned word; a payer of cat's interaction
+     tree sees it (the tree branches on it) and owes the invariant at the
+     full count and the tail otherwise.  [kcat_wpost] is that ADDITIVE
+     pair, each half under the fact that selects it; both landed arms are
+     instances of it ([kcat_wpost_of_eq], [kcat_wpost_of_both]).  And the
+     write arm is stated at the SIGNED reading of the read's return: the
+     old [ret = mword_of_int nb] admitted an [nb] past 2^63 that no tree
+     can fund. *)
+  Definition kcat_wpost (nb : nat) (I : iProp Σ) (wret : mword 64) : iProp Σ :=
+    ((⌜wret = (mword_of_int (Z.of_nat nb) : mword 64)⌝ -∗ I)
+     ∧ (⌜wret <> (mword_of_int (Z.of_nat nb) : mword 64)⌝ -∗ kcat_dg_cw))%I.
+
+  Lemma kcat_wpost_of_eq (nb : nat) (I : iProp Σ) (wret : mword 64) :
+    ⌜wret = (mword_of_int (Z.of_nat nb) : mword 64)⌝ ∗ I -∗ kcat_wpost nb I wret.
+  Proof using .
+    iIntros "[%Hw HI]". iSplit.
+    - iIntros "_". iExact "HI".
+    - iIntros "%Hne". by exfalso.
+  Qed.
+
+  Lemma kcat_wpost_of_both (nb : nat) (I : iProp Σ) (wret : mword 64) :
+    I ∧ kcat_dg_cw -∗ kcat_wpost nb I wret.
+  Proof using .
+    iIntros "H". iSplit.
+    - iIntros "_". iDestruct "H" as "[$ _]".
+    - iIntros "_". iDestruct "H" as "[_ $]".
+  Qed.
+
   Definition kcat_round (fdv : mword 64) (I Cend : iProp Σ) : iProp Σ :=
     (□ UkCat.kcat_r N fdv CatSyms.buf 512 I
          (fun (ret : mword 64) (g : nat -> bv 8) =>
             ((⌜bv_signed ret < 0⌝ -∗ kcat_dg_cr)
              ∧ (⌜bv_signed ret = 0⌝ -∗ Cend)
              ∧ (∀ nb : nat,
-                  ⌜ret = (mword_of_int (Z.of_nat nb) : mword 64)⌝ -∗
+                  ⌜bv_signed ret = Z.of_nat nb⌝ -∗
                   ⌜(0 < nb)%nat⌝ -∗
                   UkCat.kcat_wr N (mword_of_int 1)
                     (mword_of_int CatSyms.buf) nb
                     (ubytes γd CatSyms.buf 512 g)
                     (fun wret : mword 64 =>
-                       (((⌜wret = (mword_of_int (Z.of_nat nb) : mword 64)⌝ ∗ I)
-                         ∨ (I ∧ kcat_dg_cw))
-                        ∗ ubytes γd CatSyms.buf 512 g))))))%I.
+                       kcat_wpost nb I wret
+                       ∗ ubytes γd CatSyms.buf 512 g)))))%I.
 
   Global Instance kcat_round_persistent fdv I Cend :
     Persistent (kcat_round fdv I Cend).
@@ -498,8 +530,11 @@ Section UkCatCat.
   Lemma kcat_round_of_law (fdv : mword 64) :
     □ (ukn_pay N (-1)) -∗
     udepw_law 5 -∗ udepw_law 16 -∗ kcat_round fdv emp%I emp%I.
-  Proof using .
-    iIntros "#HC #Hrd #Hwr". rewrite /kcat_round. iModIntro.
+  Proof using Hpay.
+    iIntros "#HC0 #Hrd #Hwr".
+    iAssert (□ UkCat.kcat_exit N 1)%I as "#HC".
+    { iModIntro. iApply (UkCat.kcat_exit_of_pay with "HC0"). }
+    rewrite /kcat_round. iModIntro.
     iIntros (h m avail f) "_ %Ha1 %Ha2 #Hcode _ Hbuf Hrun Hcont".
     iApply (UkCat.wp_kcat_read N CatSyms.buf 512 f h m avail Ha1 Ha2
               with "Hrd Hcode Hbuf Hrun").
@@ -508,7 +543,7 @@ Section UkCatCat.
     iSplit; [| iSplit ].
     - iIntros "_". rewrite /kcat_dg_cr.
       iApply (UkCat.kcat_pay_seq_of_law N (mword_of_int 2) (cat_lit 0x9c8)
-                16%nat (ukn_pay N (-1)) 0%nat with "HC Hwr").
+                16%nat (UkCat.kcat_exit N 1) 0%nat with "HC Hwr").
     - by iIntros "_".
     - iIntros (nb) "_ _".
       (* THE FREE PAYER PICKS THE DIAGNOSTIC ARM: the free write law has a
@@ -522,7 +557,7 @@ Section UkCatCat.
                    ((emp ∧ kcat_dg_cw) ∗ ubytes γd CatSyms.buf 512 g)%I)
                 _ with "[]").
       { iIntros (r) "[Hd Hb]". iSplitR "Hb"; [ | iExact "Hb" ].
-        iRight. iExact "Hd". }
+        iApply (kcat_wpost_of_both with "Hd"). }
       iApply UkCat.kcat_wr_of_w.
       iApply (UkCat.kcat_w_mono N (mword_of_int 1)
                 (mword_of_int CatSyms.buf) nb
@@ -533,7 +568,7 @@ Section UkCatCat.
       + iIntros "Hb". iSplitR "Hb"; [ | iExact "Hb" ].
         iSplit; [ done | ]. rewrite /kcat_dg_cw.
         iApply (UkCat.kcat_pay_seq_of_law N (mword_of_int 2) (cat_lit 0x9b0)
-                  17%nat (ukn_pay N (-1)) 0%nat with "HC Hwr").
+                  17%nat (UkCat.kcat_exit N 1) 0%nat with "HC Hwr").
       + iApply (UkCat.kcat_w_of_law N (mword_of_int 1)
                   (mword_of_int CatSyms.buf) nb
                   (ubytes γd CatSyms.buf 512 g)
@@ -546,7 +581,7 @@ Section UkCatCat.
     cat_code γt -∗ cat_rodata γt -∗
     urun N hcw mcw0 (mword_of_int 0x40) (10 + (12 + (4 + n))) -∗
     mWP (Loop : expr riscv_lang).
-  Proof using Hpay.
+  Proof using .
     iIntros "Hdg #Hcode #Hro Hrun".
     destruct cat_syms_pins
       as (_ & _ & _ & Hfprintf & _ & _ & _ & _ & _ & _ & Hexit).
@@ -637,7 +672,7 @@ Section UkCatCat.
       rewrite /cwc (upd_eq cwb (Regidx a0_idx) (regval_into_reg _)).
       apply bv_eq; vm_compute; reflexivity. }
     iApply (wp_kcat_fprintf N 0x9b0 17%nat (cat_lit 0x9b0)
-              hcwd cwd n emp%I (ukn_pay N (-1))
+              hcwd cwd n emp%I (UkCat.kcat_exit N 1)
               ltac:(vm_compute; discriminate)
               ltac:(vm_compute; reflexivity) ltac:(lia)
               (fun j Hj => cat_lit_nopct 0x9b0 17%nat j Hokcw Hj) Ha1dcw
@@ -672,8 +707,12 @@ Section UkCatCat.
               with "[] Hrun").
     { iApply (uis_cat_50 with "Hcode"). }
     iIntros (hcwg) "Hrun".
-    iApply (wp_kcat_exit N hcwg _ (10 + (12 + (4 + n)))
-              with "Hcode Hpayv Hrun").
+    (* THE EXIT HOLE, at the status [c.li a0,1] left in a0 *)
+    iApply ("Hpayv" $! hcwg _ (10 + (12 + (4 + n)))%nat with "[%] Hcode Hrun").
+    rewrite (upd_ne _ (Regidx ra_idx) (Regidx a0_idx) _
+               ltac:(vm_compute; discriminate)).
+    rewrite (upd_eq _ (Regidx a0_idx) (regval_into_reg _)).
+    vm_compute. reflexivity.
   Qed.
 
   Lemma wp_kcat_cat_die_cr (hcr : CpuId) (mcr0 : regfile) (n : nat) :
@@ -681,7 +720,7 @@ Section UkCatCat.
     cat_code γt -∗ cat_rodata γt -∗
     urun N hcr mcr0 (mword_of_int 0x6a) (10 + (12 + (4 + n))) -∗
     mWP (Loop : expr riscv_lang).
-  Proof using Hpay.
+  Proof using .
     iIntros "Hdg #Hcode #Hro Hrun".
     destruct cat_syms_pins
       as (_ & _ & _ & Hfprintf & _ & _ & _ & _ & _ & _ & Hexit).
@@ -772,7 +811,7 @@ Section UkCatCat.
       rewrite /crc (upd_eq crb (Regidx a0_idx) (regval_into_reg _)).
       apply bv_eq; vm_compute; reflexivity. }
     iApply (wp_kcat_fprintf N 0x9c8 16%nat (cat_lit 0x9c8)
-              hcrd crd n emp%I (ukn_pay N (-1))
+              hcrd crd n emp%I (UkCat.kcat_exit N 1)
               ltac:(vm_compute; discriminate)
               ltac:(vm_compute; reflexivity) ltac:(lia)
               (fun j Hj => cat_lit_nopct 0x9c8 16%nat j Hokcr Hj) Ha1dcr
@@ -807,8 +846,12 @@ Section UkCatCat.
               with "[] Hrun").
     { iApply (uis_cat_7a with "Hcode"). }
     iIntros (hcrg) "Hrun".
-    iApply (wp_kcat_exit N hcrg _ (10 + (12 + (4 + n)))
-              with "Hcode Hpayv Hrun").
+    (* THE EXIT HOLE, at the status [c.li a0,1] left in a0 *)
+    iApply ("Hpayv" $! hcrg _ (10 + (12 + (4 + n)))%nat with "[%] Hcode Hrun").
+    rewrite (upd_ne _ (Regidx ra_idx) (Regidx a0_idx) _
+               ltac:(vm_compute; discriminate)).
+    rewrite (upd_eq _ (Regidx a0_idx) (regval_into_reg _)).
+    vm_compute. reflexivity.
   Qed.
 
 
@@ -1224,7 +1267,7 @@ Section UkCatCat.
             (8 + (10 + (12 + (4 + n)))) -∗
           mWP (Loop : expr riscv_lang)) -∗
        mWP (Loop : expr riscv_lang)).
-  Proof using Hpay.
+  Proof using .
     intros Hsp0 Hal8 Hlo. iIntros "#Hround #Hcode #Hro".
     destruct cat_syms_pins
       as (_ & _ & _ & _ & _ & _ & Hread & Hwrite & _ & _ & _).
@@ -1539,7 +1582,7 @@ Section UkCatCat.
         rewrite Hs1f !add_vec_zero_l. exact Hnbz. }
       iDestruct "Hpick" as "[_ [_ Hwr]]".
       iDestruct ("Hwr" $! nb with "[%] [%]") as "Hw";
-        [ exact Hnbz | exact Hnbpos | ].
+        [ unfold nb; rewrite Z2Nat.id; lia | exact Hnbpos | ].
       iApply ("Hw" $! h11 mj (10 + (12 + (4 + n)))%nat
                 with "[%] [%] [%] Hcode Hbuf Hrun");
         [ exact Ha0j | exact Ha1j | exact Ha2j | ].
@@ -1598,7 +1641,10 @@ Section UkCatCat.
            the invariant beside its equation, the diagnostic arm has it as
            the left conjunct of the additive pair. *)
         iAssert I with "[Hpick]" as "HI".
-        { iDestruct "Hpick" as "[[_ $] | [$ _]]". }
+        { iDestruct "Hpick" as "[HI _]". iApply "HI". iPureIntro.
+          pose proof Hbeq as Hbeq'.
+          rewrite Ha0k Hs1k add_vec_zero_l in Hbeq'. cbn [uv_btaken] in Hbeq'.
+          apply eq_vec_true_iff in Hbeq'. rewrite Hbeq'. exact Hnbz. }
         iApply ("IH" $! h13 mk g with "[] HI Hw1 Hw2 Hw3 Hw4 Hw5 Hw6 Hw7 Hw8
                                        Hbuf Hrun Hcont").
         iPureIntro. exact Hinvk.
@@ -1620,8 +1666,8 @@ Section UkCatCat.
            is the value [s1] holds, so this branch was not taken.  A payer
            that took the diagnostic arm funds the tail as before. *)
         iAssert kcat_dg_cw with "[Hpick]" as "Hdg".
-        { iDestruct "Hpick" as "[[%Hws _] | [_ Hdg]]"; [ | iExact "Hdg" ].
-          exfalso.
+        { iDestruct "Hpick" as "[_ Hdg]". iApply "Hdg". iPureIntro.
+          intros Hws.
           assert (Hbeqt : uv_btaken BEQ (mk !!! Regidx a0_idx)
                             (mk !!! Regidx s1_idx) = true).
           { rewrite Ha0k Hs1k Hws add_vec_zero_l Hnbz.
@@ -1650,7 +1696,7 @@ Section UkCatCat.
        urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (8 + (10 + (12 + (4 + n)))) -∗
        mWP (Loop : expr riscv_lang)) -∗
     mWP (Loop : expr riscv_lang).
-  Proof using Hpay.
+  Proof using .
     intros Ha0.
     iIntros "#Hround #Hcode #Hro HI Hbuf Hrun Hcont".
     destruct cat_syms_pins

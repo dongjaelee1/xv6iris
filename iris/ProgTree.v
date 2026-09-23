@@ -51,12 +51,29 @@ Definition sb (s : string) : bytes := string_bytes s.
    end of file) *)
 Inductive rd_ans := RdErr | RdBytes (bs : bytes).
 
-Inductive ev : Type -> Type :=
-  | EOpen  (path : bytes) (omode : Z) : ev Z      (* the descriptor, or -1 *)
-  | EClose (fd : Z) : ev Z
-  | ERead  (fd : Z) (n : nat) : ev rd_ans           (* at most [n] bytes *)
-  | EWrite (fd : Z) (bs : bytes) : ev Z             (* the count written, or -1 *)
-  | EExit  (status : Z) : ev Empty_set.
+(* FIRST-ORDER events with an answer-type function, rather than the itree
+   library's type-indexed [E : Type -> Type]: a node [Vis e k] then
+   injects to [e = e'] and, since [ev] has decidable equality, to
+   [k = k'] WITHOUT an axiom ([Eqdep_dec.inj_pair2_eq_dec]) -- which is
+   what lets a payer invert [conforms] at a node. *)
+Inductive ev :=
+  | EOpen  (path : bytes) (omode : Z)               (* answers the descriptor, or -1 *)
+  | EClose (fd : Z)
+  | ERead  (fd : Z) (n : nat)                       (* at most [n] bytes *)
+  | EWrite (fd : Z) (bs : bytes)                    (* the count written, or -1 *)
+  | EExit  (status : Z).
+
+Global Instance ev_eq_dec : EqDecision ev.
+Proof. solve_decision. Defined.
+
+Definition ans (e : ev) : Type :=
+  match e with
+  | EOpen _ _ => Z
+  | EClose _ => Z
+  | ERead _ _ => rd_ans
+  | EWrite _ _ => Z
+  | EExit _ => Empty_set
+  end.
 
 (* ===================================================================== *)
 (*  2.  THE TREE                                                          *)
@@ -65,12 +82,12 @@ Inductive ev : Type -> Type :=
 CoInductive itree (R : Type) : Type :=
   | Ret (r : R)
   | Tau (t : itree R)
-  | Vis {X : Type} (e : ev X) (k : X -> itree R).
+  | Vis (e : ev) (k : ans e -> itree R).
 Arguments Ret {R}.
 Arguments Tau {R}.
-Arguments Vis {R X}.
+Arguments Vis {R}.
 
-Definition trigger {X : Type} (e : ev X) : itree X := Vis e (fun x => Ret x).
+Definition trigger (e : ev) : itree (ans e) := Vis e (fun x => Ret x).
 
 CoFixpoint bind {R S : Type} (t : itree R) (f : R -> itree S) : itree S :=
   match t with
@@ -99,7 +116,7 @@ Definition iter {I R : Type} (step : I -> itree (I + R)) (i : I) : itree R :=
 (* a process never returns: its tree ends only in [EExit] *)
 Definition proc := itree Empty_set.
 Definition exit_ {R : Type} (status : Z) : itree R :=
-  Vis (EExit status) (fun v => match v with end).
+  Vis (EExit status) (fun v : ans (EExit status) => match v with end).
 
 (* the [observe] of the itree library: forces one step of a cofixpoint *)
 Definition force {R : Type} (t : itree R) : itree R :=
@@ -345,7 +362,7 @@ Fixpoint run (fuel : nat) (w : world) (t : fdt) (p : proc) : world * outcome :=
       | Ret v => match v with end
       | Tau p' => run fuel' w t p'
       | Vis e k =>
-          match e in ev X return (X -> proc) -> world * outcome with
+          match e as e return (ans e -> proc) -> world * outcome with
           | EOpen path m => fun k =>
               let '(w', t', r) := step_open w t path m in run fuel' w' t' (k r)
           | EClose fd => fun k =>
@@ -489,10 +506,10 @@ Proof. rewrite (force_eq (bind _ _)), (force_eq (f r)). reflexivity. Qed.
 Lemma bind_tau {R S : Type} (t : itree R) (f : R -> itree S) :
   bind (Tau t) f = Tau (bind t f).
 Proof. rewrite (force_eq (bind _ _)). reflexivity. Qed.
-Lemma bind_vis {R S X : Type} (e : ev X) (k : X -> itree R) (f : R -> itree S) :
+Lemma bind_vis {R S : Type} (e : ev) (k : ans e -> itree R) (f : R -> itree S) :
   bind (Vis e k) f = Vis e (fun x => bind (k x) f).
 Proof. rewrite (force_eq (bind _ _)). reflexivity. Qed.
-Lemma trigger_bind {S X : Type} (e : ev X) (f : X -> itree S) :
+Lemma trigger_bind {S : Type} (e : ev) (f : ans e -> itree S) :
   bind (trigger e) f = Vis e f.
 Proof.
   unfold trigger. rewrite bind_vis. f_equal. apply functional_extensionality.
@@ -507,8 +524,8 @@ Proof. rewrite (force_eq (iter_ _ _)). reflexivity. Qed.
 Lemma iter__tau {I R : Type} (step : I -> itree (I + R)) (t : itree (I + R)) :
   iter_ step (Tau t) = Tau (iter_ step t).
 Proof. rewrite (force_eq (iter_ _ _)). reflexivity. Qed.
-Lemma iter__vis {I R X : Type} (step : I -> itree (I + R)) (e : ev X)
-    (k : X -> itree (I + R)) :
+Lemma iter__vis {I R : Type} (step : I -> itree (I + R)) (e : ev)
+    (k : ans e -> itree (I + R)) :
   iter_ step (Vis e k) = Vis e (fun x => iter_ step (k x)).
 Proof. rewrite (force_eq (iter_ _ _)). reflexivity. Qed.
 Lemma exit_bind {R S : Type} (s : Z) (f : R -> itree S) :
@@ -529,3 +546,387 @@ Lemma cat_loop_unfold (fd : Z) (rest : proc) :
             else write_bytes 2 cat_dg_write (exit_ 1))
       end).
 Proof. etransitivity; [apply force_eq |]. reflexivity. Qed.
+
+(* ===================================================================== *)
+(*  8.  CONFORMANCE: a tree against an environment of endpoints           *)
+(*                                                                        *)
+(*  What a line shape provisions, abstractly: descriptors bound to        *)
+(*  DEVICES, each device an endpoint spec -- an input stream, or an       *)
+(*  output owed as a SET of alternatives (the console: which one is       *)
+(*  decided by the first byte, as the line model's block-first link does; *)
+(*  a file or a pipe: one alternative).  [conforms E t] says every path   *)
+(*  of [t] writes a prefix of one of its device's alternatives, reads any *)
+(*  chunking of its input, is ready for either answer of an open (the     *)
+(*  kernel may refuse a present file), and exits only with every output   *)
+(*  fully written.  It is the PURE half of a handler: the logic's half    *)
+(*  funds the holes of a conforming tree from the endpoints' resources,   *)
+(*  once, by coinduction.                                                 *)
+(* ===================================================================== *)
+
+Inductive dspec :=
+  | DOut (alts : list bytes)      (* what is still owed, one of these *)
+  | DIn (S : bytes).              (* what is still to be read *)
+
+Record penv := MkEnv {
+  pe_fd : Z -> option nat;        (* descriptor -> device *)
+  pe_dev : nat -> dspec;
+  pe_files : bytes -> option bytes;
+}.
+
+Definition env_dev (E : penv) (fd : Z) : option dspec :=
+  match pe_fd E fd with Some d => Some (pe_dev E d) | None => None end.
+Definition env_set_dev (E : penv) (d : nat) (s : dspec) : penv :=
+  MkEnv (pe_fd E) (fun d' => if decide (d' = d) then s else pe_dev E d') (pe_files E).
+Definition env_bind (E : penv) (fd : Z) (d : option nat) : penv :=
+  MkEnv (fun fd' => if decide (fd' = fd) then d else pe_fd E fd') (pe_dev E) (pe_files E).
+Definition env_fresh (E : penv) (d : nat) : Prop :=
+  forall fd, pe_fd E fd <> Some d.
+
+(* the alternatives a chunk [bs] can be the head of, with the chunk taken *)
+Definition alts_after (bs : bytes) (alts : list bytes) : list bytes :=
+  drop (length bs) <$> filter (fun a => bs `prefix_of` a) alts.
+
+(* a read's answer: a chunk of at most [n], empty only at end of file *)
+Definition chunk_ok (n : nat) (S c S' : bytes) : Prop :=
+  S = c ++ S' /\ (length c <= n)%nat /\ (c = [] -> S = []).
+
+(* ONE step of conformance, as a function of the relation: the greatest
+   fixpoint below needs no injectivity of [Vis] to be unfolded, so a payer
+   reads a node by [destruct t; simpl]. *)
+Definition cf_step (R : penv -> proc -> Prop) (E : penv) (t : proc) : Prop :=
+  match t with
+  | Ret v => match v with end
+  | Tau t' => R E t'
+  | Vis e k =>
+      match e as e return (ans e -> proc) -> Prop with
+      | EWrite fd bs => fun k =>
+          exists d alts, pe_fd E fd = Some d /\ pe_dev E d = DOut alts
+            /\ alts_after bs alts <> []
+            /\ R (env_set_dev E d (DOut (alts_after bs alts))) (k (Z.of_nat (length bs)))
+      | ERead fd n => fun k =>
+          exists d S, pe_fd E fd = Some d /\ pe_dev E d = DIn S
+            /\ forall c S', chunk_ok n S c S' -> R (env_set_dev E d (DIn S')) (k (RdBytes c))
+      | EOpen p m => fun k =>
+          (m = 0 /\ exists content, pe_files E p = Some content
+             (* the kernel hands back a descriptor the process did not hold *)
+             /\ (forall fd d, 0 <= fd -> pe_fd E fd = None -> env_fresh E d ->
+                   R (env_set_dev (env_bind E fd (Some d)) d (DIn content)) (k fd))
+             /\ R E (k (-1)))
+          \/ (pe_files E p = None /\ R E (k (-1)))
+      | EClose fd => fun k =>
+          exists d, pe_fd E fd = Some d /\ R (env_bind E fd None) (k 0)
+      | EExit s => fun _ =>
+          forall d alts, pe_dev E d = DOut alts -> [] ∈ alts
+      end k
+  end.
+
+CoInductive conforms : penv -> proc -> Prop :=
+  | cf_tau E t :
+      conforms E t -> conforms E (Tau t)
+  | cf_write E fd d alts bs k :
+      pe_fd E fd = Some d -> pe_dev E d = DOut alts ->
+      alts_after bs alts <> [] ->
+      conforms (env_set_dev E d (DOut (alts_after bs alts))) (k (Z.of_nat (length bs))) ->
+      conforms E (Vis (EWrite fd bs) k)
+  | cf_read E fd d S n k :
+      pe_fd E fd = Some d -> pe_dev E d = DIn S ->
+      (forall c S', chunk_ok n S c S' ->
+         conforms (env_set_dev E d (DIn S')) (k (RdBytes c))) ->
+      conforms E (Vis (ERead fd n) k)
+  | cf_open_present E p content k :
+      pe_files E p = Some content ->
+      (forall fd d, 0 <= fd -> pe_fd E fd = None -> env_fresh E d ->
+         conforms (env_set_dev (env_bind E fd (Some d)) d (DIn content)) (k fd)) ->
+      conforms E (k (-1)) ->
+      conforms E (Vis (EOpen p 0) k)
+  | cf_open_absent E p m k :
+      pe_files E p = None ->
+      conforms E (k (-1)) ->
+      conforms E (Vis (EOpen p m) k)
+  | cf_close E fd d k :
+      pe_fd E fd = Some d ->
+      conforms (env_bind E fd None) (k 0) ->
+      conforms E (Vis (EClose fd) k)
+  | cf_exit E s k :
+      (forall d alts, pe_dev E d = DOut alts -> [] ∈ alts) ->
+      conforms E (Vis (EExit s) k).
+
+(* ...read at a node WITHOUT inverting a dependent pair: dependent
+   elimination substitutes the node into the goal, which [cf_step] then
+   computes *)
+Lemma conforms_unfold (E : penv) (t : proc) : conforms E t -> cf_step conforms E t.
+Proof.
+  intros H. destruct H; simpl.
+  - exact H.
+  - exists d, alts. auto.
+  - exists d, S. auto.
+  - left. split; [reflexivity |]. exists content. auto.
+  - right. auto.
+  - exists d. auto.
+  - exact H.
+Qed.
+
+(* ---- echo conforms to a console owing its line -------------------- *)
+
+Lemma alts_after_one (bs S' : bytes) : alts_after bs [bs ++ S'] = [S'].
+Proof.
+  unfold alts_after.
+  rewrite filter_cons_True; [| by eexists].
+  rewrite filter_nil. simpl. by rewrite drop_app_length.
+Qed.
+
+Lemma alts_after_mem (bs S' : bytes) (alts : list bytes) :
+  bs ++ S' ∈ alts -> S' ∈ alts_after bs alts.
+Proof.
+  intros Hin. unfold alts_after. apply elem_of_list_fmap.
+  exists (bs ++ S'). split; [by rewrite drop_app_length |].
+  apply elem_of_list_filter. split; [by eexists | exact Hin].
+Qed.
+
+Lemma env_set_dev_dev (E : penv) (d : nat) (x : dspec) :
+  pe_dev (env_set_dev E d x) d = x.
+Proof. unfold env_set_dev. simpl. by rewrite decide_True. Qed.
+Lemma env_set_dev_fd (E : penv) (d : nat) (x : dspec) (fd : Z) :
+  pe_fd (env_set_dev E d x) fd = pe_fd E fd.
+Proof. reflexivity. Qed.
+Lemma env_set_dev_set_dev (E : penv) (d : nat) (x y : dspec) :
+  env_set_dev (env_set_dev E d x) d y = env_set_dev E d y.
+Proof.
+  unfold env_set_dev. simpl. f_equal. apply functional_extensionality.
+  intros d'. destruct (decide (d' = d)); reflexivity.
+Qed.
+
+(* a run of one-byte writes owed by a device: what is owed after it is
+   what was owed after the run, in every alternative that had it *)
+Lemma write_bytes_conforms (E : penv) (fd : Z) (d : nat) (bs S' : bytes)
+    (alts : list bytes) (rest : proc) :
+  pe_fd E fd = Some d -> pe_dev E d = DOut alts -> bs ++ S' ∈ alts ->
+  (forall alts', S' ∈ alts' -> conforms (env_set_dev E d (DOut alts')) rest) ->
+  conforms E (write_bytes fd bs rest).
+Proof.
+  revert E alts. induction bs as [| b bs IH]; intros E alts Hfd Hd Hin Hrest.
+  - simpl in Hin. simpl.
+    specialize (Hrest alts Hin).
+    (* the update is the identity here *)
+    assert (env_set_dev E d (DOut alts) = E) as Heq.
+    { destruct E as [f g files]. unfold env_set_dev. simpl in *. f_equal.
+      apply functional_extensionality. intros d'.
+      destruct (decide (d' = d)) as [-> | ]; [by rewrite Hd | reflexivity]. }
+    by rewrite Heq in Hrest.
+  - simpl.
+    eapply cf_write with (d := d) (alts := alts); [exact Hfd | exact Hd | |].
+    { intros Hnil.
+      pose proof (alts_after_mem [b] (bs ++ S') alts) as Hm.
+      rewrite <- app_comm_cons in Hm. specialize (Hm Hin).
+      rewrite Hnil in Hm. inversion Hm. }
+    apply (IH (env_set_dev E d (DOut (alts_after [b] alts))) (alts_after [b] alts)).
+    + exact Hfd.
+    + apply env_set_dev_dev.
+    + apply alts_after_mem. by rewrite <- app_comm_cons.
+    + intros alts' Hin'. rewrite env_set_dev_set_dev. exact (Hrest alts' Hin').
+Qed.
+
+(* the console device is 0 and fd 1 names it *)
+Definition cons_env (owed : bytes) (files : bytes -> option bytes) : penv :=
+  MkEnv (fun fd => if decide (fd = 1) then Some 0%nat else None)
+        (fun d => if decide (d = 0%nat) then DOut [owed] else DOut [[]]) files.
+
+Lemma cons_env_set (owed owed' : bytes) (files : bytes -> option bytes) :
+  env_set_dev (cons_env owed files) 0 (DOut [owed']) = cons_env owed' files.
+Proof.
+  unfold env_set_dev, cons_env. f_equal. apply functional_extensionality.
+  intros d. simpl. destruct (decide (d = 0%nat)); reflexivity.
+Qed.
+
+Lemma echo_words_conforms (ws : list bytes) (files : bytes -> option bytes)
+    (rest : proc) :
+  ws <> [] ->
+  conforms (cons_env [] files) rest ->
+  conforms (cons_env (wl_line ws) files) (echo_words ws rest).
+Proof.
+  revert rest. induction ws as [| w r IH]; intros rest Hne Hrest; [done |].
+  destruct r as [| w' r'].
+  - simpl. unfold wl_line. simpl. rewrite app_nil_r.
+    eapply cf_write with (d := 0%nat) (alts := [w ++ [wl_nl]]); [done | done | |].
+    { rewrite alts_after_one. done. }
+    rewrite alts_after_one, cons_env_set.
+    eapply cf_write with (d := 0%nat) (alts := [[wl_nl] ++ []]); [done | done | |].
+    { rewrite alts_after_one. done. }
+    rewrite alts_after_one, cons_env_set. exact Hrest.
+  - simpl. unfold wl_line. rewrite wl_body_cons, wl_tail_cons.
+    rewrite <- app_assoc.
+    eapply cf_write with (d := 0%nat) (alts := [w ++ (wl_sp :: wl_body (w' :: r') ++ [wl_nl])]);
+      [done | done | |].
+    { rewrite alts_after_one. done. }
+    rewrite alts_after_one, cons_env_set.
+    change (wl_sp :: wl_body (w' :: r') ++ [wl_nl])
+      with ([wl_sp] ++ (wl_body (w' :: r') ++ [wl_nl])).
+    eapply cf_write with (d := 0%nat) (alts := [[wl_sp] ++ (wl_body (w' :: r') ++ [wl_nl])]);
+      [done | done | |].
+    { rewrite alts_after_one. done. }
+    rewrite alts_after_one, cons_env_set.
+    apply IH; [done | exact Hrest].
+Qed.
+
+Theorem echo_conforms (argv : list bytes) (files : bytes -> option bytes) :
+  drop 1 argv <> [] ->
+  conforms (cons_env (wl_line (drop 1 argv)) files) (echo_tree argv).
+Proof.
+  intros Hne. unfold echo_tree. apply echo_words_conforms; [exact Hne |].
+  apply cf_exit. intros d alts Hd. cbn [pe_dev cons_env] in Hd.
+  destruct (decide (d = 0%nat)); injection Hd as <-; by left.
+Qed.
+
+(* ---- cat conforms to copying its input to its output ---------------- *)
+
+(* the console is device 0 on descriptors 1 and 2; an input device [din]
+   on descriptor [fdin]; every other device owes nothing *)
+Definition cat_env (fdin : Z) (din : nat) (S_in : bytes) (alts : list bytes)
+    (files : bytes -> option bytes) : penv :=
+  MkEnv (fun fd => if decide (fd = 1 \/ fd = 2) then Some 0%nat
+                   else if decide (fd = fdin) then Some din else None)
+        (fun d => if decide (d = 0%nat) then DOut alts
+                  else if decide (d = din) then DIn S_in else DOut [[]]) files.
+
+(* ...and before any file is open *)
+Definition cat_env0 (alts : list bytes) (files : bytes -> option bytes) : penv :=
+  MkEnv (fun fd => if decide (fd = 1 \/ fd = 2) then Some 0%nat else None)
+        (fun d => if decide (d = 0%nat) then DOut alts else DOut [[]]) files.
+
+Lemma cat_env_in (fdin : Z) (din : nat) (S S' : bytes) (alts : list bytes) files :
+  din <> 0%nat ->
+  env_set_dev (cat_env fdin din S alts files) din (DIn S') = cat_env fdin din S' alts files.
+Proof.
+  intros Hd. unfold env_set_dev, cat_env. f_equal. apply functional_extensionality.
+  intros d. cbn [pe_dev pe_fd]. destruct (decide (d = din)) as [-> | ]; [| reflexivity].
+  rewrite decide_False; [| exact Hd]. first [ by rewrite decide_True | done ].
+Qed.
+Lemma cat_env_out (fdin : Z) (din : nat) (S : bytes) (alts alts' : list bytes) files :
+  env_set_dev (cat_env fdin din S alts files) 0 (DOut alts') = cat_env fdin din S alts' files.
+Proof.
+  unfold env_set_dev, cat_env. f_equal. apply functional_extensionality.
+  intros d. cbn [pe_dev pe_fd]. destruct (decide (d = 0%nat)); reflexivity.
+Qed.
+Lemma cat_env_exit (fdin : Z) (din : nat) (S : bytes) (alts : list bytes) files (st : Z) :
+  [] ∈ alts -> conforms (cat_env fdin din S alts files) (exit_ st).
+Proof.
+  intros Hin. apply cf_exit. intros d alts' Hd. cbn [pe_dev cat_env cat_env0] in Hd.
+  destruct (decide (d = 0%nat)); [by injection Hd as <- |].
+  destruct (decide (d = din)); [discriminate Hd |].
+  injection Hd as <-. by left.
+Qed.
+Lemma cat_env0_exit (alts : list bytes) files (st : Z) :
+  [] ∈ alts -> conforms (cat_env0 alts files) (exit_ st).
+Proof.
+  intros Hin. apply cf_exit. intros d alts' Hd. cbn [pe_dev cat_env cat_env0] in Hd.
+  destruct (decide (d = 0%nat)); injection Hd as <-; [exact Hin | by left].
+Qed.
+Lemma cat_env0_out (alts alts' : list bytes) files :
+  env_set_dev (cat_env0 alts files) 0 (DOut alts') = cat_env0 alts' files.
+Proof.
+  unfold env_set_dev, cat_env0. f_equal. apply functional_extensionality.
+  intros d. cbn [pe_dev pe_fd]. destruct (decide (d = 0%nat)); reflexivity.
+Qed.
+
+(* one call of cat(fdin): what the console owes after it is what it owed
+   after the input, in every alternative that had it *)
+Lemma cat_loop_conforms (fdin : Z) (din : nat) (S : bytes) (alts : list bytes)
+    files (rest : proc) :
+  din <> 0%nat -> fdin <> 1 -> fdin <> 2 -> S ∈ alts ->
+  (forall alts', [] ∈ alts' -> conforms (cat_env fdin din [] alts' files) rest) ->
+  conforms (cat_env fdin din S alts files) (cat_loop fdin rest).
+Proof.
+  intros Hd Hf1 Hf2. revert S alts. cofix CIH. intros S alts Hin Hrest.
+  rewrite cat_loop_unfold.
+  eapply cf_read with (d := din) (S := S).
+  { cbv [cat_env pe_fd pe_dev]. rewrite decide_False; [| lia]. first [ by rewrite decide_True | done ]. }
+  { cbv [cat_env pe_fd pe_dev]. rewrite decide_False; [| exact Hd]. first [ by rewrite decide_True | done ]. }
+  intros c S' (HS & Hlen & Hnil). rewrite cat_env_in; [| exact Hd].
+  destruct c as [| b c'].
+  - assert (S = []) as -> by exact (Hnil eq_refl).
+    simpl in HS. destruct S'; [| discriminate HS].
+    exact (Hrest alts Hin).
+  - rewrite HS in Hin.
+    eapply cf_write with (d := 0%nat) (alts := alts).
+    { cbv [cat_env cat_env0 pe_fd pe_dev]. by rewrite decide_True; [| by left]. }
+    { cbv [cat_env pe_fd pe_dev]. by rewrite decide_True. }
+    { intros Hnone. pose proof (alts_after_mem (b :: c') S' alts Hin) as Hm.
+      rewrite Hnone in Hm. inversion Hm. }
+    rewrite cat_env_out. cbv beta.
+    rewrite decide_True; [| reflexivity].
+    apply cf_tau. apply CIH; [| exact Hrest].
+    apply alts_after_mem. exact Hin.
+Qed.
+
+Theorem cat_stdin_conforms (S : bytes) files :
+  conforms (cat_env 0 1 S [S] files) (cat_tree [sb "cat"]).
+Proof.
+  simpl. apply cat_loop_conforms; [done | done | done | by left |].
+  intros alts' Hin. apply cat_env_exit. exact Hin.
+Qed.
+
+(* ---- cat f: the console owes the content OR the diagnostic ---------- *)
+
+Lemma cat_env0_open (alts : list bytes) files (fd : Z) (d : nat) (content : bytes) :
+  pe_fd (cat_env0 alts files) fd = None -> env_fresh (cat_env0 alts files) d ->
+  env_set_dev (env_bind (cat_env0 alts files) fd (Some d)) d (DIn content)
+  = cat_env fd d content alts files.
+Proof.
+  intros Hfd Hfr. cbv [env_set_dev env_bind cat_env0 cat_env pe_fd pe_dev pe_files] in *.
+  assert (d <> 0%nat) as Hd0.
+  { intros ->. apply (Hfr 1). cbv [pe_fd]. by rewrite decide_True; [| by left]. }
+  f_equal.
+  - apply functional_extensionality. intros fd'.
+    destruct (decide (fd' = fd)) as [-> | Hne].
+    + destruct (decide (fd = 1 \/ fd = 2)); [discriminate Hfd |].
+      first [ reflexivity | by rewrite decide_True ].
+    + destruct (decide (fd' = 1 \/ fd' = 2)); [reflexivity |].
+      first [ reflexivity | by rewrite decide_False ].
+  - apply functional_extensionality. intros d'.
+    destruct (decide (d' = d)) as [-> | Hne].
+    + rewrite decide_False; [| exact Hd0]. first [ reflexivity | by rewrite decide_True ].
+    + destruct (decide (d' = 0%nat)); [reflexivity |].
+      first [ reflexivity | by rewrite decide_False ].
+Qed.
+
+Theorem cat_file_conforms (f content : bytes) files :
+  files f = Some content ->
+  conforms (cat_env0 [content; cat_dg_open f] files) (cat_tree [sb "cat"; f]).
+Proof.
+  intros Hf. simpl.
+  eapply cf_open_present; [exact Hf | |].
+  - intros fd d Hfd Hnone Hfr. rewrite cat_env0_open; [| exact Hnone | exact Hfr].
+    rewrite decide_False; [| lia].
+    assert (fd <> 1 /\ fd <> 2) as [Hf1 Hf2].
+    { cbv [cat_env0 pe_fd] in Hnone. destruct (decide (fd = 1 \/ fd = 2)); [discriminate Hnone | lia]. }
+    assert (d <> 0%nat) as Hd0.
+    { intros ->. apply (Hfr 1). cbv [cat_env0 pe_fd]. by rewrite decide_True; [| by left]. }
+    apply cat_loop_conforms; [exact Hd0 | exact Hf1 | exact Hf2 | by left |].
+    intros alts' Hin.
+    eapply cf_close with (d := d).
+    { cbv [cat_env pe_fd pe_dev]. rewrite decide_False; [| lia]. first [ by rewrite decide_True | done ]. }
+    simpl. apply cf_exit. intros d' alts'' Hd'. cbv [env_bind cat_env pe_dev] in Hd'.
+    destruct (decide (d' = 0%nat)); [by injection Hd' as <- |].
+    destruct (decide (d' = d)); [discriminate Hd' |].
+    injection Hd' as <-. by left.
+  - cbv beta. rewrite decide_True; [| lia].
+    eapply write_bytes_conforms with (d := 0%nat) (S' := []) (alts := [content; cat_dg_open f]).
+    { cbv [cat_env cat_env0 pe_fd pe_dev]. by rewrite decide_True; [| by right]. }
+    { reflexivity. }
+    { rewrite app_nil_r. by right; left. }
+    intros alts' Hin. rewrite cat_env0_out. apply cat_env0_exit. exact Hin.
+Qed.
+
+Theorem cat_file_absent_conforms (f : bytes) files :
+  files f = None ->
+  conforms (cat_env0 [cat_dg_open f] files) (cat_tree [sb "cat"; f]).
+Proof.
+  intros Hf. simpl.
+  eapply cf_open_absent; [exact Hf |].
+  cbv beta. rewrite decide_True; [| lia].
+  eapply write_bytes_conforms with (d := 0%nat) (S' := []) (alts := [cat_dg_open f]).
+  { cbv [cat_env cat_env0 pe_fd pe_dev]. by rewrite decide_True; [| by right]. }
+  { reflexivity. }
+  { rewrite app_nil_r. by left. }
+  intros alts' Hin. rewrite cat_env0_out. apply cat_env0_exit. exact Hin.
+Qed.

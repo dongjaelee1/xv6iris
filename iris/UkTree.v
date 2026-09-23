@@ -238,8 +238,8 @@ Section UkTree.
        urun N h m (mword_of_int (up_exit P)) avail -∗
        mWP (Loop : expr riscv_lang))%I.
 
-  Definition ev_obl {X : Type} (e : ev X) : (X -> iProp Σ) -> iProp Σ :=
-    match e in ev X return (X -> iProp Σ) -> iProp Σ with
+  Definition ev_obl (e : ev) : (ans e -> iProp Σ) -> iProp Σ :=
+    match e as e return (ans e -> iProp Σ) -> iProp Σ with
     | EOpen path mode => op_obl path mode
     | EClose fd => cl_obl fd
     | ERead fd n => rd_obl fd n
@@ -248,7 +248,7 @@ Section UkTree.
     end.
 
   (* every hole is monotone in its continuation *)
-  Lemma ev_obl_mono {X : Type} (e : ev X) (K K' : X -> iProp Σ) :
+  Lemma ev_obl_mono (e : ev) (K K' : ans e -> iProp Σ) :
     □ (∀ x, K x -∗ K' x) -∗ ev_obl e K -∗ ev_obl e K'.
   Proof using .
     iIntros "#HK Ho". destruct e; simpl.
@@ -287,7 +287,7 @@ Section UkTree.
   Local Instance tree_F_mono : BiMonoPred (A := leibnizO proc) tree_F.
   Proof using .
     split.
-    - iIntros (Q Q' _ _) "#HQ". iIntros (t) "Ht". destruct t as [v | t' | X e k].
+    - iIntros (Q Q' _ _) "#HQ". iIntros (t) "Ht". destruct t as [v | t' | e k].
       + destruct v.
       + simpl. by iApply "HQ".
       + simpl. iApply (ev_obl_mono with "[] Ht").
@@ -307,7 +307,7 @@ Section UkTree.
   Lemma tree_pay_tau (t : proc) : tree_pay (Tau t) ⊣⊢ tree_pay t.
   Proof using . apply tree_pay_unfold. Qed.
 
-  Lemma tree_pay_vis {X : Type} (e : ev X) (k : X -> proc) :
+  Lemma tree_pay_vis (e : ev) (k : ans e -> proc) :
     tree_pay (Vis e k) ⊣⊢ ev_obl e (fun x => tree_pay (k x)).
   Proof using . apply tree_pay_unfold. Qed.
 

@@ -967,6 +967,24 @@ Section UkEcho.
     { by rewrite (ukn_const_eq (N := N) (uexitst m1) (-1)). }
   Qed.
 
+  (* THE EXIT AS A HOLE (program-specs cut 3).  What the walk needs at the
+     exit stub, stated with the status a0 carries and nothing about how it
+     is paid: this is [UkTree.ex_obl] at echo's instance, spelled out, so a
+     payer of the interaction tree funds it outright.  The payload form is
+     one way to fill it ([kecho_exit_of_pay]). *)
+  Definition kecho_exit (status : Z) : iProp Σ :=
+    (∀ (h : CpuId) (m : regfile) (avail : nat),
+       ⌜bv_signed (trunc32 (m !!! Regidx a0_idx)) = status⌝ -∗
+       echo_code γt -∗
+       urun N h m (mword_of_int EchoSyms.exit) avail -∗
+       mWP (Loop : expr riscv_lang))%I.
+
+  Lemma kecho_exit_of_pay (s : Z) : ukn_pay N (-1) -∗ kecho_exit s.
+  Proof using Hpay.
+    iIntros "Hpay" (h m avail) "_ Hcode Hrun".
+    iApply (wp_kecho_exit h m avail with "Hcode Hpay Hrun").
+  Qed.
+
   (* THE WRITE DEPOSIT, AS A PREMISE (lane SUPPLY-SPLIT, P4).  echo's
      output is write(16), and 16 is the one number echo calls whose branch
      of [UexecExecInst.xv6_sbundle] is not free: at a key whose descriptor
@@ -1448,12 +1466,12 @@ Section UkEcho.
   (* ===================================================================== *)
 
   (* the exit path at 0x76, reached from three places *)
-  Local Lemma wp_kecho_main_exit (h : CpuId) (mc : regfile) (n : nat) :
+  Local Lemma wp_kecho_main_exit_at (h : CpuId) (mc : regfile) (n : nat) :
     echo_code γt -∗
-    ukn_pay N (-1) -∗
+    kecho_exit 0 -∗
     urun N h mc (mword_of_int 0x76) n -∗
     mWP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     iIntros "#Hcode Hpay Hrun".
     destruct echo_syms_pins as (_ & _ & _ & Hexit & _).
     (* ---- 0x76  c.li a0,0 ---- *)
@@ -1478,7 +1496,23 @@ Section UkEcho.
               with "[] Hrun").
     { iApply (uis_echo_78 with "Hcode"). }
     iIntros (h2) "Hrun".
-    iApply (wp_kecho_exit h2 _ n with "Hcode Hpay Hrun").
+    iApply ("Hpay" $! h2 _ n with "[%] Hcode Hrun").
+    (* a0 is the [c.li a0,0] of 0x76; the jal wrote only ra *)
+    rewrite (upd_ne _ (Regidx ra_idx) (Regidx a0_idx) _
+               ltac:(vm_compute; discriminate)).
+    rewrite (upd_eq mc (Regidx a0_idx) _).
+    vm_compute. reflexivity.
+  Qed.
+
+  Local Lemma wp_kecho_main_exit (h : CpuId) (mc : regfile) (n : nat) :
+    echo_code γt -∗
+    ukn_pay N (-1) -∗
+    urun N h mc (mword_of_int 0x76) n -∗
+    mWP (Loop : expr riscv_lang).
+  Proof using Hpay.
+    iIntros "#Hcode Hpay Hrun".
+    iApply (wp_kecho_main_exit_at h mc n with "Hcode [Hpay] Hrun").
+    iApply (kecho_exit_of_pay with "Hpay").
   Qed.
 
   (* ONE ITERATION'S BODY, 0x4e..0x62:                                      *)
@@ -1977,7 +2011,8 @@ Section UkEcho.
   (* THE SCAN OVER argv, from 0x4e.  [k] counts the elements still to print  *)
   (* after this one; the induction is on it.  Every iteration hands the      *)
   (* vector back untouched, so the resource is threaded rather than split.   *)
-  Local Lemma wp_kecho_main_loop (av : Z) (args : list uarg) :
+  Local Lemma wp_kecho_main_loop_at (av : Z) (args : list uarg)
+      (Cend : iProp Σ) :
     forall (k i : nat) (h : CpuId) (mc : regfile) (n : nat) (Ci : iProp Σ),
     (length args = 1 + i + k)%nat ->
     0 <= av -> av + 8 * Z.of_nat (length args) <= 2 ^ 38 ->
@@ -1986,16 +2021,17 @@ Section UkEcho.
     mc !!! Regidx s4_idx = mword_of_int (av + 8 * Z.of_nat (length args)) ->
     mc !!! Regidx s5_idx = mword_of_int (av + 8 * Z.of_nat (length args) - 8) ->
     mc !!! Regidx s6_idx = mword_of_int echo_sep_ptr ->
-    kecho_pay args k i Ci (ukn_pay N (-1)) -∗
+    kecho_pay args k i Ci Cend -∗
+    (Cend -∗ kecho_exit 0) -∗
     echo_code γt -∗
     uargv γd av args -∗
     Ci -∗
     urun N h mc (mword_of_int 0x4e) (2 + n) -∗
     mWP (Loop : expr riscv_lang).
-  Proof.
+  Proof using .
     intros k. induction k as [| k IH ];
       intros i h mc n Ci Hlen Hav0 Hav38 Hs1 Hs3 Hs4 Hs5 Hs6;
-      iIntros "Hpay #Hcode Hargv HCi Hrun";
+      iIntros "Hpay Hend #Hcode Hargv HCi Hrun";
       destruct (lookup_lt_is_Some_2 args i ltac:(lia)) as [g Hg];
       destruct echo_syms_pins as (_ & _ & _ & _ & Hwrite);
       iSpecialize ("Hpay" $! g with "[%]"); [ exact Hg | | exact Hg | ].
@@ -2135,7 +2171,8 @@ Section UkEcho.
       rewrite Eret76.
       iIntros (h7 ret) "Hpay Hrun".
       (* ---- 0x76 onwards: exit(0) ---- *)
-      iApply (wp_kecho_main_exit h7 _ (2 + n) with "Hcode Hpay Hrun").
+      iApply (wp_kecho_main_exit_at h7 _ (2 + n) with "Hcode [Hend Hpay] Hrun").
+      iApply ("Hend" with "Hpay").
     - (* NOT the last: print it, then a separator, then go round again *)
       iDestruct "Hpay" as (Cm Cn) "(Hw & Hsep & Hpay)".
       iApply (wp_kecho_main_body av args i g h mc n (mword_of_int 0x3e)
@@ -2176,24 +2213,49 @@ Section UkEcho.
                                  ltac:(vm_compute; discriminate));
                       rewrite (Hpres1 s6_idx ltac:(vm_compute; reflexivity)
                                  ltac:(vm_compute; discriminate)); exact Hs6)
-                with "Hpay Hcode Hargv HCn Hrun").
+                with "Hpay Hend Hcode Hargv HCn Hrun").
+  Qed.
+
+  Local Lemma wp_kecho_main_loop (av : Z) (args : list uarg) :
+    forall (k i : nat) (h : CpuId) (mc : regfile) (n : nat) (Ci : iProp Σ),
+    (length args = 1 + i + k)%nat ->
+    0 <= av -> av + 8 * Z.of_nat (length args) <= 2 ^ 38 ->
+    mc !!! Regidx s1_idx = mword_of_int (av + 8 * Z.of_nat i) ->
+    mc !!! Regidx s3_idx = mword_of_int 1 ->
+    mc !!! Regidx s4_idx = mword_of_int (av + 8 * Z.of_nat (length args)) ->
+    mc !!! Regidx s5_idx = mword_of_int (av + 8 * Z.of_nat (length args) - 8) ->
+    mc !!! Regidx s6_idx = mword_of_int echo_sep_ptr ->
+    kecho_pay args k i Ci (ukn_pay N (-1)) -∗
+    echo_code γt -∗
+    uargv γd av args -∗
+    Ci -∗
+    urun N h mc (mword_of_int 0x4e) (2 + n) -∗
+    mWP (Loop : expr riscv_lang).
+  Proof using Hpay.
+    intros k i h mc n Ci Hlen Hav0 Hav38 Hs1 Hs3 Hs4 Hs5 Hs6.
+    iIntros "Hpay #Hcode Hargv HCi Hrun".
+    iApply (wp_kecho_main_loop_at av args (ukn_pay N (-1)) k i h mc n Ci
+              Hlen Hav0 Hav38 Hs1 Hs3 Hs4 Hs5 Hs6
+              with "Hpay [] Hcode Hargv HCi Hrun").
+    iIntros "Hp". iApply (kecho_exit_of_pay with "Hp").
   Qed.
 
   (* ===================================================================== *)
   (* main.                                                                  *)
   (* ===================================================================== *)
-  Lemma wp_kecho_main (h : CpuId) (m : regfile) (av : Z) (args : list uarg)
-      (n : nat) (Ci : iProp Σ) :
+  Lemma wp_kecho_main_at (h : CpuId) (m : regfile) (av : Z) (args : list uarg)
+      (n : nat) (Ci Cend : iProp Σ) :
     m !!! Regidx a0_idx = mword_of_int (Z.of_nat (length args)) ->
     m !!! Regidx a1_idx = mword_of_int av ->
-    kecho_pay_all args Ci (ukn_pay N (-1)) -∗
+    kecho_pay_all args Ci Cend -∗
+    (Cend -∗ kecho_exit 0) -∗
     echo_code γt -∗
     uargv γd av args -∗
     Ci -∗
     urun N h m (mword_of_int EchoSyms.main) (8 + (2 + n)) -∗
     mWP (Loop : expr riscv_lang).
-  Proof using Hpay.
-    intros Ha0 Ha1. iIntros "Hpay #Hcode Hargv HCi Hrun".
+  Proof using .
+    intros Ha0 Ha1. iIntros "Hpay Hend #Hcode Hargv HCi Hrun".
     destruct echo_syms_pins as (Hmain & _ & _ & _ & _). rewrite Hmain.
     iDestruct (urun_stack with "Hrun") as %[Hal8' Hroom].
     iDestruct (uargv_align with "Hargv") as %[Hal Hargc31].
@@ -2418,8 +2480,9 @@ Section UkEcho.
         by (apply Z.geb_le; lia).
       rewrite Etrue. iIntros (hx) "Hrun".
       iDestruct "Hpay" as "[Hpay _]".
-      iApply (wp_kecho_main_exit hx _ (2 + n) with "Hcode [Hpay HCi] Hrun").
-      iApply ("Hpay" with "[%] HCi"). exact Hsmall. }
+      iApply (wp_kecho_main_exit_at hx _ (2 + n)
+                with "Hcode [Hend Hpay HCi] Hrun").
+      iApply "Hend". iApply ("Hpay" with "[%] HCi"). exact Hsmall. }
     iDestruct "Hpay" as "[_ Hpay]".
     iSpecialize ("Hpay" with "[%]"); [ lia | ].
     assert (Efalse : (1 >=? Z.of_nat (length args)) = false).
@@ -2739,9 +2802,26 @@ Section UkEcho.
     { rewrite /mM (upd_eq mL (Regidx s6_idx) _).
       rewrite /mL (upd_eq mK (Regidx s6_idx) _).
       rewrite /echo_sep_ptr. apply bv_eq; vm_compute; reflexivity. }
-    iApply (wp_kecho_main_loop av args (length args - 2)%nat 1%nat ho mM n Ci
+    iApply (wp_kecho_main_loop_at av args Cend (length args - 2)%nat 1%nat ho mM n Ci
               ltac:(lia) Hav0 Hav38 Hs1M Hs3M Hs4M Hs5M Hs6M
-              with "Hpay Hcode Hargv HCi Hrun").
+              with "Hpay Hend Hcode Hargv HCi Hrun").
+  Qed.
+
+  Lemma wp_kecho_main (h : CpuId) (m : regfile) (av : Z) (args : list uarg)
+      (n : nat) (Ci : iProp Σ) :
+    m !!! Regidx a0_idx = mword_of_int (Z.of_nat (length args)) ->
+    m !!! Regidx a1_idx = mword_of_int av ->
+    kecho_pay_all args Ci (ukn_pay N (-1)) -∗
+    echo_code γt -∗
+    uargv γd av args -∗
+    Ci -∗
+    urun N h m (mword_of_int EchoSyms.main) (8 + (2 + n)) -∗
+    mWP (Loop : expr riscv_lang).
+  Proof using Hpay.
+    intros Ha0 Ha1. iIntros "Hpay #Hcode Hargv HCi Hrun".
+    iApply (wp_kecho_main_at h m av args n Ci (ukn_pay N (-1)) Ha0 Ha1
+              with "Hpay [] Hcode Hargv HCi Hrun").
+    iIntros "Hp". iApply (kecho_exit_of_pay with "Hp").
   Qed.
 
 
@@ -2754,18 +2834,19 @@ Section UkEcho.
   (* two words, main's eight, and the two strlen borrows at every           *)
   (* iteration of main's loop.                                              *)
   (* ===================================================================== *)
-  Lemma wp_kecho_start (h : CpuId) (m : regfile) (av : Z) (args : list uarg)
-      (n : nat) (Ci : iProp Σ) :
+  Lemma wp_kecho_start_at (h : CpuId) (m : regfile) (av : Z) (args : list uarg)
+      (n : nat) (Ci Cend : iProp Σ) :
     m !!! Regidx a0_idx = mword_of_int (Z.of_nat (length args)) ->
     m !!! Regidx a1_idx = mword_of_int av ->
-    kecho_pay_all args Ci (ukn_pay N (-1)) -∗
+    kecho_pay_all args Ci Cend -∗
+    (Cend -∗ kecho_exit 0) -∗
     echo_code γt -∗
     uargv γd av args -∗
     Ci -∗
     urun N h m (mword_of_int EchoSyms.start) (2 + (8 + (2 + n))) -∗
     mWP (Loop : expr riscv_lang).
-  Proof using Hpay.
-    intros Ha0 Ha1. iIntros "Hpay #Hcode Hargv HCi Hrun".
+  Proof using .
+    intros Ha0 Ha1. iIntros "Hpay Hend #Hcode Hargv HCi Hrun".
     destruct echo_syms_pins as (Hmain & Hstart & _ & _ & _). rewrite Hstart.
     iDestruct (urun_stack with "Hrun") as %[Hal8' Hroom].
     remember (m !!! Regidx csp_rs1) as sp0 eqn:Hsp0.
@@ -2879,8 +2960,25 @@ Section UkEcho.
       rewrite /m1 (upd_ne m (Regidx csp_rs1) (Regidx a1_idx) _
                      ltac:(vm_compute; discriminate)).
       exact Ha1. }
-    iApply (wp_kecho_main h5 m3 av args n Ci Ha03 Ha13
-              with "Hpay Hcode Hargv HCi Hrun").
+    iApply (wp_kecho_main_at h5 m3 av args n Ci Cend Ha03 Ha13
+              with "Hpay Hend Hcode Hargv HCi Hrun").
+  Qed.
+
+  Lemma wp_kecho_start (h : CpuId) (m : regfile) (av : Z) (args : list uarg)
+      (n : nat) (Ci : iProp Σ) :
+    m !!! Regidx a0_idx = mword_of_int (Z.of_nat (length args)) ->
+    m !!! Regidx a1_idx = mword_of_int av ->
+    kecho_pay_all args Ci (ukn_pay N (-1)) -∗
+    echo_code γt -∗
+    uargv γd av args -∗
+    Ci -∗
+    urun N h m (mword_of_int EchoSyms.start) (2 + (8 + (2 + n))) -∗
+    mWP (Loop : expr riscv_lang).
+  Proof using Hpay.
+    intros Ha0 Ha1. iIntros "Hpay #Hcode Hargv HCi Hrun".
+    iApply (wp_kecho_start_at h m av args n Ci (ukn_pay N (-1)) Ha0 Ha1
+              with "Hpay [] Hcode Hargv HCi Hrun").
+    iIntros "Hp". iApply (kecho_exit_of_pay with "Hp").
   Qed.
 
 End UkEcho.

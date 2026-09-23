@@ -224,4 +224,33 @@ Section UkEchoTree.
       iIntros "Ht". rewrite tree_pay_vis. iExact "Ht".
   Qed.
 
+  (* ------------------------------------------------------------------- *)
+  (*  4.  the entry at the tree (program-specs cut 3)                     *)
+  (* ------------------------------------------------------------------- *)
+
+  (* A payer of echo's tree runs echo from its ELF entry: the walk's chain
+     is the tree's ([kecho_pay_all_tree]), and the chain's end is the
+     tree's exit hole, which IS the walk's exit hole [UkEcho.kecho_exit] at
+     echo's instance.  No payload record is named: the exit is paid by
+     whoever pays the tree. *)
+  Lemma wp_kecho_start_tree (h : CpuId) (m : regfile) (av : Z)
+      (args : list uarg) (n : nat) :
+    m !!! Regidx (mword_of_int 10 : mword 5) = mword_of_int (Z.of_nat (length args)) ->
+    m !!! Regidx (mword_of_int 11 : mword 5) = mword_of_int av ->
+    tree_pay N echo_prog (echo_tree (map uarg_bytes args)) -∗
+    echo_code γt -∗
+    echo_rodata γt -∗
+    uargv γd av args -∗
+    urun N h m (mword_of_int EchoSyms.start) (2 + (8 + (2 + n))) -∗
+    mWP (Loop : expr riscv_lang).
+  Proof using .
+    intros Ha0 Ha1. iIntros "Ht #Hcode #Hro #Hargv Hrun".
+    iApply (wp_kecho_start_at N h m av args n
+              (tree_pay N echo_prog (echo_tree (map uarg_bytes args)))
+              (ex_obl N echo_prog 0) Ha0 Ha1
+              with "[] [] Hcode Hargv Ht Hrun").
+    - iApply (kecho_pay_all_tree av args with "Hargv Hro").
+    - iIntros "H". iExact "H".
+  Qed.
+
 End UkEchoTree.

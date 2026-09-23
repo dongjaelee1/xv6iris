@@ -1164,6 +1164,26 @@ defining one as the symbol directly compiles, but `unfold` then leaves something
 
 ## Proofmode & bitvector gotchas
 
+- **`simpl` on `decide (n = 0)` / `Nat.eq_dec x 0` at a VARIABLE unfolds
+  the decision into a `match`**, after which `rewrite decide_True` finds
+  no `if decide`; likewise a `Decision (A ∨ B)` instance.  Reduce with
+  `cbn [the projections]` or `cbv [the definitions]` instead, and finish
+  with `first [ reflexivity | by rewrite decide_True ]` where an inner
+  decision may or may not have reduced.
+- **A pure file without `ssreflect` loaded uses Ltac1 rewrite syntax**:
+  `rewrite a, b`, `rewrite <- x`, `unfold f` (not `rewrite /f`).
+- **A Coq-level induction hypothesis is used through `iPoseProof (IH …
+  with "…") as "…"`**, never `iSpecialize (IH …)`; rewrite inside the
+  posed hypothesis with `iEval (rewrite …) in "…"`.
+- **An Iris fixpoint over a plain type needs the OFE named at every
+  library call**: `bi_greatest_fixpoint (A := leibnizO proc) F`,
+  `greatest_fixpoint_unfold (A := leibnizO proc)`, `bi_mono_pred (A := …)`;
+  discreteness is `leibniz_equiv` of `proj2 (discrete_iff n x y) H`.
+- **A coinductive tree's payer computes by ONE unfolding**: `t = force t`
+  (`ProgTree.force_eq`), then `reflexivity`; two cofixpoints are never
+  compared, and a program tree is written with the constructors and a
+  continuation argument so that no `bind` of a `bind` ever has to be
+  reassociated.
 ### Terms that print identically
 
 - **`rewrite` can fail on a subterm that prints character-for-character** —

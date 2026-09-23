@@ -1042,6 +1042,25 @@ Section UkCat.
     { by rewrite (ukn_const_eq (N := N) (uexitst m1) (-1)). }
   Qed.
 
+  (* ...AND THE EXIT AS AN OBLIGATION AT ITS STATUS (program-specs cut 3).
+     The walk's exits used to spend [ukn_pay N (-1)] directly, which ties
+     every payer to the payload; this is the hole instead -- the rest of
+     the process at the stub's entry, with a0 read as the C [int] status --
+     and it is definitionally [UkTree.ex_obl] at cat's instance.  The
+     payload is ONE instance of it ([kcat_exit_of_pay]). *)
+  Definition kcat_exit (status : Z) : iProp Σ :=
+    (∀ (h : CpuId) (m : regfile) (avail : nat),
+       ⌜bv_signed (trunc32 (m !!! Regidx a0_idx)) = status⌝ -∗
+       cat_code γt -∗
+       urun N h m (mword_of_int CatSyms.exit) avail -∗
+       mWP (Loop : expr riscv_lang))%I.
+
+  Lemma kcat_exit_of_pay (s : Z) : ukn_pay N (-1) -∗ kcat_exit s.
+  Proof using Hpay.
+    iIntros "Hpayv" (h m avail) "_ #Hcode Hrun".
+    iApply (wp_kcat_exit h m avail with "Hcode Hpayv Hrun").
+  Qed.
+
   (* --------------------------------------------------------------------- *)
   (* read @0x3c4 -- THE STUB THAT WRITES.  The caller hands in the whole    *)
   (* count as a run it owns and gets the whole count back at SOME contents; *)

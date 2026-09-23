@@ -800,16 +800,15 @@ Qed.
 (* one word on the console: a chunk of the owed line, or nothing if the
    word is empty (a zero-length write, answered 0 or -1, the tree going on
    either way) *)
-Lemma echo_word_conforms (w S' : bytes) files (k : Z -> proc) (rest : proc) :
-  (forall r, k r = rest) ->
+Lemma echo_word_conforms (w S' : bytes) files (rest : proc) :
   conforms (cons_env S' files) rest ->
-  conforms (cons_env (w ++ S') files) (Vis (EWrite 1 w) k).
+  conforms (cons_env (w ++ S') files) (Vis (EWrite 1 w) (fun _ => rest)).
 Proof.
-  intros Hk Hrest. destruct w as [| b w].
-  - apply cf_write_nil with (d := 0%nat); [done | rewrite Hk; exact Hrest | rewrite Hk; exact Hrest].
+  intros Hrest. destruct w as [| b w].
+  - apply cf_write_nil with (d := 0%nat); [done | exact Hrest | exact Hrest].
   - eapply cf_write with (d := 0%nat) (alts := [(b :: w) ++ S']) (a := (b :: w) ++ S');
       [done | done | done | by left | by eexists |].
-    rewrite drop_app_length, cons_env_set, Hk. exact Hrest.
+    rewrite drop_app_length, cons_env_set. exact Hrest.
 Qed.
 
 Lemma echo_words_conforms (ws : list bytes) (files : bytes -> option bytes)
@@ -821,15 +820,13 @@ Proof.
   revert rest. induction ws as [| w r IH]; intros rest Hne Hrest; [done |].
   destruct r as [| w' r'].
   - simpl. unfold wl_line. simpl. rewrite app_nil_r.
-    apply echo_word_conforms; [reflexivity |].
+    apply echo_word_conforms.
     change [wl_nl] with ([wl_nl] ++ []).
-    apply echo_word_conforms; [reflexivity | exact Hrest].
+    apply echo_word_conforms. exact Hrest.
   - simpl. unfold wl_line. rewrite wl_body_cons, wl_tail_cons.
     rewrite <- app_assoc.
-    apply echo_word_conforms; [reflexivity |].
-    change (wl_sp :: wl_body (w' :: r') ++ [wl_nl])
-      with ([wl_sp] ++ (wl_body (w' :: r') ++ [wl_nl])).
-    apply echo_word_conforms; [reflexivity |].
+    apply echo_word_conforms.
+    apply (echo_word_conforms [wl_sp] (wl_body (w' :: r') ++ [wl_nl])).
     apply IH; [done | exact Hrest].
 Qed.
 
@@ -1025,14 +1022,13 @@ Qed.
 
 (* once halted, echo's remaining writes all answer -1 and it exits *)
 (* one word at a halted device: -1 (or, empty, 0 or -1) and on it goes *)
-Lemma echo_word_halted (w : bytes) files (k : Z -> proc) (rest : proc) :
-  (forall r, k r = rest) ->
+Lemma echo_word_halted (w : bytes) files (rest : proc) :
   conforms (pipe_env DHalt files) rest ->
-  conforms (pipe_env DHalt files) (Vis (EWrite 1 w) k).
+  conforms (pipe_env DHalt files) (Vis (EWrite 1 w) (fun _ => rest)).
 Proof.
-  intros Hk Hrest. destruct w as [| b w].
-  - apply cf_write_nil with (d := 0%nat); [done | rewrite Hk; exact Hrest | rewrite Hk; exact Hrest].
-  - eapply cf_write_halt with (d := 0%nat); [done | done | done | rewrite Hk; exact Hrest].
+  intros Hrest. destruct w as [| b w].
+  - apply cf_write_nil with (d := 0%nat); [done | exact Hrest | exact Hrest].
+  - eapply cf_write_halt with (d := 0%nat); [done | done | done | exact Hrest].
 Qed.
 
 Lemma echo_words_halted (ws : list bytes) files (rest : proc) :
@@ -1041,27 +1037,26 @@ Lemma echo_words_halted (ws : list bytes) files (rest : proc) :
 Proof.
   revert rest. induction ws as [| w r IH]; intros rest Hrest; [exact Hrest |].
   destruct r as [| w' r']; simpl.
-  - apply echo_word_halted; [reflexivity |].
-    apply echo_word_halted; [reflexivity | exact Hrest].
-  - apply echo_word_halted; [reflexivity |].
-    apply echo_word_halted; [reflexivity |].
+  - apply echo_word_halted.
+    apply echo_word_halted. exact Hrest.
+  - apply echo_word_halted.
+    apply echo_word_halted.
     apply IH. exact Hrest.
 Qed.
 
 (* one word at a haltable device: the chunk (then the rest), or the halt
    (then the rest, halted); empty: 0 or -1, nothing moves *)
-Lemma echo_word_conforms_h (w S' : bytes) files (k : Z -> proc) (rest : proc) :
-  (forall r, k r = rest) ->
+Lemma echo_word_conforms_h (w S' : bytes) files (rest : proc) :
   conforms (pipe_env (DOutH [S']) files) rest ->
   conforms (pipe_env DHalt files) rest ->
-  conforms (pipe_env (DOutH [w ++ S']) files) (Vis (EWrite 1 w) k).
+  conforms (pipe_env (DOutH [w ++ S']) files) (Vis (EWrite 1 w) (fun _ => rest)).
 Proof.
-  intros Hk Hrest Hhalt. destruct w as [| b w].
-  - apply cf_write_nil with (d := 0%nat); [done | rewrite Hk; exact Hrest | rewrite Hk; exact Hrest].
+  intros Hrest Hhalt. destruct w as [| b w].
+  - apply cf_write_nil with (d := 0%nat); [done | exact Hrest | exact Hrest].
   - eapply cf_write_h with (d := 0%nat) (alts := [(b :: w) ++ S']) (a := (b :: w) ++ S');
       [done | done | done | by left | by eexists | |].
-    + rewrite drop_app_length, pipe_env_set, Hk. exact Hrest.
-    + rewrite pipe_env_set, Hk. exact Hhalt.
+    + rewrite drop_app_length, pipe_env_set. exact Hrest.
+    + rewrite pipe_env_set. exact Hhalt.
 Qed.
 
 Lemma echo_words_conforms_h (ws : list bytes) files (rest : proc) :
@@ -1073,19 +1068,17 @@ Proof.
   revert rest. induction ws as [| w r IH]; intros rest Hne Hrest Hhalt; [done |].
   destruct r as [| w' r'].
   - simpl. unfold wl_line. simpl. rewrite app_nil_r.
-    apply echo_word_conforms_h; [reflexivity | | ].
+    apply echo_word_conforms_h.
     + change [wl_nl] with ([wl_nl] ++ []).
-      apply echo_word_conforms_h; [reflexivity | exact Hrest | exact Hhalt].
-    + apply echo_word_halted; [reflexivity | exact Hhalt].
+      apply echo_word_conforms_h; [exact Hrest | exact Hhalt].
+    + apply echo_word_halted. exact Hhalt.
   - simpl. unfold wl_line. rewrite wl_body_cons, wl_tail_cons.
     rewrite <- app_assoc.
-    apply echo_word_conforms_h; [reflexivity | | ].
-    + change (wl_sp :: wl_body (w' :: r') ++ [wl_nl])
-        with ([wl_sp] ++ (wl_body (w' :: r') ++ [wl_nl])).
-      apply echo_word_conforms_h; [reflexivity | | ].
+    apply echo_word_conforms_h.
+    + apply (echo_word_conforms_h [wl_sp] (wl_body (w' :: r') ++ [wl_nl])).
       * apply IH; [done | exact Hrest | exact Hhalt].
       * apply (echo_words_halted (w' :: r') files rest). exact Hhalt.
-    + apply echo_word_halted; [reflexivity |].
+    + apply echo_word_halted.
       apply (echo_words_halted (w' :: r') files rest). exact Hhalt.
 Qed.
 

@@ -28,6 +28,7 @@
 (* shape is then its pure conformance theorem and nothing else.           *)
 (* ===================================================================== *)
 From Stdlib Require Import ZArith Bool Lia List.
+From Stdlib Require Import FunctionalExtensionality.
 From stdpp Require Import gmap bitvector.definitions.
 From iris.proofmode Require Import proofmode.
 From iris.base_logic.lib Require Import ghost_map ghost_var invariants.
@@ -241,6 +242,15 @@ Section UkHandler.
     pe_dev (env_set_dev E d x) = fun d' => if decide (d' = d) then x else pe_dev E d'.
   Proof. reflexivity. Qed.
 
+  (* setting a device to what it already is changes nothing *)
+  Lemma env_set_dev_id (E : penv) (d : nat) (x : dspec) :
+    pe_dev E d = x -> env_set_dev E d x = E.
+  Proof.
+    intros Hd. destruct E as [f g files]. unfold env_set_dev. simpl in *. f_equal.
+    apply functional_extensionality. intros d'.
+    destruct (decide (d' = d)) as [-> |]; [by rewrite Hd | reflexivity].
+  Qed.
+
   (* ------------------------------------------------------------------- *)
   (*  3.  THE ONCE-GLUE                                                   *)
   (* ------------------------------------------------------------------- *)
@@ -364,7 +374,7 @@ Section UkHandler.
           iSplit; [| taint_arm I].
           iIntros "Hfds Hend".
           iApply (cf_inv_move I E ds d DInEnd with "Hfds Hfiles Hend Hrest");
-            [exact Hin | by rewrite -Hd; destruct E | exact Hdom].
+            [exact Hin | by rewrite (env_set_dev_id E d _ Hd) | exact Hdom].
       + (* EWrite *)
         destruct Hc as (d & Hfd & Hc).
         assert (Hin : d ∈ ds) by (apply (Hdom fd); exact Hfd).
@@ -409,7 +419,7 @@ Section UkHandler.
           iSplit; [| taint_arm I].
           iIntros "Hfds Hh".
           iApply (cf_inv_move I E ds d DHalt with "Hfds Hfiles Hh Hrest");
-            [exact Hin | by rewrite -Hd; destruct E | exact Hdom].
+            [exact Hin | by rewrite (env_set_dev_id E d _ Hd) | exact Hdom].
       + (* EExit *)
         iApply (ei_exit I s (pe_fd E) (pe_dev E) ds with "Hfds Hdev").
         intros d alts _ Hd'. exact (Hc d alts Hd').

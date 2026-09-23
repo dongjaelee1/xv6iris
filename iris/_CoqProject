@@ -1515,6 +1515,7 @@ PipeOutPure.v
 LineModelInst.v
 PipeBothPure.v
 EchoOut.v
+GenOutHist.v
 EchoLinks.v
 EchoLinksPro.v
 EchoLinksLine.v

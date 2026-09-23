@@ -274,6 +274,28 @@ bodies (M2c's two shapes); `Proof using` closure; comments without `"`.
 
 ## RESUME HERE (2026-09-22, late)
 
+M3b FIRST CUT (2026-09-23): THE CLAIM'S PURE HISTORY LAYER ONCE,
+`iris/GenOutHist.v` (after `EchoOut`; section context `M K B sd`).  The
+drop/flush refutations at the model's byte laws (`lm_disc_drop_byte`,
+`lm_lines_bytes_disc_bound`, `lm_drop_refuted`, `lm_cons_drop_refuted`,
+`lm_sess_nonnil`, `lm_disc_open_seg`, `lm_flush_lost_disc`,
+`lm_flush_lost_zero`); `gin_pure` (with (A1)), `lm_dl_ok` and its
+`_0/_mono/_out/_out_full/_echo`; `garm_era k ho H` (over the HISTORY, with
+the arm's echo and (K1)); `gcl_pure` (= `lm_out_pure` + both length laws +
+`gin_pure` + `garm_era` + the `E` tie + `lm_dl_ok`) with
+`_arm/_E/_dl_E/_rd_stage` and the five event steps
+`gcl_pure_close/_out/_read/_open/_byte`, `lm_out_pure_move`,
+`lm_out_pure_nil_stage` -- `FileOut` section 1 with the names swapped
+(the file's was already echo's shape after `ddd3faeac`).  Signature
+gotcha: `lm_ps_len_ok` takes the default state (`M sd so`), `lm_cs_len_ok`
+does not (`M so`).  Nothing imports it yet.  NEXT (M3b second cut): the
+claim `gcl` itself -- `T ∨ ∃ v so, PIN k v ∗ WA so ∗ turn_auth v (lm_pcount
+…) ∗ cs_auth ∗ ps_auth ∗ Elist_auth ∗ dl_cnt ½ ∗ dl_list_auth ∗
+⌜gcl_pure⌝` over `echoOutG`'s algebra, with the file's state authority
+(`file_era_pin ∗ f0f_auth ∗ f0_wit ∗ f0_typed`) as the `WA` hook; read
+`FileOut` §3-§5 and `EchoOut`'s claim side by side for the hook's laws
+before coding.
+
 OPEN QUESTION FOR THE OWNER (2026-09-23, after the pad family landed as
 `2e943006d`): STEP 3 BEFORE OR AFTER M3b?  Measured: 100 of
 `FileOutPure`'s 168 names are used outside it, and nearly every use is in

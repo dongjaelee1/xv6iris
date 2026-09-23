@@ -160,10 +160,14 @@ Section UkTree.
     if tx then ([∗ list] j ∈ seq 0 n, utext γt (ua + Z.of_nat j) (f j))%I
     else ubytesq γd dq ua n f.
 
-  (* a NUL-terminated string of [n] bytes at [pv], in either half *)
-  Definition upath_at (tx : bool) (dq : dfrac) (pv : Z) (n : nat)
-      (f : nat -> bv 8) : iProp Σ :=
-    if tx then utext_str γt pv n f else ustr γd dq pv n f.
+  (* a NUL-terminated string of [n] bytes at [pv], in either half -- the
+     data half at the DISCARDED fraction only: the kernel resolves a path
+     off the process image, which the open leaves read through a boxed
+     view, so a path the program still owns whole is not one they take
+     (every landed path is a literal, an argv string or a line the shell
+     has discarded) *)
+  Definition upath_at (tx : bool) (pv : Z) (n : nat) (f : nat -> bv 8) : iProp Σ :=
+    if tx then utext_str γt pv n f else ustr γd DfracDiscarded pv n f.
 
   (* ------------------------------------------------------------------- *)
   (*  2.  THE HOLES, one per event                                        *)
@@ -204,17 +208,17 @@ Section UkTree.
 
   Definition op_obl (path : list (bv 8)) (mode : Z) (K : Z -> iProp Σ) : iProp Σ :=
     (∀ (h : CpuId) (m : regfile) (avail : nat) (pv : Z) (tx : bool)
-       (dq : dfrac) (f : nat -> bv 8),
+       (f : nat -> bv 8),
        ⌜bytes_of path f⌝ -∗
        ⌜m !!! Regidx a0_idx = (mword_of_int pv : mword 64)⌝ -∗
        ⌜m !!! Regidx a1_idx = (mword_of_int mode : mword 64)⌝ -∗
        up_code P -∗
-       upath_at tx dq pv (length path) f -∗
+       upath_at tx pv (length path) f -∗
        urun N h m (mword_of_int (up_open P)) avail -∗
        (∀ (h' : CpuId) (ret : mword 64),
           ⌜open_ans_ok ret⌝ -∗
           K (bv_signed ret) -∗
-          upath_at tx dq pv (length path) f -∗
+          upath_at tx pv (length path) f -∗
           urun N h' (stub_ret m 15 ret) (ret_pc (m !!! Regidx ra_idx)) avail -∗
           mWP (Loop : expr riscv_lang)) -∗
        mWP (Loop : expr riscv_lang))%I.
@@ -252,8 +256,8 @@ Section UkTree.
     □ (∀ x, K x -∗ K' x) -∗ ev_obl e K -∗ ev_obl e K'.
   Proof using .
     iIntros "#HK Ho". destruct e; simpl.
-    - iIntros (h m avail pv tx dq f) "%Hf %H0 %H1 Hc Hp Hrun Hcont".
-      iApply ("Ho" $! h m avail pv tx dq f with "[%] [%] [%] Hc Hp Hrun"); [done | done | done |].
+    - iIntros (h m avail pv tx f) "%Hf %H0 %H1 Hc Hp Hrun Hcont".
+      iApply ("Ho" $! h m avail pv tx f with "[%] [%] [%] Hc Hp Hrun"); [done | done | done |].
       iIntros (h' ret) "%Hok HKx Hp Hrun".
       iApply ("Hcont" $! h' ret with "[%] [HKx] Hp Hrun"); [done |].
       by iApply "HK".
@@ -284,14 +288,21 @@ Section UkTree.
     | Vis e k => ev_obl e (fun x => Q (k x))
     end.
 
+  (* the step functional is monotone *)
+  Lemma tree_F_mono_law (Q Q' : proc -> iProp Σ) :
+    □ (∀ t, Q t -∗ Q' t) -∗ ∀ t, tree_F Q t -∗ tree_F Q' t.
+  Proof using .
+    iIntros "#HQ" (t) "Ht". destruct t as [v | t' | e k].
+    - destruct v.
+    - simpl. by iApply "HQ".
+    - simpl. iApply (ev_obl_mono with "[] Ht").
+      iIntros "!>" (x) "Hx". by iApply "HQ".
+  Qed.
+
   Local Instance tree_F_mono : BiMonoPred (A := leibnizO proc) tree_F.
   Proof using .
     split.
-    - iIntros (Q Q' _ _) "#HQ". iIntros (t) "Ht". destruct t as [v | t' | e k].
-      + destruct v.
-      + simpl. by iApply "HQ".
-      + simpl. iApply (ev_obl_mono with "[] Ht").
-        iIntros "!>" (x) "Hx". by iApply "HQ".
+    - iIntros (Q Q' _ _) "#HQ". iApply (tree_F_mono_law with "HQ").
     - intros Q _ n t t' Ht.
       assert (t = t') as ->
         by (apply leibniz_equiv; exact (proj2 (discrete_iff n t t') Ht)).

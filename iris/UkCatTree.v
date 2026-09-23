@@ -403,7 +403,7 @@ Section UkCatTree.
     rewrite /kcat_file.
     iIntros (h m avail) "%Ha0 %Ha1 #Hcode Ht Hrun Hcont".
     iEval (cbn [cat_files]; rewrite tree_pay_vis; cbn [ev_obl]) in "Ht".
-    iApply ("Ht" $! h m avail (ua_ptr g) false DfracDiscarded (ua_bytes g)
+    iApply ("Ht" $! h m avail (ua_ptr g) false (ua_bytes g)
               with "[%] [%] [%] Hcode [] Hrun").
     { apply uarg_bytes_of. }
     { exact Ha0. }

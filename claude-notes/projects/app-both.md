@@ -284,6 +284,29 @@ its freezable cs authority stay pipe-only, and `PipeBoth`'s steps are
 restated against the two arms.  (Chosen over the plan-of-record EXT slot
 inside `gcl`.)
 
+M3b PIPE SWITCH DONE (2026-09-23; `778f3dccf`, `67966ce24`, `3e7707636`,
+`ffd19a5c1`).  `PipeOut.pecl k ho H := gcl pipe_lm pipe_cparams tt pipe_wa
+k ho H ∨ popen k ho H`.
+- The instance: `pstage_g`/`pstage_o` move the pipe's stage to the generic
+  one (`st := Some tt` exactly when the stage is filed); `pcl_pure_lm`: the
+  pipe's pure claim IS `gcl_pure`.  `pipe_wa` has an `emp` witness, strict
+  False, free True (the era's first process byte files the unit state),
+  and `gext := pext` (the era's block ledger + round ghosts, held whole).
+- Every step with a generic counterpart is a wrapper: close/open/sup/arm,
+  write, write_blk, write_pro, read, echo, drain.  Open round: `popen_close/
+  open/arm/step_read/drain` (pipe-only readings), the writes' refutations
+  inline, echo's as the pure `pcl_pure_o_no_echo`.  `pecl_drain` gained the
+  nonempty-wire premise `fecl_drain` has (AppPipe supplies it).
+- 40 dead closed-arm lemmas deleted (PipeOut 4318 -> 3313 lines,
+  PipeOutPure 1864 -> 1710).
+- CLEANUP ITEM: the old one-existential claim survives as the proof view
+  `pecl_v` (`pecl_v_eq : pecl_v ⊣⊢ pecl`), used by the pipe-only round
+  steps `pecl_blk2_open_gen/byte_gen/file`, `era_full_split_p`, and the
+  open-round readers in `UShPipeRound2` (2 sites) and `UShPipeExit` (2
+  sites).  Restate those as gcl -> popen / popen -> popen / popen -> gcl
+  and delete the view (and then `pcl_pure2` and friends).
+NEXT: M3c (the link bundles), with the pecl_v cleanup item open.
+
 FileOutPure DEAD CODE REMOVED (2026-09-23): 92 of 169 declarations
 (the whole claim-stage layer -- `D_f`, `pending_f`, `pcount_f`, the
 `cs_len_ok_f`/`ps_len_ok_f` families, `fostage`, `feout_pure`, the pad-at-

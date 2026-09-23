@@ -78,6 +78,7 @@ Require Import PipeOutPure.
 Require Import PipeOut.
 Require Import PipeLinks.
 Require Import PipeLinksLine.
+Require Import PipeHooks.         (* S0 of [PipeLinksLine], moved *)
 Require Import LinkRec.
 Require Import StageRec.
 Require Import PipeLinkInst.

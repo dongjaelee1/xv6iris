@@ -88,6 +88,7 @@ Require Import PipeBothPure.
 Require Import PipeBoth.
 Require Import PipeLinks.
 Require Import PipeLinksLine.
+Require Import PipeHooks.         (* S0 of [PipeLinksLine], moved *)
 Require Import PipeLinkInst.
 Require Import GenLinksLine.
 Require Import PipeStageInst.
@@ -130,7 +131,7 @@ Local Open Scope Z_scope.
 (*  hands its prover [ws = last_ws I], [FileDisc.fline_ok                 *)
 (*  (UkSh.ush_lastbody I)] and [UShPipeRound.ushq_lp ws g 0 len] -- the   *)
 (*  last of which says [ws = ws' ++ [bar; cat]] -- and every lemma the    *)
-(*  round is built out of is stated at [PipeLinksLine.pline_at I = LPipe  *)
+(*  round is built out of is stated at [PipeHooks.pline_at I = LPipe  *)
 (*  ws'].  The other three constructors are refuted by their words,       *)
 (*  exactly as the redirect line's twin refutes them: an echo line's are  *)
 (*  all alphanumeric and the bar is not, a redirect's last but one is     *)
@@ -191,7 +192,7 @@ Lemma pline_at_of_lp (I : list (bv 8)) (wsf ws : list (list (bv 8))) :
   FileDisc.fline_ok (UkSh.ush_lastbody I) ->
   wsf = ws ++ [FileDisc.fd_w_bar; FileDisc.fd_w_cat] ->
   PipeDisc.pline_ok (PipeDisc.LPipe ws) ->
-  PipeLinksLine.pline_at I = PipeDisc.LPipe ws.
+  PipeHooks.pline_at I = PipeDisc.LPipe ws.
 Proof using.
   intros Hwsf Hfb Hcut Hpok.
   assert (Hlast : last_ws I = wl_words (UkSh.ush_lastbody I))
@@ -201,7 +202,7 @@ Proof using.
     by (rewrite -Hlast -Hwsf; exact Hcut).
   pose proof (fline_ok_pipe_words (UkSh.ush_lastbody I) ws Hfb
                 (proj1 Hpok) Hw) as Hbody.
-  rewrite /PipeLinksLine.pline_at -/(UkSh.ush_lastbody I) Hbody.
+  rewrite /PipeHooks.pline_at -/(UkSh.ush_lastbody I) Hbody.
   rewrite (PipeUline.line_body_of_pline (PipeDisc.LPipe ws)).
   exact (PipeDisc.pline_of_body (PipeDisc.LPipe ws) Hpok).
 Qed.
@@ -341,7 +342,7 @@ Qed.
 
 (* ...and the two one-liners every lemma of the round also asks for *)
 Lemma pboth_line_of_at (I : list (bv 8)) (ws : list (list (bv 8))) :
-  PipeLinksLine.pline_at I = PipeDisc.LPipe ws -> pboth_line I.
+  PipeHooks.pline_at I = PipeDisc.LPipe ws -> pboth_line I.
 Proof using . intro H. by exists ws. Qed.
 
 Lemma pl_L_pos (ws : list (list (bv 8))) :
@@ -612,7 +613,7 @@ Section UShPipeLaw.
   (* the [pipe(2)]-failed tail's *)
   Lemma pl_panic_pipe_law (v : era_pins) (I L : list (bv 8))
       (ws : list (list (bv 8))) (pn : pnames) (gL gR gM : gname) :
-    PipeLinksLine.pline_at I = PipeDisc.LPipe ws ->
+    PipeHooks.pline_at I = PipeDisc.LPipe ws ->
     PipeLinks.pipe_links g -∗
     era_pin γ (S gen_id) v -∗
     UkShDiag.ush_execfail_law_at (PS := uprogSG_free)
@@ -638,7 +639,7 @@ Section UShPipeLaw.
   Lemma pl_fork_panic_law (v : era_pins) (I L : list (bv 8))
       (ws : list (list (bv 8))) (pn : pnames) (gL gR gM : gname)
       (γp : pipe_names) :
-    PipeLinksLine.pline_at I = PipeDisc.LPipe ws ->
+    PipeHooks.pline_at I = PipeDisc.LPipe ws ->
     □ (T -∗ UkSh.sh_deps (PS := uprogSG_free)) -∗
     PipeLinks.pipe_links g -∗
     era_pin γ (S gen_id) v -∗
@@ -846,7 +847,7 @@ Section UShPipeLaw.
   Lemma pl_cat_kround (v : era_pins) (I L : list (bv 8))
       (ws : list (list (bv 8))) (pn : pnames) (gL gR gM : gname)
       (gp : pipe_names) :
-    PipeLinksLine.pline_at I = PipeDisc.LPipe ws ->
+    PipeHooks.pline_at I = PipeDisc.LPipe ws ->
     L = wl_line (drop 1 ws) ->
     line_ok ws ->
     □ (T -∗ UkSh.sh_deps (PS := uprogSG_free)) -∗
@@ -886,7 +887,7 @@ Section UShPipeLaw.
                pblk2_wit I L sel).
     { rewrite HL. intros sel Hc Hlen.
       exact (UShPipeAssembly.pblk2_wit_ran_at I ws sel Hpl Hc Hlen). }
-    (* [UCatPipe.pcat_line] and [PipeLinksLine.pline_at] ARE the same term *)
+    (* [UCatPipe.pcat_line] and [PipeHooks.pline_at] ARE the same term *)
     assert (Hout : UCatPipe.pcat_out I = L).
     { rewrite /UCatPipe.pcat_out.
       assert (Hcl : UCatPipe.pcat_line I = PipeDisc.LPipe ws) by exact Hpl.
@@ -994,7 +995,7 @@ Section UShPipeLaw.
       (N' : uk_names Σ) (h' : CpuId) (m' : regfile) (q : Z) :
     UkShPipeRound.ushq_line_at ws f 0%nat len ->
     L = wl_line (drop 1 ws) ->
-    PipeLinksLine.pline_at I = PipeDisc.LPipe ws ->
+    PipeHooks.pline_at I = PipeDisc.LPipe ws ->
     pl_cat_fd0 gp ld ->
     UkSh.ush_fd2p ld ->
     ukn_pay N' = (fun _ : Z => UShPipeAssembly.pipe_Qc_at g pn L gL gR gM) ->
@@ -1098,7 +1099,7 @@ Section UShPipeLaw.
     UkShPipeRound.ushq_line_at ws f 0%nat len ->
     (length (wl_body ws) < ge)%nat ->
     L = wl_line (drop 1 ws) ->
-    PipeLinksLine.pline_at I = PipeDisc.LPipe ws ->
+    PipeHooks.pline_at I = PipeDisc.LPipe ws ->
     UShEchoPipePay.ush_fd1pipe γp ld ->
     UkSh.ush_fd2p ld ->
     ukn_pay N' = (fun _ : Z => UShPipeAssembly.pipe_Qc_at g pn L gL gR gM) ->
@@ -1193,7 +1194,7 @@ Section UShPipeLaw.
       (γp : pipe_names) (N : uk_names Σ) `{!ukn_const N}
       (h' : CpuId) (m' : regfile) (av : nat)
       (r1 r2 rw1 rw2 : mword 64) (S1 S2 S3 S4 : gset gname) :
-    PipeLinksLine.pline_at I = PipeDisc.LPipe ws ->
+    PipeHooks.pline_at I = PipeDisc.LPipe ws ->
     L = wl_line (drop 1 ws) ->
     ukn_pay N = (fun _ : Z => UkShFork.ushf_wq (UkShPipeFork.pterm_wc g) I) ->
     r1 <> (mword_of_int (-1) : mword 64) ->

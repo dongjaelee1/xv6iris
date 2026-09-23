@@ -37,6 +37,7 @@ Require Import AppEcho.
 Require Import PipeOut.
 Require Import PipeLinks.
 Require Import PipeLinksLine.
+Require Import PipeHooks.         (* S0 of [PipeLinksLine], moved *)
 Require Import PipeBoth.      (* SH-PIPE-ROUND-4: the WIDENED line credential *)
 Require Import EchoLinks.
 Require Import EchoLinksLine.

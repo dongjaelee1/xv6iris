@@ -186,7 +186,7 @@ Section pipe_links.
      this application keeps [Hcons].
 
      ITS PREMISES ARE [pecl_blk2_file]'S OWN, not [PipeBoth]'s
-     [wr_blk2_p]/[pblk2_code]: the latter name [PipeLinksLine.pline_at],
+     [wr_blk2_p]/[pblk2_code]: the latter name [PipeHooks.pline_at],
      [pab] and [wr_tail_p], which live ABOVE this file. *)
   Lemma pipe_file_link (k : nat) (v : era_pins) (w : pipe_era) (gb : gname)
       (P r a : nat) (b : bv 8) (pre0 : list (bv 8))

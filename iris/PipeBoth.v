@@ -84,6 +84,7 @@ Require Import AppEcho.
 Require Import PipeOut.
 Require Import PipeLinks.
 Require Import PipeLinksLine.
+Require Import PipeHooks.         (* S0 of [PipeLinksLine], moved *)
 Require Import LinkRec.
 Require Import GenLinksLine.
 Require Import RiscvPtsto.

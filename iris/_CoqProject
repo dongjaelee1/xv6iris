@@ -1520,6 +1520,7 @@ EchoLinks.v
 EchoLinksPro.v
 EchoLinksLine.v
 FileHooks.v
+PipeHooks.v
 EchoLinksBan.v
 LinkRec.v
 GenLinksLine.v

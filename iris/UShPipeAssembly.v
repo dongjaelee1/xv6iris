@@ -91,6 +91,7 @@ Require Import PipeBothPure.
 Require Import PipeBoth.
 Require Import PipeLinks.
 Require Import PipeLinksLine.
+Require Import PipeHooks.         (* S0 of [PipeLinksLine], moved *)
 Require Import PipeLinkInst.
 Require Import GenLinksLine.
 Require Import UkShFork.

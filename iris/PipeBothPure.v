@@ -638,7 +638,7 @@ Qed.
 
 (* EVERY non-panic alternative's continuation ends with the prompt -- read
    off the eight constructors, so a WRITER (who holds [palt_ok] but not
-   [pline_ok]) can spend it.  [PipeLinksLine.pcont_prompt] is the same
+   [pline_ok]) can spend it.  [PipeHooks.pcont_prompt] is the same
    lemma one file up; the claim's steps are BELOW that file and need it
    here. *)
 (* ...EXCEPT THE TERMINAL FORK-FAILURE ROUND, whose block is a shuffle

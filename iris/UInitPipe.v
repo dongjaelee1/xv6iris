@@ -118,6 +118,7 @@ Require Import PipeOutPure.
 Require Import PipeOut.
 Require Import PipeLinks.
 Require Import PipeLinksLine.
+Require Import PipeHooks.         (* S0 of [PipeLinksLine], moved *)
 Require Import PipeLinkInst.
 Require Import GenLinksLine.
 Require Import PipeBoth.        (* [pwc_lpr2], the record's lk_lpr since SH-PIPE-ROUND-4 *)

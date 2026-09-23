@@ -1329,6 +1329,30 @@ Section line_model_links.
     destruct (H _ c Hc) as [Hlt _]. lia.
   Qed.
 
+  Lemma lm_alts_pre_of_alts_ok I cs : lm_alts_ok M I cs -> lm_alts_pre I cs.
+  Proof using.
+    intros Ha i c Hc.
+    destruct (Forall2_lookup_r _ _ _ _ _ Ha Hc) as (l & Hl & Hok).
+    rewrite list_lookup_fmap in Hl.
+    destruct (bodies_of I !! i) as [b |] eqn:Hb; [| discriminate].
+    cbn in Hl. injection Hl as <-.
+    rewrite (list_lookup_total_correct _ _ _ Hb).
+    split; [| exact Hok]. rewrite /nlines. by eapply lookup_lt_Some.
+  Qed.
+
+  (* the input GROWS and the entries keep their meaning: a completed line's
+     body is the same body in every longer input *)
+  Lemma lm_alts_pre_mono I I' cs :
+    I `prefix_of` I' -> lm_alts_pre I cs -> lm_alts_pre I' cs.
+  Proof using.
+    intros Hp H i c Hc. destruct (H i c Hc) as [Hi Hok].
+    destruct (bodies_of_prefix I I' Hp) as [z Hz].
+    split; [rewrite /nlines Hz length_app; rewrite /nlines in Hi; lia |].
+    rewrite Hz list_lookup_total_alt lookup_app_l;
+      [| rewrite /nlines in Hi; lia].
+    by rewrite -list_lookup_total_alt.
+  Qed.
+
   (* what the claim knows of the writer's stage at the input its log has
      echoed *)
   Definition lm_rd_stage (ps0 cs0 : list nat) (I : list (bv 8)) : Prop :=

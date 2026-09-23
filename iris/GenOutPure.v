@@ -449,6 +449,239 @@ Section gen_out_pure.
 
 
   (* ================================================================== *)
+  (*  5b. THE PAD: a partial resolution completed to a full one          *)
+  (*                                                                    *)
+  (*  The discipline's and the claim's statements are at [lm_alts_ok] -- *)
+  (*  one entry per completed line -- and the stage's list runs one short *)
+  (*  at a block boundary.  The pad entry is the line's SILENT round      *)
+  (*  ([lmh_noc]): admissible, never a panic, never coverage-ending,      *)
+  (*  which is all a pad entry needs ([FileOutPure.ralt_def]/[PipeOutPure *)
+  (*  .palt_def] were per-model choices of the same thing).               *)
+  (* ================================================================== *)
+  Definition lm_alts_pad (I : list (bv 8)) (cs : list nat) : list nat :=
+    cs ++ ((fun b => lmh_noc K (lm_of M b)) <$> drop (length cs) (bodies_of I)).
+
+  Lemma lm_alts_pad_prefix I cs : cs `prefix_of` lm_alts_pad I cs.
+  Proof using. rewrite /lm_alts_pad. by eexists. Qed.
+
+  Lemma lm_alts_pad_take I cs : take (length cs) (lm_alts_pad I cs) = cs.
+  Proof using. rewrite /lm_alts_pad. by rewrite take_app_length. Qed.
+
+  Lemma lm_alts_pad_length I cs :
+    (length cs <= nlines I)%nat -> length (lm_alts_pad I cs) = nlines I.
+  Proof using.
+    intro Hle. rewrite /lm_alts_pad length_app length_fmap length_drop.
+    rewrite /nlines in Hle |- *. lia.
+  Qed.
+
+  (* inside the pad, the entry is the line's silent round *)
+  Lemma lm_alts_pad_at I cs j :
+    (length cs <= j)%nat -> (j < nlines I)%nat ->
+    lm_alts_pad I cs !!! j = lmh_noc K (lm_of M (bodies_of I !!! j)).
+  Proof using.
+    intros Hge Hlt. rewrite /nlines in Hlt.
+    destruct (lookup_lt_is_Some_2 (bodies_of I) j Hlt) as [b Hb].
+    rewrite (list_lookup_total_correct (bodies_of I) j b Hb).
+    rewrite /lm_alts_pad list_lookup_total_alt lookup_app_r; [| lia].
+    rewrite list_lookup_fmap lookup_drop.
+    replace (length cs + (j - length cs))%nat with j by lia.
+    by rewrite Hb.
+  Qed.
+
+  Lemma lm_alts_pad_ok I cs :
+    lm_alts_pre M I cs -> lm_alts_ok M I (lm_alts_pad I cs).
+  Proof using.
+    intros H. pose proof (lm_alts_pre_le M I cs H) as Hle.
+    rewrite /lm_alts_ok.
+    apply Forall2_same_length_lookup_2.
+    { rewrite length_fmap (lm_alts_pad_length I cs Hle). reflexivity. }
+    intros i l c Hl Hc.
+    rewrite list_lookup_fmap in Hl.
+    destruct (bodies_of I !! i) as [b |] eqn:Hb; [| discriminate].
+    cbn in Hl. injection Hl as <-.
+    destruct (decide (i < length cs)%nat) as [Hi | Hi].
+    - rewrite /lm_alts_pad lookup_app_l in Hc; [| lia].
+      destruct (H i c Hc) as [_ Hok].
+      by rewrite (list_lookup_total_correct _ _ _ Hb) in Hok.
+    - rewrite /lm_alts_pad lookup_app_r in Hc; [| lia].
+      rewrite list_lookup_fmap lookup_drop in Hc.
+      replace (length cs + (i - length cs))%nat with i in Hc by lia.
+      rewrite Hb in Hc. cbn in Hc. injection Hc as <-.
+      apply lmh_noc_ok.
+  Qed.
+
+  (* the pad changes no panic bit on the input's lines: below the stage's
+     list it is the list, and past it both read a non-panicking round *)
+  Lemma lm_alts_pad_panic I cs j :
+    (j < nlines I)%nat ->
+    lm_panic M (lm_at M (lm_alts_pad I cs) j) = lm_panic M (lm_at M cs j).
+  Proof using B.
+    intros Hj. destruct (decide (j < length cs)%nat) as [Hlt | Hge].
+    - rewrite /lm_at /lm_alts_pad list_lookup_total_alt lookup_app_l; [| lia].
+      by rewrite -list_lookup_total_alt.
+    - rewrite (lm_panic_ge M B cs j ltac:(lia)).
+      rewrite /lm_at (lm_alts_pad_at I cs j ltac:(lia) Hj).
+      apply lmh_noc_nopanic.
+  Qed.
+
+  (* ...and the pad never ends coverage ([PipeOutPure.alts_pad_p_isforkS]) *)
+  Lemma lm_alts_pad_term I cs j :
+    (length cs <= j)%nat -> (j < nlines I)%nat ->
+    lm_term M (lm_at M (lm_alts_pad I cs) j) = false.
+  Proof using.
+    intros Hge Hj. rewrite /lm_at (lm_alts_pad_at I cs j Hge Hj).
+    apply (lmh_free_term K), (lmh_noc_free K).
+  Qed.
+
+  Lemma lm_alts_pad_pro_idx I cs q :
+    (q <= nlines I)%nat -> lm_pro_idx M (lm_alts_pad I cs) q = lm_pro_idx M cs q.
+  Proof using B.
+    intros Hq. induction q as [| q IH]; [reflexivity |].
+    cbn [lm_pro_idx]. rewrite IH; [| lia].
+    by rewrite (lm_alts_pad_panic I cs q ltac:(lia)).
+  Qed.
+
+  Lemma lm_pro_idx_le cs i : (lm_pro_idx M cs i <= i)%nat.
+  Proof using.
+    induction i as [| i IH]; [cbn; lia |].
+    cbn [lm_pro_idx]. destruct (lm_panic M (lm_at M cs i)); lia.
+  Qed.
+
+  (* past the choice list's end the round pointer stops moving *)
+  Lemma lm_pro_idx_ge (cs : list nat) (q q' : nat) :
+    (length cs <= q)%nat -> (q <= q')%nat ->
+    lm_pro_idx M cs q' = lm_pro_idx M cs q.
+  Proof using B.
+    intros Hle Hq. induction q' as [| q' IH].
+    - assert (Hz : q = 0%nat) by lia. by subst q.
+    - destruct (decide (q = S q')) as [-> | Hne]; [reflexivity |].
+      cbn [lm_pro_idx].
+      rewrite (IH ltac:(lia)) (lm_panic_ge M B cs q' ltac:(lia)). lia.
+  Qed.
+
+  Lemma lm_pro_ok_pad ps cs m d :
+    Forall (fun x => (x < length pro_alts)%nat) ps -> (m <= d)%nat ->
+    lm_pro_ok M (ps ++ replicate (S d) 0%nat) cs m.
+  Proof using.
+    intros HF Hm. split.
+    - apply Forall_app. split; [exact HF |].
+      apply Forall_forall. intros x Hx. apply elem_of_replicate in Hx as [-> _].
+      rewrite pro_alts_length. lia.
+    - rewrite pro_rounds_app pro_rounds_replicate_0.
+      pose proof (lm_pro_idx_le cs m). lia.
+  Qed.
+
+  (* THE STAGE'S TRANSCRIPT AT A FULL RESOLUTION ([FileOutPure.
+     stage_sessf_pad] once): the padded list agrees with the stage's
+     wherever the stage reads it, and the stage's transcript is below the
+     padded session *)
+  Lemma lm_stage_sess_pad (ps cs : list nat) (s : lm_st M)
+      (E : list (list mobs * bv 8)) (w : list (bv 8)) :
+    lm_alts_pre M (snd <$> E) cs ->
+    (nlines (removelast (snd <$> E)) <= length cs)%nat ->
+    ((nlines (snd <$> E) <= length cs)%nat \/ w = []) ->
+    lm_E_disc E ->
+    lm_pro_pin M ps cs (snd <$> E) ->
+    w `prefix_of` lm_pending ps cs s E ->
+    lm_alts_ok M (snd <$> E) (lm_alts_pad (snd <$> E) cs)
+    /\ lm_pro_pin M ps (lm_alts_pad (snd <$> E) cs) (snd <$> E)
+    /\ lm_D ps cs s E = lm_D ps (lm_alts_pad (snd <$> E) cs) s E
+    /\ w `prefix_of` lm_pending ps (lm_alts_pad (snd <$> E) cs) s E
+    /\ (lm_D ps cs s E ++ w)
+         `prefix_of` lm_sess M ps (lm_alts_pad (snd <$> E) cs) s (snd <$> E).
+  Proof using B.
+    intros Hao Hrl Hlast HE Hpin Hw.
+    set (cs' := lm_alts_pad (snd <$> E) cs).
+    assert (Hcc : cs `prefix_of` cs') by apply lm_alts_pad_prefix.
+    assert (Hok : lm_alts_ok M (snd <$> E) cs') by exact (lm_alts_pad_ok _ cs Hao).
+    assert (Hpin' : lm_pro_pin M ps cs' (snd <$> E)).
+    { intros q Hq.
+      assert (Hqle : (q <= nlines (snd <$> E))%nat).
+      { pose proof (nstarted_le_S (snd <$> E)). lia. }
+      rewrite /cs' (lm_alts_pad_pro_idx (snd <$> E) cs q Hqle). by apply Hpin. }
+    assert (HD : lm_D ps cs s E = lm_D ps cs' s E)
+      by (apply (lm_D_cs_prefix ps ps cs cs' s E ltac:(reflexivity) Hcc Hpin Hrl)).
+    assert (Hw' : w `prefix_of` lm_pending ps cs' s E).
+    { destruct Hlast as [Hle | ->]; [| apply prefix_nil].
+      rewrite /lm_pending
+        -(lm_pending_at_cs_ext M ps cs cs' s (snd <$> E) Hcc Hle). exact Hw. }
+    split_and!; [exact Hok | exact Hpin' | exact HD | exact Hw' |].
+    rewrite HD. exact (lm_D_stage_prefix ps cs' s E w HE Hw').
+  Qed.
+
+  (* THE CLAIM GIVES [lm_good_out] AT THE SEGMENT, at the stage's own boot
+     state ([FileOutPure.good_out_f_of_stage] once): the prologue list is
+     padded with settled rounds and the choice list with silent ones *)
+  Lemma lm_good_out_of_stage (ps cs : list nat) (s : lm_st M)
+      (E : list (list mobs * bv 8)) (w : list (bv 8)) (seg : list mobs) :
+    Forall (fun a => (a < length pro_alts)%nat) ps ->
+    lm_alts_pre M (ins seg) cs ->
+    (nlines (removelast (snd <$> E)) <= length cs)%nat ->
+    ((nlines (snd <$> E) <= length cs)%nat \/ w = []) ->
+    lm_E_disc E ->
+    lm_pro_pin M ps cs (snd <$> E) ->
+    w `prefix_of` lm_pending ps cs s E ->
+    obs_wire Uart0 seg `prefix_of` (lm_D ps cs s E ++ w) ->
+    (snd <$> E) `prefix_of` ins seg ->
+    lm_good_out M s seg.
+  Proof using B K.
+    intros Hps Hao Hrl Hlast HE Hpin Hw Hwire Hinp.
+    set (ps' := (ps ++ replicate (S (nlines (ins seg))) 0%nat)%list).
+    set (cs' := lm_alts_pad (ins seg) cs).
+    assert (Hpp : ps `prefix_of` ps') by (rewrite /ps'; by eexists).
+    assert (Hcc : cs `prefix_of` cs') by apply lm_alts_pad_prefix.
+    assert (Hpin' : lm_pro_pin M ps' cs (snd <$> E))
+      by exact (lm_pro_pin_mono M ps ps' cs _ Hpp Hpin).
+    exists ps', cs'. split.
+    { apply lm_pro_ok_pad; [exact Hps | lia]. }
+    split; [exact (lm_alts_pad_ok (ins seg) cs Hao) |].
+    etrans; [exact Hwire |].
+    rewrite (lm_D_ps_ext ps ps' cs s E Hpp Hpin).
+    rewrite (lm_D_cs_prefix ps' ps' cs cs' s E ltac:(reflexivity) Hcc Hpin' Hrl).
+    assert (Hw' : w `prefix_of` lm_pending ps' cs' s E).
+    { destruct Hlast as [Hle | ->]; [| apply prefix_nil].
+      etrans; [exact Hw |].
+      etrans; [exact (lm_pending_ps_mono ps ps' cs s E Hpp) |].
+      rewrite /lm_pending (lm_pending_at_cs_ext M ps' cs cs' s (snd <$> E) Hcc Hle).
+      reflexivity. }
+    etrans; [exact (lm_D_stage_prefix ps' cs' s E w HE Hw') |].
+    by apply (lm_sess_mono M ps' cs' s (snd <$> E) (ins seg)).
+  Qed.
+
+  (* AN EVENT THAT PUTS NOTHING ON THE CONSOLE'S WIRE cannot falsify a cycle
+     that was good ([FileOutPure.good_out_f_step] once): the longer input
+     may have one more complete line, so the resolution is padded; the pad
+     moves no prologue round and changes no block of the shorter input *)
+  Lemma lm_good_out_step (s : lm_st M) (seg : list mobs) (e : mobs) :
+    obs_wire Uart0 [e] = [] -> lm_good_out M s seg -> lm_good_out M s (seg ++ [e]).
+  Proof using B K.
+    intros He (ps & cs & [Hpsb Hlt] & Hao & Hwire).
+    set (I := ins seg). set (I' := ins (seg ++ [e])).
+    assert (HII : I `prefix_of` I') by (rewrite /I /I' ins_app; by eexists).
+    assert (Hlen : length cs = nlines I).
+    { pose proof (Forall2_length _ _ _ Hao) as Hl.
+      rewrite length_fmap in Hl. rewrite /nlines /I. lia. }
+    assert (Hnl : (nlines I <= nlines I')%nat) by (by apply nlines_prefix).
+    set (cs' := lm_alts_pad I' cs).
+    exists ps, cs'. split.
+    { split; [exact Hpsb |].
+      rewrite /cs' (lm_alts_pad_pro_idx I' cs (nlines I') ltac:(lia)).
+      rewrite (lm_pro_idx_ge cs (nlines I) (nlines I') ltac:(lia) Hnl).
+      exact Hlt. }
+    split.
+    { rewrite /cs'. apply lm_alts_pad_ok.
+      apply (lm_alts_pre_mono M I I'); [exact HII |].
+      exact (lm_alts_pre_of_alts_ok M _ _ Hao). }
+    rewrite /I' obs_wire_app He app_nil_r.
+    etrans; [exact Hwire |].
+    assert (Hcut : lm_sess M ps cs s I = lm_sess M ps cs' s I).
+    { apply lm_sess_cs_ext. intros j Hj. symmetry.
+      rewrite /cs' /lm_alts_pad list_lookup_total_alt lookup_app_l; [| lia].
+      by rewrite -list_lookup_total_alt. }
+    rewrite Hcut. by apply lm_sess_mono.
+  Qed.
+
+  (* ================================================================== *)
   (*  6.  THE TWO LENGTH LAWS OF THE CHOICE LISTS, AT THE STAGE          *)
   (* ================================================================== *)
   Context (sd : lm_st M).

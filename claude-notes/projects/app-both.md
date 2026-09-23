@@ -274,6 +274,23 @@ bodies (M2c's two shapes); `Proof using` closure; comments without `"`.
 
 ## RESUME HERE (2026-09-22, late)
 
+M3a PAD FAMILY AND THE CLAIM'S CONCLUSION ONCE (2026-09-23): `GenOutPure`
+§5b -- `lm_alts_pad I cs := cs ++ (lmh_noc K ∘ lm_of M) <$> drop (length
+cs) (bodies_of I)` with `_prefix/_take/_length/_at/_ok/_panic/_term/
+_pro_idx`, `lm_pro_idx_le`, `lm_pro_idx_ge`, `lm_pro_ok_pad`,
+`lm_stage_sess_pad` (`stage_sessf_pad` once), `lm_good_out_of_stage`
+(`good_out_f_of_stage` once) and `lm_good_out_step` (`good_out_f_step`
+once); `LineModelLinks` gained `lm_alts_pre_of_alts_ok`/`_mono`.  So M3a's
+list is COMPLETE: every pure law the claim spends exists once over the
+model.  NEXT = M3a step 3, the three pure tiers as corollaries: state
+`EchoOutPure`/`FileOutPure`/`PipeOutPure`'s stage-level lemmas as
+instances (their `D`/`pending`/`pcount` are the generic ones at the
+instance by the `LineModelInst` stream equations), measure each tier's
+consumers with the qualified names first, and delete the per-model
+proofs lemma by lemma (the pad entries differ -- `ralt_def`/`palt_def` vs
+`lmh_noc` -- so a consumer that names `alts_pad`'s value, not its laws,
+needs its own look).
+
 M3a DISC TIER ONCE (2026-09-23): `LineModel` gained `lm_disc_pt ps cs s
 p` (at `done_of`), `lm_d4 cs s I` (the pipe's D4 at the determinacy
 section's own guard: an admitting-a-coverage-ending-arm line whose

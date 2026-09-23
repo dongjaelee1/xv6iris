@@ -388,9 +388,15 @@ Section file_out.
     - iExists vf. iFrame "Hp". rewrite /f0_lb. iFrame "Hbl Hfd".
   Qed.
 
+  (* the file keeps no ledger of its process stream *)
+  Lemma file_gext_grow (k : nat) (l : list (bv 8)) (b : bv 8) :
+    (emp : iProp Σ) ==∗ emp.
+  Proof using . by iIntros "_". Qed.
+
   Definition file_wa : gen_wa file_lm file_cparams None :=
     @MkGWA Σ _ file_lm file_cparams None f0wa _ f0wa_agree_d f0_typed _ f0wa_W
-      f0boot f0wa_file True (fun _ => f0wa_agree).
+      f0boot f0wa_file True (fun _ => f0wa_agree)
+      (fun _ _ => emp%I) _ file_gext_grow.
 
   Definition fecl (k : nat) (ho : list mobs)
       (H : LogEntryDefs.cons_hist) : iProp Σ :=

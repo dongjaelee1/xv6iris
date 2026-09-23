@@ -274,6 +274,16 @@ bodies (M2c's two shapes); `Proof using` closure; comments without `"`.
 
 ## RESUME HERE (2026-09-22, late)
 
+RULED 2026-09-23 (owner): THE PIPE CLAIM IS A CLAIM-LEVEL DISJUNCT --
+`pecl := gcl-with-extension ∨ open-round arm`.  The generic claim gains
+only a STREAM-EXTENSION hook (`gext k (lm_stream so)`, the application's
+ledger of the era's process stream: `emp` at echo/file, the pipe's block
+ledger + round ghosts at the pipe; law: grow by the written byte); the
+open-round (two-writer) mode, its pure part (`pcl_pure_o`/`pblk_open`) and
+its freezable cs authority stay pipe-only, and `PipeBoth`'s steps are
+restated against the two arms.  (Chosen over the plan-of-record EXT slot
+inside `gcl`.)
+
 FileOutPure DEAD CODE REMOVED (2026-09-23): 92 of 169 declarations
 (the whole claim-stage layer -- `D_f`, `pending_f`, `pcount_f`, the
 `cs_len_ok_f`/`ps_len_ok_f` families, `fostage`, `feout_pure`, the pad-at-

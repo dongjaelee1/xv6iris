@@ -113,6 +113,12 @@ Record gen_wa {Σ : gFunctors} `{!echoOutG Σ} (M : lmodel) (G : gen_cparams M)
   gwa_strict : Prop;
   gwa_agree_strict : gwa_strict -> forall k st s0,
     gwa k st -∗ gcW G k s0 -∗ ⌜st = Some s0⌝;
+  (* THE STREAM EXTENSION: the application's own ledger of the era's
+     process stream ([emp] where it keeps none; the pipe's block ledger and
+     round ghosts).  Every process byte grows it by that byte. *)
+  gext : nat -> list (bv 8) -> iProp Σ;
+  gext_tl : forall k l, Timeless (gext k l);
+  gext_grow : forall k l b, gext k l ==∗ gext k (l ++ [b]);
 }.
 Global Arguments MkGWA {Σ _ M G sd}.
 Global Arguments gwa {Σ _ M G sd} _ _ _.
@@ -125,7 +131,10 @@ Global Arguments gwa_boot {Σ _ M G sd} _ _ _.
 Global Arguments gwa_file {Σ _ M G sd} _ _ _.
 Global Arguments gwa_strict {Σ _ M G sd} _.
 Global Arguments gwa_agree_strict {Σ _ M G sd} _ _ _ _ _.
-#[export] Existing Instances gwa_tl gwa_ty_pers.
+Global Arguments gext {Σ _ M G sd} _ _ _.
+Global Arguments gext_tl {Σ _ M G sd} _ _ _.
+Global Arguments gext_grow {Σ _ M G sd} _ _ _ _.
+#[export] Existing Instances gwa_tl gwa_ty_pers gext_tl.
 
 (* the reader's range condition grows by the alternative a block files
    (the file's former law, once) *)
@@ -218,6 +227,54 @@ Section gen_out.
   Local Notation PIN := (gcPIN G).
   Local Notation WA := (gwa A).
 
+  (* THE ERA'S PROCESS STREAM, as the stage records it: everything the
+     programs have written this era, in order.  Its length is the cursor. *)
+  Definition lm_stream (so : gstage M) : list (bv 8) :=
+    lm_proc_before M (gs_ps M so) (gs_cs M so) (gs_state M sd so)
+      (snd <$> gs_E M so) ++ gs_w M so.
+
+  Lemma lm_stream_write (so : gstage M) (b : bv 8) :
+    lm_stream (MkGS M (gs_ps M so) (gs_cs M so) (gs_E M so) (gs_w M so ++ [b])
+                 (gs_st M so)) = lm_stream so ++ [b].
+  Proof using. rewrite /lm_stream /=. by rewrite app_assoc. Qed.
+
+  Lemma lm_stream_blk (so : gstage M) (a : nat) (b : bv 8) :
+    lm_pro_pin M (gs_ps M so) (gs_cs M so) (snd <$> gs_E M so) ->
+    nlines (removelast (snd <$> gs_E M so)) <= length (gs_cs M so) ->
+    gs_w M so = [] ->
+    lm_stream (MkGS M (gs_ps M so) (gs_cs M so ++ [a]) (gs_E M so) [b]
+                 (gs_st M so)) = lm_stream so ++ [b].
+  Proof using.
+    intros Hpin Hrl Hw. rewrite /lm_stream Hw /=.
+    rewrite -(lm_proc_before_cs_prefix M (gs_ps M so) (gs_ps M so) (gs_cs M so)
+                (gs_cs M so ++ [a]) (gs_state M sd so) (snd <$> gs_E M so)
+                ltac:(reflexivity) ltac:(by eexists) Hpin Hrl).
+    by rewrite app_nil_r.
+  Qed.
+
+  Lemma lm_stream_pro (so : gstage M) (a : nat) (b : bv 8) :
+    lm_pro_pin M (gs_ps M so) (gs_cs M so) (snd <$> gs_E M so) ->
+    nlines (removelast (snd <$> gs_E M so)) <= length (gs_cs M so) ->
+    lm_stream (MkGS M (gs_ps M so ++ [a]) (gs_cs M so) (gs_E M so)
+                 (gs_w M so ++ [b]) (gs_st M so)) = lm_stream so ++ [b].
+  Proof using.
+    intros Hpin Hrl. rewrite /lm_stream /=.
+    rewrite -(lm_proc_before_cs_prefix M (gs_ps M so) (gs_ps M so ++ [a])
+                (gs_cs M so) (gs_cs M so) (gs_state M sd so) (snd <$> gs_E M so)
+                ltac:(by eexists) ltac:(reflexivity) Hpin Hrl).
+    by rewrite app_assoc.
+  Qed.
+
+  Lemma lm_stream_echo (so : gstage M) (x : list mobs * bv 8) :
+    gs_w M so = lm_pending M (gs_ps M so) (gs_cs M so) (gs_state M sd so)
+                  (gs_E M so) ->
+    lm_stream (MkGS M (gs_ps M so) (gs_cs M so) (gs_E M so ++ [x]) []
+                 (gs_st M so)) = lm_stream so.
+  Proof using.
+    intros Hw. rewrite /lm_stream /= fmap_app /= lm_proc_before_snoc Hw.
+    by rewrite /lm_proc_stream /lm_pending app_nil_r.
+  Qed.
+
   (* ================================================================== *)
   (*  1.  THE CLAIM                                                      *)
   (* ================================================================== *)
@@ -227,6 +284,7 @@ Section gen_out.
     ∨ ∃ (v : era_pins) (so : gstage M),
         PIN k v
         ∗ WA k (gs_st M so)
+        ∗ gext A k (lm_stream so)
         ∗ turn_auth v (lm_pcount M (gs_ps M so) (gs_cs M so)
                          (gs_state M sd so) (gs_E M so) (gs_w M so))
         ∗ cs_auth v (gs_cs M so)
@@ -258,8 +316,8 @@ Section gen_out.
     intros Hok Hev. rewrite /gcl.
     iIntros "[HT | Hc]"; [by iLeft |]. iRight.
     iDestruct "Hc" as (v so)
-      "(Hpin & Hwa & Htn & Hcs & Hps & HE & Hdl & Hdll & %Hpure)".
-    iExists v, so. iFrame "Hpin Hwa Htn Hcs Hps HE".
+      "(Hpin & Hwa & Hext & Htn & Hcs & Hps & HE & Hdl & Hdll & %Hpure)".
+    iExists v, so. iFrame "Hpin Hwa Hext Htn Hcs Hps HE".
     rewrite ch_dl_close. iFrame "Hdl Hdll". iPureIntro.
     by apply (gcl_pure_close M sd k ho so H Hok Hev Hpure).
   Qed.
@@ -277,8 +335,8 @@ Section gen_out.
     intros Hok Hev Hd Hb Hdh Hsh. rewrite /gcl.
     iIntros "[HT | Hc]"; [by iLeft |]. iRight.
     iDestruct "Hc" as (v so)
-      "(Hpin & Hwa & Htn & Hcs & Hps & HE & Hdl & Hdll & %Hpure)".
-    iExists v, so. iFrame "Hpin Hwa Htn Hcs Hps HE".
+      "(Hpin & Hwa & Hext & Htn & Hcs & Hps & HE & Hdl & Hdll & %Hpure)".
+    iExists v, so. iFrame "Hpin Hwa Hext Htn Hcs Hps HE".
     rewrite /ConsLog.cons_step. cbn [LogEntryDefs.ch_dl].
     iFrame "Hdl Hdll". iPureIntro.
     by apply (gcl_pure_open M B sd k ho so H h c cs Hok Hev Hd Hb Hdh Hsh Hpure).
@@ -291,10 +349,10 @@ Section gen_out.
     rewrite /gcl. iIntros "[#HT | Hp]".
     { iSplitR; [by iLeft | by iLeft]. }
     iDestruct "Hp" as (v so)
-      "(#Hpin & Hwa & Htn & Hcs & Hps & HE & Hdl & Hdll & %Hall)".
+      "(#Hpin & Hwa & Hext & Htn & Hcs & Hps & HE & Hdl & Hdll & %Hall)".
     iSplitL.
     - iRight. iExists v, so.
-      iFrame "Hpin Hwa Htn Hcs Hps HE Hdl Hdll". by iPureIntro.
+      iFrame "Hpin Hwa Hext Htn Hcs Hps HE Hdl Hdll". by iPureIntro.
     - iRight. iPureIntro. exact (gcl_pure_arm M sd k ho so CH Hall).
   Qed.
 
@@ -325,7 +383,7 @@ Section gen_out.
     iDestruct "Hbt" as "[Hbt | #HT]"; last first.
     { iModIntro. iSplitR; [rewrite /gcl; by iLeft | by iRight]. }
     iDestruct "Hp" as (v2 so)
-      "(#Hpin2 & Hwa & Hta & Hcs & Hps & HE & Hdl & Hdll & %Hall)".
+      "(#Hpin2 & Hwa & Hext & Hta & Hcs & Hps & HE & Hdl & Hdll & %Hall)".
     iDestruct (gcPIN_agree G with "Hpin2 Hpin") as %->.
     pose proof Hall as Hall0.
     destruct Hall as (Hpure & Hcsl & Hpsl & _ & _ & _ & Hdlok).
@@ -367,6 +425,10 @@ Section gen_out.
                (gs_E M so) (gs_w M so))
             1 ltac:(lia) with "Ht Hta") as "[Ht Hta]".
     iMod (ps_auth_grow v (gs_ps M so) a with "Hps") as "[Hps #Hpslb2]".
+    iMod (gext_grow A k _ b with "Hext") as "Hext".
+    assert (Hs0 : lm_stream so = []).
+    { rewrite /lm_stream HEnil Hwnil fmap_nil lm_proc_before_nil. reflexivity. }
+    rewrite Hs0.
     rewrite Hpsnil. cbn [app].
     iModIntro. iSplitR "Ht".
     - rewrite /gcl. iRight.
@@ -376,7 +438,9 @@ Section gen_out.
                      [] [b] = 1); last first.
       { rewrite /lm_pcount fmap_nil lm_proc_before_nil. reflexivity. }
       rewrite /ConsLog.cons_step. cbn [LogEntryDefs.ch_dl].
-      rewrite Hcsnil. iFrame "Hpin Hwa Hta Hcs Hps Hdl Hdll".
+      rewrite (_ : lm_stream (MkGS M [a] [] [] [b] (Some s0)) = [] ++ [b]);
+        [| by rewrite /lm_stream /= ?lm_proc_before_nil].
+      rewrite Hcsnil. iFrame "Hpin Hwa Hext Hta Hcs Hps Hdl Hdll".
       rewrite HEnil. iFrame "HE".
       iPureIntro.
       apply (gcl_pure_out M sd k ho so (MkGS M [a] [] [] [b] (Some s0)) H b);
@@ -441,7 +505,7 @@ Section gen_out.
     iDestruct "Hcl" as "[#HT | Hp]".
     { iModIntro. iSplitR; [rewrite /gcl; by iLeft | by iRight]. }
     iDestruct "Hp" as (v2 so)
-      "(#Hpin2 & Hwa & Hta & Hcs & Hps & HE & Hdl & Hdll & %Hall)".
+      "(#Hpin2 & Hwa & Hext & Hta & Hcs & Hps & HE & Hdl & Hdll & %Hall)".
     iDestruct (gcPIN_agree G with "Hpin2 Hpin") as %->.
     iDestruct (gwa_agree A with "Hwa HW") as %Hsteq.
     pose proof Hall as Hall0.
@@ -478,6 +542,7 @@ Section gen_out.
             (lm_pcount M (gs_ps M so) (gs_cs M so) (gs_state M sd so)
                (gs_E M so) (gs_w M so))
             (S P) ltac:(lia) with "Ht Hta") as "[Ht Hta]".
+    iMod (gext_grow A k _ b with "Hext") as "Hext".
     iModIntro. iSplitR "Ht".
     - rewrite /gcl. iRight.
       iExists v,
@@ -489,7 +554,8 @@ Section gen_out.
                    = gs_state M sd so); [| reflexivity].
       rewrite lm_pcount_write -HP.
       rewrite /ConsLog.cons_step. cbn [LogEntryDefs.ch_dl].
-      iFrame "Hpin Hwa Hta Hcs Hps HE Hdl Hdll". iPureIntro.
+      rewrite lm_stream_write.
+      iFrame "Hpin Hwa Hext Hta Hcs Hps HE Hdl Hdll". iPureIntro.
       apply (gcl_pure_out M sd k ho so
                (MkGS M (gs_ps M so) (gs_cs M so) (gs_E M so) (gs_w M so ++ [b])
                   (gs_st M so)) H b);
@@ -565,7 +631,7 @@ Section gen_out.
     iDestruct "Hcl" as "[#HT | Hp]".
     { iModIntro. iSplitR; [rewrite /gcl; by iLeft | by iRight]. }
     iDestruct "Hp" as (v2 so)
-      "(#Hpin2 & Hwa & Hta & Hcs & Hps & HE & Hdl & Hdll & %Hall)".
+      "(#Hpin2 & Hwa & Hext & Hta & Hcs & Hps & HE & Hdl & Hdll & %Hall)".
     iDestruct (gcPIN_agree G with "Hpin2 Hpin") as %->.
     iDestruct (gwa_agree A with "Hwa HW") as %Hsteq.
     assert (Hst : gs_state M sd so = s0) by exact Hsteq.
@@ -663,6 +729,7 @@ Section gen_out.
             (S P) ltac:(lia) with "Ht Hta") as "[Ht Hta]".
     iMod (cs_auth_grow v (gs_cs M so) a with "Hcs") as "[Hcs #Hcslb2]".
     iDestruct (ps_lb_get with "Hps") as "[Hps #Hpslb2]".
+    iMod (gext_grow A k _ b with "Hext") as "Hext".
     iModIntro. iSplitR "Ht".
     - rewrite /gcl. iRight.
       iExists v, (MkGS M (gs_ps M so) (gs_cs M so ++ [a]) (gs_E M so) [b]
@@ -673,7 +740,8 @@ Section gen_out.
                    = gs_state M sd so); [| reflexivity].
       rewrite Hpc2.
       rewrite /ConsLog.cons_step. cbn [LogEntryDefs.ch_dl].
-      iFrame "Hpin Hwa Hta Hcs Hps HE Hdl Hdll". iPureIntro.
+      rewrite (lm_stream_blk so a b Hpin ltac:(rewrite HlenE Hrl0 Hq; lia) Hwnil).
+      iFrame "Hpin Hwa Hext Hta Hcs Hps HE Hdl Hdll". iPureIntro.
       apply (gcl_pure_out M sd k ho so
                (MkGS M (gs_ps M so) (gs_cs M so ++ [a]) (gs_E M so) [b]
                   (gs_st M so)) H b);
@@ -748,7 +816,7 @@ Section gen_out.
     iDestruct "Hcl" as "[#HT | Hp]".
     { iModIntro. iSplitR; [rewrite /gcl; by iLeft | by iRight]. }
     iDestruct "Hp" as (v2 so)
-      "(#Hpin2 & Hwa & Hta & Hcs & Hps & HE & Hdl & Hdll & %Hall)".
+      "(#Hpin2 & Hwa & Hext & Hta & Hcs & Hps & HE & Hdl & Hdll & %Hall)".
     iDestruct (gcPIN_agree G with "Hpin2 Hpin") as %->.
     iDestruct (gwa_agree A with "Hwa HW") as %Hsteq.
     iAssert (⌜0 < P \/ gs_st M so <> None⌝)%I as %HP0'.
@@ -970,6 +1038,7 @@ Section gen_out.
                (gs_E M so) (gs_w M so))
             (S P) ltac:(rewrite /lm_pcount; lia) with "Ht Hta") as "[Ht Hta]".
     iMod (ps_auth_grow v (gs_ps M so) a with "Hps") as "[Hps #Hpslb2]".
+    iMod (gext_grow A k _ b with "Hext") as "Hext".
     iModIntro. iSplitR "Ht".
     - rewrite /gcl. iRight.
       iExists v, (MkGS M (gs_ps M so ++ [a]) (gs_cs M so) (gs_E M so)
@@ -980,7 +1049,9 @@ Section gen_out.
                    = gs_state M sd so); [| reflexivity].
       rewrite Hpc2.
       rewrite /ConsLog.cons_step. cbn [LogEntryDefs.ch_dl].
-      iFrame "Hpin Hwa Hta Hcs Hps HE Hdl Hdll". iPureIntro.
+      rewrite (lm_stream_pro so a b Hpinf
+                 ltac:(pose proof (prefix_length _ _ Hcsp); rewrite HlenE Hrl0; lia)).
+      iFrame "Hpin Hwa Hext Hta Hcs Hps HE Hdl Hdll". iPureIntro.
       apply (gcl_pure_out M sd k ho so
                (MkGS M (gs_ps M so ++ [a]) (gs_cs M so) (gs_E M so)
                   (gs_w M so ++ [b]) (gs_st M so)) CH b);
@@ -1102,7 +1173,7 @@ Section gen_out.
     iDestruct "Hcl" as "[#HT | Hp]".
     { iModIntro. iSplitR; [rewrite /gcl; by iLeft |]. iLeft. by iFrame "Hdlr". }
     iDestruct "Hp" as (v2 so)
-      "(#Hpin & Hwa & Hta & Hcs & Hps & HE & Hdl & Hdll & %Hall)".
+      "(#Hpin & Hwa & Hext & Hta & Hcs & Hps & HE & Hdl & Hdll & %Hall)".
     iDestruct (gcPIN_agree G with "Hpin Hpinr") as %->.
     iDestruct (dl_cnt_agree with "Hdl Hdlr") as %Hdleq.
     pose proof Hall as Hall0.
@@ -1213,10 +1284,10 @@ Section gen_out.
         exact HEpre. }
       rewrite /Iw fmap_app in Hz. apply app_eq_nil in Hz as [_ Hz].
       by apply fmap_nil_inv in Hz. }
-    iModIntro. iSplitL "Hta Hcs Hps HE Hdl Hdll Hwa".
+    iModIntro. iSplitL "Hta Hcs Hps HE Hdl Hdll Hwa Hext".
     { rewrite /gcl. iRight. iExists v, so.
       rewrite /ConsLog.cons_step. cbn [LogEntryDefs.ch_dl].
-      rewrite length_app Hdleq. iFrame "Hpin Hwa Hta Hcs Hps HE Hdl Hdll".
+      rewrite length_app Hdleq. iFrame "Hpin Hwa Hext Hta Hcs Hps HE Hdl Hdll".
       iPureIntro. exact (gcl_pure_read M sd k ho so CH ws Hpref Hall0). }
     iRight. iFrame "Hdlr".
     iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
@@ -1398,7 +1469,7 @@ Section gen_out.
     iDestruct "Hcl" as "[#HT | Hp]".
     { iModIntro. rewrite /gcl. by iLeft. }
     iDestruct "Hp" as (v so)
-      "(#Hpin & Hwa & Hta & Hcs & Hps & HE & Hdl & Hdll & %Hall)".
+      "(#Hpin & Hwa & Hext & Hta & Hcs & Hps & HE & Hdl & Hdll & %Hall)".
     pose proof Hall as Hall0.
     destruct Hall as (Hpure & Hcsl & Hpsl & Hin & Hera & HEtie & Hdlok).
     destruct Hpure as (Hacc & Hwpre & Hidx & Hbyte & Hpsb & Hpinf & Hcsb' & Hdsc
@@ -1600,7 +1671,8 @@ Section gen_out.
     rewrite (lm_pcount_echo M (gs_ps M so) (gs_cs M so) (gs_state M sd so)
                (gs_E M so) (open_seg h, c) (gs_w M so) Hweq).
     rewrite ch_dl_byte.
-    iFrame "Hpin Hwa Hta Hcs Hps HE Hdl Hdll". iPureIntro.
+    rewrite (lm_stream_echo so (open_seg h, c) Hweq).
+    iFrame "Hpin Hwa Hext Hta Hcs Hps HE Hdl Hdll". iPureIntro.
     apply (gcl_pure_byte M sd (obs_boots h) ho h so
              (MkGS M (gs_ps M so) (gs_cs M so) (gs_E M so ++ [(open_seg h, c)]) []
                 (gs_st M so))
@@ -1710,7 +1782,7 @@ Section gen_out.
     iDestruct "Hcl" as "[#HT | Hp]".
     - iSplitR; [iLeft; iExact "HT" | iLeft; iExact "HT"].
     - iDestruct "Hp" as (v so)
-        "(#Hpin & Hwa & Hta & Hcs & Hps & HE & Hdl & Hdll & %Hall)".
+        "(#Hpin & Hwa & Hext & Hta & Hcs & Hps & HE & Hdl & Hdll & %Hall)".
       pose proof Hall as Hall2.
       destruct Hall2 as (Hpure & Hcsl & Hpsl & Hin & Hera & HEtie & _).
       destruct Hpure as (Hacc & Hwp & Hidx & Hbyte & Hpsb & Hpinf & Hcsb' & Hdsc
@@ -1724,9 +1796,9 @@ Section gen_out.
       iEval (rewrite Hsome) in "Hwa".
       iDestruct (gwa_W A _ (gs_state M sd so) with "Hwa") as "(Hwa & #HW & #Hty)".
       iEval (rewrite -Hsome) in "Hwa".
-      iSplitL "Hwa Hta Hcs Hps HE Hdl Hdll".
+      iSplitL "Hwa Hext Hta Hcs Hps HE Hdl Hdll".
       { iRight. iExists v, so.
-        iFrame "Hpin Hwa Hta Hcs Hps HE Hdl Hdll". by iPureIntro. }
+        iFrame "Hpin Hwa Hext Hta Hcs Hps HE Hdl Hdll". by iPureIntro. }
       iRight. iExists (gs_state M sd so).
       iFrame "Hty HW".
       iSplitR; [| by iPureIntro].

@@ -274,6 +274,22 @@ bodies (M2c's two shapes); `Proof using` closure; comments without `"`.
 
 ## RESUME HERE (2026-09-22, late)
 
+M3b THIRD CUT (2026-09-23): THE FOUR WRITES ONCE in `GenOut.v` --
+`gcl_step_write_first` (the head: `gen_wa` gained `gwa_boot`, the boot
+evidence, and `gwa_file`, the filing law), `gcl_step_write`,
+`gcl_step_write_blk` (premise `lm_term (lm_dec a) = false`: the pipe's
+terminal arm is its own step), `gcl_step_write_pro`.  THE ONE STATEMENT
+CHANGE vs the file: `gcl_step_write_pro` takes `0 < P` (the writer is
+past the era's head).  Why: `lm_out_pure`'s clause `gs_st = None <-> E =
+[] /\ w = []` must survive the byte, the file's witness forces `st =
+Some`, and the generic `gwa_agree` only pins `default sd st` (so `emp`
+satisfies it at echo).  At the ordinary write the empty-stage case is
+refuted by "an empty stage owes nothing" (`gop_empty_stage_ps`); at a
+prologue byte it is not (that byte IS the head's), so the cursor premise
+refutes it.  M3c's link bundles must supply `0 < P` at the prologue
+family (the head returns `turn v 1`, so every later writer has it).
+NEXT: read, echo, byte, drain; then switch `fecl`.
+
 M3b SECOND CUT (2026-09-23): THE CLAIM ONCE, `iris/GenOut.v` (after
 `GenLinksLine`).  `gen_wa M G sd` is the ONE hook the claim adds to M2's
 `gen_params`: the state witness's authority `gwa k st` (the file's `∃ vf,

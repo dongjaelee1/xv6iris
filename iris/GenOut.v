@@ -94,6 +94,12 @@ Proof.
     by split.
 Qed.
 
+Local Lemma gop_lta_prefix (cs0 cs : list nat) (i : nat) :
+  cs0 `prefix_of` cs -> i < length cs0 -> cs !!! i = cs0 !!! i.
+Proof.
+  intros [z ->] Hi. rewrite !list_lookup_total_alt lookup_app_l; [done | lia].
+Qed.
+
 Local Lemma gop_prefix_snoc_lookup {A} (w l : list A) (b : A) :
   w `prefix_of` l -> l !! length w = Some b -> (w ++ [b]) `prefix_of` l.
 Proof.
@@ -637,5 +643,313 @@ Section gen_out.
       + apply (lm_ps_len_ok_blk M B sd so a b);
           [by rewrite HlenE | by rewrite HlenE | by rewrite HlenE | exact Hpsl].
     - iLeft. rewrite Hcs0. iFrame "Ht Hilb Hcslb2 Hpslb HW".
+  Qed.
+
+  (* (W-pro) THE WRITE AT A PROLOGUE ROUND'S CHOICE BYTE: init's own
+     knowledge of which alternative its restart loop is taking, filed into
+     the claim.  [FileOut.fecl_step_write_pro] once.  ONE PREMISE MORE than
+     the file's: [0 < P], the writer is past the era's head.  The file's
+     witness forces the stage's state to be filed; the model's law only
+     pins the state the stage READS, and at an empty stage the only first
+     byte is the head's ([gcl_step_write_first]), which files it. *)
+  Lemma gcl_step_write_pro (k : nat) (v : era_pins) (P a : nat) (b : bv 8)
+      (ps0 cs0 : list nat) (s0 : lm_st M) (I0 : list (bv 8))
+      (ho : list mobs) (CH : LogEntryDefs.cons_hist) :
+    0 < P ->
+    rest_of I0 = [] ->
+    (I0 = [] \/ lm_panic M (lm_at M cs0 (nlines I0 - 1)) = true) ->
+    nlines I0 <= length cs0 ->
+    lm_pro_pin M ps0 cs0 I0 ->
+    ~ pro_done (pro_from (lm_pro_idx M cs0 (nlines I0)) ps0) ->
+    P = length (lm_proc_stream M ps0 cs0 s0 I0) ->
+    a < length pro_alts ->
+    pro_alts !!! a !! 0 = Some b ->
+    PIN k v -∗ turn v P -∗ ps_lb v ps0 -∗ cs_lb v cs0 -∗ inp_lb v I0 -∗
+    gW G k s0 -∗
+    gcl k ho CH ==∗
+      gcl k ho (ConsLog.cons_step CH (ConsLog.EvOut b))
+      ∗ ((turn v (S P) ∗ ps_lb v (ps0 ++ [a]) ∗ cs_lb v cs0 ∗ inp_lb v I0
+          ∗ gW G k s0) ∨ T).
+  Proof using .
+    intros HP0 Hr0 Hopen Hdiv Hpin0 Hnd HPeq Halt Hhead.
+    iIntros "#Hpin Ht #Hpslb #Hcslb #Hilb #HW Hcl".
+    iDestruct "Hcl" as "[#HT | Hp]".
+    { iModIntro. iSplitR; [rewrite /gcl; by iLeft | by iRight]. }
+    iDestruct "Hp" as (v2 so)
+      "(#Hpin2 & Hwa & Hta & Hcs & Hps & HE & Hdl & Hdll & %Hall)".
+    iDestruct (gPIN_agree G with "Hpin2 Hpin") as %->.
+    iDestruct (gwa_agree A with "Hwa HW") as %Hsteq.
+    assert (Hst : gs_state M sd so = s0) by exact Hsteq.
+    pose proof Hall as Hall0.
+    destruct Hall as (Hpure & Hcsl & Hpsl & _ & _ & _ & Hdlok).
+    destruct Hpure as (Hacc & Hwpre & Hidx & Hbyte & Hpsb & Hpinf & Hcsb' & Hdsc
+                       & Hpre1 & Hpre2 & Hpre3 & Hnofk & Hf0n & Hfok0).
+    iDestruct (turn_agree with "Ht Hta") as %HP.
+    iDestruct (cs_lb_prefix with "Hcs Hcslb") as %Hcsp.
+    iDestruct (ps_lb_prefix with "Hps Hpslb") as %Hpsp.
+    iDestruct (inp_lb_le with "Hdll Hilb") as %HI0dl.
+    assert (HI0 : I0 `prefix_of` (snd <$> gs_E M so)).
+    { etrans; [exact HI0dl | exact (gcl_pure_dl_E M sd k ho so CH Hall0)]. }
+    rewrite -Hst in HPeq.
+    pose proof (ll_nlines_removelast I0 Hr0) as Hrl0.
+    (* the writer's own list is bounded, and its round index is the claim's *)
+    assert (Hpsb0 : Forall (fun x => x < length pro_alts) ps0).
+    { pose proof Hpsp as Hq. destruct Hq as [z Hz]. pose proof Hpsb as Hpsb2.
+      rewrite Hz in Hpsb2. by apply Forall_app in Hpsb2 as [? _]. }
+    assert (Hlk : forall j, j < nlines I0 -> gs_cs M so !!! j = cs0 !!! j)
+      by (intros j Hj; apply (gop_lta_prefix cs0 (gs_cs M so) j Hcsp); lia).
+    assert (Hidxeq : lm_pro_idx M (gs_cs M so) (nlines I0)
+                     = lm_pro_idx M cs0 (nlines I0))
+      by exact (lm_pro_idx_ext M (gs_cs M so) cs0 (nlines I0) Hlk (nlines I0)
+                  ltac:(lia)).
+    rewrite -Hidxeq in Hnd.
+    assert (HopenC : I0 = [] \/
+              lm_panic M (lm_at M (gs_cs M so) (nlines I0 - 1)) = true).
+    { destruct (decide (I0 = [])) as [Hz | Hne0]; [by left | right].
+      pose proof (nlines_pos_of_rest_nil I0 Hne0 Hr0) as Hpos0.
+      destruct Hopen as [Hz | H3]; [by destruct (Hne0 Hz) |].
+      rewrite /lm_at (Hlk (nlines I0 - 1) ltac:(lia)). exact H3. }
+    assert (Hstream : lm_proc_before M ps0 cs0 (gs_state M sd so) I0
+                      = lm_proc_before M (gs_ps M so) (gs_cs M so)
+                          (gs_state M sd so) I0).
+    { apply (lm_proc_before_cs_prefix M ps0 (gs_ps M so) cs0 (gs_cs M so)
+               (gs_state M sd so) I0 Hpsp Hcsp Hpin0). lia. }
+    assert (Hpend0 : lm_pending_at M ps0 cs0 (gs_state M sd so) I0
+                     = lm_pending_at M ps0 (gs_cs M so) (gs_state M sd so) I0)
+      by exact (lm_pending_at_cs_ext M ps0 cs0 (gs_cs M so) (gs_state M sd so)
+                  I0 Hcsp Hdiv).
+    assert (Hpmono : lm_pending_at M ps0 (gs_cs M so) (gs_state M sd so) I0
+                     `prefix_of` lm_pending_at M (gs_ps M so) (gs_cs M so)
+                                   (gs_state M sd so) I0)
+      by (by apply lm_pending_at_ps_mono).
+    assert (HPval : P = length (lm_proc_before M ps0 cs0 (gs_state M sd so) I0)
+                        + length (lm_pending_at M ps0 cs0 (gs_state M sd so) I0)).
+    { rewrite HPeq /lm_proc_stream.
+      by rewrite (length_app (lm_proc_before M ps0 cs0 (gs_state M sd so) I0)
+                    (lm_pending_at M ps0 cs0 (gs_state M sd so) I0)). }
+    rewrite /lm_pcount in HP.
+    (* the era's input IS [I0] *)
+    assert (HlenE : (snd <$> gs_E M so) = I0).
+    { destruct (decide ((snd <$> gs_E M so) = I0)) as [? | Hne]; [done | exfalso].
+      assert (Hnei : I0 <> (snd <$> gs_E M so))
+        by (intros Hq; apply Hne; symmetry; exact Hq).
+      pose proof (lm_proc_stream_before M (gs_ps M so) (gs_cs M so)
+                    (gs_state M sd so) I0 (snd <$> gs_E M so) HI0 Hnei) as Hpre.
+      apply prefix_length in Hpre.
+      rewrite /lm_proc_stream length_app -Hstream in Hpre.
+      pose proof (prefix_length _ _ Hpmono) as Hlp. rewrite -Hpend0 in Hlp.
+      assert (Hpe : lm_pending_at M ps0 (gs_cs M so) (gs_state M sd so) I0
+                    = lm_pending_at M (gs_ps M so) (gs_cs M so)
+                        (gs_state M sd so) I0).
+      { apply prefix_length_eq; [exact Hpmono | rewrite -Hpend0; lia]. }
+      pose proof (lm_pending_at_round_det M (gL G) ps0 (gs_ps M so) (gs_cs M so)
+                    (gs_state M sd so) I0 Hr0 HopenC Hpe) as Hpro.
+      assert (Hdone : pro_done (pro_from (lm_pro_idx M (gs_cs M so) (nlines I0))
+                        (gs_ps M so))).
+      { apply pro_from_done.
+        apply Hpinf.
+        exact (nstarted_strict I0 (snd <$> gs_E M so) HI0 Hnei). }
+      apply Hnd.
+      destruct (pro_of_prefix_free
+                  (pro_from (lm_pro_idx M (gs_cs M so) (nlines I0)) ps0)
+                  (pro_from (lm_pro_idx M (gs_cs M so) (nlines I0)) (gs_ps M so))
+                  ltac:(by apply pro_from_Forall)
+                  ltac:(by apply pro_from_Forall)
+                  Hdone ltac:(rewrite -Hpro; reflexivity)) as [Hd _].
+      exact Hd. }
+    assert (Hlenw : length (gs_w M so)
+                    = length (lm_pending_at M ps0 cs0 (gs_state M sd so) I0)).
+    { rewrite HlenE -Hstream in HP. lia. }
+    assert (Hweq : gs_w M so = lm_pending_at M ps0 (gs_cs M so) (gs_state M sd so) I0).
+    { assert (Hw1 : gs_w M so
+                    `prefix_of` lm_pending_at M (gs_ps M so) (gs_cs M so)
+                                  (gs_state M sd so) I0)
+        by (rewrite -HlenE; exact Hwpre).
+      assert (Hlen2 : length (gs_w M so)
+                      = length (lm_pending_at M ps0 (gs_cs M so)
+                                  (gs_state M sd so) I0))
+        by (rewrite -Hpend0; exact Hlenw).
+      destruct (prefix_weak_total (gs_w M so)
+                  (lm_pending_at M ps0 (gs_cs M so) (gs_state M sd so) I0)
+                  (lm_pending_at M (gs_ps M so) (gs_cs M so) (gs_state M sd so) I0)
+                  Hw1 Hpmono) as [Hq | Hq].
+      - apply prefix_length_eq; [exact Hq | lia].
+      - symmetry. apply prefix_length_eq; [exact Hq | lia]. }
+    assert (Hopens : lm_ps_opens M so).
+    { rewrite /lm_ps_opens HlenE.
+      destruct HopenC as [Hz | H3]; [by left | right; by split]. }
+    pose proof Hpsl as [HpsA HpsB].
+    assert (Hproeq : pro_of (pro_from (lm_pro_idx M (gs_cs M so) (nlines I0)) ps0)
+                     = pro_of (pro_from (lm_pro_idx M (gs_cs M so) (nlines I0))
+                         (gs_ps M so))).
+    { destruct (decide (pro_of (pro_from
+                          (lm_pro_idx M (gs_cs M so) (nlines I0)) ps0)
+                        = pro_of (pro_from
+                            (lm_pro_idx M (gs_cs M so) (nlines I0)) (gs_ps M so))))
+        as [Heq | Hne]; [exact Heq | exfalso].
+      pose proof (HpsB Hopens ps0 Hpsp) as Hlt.
+      rewrite /lm_ps_round HlenE in Hlt.
+      pose proof (Hlt Hne) as Hlt2. rewrite Hweq in Hlt2. lia. }
+    assert (Hndps : ~ pro_done (pro_from (lm_pro_idx M (gs_cs M so) (nlines I0))
+                      (gs_ps M so))).
+    { intros Hdone. apply Hnd.
+      destruct (pro_of_prefix_free
+                  (pro_from (lm_pro_idx M (gs_cs M so) (nlines I0)) ps0)
+                  (pro_from (lm_pro_idx M (gs_cs M so) (nlines I0)) (gs_ps M so))
+                  ltac:(by apply pro_from_Forall)
+                  ltac:(by apply pro_from_Forall)
+                  Hdone ltac:(rewrite -Hproeq; reflexivity)) as [Hd _].
+      exact Hd. }
+    assert (Hround0 : lm_pro_idx M (gs_cs M so) (nlines I0) <= pro_rounds ps0).
+    { rewrite Hidxeq.
+      by apply (lm_pro_pin_round_le M ps0 cs0 I0 Hr0 Hopen Hpin0). }
+    assert (Hpseq : gs_ps M so = ps0).
+    { pose proof Hpsp as Hq. destruct Hq as [z Hz]. pose proof Hpsb as Hpsb2.
+      rewrite Hz in Hpsb2.
+      assert (Hzb : Forall (fun x => x < length pro_alts) z)
+        by (by apply Forall_app in Hpsb2 as [_ ?]).
+      pose proof Hproeq as Hpe2. rewrite Hz in Hpe2.
+      rewrite (pro_from_app_le _ ps0 z Hround0) in Hpe2.
+      assert (Hzn : z = []).
+      { apply (pro_of_open_app_inj _ z Hnd Hzb). by rewrite -Hpe2. }
+      rewrite Hz Hzn. by rewrite app_nil_r. }
+    assert (HRle : lm_pro_idx M (gs_cs M so) (nlines I0) <= pro_rounds (gs_ps M so))
+      by (rewrite Hpseq; exact Hround0).
+    assert (Hshape2 : lm_pending_at M (gs_ps M so ++ [a]) (gs_cs M so)
+                        (gs_state M sd so) I0
+                      = lm_wr_pre I0
+                        ++ pro_of (pro_from (lm_pro_idx M (gs_cs M so) (nlines I0))
+                             (gs_ps M so ++ [a])))
+      by (apply (lm_pending_at_round_pre M (gL G)); [exact Hr0 | exact HopenC]).
+    assert (Hshape : lm_pending_at M (gs_ps M so) (gs_cs M so) (gs_state M sd so) I0
+                     = lm_wr_pre I0
+                       ++ pro_of (pro_from (lm_pro_idx M (gs_cs M so) (nlines I0))
+                            (gs_ps M so)))
+      by (apply (lm_pending_at_round_pre M (gL G)); [exact Hr0 | exact HopenC]).
+    assert (Hpendb : lm_pending_at M (gs_ps M so ++ [a]) (gs_cs M so)
+                       (gs_state M sd so) I0 !! length (gs_w M so) = Some b).
+    { pose proof (pro_of_snoc_head
+                    (pro_from (lm_pro_idx M (gs_cs M so) (nlines I0)) (gs_ps M so))
+                    a b Hndps Hhead) as Hph.
+      assert (Hpre3' :
+        (lm_wr_pre I0
+         ++ (pro_of (pro_from (lm_pro_idx M (gs_cs M so) (nlines I0)) (gs_ps M so))
+             ++ [b]))
+        `prefix_of` lm_pending_at M (gs_ps M so ++ [a]) (gs_cs M so)
+                      (gs_state M sd so) I0).
+      { rewrite Hshape2 (pro_from_snoc_le _ (gs_ps M so) a HRle).
+        by apply prefix_app. }
+      assert (Hwl : length (gs_w M so)
+                    = length (lm_wr_pre I0)
+                      + length (pro_of (pro_from
+                          (lm_pro_idx M (gs_cs M so) (nlines I0)) (gs_ps M so)))).
+      { rewrite Hweq -Hpseq Hshape.
+        by rewrite (length_app (lm_wr_pre I0)
+                      (pro_of (pro_from (lm_pro_idx M (gs_cs M so) (nlines I0))
+                         (gs_ps M so)))). }
+      rewrite Hwl. eapply prefix_lookup_Some; [| exact Hpre3'].
+      rewrite (lookup_app_shift (lm_wr_pre I0)).
+      replace (length (pro_of (pro_from
+                 (lm_pro_idx M (gs_cs M so) (nlines I0)) (gs_ps M so))))
+        with (length (pro_of (pro_from
+                 (lm_pro_idx M (gs_cs M so) (nlines I0)) (gs_ps M so))) + 0)
+        by lia.
+      by rewrite (lookup_app_shift
+                    (pro_of (pro_from (lm_pro_idx M (gs_cs M so) (nlines I0))
+                       (gs_ps M so)))). }
+    assert (Hcase : gs_w M so <> []
+                    \/ rest_of (snd <$> gs_E M so) <> []
+                    \/ (snd <$> gs_E M so) = []).
+    { destruct (decide (I0 = [])) as [Hz | Hnz].
+      { right; right. by rewrite HlenE. }
+      left. rewrite Hweq -Hpseq.
+      exact (lm_pending_at_nonnil_at M (gK G) (gs_ps M so) (gs_cs M so)
+               (gs_state M sd so) I0 (snd <$> gs_E M so) HI0 Hcsb' Hnz Hr0). }
+    assert (HD : lm_D M (gs_ps M so ++ [a]) (gs_cs M so) (gs_state M sd so)
+                   (gs_E M so)
+                 = lm_D M (gs_ps M so) (gs_cs M so) (gs_state M sd so) (gs_E M so)).
+    { symmetry. apply (lm_D_ps_ext M (gs_ps M so) (gs_ps M so ++ [a]) (gs_cs M so)
+                         (gs_state M sd so) (gs_E M so)); [by eexists | exact Hpinf]. }
+    assert (Hpceq : lm_pcount M (gs_ps M so) (gs_cs M so) (gs_state M sd so)
+                      (gs_E M so) (gs_w M so ++ [b])
+                    = lm_pcount M (gs_ps M so ++ [a]) (gs_cs M so)
+                        (gs_state M sd so) (gs_E M so) (gs_w M so ++ [b])).
+    { apply (lm_pcount_cs_prefix M (gs_ps M so) (gs_ps M so ++ [a]) (gs_cs M so)
+               (gs_cs M so) (gs_state M sd so) (gs_E M so) (gs_w M so ++ [b]));
+        [by eexists | reflexivity | exact Hpinf |].
+      pose proof (prefix_length _ _ Hcsp) as Hle2.
+      rewrite HlenE Hrl0. lia. }
+    assert (Hpc2 : lm_pcount M (gs_ps M so ++ [a]) (gs_cs M so) (gs_state M sd so)
+                     (gs_E M so) (gs_w M so ++ [b]) = S P).
+    { rewrite -Hpceq /lm_pcount (length_app (gs_w M so) [b]). cbn [length]. lia. }
+    (* the stage is not empty: an empty one has an empty prologue, so the
+       cursor would be at zero -- and the writer is past the head *)
+    assert (Hst_some : gs_st M so <> None).
+    { intros Hnone. destruct (proj1 Hf0n Hnone) as [HE0 Hw0].
+      pose proof (gop_empty_stage_ps so Hpsl Hpsb HE0 Hw0) as Hps0.
+      rewrite HE0 Hw0 Hps0 fmap_nil lm_proc_before_nil in HP.
+      cbn [length] in HP. lia. }
+    iMod (turn_update v P
+            (lm_pcount M (gs_ps M so) (gs_cs M so) (gs_state M sd so)
+               (gs_E M so) (gs_w M so))
+            (S P) ltac:(rewrite /lm_pcount; lia) with "Ht Hta") as "[Ht Hta]".
+    iMod (ps_auth_grow v (gs_ps M so) a with "Hps") as "[Hps #Hpslb2]".
+    iModIntro. iSplitR "Ht".
+    - rewrite /gcl. iRight.
+      iExists v, (MkGS M (gs_ps M so ++ [a]) (gs_cs M so) (gs_E M so)
+                    (gs_w M so ++ [b]) (gs_st M so)).
+      cbn [gs_ps gs_cs gs_E gs_w gs_st].
+      rewrite (_ : gs_state M sd (MkGS M (gs_ps M so ++ [a]) (gs_cs M so)
+                                    (gs_E M so) (gs_w M so ++ [b]) (gs_st M so))
+                   = gs_state M sd so); [| reflexivity].
+      rewrite Hpc2.
+      rewrite /ConsLog.cons_step. cbn [LogEntryDefs.ch_dl].
+      iFrame "Hpin Hwa Hta Hcs Hps HE Hdl Hdll". iPureIntro.
+      apply (gcl_pure_out M sd k ho so
+               (MkGS M (gs_ps M so ++ [a]) (gs_cs M so) (gs_E M so)
+                  (gs_w M so ++ [b]) (gs_st M so)) CH b);
+        [cbn [gs_cs]; lia | reflexivity | | |
+        | (* (A2): the writer is now inside the block's prologue round *)
+          apply (lm_dl_ok_out M so (MkGS M (gs_ps M so ++ [a]) (gs_cs M so)
+                                      (gs_E M so) (gs_w M so ++ [b]) (gs_st M so)));
+          [reflexivity
+          | cbn [gs_w]; intro Hq; by destruct (app_eq_nil _ _ Hq) as [_ Hq2]
+          | exact Hcase | exact Hdlok]
+        | exact Hall0].
+      + rewrite /lm_out_pure.
+        rewrite (_ : gs_state M sd (MkGS M (gs_ps M so ++ [a]) (gs_cs M so)
+                                      (gs_E M so) (gs_w M so ++ [b]) (gs_st M so))
+                     = gs_state M sd so); [| reflexivity].
+        cbn [gs_ps gs_cs gs_E gs_w gs_st]. split_and!.
+        * rewrite Hacc HD. by rewrite app_assoc.
+        * apply gop_prefix_snoc_lookup.
+          { etrans; [exact Hwpre |]. rewrite /lm_pending.
+            by apply lm_pending_at_ps_mono; eexists. }
+          { rewrite /lm_pending HlenE. exact Hpendb. }
+        * exact Hidx.
+        * exact Hbyte.
+        * rewrite Forall_app.
+          split; [exact Hpsb | by rewrite Forall_singleton].
+        * apply (lm_pro_pin_mono M (gs_ps M so) (gs_ps M so ++ [a]));
+            [by eexists | exact Hpinf].
+        * exact Hcsb'.
+        * exact Hdsc.
+        * exact Hpre1.
+        * exact Hpre2.
+        * exact Hpre3.
+        * exact Hnofk.
+        * split; [intro Hq; by destruct (Hst_some Hq) |].
+          intros [_ Hq]. exfalso.
+          by destruct (app_eq_nil (gs_w M so) [b] Hq) as [_ Hb2].
+        * exact Hfok0.
+      + apply (lm_cs_len_ok_write M
+                 (MkGS M (gs_ps M so ++ [a]) (gs_cs M so) (gs_E M so) (gs_w M so)
+                    (gs_st M so)) b); [exact Hcsl | exact Hcase].
+      + apply (lm_ps_len_ok_pro M sd so a b);
+          [ rewrite /lm_ps_round HlenE; exact HRle
+          | rewrite /lm_ps_round HlenE; exact Hndps
+          | rewrite /lm_pending HlenE Hweq; by rewrite -Hpseq
+          | exact (conj HpsA HpsB) ].
+    - iLeft. rewrite -Hpseq. iFrame "Ht Hpslb2 Hcslb Hilb HW".
   Qed.
 End gen_out.

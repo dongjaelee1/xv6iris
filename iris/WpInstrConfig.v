@@ -120,13 +120,34 @@ End ctower.
 (* same reason as [mm_rs]: nothing downstream may see the tower's body *)
 Global Opaque mc_rs.
 
+(* Dispatched SYNTACTICALLY on the register rather than by [first [apply
+   ...]]: every failing [apply mc_rs_X] has the unifier delta-expand [mc_rs]
+   into its [register_set] tower before giving up (see [mm_ro_nPC] in HartMFrame.v),
+   which cost seconds per call.  The patterns name the [R_*] wrapper
+   explicitly: a pattern does not insert the coercion the lemma
+   statements rely on. *)
 Ltac mc_rs_lk :=
-  first [ apply mc_rs_PC | apply mc_rs_nPC | apply mc_rs_ms | apply mc_rs_mi
-        | apply mc_rs_cy | apply mc_rs_ti | apply mc_rs_ip | apply mc_rs_priv
-        | apply mc_rs_mst | apply mc_rs_hart | apply mc_rs_pcfg
-        | apply mc_rs_mc | apply mc_rs_micfg | apply mc_rs_misa
-        | apply mc_rs_sec | apply mc_rs_pma | apply mc_rs_htif
-        | apply mc_rs_elp | apply mc_rs_senv ].
+  lazymatch goal with
+  | |- register_lookup (R_bitvector_64 PC)                      _ = _ => apply mc_rs_PC
+  | |- register_lookup (R_bitvector_64 nextPC)                  _ = _ => apply mc_rs_nPC
+  | |- register_lookup (R_bitvector_64 minstret)                _ = _ => apply mc_rs_ms
+  | |- register_lookup (R_bool minstret_increment)              _ = _ => apply mc_rs_mi
+  | |- register_lookup (R_bitvector_64 mcycle)                  _ = _ => apply mc_rs_cy
+  | |- register_lookup (R_bitvector_64 mtime)                   _ = _ => apply mc_rs_ti
+  | |- register_lookup (R_bitvector_64 mip)                     _ = _ => apply mc_rs_ip
+  | |- register_lookup (R_Privilege cur_privilege)              _ = _ => apply mc_rs_priv
+  | |- register_lookup (R_bitvector_64 mstatus)                 _ = _ => apply mc_rs_mst
+  | |- register_lookup (R_HartState hart_state)                 _ = _ => apply mc_rs_hart
+  | |- register_lookup (R_vector_64_bitvector_8 pmpcfg_n)       _ = _ => apply mc_rs_pcfg
+  | |- register_lookup (R_bitvector_32 mcountinhibit)           _ = _ => apply mc_rs_mc
+  | |- register_lookup (R_bitvector_64 minstretcfg)             _ = _ => apply mc_rs_micfg
+  | |- register_lookup (R_bitvector_64 misa)                    _ = _ => apply mc_rs_misa
+  | |- register_lookup (R_bitvector_64 mseccfg)                 _ = _ => apply mc_rs_sec
+  | |- register_lookup (R_list_PMA_Region pma_regions)          _ = _ => apply mc_rs_pma
+  | |- register_lookup (R_option_bitvector_64 htif_tohost_base) _ = _ => apply mc_rs_htif
+  | |- register_lookup (R_bitvector_1 elp)                      _ = _ => apply mc_rs_elp
+  | |- register_lookup (R_bitvector_64 senvcfg)                 _ = _ => apply mc_rs_senv
+  end.
 
 Section cagree.
   Context (priv : Privilege).

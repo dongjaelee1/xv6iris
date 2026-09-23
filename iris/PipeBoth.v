@@ -589,8 +589,11 @@ Section pipe_both.
 
   Global Instance pblk2_ecl_L_persistent : Persistent pblk2_ecl_L.
   Proof using . rewrite /pblk2_ecl_L. apply _. Qed.
+  (* The [R] halves name the [□] instance: under [apply _] the typeclass
+     unifier takes 15 s (28 s for [pblk2_ecl_R_t]) to match it against the
+     body, where a direct [apply] is instant. *)
   Global Instance pblk2_ecl_R_persistent : Persistent pblk2_ecl_R.
-  Proof using . rewrite /pblk2_ecl_R. apply _. Qed.
+  Proof using . rewrite /pblk2_ecl_R. apply bi.intuitionistically_persistent. Qed.
   Global Instance pblk2_ecl_file_persistent : Persistent pblk2_ecl_file.
   Proof using . rewrite /pblk2_ecl_file. apply _. Qed.
   Global Instance pblk2_ecl_persistent : Persistent pblk2_ecl.
@@ -802,7 +805,7 @@ Section pipe_both.
   Global Instance pblk2_ecl_L_t_persistent : Persistent pblk2_ecl_L_t.
   Proof using . rewrite /pblk2_ecl_L_t. apply _. Qed.
   Global Instance pblk2_ecl_R_t_persistent : Persistent pblk2_ecl_R_t.
-  Proof using . rewrite /pblk2_ecl_R_t. apply _. Qed.
+  Proof using . rewrite /pblk2_ecl_R_t. apply bi.intuitionistically_persistent. Qed.
   Global Instance pblk2_ecl_t_persistent : Persistent pblk2_ecl_t.
   Proof using .
     rewrite /pblk2_ecl_t. apply bi.sep_persistent;
@@ -921,15 +924,18 @@ Section pipe_both.
   Lemma pblk2_ecl_t_holds : ⊢ pblk2_ecl_t.
   Proof using .
     rewrite /pblk2_ecl_t.
-    iSplit; [iApply pblk2_ecl_L_t_holds | iApply pblk2_ecl_R_t_holds].
+    (* [iSplitL ""], not [iSplit]: on [∗] with an empty context [iSplit]
+       goes through [FromAnd] and searches for a [Persistent] half through
+       the unfolded [R] body -- the same 28 s (15 s below) as [apply _]. *)
+    iSplitL ""; [iApply pblk2_ecl_L_t_holds | iApply pblk2_ecl_R_t_holds].
   Qed.
 
   (* THE LANE'S DEBT, PAID *)
   Lemma pblk2_ecl_holds : ⊢ pblk2_ecl.
   Proof using .
     rewrite /pblk2_ecl.
-    iSplit; [iApply pblk2_ecl_L_holds |].
-    iSplit; [iApply pblk2_ecl_R_holds | iApply pblk2_ecl_file_holds].
+    iSplitL ""; [iApply pblk2_ecl_L_holds |].
+    iSplitL ""; [iApply pblk2_ecl_R_holds | iApply pblk2_ecl_file_holds].
   Qed.
 
   (* ================================================================= *)

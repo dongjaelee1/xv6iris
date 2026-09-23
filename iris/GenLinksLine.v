@@ -676,10 +676,13 @@ Section gen_links_line.
 
   Global Instance gl_w_persistent : Persistent gl_w.
   Proof using. rewrite /gl_w. apply _. Qed.
+  (* [gl_blk] and [gl_pro] name the [□] instance: [apply _] reaches it only
+     after trying every [Persistent] instance in scope against the whole
+     body, 11 s apiece. *)
   Global Instance gl_blk_persistent : Persistent gl_blk.
-  Proof using. rewrite /gl_blk. apply _. Qed.
+  Proof using. rewrite /gl_blk. apply bi.intuitionistically_persistent. Qed.
   Global Instance gl_pro_persistent : Persistent gl_pro.
-  Proof using. rewrite /gl_pro. apply _. Qed.
+  Proof using. rewrite /gl_pro. apply bi.intuitionistically_persistent. Qed.
   Global Instance gl_head_persistent : Persistent gl_head.
   Proof using. rewrite /gl_head. apply _. Qed.
   Global Instance gl_taint_persistent : Persistent gl_taint.

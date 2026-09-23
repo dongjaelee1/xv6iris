@@ -332,14 +332,35 @@ End agree.
 
 
 (* every [mm_rs] lookup as an [apply]-directed step (see the note below on
-   why this may not be a [rewrite]) *)
+   why this may not be a [rewrite]),
+   dispatched SYNTACTICALLY on the register rather than by [first [apply
+   ...]]: every failing [apply mm_rs_X] has the unifier delta-expand [mm_rs]
+   into its [register_set] tower before giving up (see [mm_ro_nPC] below),
+   which cost seconds per call.  The patterns name the [R_*] wrapper
+   explicitly: a pattern does not insert the coercion the lemma
+   statements rely on. *)
 Ltac mm_rs_lk :=
-  first [ apply mm_rs_PC | apply mm_rs_nPC | apply mm_rs_ms | apply mm_rs_mi
-        | apply mm_rs_cy | apply mm_rs_ti | apply mm_rs_ip | apply mm_rs_priv
-        | apply mm_rs_mst | apply mm_rs_hart | apply mm_rs_pcfg
-        | apply mm_rs_mc | apply mm_rs_micfg | apply mm_rs_misa
-        | apply mm_rs_sec | apply mm_rs_pma | apply mm_rs_htif
-        | apply mm_rs_elp | apply mm_rs_senv ].
+  lazymatch goal with
+  | |- register_lookup (R_bitvector_64 PC)                      _ = _ => apply mm_rs_PC
+  | |- register_lookup (R_bitvector_64 nextPC)                  _ = _ => apply mm_rs_nPC
+  | |- register_lookup (R_bitvector_64 minstret)                _ = _ => apply mm_rs_ms
+  | |- register_lookup (R_bool minstret_increment)              _ = _ => apply mm_rs_mi
+  | |- register_lookup (R_bitvector_64 mcycle)                  _ = _ => apply mm_rs_cy
+  | |- register_lookup (R_bitvector_64 mtime)                   _ = _ => apply mm_rs_ti
+  | |- register_lookup (R_bitvector_64 mip)                     _ = _ => apply mm_rs_ip
+  | |- register_lookup (R_Privilege cur_privilege)              _ = _ => apply mm_rs_priv
+  | |- register_lookup (R_bitvector_64 mstatus)                 _ = _ => apply mm_rs_mst
+  | |- register_lookup (R_HartState hart_state)                 _ = _ => apply mm_rs_hart
+  | |- register_lookup (R_vector_64_bitvector_8 pmpcfg_n)       _ = _ => apply mm_rs_pcfg
+  | |- register_lookup (R_bitvector_32 mcountinhibit)           _ = _ => apply mm_rs_mc
+  | |- register_lookup (R_bitvector_64 minstretcfg)             _ = _ => apply mm_rs_micfg
+  | |- register_lookup (R_bitvector_64 misa)                    _ = _ => apply mm_rs_misa
+  | |- register_lookup (R_bitvector_64 mseccfg)                 _ = _ => apply mm_rs_sec
+  | |- register_lookup (R_list_PMA_Region pma_regions)          _ = _ => apply mm_rs_pma
+  | |- register_lookup (R_option_bitvector_64 htif_tohost_base) _ = _ => apply mm_rs_htif
+  | |- register_lookup (R_bitvector_1 elp)                      _ = _ => apply mm_rs_elp
+  | |- register_lookup (R_bitvector_64 senvcfg)                 _ = _ => apply mm_rs_senv
+  end.
 
 (* nextPC is in [mm_Drw], so the READ-ONLY frame does not see a nextPC write
    -- which is what lets the execute obligation hand its read-only frame

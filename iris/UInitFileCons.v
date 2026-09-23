@@ -70,8 +70,11 @@ Require Import FileLinks.
 Require Import FileLinksLine.
 Require Import LinkRec.
 Require Import FileLinksAt.        (* the families at a NAMED boot state *)
-Require Import FileLinksAtBan.
-Require Import FileLinkInst.       (* [file_link_inst] / [file_link_inst_at] *)
+Require Import LineModel.
+Require Import LineModelLinks.
+Require Import FileLinkInst.
+Require Import GenLinksLine.
+Require Import FileLinkGen.       (* [file_link_inst] / [file_link_inst_at] *)
 Require Import UkRun.
 Require Import UkWriteClosed.      (* [kinit_w1_of_closed_l0] *)
 Require Import UkInit.
@@ -229,7 +232,7 @@ Section UInitFileCons.
     FileOut.fturn_core g (S gen_id) -∗ f0pre_at g s0 -∗ lk_turn FI (S gen_id).
   Proof using .
     iIntros "Ht Hpre".
-    cbn [lk_turn FileLinkInst.file_link_inst].
+    cbn [lk_turn FileLinkInst.file_link_inst FileLinkGen.file_link_gen GenLinksLine.gen_link_inst].
     rewrite /FileLinksLine.fturn_pre.
     iSplitR; [ by iPureIntro | ]. iFrame "Ht".
     iApply (FileLinksAt.f0pre_at_pack g s0 with "Hpre").
@@ -258,7 +261,7 @@ Section UInitFileCons.
                 ⌜length I = n⌝ ∗ lk_cred FI (S gen_id) I 0%nat)).
   Proof using .
     iApply (UInitBanner.kinit_ban_law_holds_at (PS := uprogSG_free) FI).
-    cbn [lk_links FileLinkInst.file_link_inst].
+    cbn [lk_links FileLinkInst.file_link_inst FileLinkGen.file_link_gen GenLinksLine.gen_link_inst].
     iApply (FileLinks.file_links_holds g Hcons).
   Qed.
 
@@ -418,27 +421,29 @@ Section UInitFileCons.
   Qed.
 
   (* ...AND THE HALF THAT *IS* RECOVERABLE ONCE THE FIRST BYTE IS OUT.
-     After the era's first banner byte the head arm of [FileLinksLine.
-     fwc_ban] is refuted by its own index, so what is left carries the
+     After the era's first banner byte the head arm of [GenLinksLine.
+     gwc_ban] is refuted by its own index, so what is left carries the
      FILED boot state [f0w] -- persistent -- or the taint.  This is half
      of what obligation 22 costs; the other half is the TIE between that
      state and the deed's content, and that one is not derivable today
      (the findings say exactly why). *)
   Lemma file_ban_f0w (k : nat) (v : era_pins) (I : list (bv 8)) (i : nat) :
-    FileLinksLine.fwc_ban g k v I (S i) -∗
-    FileLinksLine.fwc_ban g k v I (S i)
+    lk_ban (file_link_inst g) k v I (S i) -∗
+    lk_ban (file_link_inst g) k v I (S i)
     ∗ ((∃ s0 : fstate, FileLinksLine.f0w g k s0) ∨ FT).
   Proof using .
-    iIntros "Hc". iEval (rewrite /FileLinksLine.fwc_ban) in "Hc".
+    cbn [lk_ban gW FileLinkInst.file_link_inst FileLinkGen.file_link_gen
+         GenLinksLine.gen_link_inst FileLinkGen.file_params].
+    iIntros "Hc". iEval (rewrite /gwc_ban) in "Hc".
     iDestruct "Hc" as "[Hl | [[%Hq _] | #HT]]".
     - iDestruct "Hl" as (ps cs s0 P) "(%Hw & Htn & Hps & Hcs & HE & #Hf)".
       iSplitL "Htn Hps Hcs HE".
-      + iEval (rewrite /FileLinksLine.fwc_ban). iLeft.
+      + iEval (rewrite /gwc_ban). iLeft.
         iExists ps, cs, s0, P. iFrame "Htn Hps Hcs HE Hf". by iPureIntro.
       + iLeft. iExists s0. iExact "Hf".
     - discriminate Hq.
     - iSplit.
-      + iEval (rewrite /FileLinksLine.fwc_ban). iRight. iRight. iExact "HT".
+      + iEval (rewrite /gwc_ban). iRight. iRight. iExact "HT".
       + iRight. iExact "HT".
   Qed.
 
@@ -457,15 +462,15 @@ Section UInitFileCons.
      name a state; under it /init takes [s0 := None] ([file_f0pre_at_taint]
      below), which is admissible everywhere and which every [_at] family's
      taint arm accepts. *)
-  (* THE TURN, AT THE NAMED STATE.  [FileLinksAtBan.fturn_pre_at] is
+  (* THE TURN, AT THE NAMED STATE.  [FileLinksAt.fturn_pre_at] is
      [lk_turn (file_link_inst_at g s0)]. *)
   Lemma file_turn_pre_at_of_boot (s0 : fstate) :
     FileOut.fturn_core g (S gen_id) -∗ f0pre_at g s0 -∗
     lk_turn (file_link_inst_at g s0) (S gen_id).
   Proof using .
     iIntros "Ht Hpre".
-    cbn [lk_turn FileLinkInst.file_link_inst_at].
-    rewrite /FileLinksAtBan.fturn_pre_at.
+    cbn [lk_turn FileLinkInst.file_link_inst_at FileLinkGen.file_link_gen_at GenLinksLine.gen_link_inst].
+    rewrite /FileLinksAt.fturn_pre_at.
     iSplitR; [ by iPureIntro | ]. iFrame "Ht Hpre".
   Qed.
 
@@ -514,16 +519,29 @@ Section UInitFileCons.
   Qed.
 
   (* ---- (b) AFTER THE BANNER'S FIRST BYTE THE SAME NAME COMES BACK ----
-     [FileLinksAtBan.fban_at_f0w]: at [S i] the head arm is refuted by its
+     [GenLinksLine.gwc_ban] at [FileLinkGen.file_params_at]: at [S i] the head arm is refuted by its
      own index, so what is left carries [f0w] AT THE CALLER'S [s0].  The
      first-drain pinning is untouched -- it reads [f0w] exactly as it
      always did. *)
   Lemma file_ban_f0w_at (s0 : fstate) (k : nat) (v : era_pins)
       (I : list (bv 8)) (i : nat) :
-    fwc_ban_at g s0 k v I (S i) -∗
-    fwc_ban_at g s0 k v I (S i)
+    lk_ban (file_link_inst_at g s0) k v I (S i) -∗
+    lk_ban (file_link_inst_at g s0) k v I (S i)
     ∗ (FileLinksLine.f0w g k s0 ∨ FT).
-  Proof using . iApply (FileLinksAtBan.fban_at_f0w g s0 k v I i). Qed.
+  Proof using .
+    cbn [lk_ban gW FileLinkInst.file_link_inst_at FileLinkGen.file_link_gen_at
+         GenLinksLine.gen_link_inst FileLinkGen.file_params_at].
+    rewrite {1}/gwc_ban /FileLinkGen.f0w_at.
+    iIntros "[Hl | [[%Hq _] | #HT]]"; [| discriminate Hq |].
+    - iDestruct "Hl" as (ps cs s P) "(%Hw & Htn & #Hps & #Hcs & #HE & #[Hf %Hs])".
+      subst s. iSplitL "Htn".
+      + rewrite /gwc_ban /FileLinkGen.f0w_at. iLeft. iExists ps, cs, s0, P.
+        iFrame "Htn Hps Hcs HE Hf". iSplit; by iPureIntro.
+      + iLeft. iExact "Hf".
+    - iSplitR.
+      + by iApply (gwc_ban_taint file_lm (file_params_at g s0)).
+      + iRight. iExact "HT".
+  Qed.
 
   (* =================================================================== *)
   (*  10.  /init's FIRST CREDENTIAL, AT THE ROUND'S OWN FAMILY             *)

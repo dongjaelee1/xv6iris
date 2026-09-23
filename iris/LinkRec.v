@@ -291,7 +291,7 @@ Section linkrec.
     (*  echo's base [EchoLinksPro.ewc_pro] is [wr_pban] -- [wr_pro] plus    *)
     (*  [pro_from ... = pro_fail j ++ [3]] -- and that [j] is exactly what  *)
     (*  [lk_pdiag_done_1] needs to land back in the banner-owed shape,      *)
-    (*  while the FILE era's [fwc_pro_at] is [wr_pro_f], which says only    *)
+    (*  while the FILE era's [gwc_pro] is [lm_wr_pro], which says only     *)
     (*  that the prologue is not done and loses [j] at its banner's end.    *)
     (*  So the family enters at [lk_pban], which is what the last banner    *)
     (*  byte leaves ([lk_pban_of_ban_done]), and [lk_pro_of_pban] is the    *)

@@ -76,6 +76,8 @@ Require Import FileLinks.
 Require Import FileLinksLine.
 Require Import FileLinksAt.
 Require Import FileLinkInst.
+Require Import GenLinksLine.
+Require Import FileLinkGen.
 Require Import FileReadInst.       (* [file_read_leaf_holds_at]: the read leaf at the index *)
 Require Import UShRound.           (* the round, its families and their laws *)
 Require Import UInitFileCons.      (* the claim's laws at /init *)

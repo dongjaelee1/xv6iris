@@ -36,6 +36,8 @@ Require Import FileLineWit.        (* the consumed input's lines are its last by
 Require Import LinkRec.
 Require Import ReadRec.
 Require Import FileLinkInst.
+Require Import GenLinksLine.
+Require Import FileLinkGen.
 Require Import RiscvPtsto.
 Require Import ConsoleInv.
 Require Import WpUart.
@@ -516,7 +518,7 @@ Section file_read_inst_at.
   Proof using Htag.
     intros Hddc Hlws Hwinf Hpre2 Hwsj.
     iIntros "#Hpin #HE #Hres Hret #Htags #Hsw #Hlb".
-    cbn [lk_epin lk_rres lk_rr lk_T FileLinkInst.file_link_inst_at].
+    cbn [lk_epin lk_rres lk_rr lk_T FileLinkInst.file_link_inst_at FileLinkGen.file_link_gen_at GenLinksLine.gen_link_inst].
     (* the index's own boot-state witness, kept for the agreement *)
     iAssert (FileLinksLine.f0bw g (S gen_id) s0) as "#Hf0".
     { rewrite /FileLinksAt.fwc_rresw_at /FileLinksAt.fwc_rres_at.

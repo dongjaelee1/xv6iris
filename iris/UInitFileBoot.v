@@ -106,6 +106,8 @@ Require Import FileLinksLine.
 Require Import FileLinksAt.
 Require Import FileLinksAtInp.     (* [file_wb_inp_at] *)
 Require Import FileLinkInst.
+Require Import GenLinksLine.
+Require Import FileLinkGen.
 Require Import FileReadInst.
 Require Import UkShRedirBody.      (* [ush_line_file] *)
 Require Import UInitFileCons.      (* the claim's readings, the boot filing *)

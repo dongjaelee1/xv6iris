@@ -1672,10 +1672,7 @@ UShLineHold.v
 UShLineAtHold.v
 UShPanicHold.v
 FileLinksAt.v
-FileLinksAtBan.v
-FileLinksAtLine.v
 FileLinksAtInp.v
-FileLinksAtPro.v
 AppFileCons.v
 UInitConsFile.v
 UInitConsPipe.v

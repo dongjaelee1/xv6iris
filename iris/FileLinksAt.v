@@ -15,12 +15,15 @@
 (*  [dst_content s = cat_st cs0 s0 I]).                                   *)
 (*                                                                       *)
 (*  THE FIX IS A SHARED INDEX, and it costs no ghost and no change to     *)
-(*  [FileOut]'s stage: each family gets an [_at s0] twin with [s0]        *)
-(*  HOISTED out of the existential, the old form is its existential       *)
-(*  closure (packing lemmas both ways, below), and the taint arm is at    *)
-(*  EVERY [s0].  /init then names its deed's content once, at             *)
-(*  [f0pre_at], and reads the same name back off the banner's own         *)
-(*  credential.                                                          *)
+(*  [FileOut]'s stage: the families are instantiated a second time with   *)
+(*  [s0] HOISTED out of the existential -- [GenLinksLine] at              *)
+(*  [FileLinkGen.file_params_at], whose witness is [f0w] with the state   *)
+(*  pinned -- the old form is that one's existential closure              *)
+(*  ([FileLinkGen] section 6), and the taint arm is at EVERY [s0].  /init *)
+(*  then names its deed's content once, at [f0pre_at], and reads the      *)
+(*  same name back off the banner's own credential.  THIS FILE holds the  *)
+(*  file's own pieces at the index: the head, the reader's residue, the   *)
+(*  turn.                                                                *)
 (*                                                                       *)
 (*  WHY A FILE OF ITS OWN and not the bottom of [FileLinksLine.v]: the    *)
 (*  program stream is live in [UShRound.v] and in everything that reads   *)
@@ -133,14 +136,6 @@ Section file_links_at.
   Global Instance fhead_at_timeless s0 k v I : Timeless (fhead_at s0 k v I).
   Proof using . rewrite /fhead_at. tl_leaf. Qed.
 
-  (* the head, now that it has its own instance, is a leaf for the
-     families below *)
-  Local Ltac tl_at :=
-    lazymatch goal with
-    | |- Timeless (fhead_at _ _ _ _) => apply fhead_at_timeless
-    | |- _ => tl_leaf
-    end.
-
   Lemma fhead_at_pack (s0 : fstate) k v I : fhead_at s0 k v I -∗ fhead g k v I.
   Proof using .
     rewrite /fhead_at /FileLinksLine.fhead.
@@ -159,96 +154,8 @@ Section file_links_at.
   Qed.
 
   (* =================================================================== *)
-  (*  2.  THE TWELVE FAMILIES, AT A NAMED STATE                           *)
+  (*  2.  THE READER'S RESIDUE, AT A NAMED STATE                          *)
   (* =================================================================== *)
-  Definition fwc_pro_at (s0 : fstate) (k : nat) (v : era_pins)
-      (I : list (bv 8)) : iProp Σ :=
-    ((∃ (ps cs : list nat) (P : nat),
-        ⌜wr_pro_f ps cs s0 I P⌝ ∗ fcur g v ps cs s0 I P k)
-     ∨ fhead_at s0 k v I ∨ FT)%I.
-
-  Definition fwc_owed_at (s0 : fstate) (k : nat) (v : era_pins)
-      (I : list (bv 8)) : iProp Σ :=
-    ((∃ (ps cs : list nat) (P : nat),
-        ⌜wr_owed_f ps cs s0 I P⌝ ∗ fcur g v ps cs s0 I P k)
-     ∨ fhead_at s0 k v I ∨ FT)%I.
-
-  Definition fwc_sp_at (s0 : fstate) (k : nat) (v : era_pins)
-      (I : list (bv 8)) : iProp Σ :=
-    ((∃ (ps cs : list nat) (P : nat),
-        ⌜wr_sp_f ps cs s0 I P⌝ ∗ fcur g v ps cs s0 I P k) ∨ FT)%I.
-
-  Definition fwc_open_at (s0 : fstate) (k : nat) (v : era_pins)
-      (I : list (bv 8)) : iProp Σ :=
-    ((∃ (ps cs : list nat) (P : nat),
-        ⌜wr_open_f ps cs s0 I P⌝ ∗ fcur g v ps cs s0 I P k) ∨ FT)%I.
-
-  Definition fwc_sp_t_at (s0 : fstate) (k : nat) (v : era_pins)
-      (I : list (bv 8)) : iProp Σ :=
-    ((∃ (ps cs : list nat) (P : nat),
-        ⌜wr_sp_t_f ps cs s0 I P⌝ ∗ fcur g v ps cs s0 I P k) ∨ FT)%I.
-
-  Definition fwc_open_t_at (s0 : fstate) (k : nat) (v : era_pins)
-      (I : list (bv 8)) : iProp Σ :=
-    ((∃ (ps cs : list nat) (P : nat),
-        ⌜wr_open_t_f ps cs s0 I P⌝ ∗ fcur g v ps cs s0 I P k) ∨ FT)%I.
-
-  Definition fwc_lend_at (s0 : fstate) (k : nat) (v : era_pins)
-      (I : list (bv 8)) : iProp Σ :=
-    ((∃ (ps cs : list nat) (P : nat),
-        ⌜wr_blk_t_f ps cs s0 I P⌝ ∗ fcur g v ps cs s0 I P k) ∨ FT)%I.
-
-  Definition fwc_blk_at (s0 : fstate) (k : nat) (v : era_pins)
-      (I : list (bv 8)) (a i : nat) : iProp Σ :=
-    ((∃ (ps cs : list nat) (P : nat),
-        ⌜wr_blk_t_f ps cs s0 I P⌝
-        ∗ turn v (P + i)%nat ∗ ps_lb v ps ∗ cs_lb v (blkcs_f cs a i)
-        ∗ inp_lb v I ∗ f0w g k s0)
-     ∨ FT)%I.
-
-  Definition fwc_ban_at (s0 : fstate) (k : nat) (v : era_pins)
-      (I : list (bv 8)) (i : nat) : iProp Σ :=
-    ((∃ (ps cs : list nat) (P : nat),
-        ⌜wr_banp_f ps cs s0 I P i⌝
-        ∗ turn v (P + i)%nat ∗ ps_lb v ps ∗ cs_lb v cs ∗ inp_lb v I
-        ∗ f0w g k s0)
-     ∨ (⌜i = 0%nat⌝ ∗ fhead_at s0 k v I) ∨ FT)%I.
-
-  (* [FileLinksLine.fwc_post] at the named state: a block written up to its
-     prompt, its length computed from the credential's OWN choice list
-     ([FileLinksLine.fabs]) -- so it can be the block whose bytes are the
-     file's ([RCRan]), which the [fab]-indexed shape could not. *)
-  Definition fwc_post_at (s0 : fstate) (k : nat) (v : era_pins)
-      (I : list (bv 8)) (a : nat) : iProp Σ :=
-    ((∃ (ps cs : list nat) (P : nat),
-        ⌜wr_blk_t_f ps cs s0 I P⌝
-        ∗ turn v (P + (length (fabs s0 cs I a) - 2))%nat ∗ ps_lb v ps
-        ∗ cs_lb v (blkcs_f cs a (length (fabs s0 cs I a) - 2)%nat)
-        ∗ inp_lb v I ∗ f0w g k s0)
-     ∨ FT)%I.
-
-  Definition fwc_line_at (s0 : fstate) (k : nat) (v : era_pins)
-      (I : list (bv 8)) : iProp Σ :=
-    (fwc_pro_at s0 k v I
-     ∨ ∃ a : nat, ⌜faprs I a⌝ ∗ fwc_post_at s0 k v I a)%I.
-
-  Definition fwc_pr_at (s0 : fstate) (k : nat) (v : era_pins)
-      (I : list (bv 8)) (p : nat) : iProp Σ :=
-    match p with
-    | O => fwc_owed_at s0 k v I
-    | S O => fwc_sp_at s0 k v I
-    | _ => fwc_open_at s0 k v I
-    end.
-
-  Definition fwc_lpr_at (s0 : fstate) (k : nat) (v : era_pins)
-      (I : list (bv 8)) (p : nat) : iProp Σ :=
-    match p with
-    | O => fwc_line_at s0 k v I
-    | S O => fwc_sp_t_at s0 k v I
-    | S (S O) => fwc_open_t_at s0 k v I
-    | _ => fwc_blk_at s0 k v I 0%nat 0%nat
-    end.
-
   Definition fwc_rres_at (s0 : fstate) (v : era_pins) (I : list (bv 8))
     : iProp Σ :=
     (∃ ps0 cs0 : list nat,
@@ -256,356 +163,15 @@ Section file_links_at.
        ∗ turn_lb v (length (proc_before_f ps0 cs0 (Some s0) I))
        ∗ ps_lb v ps0 ∗ cs_lb v cs0 ∗ f0bw g (S gen_id) s0)%I.
 
-  (* ---- timelessness, which is what the record's fields need ---- *)
-  Global Instance fwc_pro_at_timeless s0 k v I : Timeless (fwc_pro_at s0 k v I).
-  Proof using . rewrite /fwc_pro_at. tl_at. Qed.
-  Global Instance fwc_owed_at_timeless s0 k v I : Timeless (fwc_owed_at s0 k v I).
-  Proof using . rewrite /fwc_owed_at. tl_at. Qed.
-  Global Instance fwc_sp_at_timeless s0 k v I : Timeless (fwc_sp_at s0 k v I).
-  Proof using . rewrite /fwc_sp_at. tl_at. Qed.
-  Global Instance fwc_open_at_timeless s0 k v I : Timeless (fwc_open_at s0 k v I).
-  Proof using . rewrite /fwc_open_at. tl_at. Qed.
-  Global Instance fwc_sp_t_at_timeless s0 k v I : Timeless (fwc_sp_t_at s0 k v I).
-  Proof using . rewrite /fwc_sp_t_at. tl_at. Qed.
-  Global Instance fwc_open_t_at_timeless s0 k v I :
-    Timeless (fwc_open_t_at s0 k v I).
-  Proof using . rewrite /fwc_open_t_at. tl_at. Qed.
-  Global Instance fwc_lend_at_timeless s0 k v I : Timeless (fwc_lend_at s0 k v I).
-  Proof using . rewrite /fwc_lend_at. tl_at. Qed.
-  Global Instance fwc_blk_at_timeless s0 k v I a i :
-    Timeless (fwc_blk_at s0 k v I a i).
-  Proof using . rewrite /fwc_blk_at. tl_at. Qed.
-  Global Instance fwc_ban_at_timeless s0 k v I i :
-    Timeless (fwc_ban_at s0 k v I i).
-  Proof using . rewrite /fwc_ban_at. tl_at. Qed.
-  Global Instance fwc_post_at_timeless s0 k v I a :
-    Timeless (fwc_post_at s0 k v I a).
-  Proof using . rewrite /fwc_post_at. tl_at. Qed.
-  Global Instance fwc_line_at_timeless s0 k v I : Timeless (fwc_line_at s0 k v I).
-  Proof using .
-    rewrite /fwc_line_at.
-    apply bi.or_timeless; [apply fwc_pro_at_timeless |].
-    apply bi.exist_timeless; intro.
-    apply bi.sep_timeless; [apply bi.pure_timeless | apply fwc_post_at_timeless].
-  Qed.
-  Global Instance fwc_pr_at_timeless s0 k v I p : Timeless (fwc_pr_at s0 k v I p).
-  Proof using .
-    rewrite /fwc_pr_at. destruct p as [| [| p]];
-      [apply fwc_owed_at_timeless | apply fwc_sp_at_timeless
-      | apply fwc_open_at_timeless].
-  Qed.
-  Global Instance fwc_lpr_at_timeless s0 k v I p :
-    Timeless (fwc_lpr_at s0 k v I p).
-  Proof using .
-    rewrite /fwc_lpr_at. destruct p as [| [| [| p]]];
-      [apply fwc_line_at_timeless | apply fwc_sp_t_at_timeless
-      | apply fwc_open_t_at_timeless | apply fwc_blk_at_timeless].
-  Qed.
   Global Instance fwc_rres_at_persistent s0 v I :
     Persistent (fwc_rres_at s0 v I).
   Proof using . rewrite /fwc_rres_at. tl_leaf. Qed.
   Global Instance fwc_rres_at_timeless s0 v I : Timeless (fwc_rres_at s0 v I).
   Proof using . rewrite /fwc_rres_at. tl_leaf. Qed.
 
-  (* ---- the taint is at EVERY state ---- *)
-  Lemma fwc_pro_at_taint s0 k v I : FT -∗ fwc_pro_at s0 k v I.
-  Proof using . iIntros "H". rewrite /fwc_pro_at. iRight. by iRight. Qed.
-  Lemma fwc_owed_at_taint s0 k v I : FT -∗ fwc_owed_at s0 k v I.
-  Proof using . iIntros "H". rewrite /fwc_owed_at. iRight. by iRight. Qed.
-  Lemma fwc_sp_at_taint s0 k v I : FT -∗ fwc_sp_at s0 k v I.
-  Proof using . iIntros "H". rewrite /fwc_sp_at. by iRight. Qed.
-  Lemma fwc_open_at_taint s0 k v I : FT -∗ fwc_open_at s0 k v I.
-  Proof using . iIntros "H". rewrite /fwc_open_at. by iRight. Qed.
-  Lemma fwc_sp_t_at_taint s0 k v I : FT -∗ fwc_sp_t_at s0 k v I.
-  Proof using . iIntros "H". rewrite /fwc_sp_t_at. by iRight. Qed.
-  Lemma fwc_open_t_at_taint s0 k v I : FT -∗ fwc_open_t_at s0 k v I.
-  Proof using . iIntros "H". rewrite /fwc_open_t_at. by iRight. Qed.
-  Lemma fwc_lend_at_taint s0 k v I : FT -∗ fwc_lend_at s0 k v I.
-  Proof using . iIntros "H". rewrite /fwc_lend_at. by iRight. Qed.
-  Lemma fwc_blk_at_taint s0 k v I a i : FT -∗ fwc_blk_at s0 k v I a i.
-  Proof using . iIntros "H". rewrite /fwc_blk_at. by iRight. Qed.
-  Lemma fwc_ban_at_taint s0 k v I i : FT -∗ fwc_ban_at s0 k v I i.
-  Proof using . iIntros "H". rewrite /fwc_ban_at. iRight. by iRight. Qed.
-  Lemma fwc_post_at_taint s0 k v I a : FT -∗ fwc_post_at s0 k v I a.
-  Proof using . iIntros "H". rewrite /fwc_post_at. by iRight. Qed.
-
-  (* the landed shape is the instance at a state-free alternative *)
-  Lemma fwc_post_at_of_blk s0 k v I a :
-    fapr I a ->
-    fwc_blk_at s0 k v I a (length (fab I a) - 2)%nat -∗ fwc_post_at s0 k v I a.
-  Proof using .
-    intros Ha. rewrite /fwc_blk_at /fwc_post_at. iIntros "[H | H]"; [| by iRight].
-    iDestruct "H" as (ps cs P) "(%Hw & Htn & Hps & Hcs & HE & Hf)".
-    iLeft. iExists ps, cs, P. rewrite (fabs_fab s0 cs I a Ha).
-    iFrame "Htn Hps Hcs HE Hf". by iPureIntro.
-  Qed.
-
-  Lemma fwc_line_at_taint s0 k v I : FT -∗ fwc_line_at s0 k v I.
-  Proof using .
-    iIntros "H". rewrite /fwc_line_at. iLeft.
-    iApply (fwc_pro_at_taint with "H").
-  Qed.
-  Lemma fwc_lpr_at_taint s0 k v I p : FT -∗ fwc_lpr_at s0 k v I p.
-  Proof using .
-    iIntros "H". rewrite /fwc_lpr_at. destruct p as [| [| [| p]]].
-    - iApply (fwc_line_at_taint with "H").
-    - iApply (fwc_sp_t_at_taint with "H").
-    - iApply (fwc_open_t_at_taint with "H").
-    - iApply (fwc_blk_at_taint with "H").
-  Qed.
-
   (* =================================================================== *)
   (*  3.  THE PACKING LEMMAS, BOTH WAYS                                   *)
   (* =================================================================== *)
-  Lemma fwc_pro_at_pack s0 k v I : fwc_pro_at s0 k v I -∗ fwc_pro g k v I.
-  Proof using .
-    rewrite /fwc_pro_at /FileLinksLine.fwc_pro.
-    iIntros "[H | [H | #HT]]"; [| iRight; iLeft | iRight; by iRight].
-    - iDestruct "H" as (ps cs P) "[%Hw Hc]". iLeft.
-      iExists ps, cs, s0, P. iFrame "Hc". by iPureIntro.
-    - iApply (fhead_at_pack with "H").
-  Qed.
-
-  Lemma fwc_pro_unpack k v I :
-    fwc_pro g k v I -∗ ∃ s0 : fstate, fwc_pro_at s0 k v I.
-  Proof using .
-    rewrite /FileLinksLine.fwc_pro /fwc_pro_at.
-    iIntros "[H | [H | #HT]]".
-    - iDestruct "H" as (ps cs s0 P) "[%Hw Hc]". iExists s0. iLeft.
-      iExists ps, cs, P. iFrame "Hc". by iPureIntro.
-    - iDestruct (fhead_unpack with "H") as (s0) "H". iExists s0.
-      iRight. by iLeft.
-    - iExists None. iRight. iRight. iExact "HT".
-  Qed.
-
-  Lemma fwc_owed_at_pack s0 k v I : fwc_owed_at s0 k v I -∗ fwc_owed g k v I.
-  Proof using .
-    rewrite /fwc_owed_at /FileLinksLine.fwc_owed.
-    iIntros "[H | [H | #HT]]"; [| iRight; iLeft | iRight; by iRight].
-    - iDestruct "H" as (ps cs P) "[%Hw Hc]". iLeft.
-      iExists ps, cs, s0, P. iFrame "Hc". by iPureIntro.
-    - iApply (fhead_at_pack with "H").
-  Qed.
-
-  Lemma fwc_owed_unpack k v I :
-    fwc_owed g k v I -∗ ∃ s0 : fstate, fwc_owed_at s0 k v I.
-  Proof using .
-    rewrite /FileLinksLine.fwc_owed /fwc_owed_at.
-    iIntros "[H | [H | #HT]]".
-    - iDestruct "H" as (ps cs s0 P) "[%Hw Hc]". iExists s0. iLeft.
-      iExists ps, cs, P. iFrame "Hc". by iPureIntro.
-    - iDestruct (fhead_unpack with "H") as (s0) "H". iExists s0.
-      iRight. by iLeft.
-    - iExists None. iRight. iRight. iExact "HT".
-  Qed.
-
-  Lemma fwc_sp_at_pack s0 k v I : fwc_sp_at s0 k v I -∗ fwc_sp g k v I.
-  Proof using .
-    rewrite /fwc_sp_at /FileLinksLine.fwc_sp.
-    iIntros "[H | #HT]"; [| by iRight].
-    iDestruct "H" as (ps cs P) "[%Hw Hc]". iLeft.
-    iExists ps, cs, s0, P. iFrame "Hc". by iPureIntro.
-  Qed.
-
-  Lemma fwc_sp_unpack k v I :
-    fwc_sp g k v I -∗ ∃ s0 : fstate, fwc_sp_at s0 k v I.
-  Proof using .
-    rewrite /FileLinksLine.fwc_sp /fwc_sp_at.
-    iIntros "[H | #HT]"; last by (iExists None; iRight).
-    iDestruct "H" as (ps cs s0 P) "[%Hw Hc]". iExists s0. iLeft.
-    iExists ps, cs, P. iFrame "Hc". by iPureIntro.
-  Qed.
-
-  Lemma fwc_open_at_pack s0 k v I : fwc_open_at s0 k v I -∗ fwc_open g k v I.
-  Proof using .
-    rewrite /fwc_open_at /FileLinksLine.fwc_open.
-    iIntros "[H | #HT]"; [| by iRight].
-    iDestruct "H" as (ps cs P) "[%Hw Hc]". iLeft.
-    iExists ps, cs, s0, P. iFrame "Hc". by iPureIntro.
-  Qed.
-
-  Lemma fwc_open_unpack k v I :
-    fwc_open g k v I -∗ ∃ s0 : fstate, fwc_open_at s0 k v I.
-  Proof using .
-    rewrite /FileLinksLine.fwc_open /fwc_open_at.
-    iIntros "[H | #HT]"; last by (iExists None; iRight).
-    iDestruct "H" as (ps cs s0 P) "[%Hw Hc]". iExists s0. iLeft.
-    iExists ps, cs, P. iFrame "Hc". by iPureIntro.
-  Qed.
-
-  Lemma fwc_sp_t_at_pack s0 k v I : fwc_sp_t_at s0 k v I -∗ fwc_sp_t g k v I.
-  Proof using .
-    rewrite /fwc_sp_t_at /FileLinksLine.fwc_sp_t.
-    iIntros "[H | #HT]"; [| by iRight].
-    iDestruct "H" as (ps cs P) "[%Hw Hc]". iLeft.
-    iExists ps, cs, s0, P. iFrame "Hc". by iPureIntro.
-  Qed.
-
-  Lemma fwc_sp_t_unpack k v I :
-    fwc_sp_t g k v I -∗ ∃ s0 : fstate, fwc_sp_t_at s0 k v I.
-  Proof using .
-    rewrite /FileLinksLine.fwc_sp_t /fwc_sp_t_at.
-    iIntros "[H | #HT]"; last by (iExists None; iRight).
-    iDestruct "H" as (ps cs s0 P) "[%Hw Hc]". iExists s0. iLeft.
-    iExists ps, cs, P. iFrame "Hc". by iPureIntro.
-  Qed.
-
-  Lemma fwc_open_t_at_pack s0 k v I :
-    fwc_open_t_at s0 k v I -∗ fwc_open_t g k v I.
-  Proof using .
-    rewrite /fwc_open_t_at /FileLinksLine.fwc_open_t.
-    iIntros "[H | #HT]"; [| by iRight].
-    iDestruct "H" as (ps cs P) "[%Hw Hc]". iLeft.
-    iExists ps, cs, s0, P. iFrame "Hc". by iPureIntro.
-  Qed.
-
-  Lemma fwc_open_t_unpack k v I :
-    fwc_open_t g k v I -∗ ∃ s0 : fstate, fwc_open_t_at s0 k v I.
-  Proof using .
-    rewrite /FileLinksLine.fwc_open_t /fwc_open_t_at.
-    iIntros "[H | #HT]"; last by (iExists None; iRight).
-    iDestruct "H" as (ps cs s0 P) "[%Hw Hc]". iExists s0. iLeft.
-    iExists ps, cs, P. iFrame "Hc". by iPureIntro.
-  Qed.
-
-  Lemma fwc_lend_at_pack s0 k v I : fwc_lend_at s0 k v I -∗ fwc_lend g k v I.
-  Proof using .
-    rewrite /fwc_lend_at /FileLinksLine.fwc_lend.
-    iIntros "[H | #HT]"; [| by iRight].
-    iDestruct "H" as (ps cs P) "[%Hw Hc]". iLeft.
-    iExists ps, cs, s0, P. iFrame "Hc". by iPureIntro.
-  Qed.
-
-  Lemma fwc_lend_unpack k v I :
-    fwc_lend g k v I -∗ ∃ s0 : fstate, fwc_lend_at s0 k v I.
-  Proof using .
-    rewrite /FileLinksLine.fwc_lend /fwc_lend_at.
-    iIntros "[H | #HT]"; last by (iExists None; iRight).
-    iDestruct "H" as (ps cs s0 P) "[%Hw Hc]". iExists s0. iLeft.
-    iExists ps, cs, P. iFrame "Hc". by iPureIntro.
-  Qed.
-
-  Lemma fwc_blk_at_pack s0 k v I a i :
-    fwc_blk_at s0 k v I a i -∗ fwc_blk g k v I a i.
-  Proof using .
-    rewrite /fwc_blk_at /FileLinksLine.fwc_blk.
-    iIntros "[H | #HT]"; [| by iRight].
-    iDestruct "H" as (ps cs P) "(%Hw & Ht & Hps & Hcs & HE & Hf)". iLeft.
-    iExists ps, cs, s0, P. iFrame "Ht Hps Hcs HE Hf". by iPureIntro.
-  Qed.
-
-  Lemma fwc_blk_unpack k v I a i :
-    fwc_blk g k v I a i -∗ ∃ s0 : fstate, fwc_blk_at s0 k v I a i.
-  Proof using .
-    rewrite /FileLinksLine.fwc_blk /fwc_blk_at.
-    iIntros "[H | #HT]"; last by (iExists None; iRight).
-    iDestruct "H" as (ps cs s0 P) "(%Hw & Ht & Hps & Hcs & HE & Hf)".
-    iExists s0. iLeft. iExists ps, cs, P. iFrame "Ht Hps Hcs HE Hf".
-    by iPureIntro.
-  Qed.
-
-  Lemma fwc_ban_at_pack s0 k v I i :
-    fwc_ban_at s0 k v I i -∗ fwc_ban g k v I i.
-  Proof using .
-    rewrite /fwc_ban_at /FileLinksLine.fwc_ban.
-    iIntros "[H | [[%Hi0 H] | #HT]]"; [| | iRight; by iRight].
-    - iDestruct "H" as (ps cs P) "(%Hw & Ht & Hps & Hcs & HE & Hf)". iLeft.
-      iExists ps, cs, s0, P. iFrame "Ht Hps Hcs HE Hf". by iPureIntro.
-    - iRight. iLeft. iSplitR; [ by iPureIntro | ].
-      iApply (fhead_at_pack with "H").
-  Qed.
-
-  Lemma fwc_ban_unpack k v I i :
-    fwc_ban g k v I i -∗ ∃ s0 : fstate, fwc_ban_at s0 k v I i.
-  Proof using .
-    rewrite /FileLinksLine.fwc_ban /fwc_ban_at.
-    iIntros "[H | [[%Hi0 H] | #HT]]"; last by (iExists None; iRight; iRight).
-    - iDestruct "H" as (ps cs s0 P) "(%Hw & Ht & Hps & Hcs & HE & Hf)".
-      iExists s0. iLeft. iExists ps, cs, P. iFrame "Ht Hps Hcs HE Hf".
-      by iPureIntro.
-    - iDestruct (fhead_unpack with "H") as (s0) "H". iExists s0.
-      iRight. iLeft. iSplitR; [ by iPureIntro | ]. iExact "H".
-  Qed.
-
-  Lemma fwc_post_at_pack s0 k v I a :
-    fwc_post_at s0 k v I a -∗ fwc_post g k v I a.
-  Proof using .
-    rewrite /fwc_post_at /FileLinksLine.fwc_post. iIntros "[H | H]"; [| by iRight].
-    iDestruct "H" as (ps cs P) "(%Hw & Ht & Hps & Hcs & HE & Hf)".
-    iLeft. iExists ps, cs, s0, P. iFrame "Ht Hps Hcs HE Hf". by iPureIntro.
-  Qed.
-
-  Lemma fwc_post_unpack k v I a :
-    fwc_post g k v I a -∗ ∃ s0 : fstate, fwc_post_at s0 k v I a.
-  Proof using .
-    rewrite /FileLinksLine.fwc_post /fwc_post_at. iIntros "[H | H]".
-    - iDestruct "H" as (ps cs s0 P) "(%Hw & Ht & Hps & Hcs & HE & Hf)".
-      iExists s0. iLeft. iExists ps, cs, P. iFrame "Ht Hps Hcs HE Hf".
-      by iPureIntro.
-    - iExists None. by iRight.
-  Qed.
-
-  Lemma fwc_line_at_pack s0 k v I : fwc_line_at s0 k v I -∗ fwc_line g k v I.
-  Proof using .
-    rewrite /fwc_line_at /FileLinksLine.fwc_line.
-    iIntros "[H | H]".
-    - iLeft. iApply (fwc_pro_at_pack with "H").
-    - iRight. iDestruct "H" as (a) "[%Ha H]". iExists a.
-      iSplitR; [ by iPureIntro | ]. iApply (fwc_post_at_pack with "H").
-  Qed.
-
-  Lemma fwc_line_unpack k v I :
-    fwc_line g k v I -∗ ∃ s0 : fstate, fwc_line_at s0 k v I.
-  Proof using .
-    rewrite /FileLinksLine.fwc_line /fwc_line_at.
-    iIntros "[H | H]".
-    - iDestruct (fwc_pro_unpack with "H") as (s0) "H". iExists s0. by iLeft.
-    - iDestruct "H" as (a) "[%Ha H]".
-      iDestruct (fwc_post_unpack with "H") as (s0) "H". iExists s0.
-      iRight. iExists a. iSplitR; [ by iPureIntro | ]. iExact "H".
-  Qed.
-
-  Lemma fwc_lpr_at_pack s0 k v I p :
-    fwc_lpr_at s0 k v I p -∗ fwc_lpr g k v I p.
-  Proof using .
-    rewrite /fwc_lpr_at /FileLinksLine.fwc_lpr.
-    destruct p as [| [| [| p]]]; iIntros "H".
-    - iApply (fwc_line_at_pack with "H").
-    - iApply (fwc_sp_t_at_pack with "H").
-    - iApply (fwc_open_t_at_pack with "H").
-    - iApply (fwc_blk_at_pack with "H").
-  Qed.
-
-  Lemma fwc_lpr_unpack k v I p :
-    fwc_lpr g k v I p -∗ ∃ s0 : fstate, fwc_lpr_at s0 k v I p.
-  Proof using .
-    rewrite /FileLinksLine.fwc_lpr /fwc_lpr_at.
-    destruct p as [| [| [| p]]]; iIntros "H".
-    - iApply (fwc_line_unpack with "H").
-    - iApply (fwc_sp_t_unpack with "H").
-    - iApply (fwc_open_t_unpack with "H").
-    - iApply (fwc_blk_unpack with "H").
-  Qed.
-
-  Lemma fwc_pr_at_pack s0 k v I p : fwc_pr_at s0 k v I p -∗ fwc_pr g k v I p.
-  Proof using .
-    rewrite /fwc_pr_at /FileLinksLine.fwc_pr.
-    destruct p as [| [| p]]; iIntros "H".
-    - iApply (fwc_owed_at_pack with "H").
-    - iApply (fwc_sp_at_pack with "H").
-    - iApply (fwc_open_at_pack with "H").
-  Qed.
-
-  Lemma fwc_pr_unpack k v I p :
-    fwc_pr g k v I p -∗ ∃ s0 : fstate, fwc_pr_at s0 k v I p.
-  Proof using .
-    rewrite /FileLinksLine.fwc_pr /fwc_pr_at.
-    destruct p as [| [| p]]; iIntros "H".
-    - iApply (fwc_owed_unpack with "H").
-    - iApply (fwc_sp_unpack with "H").
-    - iApply (fwc_open_unpack with "H").
-  Qed.
-
   Lemma fwc_rres_at_pack s0 v I : fwc_rres_at s0 v I -∗ fwc_rres g v I.
   Proof using .
     rewrite /fwc_rres_at /FileLinksLine.fwc_rres.
@@ -647,5 +213,13 @@ Section file_links_at.
     iDestruct (fwc_rres_unpack with "H") as (s0) "H".
     iExists s0. iFrame "H Hw".
   Qed.
+
+  (* =================================================================== *)
+  (*  4.  THE ERA'S TURN, AT THE NAMED STATE ([GenLinksLine.gen_link_inst]'s *)
+  (*      TURN at [FileLinkGen.file_link_gen_at]; [fturn0_gen_at] takes   *)
+  (*      it apart)                                                       *)
+  (* =================================================================== *)
+  Definition fturn_pre_at (s0 : fstate) (k : nat) : iProp Σ :=
+    (⌜k = S gen_id⌝ ∗ FileOut.fturn_core g k ∗ f0pre_at s0)%I.
 
 End file_links_at.

@@ -36,7 +36,6 @@ Require Import FileOut.
 Require Import FileLinks.
 Require Import FileLinksLine.
 Require Import FileLinksAt.      (* [fhead_at], [f0pre_at], the indexed residue *)
-Require Import FileLinksAtBan.   (* [fturn_pre_at] *)
 Require Import LinkRec.
 Require Import GenLinksLine.
 Require Import RiscvPtsto.

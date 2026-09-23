@@ -118,7 +118,11 @@ Require Import SysOpenDefs.              (* [om_readable] / [om_writable] *)
 Require Import LinkRec.                  (* the era's link record *)
 Require Import FileLinksLine.            (* [fline] / [fexfb] -- the era's line *)
 Require Import StageRec.                 (* [ck_lineok] / [sk_apr0] *)
-Require Import FileLinkInst.             (* [file_link_inst_at] -- LINK-GEN-2 + INIT-FILE *)
+Require Import LineModel.
+Require Import LineModelLinks.
+Require Import FileLinkInst.
+Require Import GenLinksLine.
+Require Import FileLinkGen.             (* [file_link_inst_at] -- LINK-GEN-2 + INIT-FILE *)
 Require Import FileLinksAt.              (* the families at the round's boot state *)
 Require Import FileLinksAtInp.           (* their input readings, for the seam *)
 Require Import UShLineHold.              (* [ush_wb_inp_hold] *)
@@ -762,11 +766,13 @@ Section UShRound.
   Proof using .
     intro Hw. iIntros "#Hpin Hc".
     rewrite /FileLinkInst.file_Wcl_at /lk_lcred.
-    cbn [lk_pin lk_lpr FileLinkInst.file_link_inst_at fwc_lpr_at].
-    iExists v. iFrame "Hpin". rewrite /fwc_blk_at. iLeft. iExists ps, cs, P.
-    cbn [blkcs_f]. rewrite Nat.add_0_r /FileLinksLine.fcur.
+    cbn [lk_pin lk_lpr FileLinkInst.file_link_inst_at FileLinkGen.file_link_gen_at GenLinksLine.gen_link_inst gwc_lpr].
+    iExists v. iFrame "Hpin". rewrite /gwc_blk. iLeft. iExists ps, cs, s0, P.
+    cbn [lm_blkcs gW FileLinkGen.file_params_at].
+    rewrite Nat.add_0_r /FileLinkGen.f0w_at /FileLinksLine.fcur.
     iDestruct "Hc" as "(Htn & #Hps & #Hcs & #HE & #Hf)".
-    iFrame "Htn Hps Hcs HE Hf". by iPureIntro.
+    iFrame "Htn Hps Hcs HE Hf".
+    iSplit; iPureIntro; [ by rewrite -wr_blk_t_f_lm | reflexivity ].
   Qed.
 
   (* the open credential says the input has no partial line *)
@@ -775,10 +781,10 @@ Section UShRound.
   Proof using .
     rewrite /FileLinkInst.file_Wcl_at /lk_lcred. iIntros "Hc".
     iDestruct "Hc" as (v) "[#Hpin Hc]".
-    cbn [lk_pin lk_lpr FileLinkInst.file_link_inst_at fwc_lpr_at].
-    rewrite /fwc_open_t_at. iDestruct "Hc" as "[Hc | #HT]".
-    - iDestruct "Hc" as (ps cs P) "(%Hw & Hcur)". iSplitL "Hcur".
-      + iExists v. iFrame "Hpin". iLeft. iExists ps, cs, P. iFrame "Hcur".
+    cbn [lk_pin lk_lpr FileLinkInst.file_link_inst_at FileLinkGen.file_link_gen_at GenLinksLine.gen_link_inst gwc_lpr].
+    rewrite /gwc_open_t. iDestruct "Hc" as "[Hc | #HT]".
+    - iDestruct "Hc" as (ps cs sw P) "(%Hw & Hcur)". iSplitL "Hcur".
+      + iExists v. iFrame "Hpin". iLeft. iExists ps, cs, sw, P. iFrame "Hcur".
         by iPureIntro.
       + iLeft. iPureIntro. destruct Hw as [(_ & Hr & _) _]. exact Hr.
     - iSplitL ""; [ iExists v; iFrame "Hpin"; by iRight | by iRight ].
@@ -816,7 +822,7 @@ Section UShRound.
     pose proof Htie as [Hlen _].
     rewrite /FileLinkInst.file_Wcl_at /lk_lcred.
     iDestruct "Hc" as (v) "[#Hpin Hc]".
-    cbn [lk_pin lk_lpr FileLinkInst.file_link_inst_at fwc_lpr_at].
+    cbn [lk_pin lk_lpr FileLinkInst.file_link_inst_at FileLinkGen.file_link_gen_at GenLinksLine.gen_link_inst gwc_lpr].
     iDestruct (era_pin_agree (fgn_echo g) (S gen_id) v v' with "Hpin Hpin'")
       as %<-.
     (* the DONE arm, from any filed list that extends the deed's *)
@@ -826,20 +832,20 @@ Section UShRound.
       iExists cs, s, v. iFrame "Hd Hty Hpin Hcs". iPureIntro.
       apply (done_tie_of_pre_prefix cs cs' s0 I _ Htie Hl Hpre).
       intros _. apply Hid. }
-    rewrite /fwc_line_at. iDestruct "Hc" as "[Hpro | Hblk]".
+    rewrite /gwc_line /gwc_pro /gwc_post /gcur. cbn [gH gW gT FileLinkGen.file_params_at]; rewrite /FileLinkGen.f0w_at /fhead_at
+      /FileLinkGen.file_X.
+    iDestruct "Hc" as "[Hpro | [Hblk | []]]".
     - (* the prologue: the last filed alternative is a panic, or the head *)
-      rewrite /fwc_pro_at. iDestruct "Hpro" as "[Hpro | [Hhd | #HT]]".
-      + iDestruct "Hpro" as (ps cs P) "(%Hw & Hcur)".
-        rewrite /FileLinksLine.fcur.
-        iDestruct "Hcur" as "(Htn & #Hps & #Hcs & #HE & #Hf)".
+      iDestruct "Hpro" as "[Hpro | [Hhd | #HT]]".
+      + iDestruct "Hpro" as (ps cs sw P) "(%Hw & Htn & #Hps & #Hcs & #HE & #[Hf %Hs])".
+        subst sw.
         pose proof Hw as (_ & _ & Hn & _).
         iDestruct (cs_lb_prefix_len v cs cs' ltac:(lia) with "Hcs Hcs'") as %Hpre.
         iLeft. iSplitL "Htn".
-        * iExists v. iFrame "Hpin". iLeft. iLeft. iExists ps, cs, P.
-          iFrame "Htn Hps Hcs HE Hf". by iPureIntro.
+        * iExists v. iFrame "Hpin". iLeft. iLeft. iExists ps, cs, s0, P.
+          iFrame "Htn Hps Hcs HE Hf". iSplit; by iPureIntro.
         * iApply ("Hdone" $! cs with "[%] [%] Hcs Hd"); [ lia | exact Hpre ].
-      + rewrite /fhead_at.
-        iDestruct "Hhd" as "(%HI & %Hk & Htn & #Hps & #Hcs & #HE & #Hvf & Hpre)".
+      + iDestruct "Hhd" as "(%HI & %Hk & Htn & #Hps & #Hcs & #HE & #Hvf & Hpre)".
         iLeft. iSplitL "Htn Hpre".
         * iExists v. iFrame "Hpin". iLeft. iRight. iLeft.
           iFrame "Htn Hps Hcs HE Hvf Hpre". by iSplit; iPureIntro.
@@ -851,16 +857,17 @@ Section UShRound.
           [ iApply (Hcltaint I 0%nat v with "Hpin HT")
           | iApply (sh_deed_taint with "HT") ].
     - (* a block written up to its prompt, at some alternative *)
-      iDestruct "Hblk" as (a) "[%Hapr Hblk]". rewrite /fwc_post_at.
+      iDestruct "Hblk" as (a) "[%Hapr Hblk]".
       iDestruct "Hblk" as "[Hblk | #HT]"; last first.
       { iLeft. iSplitL "";
           [ iApply (Hcltaint I 0%nat v with "Hpin HT")
           | iApply (sh_deed_taint with "HT") ]. }
-      iDestruct "Hblk" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE & #Hf)".
+      iDestruct "Hblk" as (ps cs sw P) "(%Hw & Htn & #Hps & #Hcs & #HE & #[Hf %Hs])".
+      subst sw. rewrite -wr_blk_t_f_lm in Hw. rewrite -(fabs_lm s0 cs I a).
       pose proof Hw as [(_ & _ & Hn & _) _].
       destruct (length (fabs s0 cs I a) - 2)%nat as [| i] eqn:Hi.
       + (* the prompt is the block's first byte: still owed, deed PEND *)
-        cbn [blkcs_f]. rewrite Nat.add_0_r.
+        cbn [lm_blkcs]. rewrite Nat.add_0_r.
         iDestruct (cs_lb_agree_len v cs cs' ltac:(lia) with "Hcs Hcs'") as %<-.
         iRight. iSplitL "Htn".
         * iApply (Wcl3_close I v ps cs P Hw with "Hpin [Htn]").
@@ -869,15 +876,17 @@ Section UShRound.
           iFrame "Hd Hty Hpin Hcs". iPureIntro. exists (fnoc_of (fline I)).
           apply (pend_tie_of_pre cs s0 I _ ltac:(lia) Htie).
       + (* a byte before the prompt: the alternative is filed, deed DONE *)
-        cbn [blkcs_f].
+        cbn [lm_blkcs].
         iDestruct (cs_lb_prefix_len v (cs ++ [a]) cs'
                      ltac:(rewrite length_app; cbn [length]; lia)
                      with "Hcs Hcs'") as %Hpre.
         iLeft. iSplitL "Htn".
-        * iExists v. iFrame "Hpin". iRight. iExists a.
-          iSplitR; [ by iPureIntro | ]. rewrite /fwc_post_at. iLeft.
-          iExists ps, cs, P.
-          rewrite Hi. cbn [blkcs_f]. iFrame "Htn Hps Hcs HE Hf". by iPureIntro.
+        * iExists v. iFrame "Hpin". iRight. iLeft. iExists a.
+          iSplitR; [ by iPureIntro | ]. iLeft.
+          iExists ps, cs, s0, P.
+          rewrite -(fabs_lm s0 cs I a) Hi. cbn [lm_blkcs].
+          iFrame "Htn Hps Hcs HE Hf".
+          iSplit; iPureIntro; [ by rewrite -wr_blk_t_f_lm | reflexivity ].
         * iApply ("Hdone" $! (cs ++ [a]) with "[%] [%] Hcs Hd");
             [ rewrite length_app; cbn [length]; lia | exact Hpre ].
   Qed.
@@ -895,9 +904,10 @@ Section UShRound.
      (DONE, by [done_tie_snoc]), and a block whose prompt is its first
      byte is still owed (PEND at [a] itself: a two-byte block that ends
      with the prompt IS the prompt, [FileLinksLine.fabs_prompt]).
-     STATED AT THE STATE-AWARE POST ([FileLinksAt.fwc_post_at]), so it
-     serves the round whose bytes are the file's too ([RCRan]); the
-     record's own block is the corollary below. *)
+     STATED AT THE STATE-AWARE POST ([GenLinksLine.gwc_post] at
+     [FileLinkGen.file_params_at]), so it serves the round whose bytes are
+     the file's too ([RCRan]); the record's own block is the corollary
+     below. *)
   Lemma Wcf0_of_posts_alt (I : list (bv 8)) (a : nat) (v v' : era_pins)
       (cs' : list nat) (s : dst) :
     faprs I a ->
@@ -905,28 +915,29 @@ Section UShRound.
     dst_content s
       = fsm (UCatOut.cat_st cs' s0 I) (fline I) (ralt_dec a) ->
     lk_pin FI (S gen_id) v -∗
-    FileLinksAt.fwc_post_at g s0 (S gen_id) v I a -∗
+    gwc_post file_lm (file_params_at g s0) (S gen_id) v I a -∗
     fown r s -∗ f_typed (fgn_cl g) s -∗
     era_pin (fgn_echo g) (S gen_id) v' -∗ cs_lb v' cs' -∗
     Wcf I 0%nat.
   Proof using .
     intros Hapr Hlen Hpos Hc.
     iIntros "#Hpin Hblk Hd #Hty #Hpin' #Hcs'". rewrite Wcf_0.
-    cbn [lk_pin FileLinkInst.file_link_inst_at].
+    cbn [lk_pin FileLinkInst.file_link_inst_at FileLinkGen.file_link_gen_at GenLinksLine.gen_link_inst].
     iDestruct (era_pin_agree (fgn_echo g) (S gen_id) v v' with "Hpin Hpin'")
       as %<-.
-    rewrite /FileLinksAt.fwc_post_at.
+    iEval (rewrite /gwc_post; cbn [gH gW gT FileLinkGen.file_params_at]; rewrite /FileLinkGen.f0w_at) in "Hblk".
     iDestruct "Hblk" as "[Hblk | #HT]"; last first.
     { iLeft. iSplitL "";
         [ iApply (Hcltaint I 0%nat v with "Hpin HT")
         | iApply (sh_deed_taint with "HT") ]. }
-    iDestruct "Hblk" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE & #Hf)".
+    iDestruct "Hblk" as (ps cs sw P) "(%Hw & Htn & #Hps & #Hcs & #HE & #[Hf %Hs])".
+    subst sw. rewrite -wr_blk_t_f_lm in Hw. rewrite -(fabs_lm s0 cs I a).
     pose proof Hw as [(_ & _ & Hn & _) _].
     destruct (length (fabs s0 cs I a) - 2)%nat as [| i] eqn:Hi.
     - (* the prompt is the block's first byte: still owed, deed PEND at [a].
          The block IS the bare prompt: it ends with it ([fabs_prompt]) and
          is two bytes long. *)
-      cbn [blkcs_f]. rewrite Nat.add_0_r.
+      cbn [lm_blkcs]. rewrite Nat.add_0_r.
       iDestruct (cs_lb_agree_len v cs cs' ltac:(lia) with "Hcs Hcs'") as %<-.
       assert (Hpr : cont (UCatOut.cat_st cs s0 I) (fline I) (ralt_dec a)
                     = u_prompt).
@@ -946,7 +957,7 @@ Section UShRound.
         split_and!; [ exact Hlen | exact Hpos | exact (proj1 Hapr)
                     | exact Hpr | exact Hc ].
     - (* a byte before the prompt: [a] is filed, deed DONE *)
-      cbn [blkcs_f].
+      cbn [lm_blkcs].
       iDestruct (cs_lb_prefix_len v (cs ++ [a]) cs'
                    ltac:(rewrite length_app; cbn [length]; lia)
                    with "Hcs Hcs'") as %Hpre.
@@ -960,11 +971,14 @@ Section UShRound.
       subst cs'.
       iLeft. iSplitL "Htn".
       + iExists v. iFrame "Hpin".
-        cbn [lk_lpr FileLinkInst.file_link_inst_at fwc_lpr_at].
-        rewrite /fwc_line_at. iRight. iExists a.
-        iSplitR; [ by iPureIntro | ]. rewrite /FileLinksAt.fwc_post_at. iLeft.
-        iExists ps, cs, P.
-        rewrite Hi. cbn [blkcs_f]. iFrame "Htn Hps Hcs HE Hf". by iPureIntro.
+        cbn [lk_lpr FileLinkInst.file_link_inst_at FileLinkGen.file_link_gen_at GenLinksLine.gen_link_inst gwc_lpr].
+        rewrite /gwc_line /gwc_post. cbn [gH gW gT FileLinkGen.file_params_at]; rewrite /FileLinkGen.f0w_at.
+        iRight. iLeft. iExists a.
+        iSplitR; [ iPureIntro; by apply faprs_lm | ]. iLeft.
+        iExists ps, cs, s0, P.
+        rewrite -(fabs_lm s0 cs I a) Hi. cbn [lm_blkcs].
+        iFrame "Htn Hps Hcs HE Hf".
+        iSplit; iPureIntro; [ by rewrite -wr_blk_t_f_lm | reflexivity ].
       + rewrite /sh_done_at /sh_deed_at. iLeft. iExists (cs ++ [a]), s, v.
         iFrame "Hd Hty Hpin Hcs". iPureIntro.
         exact (done_tie_snoc cs a s0 I _ Hlen Hpos Hc).
@@ -986,9 +1000,9 @@ Section UShRound.
     intros Hapr Hlen Hpos Hc. iIntros "#Hpin Hblk Hd #Hty #Hpin' #Hcs'".
     iApply (Wcf0_of_posts_alt I a v v' cs' s (fapr_faprs I a Hapr) Hlen Hpos Hc
               with "Hpin [Hblk] Hd Hty Hpin' Hcs'").
-    rewrite /lk_post. cbn [lk_blk lk_ab FileLinkInst.file_link_inst_at].
-    iApply (FileLinksAt.fwc_post_at_of_blk g s0 (S gen_id) v I a Hapr
-              with "Hblk").
+    rewrite /lk_post. cbn [lk_blk lk_ab FileLinkInst.file_link_inst_at FileLinkGen.file_link_gen_at GenLinksLine.gen_link_inst].
+    iApply (gwc_post_of_blk file_lm (file_params_at g s0) (S gen_id) v I a
+              ltac:(by apply fapr_lm) with "Hblk").
   Qed.
 
   (* ---- THE LOOP'S LAWS AT [Wcf] / [Wbf] ---- *)
@@ -1004,13 +1018,18 @@ Section UShRound.
         [ iApply (Hwbl I with "Hc") | iApply (sh_deed_taint with "HT") ]. }
     rewrite /FileLinkInst.file_Wcl_at.
     iDestruct (lk_lcred_blk_lend FI (S gen_id) I with "Hc") as (v) "[#Hpin Hl]".
-    cbn [lk_pin lk_lend FileLinkInst.file_link_inst_at]. rewrite /fwc_lend_at.
+    cbn [lk_pin lk_lend FileLinkInst.file_link_inst_at FileLinkGen.file_link_gen_at GenLinksLine.gen_link_inst]. rewrite /gwc_lend.
     iDestruct "Hl" as "[Hl | #HT]"; last first.
     { iLeft. iSplitL "";
         [ iApply (Hcltaint I 0%nat v with "Hpin HT")
         | iApply (sh_deed_taint with "HT") ]. }
-    iDestruct "Hl" as (ps cs P) "(%Hw & Hcur)".
-    iRight. iSplitL "Hcur"; [ iApply (Wcl3_close I v ps cs P Hw with "Hpin Hcur") | ].
+    iDestruct "Hl" as (ps cs sw P) "(%Hw & Hcur)".
+    iEval (rewrite /gcur; cbn [gH gW gT FileLinkGen.file_params_at]; rewrite /FileLinkGen.f0w_at) in "Hcur".
+    iDestruct "Hcur" as "(Htn & #Hps & #Hcs & #HE & #[Hf %Hs])".
+    subst sw. rewrite -wr_blk_t_f_lm in Hw.
+    iRight. iSplitL "Htn".
+    { iApply (Wcl3_close I v ps cs P Hw with "Hpin [Htn]").
+      rewrite /FileLinksLine.fcur. iFrame "Htn Hps Hcs HE Hf". }
     rewrite /sh_pend_at /sh_deed_at. iLeft.
     iDestruct "Hp" as (cs' s v') "(Hd & %Htie & #Hty & #Hpin' & #Hcs')".
     iExists cs', s, v'. iFrame "Hd Hty Hpin' Hcs'". iPureIntro.
@@ -1038,7 +1057,7 @@ Section UShRound.
     rewrite /UShLine.ush_mid_at. iIntros "(Hu & Hua & Hrd & Hv)".
     iDestruct "Hv" as (v) "(#Hpin & Hdl & #HE & #Hres)".
     iAssert (FileLinksLine.flw g I) as "#Hw".
-    { cbn [lk_rres FileLinkInst.file_link_inst_at].
+    { cbn [lk_rres FileLinkInst.file_link_inst_at FileLinkGen.file_link_gen_at GenLinksLine.gen_link_inst].
       rewrite /FileLinksAt.fwc_rresw_at. iDestruct "Hres" as "[_ $]". }
     iSplitL; [ | iExact "Hw" ]. iFrame "Hu Hua Hrd". iExists v.
     iSplitR; [ iExact "Hpin" | ]. iSplitL "Hdl"; [ iExact "Hdl" | ].
@@ -1186,7 +1205,7 @@ Section UShRound.
         | iApply (sh_deed_taint with "HT") ]. }
     iApply (UShPanic.ksh_w_of_link_lcred_at (PS := uprogSG_free) FI N I l rb
               Hl2 with "[] Hro").
-    cbn [lk_links FileLinkInst.file_link_inst_at]. iExact "Hlk".
+    cbn [lk_links FileLinkInst.file_link_inst_at FileLinkGen.file_link_gen_at GenLinksLine.gen_link_inst]. iExact "Hlk".
   Qed.
 
   (* THE PEND ARM'S STEP FAMILY: position 0 is the round's cursor with the
@@ -1228,13 +1247,14 @@ Section UShRound.
           | iApply (sh_deed_taint with "HT") ]. }
       iSplitL "Htn'".
       + (* the space owed, at the stage the '$' left *)
-        rewrite (lk_lpr_1 FI). cbn [lk_sp_t FileLinkInst.file_link_inst_at].
-        rewrite /fwc_sp_t_at. iLeft. iExists ps, (cs ++ [a]), (S P).
+        rewrite (lk_lpr_1 FI). cbn [lk_sp_t FileLinkInst.file_link_inst_at FileLinkGen.file_link_gen_at GenLinksLine.gen_link_inst].
+        rewrite /gwc_sp_t /gcur. cbn [gH gW gT FileLinkGen.file_params_at]; rewrite /FileLinkGen.f0w_at.
+        iLeft. iExists ps, (cs ++ [a]), s0, (S P).
         iSplitR.
-        { iPureIntro. split;
+        { iPureIntro. rewrite -wr_sp_t_f_lm. split;
             [ exact (wr_blk_dollar_at_f ps cs s0 I P a Hwb Hnp Hcont)
             | exact (wr_tail_snoc_f ps cs a Hnp Ht) ]. }
-        rewrite /FileLinksLine.fcur. iFrame "Htn' Hps Hcs' HE".
+        iFrame "Htn' Hps Hcs' HE". iSplitL; [ | by iPureIntro ].
         rewrite /FileLinksLine.f0w. iSplitR; [ by iPureIntro | ].
         iExists vf. iFrame "Hvf Hf0".
       + (* the deed, DONE: the filed alternative is the deed's own *)
@@ -1272,14 +1292,16 @@ Section UShRound.
     (* the console: the block owed at the round's stage, or the taint *)
     rewrite /FileLinkInst.file_Wcl_at.
     iDestruct (lk_lcred_blk_lend FI (S gen_id) I with "Hc") as (v) "[#Hpin Hl]".
-    cbn [lk_pin lk_lend FileLinkInst.file_link_inst_at]. rewrite /fwc_lend_at.
+    cbn [lk_pin lk_lend FileLinkInst.file_link_inst_at FileLinkGen.file_link_gen_at GenLinksLine.gen_link_inst]. rewrite /gwc_lend.
     iDestruct "Hl" as "[Hl | #HT]"; last first.
     { iDestruct (Hcltaint I 0%nat v with "Hpin HT") as "Hc0".
       iApply (ksh_w_prompt_taint N I l rb Hl2
                 with "HT Hlk Hro [%] [%] [%] Hcode [$Hstd $Hc0] Hrun Hcont");
         assumption. }
-    iDestruct "Hl" as (ps cs P) "(%Hw & Hcur)". rewrite /FileLinksLine.fcur.
-    iDestruct "Hcur" as "(Htn & #Hps & #Hcs & #HE & #Hf0)".
+    iDestruct "Hl" as (ps cs sw P) "(%Hw & Hcur)".
+    iEval (rewrite /gcur; cbn [gH gW gT FileLinkGen.file_params_at]; rewrite /FileLinkGen.f0w_at) in "Hcur".
+    iDestruct "Hcur" as "(Htn & #Hps & #Hcs & #HE & #[Hf0 %Hs])".
+    subst sw. rewrite -wr_blk_t_f_lm in Hw.
     iDestruct (era_pin_agree (fgn_echo g) (S gen_id) v v' with "Hpin Hpin'")
       as %<-.
     pose proof Hw as [(_ & _ & Hn & _) _].
@@ -1297,7 +1319,7 @@ Section UShRound.
     iApply ("Hcont" $! h' ret with "[$Hstd Hc] Hrun").
     cbn [pfam]. iDestruct "Hc" as "[Hc Hd]". iFrame "Hd".
     rewrite /FileLinkInst.file_Wcl_at /lk_lcred. iExists v.
-    cbn [lk_pin FileLinkInst.file_link_inst_at]. iFrame "Hpin Hc".
+    cbn [lk_pin FileLinkInst.file_link_inst_at FileLinkGen.file_link_gen_at GenLinksLine.gen_link_inst]. iFrame "Hpin Hc".
   Qed.
 
   (* THE PROMPT LAW, at the family *)
@@ -1308,7 +1330,7 @@ Section UShRound.
     iIntros "#Hlk".
     iPoseProof (UShPanic.sh_prompt_law_holds_line_at (PS := uprogSG_free) FI
                   with "[]") as "#Hpl".
-    { cbn [lk_links FileLinkInst.file_link_inst_at]. iExact "Hlk". }
+    { cbn [lk_links FileLinkInst.file_link_inst_at FileLinkGen.file_link_gen_at GenLinksLine.gen_link_inst]. iExact "Hlk". }
     iPoseProof (UShPanicHold.sh_prompt_law_hold (PS := uprogSG_free) Wcl DONE
                   with "Hpl") as "#Hpld".
     rewrite /UShKernel.sh_prompt_law. iIntros "!>" (N) "#Hro".
@@ -1793,9 +1815,10 @@ Section UShRound.
     lk_exfb FI I = EchoDisc.alt_execfail
     /\ (length (lk_exfb FI I) - 2)%nat = 17%nat.
   Proof using .
-    intros [_ Hln]. cbn [lk_exfb file_link_inst_at].
-    rewrite /FileLinkInst.file_lineok in Hln. rewrite Hln.
-    cbn [fexfb]. split; [ reflexivity | ].
+    intros [_ Hln]. cbn [lk_exfb file_link_inst_at FileLinkGen.file_link_gen_at GenLinksLine.gen_link_inst].
+    rewrite -fline_lm. rewrite /FileLinkInst.file_lineok in Hln. rewrite Hln.
+    cbn [lmh_exfb gK FileLinkGen.file_params_at FileLinksLine.file_hooks fexfb].
+    split; [ reflexivity | ].
     rewrite UShPanic.alt_execfail_len. reflexivity.
   Qed.
 
@@ -1844,7 +1867,7 @@ Section UShRound.
   Local Lemma fwct (I0 : list (bv 8)) (v0 : era_pins) :
     ⊢ lk_pin FI (S gen_id) v0 -∗ T -∗ Wcf I0 0%nat.
   Proof using .
-    iIntros "#Hp #HT". cbn [lk_pin FileLinkInst.file_link_inst_at].
+    iIntros "#Hp #HT". cbn [lk_pin FileLinkInst.file_link_inst_at FileLinkGen.file_link_gen_at GenLinksLine.gen_link_inst].
     iApply (Wcf_taint I0 0%nat v0 with "Hp HT").
   Qed.
 
@@ -2008,7 +2031,7 @@ Section UShRound.
     iIntros "!>" (I) "%HD".
     iPoseProof (UShPanic.ush_execfail_law_hold_at (PS := uprogSG_free) FI PRE I
                   with "[]") as "#Hx".
-    { cbn [lk_links FileLinkInst.file_link_inst_at]. iExact "Hlk". }
+    { cbn [lk_links FileLinkInst.file_link_inst_at FileLinkGen.file_link_gen_at GenLinksLine.gen_link_inst]. iExact "Hlk". }
     rewrite Wcf_S3 /UkShDiag.ush_execfail_law_at.
     iIntros "!>" (N l) "%Hfd Hc".
     iDestruct ("Hx" $! N l with "[%] [Hc]") as (Pf) "(H0 & #Hstep & #Hend)";
@@ -2035,16 +2058,18 @@ Section UShRound.
     iDestruct "Hp" as (cs' s v') "(Hd & %Htie & #Hty & #Hpin' & #Hcs')".
     pose proof Htie as [Hlen _].
     rewrite /FileLinkInst.file_Wbl_at. iDestruct "Hb" as (v) "[#Hpin Hb]".
-    cbn [lk_pin lk_ban FileLinkInst.file_link_inst_at].
+    cbn [lk_pin lk_ban FileLinkInst.file_link_inst_at FileLinkGen.file_link_gen_at GenLinksLine.gen_link_inst].
     iDestruct (era_pin_agree (fgn_echo g) (S gen_id) v v' with "Hpin Hpin'")
       as %<-.
-    rewrite /fwc_ban_at. iDestruct "Hb" as "[Hb | [Hb | #HT]]".
-    - iDestruct "Hb" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE & #Hf)".
+    rewrite /gwc_ban. cbn [gH gW gT FileLinkGen.file_params_at]; rewrite /FileLinkGen.f0w_at.
+    iDestruct "Hb" as "[Hb | [Hb | #HT]]".
+    - iDestruct "Hb" as (ps cs sw P) "(%Hw & Htn & #Hps & #Hcs & #HE & #[Hf %Hs])".
+      subst sw.
       pose proof Hw as (_ & _ & Hn & Hpan & _).
       iDestruct (cs_lb_prefix_len v cs cs' ltac:(lia) with "Hcs Hcs'") as %Hpre.
       iSplitL "Htn".
-      + iExists v. iFrame "Hpin". iLeft. iExists ps, cs, P.
-        iFrame "Htn Hps Hcs HE Hf". by iPureIntro.
+      + iExists v. iFrame "Hpin". iLeft. iExists ps, cs, s0, P.
+        iFrame "Htn Hps Hcs HE Hf". iSplit; by iPureIntro.
       + iLeft. iExists cs, s, v. iFrame "Hd Hty Hpin Hcs". iPureIntro.
         exact (done_tie_of_pre_ban cs cs' s0 I _ Htie ltac:(lia) Hpre Hpan).
     - iDestruct "Hb" as "[%Hi Hhd]". rewrite /fhead_at.
@@ -2068,7 +2093,7 @@ Section UShRound.
     iIntros "#Hlk".
     iPoseProof (UShPanic.ush_panic_law_hold_at (PS := uprogSG_free) FI PRE
                   with "[]") as "#Hp".
-    { cbn [lk_links FileLinkInst.file_link_inst_at]. iExact "Hlk". }
+    { cbn [lk_links FileLinkInst.file_link_inst_at FileLinkGen.file_link_gen_at GenLinksLine.gen_link_inst]. iExact "Hlk". }
     rewrite /UkShDiag.ush_panic_law. iIntros "!>" (N I l) "%Hfd Hc".
     rewrite Wcf_S3.
     iDestruct ("Hp" $! N I l with "[%] [Hc]") as (Pf) "(H0 & #Hstep & #Hend)";
@@ -2095,7 +2120,7 @@ Section UShRound.
   (*  crosses cat's entry as its FRAME.  The console credential and cat's  *)
   (*  cursor are the same resources: the lend is OPENED into the cursor    *)
   (*  inside the image slot, and cat's end cursor closes into the          *)
-  (*  state-aware post ([FileLinksAt.fwc_post_at]), which is what lets a   *)
+  (*  state-aware post ([GenLinksLine.gwc_post]), which is what lets a     *)
   (*  round that printed the file's contents fold ([Wcf0_of_posts_alt]).   *)
   (* =================================================================== *)
   Definition cat_ws : list (list (bv 8)) := FileDisc.uline_ws LCat.
@@ -2161,18 +2186,19 @@ Section UShRound.
     wr_blk_t_f ps cs s0 I P ->
     file_era_pin g (S gen_id) vf -∗
     UCatOut.cch g v vf ps cs s0 I a P (UCatOut.cat_out_len cs s0 I a) -∗
-    FileLinksAt.fwc_post_at g s0 (S gen_id) v I a.
+    gwc_post file_lm (file_params_at g s0) (S gen_id) v I a.
   Proof using .
     intros Hfl Hw. iIntros "#Hvf Hc".
-    rewrite /UCatOut.cch /FileLinksAt.fwc_post_at.
+    rewrite /UCatOut.cch /gwc_post. cbn [gH gW gT FileLinkGen.file_params_at]; rewrite /FileLinkGen.f0w_at.
     iDestruct "Hc" as "[(Htn & Hps & Hcs & HE & Hf0) | HT]"; [ | by iRight ].
     assert (Hix : UCatOut.cat_out_len cs s0 I a
                   = (length (fabs s0 cs I a) - 2)%nat)
       by (rewrite /UCatOut.cat_out_len /fabs /UCatOut.cat_st Hfl
                   UCatOut.cat_prompt_len; reflexivity).
-    iLeft. iExists ps, cs, P. rewrite -Hix.
-    rewrite /UCatOut.catcs /blkcs_f. iFrame "Htn Hps Hcs HE".
-    iSplitR; [ by iPureIntro | ].
+    iLeft. iExists ps, cs, s0, P. rewrite -(fabs_lm s0 cs I a) -Hix.
+    rewrite /UCatOut.catcs /lm_blkcs. iFrame "Htn Hps Hcs HE".
+    iSplitR; [ iPureIntro; by rewrite -wr_blk_t_f_lm | ].
+    iSplitL; [ | by iPureIntro ].
     rewrite /f0w. iSplitR; [ by iPureIntro | ]. iExists vf. iFrame "Hvf Hf0".
   Qed.
 
@@ -2238,16 +2264,18 @@ Section UShRound.
     (* ---- the lend, OPENED into cat's cursor ---- *)
     rewrite {1}/FileLinkInst.file_Wcl_at /lk_lcred.
     iDestruct "Hc" as (v) "[#Hpin Hc]".
-    cbn [lk_pin lk_lpr FileLinkInst.file_link_inst_at fwc_lpr_at].
-    rewrite /fwc_blk_at. iDestruct "Hc" as "[Hc | #HT]"; last first.
+    cbn [lk_pin lk_lpr FileLinkInst.file_link_inst_at FileLinkGen.file_link_gen_at GenLinksLine.gen_link_inst gwc_lpr].
+    iEval (rewrite /gwc_blk; cbn [gH gW gT FileLinkGen.file_params_at]; rewrite /FileLinkGen.f0w_at) in "Hc".
+    iDestruct "Hc" as "[Hc | #HT]"; last first.
     { iApply ("Hgen'" $! W' with "HT Hmp"). }
-    iDestruct "Hc" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE & #Hf)".
+    iDestruct "Hc" as (ps cs sw P) "(%Hw & Htn & #Hps & #Hcs & #HE & #[Hf %Hs])".
+    subst sw. rewrite -wr_blk_t_f_lm in Hw.
     rewrite /f0w. iDestruct "Hf" as "[%Hk Hvf]".
     iDestruct "Hvf" as (vf) "[#Hvf #Hf0]".
     iDestruct (era_pin_agree (fgn_echo g) (S gen_id) v v' with "Hpin Hpin'")
       as %<-.
     pose proof Hw as [(Hpin0 & Hr & Hn & HP) _].
-    cbn [blkcs_f].
+    cbn [lm_blkcs].
     iDestruct (cs_lb_agree_len v cs cs' ltac:(lia) with "Hcs Hcs'") as %<-.
     destruct Hrows as ([wr0 Hr0] & [rb1 Hr1] & [rb2 Hr2]).
     assert (Hnone : fd_lowest_closed (take NSTD fdv) = None).
@@ -2289,7 +2317,7 @@ Section UShRound.
               [ exact Logic.I | reflexivity ]
           | exact Hlen | exact Hpos
           | rewrite ralt_dec_enc Hfl fsm_cat; exact Hcon
-          | cbn [lk_pin FileLinkInst.file_link_inst_at]; iExact "Hpin" ].
+          | cbn [lk_pin FileLinkInst.file_link_inst_at FileLinkGen.file_link_gen_at GenLinksLine.gen_link_inst]; iExact "Hpin" ].
       - rewrite /UCatOut.catq_filed.
         iDestruct (cch_post I (ralt_enc RCNoOpen) v vf ps cs P Hfl Hw
                      with "Hvf Hc") as "Hpost".
@@ -2299,7 +2327,7 @@ Section UShRound.
               [ exact Logic.I | reflexivity ]
           | exact Hlen | exact Hpos
           | rewrite ralt_dec_enc Hfl fsm_cat; exact Hcon
-          | cbn [lk_pin FileLinkInst.file_link_inst_at]; iExact "Hpin" ]. }
+          | cbn [lk_pin FileLinkInst.file_link_inst_at FileLinkGen.file_link_gen_at GenLinksLine.gen_link_inst]; iExact "Hpin" ]. }
     rewrite /image_entry.
     iApply ("He" $! na alen afun W' with "[%] [%] [%] [%] [%] [%] Hmp
                                           [Htn Hd]");
@@ -2347,7 +2375,7 @@ Section UShRound.
       as (v0) "#Hpin0".
     { rewrite /FileLinkInst.file_Wcl_at /lk_lcred.
       iDestruct "Hc" as (v0) "[#Hp _]". iExists v0.
-      cbn [lk_pin FileLinkInst.file_link_inst_at]. iExact "Hp". }
+      cbn [lk_pin FileLinkInst.file_link_inst_at FileLinkGen.file_link_gen_at GenLinksLine.gen_link_inst]. iExact "Hp". }
     iAssert (□ (app_taint -∗ UkShFork.ushf_wq Wcf I))%I as "#Hkillq".
     { iIntros "!> #Hk". rewrite /UkShFork.ushf_wq. iRight.
       iApply (Wcf_taint I 0%nat v0 with "Hpin0"). iApply Hktaint.
@@ -2395,8 +2423,8 @@ Section UShRound.
       iPoseProof (UShPanic.ush_diag_law_hold_at_alt (PS := uprogSG_free)
                     (ghost_varG0 := offbox_offG) FI (fown r s) I
                     (ralt_enc RCExec) with "[]") as "#Hx".
-      { cbn [lk_links FileLinkInst.file_link_inst_at]. iExact "Hlk". }
-      iEval (cbn [lk_ab FileLinkInst.file_link_inst_at];
+      { cbn [lk_links FileLinkInst.file_link_inst_at FileLinkGen.file_link_gen_at GenLinksLine.gen_link_inst]. iExact "Hlk". }
+      iEval (cbn [lk_ab FileLinkInst.file_link_inst_at FileLinkGen.file_link_gen_at GenLinksLine.gen_link_inst]; rewrite -fab_lm;
              rewrite (fab_of_apr I (ralt_enc RCExec)
                         ltac:(rewrite ralt_dec_enc Hfl; split;
                               [ exact Logic.I | reflexivity ]))
@@ -2502,7 +2530,7 @@ Section UShRound.
       as (v0) "#Hpin0".
     { rewrite /FileLinkInst.file_Wcl_at /lk_lcred.
       iDestruct "Hc" as (v0) "[#Hp _]". iExists v0.
-      cbn [lk_pin FileLinkInst.file_link_inst_at]. iExact "Hp". }
+      cbn [lk_pin FileLinkInst.file_link_inst_at FileLinkGen.file_link_gen_at GenLinksLine.gen_link_inst]. iExact "Hp". }
     iAssert (□ (app_taint -∗ UkShFork.ushf_wq Wcf I))%I as "#Hkillq".
     { iIntros "!> #Hk". rewrite /UkShFork.ushf_wq. iRight.
       iApply (Wcf_taint I 0%nat v0 with "Hpin0"). iApply Hktaint.
@@ -2570,8 +2598,8 @@ Section UShRound.
       iPoseProof (UShPanic.ush_diag_law_hold_at_alt (PS := uprogSG_free)
                       (ghost_varG0 := offbox_offG) FI
                     (redir_K' ty) I (ralt_enc RFExec) with "[]") as "#Hx".
-      { cbn [lk_links FileLinkInst.file_link_inst_at]. iExact "Hlk". }
-      iEval (cbn [lk_ab FileLinkInst.file_link_inst_at]; rewrite Hax)
+      { cbn [lk_links FileLinkInst.file_link_inst_at FileLinkGen.file_link_gen_at GenLinksLine.gen_link_inst]. iExact "Hlk". }
+      iEval (cbn [lk_ab FileLinkInst.file_link_inst_at FileLinkGen.file_link_gen_at GenLinksLine.gen_link_inst]; rewrite -fab_lm; rewrite Hax)
         in "Hx".
       iApply (ush_execfail_law_at_wand with "Hx").
       iIntros "!> H". iDestruct "H" as (v) "(#Hp & Hblk & [HK _])".
@@ -2586,13 +2614,13 @@ Section UShRound.
       rewrite /UkShDiag.ush_execfail_law_at.
       iIntros "!>" (N l) "%Hfd [HK Hc]".
       iAssert (FileLinks.file_links g -∗ lk_links FI)%I as "Hlkw".
-      { cbn [lk_links FileLinkInst.file_link_inst_at]. iIntros "$". }
+      { cbn [lk_links FileLinkInst.file_link_inst_at FileLinkGen.file_link_gen_at GenLinksLine.gen_link_inst]. iIntros "$". }
       iDestruct ("Hlkw" with "Hlk") as "#Hlk'".
       rewrite /redir_Kf. iDestruct "HK" as "[Hd | [[%Hs Hd] | #HT]]".
       + iPoseProof (UShPanic.ush_diag_law_hold_at_alt (PS := uprogSG_free)
                       (ghost_varG0 := offbox_offG)
                       FI (fown r s) I (ralt_enc RFOpenU) with "Hlk'") as "#Hx".
-        iEval (cbn [lk_ab FileLinkInst.file_link_inst_at]; rewrite Hau)
+        iEval (cbn [lk_ab FileLinkInst.file_link_inst_at FileLinkGen.file_link_gen_at GenLinksLine.gen_link_inst]; rewrite -fab_lm; rewrite Hau)
           in "Hx".
         iDestruct ("Hx" $! N l with "[%] [Hc Hd]") as (Pf) "(H0 & #Hs & #He)";
           [ exact Hfd | iFrame "Hc Hd" | ].
@@ -2605,7 +2633,7 @@ Section UShRound.
                       (ghost_varG0 := offbox_offG)
                       FI (fown r (Some (i, []))) I (ralt_enc RFOpenM)
                       with "Hlk'") as "#Hx".
-        iEval (cbn [lk_ab FileLinkInst.file_link_inst_at]; rewrite Ham)
+        iEval (cbn [lk_ab FileLinkInst.file_link_inst_at FileLinkGen.file_link_gen_at GenLinksLine.gen_link_inst]; rewrite -fab_lm; rewrite Ham)
           in "Hx".
         iDestruct ("Hx" $! N l with "[%] [Hc Hd]") as (Pf) "(H0 & #Hs & #He)";
           [ exact Hfd | iFrame "Hc Hd" | ].
@@ -2617,7 +2645,7 @@ Section UShRound.
       + iPoseProof (UShPanic.ush_diag_law_hold_at_alt (PS := uprogSG_free)
                       (ghost_varG0 := offbox_offG)
                       FI emp%I I (ralt_enc RFOpenU) with "Hlk'") as "#Hx".
-        iEval (cbn [lk_ab FileLinkInst.file_link_inst_at]; rewrite Hau)
+        iEval (cbn [lk_ab FileLinkInst.file_link_inst_at FileLinkGen.file_link_gen_at GenLinksLine.gen_link_inst]; rewrite -fab_lm; rewrite Hau)
           in "Hx".
         iDestruct ("Hx" $! N l with "[%] [Hc]") as (Pf) "(H0 & #Hs & _)";
           [ exact Hfd | iFrame "Hc" | ].

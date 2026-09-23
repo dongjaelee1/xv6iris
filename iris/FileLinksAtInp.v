@@ -32,13 +32,17 @@ Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values
 Require Import RiscvLang RiscvPtsto.
 Require Import EchoOut.
 Require Import FileState.
+Require Import FileDisc.
 Require Import AppFile.
 Require Import FileOut.
 Require Import FileLinksLine.
 Require Import LinkRec.
 Require Import FileLinksAt.
-Require Import FileLinksAtBan.
+Require Import LineModel.
+Require Import LineModelLinks.
 Require Import FileLinkInst.
+Require Import GenLinksLine.
+Require Import FileLinkGen.
 Require Import Xv6Cameras.
 Require Import Xv6G.
 Require Import FdSlots.
@@ -69,7 +73,7 @@ Section file_links_at_inp.
   (*  1.  THE LOOP'S TIGHT CREDENTIAL                                     *)
   (* =================================================================== *)
   (* The shape is [UShLine.ush_wc_inp_lcred]'s verbatim: one
-     [destruct p as [| [| [| p']]]] over [FileLinksAt.fwc_lpr_at]'s four
+     [destruct p as [| [| [| p']]]] over [GenLinksLine.gwc_lpr]'s four
      positions, an [iAssert] that reads the bound off whichever arm holds,
      and a per-arm rebuild of the family that was taken apart. *)
   Lemma file_wc_inp_at (s0 : fstate) :
@@ -79,18 +83,18 @@ Section file_links_at_inp.
     intros I p. iIntros "H".
     rewrite /FileLinkInst.file_Wcl_at /LinkRec.lk_lcred.
     iDestruct "H" as (v) "[#Hpin Hc]".
-    cbn [LinkRec.lk_pin LinkRec.lk_lpr FileLinkInst.file_link_inst_at] in *.
-    iAssert (FileLinksAt.fwc_lpr_at g s0 (S gen_id) v I p
+    cbn [LinkRec.lk_pin LinkRec.lk_lpr FileLinkInst.file_link_inst_at
+         FileLinkGen.file_link_gen_at GenLinksLine.gen_link_inst] in *.
+    iAssert (gwc_lpr file_lm (file_params_at g s0) file_X (S gen_id) v I p
              ∗ (inp_lb v I ∨ FT))%I with "[Hc]" as "[Hc #Hi]".
-    { destruct p as [| [| [| p']]]; cbn [FileLinksAt.fwc_lpr_at].
-      - rewrite /FileLinksAt.fwc_line_at /FileLinksAt.fwc_pro_at
-                /FileLinksAt.fwc_post_at /FileLinksAt.fhead_at
-                /FileLinksLine.fcur.
-        iDestruct "Hc" as "[[Hl | [Hh | #HT]] | Hq]".
-        + iDestruct "Hl" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE & #Hf)".
+    { destruct p as [| [| [| p']]]; cbn [gwc_lpr].
+      - rewrite /gwc_line /gwc_pro /gwc_post /gcur.
+        cbn [gH gW gT file_params_at]. rewrite /fhead_at /f0w_at /file_X.
+        iDestruct "Hc" as "[[Hl | [Hh | #HT]] | [Hq | []]]".
+        + iDestruct "Hl" as (ps cs s P) "(%Hw & Htn & #Hps & #Hcs & #HE & #[Hf %Hs])".
           iSplitL "Htn".
-          * iLeft. iLeft. iExists ps, cs, P.
-            iFrame "Htn Hps Hcs HE Hf". by iPureIntro.
+          * iLeft. iLeft. iExists ps, cs, s, P.
+            iFrame "Htn Hps Hcs HE Hf". iSplit; by iPureIntro.
           * iLeft. iExact "HE".
         + iDestruct "Hh"
             as "(%HI & %Hk & Htn & #Hps & #Hcs & #HE & Hvf & Hpre)".
@@ -103,38 +107,38 @@ Section file_links_at_inp.
             [ iLeft; iRight; iRight; iExact "HT" | iRight; iExact "HT" ].
         + iDestruct "Hq" as (a) "[%Ha [Hl | #HT]]".
           * iDestruct "Hl"
-              as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE & #Hf)".
+              as (ps cs s P) "(%Hw & Htn & #Hps & #Hcs & #HE & #[Hf %Hs])".
             iSplitL "Htn".
-            -- iRight. iExists a. iSplitR; [ by iPureIntro | ].
-               iLeft. iExists ps, cs, P.
-               iFrame "Htn Hps Hcs HE Hf". by iPureIntro.
+            -- iRight. iLeft. iExists a. iSplitR; [ by iPureIntro | ].
+               iLeft. iExists ps, cs, s, P.
+               iFrame "Htn Hps Hcs HE Hf". iSplit; by iPureIntro.
             -- iLeft. iExact "HE".
           * iSplit.
-            -- iRight. iExists a. iSplitR; [ by iPureIntro | ].
+            -- iRight. iLeft. iExists a. iSplitR; [ by iPureIntro | ].
                iRight. iExact "HT".
             -- iRight. iExact "HT".
-      - rewrite /FileLinksAt.fwc_sp_t_at /FileLinksLine.fcur.
+      - rewrite /gwc_sp_t /gcur. cbn [gW gT file_params_at]. rewrite /f0w_at.
         iDestruct "Hc" as "[Hl | #HT]".
-        + iDestruct "Hl" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE & #Hf)".
+        + iDestruct "Hl" as (ps cs s P) "(%Hw & Htn & #Hps & #Hcs & #HE & #[Hf %Hs])".
           iSplitL "Htn".
-          * iLeft. iExists ps, cs, P.
-            iFrame "Htn Hps Hcs HE Hf". by iPureIntro.
+          * iLeft. iExists ps, cs, s, P.
+            iFrame "Htn Hps Hcs HE Hf". iSplit; by iPureIntro.
           * iLeft. iExact "HE".
         + iSplit; [ iRight; iExact "HT" | iRight; iExact "HT" ].
-      - rewrite /FileLinksAt.fwc_open_t_at /FileLinksLine.fcur.
+      - rewrite /gwc_open_t /gcur. cbn [gW gT file_params_at]. rewrite /f0w_at.
         iDestruct "Hc" as "[Hl | #HT]".
-        + iDestruct "Hl" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE & #Hf)".
+        + iDestruct "Hl" as (ps cs s P) "(%Hw & Htn & #Hps & #Hcs & #HE & #[Hf %Hs])".
           iSplitL "Htn".
-          * iLeft. iExists ps, cs, P.
-            iFrame "Htn Hps Hcs HE Hf". by iPureIntro.
+          * iLeft. iExists ps, cs, s, P.
+            iFrame "Htn Hps Hcs HE Hf". iSplit; by iPureIntro.
           * iLeft. iExact "HE".
         + iSplit; [ iRight; iExact "HT" | iRight; iExact "HT" ].
-      - rewrite /FileLinksAt.fwc_blk_at.
+      - rewrite /gwc_blk. cbn [gW gT file_params_at]. rewrite /f0w_at.
         iDestruct "Hc" as "[Hl | #HT]".
-        + iDestruct "Hl" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE & #Hf)".
+        + iDestruct "Hl" as (ps cs s P) "(%Hw & Htn & #Hps & #Hcs & #HE & #[Hf %Hs])".
           iSplitL "Htn".
-          * iLeft. iExists ps, cs, P.
-            iFrame "Htn Hps Hcs HE Hf". by iPureIntro.
+          * iLeft. iExists ps, cs, s, P.
+            iFrame "Htn Hps Hcs HE Hf". iSplit; by iPureIntro.
           * iLeft. iExact "HE".
         + iSplit; [ iRight; iExact "HT" | iRight; iExact "HT" ]. }
     iSplitL "Hc"; [ iExists v; iFrame "Hpin Hc" | ].
@@ -145,22 +149,20 @@ Section file_links_at_inp.
   (* =================================================================== *)
   (*  2.  THE BANNER-OWED CREDENTIAL, WITH THE BOUNDARY FACT              *)
   (* =================================================================== *)
-  (* Nothing is re-destructed here: [FileLinksAtBan.fwc_ban_inp_at] is
-     already exactly this read-back at the indexed banner family, so the
-     lemma only has to peel the era pin off and put it back. *)
+  (* Nothing is re-destructed here: the record's own [lk_ban_inp] is
+     already exactly this read-back at the banner family, so the lemma
+     only has to peel the era pin off and put it back. *)
   Lemma file_wb_inp_at (s0 : fstate) :
     UShLine.ush_wb_inp (fgn_echo g) (file_taint (fgn_cl g))
       (FileLinkInst.file_Wbl_at g s0).
   Proof using .
     intros I. iIntros "H". rewrite /FileLinkInst.file_Wbl_at.
     iDestruct "H" as (v) "[#Hpin Hc]".
-    cbn [LinkRec.lk_pin LinkRec.lk_ban FileLinkInst.file_link_inst_at] in *.
-    iDestruct (FileLinksAtBan.fwc_ban_inp_at g s0 (S gen_id) v I with "Hc")
-      as "[Hc #Hi]".
+    iDestruct (lk_ban_inp (FileLinkInst.file_link_inst_at g s0) (S gen_id) v I
+                 with "Hc") as "[Hc #Hi]".
     iSplitL "Hc"; [ iExists v; iFrame "Hpin Hc" | ].
     iDestruct "Hi" as "[[HE %Hr] | HT]".
     - iLeft. iSplitR; [ | by iPureIntro ]. iExists v. iFrame "Hpin HE".
     - iRight. iExact "HT".
   Qed.
-
 End file_links_at_inp.

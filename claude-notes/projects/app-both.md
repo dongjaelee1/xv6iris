@@ -256,6 +256,64 @@ condition, and echo is the pipe's corollary in the landed tree; it goes
 with the echo tier at M5.  Gotchas met: a variable named `I` shadows
 `True`'s constructor (`Logic.I`); comments must not contain `"`.
 
+M2c THIRD CUT, PART 2 (2026-09-23): THE FILE SIDE SWITCHED.
+`FileLinkInst.file_link_inst := file_link_gen g`, `file_link_inst_at
+s0 := file_link_gen_at g s0`; the cursor/stage records and the round-
+facing lemmas at the generic bodies; `file_Wcl/Wbl_unpack` through
+`gwc_lpr_unpack`/`gwc_ban_unpack`.  The consumers that compute on
+family bodies (`FileLinksAtInp` 2 lemmas, `FileReadInst`,
+`UInitFileCons` 2, `UShRound` 12 sites) now read the generic body:
+`cbn [… file_link_inst_at file_link_gen_at gen_link_inst gwc_lpr]`,
+then `rewrite /gwc_X`, `cbn [gH gW gT file_params_at]; rewrite
+/f0w_at` (the witness is `f0w g k s ∗ ⌜s = s0⌝`, destructed `#[Hf
+%Hs]` then `subst`), `iExists ps, cs, s0, P`, and the pure side through
+the equations (`rewrite -wr_blk_t_f_lm in Hw` keeps the Coq hypothesis
+in the file's vocabulary; `iSplit; iPureIntro; [by rewrite
+-wr_blk_t_f_lm | reflexivity]` rebuilds).  `fabs` stays the Coq-side
+name: `rewrite -(fabs_lm s0 cs I a)` (explicit, so the bound
+occurrences are left alone) before `destruct (length (fabs …) - 2)`.
+Pure record fields need their equations too: `lk_exfb` unfolds to
+`lmh_exfb K (lm_line_at M I)` (`rewrite -fline_lm` before `rewrite
+Hln`; `cbn [lmh_exfb gK file_params_at file_hooks fexfb]`), `lk_ab` to
+`lm_ab M K I a` (`rewrite -fab_lm` before a `fab` rewrite).  DELETED:
+`FileLinksLine` S8's eleven families, instances and laws, S9's steps,
+`fturn0`, the two read refutations (kept: `f0w`, `f0bw`, `fcur`,
+`f0pre`, `fhead`, `fwc_rres`, `flw`, `fwc_rresw`, `fturn_pre`);
+`FileLinksAt`'s twelve `_at` families and packings (kept: `f0pre_at`,
+`fhead_at` + packing, `fwc_rres(w)_at` + packing; gained
+`fturn_pre_at`); `FileLinksAtBan.v`, `FileLinksAtLine.v`,
+`FileLinksAtPro.v` whole.  `file_X` takes no `g`.  Gotcha: a comment
+naming a deleted lemma is a stale pointer -- grep the tree's comments
+for each deleted name before the commit.  Iteration: `rocq-warm check
+UShRound.v` replays in ~30 s (cold), so every UShRound fix was a
+warm check, not a make round.
+
+M2c THIRD CUT, PART 3 (in flight): THE PIPE SIDE.  Ruled on the shape:
+the pipeline's families are NOT redefined and NOT deleted -- the names
+`pwc_pro g`, `pwc_blk g`, … become ABBREVIATIONS (`Notation pwc_blk g
+:= (gwc_blk pipe_lm (pipe_params g))`) of the generic families at
+`pipe_params` (now in `PipeLinksLine`; state `unit`, witness `emp`, head
+`False`), so `pipe_inst_*` stay `reflexivity` and every consumer
+statement parses unchanged.  The pipeline's own READING of a family (no
+state, no witness, the landed shape over `wr_*_p`) is a `_view`
+equivalence (`pwc_blk_view : pwc_blk g k v I a i ⊣⊢ (∃ ps cs P, …) ∨
+PT`), so a consumer that unfolded a body swaps `rewrite /pwc_blk` for
+`rewrite pwc_blk_view` -- 30 sites in 8 files, none touching the proof
+text after the rewrite.  `pwc_post` keeps its own definition (the block
+at `pab`, `lk_post`'s shape); `pwc_post_gen` reads the generic post at
+an admissible alternative (every pipeline alternative is state-free).
+`pwc_line`/`pwc_lpr` (one writer) stay definitions over the
+abbreviations; the record's line is `pwc_line2 g := gwc_line pipe_lm
+(pipe_params g) (pipe_X g)` with `pipe_X` (PipeBoth's two-writer arm)
+and `pipe_X_dollar` in `PipeBoth`, and `pprompt_dollar_line2` IS
+`gprompt_dollar_line`.  `PipeLinkInst.pipe_link_inst_at :=
+gen_link_inst …` (the PipeLinkGen record, moved; `PipeLinkGen.v`
+deleted); `pipe_inst_ab` by `pab_lm` + funext, `pipe_inst_apr` as an
+iff.  Deleted from `PipeLinksLine`: S5's instances/taints/structure
+lemmas, S6's steps/turn/refutations, S7's diagnostics; kept as wrappers
+of the generic what consumers name (`pwc_line_of_*`, `pwc_lend_of_blk0`,
+`pwc_ban_done_line`, `pwc_blk_sp`, `pblk_step`, `pprompt_dollar_line`).
+
 M2c THIRD CUT, PART 1 (2026-09-23): `FileLinkGen` §5-§6 -- the SAME
 generic section at a named boot state: `f0w_at s0 k s := f0w g k s ∗
 ⌜s = s0⌝`, `file_params_at s0` (head `fhead_at g s0`),

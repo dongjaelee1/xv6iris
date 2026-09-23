@@ -334,7 +334,10 @@ M3c DONE (2026-09-23; `3bad7720c`, `506ce7da7`, `3993b1ed5`).
   deferral, echo's tier moves at M5.
 - Gotcha: `iSplit` on the `glinks` body diverges (GenLinksLine's Persistent
   warning); use `iSplitR`.
-NEXT: M4 (the child laws as modules).
+NEXT: M4 (the child laws as modules).  PROPOSED REDESIGN (2026-09-23,
+awaiting ruling): the programs' specs over ENDPOINTS (`Out fd S`, `In fd S`
+at a declared stream), with the console/file/pipe files as instances and
+the line shapes as endpoint-provisioning modules -- design/app-both.md §5.
 
 FileOutPure DEAD CODE REMOVED (2026-09-23): 92 of 169 declarations
 (the whole claim-stage layer -- `D_f`, `pending_f`, `pcount_f`, the

@@ -1988,7 +1988,13 @@ Section pipe_out.
 
   (* [EchoOut.ecl] at the pipeline stage: the same four authorities, the
      same delivered count, no extra per-era ghost. *)
-  Definition pecl (k : nat) (ho : list mobs)
+  (* THE CLAIM, UNFOLDED: one existential over both modes, [opn] saying
+     which.  This is a proof device only -- [pecl] below is the generic
+     claim or the open round, and [pecl_v_eq] says the two agree.  The
+     pipe-only round steps ([pecl_blk2_*]) and the founding are proved on
+     this view.  CLEANUP: restate them as gcl -> popen / popen -> popen /
+     popen -> gcl and delete the view. *)
+  Definition pecl_v (k : nat) (ho : list mobs)
       (H : LogEntryDefs.cons_hist) : iProp Σ :=
     ( T
     ∨ ∃ (v : era_pins) (w : pipe_era) (so : postage)
@@ -2006,8 +2012,8 @@ Section pipe_out.
         ∗ dl_list_auth v (LogEntryDefs.ch_dl H)
         ∗ ⌜pcl_pure2 k ho so r pre opn H⌝)%I.
 
-  Global Instance pecl_timeless k ho H : Timeless (pecl k ho H).
-  Proof using . rewrite /pecl. apply _. Qed.
+  Global Instance pecl_v_timeless k ho H : Timeless (pecl_v k ho H).
+  Proof using . rewrite /pecl_v. apply _. Qed.
 
   (* ==================================================================== *)
   (*  3b. THE CLAIM AS THE GENERIC ONE, AND THE OPEN ROUND (app-both M3b)  *)
@@ -2082,11 +2088,29 @@ Section pipe_out.
     by rewrite (proc_before_p_lm_s _ _ (gs_state pipe_lm tt so)).
   Qed.
 
-  (* THE PIPELINE'S CLAIM IS THE GENERIC ONE BETWEEN ROUNDS *)
+  (* THE PIPELINE'S CLAIM: the generic one between rounds, [popen] while
+     a two-writer round is open (owner ruling 2026-09-23) *)
+  Definition pecl (k : nat) (ho : list mobs) (H : LogEntryDefs.cons_hist)
+      : iProp Σ :=
+    (gcl pipe_lm pipe_cparams tt pipe_wa k ho H ∨ popen k ho H)%I.
+
+  Global Instance pecl_timeless k ho H : Timeless (pecl k ho H).
+  Proof using . rewrite /pecl. apply _. Qed.
+
   Lemma pecl_gen (k : nat) (ho : list mobs) (H : LogEntryDefs.cons_hist) :
     pecl k ho H ⊣⊢ gcl pipe_lm pipe_cparams tt pipe_wa k ho H ∨ popen k ho H.
+  Proof using . done. Qed.
+
+  (* a tainted era's claim is free *)
+  Lemma pecl_taint (k : nat) (ho : list mobs) (H : LogEntryDefs.cons_hist) :
+    T -∗ pecl k ho H.
+  Proof using . iIntros "#HT". rewrite /pecl /gcl. iLeft. by iLeft. Qed.
+
+  (* the unfolded view is the claim *)
+  Lemma pecl_v_eq (k : nat) (ho : list mobs) (H : LogEntryDefs.cons_hist) :
+    pecl_v k ho H ⊣⊢ pecl k ho H.
   Proof using .
-    rewrite /pecl /gcl. iSplit.
+    rewrite /pecl_v /pecl /gcl. iSplit.
     - iIntros "[#HT | Hp]"; [by iLeft; iLeft |].
       iDestruct "Hp" as (v w so r gb pre opn tm)
         "(#Hpin & #Hpe & Hblk & Hcur & Hrb & Hta & Hcs & Hps & HE & Hdl & Hdll & %Hall)".
@@ -2375,11 +2399,12 @@ Section pipe_out.
             ∗ ps_lb v ps0 ∗ cs_lb v cs0 ∗ inp_lb v I0) ∨ T).
   Proof using .
     intros Hne0 Hr0 Hdiv Hpin0 HPeq Halt Hpan Hhead Hfarm.
+    rewrite -!pecl_v_eq.
     pose proof (nlines_pos_of_rest_nil I0 Hne0 Hr0) as Hpos0.
     pose proof (pop_nlines_removelast I0 Hr0) as Hrl0.
     iIntros "#Hpin Ht #Hpslb #Hcslb #Hilb Hcl".
     iDestruct "Hcl" as "[#HT | Hp]".
-    { iModIntro. iSplitR; [rewrite /pecl; by iLeft | by iRight]. }
+    { iModIntro. iSplitR; [rewrite /pecl_v; by iLeft | by iRight]. }
     iDestruct "Hp" as (v2 w so r gb pre opn tm) "(#Hpin2 & #Hpera & Hblk & Hcur & Hrb & Hta & Hcs & Hps & HE & Hdl & Hdll & %Hall)".
     iDestruct (era_pin_agree with "Hpin2 Hpin") as %->.
     iDestruct (turn_agree with "Ht Hta") as %HP.
@@ -2470,7 +2495,7 @@ Section pipe_out.
             (S P) ltac:(lia) with "Ht Hta") as "[Ht Hta]".
     iMod (blk_auth_grow w (pstream so) b with "Hblk") as "[Hblk _]".
     iModIntro. iSplitR "Ht Hcur2".
-    - rewrite /pecl. iRight.
+    - rewrite /pecl_v. iRight.
       iExists v, w, (MkO (o_ps so) (o_cs so) (o_E so) [b]),
               (nlines I0 - 1)%nat, gb2, [b], true,
               (palt_isforkS (palt_of a)).
@@ -2551,10 +2576,11 @@ Section pipe_out.
           ∗ (⌜palt_isforkS (palt_of a) = false⌝ ∨ cs_frozen_at v r)) ∨ T).
   Proof using .
     intros Hne0 Hr0 Hreq Hcseq Hpin0 HPeq Halt Hpan Hpref Hfarm.
+    rewrite -!pecl_v_eq.
     pose proof (nlines_pos_of_rest_nil I0 Hne0 Hr0) as Hpos0.
     iIntros "#Hpin #Hperaw Ht Hcw #Hrlb0 #Hpslb #Hcslb #Hilb Hcl".
     iDestruct "Hcl" as "[#HT | Hp]".
-    { iModIntro. iSplitR; [rewrite /pecl; by iLeft | by iRight]. }
+    { iModIntro. iSplitR; [rewrite /pecl_v; by iLeft | by iRight]. }
     iDestruct "Hp" as (v2 w2 so r2 gb2 pre opn tm) "(#Hpin2 & #Hpera & Hblk & Hcur & Hrb & Hta & Hcs & Hps & HE & Hdl & Hdll & %Hall)".
     iDestruct (era_pin_agree with "Hpin2 Hpin") as %->.
     iDestruct (pera_pin_agree with "Hpera Hperaw") as %->.
@@ -2638,7 +2664,7 @@ Section pipe_out.
       rewrite Hz !list_lookup_total_alt lookup_app_l;
         [reflexivity | rewrite Hreq /nlines in Hpos0 |- *; lia]. }
     iModIntro. iSplitR "Ht Hcw".
-    - rewrite /pecl. iRight.
+    - rewrite /pecl_v. iRight.
       iExists v, w, (MkO (o_ps so) (o_cs so) (o_E so) (o_w so ++ [b])),
               r, gb, (pre ++ [b]), true,
               (tmi || palt_isforkS (palt_of a)).
@@ -2863,10 +2889,11 @@ Section pipe_out.
           ∗ cs_lb v (cs0 ++ [a]) ∗ inp_lb v I0) ∨ T).
   Proof using .
     intros Hne0 Hr0 Hreq Hcseq Hpin0 HPeq Halt Hpan Hfk Hcont Hbv.
+    rewrite -!pecl_v_eq.
     pose proof (nlines_pos_of_rest_nil I0 Hne0 Hr0) as Hpos0.
     iIntros "#Hpin #Hperaw Ht Hcw #Hrlb0 #Hpslb #Hcslb #Hilb Hcl".
     iDestruct "Hcl" as "[#HT | Hp]".
-    { iModIntro. iSplitR; [rewrite /pecl; by iLeft | by iRight]. }
+    { iModIntro. iSplitR; [rewrite /pecl_v; by iLeft | by iRight]. }
     iDestruct "Hp" as (v2 w2 so r2 gb2 pre opn tm) "(#Hpin2 & #Hpera & Hblk & Hcur & Hrb & Hta & Hcs & Hps & HE & Hdl & Hdll & %Hall)".
     iDestruct (era_pin_agree with "Hpin2 Hpin") as %->.
     iDestruct (pera_pin_agree with "Hpera Hperaw") as %->.
@@ -2968,7 +2995,7 @@ Section pipe_out.
     { apply alts_pre_p_snoc; [exact Hcsb' | rewrite Hqq; lia |].
       rewrite Hqq -Hreq2 Hbod. exact Halt. }
     iModIntro. iSplitR "Ht".
-    - rewrite /pecl. iRight.
+    - rewrite /pecl_v. iRight.
       iExists v, w, (MkO (o_ps so) (o_cs so ++ [a]) (o_E so) (o_w so ++ [b])),
               r, gb, pre, false, false.
       cbn [o_ps o_cs o_E o_w andb]. rewrite -Hpceq pcount_p_write -HP.
@@ -3545,7 +3572,7 @@ Section pipe_out.
   Proof using .
     intros Hok Hev. iIntros "Hcl".
     iDestruct (pecl_arm with "Hcl") as "[Hcl [#HT | %Hera]]".
-    { iModIntro. rewrite /pecl. by iLeft. }
+    { iModIntro. by iApply pecl_taint. }
     pose proof Hev as Hev0.
     destruct Hev0 as (a & Ha & Hlk). destruct a as [[[ha ca] csa] ja].
     cbn [LogEntryDefs.ca_echo LogEntryDefs.ca_sent] in Hlk.
@@ -3684,6 +3711,7 @@ Section pipe_out.
     rblk_auth gb [] -∗ cur_half w 1 0%nat gb false -∗ era_full v -∗
       pecl k [] (LogEntryDefs.MkCH [] [] [] None) ∗ pturn k.
   Proof using .
+    rewrite -!pecl_v_eq.
     iIntros "#Hpin #Hpera Hblk Hrb Hcur1 (Ht & Hcs & Hps & HE & Hdl & Hdll)".
     iAssert (turn_lb v 0%nat) as "#Htlb0".
     { rewrite /turn_lb. iApply (mono_nat_lb_own_get with "Ht"). }
@@ -3696,7 +3724,7 @@ Section pipe_out.
     iDestruct (Elist_lb_get with "HE") as "[HE #HElb]".
     iDestruct (dl_list_lb_get with "Hdll") as "[Hdll #Hdllb]".
     iSplitL "Ht1 Hcs Hps HE Hdl1 Hdll Hblk Hcur1 Hrb".
-    { rewrite /pecl. iRight. iExists v, w, ostage0, 0%nat, gb, [], false, false.
+    { rewrite /pecl_v. iRight. iExists v, w, ostage0, 0%nat, gb, [], false, false.
       rewrite pstream_0.
       cbn [o_ps o_cs o_E o_w ostage0 length LogEntryDefs.ch_dl].
       rewrite /pcount_p fmap_nil proc_before_p_nil. cbn [length].

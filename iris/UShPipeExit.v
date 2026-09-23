@@ -126,7 +126,7 @@ Section pipe_exit.
                 ⌜length cs = r⌝ ∗ pcs v cs fz)).
   Proof using .
     iIntros "#Hpera Hcw Hcl".
-    rewrite /pecl. iDestruct "Hcl" as "[#HT | Hc]"; [by iLeft |].
+    iEval (rewrite -pecl_v_eq /pecl_v) in "Hcl". iDestruct "Hcl" as "[#HT | Hc]"; [by iLeft |].
     iDestruct "Hc"
       as (v2 w2 so r2 gb2 pre opn tm2)
          "(#Hpin2 & #Hpera2 & Hblk & Hcur & Hrb & Hta & Hcsa & Hpsa & HEa
@@ -309,7 +309,7 @@ Section pipe_exit.
     pecl g k ho H -∗ PT.
   Proof using .
     iIntros "#Hpin Hfam Hblk Hcl".
-    rewrite /pecl. iDestruct "Hcl" as "[#HT | Hc]"; [iExact "HT" |].
+    iEval (rewrite -pecl_v_eq /pecl_v) in "Hcl". iDestruct "Hcl" as "[#HT | Hc]"; [iExact "HT" |].
     rewrite /pwc_blk2. iDestruct "Hfam" as "[Hf | #HT]"; [| iExact "HT"].
     rewrite pwc_blk_view. iDestruct "Hblk" as "[Hb | #HT]"; [| iExact "HT"].
     iDestruct "Hf" as (ps cs P) "(_ & _ & Htn1 & _)".

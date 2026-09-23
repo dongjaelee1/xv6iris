@@ -74,7 +74,7 @@ Section pipe_links.
     iModIntro. iExists o.
     iSplitR; [iExact "Hlb" |].
     iSplitR "HΦ"; [| iExact "HΦ"].
-    rewrite !pchist_at0 /pecl. by iLeft.
+    rewrite !pchist_at0. by iApply pecl_taint.
   Qed.
 
   Lemma pipe_write_link_taint (k : nat) (b : bv 8) (Φ : iProp Σ) :
@@ -84,7 +84,7 @@ Section pipe_links.
     iModIntro. iExists o.
     iSplitR; [iExact "Hlb" |].
     iSplitR "HΦ"; [| by iApply "HΦ"].
-    rewrite !pchist_at0 /pecl. by iLeft.
+    rewrite !pchist_at0. by iApply pecl_taint.
   Qed.
 
   (* (W) THE WRITE LINK, INSIDE A BLOCK -- [EchoOut.echo_write_link] with

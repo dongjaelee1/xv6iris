@@ -314,7 +314,7 @@ Section UShPipeRound2.
     pecl g k ho H ={E}=∗ PT.
   Proof using .
     intros HX HY HN. iIntros "#Hpin #Hinv HcL Hlpr Hcl".
-    rewrite {1}/pecl. iDestruct "Hcl" as "[#HT | Hc]";
+    iEval (rewrite -pecl_v_eq /pecl_v) in "Hcl". iDestruct "Hcl" as "[#HT | Hc]";
       [by iModIntro; iExact "HT" |].
     iDestruct "Hc"
       as (v2 w so r gb pre opn tm)
@@ -355,7 +355,7 @@ Section UShPipeRound2.
   Proof using .
     intros HX HY HN. iIntros "#Hpin (#Hinv & HcR & HcM & _) Hlpr Hcl".
     (* the claim's authority *)
-    rewrite {1}/pecl. iDestruct "Hcl" as "[#HT | Hc]";
+    iEval (rewrite -pecl_v_eq /pecl_v) in "Hcl". iDestruct "Hcl" as "[#HT | Hc]";
       [by iModIntro; iExact "HT" |].
     iDestruct "Hc"
       as (v2 w so r gb pre opn tm)

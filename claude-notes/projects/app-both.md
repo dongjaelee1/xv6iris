@@ -274,6 +274,20 @@ bodies (M2c's two shapes); `Proof using` closure; comments without `"`.
 
 ## RESUME HERE (2026-09-22, late)
 
+OPEN QUESTION FOR THE OWNER (2026-09-23, after the pad family landed as
+`2e943006d`): STEP 3 BEFORE OR AFTER M3b?  Measured: 100 of
+`FileOutPure`'s 168 names are used outside it, and nearly every use is in
+`FileOut` -- the claim itself, which M3b replaces with the generic claim.
+Step 3 as planned (tiers as corollaries, consumers repointed) would edit
+those ~100 sites once to point at corollaries and again at M3b when the
+claim they live in goes away.  RECOMMENDATION: go to M3b directly (the
+generic claim `GenOut.v` over `gstage`, written against `GenOutPure`),
+switch one application's claim to it (the file's: 10 importers), and
+delete that tier's pure file with its claim; keep step 3 only for names a
+NON-claim consumer uses (for the file: `LineModelInst`, `UShRound`,
+`UInitFile*`, `UCatOut`, `FileLinks*` -- measure those alone).  NOT
+DECIDED HERE.
+
 M3a PAD FAMILY AND THE CLAIM'S CONCLUSION ONCE (2026-09-23): `GenOutPure`
 §5b -- `lm_alts_pad I cs := cs ++ (lmh_noc K ∘ lm_of M) <$> drop (length
 cs) (bodies_of I)` with `_prefix/_take/_length/_at/_ok/_panic/_term/

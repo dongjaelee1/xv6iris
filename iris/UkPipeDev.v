@@ -570,7 +570,10 @@ Section UkPipeDev.
     iIntros (h m avail ua tx dq f) "%Hbf %Ha0 %Ha1 %Ha2 Hcode Hsrc Hrun Hcont".
     iDestruct Hsw as "#Hs".
     iApply ("Hs" $! h m avail with "Hcode Hrun").
-    iIntros (h1) "%Hal #Hec Hrun Hret".
+    iIntros (h1) "%Hnext %Hal6 #Hec Hrun Hret".
+    assert (Hal : is_aligned_vaddr (Virtaddr (add_vec_int
+               (mword_of_int (up_write P + 2) : mword 64) 4)) 2 = true)
+      by (rewrite Hnext; exact Hal6).
     set (m1 := <[Regidx a7_idx := (mword_of_int 16 : mword 64)]> m).
     assert (Ham0 : m1 !!! Regidx a0_idx = m !!! Regidx a0_idx)
       by exact (upd_ne m (Regidx a7_idx) (Regidx a0_idx) _
@@ -882,7 +885,10 @@ Section UkPipeDev.
     change (2 ^ 31) with 2147483648 in Hn31.
     iDestruct Hsr as "#Hs".
     iApply ("Hs" $! h m avail with "Hcode Hrun").
-    iIntros (h1) "%Hal #Hec Hrun Hret".
+    iIntros (h1) "%Hnext %Hal6 #Hec Hrun Hret".
+    assert (Hal : is_aligned_vaddr (Virtaddr (add_vec_int
+               (mword_of_int (up_read P + 2) : mword 64) 4)) 2 = true)
+      by (rewrite Hnext; exact Hal6).
     set (m1 := <[Regidx a7_idx := (mword_of_int 5 : mword 64)]> m).
     assert (Ham0 : m1 !!! Regidx a0_idx = m !!! Regidx a0_idx)
       by exact (upd_ne m (Regidx a7_idx) (Regidx a0_idx) _
@@ -983,7 +989,10 @@ Section UkPipeDev.
     iIntros (h m avail) "%Ha0 Hcode Hrun Hcont".
     iDestruct Hsc as "#Hs".
     iApply ("Hs" $! h m avail with "Hcode Hrun").
-    iIntros (h1) "%Hal #Hec Hrun Hret".
+    iIntros (h1) "%Hnext %Hal6 #Hec Hrun Hret".
+    assert (Hal : is_aligned_vaddr (Virtaddr (add_vec_int
+               (mword_of_int (up_close P + 2) : mword 64) 4)) 2 = true)
+      by (rewrite Hnext; exact Hal6).
     set (m1 := <[Regidx a7_idx := (mword_of_int 21 : mword 64)]> m).
     assert (Hnum : usysno m1 = USYS_close).
     { unfold m1, usysno.
@@ -1016,7 +1025,10 @@ Section UkPipeDev.
     iIntros (h m avail) "%Ha0 Hcode Hrun Hcont".
     iDestruct Hsc as "#Hs".
     iApply ("Hs" $! h m avail with "Hcode Hrun").
-    iIntros (h1) "%Hal #Hec Hrun Hret".
+    iIntros (h1) "%Hnext %Hal6 #Hec Hrun Hret".
+    assert (Hal : is_aligned_vaddr (Virtaddr (add_vec_int
+               (mword_of_int (up_close P + 2) : mword 64) 4)) 2 = true)
+      by (rewrite Hnext; exact Hal6).
     set (m1 := <[Regidx a7_idx := (mword_of_int 21 : mword 64)]> m).
     assert (Hnum : usysno m1 = USYS_close).
     { unfold m1, usysno.

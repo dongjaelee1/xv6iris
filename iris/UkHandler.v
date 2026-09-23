@@ -77,6 +77,8 @@ Section UkHandler.
     ei_outh : nat -> list bytes -> iProp Σ;    (* an output that may halt *)
     ei_halt : nat -> iProp Σ;                  (* ...and has *)
     ei_outm : nat -> list bytes -> iProp Σ;    (* an output where a write may miss *)
+    ei_in_e : nat -> bytes -> iProp Σ;         (* an input that may end early *)
+    ei_in_end : nat -> iProp Σ;                (* ...and has *)
     (* THE TAINT: the application's, which the kernel's leaves may hand a
        payer in place of an answer; it pays any tree *)
     ei_taint : iProp Σ;
@@ -87,7 +89,7 @@ Section UkHandler.
        comes back exactly, the device owes that alternative's rest *)
     ei_write : forall (fdm : fdmap) (fd : Z) (d : nat) (alts : list bytes)
                  (a bs : bytes) (K : Z -> iProp Σ),
-        fdm fd = Some d -> a ∈ alts -> bs `prefix_of` a ->
+        bs <> [] -> fdm fd = Some d -> a ∈ alts -> bs `prefix_of` a ->
         ei_fds fdm -∗ ei_out d alts -∗
         ((ei_fds fdm -∗ ei_out d [drop (length bs) a] -∗ K (Z.of_nat (length bs)))
          ∧ (∀ x, ei_taint -∗ K x)) -∗
@@ -95,7 +97,7 @@ Section UkHandler.
     (* at a haltable device the payer answers the count, or -1 and halts *)
     ei_write_h : forall (fdm : fdmap) (fd : Z) (d : nat) (alts : list bytes)
                    (a bs : bytes) (K : Z -> iProp Σ),
-        fdm fd = Some d -> a ∈ alts -> bs `prefix_of` a ->
+        bs <> [] -> fdm fd = Some d -> a ∈ alts -> bs `prefix_of` a ->
         ei_fds fdm -∗ ei_outh d alts -∗
         ((ei_fds fdm -∗ ei_outh d [drop (length bs) a] -∗ K (Z.of_nat (length bs)))
          ∧ (ei_fds fdm -∗ ei_halt d -∗ K (-1))
@@ -105,7 +107,7 @@ Section UkHandler.
        owing the rest either way *)
     ei_write_m : forall (fdm : fdmap) (fd : Z) (d : nat) (alts : list bytes)
                    (a bs : bytes) (K : Z -> iProp Σ),
-        fdm fd = Some d -> a ∈ alts -> bs `prefix_of` a ->
+        bs <> [] -> fdm fd = Some d -> a ∈ alts -> bs `prefix_of` a ->
         ei_fds fdm -∗ ei_outm d alts -∗
         ((ei_fds fdm -∗ ei_outm d [drop (length bs) a] -∗ K (Z.of_nat (length bs)))
          ∧ (ei_fds fdm -∗ ei_outm d [drop (length bs) a] -∗ K (-1))
@@ -113,18 +115,41 @@ Section UkHandler.
         wr_obl N P fd bs K;
     ei_write_halt : forall (fdm : fdmap) (fd : Z) (d : nat) (bs : bytes)
                       (K : Z -> iProp Σ),
-        fdm fd = Some d ->
+        bs <> [] -> fdm fd = Some d ->
         ei_fds fdm -∗ ei_halt d -∗
         ((ei_fds fdm -∗ ei_halt d -∗ K (-1)) ∧ (∀ x, ei_taint -∗ K x)) -∗
         wr_obl N P fd bs K;
-    (* a read: some chunk of what is left, empty only at end of file *)
+    (* a zero-length write: 0 or -1, nothing moves *)
+    ei_write_nil : forall (fdm : fdmap) (fd : Z) (d : nat) (K : Z -> iProp Σ),
+        fdm fd = Some d ->
+        ei_fds fdm -∗
+        ((ei_fds fdm -∗ K 0) ∧ (ei_fds fdm -∗ K (-1)) ∧ (∀ x, ei_taint -∗ K x)) -∗
+        wr_obl N P fd [] K;
+    (* a read of at least one byte: some chunk of what is left, empty only
+       at end of file *)
     ei_read : forall (fdm : fdmap) (fd : Z) (d : nat) (Sin : bytes) (n : nat)
                 (K : rd_ans -> iProp Σ),
-        fdm fd = Some d ->
+        (0 < n)%nat -> fdm fd = Some d ->
         ei_fds fdm -∗ ei_in d Sin -∗
         ((∀ (c S' : bytes), ⌜chunk_ok n Sin c S'⌝ -∗
             ei_fds fdm -∗ ei_in d S' -∗ K (RdBytes c))
          ∧ (∀ x, ei_taint -∗ K x)) -∗
+        rd_obl N P fd n K;
+    (* ...at an input that may end early: a chunk, or end of file *)
+    ei_read_e : forall (fdm : fdmap) (fd : Z) (d : nat) (Sin : bytes) (n : nat)
+                  (K : rd_ans -> iProp Σ),
+        (0 < n)%nat -> fdm fd = Some d ->
+        ei_fds fdm -∗ ei_in_e d Sin -∗
+        ((∀ (c S' : bytes), ⌜chunk_ok n Sin c S'⌝ -∗
+            ei_fds fdm -∗ ei_in_e d S' -∗ K (RdBytes c))
+         ∧ (ei_fds fdm -∗ ei_in_end d -∗ K (RdBytes []))
+         ∧ (∀ x, ei_taint -∗ K x)) -∗
+        rd_obl N P fd n K;
+    ei_read_end : forall (fdm : fdmap) (fd : Z) (d : nat) (n : nat)
+                    (K : rd_ans -> iProp Σ),
+        (0 < n)%nat -> fdm fd = Some d ->
+        ei_fds fdm -∗ ei_in_end d -∗
+        ((ei_fds fdm -∗ ei_in_end d -∗ K (RdBytes [])) ∧ (∀ x, ei_taint -∗ K x)) -∗
         rd_obl N P fd n K;
     (* an open of a present file: a descriptor the process did not hold,
        bound to a device of the glue's choosing at the content -- or the
@@ -162,6 +187,8 @@ Section UkHandler.
                          | DOutM alts => ei_outm d alts
                          | DHalt => ei_halt d
                          | DIn Sin => ei_in d Sin
+                         | DInE Sin => ei_in_e d Sin
+                         | DInEnd => ei_in_end d
                          end) -∗
         ex_obl N P s;
   }.
@@ -177,6 +204,8 @@ Section UkHandler.
                      | DOutM alts => ei_outm I d alts
                      | DHalt => ei_halt I d
                      | DIn Sin => ei_in I d Sin
+                     | DInE Sin => ei_in_e I d Sin
+                     | DInEnd => ei_in_end I d
                      end)%I.
 
   Definition env_res (I : ep_iface) (E : penv) (ds : gset nat) : iProp Σ :=
@@ -192,6 +221,8 @@ Section UkHandler.
      | DOutM alts => ei_outm I d alts
      | DHalt => ei_halt I d
      | DIn Sin => ei_in I d Sin
+     | DInE Sin => ei_in_e I d Sin
+     | DInEnd => ei_in_end I d
      end)
     ∗ dev_res I dv (ds ∖ {[d]}).
   Proof using . intros Hd. unfold dev_res. by apply big_sepS_delete. Qed.
@@ -225,6 +256,36 @@ Section UkHandler.
 
   (* a taint arm of a law, at the invariant *)
   Local Ltac taint_arm I := iIntros (x) "Ht"; iApply (cf_inv_taint I with "Ht").
+
+  (* the invariant rebuilt after one device moved to a new spec, the rest
+     of the environment unchanged *)
+  Lemma cf_inv_move (I : ep_iface) (E : penv) (ds : gset nat) (d : nat)
+      (x : dspec) (t : proc) :
+    d ∈ ds ->
+    conforms (env_set_dev E d x) t ->
+    (forall fd d', pe_fd E fd = Some d' -> d' ∈ ds) ->
+    ei_fds I (pe_fd E) -∗ ei_files I (pe_files E) -∗
+    (match x with
+     | DOut alts => ei_out I d alts
+     | DOutH alts => ei_outh I d alts
+     | DOutM alts => ei_outm I d alts
+     | DHalt => ei_halt I d
+     | DIn Sin => ei_in I d Sin
+     | DInE Sin => ei_in_e I d Sin
+     | DInEnd => ei_in_end I d
+     end) -∗
+    dev_res I (pe_dev E) (ds ∖ {[d]}) -∗
+    cf_inv I t.
+  Proof using .
+    intros Hin Hc Hdom. iIntros "Hfds Hfiles Hx Hrest".
+    iLeft. iExists (env_set_dev E d x), ds.
+    iSplit; [done |]. iSplit; [done |]. iFrame "Hfds Hfiles".
+    rewrite (dev_res_take I _ ds d Hin). iSplitL "Hx".
+    { rewrite env_set_dev_pe_dev decide_True; [| reflexivity]. iExact "Hx". }
+    assert (Hnot : d ∉ ds ∖ {[d]}) by set_solver.
+    rewrite env_set_dev_pe_dev (dev_res_set I (pe_dev E) (ds ∖ {[d]}) d _ Hnot).
+    iExact "Hrest".
+  Qed.
 
   Lemma cf_inv_step (I : ep_iface) :
     ⊢ □ (∀ t, cf_inv I t -∗ tree_F N P (cf_inv I) t).
@@ -282,86 +343,73 @@ Section UkHandler.
         intros fd' d'. cbv [env_bind pe_fd]. destruct (decide (fd' = fd)); [discriminate |].
         apply Hdom.
       + (* ERead *)
-        destruct Hc as (d & Sin & Hfd & Hd & Hk).
+        destruct Hc as (d & Hfd & Hn & Hc).
         assert (Hin : d ∈ ds) by (apply (Hdom fd); exact Hfd).
         iDestruct (dev_res_take I _ ds d Hin with "Hdev") as "[Hdr Hrest]".
-        rewrite Hd.
-        iApply (ei_read I (pe_fd E) fd d Sin n with "Hfds Hdr"); [exact Hfd |].
-        iSplit; [| taint_arm I].
-        iIntros (c S') "%Hchunk Hfds Hin".
-        iLeft. iExists (env_set_dev E d (DIn S')), ds.
-        iSplit; [iPureIntro; by apply Hk |].
-        iSplit; [done |]. iFrame "Hfds Hfiles".
-        rewrite (dev_res_take I _ ds d Hin). iSplitL "Hin".
-        { rewrite env_set_dev_pe_dev decide_True; [| reflexivity]. simpl. iExact "Hin". }
-        assert (Hnot : d ∉ ds ∖ {[d]}) by set_solver.
-        rewrite env_set_dev_pe_dev (dev_res_set I (pe_dev E) (ds ∖ {[d]}) d _ Hnot).
-        iExact "Hrest".
+        destruct Hc as [(Sin & Hd & Hk) | [(Sin & Hd & Hk & Hke) | (Hd & Hk)]]; rewrite Hd.
+        * iApply (ei_read I (pe_fd E) fd d Sin n with "Hfds Hdr"); [exact Hn | exact Hfd |].
+          iSplit; [| taint_arm I].
+          iIntros (c S') "%Hchunk Hfds Hin'".
+          iApply (cf_inv_move I E ds d (DIn S') with "Hfds Hfiles Hin' Hrest");
+            [exact Hin | by apply Hk | exact Hdom].
+        * iApply (ei_read_e I (pe_fd E) fd d Sin n with "Hfds Hdr"); [exact Hn | exact Hfd |].
+          iSplit; [| iSplit; [| taint_arm I]].
+          { iIntros (c S') "%Hchunk Hfds Hin'".
+            iApply (cf_inv_move I E ds d (DInE S') with "Hfds Hfiles Hin' Hrest");
+              [exact Hin | by apply Hk | exact Hdom]. }
+          { iIntros "Hfds Hend".
+            iApply (cf_inv_move I E ds d DInEnd with "Hfds Hfiles Hend Hrest");
+              [exact Hin | exact Hke | exact Hdom]. }
+        * iApply (ei_read_end I (pe_fd E) fd d n with "Hfds Hdr"); [exact Hn | exact Hfd |].
+          iSplit; [| taint_arm I].
+          iIntros "Hfds Hend".
+          iApply (cf_inv_move I E ds d DInEnd with "Hfds Hfiles Hend Hrest");
+            [exact Hin | by rewrite -Hd; destruct E | exact Hdom].
       + (* EWrite *)
         destruct Hc as (d & Hfd & Hc).
         assert (Hin : d ∈ ds) by (apply (Hdom fd); exact Hfd).
-        iDestruct (dev_res_take I _ ds d Hin with "Hdev") as "[Hdr Hrest]".
-        assert (Hnot : d ∉ ds ∖ {[d]}) by set_solver.
-        destruct Hc as [(alts & a & Hd & Ha & Hpre & Hk)
-                       | [(alts & a & Hd & Ha & Hpre & Hk & Hkh)
-                       | [(alts & a & Hd & Ha & Hpre & Hk & Hkm)
-                       | (Hd & Hk)]]].
-        * rewrite Hd.
+        destruct Hc as [(-> & Hk0 & Hk1)
+                       | [(Hne & alts & a & Hd & Ha & Hpre & Hk)
+                       | [(Hne & alts & a & Hd & Ha & Hpre & Hk & Hkh)
+                       | [(Hne & alts & a & Hd & Ha & Hpre & Hk & Hkm)
+                       | (Hne & Hd & Hk)]]]].
+        * iApply (ei_write_nil I (pe_fd E) fd d with "Hfds"); [exact Hfd |].
+          iSplit; [| iSplit; [| taint_arm I]].
+          { iIntros "Hfds". iLeft. iExists E, ds. iFrame. done. }
+          { iIntros "Hfds". iLeft. iExists E, ds. iFrame. done. }
+        * iDestruct (dev_res_take I _ ds d Hin with "Hdev") as "[Hdr Hrest]". rewrite Hd.
           iApply (ei_write I (pe_fd E) fd d alts a bs with "Hfds Hdr");
-            [exact Hfd | exact Ha | exact Hpre |].
+            [exact Hne | exact Hfd | exact Ha | exact Hpre |].
           iSplit; [| taint_arm I].
           iIntros "Hfds Hout".
-          iLeft. iExists (env_set_dev E d (DOut [drop (length bs) a])), ds.
-          iSplit; [done |]. iSplit; [done |]. iFrame "Hfds Hfiles".
-          rewrite (dev_res_take I _ ds d Hin). iSplitL "Hout".
-          { rewrite env_set_dev_pe_dev decide_True; [| reflexivity]. simpl. iExact "Hout". }
-          rewrite env_set_dev_pe_dev (dev_res_set I (pe_dev E) (ds ∖ {[d]}) d _ Hnot).
-          iExact "Hrest".
-        * rewrite Hd.
+          iApply (cf_inv_move I E ds d (DOut [drop (length bs) a]) with "Hfds Hfiles Hout Hrest");
+            [exact Hin | exact Hk | exact Hdom].
+        * iDestruct (dev_res_take I _ ds d Hin with "Hdev") as "[Hdr Hrest]". rewrite Hd.
           iApply (ei_write_h I (pe_fd E) fd d alts a bs with "Hfds Hdr");
-            [exact Hfd | exact Ha | exact Hpre |].
+            [exact Hne | exact Hfd | exact Ha | exact Hpre |].
           iSplit; [| iSplit; [| taint_arm I]].
           { iIntros "Hfds Hout".
-            iLeft. iExists (env_set_dev E d (DOutH [drop (length bs) a])), ds.
-            iSplit; [done |]. iSplit; [done |]. iFrame "Hfds Hfiles".
-            rewrite (dev_res_take I _ ds d Hin). iSplitL "Hout".
-            { rewrite env_set_dev_pe_dev decide_True; [| reflexivity]. simpl. iExact "Hout". }
-            rewrite env_set_dev_pe_dev (dev_res_set I (pe_dev E) (ds ∖ {[d]}) d _ Hnot).
-            iExact "Hrest". }
+            iApply (cf_inv_move I E ds d (DOutH [drop (length bs) a]) with "Hfds Hfiles Hout Hrest");
+              [exact Hin | exact Hk | exact Hdom]. }
           { iIntros "Hfds Hh".
-            iLeft. iExists (env_set_dev E d DHalt), ds.
-            iSplit; [done |]. iSplit; [done |]. iFrame "Hfds Hfiles".
-            rewrite (dev_res_take I _ ds d Hin). iSplitL "Hh".
-            { rewrite env_set_dev_pe_dev decide_True; [| reflexivity]. simpl. iExact "Hh". }
-            rewrite env_set_dev_pe_dev (dev_res_set I (pe_dev E) (ds ∖ {[d]}) d _ Hnot).
-            iExact "Hrest". }
-        * rewrite Hd.
+            iApply (cf_inv_move I E ds d DHalt with "Hfds Hfiles Hh Hrest");
+              [exact Hin | exact Hkh | exact Hdom]. }
+        * iDestruct (dev_res_take I _ ds d Hin with "Hdev") as "[Hdr Hrest]". rewrite Hd.
           iApply (ei_write_m I (pe_fd E) fd d alts a bs with "Hfds Hdr");
-            [exact Hfd | exact Ha | exact Hpre |].
+            [exact Hne | exact Hfd | exact Ha | exact Hpre |].
           iSplit; [| iSplit; [| taint_arm I]].
           { iIntros "Hfds Hout".
-            iLeft. iExists (env_set_dev E d (DOutM [drop (length bs) a])), ds.
-            iSplit; [done |]. iSplit; [done |]. iFrame "Hfds Hfiles".
-            rewrite (dev_res_take I _ ds d Hin). iSplitL "Hout".
-            { rewrite env_set_dev_pe_dev decide_True; [| reflexivity]. simpl. iExact "Hout". }
-            rewrite env_set_dev_pe_dev (dev_res_set I (pe_dev E) (ds ∖ {[d]}) d _ Hnot).
-            iExact "Hrest". }
+            iApply (cf_inv_move I E ds d (DOutM [drop (length bs) a]) with "Hfds Hfiles Hout Hrest");
+              [exact Hin | exact Hk | exact Hdom]. }
           { iIntros "Hfds Hout".
-            iLeft. iExists (env_set_dev E d (DOutM [drop (length bs) a])), ds.
-            iSplit; [done |]. iSplit; [done |]. iFrame "Hfds Hfiles".
-            rewrite (dev_res_take I _ ds d Hin). iSplitL "Hout".
-            { rewrite env_set_dev_pe_dev decide_True; [| reflexivity]. simpl. iExact "Hout". }
-            rewrite env_set_dev_pe_dev (dev_res_set I (pe_dev E) (ds ∖ {[d]}) d _ Hnot).
-            iExact "Hrest". }
-        * rewrite Hd.
-          iApply (ei_write_halt I (pe_fd E) fd d bs with "Hfds Hdr"); [exact Hfd |].
+            iApply (cf_inv_move I E ds d (DOutM [drop (length bs) a]) with "Hfds Hfiles Hout Hrest");
+              [exact Hin | exact Hkm | exact Hdom]. }
+        * iDestruct (dev_res_take I _ ds d Hin with "Hdev") as "[Hdr Hrest]". rewrite Hd.
+          iApply (ei_write_halt I (pe_fd E) fd d bs with "Hfds Hdr"); [exact Hne | exact Hfd |].
           iSplit; [| taint_arm I].
           iIntros "Hfds Hh".
-          iLeft. iExists E, ds.
-          iSplit; [done |]. iSplit; [done |]. iFrame "Hfds Hfiles".
-          rewrite (dev_res_take I _ ds d Hin). iSplitL "Hh".
-          { rewrite Hd. iExact "Hh". }
-          iExact "Hrest".
+          iApply (cf_inv_move I E ds d DHalt with "Hfds Hfiles Hh Hrest");
+            [exact Hin | by rewrite -Hd; destruct E | exact Hdom].
       + (* EExit *)
         iApply (ei_exit I s (pe_fd E) (pe_dev E) ds with "Hfds Hdev").
         intros d alts _ Hd'. exact (Hc d alts Hd').

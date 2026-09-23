@@ -16,7 +16,9 @@
 (*   [stub_law code num addr]: from the entry with the code, reach the     *)
 (*   ecall with a7 = NUM (the caller is handed the ecall's instruction     *)
 (*   fact and the run there, and hands back the run after it, a0 = the    *)
-(*   answer), and the stub returns to [ret_pc ra] with that register file. *)
+(*   answer), and the stub returns to [ret_pc ra] with that register file, *)
+(*   at a continuation the caller names in the ecall's POST -- which is    *)
+(*   where it learns the answer and holds what the leaf handed back.       *)
 (*                                                                        *)
 (* [stub_run] proves it from the three instruction facts at any address   *)
 (* and number, with the successor pcs and the a7 value as EQUATIONS the   *)
@@ -43,6 +45,7 @@ Require Import UCodeEcho UCodeCat.
 Require Import CtxIdDefs.
 Require Import ChildTok.
 Require Import UexecSlot UexecRet UexecSG.
+Require Import ProgTree UkTree.        (* [stub_ret]: the holes' return file *)
 Require User.EchoSyms User.CatSyms.
 Local Open Scope Z_scope.
 Import Defs.
@@ -63,28 +66,37 @@ Section UkStub.
   Local Notation a0_idx := (mword_of_int 10 : mword 5).
   Local Notation a7_idx := (mword_of_int 17 : mword 5).
 
-  (* the register file at the stub's return *)
-  Definition stub_ret (m : regfile) (num : Z) (ret : mword 64) : regfile :=
-    <[Regidx a0_idx := ret]> (<[Regidx a7_idx := (mword_of_int num : mword 64)]> m).
+  (* the register file at the stub's return is [UkTree.stub_ret], the one
+     the tree's holes name, so a law and a hole meet by [eq_refl] *)
 
   (* ------------------------------------------------------------------- *)
   (*  1.  the law a handler uses                                          *)
   (* ------------------------------------------------------------------- *)
 
+  (* THE RETURN IS TAKEN INSIDE THE MIDDLE, at a continuation the handler
+     names AFTER the call.  A handler learns the answer, and holds what the
+     ecall leaf handed back about it, only in the leaf's post; a return
+     continuation fixed at the stub's entry could not be given any of it.
+     So the middle is handed [c.jr ra] as a step law ([∀ h2 ret, urun … at
+     +6 -∗ (∀ h3, urun … at [ret_pc ra] -∗ WP) -∗ WP]), and the two facts a
+     leaf at +2 needs about the address -- the return is +6, and +6 is
+     aligned -- come with it. *)
   Definition stub_law (code : iProp Σ) (num addr : Z) : iProp Σ :=
     (□ ∀ (h : CpuId) (m : regfile) (avail : nat),
        code -∗
        urun N h m (mword_of_int addr) avail -∗
        (∀ h1 : CpuId,
+          ⌜add_vec_int (mword_of_int (addr + 2) : mword 64) 4 = mword_of_int (addr + 6)⌝ -∗
+          ⌜is_aligned_vaddr (Virtaddr (mword_of_int (addr + 6) : mword 64)) 2 = true⌝ -∗
           uinstr_is γt (mword_of_int (addr + 2)) false (ECALL tt) -∗
           urun N h1 (<[Regidx a7_idx := (mword_of_int num : mword 64)]> m)
             (mword_of_int (addr + 2)) avail -∗
           (∀ (h2 : CpuId) (ret : mword 64),
              urun N h2 (stub_ret m num ret) (mword_of_int (addr + 6)) avail -∗
+             (∀ h3 : CpuId,
+                urun N h3 (stub_ret m num ret) (ret_pc (m !!! Regidx ra_idx)) avail -∗
+                mWP (Loop : expr riscv_lang)) -∗
              mWP (Loop : expr riscv_lang)) -∗
-          mWP (Loop : expr riscv_lang)) -∗
-       (∀ (h3 : CpuId) (ret : mword 64),
-          urun N h3 (stub_ret m num ret) (ret_pc (m !!! Regidx ra_idx)) avail -∗
           mWP (Loop : expr riscv_lang)) -∗
        mWP (Loop : expr riscv_lang))%I.
 
@@ -107,6 +119,7 @@ Section UkStub.
   Lemma stub_run (code : iProp Σ) `{!Persistent code} (num addr : Z) :
     add_vec_int (mword_of_int addr : mword 64) 2 = mword_of_int (addr + 2) ->
     add_vec_int (mword_of_int (addr + 2) : mword 64) 4 = mword_of_int (addr + 6) ->
+    is_aligned_vaddr (Virtaddr (mword_of_int (addr + 6) : mword 64)) 2 = true ->
     (regval_into_reg (sign_extend' 64 (mword_of_int num : mword 6) : mword 64)
        : mword 64) = mword_of_int num ->
     □ (code -∗ uinstr_is γt (mword_of_int addr) true
@@ -115,15 +128,15 @@ Section UkStub.
     □ (code -∗ uinstr_is γt (mword_of_int (addr + 6)) true (C_JR (Regidx ra_idx))) -∗
     stub_law code num addr.
   Proof using .
-    intros E2 E6 Ea7. iIntros "#Hli #Hec #Hjr !>" (h m avail) "#Hcode Hrun Hmid Hcont".
+    intros E2 E6 Al6 Ea7. iIntros "#Hli #Hec #Hjr !>" (h m avail) "#Hcode Hrun Hmid".
     iApply (wp_uk_cli N h m (mword_of_int addr) (mword_of_int num : mword 6) a7_idx avail
               ltac:(unfold unot_sp; vm_compute; discriminate)
               ltac:(vm_compute; discriminate) with "[] Hrun").
     { iApply ("Hli" with "Hcode"). }
     rewrite E2 Ea7. iIntros (h1) "Hrun".
-    iApply ("Hmid" $! h1 with "[] Hrun").
+    iApply ("Hmid" $! h1 with "[%] [%] [] Hrun"); [ exact E6 | exact Al6 | |].
     { iApply ("Hec" with "Hcode"). }
-    iIntros (h2 ret) "Hrun".
+    iIntros (h2 ret) "Hrun Hcont".
     assert (Hra : stub_ret m num ret !!! Regidx ra_idx = m !!! Regidx ra_idx).
     { unfold stub_ret.
       exact (eq_trans
@@ -137,7 +150,7 @@ Section UkStub.
               ltac:(rewrite Hra; reflexivity) with "[] Hrun").
     { iApply ("Hjr" with "Hcode"). }
     iIntros (h3) "Hrun".
-    iApply ("Hcont" $! h3 ret with "Hrun").
+    iApply ("Hcont" $! h3 with "Hrun").
   Qed.
 
   Lemma exit_stub_run (code : iProp Σ) `{!Persistent code} (addr : Z) :
@@ -167,6 +180,7 @@ Section UkStub.
     (iApply (stub_run code num addr
               ltac:(apply (proj2 (bv_eq _ _ _)); vm_compute; reflexivity)
               ltac:(apply (proj2 (bv_eq _ _ _)); vm_compute; reflexivity)
+              ltac:(vm_compute; reflexivity)
               ltac:(apply (proj2 (bv_eq _ _ _)); vm_compute; reflexivity));
      [ iIntros "!> #Hc"; iApply (lem_li with "Hc")
      | iIntros "!> #Hc"; iApply (lem_ec with "Hc")

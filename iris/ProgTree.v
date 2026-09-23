@@ -565,6 +565,9 @@ Proof. etransitivity; [apply force_eq |]. reflexivity. Qed.
 
 Inductive dspec :=
   | DOut (alts : list bytes)      (* what is still owed, one of these *)
+  | DOutH (alts : list bytes)     (* ...at a device that may HALT: a pipe whose
+                                     reader may go; a write then answers -1 *)
+  | DHalt                         (* halted: every write answers -1 *)
   | DIn (S : bytes).              (* what is still to be read *)
 
 Record penv := MkEnv {
@@ -596,9 +599,15 @@ Definition cf_step (R : penv -> proc -> Prop) (E : penv) (t : proc) : Prop :=
   | Vis e k =>
       match e as e return (ans e -> proc) -> Prop with
       | EWrite fd bs => fun k =>
-          exists d alts a, pe_fd E fd = Some d /\ pe_dev E d = DOut alts
-            /\ a ∈ alts /\ bs `prefix_of` a
-            /\ R (env_set_dev E d (DOut [drop (length bs) a])) (k (Z.of_nat (length bs)))
+          exists d, pe_fd E fd = Some d /\
+          ((exists alts a, pe_dev E d = DOut alts
+              /\ a ∈ alts /\ bs `prefix_of` a
+              /\ R (env_set_dev E d (DOut [drop (length bs) a])) (k (Z.of_nat (length bs))))
+           \/ (exists alts a, pe_dev E d = DOutH alts
+              /\ a ∈ alts /\ bs `prefix_of` a
+              /\ R (env_set_dev E d (DOutH [drop (length bs) a])) (k (Z.of_nat (length bs)))
+              /\ R (env_set_dev E d DHalt) (k (-1)))
+           \/ (pe_dev E d = DHalt /\ R E (k (-1))))
       | ERead fd n => fun k =>
           exists d S, pe_fd E fd = Some d /\ pe_dev E d = DIn S
             /\ forall c S', chunk_ok n S c S' -> R (env_set_dev E d (DIn S')) (k (RdBytes c))
@@ -612,7 +621,7 @@ Definition cf_step (R : penv -> proc -> Prop) (E : penv) (t : proc) : Prop :=
       | EClose fd => fun k =>
           exists d, pe_fd E fd = Some d /\ R (env_bind E fd None) (k 0)
       | EExit s => fun _ =>
-          forall d alts, pe_dev E d = DOut alts -> [] ∈ alts
+          forall d alts, pe_dev E d = DOut alts \/ pe_dev E d = DOutH alts -> [] ∈ alts
       end k
   end.
 
@@ -626,6 +635,17 @@ CoInductive conforms : penv -> proc -> Prop :=
       pe_fd E fd = Some d -> pe_dev E d = DOut alts ->
       a ∈ alts -> bs `prefix_of` a ->
       conforms (env_set_dev E d (DOut [drop (length bs) a])) (k (Z.of_nat (length bs))) ->
+      conforms E (Vis (EWrite fd bs) k)
+  (* ...at a haltable device the tree is ready for both answers *)
+  | cf_write_h E fd d alts a bs k :
+      pe_fd E fd = Some d -> pe_dev E d = DOutH alts ->
+      a ∈ alts -> bs `prefix_of` a ->
+      conforms (env_set_dev E d (DOutH [drop (length bs) a])) (k (Z.of_nat (length bs))) ->
+      conforms (env_set_dev E d DHalt) (k (-1)) ->
+      conforms E (Vis (EWrite fd bs) k)
+  | cf_write_halt E fd d bs k :
+      pe_fd E fd = Some d -> pe_dev E d = DHalt ->
+      conforms E (k (-1)) ->
       conforms E (Vis (EWrite fd bs) k)
   | cf_read E fd d S n k :
       pe_fd E fd = Some d -> pe_dev E d = DIn S ->
@@ -647,7 +667,7 @@ CoInductive conforms : penv -> proc -> Prop :=
       conforms (env_bind E fd None) (k 0) ->
       conforms E (Vis (EClose fd) k)
   | cf_exit E s k :
-      (forall d alts, pe_dev E d = DOut alts -> [] ∈ alts) ->
+      (forall d alts, pe_dev E d = DOut alts \/ pe_dev E d = DOutH alts -> [] ∈ alts) ->
       conforms E (Vis (EExit s) k).
 
 (* ...read at a node WITHOUT inverting a dependent pair: dependent
@@ -657,7 +677,9 @@ Lemma conforms_unfold (E : penv) (t : proc) : conforms E t -> cf_step conforms E
 Proof.
   intros H. destruct H; simpl.
   - exact H.
-  - exists d, alts, a. auto.
+  - exists d. split; [assumption |]. left. exists alts, a. auto.
+  - exists d. split; [assumption |]. right. left. exists alts, a. auto.
+  - exists d. split; [assumption |]. right. right. auto.
   - exists d, S. auto.
   - left. split; [reflexivity |]. exists content. auto.
   - right. auto.
@@ -755,7 +777,8 @@ Theorem echo_conforms (argv : list bytes) (files : bytes -> option bytes) :
 Proof.
   intros Hne. unfold echo_tree. apply echo_words_conforms; [exact Hne |].
   apply cf_exit. intros d alts Hd. cbn [pe_dev cons_env] in Hd.
-  destruct (decide (d = 0%nat)); injection Hd as <-; by left.
+  destruct (decide (d = 0%nat)); destruct Hd as [Hd | Hd];
+    first [ injection Hd as <-; by left | discriminate Hd ].
 Qed.
 
 (* ---- cat conforms to copying its input to its output ---------------- *)
@@ -792,15 +815,17 @@ Lemma cat_env_exit (fdin : Z) (din : nat) (S : bytes) (alts : list bytes) files 
   [] ∈ alts -> conforms (cat_env fdin din S alts files) (exit_ st).
 Proof.
   intros Hin. apply cf_exit. intros d alts' Hd. cbn [pe_dev cat_env cat_env0] in Hd.
-  destruct (decide (d = 0%nat)); [by injection Hd as <- |].
-  destruct (decide (d = din)); [discriminate Hd |].
-  injection Hd as <-. by left.
+  destruct (decide (d = 0%nat));
+    [by destruct Hd as [Hd | Hd]; first [ injection Hd as <- | discriminate Hd ] |].
+  destruct (decide (d = din)); [by destruct Hd as [Hd | Hd] |].
+  destruct Hd as [Hd | Hd]; first [ injection Hd as <-; by left | discriminate Hd ].
 Qed.
 Lemma cat_env0_exit (alts : list bytes) files (st : Z) :
   [] ∈ alts -> conforms (cat_env0 alts files) (exit_ st).
 Proof.
   intros Hin. apply cf_exit. intros d alts' Hd. cbn [pe_dev cat_env cat_env0] in Hd.
-  destruct (decide (d = 0%nat)); injection Hd as <-; [exact Hin | by left].
+  destruct (decide (d = 0%nat)); destruct Hd as [Hd | Hd];
+    first [ injection Hd as <-; first [ exact Hin | by left ] | discriminate Hd ].
 Qed.
 Lemma cat_env0_out (alts alts' : list bytes) files :
   env_set_dev (cat_env0 alts files) 0 (DOut alts') = cat_env0 alts' files.
@@ -886,9 +911,10 @@ Proof.
     eapply cf_close with (d := d).
     { cbv [cat_env pe_fd pe_dev]. rewrite decide_False; [| lia]. first [ by rewrite decide_True | done ]. }
     simpl. apply cf_exit. intros d' alts'' Hd'. cbv [env_bind cat_env pe_dev] in Hd'.
-    destruct (decide (d' = 0%nat)); [by injection Hd' as <- |].
-    destruct (decide (d' = d)); [discriminate Hd' |].
-    injection Hd' as <-. by left.
+    destruct (decide (d' = 0%nat));
+      [by destruct Hd' as [Hd' | Hd']; first [ injection Hd' as <- | discriminate Hd' ] |].
+    destruct (decide (d' = d)); [by destruct Hd' as [Hd' | Hd'] |].
+    destruct Hd' as [Hd' | Hd']; first [ injection Hd' as <-; by left | discriminate Hd' ].
   - cbv beta. rewrite decide_True; [| lia].
     eapply write_bytes_conforms with (d := 0%nat) (S' := []) (alts := [content; cat_dg_open f]).
     { cbv [cat_env cat_env0 pe_fd pe_dev]. by rewrite decide_True; [| by right]. }
@@ -909,4 +935,85 @@ Proof.
   { reflexivity. }
   { rewrite app_nil_r. by left. }
   intros alts' Hin. rewrite cat_env0_out. apply cat_env0_exit. exact Hin.
+Qed.
+
+(* ---- echo at a device that may halt (a pipe's write end) ------------- *)
+
+Definition pipe_env (spec : dspec) (files : bytes -> option bytes) : penv :=
+  MkEnv (fun fd => if decide (fd = 1) then Some 0%nat else None)
+        (fun d => if decide (d = 0%nat) then spec else DOut [[]]) files.
+
+Lemma pipe_env_set (spec spec' : dspec) files :
+  env_set_dev (pipe_env spec files) 0 spec' = pipe_env spec' files.
+Proof.
+  unfold env_set_dev, pipe_env. f_equal. apply functional_extensionality.
+  intros d. cbn [pe_dev pe_fd]. destruct (decide (d = 0%nat)); reflexivity.
+Qed.
+
+Lemma pipe_env_exit (spec : dspec) files (st : Z) :
+  (forall alts, spec = DOut alts \/ spec = DOutH alts -> [] ∈ alts) ->
+  conforms (pipe_env spec files) (exit_ st).
+Proof.
+  intros Hs. apply cf_exit. intros d alts Hd. cbn [pe_dev pipe_env] in Hd.
+  destruct (decide (d = 0%nat)); [exact (Hs alts Hd) |].
+  destruct Hd as [Hd | Hd]; first [ injection Hd as <-; by left | discriminate Hd ].
+Qed.
+
+(* once halted, echo's remaining writes all answer -1 and it exits *)
+Lemma echo_words_halted (ws : list bytes) files (rest : proc) :
+  conforms (pipe_env DHalt files) rest ->
+  conforms (pipe_env DHalt files) (echo_words ws rest).
+Proof.
+  revert rest. induction ws as [| w r IH]; intros rest Hrest; [exact Hrest |].
+  destruct r as [| w' r']; simpl.
+  - eapply cf_write_halt with (d := 0%nat); [done | done |].
+    eapply cf_write_halt with (d := 0%nat); [done | done | exact Hrest].
+  - eapply cf_write_halt with (d := 0%nat); [done | done |].
+    eapply cf_write_halt with (d := 0%nat); [done | done |].
+    apply IH. exact Hrest.
+Qed.
+
+Lemma echo_words_conforms_h (ws : list bytes) files (rest : proc) :
+  ws <> [] ->
+  conforms (pipe_env (DOutH [[]]) files) rest ->
+  conforms (pipe_env DHalt files) rest ->
+  conforms (pipe_env (DOutH [wl_line ws]) files) (echo_words ws rest).
+Proof.
+  revert rest. induction ws as [| w r IH]; intros rest Hne Hrest Hhalt; [done |].
+  destruct r as [| w' r'].
+  - simpl. unfold wl_line. simpl. rewrite app_nil_r.
+    eapply cf_write_h with (d := 0%nat) (alts := [w ++ [wl_nl]]) (a := w ++ [wl_nl]);
+      [done | done | by left | by eexists | |].
+    + rewrite drop_app_length, pipe_env_set.
+      eapply cf_write_h with (d := 0%nat) (alts := [[wl_nl]]) (a := [wl_nl]);
+        [done | done | by left | by eexists | |].
+      * simpl. rewrite pipe_env_set. exact Hrest.
+      * rewrite pipe_env_set. exact Hhalt.
+    + rewrite pipe_env_set.
+      eapply cf_write_halt with (d := 0%nat); [done | done | exact Hhalt].
+  - simpl. unfold wl_line. rewrite wl_body_cons, wl_tail_cons.
+    rewrite <- app_assoc.
+    eapply cf_write_h with (d := 0%nat) (alts := [w ++ (wl_sp :: wl_body (w' :: r') ++ [wl_nl])])
+      (a := w ++ (wl_sp :: wl_body (w' :: r') ++ [wl_nl]));
+      [done | done | by left | by eexists | |].
+    + rewrite drop_app_length, pipe_env_set.
+      change (wl_sp :: wl_body (w' :: r') ++ [wl_nl])
+        with ([wl_sp] ++ (wl_body (w' :: r') ++ [wl_nl])).
+      eapply cf_write_h with (d := 0%nat) (alts := [[wl_sp] ++ (wl_body (w' :: r') ++ [wl_nl])])
+        (a := [wl_sp] ++ (wl_body (w' :: r') ++ [wl_nl]));
+        [done | done | by left | by eexists | |].
+      * rewrite drop_app_length, pipe_env_set. apply IH; [done | exact Hrest | exact Hhalt].
+      * rewrite pipe_env_set. apply (echo_words_halted (w' :: r') files rest). exact Hhalt.
+    + rewrite pipe_env_set.
+      eapply cf_write_halt with (d := 0%nat); [done | done |].
+      apply (echo_words_halted (w' :: r') files rest). exact Hhalt.
+Qed.
+
+Theorem echo_pipe_conforms (argv : list bytes) files :
+  drop 1 argv <> [] ->
+  conforms (pipe_env (DOutH [wl_line (drop 1 argv)]) files) (echo_tree argv).
+Proof.
+  intros Hne. unfold echo_tree. apply echo_words_conforms_h; [exact Hne | |].
+  - apply pipe_env_exit. intros alts [Hd | Hd]; [discriminate Hd | injection Hd as <-; by left].
+  - apply pipe_env_exit. intros alts [Hd | Hd]; discriminate Hd.
 Qed.

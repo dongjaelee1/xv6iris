@@ -74,6 +74,8 @@ Section UkHandler.
   Record ep_iface := MkEI {
     ei_fds : fdmap -> iProp Σ;
     ei_out : nat -> list bytes -> iProp Σ;
+    ei_outh : nat -> list bytes -> iProp Σ;    (* an output that may halt *)
+    ei_halt : nat -> iProp Σ;                  (* ...and has *)
     ei_in : nat -> bytes -> iProp Σ;
     ei_files : (bytes -> option bytes) -> iProp Σ;
     (* a write of a chunk the chosen alternative begins with: the count
@@ -83,6 +85,19 @@ Section UkHandler.
         fdm fd = Some d -> a ∈ alts -> bs `prefix_of` a ->
         ei_fds fdm -∗ ei_out d alts -∗
         (ei_fds fdm -∗ ei_out d [drop (length bs) a] -∗ K (Z.of_nat (length bs))) -∗
+        wr_obl N P fd bs K;
+    (* at a haltable device the payer answers the count, or -1 and halts *)
+    ei_write_h : forall (fdm : fdmap) (fd : Z) (d : nat) (alts : list bytes)
+                   (a bs : bytes) (K : Z -> iProp Σ),
+        fdm fd = Some d -> a ∈ alts -> bs `prefix_of` a ->
+        ei_fds fdm -∗ ei_outh d alts -∗
+        ((ei_fds fdm -∗ ei_outh d [drop (length bs) a] -∗ K (Z.of_nat (length bs)))
+         ∧ (ei_fds fdm -∗ ei_halt d -∗ K (-1))) -∗
+        wr_obl N P fd bs K;
+    ei_write_halt : forall (fdm : fdmap) (fd : Z) (d : nat) (bs : bytes)
+                      (K : Z -> iProp Σ),
+        fdm fd = Some d ->
+        ei_fds fdm -∗ ei_halt d -∗ (ei_fds fdm -∗ ei_halt d -∗ K (-1)) -∗
         wr_obl N P fd bs K;
     (* a read: some chunk of what is left, empty only at end of file *)
     ei_read : forall (fdm : fdmap) (fd : Z) (d : nat) (Sin : bytes) (n : nat)
@@ -117,10 +132,12 @@ Section UkHandler.
         cl_obl N P fd K;
     (* the exit, with every device drained *)
     ei_exit : forall (s : Z) (fdm : fdmap) (dv : nat -> dspec) (ds : gset nat),
-        (forall d alts, d ∈ ds -> dv d = DOut alts -> [] ∈ alts) ->
+        (forall d alts, d ∈ ds -> dv d = DOut alts \/ dv d = DOutH alts -> [] ∈ alts) ->
         ei_fds fdm -∗
         ([∗ set] d ∈ ds, match dv d with
                          | DOut alts => ei_out d alts
+                         | DOutH alts => ei_outh d alts
+                         | DHalt => ei_halt d
                          | DIn Sin => ei_in d Sin
                          end) -∗
         ex_obl N P s;
@@ -133,6 +150,8 @@ Section UkHandler.
   Definition dev_res (I : ep_iface) (dv : nat -> dspec) (ds : gset nat) : iProp Σ :=
     ([∗ set] d ∈ ds, match dv d with
                      | DOut alts => ei_out I d alts
+                     | DOutH alts => ei_outh I d alts
+                     | DHalt => ei_halt I d
                      | DIn Sin => ei_in I d Sin
                      end)%I.
 
@@ -143,7 +162,12 @@ Section UkHandler.
   Lemma dev_res_take (I : ep_iface) (dv : nat -> dspec) (ds : gset nat) (d : nat) :
     d ∈ ds ->
     dev_res I dv ds ⊣⊢
-    (match dv d with DOut alts => ei_out I d alts | DIn Sin => ei_in I d Sin end)
+    (match dv d with
+     | DOut alts => ei_out I d alts
+     | DOutH alts => ei_outh I d alts
+     | DHalt => ei_halt I d
+     | DIn Sin => ei_in I d Sin
+     end)
     ∗ dev_res I dv (ds ∖ {[d]}).
   Proof using . intros Hd. unfold dev_res. by apply big_sepS_delete. Qed.
 
@@ -233,21 +257,47 @@ Section UkHandler.
         rewrite env_set_dev_pe_dev (dev_res_set I (pe_dev E) (ds ∖ {[d]}) d _ Hnot).
         iExact "Hrest".
       + (* EWrite *)
-        destruct Hc as (d & alts & a & Hfd & Hd & Ha & Hpre & Hk).
+        destruct Hc as (d & Hfd & Hc).
         assert (Hin : d ∈ ds) by (apply (Hdom fd); exact Hfd).
         iDestruct (dev_res_take I _ ds d Hin with "Hdev") as "[Hdr Hrest]".
-        rewrite Hd.
-        iApply (ei_write I (pe_fd E) fd d alts a bs with "Hfds Hdr");
-          [exact Hfd | exact Ha | exact Hpre |].
-        iIntros "Hfds Hout".
-        iExists (env_set_dev E d (DOut [drop (length bs) a])), ds.
-        iSplit; [done |].
-        iSplit; [done |]. iFrame "Hfds Hfiles".
-        rewrite (dev_res_take I _ ds d Hin). iSplitL "Hout".
-        { rewrite env_set_dev_pe_dev decide_True; [| reflexivity]. simpl. iExact "Hout". }
         assert (Hnot : d ∉ ds ∖ {[d]}) by set_solver.
-        rewrite env_set_dev_pe_dev (dev_res_set I (pe_dev E) (ds ∖ {[d]}) d _ Hnot).
-        iExact "Hrest".
+        destruct Hc as [(alts & a & Hd & Ha & Hpre & Hk) | [(alts & a & Hd & Ha & Hpre & Hk & Hkh) | (Hd & Hk)]].
+        * rewrite Hd.
+          iApply (ei_write I (pe_fd E) fd d alts a bs with "Hfds Hdr");
+            [exact Hfd | exact Ha | exact Hpre |].
+          iIntros "Hfds Hout".
+          iExists (env_set_dev E d (DOut [drop (length bs) a])), ds.
+          iSplit; [done |]. iSplit; [done |]. iFrame "Hfds Hfiles".
+          rewrite (dev_res_take I _ ds d Hin). iSplitL "Hout".
+          { rewrite env_set_dev_pe_dev decide_True; [| reflexivity]. simpl. iExact "Hout". }
+          rewrite env_set_dev_pe_dev (dev_res_set I (pe_dev E) (ds ∖ {[d]}) d _ Hnot).
+          iExact "Hrest".
+        * rewrite Hd.
+          iApply (ei_write_h I (pe_fd E) fd d alts a bs with "Hfds Hdr");
+            [exact Hfd | exact Ha | exact Hpre |].
+          iSplit.
+          { iIntros "Hfds Hout".
+            iExists (env_set_dev E d (DOutH [drop (length bs) a])), ds.
+            iSplit; [done |]. iSplit; [done |]. iFrame "Hfds Hfiles".
+            rewrite (dev_res_take I _ ds d Hin). iSplitL "Hout".
+            { rewrite env_set_dev_pe_dev decide_True; [| reflexivity]. simpl. iExact "Hout". }
+            rewrite env_set_dev_pe_dev (dev_res_set I (pe_dev E) (ds ∖ {[d]}) d _ Hnot).
+            iExact "Hrest". }
+          { iIntros "Hfds Hh".
+            iExists (env_set_dev E d DHalt), ds.
+            iSplit; [done |]. iSplit; [done |]. iFrame "Hfds Hfiles".
+            rewrite (dev_res_take I _ ds d Hin). iSplitL "Hh".
+            { rewrite env_set_dev_pe_dev decide_True; [| reflexivity]. simpl. iExact "Hh". }
+            rewrite env_set_dev_pe_dev (dev_res_set I (pe_dev E) (ds ∖ {[d]}) d _ Hnot).
+            iExact "Hrest". }
+        * rewrite Hd.
+          iApply (ei_write_halt I (pe_fd E) fd d bs with "Hfds Hdr"); [exact Hfd |].
+          iIntros "Hfds Hh".
+          iExists E, ds.
+          iSplit; [done |]. iSplit; [done |]. iFrame "Hfds Hfiles".
+          rewrite (dev_res_take I _ ds d Hin). iSplitL "Hh".
+          { rewrite Hd. iExact "Hh". }
+          iExact "Hrest".
       + (* EExit *)
         iApply (ei_exit I s (pe_fd E) (pe_dev E) ds with "Hfds Hdev").
         intros d alts _ Hd'. exact (Hc d alts Hd').

@@ -775,9 +775,7 @@ Section UCatPipe.
     UkCat.kcat_wr N (mword_of_int 1) (mword_of_int CatSyms.buf) nb
       (ubytes γd CatSyms.buf 512 gb)
       (fun wret : mword 64 =>
-         (((⌜wret = (mword_of_int (Z.of_nat nb) : mword 64)⌝
-            ∗ pcat_round_inv_g pn l Ch)
-           ∨ (pcat_round_inv_g pn l Ch ∧ UkCatCat.kcat_dg_cw N))
+         (UkCatCat.kcat_wpost N nb (pcat_round_inv_g pn l Ch) wret
           ∗ ubytes γd CatSyms.buf 512 gb)).
   Proof using .
     iIntros "Hdgw #Hwr Hhold Hc".
@@ -789,7 +787,7 @@ Section UCatPipe.
                   ∗ ubytes γd CatSyms.buf 512 gb)%I)
               _ with "[] [Hdgw Hhold Hc]").
     { iIntros (r) "[Hd Hb]". iSplitR "Hb"; [ | iExact "Hb" ].
-      iRight. iExact "Hd". }
+      iApply (UkCatCat.kcat_wpost_of_both with "Hd"). }
     iApply UkCat.kcat_wr_of_w.
     iApply (UkCat.kcat_w_frame N (mword_of_int 1)
               (mword_of_int CatSyms.buf) nb
@@ -1026,7 +1024,9 @@ Section UCatPipe.
       iApply ("Hend" $! c with "[] [Hstd Hr] Hc"); [ by iLeft | ].
       rewrite /pcat_hold. iFrame "Hstd". iLeft. iExact "Hr".
     - (* THE TURN'S WRITE, at the cursor *)
-      iIntros (nb) "%Hret %Hnb0".
+      iIntros (nb) "%Hret' %Hnb0".
+      assert (Hret : rv = (mword_of_int (Z.of_nat nb) : mword 64))
+        by (rewrite -Hret'; symmetry; apply UkCat.moi_of_sint).
       iApply (UkCat.kcat_wr_mono N (mword_of_int 1)
                 (mword_of_int CatSyms.buf) nb
                 (ubytes γd CatSyms.buf 512 gb)
@@ -1039,7 +1039,7 @@ Section UCatPipe.
                 _ with "[Hr] [Hstd Hc]").
       { iIntros (wret) "(%Hws & Hstd & Hc' & Hb)".
         iSplitR "Hb"; [ | iExact "Hb" ].
-        iLeft. iSplitR; [ by iPureIntro | ].
+        iApply UkCatCat.kcat_wpost_of_eq. iSplitR; [ by iPureIntro | ].
         rewrite /pcat_round_inv_g.
         iExists (c + Z.to_nat (bv_unsigned rv))%nat.
         iSplitR "Hc'"; [ | iExact "Hc'" ].

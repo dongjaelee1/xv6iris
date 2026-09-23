@@ -971,23 +971,21 @@ Section pipe_links_line.
   Lemma pipe_links_gl : pipe_links g -∗ glinks pipe_lm pipe_params.
   Proof using .
     iIntros "#Hlk".
-    iDestruct (pipe_links_w with "Hlk") as "#Hw".
-    iDestruct (pipe_links_blk with "Hlk") as "#Hblk".
-    iDestruct (pipe_links_pro with "Hlk") as "#Hpro".
+    iDestruct (pipe_links_eq with "Hlk") as %Hc.
     iDestruct (pipe_links_taint with "Hlk") as "#Ht".
     rewrite /glinks. iSplitR; [| iSplitR; [| iSplitR; [| iSplitR]]].
     - (* W *)
       rewrite /gl_w.
       iIntros "!>" (k v P b ps0 cs0 s0 I0 Φ) "%H1 %H2 %H3 #Hpin _ Htn #Hps #Hcs #HE HΦ".
-      iApply ("Hw" $! k v P b ps0 cs0 I0 Φ with "[%] [%] [%] Hpin Htn Hps Hcs HE HΦ").
+      iApply (pipe_write_link g Hc k v P b ps0 cs0 I0 Φ with "Hpin Htn Hps Hcs HE HΦ").
       { exact H1. }
       { exact (proj2 (pro_pin_p_lm _ _ _) H2). }
       { rewrite proc_stream_p_lm. destruct s0. exact H3. }
     - (* BLK *)
       rewrite /gl_blk.
       iIntros "!>" (k v P a b ps0 cs0 s0 I0 Φ) "%H1 %H2 %H3 %H4 %H5 %H6 %H7 %H8 #Hpin _ Htn #Hps #Hcs #HE HΦ".
-      iApply ("Hblk" $! k v P a b ps0 cs0 I0 Φ
-                with "[%] [%] [%] [%] [%] [%] [%] [%] Hpin Htn Hps Hcs HE HΦ").
+      iApply (pipe_write_link_blk g Hc k v P a b ps0 cs0 I0 Φ
+                with "Hpin Htn Hps Hcs HE HΦ").
       { exact H1. } { exact H2. } { exact H3. }
       { exact (proj2 (pro_pin_p_lm _ _ _) H4). }
       { rewrite proc_before_p_lm. destruct s0. exact H5. }
@@ -995,8 +993,8 @@ Section pipe_links_line.
     - (* PRO *)
       rewrite /gl_pro.
       iIntros "!>" (k v P a b ps0 cs0 s0 I0 Φ) "%H1 %H2 %H3 %H4 %H5 %H6 %H7 %H8 #Hpin _ Htn #Hps #Hcs #HE HΦ".
-      iApply ("Hpro" $! k v P a b ps0 cs0 I0 Φ
-                with "[%] [%] [%] [%] [%] [%] [%] [%] Hpin Htn Hps Hcs HE HΦ").
+      iApply (pipe_write_link_pro g Hc k v P a b ps0 cs0 I0 Φ
+                with "Hpin Htn Hps Hcs HE HΦ").
       { exact H1. } { exact H2. } { exact H3. }
       { exact (proj2 (pro_pin_p_lm _ _ _) H4). }
       { rewrite pro_idx_p_lm. exact H5. }

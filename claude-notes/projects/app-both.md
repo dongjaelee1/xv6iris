@@ -256,6 +256,23 @@ condition, and echo is the pipe's corollary in the landed tree; it goes
 with the echo tier at M5.  Gotchas met: a variable named `I` shadows
 `True`'s constructor (`Logic.I`); comments must not contain `"`.
 
+M2c SECOND CUT (2026-09-23): the generic gained THE PER-SHAPE LINE ARM
+`X` (a section parameter with `X_tl`; `gwc_line := gwc_pro ∨ (∃ a,
+⌜lm_aprs⌝ ∗ gwc_post) ∨ X`, and the module's own prompt step `X_dollar`
+beside `LINKS_gl`; `gprompt_dollar_line` dispatches on it).  `File` sets
+`X := False`.  `iris/PipeLinkGen.v` (after `PipeLinkInst`):
+`pipe_params : gen_params pipe_lm` (taint `echo_taint γ`, pin `era_pin
+γ`, witnesses `emp`, head `False`), `pipe_X` := `PipeBoth`'s two-writer
+arm (`∃ R sel c1 c2 a, ⌜pblk2_code⌝ ∗ ⌜sel ≠ []⌝ ∗ pwc_blk2 … false`),
+`pipe_X_dollar` := `PipeBoth.pblk2_exit_lk` with its continuation read
+back at the generic tight shape (`pwc_sp_t_gen`), `pipe_links_gl`
+(the head law vacuous), `pread_ret_res`, `pturn0_gen` (the cursor arm at
+`lm_wr_ban_round0`), `pwc_rres_res`; `pipe_link_gen : LinkRec`.  Needs
+`Hcons : riscv_cons_res = pecl g` in context, as `PipeBoth` does.  So
+BOTH applications' records are now instances of `gen_link_inst`;
+`FileLinkInst`/`PipeLinkInst` and their consumers still use the landed
+families -- the switch is the third cut.
+
 M2c FIRST CUT (2026-09-23): `iris/FileLinkGen.v` (after `FileLinkInst`):
 `file_params : gen_params file_lm` (taint `file_taint`, pin `era_pin
 (fgn_echo g)`, writer's witness `f0w g`, reader's `f0bwk k s0 := ∃ vf,

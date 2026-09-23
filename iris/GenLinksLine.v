@@ -182,8 +182,16 @@ Section gen_links_line.
         ∗ inp_lb v I ∗ W k s0)
      ∨ T)%I.
 
+  (* THE PER-SHAPE BLOCK ARM: how the line credential looks while a shape's
+     continuation is being written by something other than this layer's
+     one writer (the pipeline's two-writer terminal round, [PipeBoth]);
+     [False] where every shape writes through the block family *)
+  Context (X : nat -> era_pins -> list (bv 8) -> iProp Σ)
+          (X_tl : forall k v I, Timeless (X k v I)).
+  #[local] Existing Instance X_tl.
+
   Definition gwc_line (k : nat) (v : era_pins) (I : list (bv 8)) : iProp Σ :=
-    (gwc_pro k v I ∨ ∃ a : nat, ⌜lm_aprs M I a⌝ ∗ gwc_post k v I a)%I.
+    (gwc_pro k v I ∨ (∃ a : nat, ⌜lm_aprs M I a⌝ ∗ gwc_post k v I a) ∨ X k v I)%I.
 
   Definition gwc_lend (k : nat) (v : era_pins) (I : list (bv 8)) : iProp Σ :=
     ((∃ (ps cs : list nat) (s0 : lm_st M) (P : nat),
@@ -243,6 +251,7 @@ Section gen_links_line.
     | |- Timeless (bi_pure _) => apply bi.pure_timeless
     | |- Timeless (gcur _ _ _ _ _ _ _) => apply gcur_timeless
     | |- Timeless (H _ _ _) => apply (gH_tl G)
+    | |- Timeless (X _ _ _) => apply X_tl
     | |- Timeless (W _ _) => apply (gW_tl G)
     | |- Timeless (Wb _ _) => apply (gWb_tl G)
     | |- Timeless T => apply (gT_tl G)
@@ -280,9 +289,10 @@ Section gen_links_line.
   Global Instance gwc_post_timeless k v I a : Timeless (gwc_post k v I a).
   Proof using. rewrite /gwc_post. tl_leaf. Qed.
   Global Instance gwc_line_timeless k v I : Timeless (gwc_line k v I).
-  Proof using.
+  Proof using X_tl.
     rewrite /gwc_line.
     apply bi.or_timeless; [apply gwc_pro_timeless |].
+    apply bi.or_timeless; [| apply X_tl].
     apply bi.exist_timeless; intro.
     apply bi.sep_timeless; [apply bi.pure_timeless | apply gwc_post_timeless].
   Qed.
@@ -294,7 +304,7 @@ Section gen_links_line.
       [apply gwc_owed_timeless | apply gwc_sp_timeless | apply gwc_open_timeless].
   Qed.
   Global Instance gwc_lpr_timeless k v I p : Timeless (gwc_lpr k v I p).
-  Proof using.
+  Proof using X_tl.
     rewrite /gwc_lpr. destruct p as [| [| [| p]]];
       [apply gwc_line_timeless | apply gwc_sp_t_timeless
       | apply gwc_open_t_timeless | apply gwc_blk_timeless].
@@ -402,7 +412,7 @@ Section gen_links_line.
 
   Lemma gwc_line_of_blk0 k v I a : gwc_blk k v I a 0 -∗ gwc_line k v I.
   Proof using.
-    iIntros "Hc". rewrite /gwc_line. iRight.
+    iIntros "Hc". rewrite /gwc_line. iRight. iLeft.
     iExists (lmh_noc K (lm_line_at M I)).
     iSplitR; [iPureIntro; exact (lm_apr_aprs M K _ _ (lm_apr_noc M K I)) |].
     iApply (gwc_post_of_blk k v I _ (lm_apr_noc M K I)).
@@ -414,7 +424,7 @@ Section gen_links_line.
     lm_apr M K I a ->
     gwc_blk k v I a (length (lm_ab M K I a) - 2) -∗ gwc_line k v I.
   Proof using.
-    intros Ha. iIntros "Hc". rewrite /gwc_line. iRight. iExists a.
+    intros Ha. iIntros "Hc". rewrite /gwc_line. iRight. iLeft. iExists a.
     iSplitR; [iPureIntro; exact (lm_apr_aprs M K I a Ha) |].
     iApply (gwc_post_of_blk k v I a Ha with "Hc").
   Qed.
@@ -422,7 +432,7 @@ Section gen_links_line.
   Lemma gwc_line_of_posts k v I a :
     lm_aprs M I a -> gwc_post k v I a -∗ gwc_line k v I.
   Proof using.
-    intros Ha. iIntros "Hc". rewrite /gwc_line. iRight. iExists a.
+    intros Ha. iIntros "Hc". rewrite /gwc_line. iRight. iLeft. iExists a.
     iSplitR; [by iPureIntro |]. iExact "Hc".
   Qed.
 
@@ -681,6 +691,12 @@ Section gen_links_line.
   Context (LINKS : iProp Σ) (LINKS_pers : Persistent LINKS)
           (LINKS_gl : LINKS -∗ glinks).
   #[local] Existing Instance LINKS_pers.
+  (* ...and the extra arm's own prompt step, which the module proves *)
+  Context (X_dollar : forall (k : nat) (v : era_pins) (I : list (bv 8))
+                             (b : bv 8) (Φ : iProp Σ),
+             b = u_prompt !!! 0 ->
+             PIN k v -∗ LINKS -∗ X k v I -∗
+             (gwc_sp_t k v I -∗ Φ) -∗ out_link Uart0 k b Φ).
 
   (* ================================================================== *)
   (*  4.  THE STEPS                                                      *)
@@ -1002,9 +1018,10 @@ Section gen_links_line.
     b = u_prompt !!! 0 ->
     PIN k v -∗ LINKS -∗ gwc_line k v I -∗
     (gwc_sp_t k v I -∗ Φ) -∗ out_link Uart0 k b Φ.
-  Proof using LINKS_gl LINKS_pers.
+  Proof using LINKS_gl LINKS_pers X_dollar.
     intros Hb. iIntros "#Hpin #Hlk Hc HΦ".
-    rewrite {1}/gwc_line. iDestruct "Hc" as "[Hc | Hc]"; last first.
+    rewrite {1}/gwc_line. iDestruct "Hc" as "[Hc | [Hc | Hx]]"; last first.
+    { iApply (X_dollar k v I b Φ Hb with "Hpin Hlk Hx HΦ"). }
     { iDestruct "Hc" as (a) "[%Ha Hc]".
       iApply (gprompt_dollar_posts k v I a b Φ Ha Hb with "Hpin Hlk Hc HΦ"). }
     iDestruct (LINKS_gl with "Hlk") as "#(_ & _ & Hpro & Hhd & Ht)".

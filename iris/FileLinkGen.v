@@ -244,9 +244,20 @@ Section file_link_gen.
   (* =================================================================== *)
   (*  4.  THE RECORD                                                      *)
   (* =================================================================== *)
+  (* no shape of the file application writes outside the block family *)
+  Definition file_X (k : nat) (v : era_pins) (I : list (bv 8)) : iProp Σ := False%I.
+  Lemma file_X_tl k v I : Timeless (file_X k v I).
+  Proof using . rewrite /file_X. apply _. Qed.
+  Lemma file_X_dollar (k : nat) (v : era_pins) (I : list (bv 8)) (b : bv 8)
+      (Φ : iProp Σ) :
+    b = u_prompt !!! 0%nat ->
+    FPIN k v -∗ file_links g -∗ file_X k v I -∗
+    (gwc_sp_t file_lm file_params k v I -∗ Φ) -∗ out_link Uart0 k b Φ.
+  Proof using . intros _. iIntros "_ _ [] _". Qed.
+
   Definition file_link_gen : LinkRec Σ :=
-    gen_link_inst file_lm file_params (file_links g) (file_links_persistent g)
-      file_links_gl (fread_ret g) fread_ret_res (fturn_pre g) fturn0_gen
-      (fwc_rresw g) (fwc_rresw_persistent g) (fwc_rresw_timeless g)
-      fwc_rresw_res fnoc.
+    gen_link_inst file_lm file_params file_X file_X_tl (file_links g)
+      (file_links_persistent g) file_links_gl file_X_dollar (fread_ret g)
+      fread_ret_res (fturn_pre g) fturn0_gen (fwc_rresw g)
+      (fwc_rresw_persistent g) (fwc_rresw_timeless g) fwc_rresw_res fnoc.
 End file_link_gen.

@@ -1700,6 +1700,7 @@ PipeLinksLine.v
 PipeBoth.v
 PipeForkGap.v
 PipeLinkInst.v
+PipeLinkGen.v
 PipeStageInst.v
 UShPipeRound.v
 UkShCat.v

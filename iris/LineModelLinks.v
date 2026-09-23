@@ -1281,6 +1281,28 @@ Section line_model_links.
         rewrite (lm_ab_pan I). lia.
   Qed.
 
+  (* the shapes the era's HEAD lands on after its first byte *)
+  Lemma lm_wr_pro_head (s0 : lm_st M) : lm_wr_pro M [] [] s0 [] 0.
+  Proof using.
+    rewrite /lm_wr_pro. split_and!.
+    - exact (lm_pro_pin_nil _ _).
+    - exact rest_of_nil.
+    - by rewrite nlines_nil.
+    - by left.
+    - rewrite nlines_nil. cbn [lm_pro_idx pro_from].
+      rewrite -pro_fail_0. exact (pro_done_fail 0).
+    - rewrite /lm_proc_stream lm_proc_before_nil /lm_pending_at.
+      case_decide as Hd; [| by destruct (Hd eq_refl)]. by cbn [app pro_of length].
+  Qed.
+
+  Lemma lm_wr_sp_head (s0 : lm_st M) : lm_wr_sp M [0] [] s0 [] 1.
+  Proof using L.
+    exact (lm_wr_pro_dollar [] [] s0 [] 0 (lm_wr_pro_head s0)).
+  Qed.
+
+  Lemma lm_wr_tail_head : lm_wr_tail M [0] [].
+  Proof using. rewrite /lm_wr_tail. cbn [length lm_pro_idx]. by vm_compute. Qed.
+
   (* ================================================================== *)
   (*  8.  THE DISCIPLINE LEMMA ([FileLinksLine] S7): an untainted input   *)
   (*      past a boundary means the boundary's prompt was written        *)
@@ -1485,5 +1507,77 @@ Section line_model_links.
   Proof using.
     intros (Hpin & Hm & Hdv & Hr & (j & Hj & HP)).
     split_and!; try assumption. exists j. split; [exact Hj | lia].
+  Qed.
+
+  Lemma ll_pro_of_fail_snoc (j a : nat) :
+    pro_of (pro_fail j ++ [3; a])
+    = pro_of (pro_fail j) ++ u_banner ++ pro_alts !!! a.
+  Proof using.
+    rewrite (pro_of_open_app _ _ (pro_done_fail j)).
+    cbn [pro_of]. rewrite pro_alts_3 (pro_more_cont 3 _ ltac:(by right)).
+    rewrite /pro_more. case_decide; by rewrite app_nil_r.
+  Qed.
+
+  Lemma lm_wr_pdiag_byte (ps cs : list nat) (s0 : lm_st M) (I : list (bv 8))
+      (P a i : nat) (b : bv 8) :
+    lm_wr_pdiag ps cs s0 I P a i -> pro_alts !!! a !! i = Some b ->
+    lm_proc_stream M ps cs s0 I !! P = Some b.
+  Proof using L.
+    intros (Hpin & Hm & Hdv & Hr & (j & Hj & HP)) Hb.
+    rewrite /lm_proc_stream (lm_pending_at_round_pre ps cs s0 I Hm Hr) Hj
+            ll_pro_of_fail_snoc HP.
+    replace (length (lm_proc_before M ps cs s0 I) + length (lm_wr_pre I)
+             + pro_round * j + length u_banner + i)
+      with (length (lm_proc_before M ps cs s0 I)
+            + (length (lm_wr_pre I)
+               + (length (pro_of (pro_fail j)) + (length u_banner + i))))
+      by (rewrite pro_of_fail_length; lia).
+    rewrite (lookup_app_shift (lm_proc_before M ps cs s0 I))
+            (lookup_app_shift (lm_wr_pre I))
+            (lookup_app_shift (pro_of (pro_fail j))) (lookup_app_shift u_banner).
+    exact Hb.
+  Qed.
+
+  Lemma lm_wr_pdiag_1_of_pro (ps cs : list nat) (s0 : lm_st M) (I : list (bv 8))
+      (P a : nat) :
+    lm_wr_pban ps cs s0 I P -> lm_wr_pdiag (ps ++ [a]) cs s0 I (S P) a 1.
+  Proof using L.
+    intros ((Hpin & Hm & Hdv & Hr & Hnd & HP) & (j & Hj)).
+    assert (Hle : lm_pro_idx M cs (nlines I) <= pro_rounds ps)
+      by exact (lm_pro_pin_round_le ps cs I Hm Hr Hpin).
+    assert (Hpre : ps `prefix_of` (ps ++ [a])) by by eexists.
+    assert (Hlow : lm_proc_before M (ps ++ [a]) cs s0 I = lm_proc_before M ps cs s0 I).
+    { symmetry. apply lm_proc_before_ext. intros J HJ Hne.
+      apply (lm_pending_at_ps_ext ps (ps ++ [a]) cs s0 J Hpre).
+      exact (Hpin (nlines J) (nstarted_strict J I HJ Hne)). }
+    assert (H3 : length (pro_of (pro_fail j ++ [3]))
+                 = pro_round * j + length u_banner).
+    { rewrite (pro_of_open_app _ _ (pro_done_fail j)) pro_of_singleton pro_alts_3.
+      rewrite length_app pro_of_fail_length. reflexivity. }
+    rewrite /lm_wr_pdiag. split_and!.
+    - exact (lm_pro_pin_mono ps (ps ++ [a]) cs I Hpre Hpin).
+    - exact Hm.
+    - exact Hdv.
+    - exact Hr.
+    - exists j. split.
+      + rewrite (pro_from_snoc_le _ ps a Hle) Hj. by rewrite -app_assoc.
+      + rewrite Hlow HP /lm_proc_stream (length_app (lm_proc_before M ps cs s0 I))
+                (lm_pending_at_round_pre ps cs s0 I Hm Hr)
+                (length_app (lm_wr_pre I)) Hj H3. lia.
+  Qed.
+
+  Lemma lm_wr_pdiag_done_1 (ps cs : list nat) (s0 : lm_st M) (I : list (bv 8))
+      (P i : nat) :
+    i = length (pro_alts !!! 1) ->
+    lm_wr_pdiag ps cs s0 I P 1 i -> lm_wr_ban M ps cs s0 I P.
+  Proof using.
+    intros Hi (Hpin & Hm & Hdv & Hr & (j & Hj & HP)).
+    assert (Hb : length u_banner = 18) by (vm_compute; reflexivity).
+    assert (Ha : length (pro_alts !!! 1) = 21) by (vm_compute; reflexivity).
+    assert (Hrd : pro_round = 39) by (vm_compute; reflexivity).
+    rewrite /lm_wr_ban. split_and!; try assumption.
+    exists (S j). split.
+    - rewrite Hj. by rewrite pro_fail_S.
+    - rewrite HP Hi Hb Ha Hrd. lia.
   Qed.
 End line_model_links.

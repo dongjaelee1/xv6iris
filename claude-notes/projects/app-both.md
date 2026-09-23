@@ -256,7 +256,53 @@ condition, and echo is the pipe's corollary in the landed tree; it goes
 with the echo tier at M5.  Gotchas met: a variable named `I` shadows
 `True`'s constructor (`Logic.I`); comments must not contain `"`.
 
-M2a IN FLIGHT (2026-09-23): `iris/LineModelLinks.v` (pure; after
+M2c FIRST CUT (2026-09-23): `iris/FileLinkGen.v` (after `FileLinkInst`):
+`file_params : gen_params file_lm` (taint `file_taint`, pin `era_pin
+(fgn_echo g)`, writer's witness `f0w g`, reader's `f0bwk k s0 := ∃ vf,
+file_era_pin g k vf ∗ f0_bl vf s0` at era `k` with `gk0 := S gen_id`,
+head `fhead g` with `fhead_cur`/`fhead_inp`); `file_links_gl :
+file_links g ⊢ glinks` (each file law's `file_era_pin ∗ f0_lb` is the
+witness unpacked; the head law is `file_link_first` at `fhead`'s
+contents); `fread_ret_res`, `fturn0_gen` (the head arm), `fwc_rresw_res`;
+`file_link_gen : LinkRec := gen_link_inst …`.  NOT YET: the consumers
+(`FileLinkInst.file_link_inst(_at)`, `UShRound`, `UInitFileCons`) still
+use the landed `fwc_*`; the `_at s0` twins are to be had by
+instantiating the SAME generic section at `gW' k s := f0w g k s ∗ ⌜s =
+s0⌝` and `gH' := fhead_at g s0` (no duplicate section), then the
+consumer switch with equivalence lemmas `fwc_X g ⊣⊢ gwc_X file_lm
+file_params` where a consumer computes on a family's body.  The pipe
+instance (`PipeLinkGen.v`: `W := emp`, `H := False`, `NOC := 2`,
+`pturn0` through the cursor arm at `lm_wr_ban_round0`) is next, then the
+measurement.  DESIGN NOTE: the reader's witness had to be ERA-INDEXED
+(`gWb k s`) with the residue pinned to one era (`gk0`): the receipt
+proves same-era agreement with the credential (`gW_bw`), the residue
+cross-era through the credential's own index pin (`gW_bw0`).
+
+M2b LANDED (2026-09-23): `iris/GenLinksLine.v` (after `LinkRec`).  The
+parameters are ONE record `gen_params M` (`gL`, `gK`, the taint `gT`, the
+pin `gPIN` with agreement, the writer's witness `gW k s0` and the
+reader's `gWb s0` with `gW_bw`/`gWb_agree`, the head `gH k v I` with
+`gH_cur` (its cursor at zero) and `gH_inp` (its input is empty); all
+persistent/timeless as instances), so every family and law depends on
+the one section variable `G` and `Proof using.` closes over it.  §1 the
+cursor `gcur` and the families `gwc_{pro,blk,owed,sp,open,sp_t,open_t,
+ban,post,line,lend,pr,lpr,rres,pban,pdg,pdiag}`, with the syntactic
+timeless dispatch; §2 the structure laws (taint, loose/tight, the
+banner's readings, `gwc_read(_t)`, `gwc_panic_done`, the diagnostics'
+readings); §3 the links interface `glinks := gl_w ∗ gl_blk ∗ gl_pro ∗
+gl_head ∗ gl_taint` (the block law's guard is `lm_term = false`, the
+head law returns `∃ s0, cursor ∗ gW k s0`), and a tier's own `LINKS`
+with `LINKS_gl : LINKS -∗ glinks`; §4 the steps `gban_step`, `gblk_step`,
+`ghead_dollar`, `gprompt_{dollar,space,dollar_ban,dollar_post,space_t,
+dollar_posts,dollar_line}`, `gpdiag_step`; §5 the read side over a
+receipt `RR` with `RR_res` (what a non-empty read exposes: the taint or
+the reader's residue); §6 `gen_link_inst : LinkRec` over `TURN`/`turn0`,
+`RRES`/`RRES_res` (the record's residue may carry a module conjunct) and
+`NOC` -- LinkRec's ~60 laws proved once.  Not yet in the generic: the
+`_at s0` twins and their packing (`FileLinksAt`), which M2c states
+generically only if the file instance needs them at the record level.
+
+M2a LANDED (2026-09-23, `16771de7d`): `iris/LineModelLinks.v` (pure; after
 `LineModel.v`) -- the hooks record `lm_hooks M` (data: `lmh_free`,
 `lmh_st0`, `lmh_pan/exf/exfb/noc`, `lmh_ok_dec`; laws: the named
 alternatives are admissible/free/their panic bits/their continuations,

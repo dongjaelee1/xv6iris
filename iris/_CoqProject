@@ -1519,6 +1519,7 @@ EchoLinksPro.v
 EchoLinksLine.v
 EchoLinksBan.v
 LinkRec.v
+GenLinksLine.v
 StageRec.v
 ReadRec.v
 FileLineWit.v
@@ -1539,6 +1540,7 @@ AppPipe.v
 FileLinks.v
 FileLinksLine.v
 FileLinkInst.v
+FileLinkGen.v
 AppFileRec.v
 AppTree.v
 

@@ -196,6 +196,82 @@ hooks, `wr_blk_{nonnil,lines,started,t_stage,pin_snoc,low,pending,byte}`,
   compute on its body is kept as a definitional alias
   (`fwc_pro := gwc_pro …`, which IS the body up to the wr-equation).
 
+## 4. M3: the claim-shape table (read off `EchoOut`/`FileOut`/`PipeOut`, 2026-09-23)
+
+The three per-cycle console claims (`EchoOut.ecl` 4.1k+1.9k pure, 163+97
+lemmas; `FileOut.fecl` 2.5k+2.3k, 58+140; `PipeOut.pecl` 4.1k+1.9k,
+112+127, plus `PipeBoth` 2.6k) have ONE shape:
+
+    T ∨ ∃ v so [x],  PIN k v ∗ [XPIN k x]
+        ∗ turn_auth v (pcount so) ∗ cs_auth v (cs so) ∗ ps_auth v (ps so)
+        ∗ Elist_auth v (E so) ∗ dl_cnt v ½ |ch_dl H| ∗ dl_list_auth v (ch_dl H)
+        ∗ [XGHOST so x] ∗ ⌜cl_pure k ho so H⌝
+
+with `cl_pure := out_pure k ho so (ch_acc H) ∧ cs_len_ok so ∧ ps_len_ok so
+∧ in_pure k (ch_log H) (ch_dl H) (cs so) ∧ arm_era k ho H ∧ E so = ch_E H
+∧ dl_ok so (ch_dl H)`.  Every pure clause is the MODEL's, at the stage:
+
+| piece | echo | file | pipe | generic |
+|---|---|---|---|---|
+| stage | `ostage {ps cs E w}` | `fostage {ps cs E w f0 : option fstate}` | `postage := ostage` | `gstage M {ps cs E w st : option (lm_st M)}`; `st` is `Some tt`-trivial at echo/pipe |
+| pending | `pending_at ps cs I` = `pro_of ps` / `alt_cont … (nlines I - 1)` / `[]` | `pending_at_f ps cs f0 I` at `f0_st f0` | `pending_at_p` | `lm_pending_at M ps cs s I` via `lm_cont_at` |
+| D | `D_from ps cs pre E` (structural on E, `pending_at` + `echo_of`) | `D_from_f … f0` | `D_from_p` | `lm_D_from M ps cs s pre E` |
+| pcount | `|proc_before ps cs (snd<$>E)| + |w|` | `proc_before_f … f0` | `proc_before_p` | `lm_pcount` via `lm_proc_before` |
+| out_pure | acc = D ++ w ∧ w ≼ pending ∧ E_index ∧ E_disc ∧ ps range ∧ pro_pin ∧ `Forall (<4) cs` ∧ disc_seg/prefix/ length/boots | + `alts_pre` in place of `Forall (<4)`; `f0_st` threaded | + `alts_pre_p`, `cs_nofork` | `lm_out_pure`; the cs range condition is `lm_alts_pre` (M2a's `lm_alts_ok`/`alts_pre` at `lm_ok`), `cs_nofork` is `Forall (lm_term = false)` -- a MODEL clause, true at echo/file |
+| cs_len_ok, ps_len_ok, ps_opens | on `o_*` | `_f` (with `f0`) | `_p` | once, over `gstage` |
+| in_pure | log_ok ∧ disc_seg entries ∧ boots ∧ dl ≼ echoed ∧ E_index ∧ E_disc ∧ nlines ≤ S|cs| ∧ (A1) `Forall log_echoed` | no (A1) clause | as echo (A1 at the arm too, K1) | once, with (A1); the file's instance gets it for free (it never used it) |
+| arm_era | `ch_arm_era k ho H` (disc_seg, boots, disc, shape, h = ho) | `_f` at `disc_f`/`disc_seg_f` | `_p` + the arm echoes its byte (K1) | once at `lm_disc`/`lm_disc_seg`, with K1 |
+| dl_ok | `lines_bytes … ≤ |dl|` | ABSENT | as echo | once; the file's instance gains it |
+| discipline (Disc tier) | `disc_input`, `disc_seg`, `disc_seg'` (∃ ps cs, `Forall (<4)` cs, `pro_ok`/`disc_pt` per prefix), `disc`, `expected_rel`, `good_out` | `_f` with a STATE: `disc_seg_f' s`, `disc_f := Forall (∃ s, fstate_ok s ∧ disc_seg_f' s _) (cycles_of h)`, `good_out_f s` | `_p` + `d4_p` | `lm_disc_input` exists (M1); ADD `lm_disc_seg`, `lm_disc_seg' s`, `lm_disc` (∃ s per cycle, `lm_st_ok s`), `lm_expected_rel s`, `lm_good_out s` |
+| extra pin / ghosts | -- | `file_era_pin k vf`; `f0f_auth vf (opt_list f0) ∗ f0_wit vf f0 ∗ f0_typed (f0_st f0)`; `f0_lb vf s0` in every write step | `pera_pin g k w ∗ blk_auth w (pstream so)`; the ROUND `cur_half w (cur_frac opn) r gb tm ∗ rblk_auth gb pre`; `pcs v cs (opn && tm)` for `cs_auth` (freezable) | two hooks: the STATE WITNESS (`W`/`Wb` of M2's `gen_params`, plus its authority half `WA so`) and the per-shape EXTENSION `EXT so x` with its own pure mode |
+| pure mode | one | one | `pcl_pure2 := (opn = false ∧ pcl_pure) ∨ (opn = true ∧ pcl_pure_o … pblk_open)` | `cl_pure ∨ EXT's open mode` -- the extension supplies the second disjunct and the steps that use it |
+| steps | write, write_blk, write_pro, read, echo, byte, drain, open, close, arm | + `write_first` (the head: files the boot state, `f0_bl` -> `f0_lb`); `fdrain_ret` names a state | + `blk2_open/byte/file` (two writers), `pecl_sup`, `cs_freeze` | write/blk/pro/read/echo/byte/drain/open/close/arm ONCE; head step at `W`; the extension's steps stay its own, against the generic claim's EXT slot |
+| receipt (`lk_rr`) | `read_ret` | `fread_ret` (+ boots-of-entries clause, + `file_era_pin ∗ f0_lb` in the stage arm) | `pread_ret` | `gread_ret` at `Wb` (M2's `gwc_rres` shape already reads it) |
+| turn (`lk_turn`) | `eturn` | `fturn := fturn_core ∗ f0pre` | `pturn := eturn` | `gturn := eturn ∗ H's precondition` |
+| links (`*Links.v`) | `echo_link_w/blk/pro/taint/rd`, `echo_links` (1.2k) | + `file_link_first` (468) | + `pipe_link_file` (503) | `glinks` (M2) proved ONCE from the generic steps; the three bundles are it |
+| ledger, birth | `echo_led`, `era_full` | `file_led`, `file_cl_all`, `file_birth_all`, `f0_map`/`f0_pinned` | `pipe_led`, `pipe_cl_all`, `pipe_birth_all`, `pera_map` | once over the two hooks |
+
+WHAT DIFFERS is therefore exactly M2's `gen_params` plus (i) the state
+witness's AUTHORITY side (the file's `f0f_auth`/`f0_wit`/`f0_typed` and
+the `f0` slot of the stage), (ii) the per-shape extension (the pipe's
+round ledger and frozen `cs`, with the open-round pure mode), and (iii)
+three Disc-tier predicates the model does not yet carry (`lm_disc_seg'`,
+`lm_disc`, `lm_good_out`, all with an explicit state).
+
+M3 PLAN, in cuts (each landed with the tree green, as M1/M2 were):
+
+- **M3a `GenOutPure.v`** (after `LineModelLinks`): `gstage M`,
+  `lm_pending_at`/`lm_D_from`/`lm_D`/`lm_pcount`/`lm_cs_len_ok`/
+  `lm_ps_round`/`lm_ps_opens`/`lm_ps_len_ok`/`lm_E_disc`/`lm_dl_ok`/
+  `lm_out_pure`/`lines_bytes` and their snoc/step lemmas (the write, echo,
+  block-first and prologue moves; `cs_len_ok`'s three moves) proved once;
+  `EchoOutPure`/`FileOutPure`/`PipeOutPure` keep only equations
+  (`D_f ps cs f0 E = lm_D file_lm ps cs (f0_st f0) E`, …) and what is not
+  stage-generic; measure the three files' consumers first (`grep` the
+  names outside the tier).  Also the Disc-tier additions
+  (`lm_disc_seg'`, `lm_disc`, `lm_expected_rel`, `lm_good_out`) in
+  `LineModel.v`'s discipline section, with `disc_seg'`/`disc_f`/… as
+  corollaries.
+- **M3b `GenOut.v`** (after `GenLinksLine`): `gen_out_params M` extending
+  `gen_params` by the witness authority (`WA : gstage -> iProp`, its
+  init/step laws: the file's `f0f_auth …`, `emp` elsewhere) and the
+  extension (`EXT : gstage -> X -> iProp`, `EXT_pure`, its laws); `gcl k
+  ho H`; `gin_pure`, `gcl_pure` (with (A1) and `dl_ok` everywhere);
+  `gcl_open/close/arm/sup`, the write/blk/pro/read/echo/byte/drain steps,
+  the head step at `H`/`W`; `gread_ret`, `gturn`; `ecl`/`fecl`/`pecl` as
+  instances (`pecl`'s EXT is the round ledger + `pcs`; `pecl_blk2_*` and
+  `cs_freeze` re-proved against the EXT slot -- the ONE place with real
+  proof work), the ledgers and births once.
+- **M3c** the link bundles: `glinks` from the generic steps; `EchoLinks`/
+  `FileLinks`/`PipeLinks` reduced to their receipts and `*_link_file`/
+  `_first` extras; `file_links_gl`/`pipe_links_gl` become the identity.
+  Exit: `EchoOut`/`FileOut`/`PipeOut` are instances; the pure tiers are
+  equations + model-specific residue.
+
+Rules that carry over: apply generic lemmas AT the instance; keep the
+application's names as equations/abbreviations where consumers compute on
+bodies (M2c's two shapes); `Proof using` closure; comments without `"`.
+
 ## RESUME HERE (2026-09-22, late)
 
 M1 STARTED.  Landed: `iris/LineModel.v` -- the record `lmodel` (state,
@@ -296,6 +372,13 @@ naming a deleted lemma is a stale pointer -- grep the tree's comments
 for each deleted name before the commit.  Iteration: `rocq-warm check
 UShRound.v` replays in ~30 s (cold), so every UShRound fix was a
 warm check, not a make round.
+
+M3 STARTED (2026-09-23): the claim-shape table is §4 above (read off the
+three `*Out.v`/`*OutPure.v`/`*Links.v` side by side).  FIRST CUT = M3a,
+`GenOutPure.v`: begin with the consumer measure of the three pure tiers'
+names outside the tier, then `gstage M` and the stage functions over
+`lm_cont_at`/`lm_proc_before`, then the snoc lemmas; land with the three
+pure tiers as corollaries.  Nothing coded yet.
 
 M2c THIRD CUT, PART 3 (2026-09-23): THE PIPE SIDE SWITCHED, landed as
 `b6e2d6a63`.  Ruled on

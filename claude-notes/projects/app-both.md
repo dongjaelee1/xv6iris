@@ -256,7 +256,8 @@ condition, and echo is the pipe's corollary in the landed tree; it goes
 with the echo tier at M5.  Gotchas met: a variable named `I` shadows
 `True`'s constructor (`Logic.I`); comments must not contain `"`.
 
-M2c THIRD CUT, PART 2 (2026-09-23): THE FILE SIDE SWITCHED.
+M2c THIRD CUT, PART 2 (2026-09-23): THE FILE SIDE SWITCHED, landed as
+`01e2bb126`.
 `FileLinkInst.file_link_inst := file_link_gen g`, `file_link_inst_at
 s0 := file_link_gen_at g s0`; the cursor/stage records and the round-
 facing lemmas at the generic bodies; `file_Wcl/Wbl_unpack` through
@@ -288,7 +289,8 @@ for each deleted name before the commit.  Iteration: `rocq-warm check
 UShRound.v` replays in ~30 s (cold), so every UShRound fix was a
 warm check, not a make round.
 
-M2c THIRD CUT, PART 3 (in flight): THE PIPE SIDE.  Ruled on the shape:
+M2c THIRD CUT, PART 3 (2026-09-23): THE PIPE SIDE SWITCHED.  Ruled on
+the shape:
 the pipeline's families are NOT redefined and NOT deleted -- the names
 `pwc_pro g`, `pwc_blk g`, … become ABBREVIATIONS (`Notation pwc_blk g
 := (gwc_blk pipe_lm (pipe_params g))`) of the generic families at
@@ -313,6 +315,16 @@ iff.  Deleted from `PipeLinksLine`: S5's instances/taints/structure
 lemmas, S6's steps/turn/refutations, S7's diagnostics; kept as wrappers
 of the generic what consumers name (`pwc_line_of_*`, `pwc_lend_of_blk0`,
 `pwc_ban_done_line`, `pwc_blk_sp`, `pblk_step`, `pprompt_dollar_line`).
+Gotchas met: a QUALIFIED unfold (`rewrite /PipeLinksLine.pwc_blk`,
+`/PipeBoth.pwc_line2`) is invisible to a grep for the bare name -- grep
+`/Module.name` too; `rewrite pwc_blk_view` rewrites one instance, so a
+goal with two differently-instantiated blocks needs `!pwc_blk_view`;
+a `papr` hypothesis handed to a record law becomes `proj2
+(pipe_inst_apr g I a) Hapr`; the record's `lk_post` is the block at
+`lm_ab`, so `pipe_inst_post` goes through `pab_lm`; an abbreviation
+cannot be under-applied (`cbn [pwc_lpr2]` became `cbn [gwc_lpr]`).
+Every consumer passed its warm check at the first or second try; the
+whole switch cost no proof text beyond the rewrites named here.
 
 M2c THIRD CUT, PART 1 (2026-09-23): `FileLinkGen` §5-§6 -- the SAME
 generic section at a named boot state: `f0w_at s0 k s := f0w g k s ∗

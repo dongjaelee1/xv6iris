@@ -65,6 +65,7 @@ Require Import PipeLinks.
 Require Import PipeLinksLine.
 Require Import PipeBoth.
 Require Import PipeLinkInst.
+Require Import GenLinksLine.
 Require Import Xv6G.            (* [xv6G] -- the backtick Context trap: a
                                    generalisation over a name that is NOT
                                    in scope BINDS it (durable-notes) *)
@@ -170,7 +171,7 @@ Section UShPipeRound2.
   Proof using .
     intros Hline. rewrite /pipe_Wcl_at (pipe_inst_lcred g (S gen_id) I 3%nat).
     iIntros "Hc". iDestruct "Hc" as (v) "[#Hpin Hc]".
-    cbn [pwc_lpr2] in *.
+    cbn [gwc_lpr] in *.
     iMod (blk2_inv_alloc g E blk2N (S gen_id) v I L XL YR Hline
             with "[Hc]") as (gL gR gM) "(#Hinv & HL & HR & HM)".
     { iApply (pwc_lend_of_blk0 g (S gen_id) v I 0%nat with "Hc"). }
@@ -211,7 +212,7 @@ Section UShPipeRound2.
       by (destruct Hsrc' as [-> | ->]; [by left | by right; left]).
     iModIntro. iFrame "HcM".
     rewrite /pipe_Wcl_at (pipe_inst_lcred g (S gen_id) I 0%nat).
-    iExists v. iFrame "Hpin". cbn [pwc_lpr2].
+    iExists v. iFrame "Hpin". cbn [gwc_lpr].
     rewrite {1}/pwc_blk2.
     iDestruct "Hf" as "[Hf | #HT]";
       [| iApply (pwc_line2_taint g (S gen_id) v I with "HT")].
@@ -263,13 +264,13 @@ Section UShPipeRound2.
       (p : nat) :
     pwc_lpr2 g k v I p -∗ (∃ P : nat, turn v P) ∨ PT.
   Proof using .
-    iIntros "H". destruct p as [| [| [| p]]]; cbn [pwc_lpr2].
-    - rewrite /pwc_line2. iDestruct "H" as "[H | [H | H]]".
-      + rewrite /pwc_pro. iDestruct "H" as "[H | #HT]";
+    iIntros "H". destruct p as [| [| [| p]]]; cbn [gwc_lpr].
+    - rewrite pwc_line2_view. iDestruct "H" as "[H | [H | H]]".
+      + rewrite pwc_pro_view. iDestruct "H" as "[H | #HT]";
           [| iRight; iExact "HT"].
         iDestruct "H" as (ps cs P) "(_ & Ht & _)".
         iLeft. iExists P. iExact "Ht".
-      + iDestruct "H" as (a) "[_ H]". rewrite /pwc_post /pwc_blk.
+      + iDestruct "H" as (a) "[_ H]". rewrite /pwc_post pwc_blk_view.
         iDestruct "H" as "[H | #HT]"; [| iRight; iExact "HT"].
         iDestruct "H" as (ps cs P) "(_ & Ht & _)".
         iLeft. iExists (P + (length (pab I a) - 2))%nat. iExact "Ht".
@@ -278,15 +279,15 @@ Section UShPipeRound2.
           [| iRight; iExact "HT"].
         iDestruct "H" as (ps cs P) "(_ & _ & Ht & _)".
         iLeft. iExists (P + c1 + c2)%nat. iExact "Ht".
-    - rewrite /pwc_sp_t. iDestruct "H" as "[H | #HT]";
+    - rewrite pwc_sp_t_view. iDestruct "H" as "[H | #HT]";
         [| iRight; iExact "HT"].
       iDestruct "H" as (ps cs P) "(_ & Ht & _)".
       iLeft. iExists P. iExact "Ht".
-    - rewrite /pwc_open_t. iDestruct "H" as "[H | #HT]";
+    - rewrite pwc_open_t_view. iDestruct "H" as "[H | #HT]";
         [| iRight; iExact "HT"].
       iDestruct "H" as (ps cs P) "(_ & Ht & _)".
       iLeft. iExists P. iExact "Ht".
-    - rewrite /pwc_blk. iDestruct "H" as "[H | #HT]";
+    - rewrite pwc_blk_view. iDestruct "H" as "[H | #HT]";
         [| iRight; iExact "HT"].
       iDestruct "H" as (ps cs P) "(_ & Ht & _)".
       iLeft. iExists (P + 0)%nat. iExact "Ht".
@@ -395,7 +396,7 @@ Section UShPipeRound2.
       (sel : list bool) (a : nat) (tm : bool) :
     pwc_blk2 g k v I R sel 0%nat 0%nat tm -∗ pwc_blk g k v I a 0%nat.
   Proof using .
-    rewrite /pwc_blk2 /pwc_blk. iIntros "[Hf | #HT]"; last by iRight.
+    rewrite /pwc_blk2 pwc_blk_view. iIntros "[Hf | #HT]"; last by iRight.
     iDestruct "Hf"
       as (ps cs P) "(%Hw & %Htl & Htn & #Hps & #Hcs & _ & #HE)".
     assert (Hz : (P + 0 + 0)%nat = (P + 0)%nat) by lia.
@@ -422,7 +423,7 @@ Section UShPipeRound2.
       as (R sel tm) "(Hf & _ & _)".
     iModIntro.
     rewrite /pipe_Wcl_at (pipe_inst_lcred g (S gen_id) I 3%nat).
-    iExists v. iFrame "Hpin". cbn [pwc_lpr2].
+    iExists v. iFrame "Hpin". cbn [gwc_lpr].
     iApply (pwc_blk2_zero_to_blk (S gen_id) v I R sel 0%nat tm with "Hf").
   Qed.
 

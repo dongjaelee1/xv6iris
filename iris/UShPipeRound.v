@@ -81,6 +81,7 @@ Require Import PipeLinksLine.
 Require Import LinkRec.
 Require Import StageRec.
 Require Import PipeLinkInst.
+Require Import GenLinksLine.
 Require Import PipeStageInst.
 Require Import ElfUser.
 Require Import UserHeap.
@@ -440,7 +441,7 @@ Section UShPipeRound.
     iIntros "!>" (I) "_".
     iPoseProof (UShPanic.ush_execfail_law_hold_at (PS := uprogSG_free) PI
                   (fun _ => emp)%I I with "[]") as "#Hx".
-    { cbn [lk_links pipe_link_inst_at]. iExact "Hlk". }
+    { cbn [lk_links pipe_link_inst_at gen_link_inst]. iExact "Hlk". }
     rewrite /UkShDiag.ush_execfail_law_at.
     iIntros "!>" (N l) "%Hfd Hc".
     iDestruct ("Hx" $! N l with "[%] [Hc]") as (Pf) "(H0 & #Hstep & #Hend)";
@@ -458,7 +459,7 @@ Section UShPipeRound.
     iIntros "#Hlk".
     iPoseProof (UShPanic.ush_panic_law_hold_at (PS := uprogSG_free) PI
                   (fun _ => emp)%I with "[]") as "#Hp".
-    { cbn [lk_links pipe_link_inst_at]. iExact "Hlk". }
+    { cbn [lk_links pipe_link_inst_at gen_link_inst]. iExact "Hlk". }
     rewrite /UkShDiag.ush_panic_law. iIntros "!>" (N I l) "%Hfd Hc".
     iDestruct ("Hp" $! N I l with "[%] [Hc]") as (Pf) "(H0 & #Hstep & #Hend)";
       [ exact Hfd | iSplitL; [ rewrite /pipe_Wcl_at; iExact "Hc" | done ] | ].
@@ -703,7 +704,7 @@ Section UShPipeRound.
       (a a' i i' P : nat) :
     turn_auth v P -∗ pwc_blk g k v I a i -∗ pwc_blk g k v I' a' i' -∗ T.
   Proof using .
-    iIntros "Ha Hb1 Hb2". rewrite /pwc_blk.
+    iIntros "Ha Hb1 Hb2". rewrite !pwc_blk_view.
     iDestruct "Hb1" as "[Hb1 | #HT]"; last iExact "HT".
     iDestruct "Hb2" as "[Hb2 | #HT]"; last iExact "HT".
     iDestruct "Hb1" as (ps1 cs1 P1) "(_ & Ht1 & _)".

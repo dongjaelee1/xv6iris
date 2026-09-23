@@ -119,6 +119,7 @@ Require Import PipeOut.
 Require Import PipeLinks.
 Require Import PipeLinksLine.
 Require Import PipeLinkInst.
+Require Import GenLinksLine.
 Require Import PipeBoth.        (* [pwc_lpr2], the record's lk_lpr since SH-PIPE-ROUND-4 *)
 Require Import PipeReadInst.
 Require Import PipeUline.
@@ -186,7 +187,7 @@ Section UInitPipeSeam.
   Local Lemma pwc_pro_inp (k : nat) (v : era_pins) (I : list (bv 8)) :
     pwc_pro g k v I -∗ pwc_pro g k v I ∗ (inp_lb v I ∨ T).
   Proof using .
-    rewrite /pwc_pro. iIntros "[Hl | #HT]"; last first.
+    rewrite pwc_pro_view. iIntros "[Hl | #HT]"; last first.
     { iSplit; [ iRight; iExact "HT" | iRight; iExact "HT" ]. }
     iDestruct "Hl" as (ps cs P) "(%Hw & Ht & #Hps & #Hcs & #HE)".
     iSplitL "Ht".
@@ -198,7 +199,7 @@ Section UInitPipeSeam.
       (a i : nat) :
     pwc_blk g k v I a i -∗ pwc_blk g k v I a i ∗ (inp_lb v I ∨ T).
   Proof using .
-    rewrite /pwc_blk. iIntros "[Hl | #HT]"; last first.
+    rewrite pwc_blk_view. iIntros "[Hl | #HT]"; last first.
     { iSplit; [ iRight; iExact "HT" | iRight; iExact "HT" ]. }
     iDestruct "Hl" as (ps cs P) "(%Hw & Ht & #Hps & #Hcs & #HE)".
     iSplitL "Ht".
@@ -209,7 +210,7 @@ Section UInitPipeSeam.
   Local Lemma pwc_sp_t_inp (k : nat) (v : era_pins) (I : list (bv 8)) :
     pwc_sp_t g k v I -∗ pwc_sp_t g k v I ∗ (inp_lb v I ∨ T).
   Proof using .
-    rewrite /pwc_sp_t. iIntros "[Hl | #HT]"; last first.
+    rewrite pwc_sp_t_view. iIntros "[Hl | #HT]"; last first.
     { iSplit; [ iRight; iExact "HT" | iRight; iExact "HT" ]. }
     iDestruct "Hl" as (ps cs P) "(%Hw & Ht & #Hps & #Hcs & #HE)".
     iSplitL "Ht".
@@ -220,7 +221,7 @@ Section UInitPipeSeam.
   Local Lemma pwc_open_t_inp (k : nat) (v : era_pins) (I : list (bv 8)) :
     pwc_open_t g k v I -∗ pwc_open_t g k v I ∗ (inp_lb v I ∨ T).
   Proof using .
-    rewrite /pwc_open_t. iIntros "[Hl | #HT]"; last first.
+    rewrite pwc_open_t_view. iIntros "[Hl | #HT]"; last first.
     { iSplit; [ iRight; iExact "HT" | iRight; iExact "HT" ]. }
     iDestruct "Hl" as (ps cs P) "(%Hw & Ht & #Hps & #Hcs & #HE)".
     iSplitL "Ht".
@@ -263,7 +264,7 @@ Section UInitPipeSeam.
     PipeBoth.pwc_line2 g k v I -∗
     PipeBoth.pwc_line2 g k v I ∗ (inp_lb v I ∨ T).
   Proof using .
-    rewrite /PipeBoth.pwc_line2. iIntros "[Hp | [Hq | Hb]]".
+    rewrite pwc_line2_view /pipe_X. iIntros "[Hp | [Hq | Hb]]".
     - iDestruct (pwc_pro_inp k v I with "Hp") as "[Hp Hi]".
       iSplitL "Hp"; [ by iLeft | iExact "Hi" ].
     - iDestruct "Hq" as (a) "[%Ha Hp]".
@@ -284,7 +285,7 @@ Section UInitPipeSeam.
     PipeBoth.pwc_lpr2 g k v I p -∗
     PipeBoth.pwc_lpr2 g k v I p ∗ (inp_lb v I ∨ T).
   Proof using .
-    destruct p as [| [| [| p']]]; cbn [PipeBoth.pwc_lpr2].
+    destruct p as [| [| [| p']]]; cbn [gwc_lpr].
     - exact (pwc_line2_inp k v I).
     - exact (pwc_sp_t_inp k v I).
     - exact (pwc_open_t_inp k v I).

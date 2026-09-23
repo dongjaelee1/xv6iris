@@ -56,6 +56,8 @@ Require Import AppEcho.
 Require Import PipeOut.
 Require Import PipeLinks.
 Require Import EchoLinks.        (* the SHARED prologue/prompt lemmas *)
+Require Import LinkRec.
+Require Import GenLinksLine.     (* the families, once *)
 Require Import EchoLinksLine.    (* ...and the SHARED alternative lengths *)
 Require Import EchoLinksPro.     (* ...and the SHARED prologue arithmetic *)
 Require Import RiscvPtsto.
@@ -986,61 +988,72 @@ Section pipe_links_line.
 
   Notation PT := (echo_taint γ).
 
-  Definition pwc_pro (k : nat) (v : era_pins) (I : list (bv 8)) : iProp Σ :=
-    ((∃ ps cs P : _, ⌜wr_pro_p ps cs I P⌝ ∗ turn v P ∗ ps_lb v ps
-        ∗ cs_lb v cs ∗ inp_lb v I) ∨ PT)%I.
+  (* =================================================================== *)
+  (*  S5  THE FAMILIES ARE [GenLinksLine]'s, AT THE PIPELINE'S PARAMETERS *)
+  (*                                                                     *)
+  (*  The credential families are the generic ones ([GenLinksLine.gwc_*] *)
+  (*  at [pipe_params]) and nothing here defines a second set: [pwc_*]   *)
+  (*  below are ABBREVIATIONS of the generic families.  The pipeline's   *)
+  (*  parameters are the degenerate ones -- the model's state is [unit], *)
+  (*  so the boot-state witness is [emp]; /init's first byte needs no    *)
+  (*  deed, so the era has no head arm ([False]).  THE PIPELINE'S OWN    *)
+  (*  READING of a family -- no state, no witness, the landed shape over *)
+  (*  [wr_*_p] -- is its [_view] equivalence, which is what a consumer   *)
+  (*  that computes on a body spends ([rewrite pwc_blk_view] where it    *)
+  (*  unfolded [pwc_blk]).  [pwc_post] keeps its own definition, the     *)
+  (*  block at the state-free alternative ([LinkRec.lk_post]'s shape);   *)
+  (*  [pwc_post_gen] is its reading of the generic post.                 *)
+  (* =================================================================== *)
+  Definition pipe_W (k : nat) (s : unit) : iProp Σ := emp%I.
+  Definition pipe_Wb (k : nat) (s : unit) : iProp Σ := emp%I.
+  Definition pipe_H (k : nat) (v : era_pins) (I : list (bv 8)) : iProp Σ := False%I.
 
-  Definition pwc_blk (k : nat) (v : era_pins) (I : list (bv 8))
-      (a i : nat) : iProp Σ :=
-    ((∃ ps cs P : _, ⌜wr_blk_t_p ps cs I P⌝ ∗ turn v (P + i)%nat ∗ ps_lb v ps
-        ∗ cs_lb v (blkcs_p cs a i) ∗ inp_lb v I) ∨ PT)%I.
+  Lemma pipe_W_pers k s : Persistent (pipe_W k s).
+  Proof using . rewrite /pipe_W. apply _. Qed.
+  Lemma pipe_W_tl k s : Timeless (pipe_W k s).
+  Proof using . rewrite /pipe_W. apply _. Qed.
+  Lemma pipe_W_bw k s : pipe_W k s -∗ pipe_Wb k s.
+  Proof using . by iIntros "$". Qed.
+  Lemma pipe_W_bw0 k s : pipe_W k s -∗ pipe_Wb 0 s.
+  Proof using . by iIntros "$". Qed.
+  Lemma pipe_Wb_agree k (s s' : unit) : pipe_Wb k s -∗ pipe_Wb k s' -∗ ⌜s = s'⌝.
+  Proof using . iIntros "_ _". iPureIntro. by destruct s, s'. Qed.
+  Lemma pipe_H_tl k v I : Timeless (pipe_H k v I).
+  Proof using . rewrite /pipe_H. apply _. Qed.
+  Lemma pipe_H_cur k v I :
+    pipe_H k v I -∗ ⌜I = []⌝ ∗ turn v 0 ∗ ps_lb v [] ∗ cs_lb v [] ∗ inp_lb v [].
+  Proof using . iIntros "[]". Qed.
+  Lemma pipe_H_inp k v I : pipe_H k v I -∗ pipe_H k v I ∗ ⌜I = []⌝ ∗ inp_lb v [].
+  Proof using . iIntros "[]". Qed.
 
-  Definition pwc_owed (k : nat) (v : era_pins) (I : list (bv 8)) : iProp Σ :=
-    ((∃ ps cs P : _, ⌜wr_owed_p ps cs I P⌝ ∗ turn v P ∗ ps_lb v ps
-        ∗ cs_lb v cs ∗ inp_lb v I) ∨ PT)%I.
+  Definition pipe_params : gen_params pipe_lm :=
+    MkGP pipe_lm pipe_lm_laws pipe_hooks
+      PT _ _
+      (era_pin γ) _ _ (era_pin_agree γ)
+      pipe_W pipe_W_pers pipe_W_tl
+      pipe_Wb pipe_W_pers pipe_W_tl 0 pipe_W_bw pipe_W_bw0 pipe_Wb_agree
+      pipe_H pipe_H_tl pipe_H_cur pipe_H_inp.
 
-  Definition pwc_sp (k : nat) (v : era_pins) (I : list (bv 8)) : iProp Σ :=
-    ((∃ ps cs P : _, ⌜wr_sp_p ps cs I P⌝ ∗ turn v P ∗ ps_lb v ps
-        ∗ cs_lb v cs ∗ inp_lb v I) ∨ PT)%I.
+  Local Notation pwc_pro := (gwc_pro pipe_lm pipe_params).
+  Local Notation pwc_blk := (gwc_blk pipe_lm pipe_params).
+  Local Notation pwc_owed := (gwc_owed pipe_lm pipe_params).
+  Local Notation pwc_sp := (gwc_sp pipe_lm pipe_params).
+  Local Notation pwc_open := (gwc_open pipe_lm pipe_params).
+  Local Notation pwc_sp_t := (gwc_sp_t pipe_lm pipe_params).
+  Local Notation pwc_open_t := (gwc_open_t pipe_lm pipe_params).
+  Local Notation pwc_ban := (gwc_ban pipe_lm pipe_params).
+  Local Notation pwc_lend := (gwc_lend pipe_lm pipe_params).
+  Local Notation pwc_pr := (gwc_pr pipe_lm pipe_params).
 
-  Definition pwc_open (k : nat) (v : era_pins) (I : list (bv 8)) : iProp Σ :=
-    ((∃ ps cs P : _, ⌜wr_open_p ps cs I P⌝ ∗ turn v P ∗ ps_lb v ps
-        ∗ cs_lb v cs ∗ inp_lb v I) ∨ PT)%I.
-
-  Definition pwc_sp_t (k : nat) (v : era_pins) (I : list (bv 8)) : iProp Σ :=
-    ((∃ ps cs P : _, ⌜wr_sp_t_p ps cs I P⌝ ∗ turn v P ∗ ps_lb v ps
-        ∗ cs_lb v cs ∗ inp_lb v I) ∨ PT)%I.
-
-  Definition pwc_open_t (k : nat) (v : era_pins) (I : list (bv 8))
-    : iProp Σ :=
-    ((∃ ps cs P : _, ⌜wr_open_t_p ps cs I P⌝ ∗ turn v P ∗ ps_lb v ps
-        ∗ cs_lb v cs ∗ inp_lb v I) ∨ PT)%I.
-
-  Definition pwc_ban (k : nat) (v : era_pins) (I : list (bv 8)) (i : nat)
-    : iProp Σ :=
-    ((∃ ps cs P : _, ⌜wr_banp_p ps cs I P i⌝ ∗ turn v (P + i)%nat ∗ ps_lb v ps
-        ∗ cs_lb v cs ∗ inp_lb v I) ∨ PT)%I.
-
-  (* the block written up to its prompt *)
+  (* the block written up to its prompt, at the STATE-FREE alternative:
+     [LinkRec.lk_post]'s shape ([pab] decides admissibility) *)
   Definition pwc_post (k : nat) (v : era_pins) (I : list (bv 8)) (a : nat)
     : iProp Σ := pwc_blk k v I a (length (pab I a) - 2)%nat.
 
-  (* THE LOOP'S BOUNDARY CREDENTIAL, WIDENED *)
+  (* THE PIPELINE'S OWN LINE CREDENTIAL, one writer: the record's line
+     ([PipeBoth.pwc_line2]) widens it by the terminal round's arm *)
   Definition pwc_line (k : nat) (v : era_pins) (I : list (bv 8)) : iProp Σ :=
     (pwc_pro k v I ∨ (∃ a : nat, ⌜papr I a⌝ ∗ pwc_post k v I a))%I.
-
-  (* WHAT sh's FORK HANDS ITS CHILD: [pwc_blk _ _ _ _ 0] opened *)
-  Definition pwc_lend (k : nat) (v : era_pins) (I : list (bv 8)) : iProp Σ :=
-    ((∃ ps cs P : _, ⌜wr_blk_t_p ps cs I P⌝ ∗ turn v P ∗ ps_lb v ps
-        ∗ cs_lb v cs ∗ inp_lb v I) ∨ PT)%I.
-
-  Definition pwc_pr (k : nat) (v : era_pins) (I : list (bv 8)) (p : nat)
-    : iProp Σ :=
-    match p with
-    | O => pwc_owed k v I
-    | S O => pwc_sp k v I
-    | _ => pwc_open k v I
-    end.
 
   Definition pwc_lpr (k : nat) (v : era_pins) (I : list (bv 8)) (p : nat)
     : iProp Σ :=
@@ -1051,7 +1064,6 @@ Section pipe_links_line.
     | _ => pwc_blk k v I 0%nat 0%nat
     end.
 
-  (* THE READER'S RESIDUE ([UShLine.rd_res] at the pipeline stage) *)
   Definition pwc_rres (v : era_pins) (I : list (bv 8)) : iProp Σ :=
     (∃ ps0 cs0 : list nat,
        ⌜rd_stage_p ps0 cs0 I⌝ ∗ turn_lb v (length (proc_before_p ps0 cs0 I))
@@ -1097,22 +1109,20 @@ Section pipe_links_line.
     | |- _ => apply _
     end.
 
-  Global Instance pwc_pro_timeless k v I : Timeless (pwc_pro k v I).
-  Proof using . rewrite /pwc_pro. tl_leaf. Qed.
-  Global Instance pwc_blk_timeless k v I a i : Timeless (pwc_blk k v I a i).
-  Proof using . rewrite /pwc_blk. tl_leaf. Qed.
-  Global Instance pwc_owed_timeless k v I : Timeless (pwc_owed k v I).
-  Proof using . rewrite /pwc_owed. tl_leaf. Qed.
-  Global Instance pwc_sp_timeless k v I : Timeless (pwc_sp k v I).
-  Proof using . rewrite /pwc_sp. tl_leaf. Qed.
-  Global Instance pwc_open_timeless k v I : Timeless (pwc_open k v I).
-  Proof using . rewrite /pwc_open. tl_leaf. Qed.
-  Global Instance pwc_sp_t_timeless k v I : Timeless (pwc_sp_t k v I).
-  Proof using . rewrite /pwc_sp_t. tl_leaf. Qed.
-  Global Instance pwc_open_t_timeless k v I : Timeless (pwc_open_t k v I).
-  Proof using . rewrite /pwc_open_t. tl_leaf. Qed.
-  Global Instance pwc_ban_timeless k v I i : Timeless (pwc_ban k v I i).
-  Proof using . rewrite /pwc_ban. tl_leaf. Qed.
+  Global Instance pwc_rres_persistent v I : Persistent (pwc_rres v I).
+  Proof using . rewrite /pwc_rres. ps_leaf. Qed.
+  Global Instance pwc_rres_timeless v I : Timeless (pwc_rres v I).
+  Proof using . rewrite /pwc_rres. tl_leaf. Qed.
+
+  (* NAME THE LEAF: the generic instances, at this instance *)
+  Lemma pwc_pro_timeless k v I : Timeless (pwc_pro k v I).
+  Proof using . apply (gwc_pro_timeless pipe_lm pipe_params). Qed.
+  Lemma pwc_blk_timeless k v I a i : Timeless (pwc_blk k v I a i).
+  Proof using . apply (gwc_blk_timeless pipe_lm pipe_params). Qed.
+  Lemma pwc_sp_t_timeless k v I : Timeless (pwc_sp_t k v I).
+  Proof using . apply (gwc_sp_t_timeless pipe_lm pipe_params). Qed.
+  Lemma pwc_open_t_timeless k v I : Timeless (pwc_open_t k v I).
+  Proof using . apply (gwc_open_t_timeless pipe_lm pipe_params). Qed.
   Global Instance pwc_post_timeless k v I a : Timeless (pwc_post k v I a).
   Proof using . rewrite /pwc_post. apply pwc_blk_timeless. Qed.
   Global Instance pwc_line_timeless k v I : Timeless (pwc_line k v I).
@@ -1122,85 +1132,284 @@ Section pipe_links_line.
     apply bi.exist_timeless; intro.
     apply bi.sep_timeless; [apply bi.pure_timeless | apply pwc_post_timeless].
   Qed.
-  Global Instance pwc_lend_timeless k v I : Timeless (pwc_lend k v I).
-  Proof using . rewrite /pwc_lend. tl_leaf. Qed.
-  Global Instance pwc_pr_timeless k v I p : Timeless (pwc_pr k v I p).
-  Proof using .
-    rewrite /pwc_pr. destruct p as [| [| p]];
-      [apply pwc_owed_timeless | apply pwc_sp_timeless
-      | apply pwc_open_timeless].
-  Qed.
   Global Instance pwc_lpr_timeless k v I p : Timeless (pwc_lpr k v I p).
   Proof using .
     rewrite /pwc_lpr. destruct p as [| [| [| p]]];
       [apply pwc_line_timeless | apply pwc_sp_t_timeless
       | apply pwc_open_t_timeless | apply pwc_blk_timeless].
   Qed.
-  Global Instance pwc_rres_persistent v I : Persistent (pwc_rres v I).
-  Proof using . rewrite /pwc_rres. ps_leaf. Qed.
-  Global Instance pwc_rres_timeless v I : Timeless (pwc_rres v I).
-  Proof using . rewrite /pwc_rres. tl_leaf. Qed.
 
-  (* ---- the taint inhabits every shape ---- *)
-  Lemma pwc_pro_taint k v I : PT -∗ pwc_pro k v I.
-  Proof using . iIntros "HT". rewrite /pwc_pro. by iRight. Qed.
-  Lemma pwc_blk_taint k v I a i : PT -∗ pwc_blk k v I a i.
-  Proof using . iIntros "HT". rewrite /pwc_blk. by iRight. Qed.
-  Lemma pwc_owed_taint k v I : PT -∗ pwc_owed k v I.
-  Proof using . iIntros "HT". rewrite /pwc_owed. by iRight. Qed.
-  Lemma pwc_sp_taint k v I : PT -∗ pwc_sp k v I.
-  Proof using . iIntros "HT". rewrite /pwc_sp. by iRight. Qed.
-  Lemma pwc_open_taint k v I : PT -∗ pwc_open k v I.
-  Proof using . iIntros "HT". rewrite /pwc_open. by iRight. Qed.
-  Lemma pwc_sp_t_taint k v I : PT -∗ pwc_sp_t k v I.
-  Proof using . iIntros "HT". rewrite /pwc_sp_t. by iRight. Qed.
-  Lemma pwc_open_t_taint k v I : PT -∗ pwc_open_t k v I.
-  Proof using . iIntros "HT". rewrite /pwc_open_t. by iRight. Qed.
-  Lemma pwc_ban_taint k v I i : PT -∗ pwc_ban k v I i.
-  Proof using . iIntros "HT". rewrite /pwc_ban. by iRight. Qed.
-  Lemma pwc_lend_taint k v I : PT -∗ pwc_lend k v I.
-  Proof using . iIntros "HT". rewrite /pwc_lend. by iRight. Qed.
+  (* ---- THE PIPELINE'S READING of each family ---- *)
+  Local Ltac view_open :=
+    rewrite /gcur; cbn [gH gW gT pipe_params]; rewrite /pipe_W /pipe_H;
+    apply bi.equiv_entails; split.
+
+  Lemma pwc_pro_view k v I :
+    pwc_pro k v I ⊣⊢
+    ((∃ ps cs P : _, ⌜wr_pro_p ps cs I P⌝ ∗ turn v P ∗ ps_lb v ps
+        ∗ cs_lb v cs ∗ inp_lb v I) ∨ PT)%I.
+  Proof using .
+    rewrite /gwc_pro. view_open.
+    - iIntros "[Hl | [[] | HT]]"; [| by iRight].
+      iDestruct "Hl" as (ps cs [] P) "(%Hw & Htn & Hps & Hcs & HE & _)".
+      iLeft. iExists ps, cs, P.
+      iSplitR; [iPureIntro; by rewrite wr_pro_p_lm |]. iFrame "Htn Hps Hcs HE".
+    - iIntros "[Hl | HT]"; [| by iRight; iRight].
+      iDestruct "Hl" as (ps cs P) "(%Hw & Htn & Hps & Hcs & HE)".
+      iLeft. iExists ps, cs, tt, P.
+      iSplitR; [iPureIntro; by rewrite -wr_pro_p_lm |]. iFrame "Htn Hps Hcs HE".
+  Qed.
+
+  Lemma pwc_owed_view k v I :
+    pwc_owed k v I ⊣⊢
+    ((∃ ps cs P : _, ⌜wr_owed_p ps cs I P⌝ ∗ turn v P ∗ ps_lb v ps
+        ∗ cs_lb v cs ∗ inp_lb v I) ∨ PT)%I.
+  Proof using .
+    rewrite /gwc_owed. view_open.
+    - iIntros "[Hl | [[] | HT]]"; [| by iRight].
+      iDestruct "Hl" as (ps cs [] P) "(%Hw & Htn & Hps & Hcs & HE & _)".
+      iLeft. iExists ps, cs, P.
+      iSplitR; [iPureIntro; by rewrite wr_owed_p_lm |]. iFrame "Htn Hps Hcs HE".
+    - iIntros "[Hl | HT]"; [| by iRight; iRight].
+      iDestruct "Hl" as (ps cs P) "(%Hw & Htn & Hps & Hcs & HE)".
+      iLeft. iExists ps, cs, tt, P.
+      iSplitR; [iPureIntro; by rewrite -wr_owed_p_lm |]. iFrame "Htn Hps Hcs HE".
+  Qed.
+
+  Lemma pwc_sp_view k v I :
+    pwc_sp k v I ⊣⊢
+    ((∃ ps cs P : _, ⌜wr_sp_p ps cs I P⌝ ∗ turn v P ∗ ps_lb v ps
+        ∗ cs_lb v cs ∗ inp_lb v I) ∨ PT)%I.
+  Proof using .
+    rewrite /gwc_sp. view_open.
+    - iIntros "[Hl | HT]"; [| by iRight].
+      iDestruct "Hl" as (ps cs [] P) "(%Hw & Htn & Hps & Hcs & HE & _)".
+      iLeft. iExists ps, cs, P.
+      iSplitR; [iPureIntro; by rewrite wr_sp_p_lm |]. iFrame "Htn Hps Hcs HE".
+    - iIntros "[Hl | HT]"; [| by iRight].
+      iDestruct "Hl" as (ps cs P) "(%Hw & Htn & Hps & Hcs & HE)".
+      iLeft. iExists ps, cs, tt, P.
+      iSplitR; [iPureIntro; by rewrite -wr_sp_p_lm |]. iFrame "Htn Hps Hcs HE".
+  Qed.
+
+  Lemma pwc_open_view k v I :
+    pwc_open k v I ⊣⊢
+    ((∃ ps cs P : _, ⌜wr_open_p ps cs I P⌝ ∗ turn v P ∗ ps_lb v ps
+        ∗ cs_lb v cs ∗ inp_lb v I) ∨ PT)%I.
+  Proof using .
+    rewrite /gwc_open. view_open.
+    - iIntros "[Hl | HT]"; [| by iRight].
+      iDestruct "Hl" as (ps cs [] P) "(%Hw & Htn & Hps & Hcs & HE & _)".
+      iLeft. iExists ps, cs, P.
+      iSplitR; [iPureIntro; by rewrite wr_open_p_lm |]. iFrame "Htn Hps Hcs HE".
+    - iIntros "[Hl | HT]"; [| by iRight].
+      iDestruct "Hl" as (ps cs P) "(%Hw & Htn & Hps & Hcs & HE)".
+      iLeft. iExists ps, cs, tt, P.
+      iSplitR; [iPureIntro; by rewrite -wr_open_p_lm |]. iFrame "Htn Hps Hcs HE".
+  Qed.
+
+  Lemma pwc_sp_t_view k v I :
+    pwc_sp_t k v I ⊣⊢
+    ((∃ ps cs P : _, ⌜wr_sp_t_p ps cs I P⌝ ∗ turn v P ∗ ps_lb v ps
+        ∗ cs_lb v cs ∗ inp_lb v I) ∨ PT)%I.
+  Proof using .
+    rewrite /gwc_sp_t. view_open.
+    - iIntros "[Hl | HT]"; [| by iRight].
+      iDestruct "Hl" as (ps cs [] P) "(%Hw & Htn & Hps & Hcs & HE & _)".
+      iLeft. iExists ps, cs, P.
+      iSplitR; [iPureIntro; by rewrite wr_sp_t_p_lm |]. iFrame "Htn Hps Hcs HE".
+    - iIntros "[Hl | HT]"; [| by iRight].
+      iDestruct "Hl" as (ps cs P) "(%Hw & Htn & Hps & Hcs & HE)".
+      iLeft. iExists ps, cs, tt, P.
+      iSplitR; [iPureIntro; by rewrite -wr_sp_t_p_lm |]. iFrame "Htn Hps Hcs HE".
+  Qed.
+
+  Lemma pwc_open_t_view k v I :
+    pwc_open_t k v I ⊣⊢
+    ((∃ ps cs P : _, ⌜wr_open_t_p ps cs I P⌝ ∗ turn v P ∗ ps_lb v ps
+        ∗ cs_lb v cs ∗ inp_lb v I) ∨ PT)%I.
+  Proof using .
+    rewrite /gwc_open_t. view_open.
+    - iIntros "[Hl | HT]"; [| by iRight].
+      iDestruct "Hl" as (ps cs [] P) "(%Hw & Htn & Hps & Hcs & HE & _)".
+      iLeft. iExists ps, cs, P.
+      iSplitR; [iPureIntro; by rewrite wr_open_t_p_lm |]. iFrame "Htn Hps Hcs HE".
+    - iIntros "[Hl | HT]"; [| by iRight].
+      iDestruct "Hl" as (ps cs P) "(%Hw & Htn & Hps & Hcs & HE)".
+      iLeft. iExists ps, cs, tt, P.
+      iSplitR; [iPureIntro; by rewrite -wr_open_t_p_lm |]. iFrame "Htn Hps Hcs HE".
+  Qed.
+
+  Lemma pwc_lend_view k v I :
+    pwc_lend k v I ⊣⊢
+    ((∃ ps cs P : _, ⌜wr_blk_t_p ps cs I P⌝ ∗ turn v P ∗ ps_lb v ps
+        ∗ cs_lb v cs ∗ inp_lb v I) ∨ PT)%I.
+  Proof using .
+    rewrite /gwc_lend. view_open.
+    - iIntros "[Hl | HT]"; [| by iRight].
+      iDestruct "Hl" as (ps cs [] P) "(%Hw & Htn & Hps & Hcs & HE & _)".
+      iLeft. iExists ps, cs, P.
+      iSplitR; [iPureIntro; by rewrite wr_blk_t_p_lm |]. iFrame "Htn Hps Hcs HE".
+    - iIntros "[Hl | HT]"; [| by iRight].
+      iDestruct "Hl" as (ps cs P) "(%Hw & Htn & Hps & Hcs & HE)".
+      iLeft. iExists ps, cs, tt, P.
+      iSplitR; [iPureIntro; by rewrite -wr_blk_t_p_lm |]. iFrame "Htn Hps Hcs HE".
+  Qed.
+
+  Lemma pwc_blk_view k v I a i :
+    pwc_blk k v I a i ⊣⊢
+    ((∃ ps cs P : _, ⌜wr_blk_t_p ps cs I P⌝ ∗ turn v (P + i)%nat ∗ ps_lb v ps
+        ∗ cs_lb v (blkcs_p cs a i) ∗ inp_lb v I) ∨ PT)%I.
+  Proof using .
+    rewrite /gwc_blk /lm_blkcs /blkcs_p. view_open.
+    - iIntros "[Hl | HT]"; [| by iRight].
+      iDestruct "Hl" as (ps cs [] P) "(%Hw & Htn & Hps & Hcs & HE & _)".
+      iLeft. iExists ps, cs, P.
+      iSplitR; [iPureIntro; by rewrite wr_blk_t_p_lm |]. iFrame "Htn Hps Hcs HE".
+    - iIntros "[Hl | HT]"; [| by iRight].
+      iDestruct "Hl" as (ps cs P) "(%Hw & Htn & Hps & Hcs & HE)".
+      iLeft. iExists ps, cs, tt, P.
+      iSplitR; [iPureIntro; by rewrite -wr_blk_t_p_lm |]. iFrame "Htn Hps Hcs HE".
+  Qed.
+
+  Lemma pwc_ban_view k v I i :
+    pwc_ban k v I i ⊣⊢
+    ((∃ ps cs P : _, ⌜wr_banp_p ps cs I P i⌝ ∗ turn v (P + i)%nat ∗ ps_lb v ps
+        ∗ cs_lb v cs ∗ inp_lb v I) ∨ PT)%I.
+  Proof using .
+    rewrite /gwc_ban. view_open.
+    - iIntros "[Hl | [[_ []] | HT]]"; [| by iRight].
+      iDestruct "Hl" as (ps cs [] P) "(%Hw & Htn & Hps & Hcs & HE & _)".
+      iLeft. iExists ps, cs, P.
+      iSplitR; [iPureIntro; by rewrite wr_banp_p_lm |]. iFrame "Htn Hps Hcs HE".
+    - iIntros "[Hl | HT]"; [| by iRight; iRight].
+      iDestruct "Hl" as (ps cs P) "(%Hw & Htn & Hps & Hcs & HE)".
+      iLeft. iExists ps, cs, tt, P.
+      iSplitR; [iPureIntro; by rewrite -wr_banp_p_lm |]. iFrame "Htn Hps Hcs HE".
+  Qed.
+
+  (* the generic post, at an admissible alternative, IS the block at the
+     state-free reading: every pipeline alternative is state-free *)
+  Lemma pwc_post_gen k v I a :
+    papr I a ->
+    gwc_post pipe_lm pipe_params k v I a ⊣⊢ pwc_post k v I a.
+  Proof using .
+    intros Ha. pose proof (proj1 (papr_lm I a) Ha) as Ha'.
+    rewrite /pwc_post /gwc_post /gwc_blk pab_lm. cbn [gW pipe_params].
+    rewrite /pipe_W. apply bi.equiv_entails; split.
+    - iIntros "[Hl | HT]"; [| by iRight].
+      iDestruct "Hl" as (ps cs [] P) "(%Hw & Htn & Hps & Hcs & HE & _)".
+      rewrite (lm_abs_ab pipe_lm pipe_hooks tt cs I a Ha').
+      iLeft. iExists ps, cs, tt, P. iSplitR; [by iPureIntro |].
+      iFrame "Htn Hps Hcs HE".
+    - iIntros "[Hl | HT]"; [| by iRight].
+      iDestruct "Hl" as (ps cs [] P) "(%Hw & Htn & Hps & Hcs & HE & _)".
+      iLeft. iExists ps, cs, tt, P.
+      rewrite (lm_abs_ab pipe_lm pipe_hooks tt cs I a Ha').
+      iSplitR; [by iPureIntro |]. iFrame "Htn Hps Hcs HE".
+  Qed.
+
+  (* =================================================================== *)
+  (*  S6  THE LINKS ENTAIL THE GENERIC INTERFACE; THE READ RECEIPT, THE   *)
+  (*      TURN, THE RESIDUE, at the generic shapes                        *)
+  (* =================================================================== *)
+  Lemma pipe_links_gl : pipe_links g -∗ glinks pipe_lm pipe_params.
+  Proof using .
+    iIntros "#Hlk".
+    iDestruct (pipe_links_w with "Hlk") as "#Hw".
+    iDestruct (pipe_links_blk with "Hlk") as "#Hblk".
+    iDestruct (pipe_links_pro with "Hlk") as "#Hpro".
+    iDestruct (pipe_links_taint with "Hlk") as "#Ht".
+    rewrite /glinks. iSplitR; [| iSplitR; [| iSplitR; [| iSplitR]]].
+    - (* W *)
+      rewrite /gl_w.
+      iIntros "!>" (k v P b ps0 cs0 s0 I0 Φ) "%H1 %H2 %H3 #Hpin _ Htn #Hps #Hcs #HE HΦ".
+      iApply ("Hw" $! k v P b ps0 cs0 I0 Φ with "[%] [%] [%] Hpin Htn Hps Hcs HE HΦ").
+      { exact H1. }
+      { exact (proj2 (pro_pin_p_lm _ _ _) H2). }
+      { rewrite proc_stream_p_lm. destruct s0. exact H3. }
+    - (* BLK *)
+      rewrite /gl_blk.
+      iIntros "!>" (k v P a b ps0 cs0 s0 I0 Φ) "%H1 %H2 %H3 %H4 %H5 %H6 %H7 %H8 #Hpin _ Htn #Hps #Hcs #HE HΦ".
+      iApply ("Hblk" $! k v P a b ps0 cs0 I0 Φ
+                with "[%] [%] [%] [%] [%] [%] [%] [%] Hpin Htn Hps Hcs HE HΦ").
+      { exact H1. } { exact H2. } { exact H3. }
+      { exact (proj2 (pro_pin_p_lm _ _ _) H4). }
+      { rewrite proc_before_p_lm. destruct s0. exact H5. }
+      { exact H6. } { exact H7. } { exact H8. }
+    - (* PRO *)
+      rewrite /gl_pro.
+      iIntros "!>" (k v P a b ps0 cs0 s0 I0 Φ) "%H1 %H2 %H3 %H4 %H5 %H6 %H7 %H8 #Hpin _ Htn #Hps #Hcs #HE HΦ".
+      iApply ("Hpro" $! k v P a b ps0 cs0 I0 Φ
+                with "[%] [%] [%] [%] [%] [%] [%] [%] Hpin Htn Hps Hcs HE HΦ").
+      { exact H1. } { exact H2. } { exact H3. }
+      { exact (proj2 (pro_pin_p_lm _ _ _) H4). }
+      { rewrite pro_idx_p_lm. exact H5. }
+      { rewrite proc_stream_p_lm. destruct s0. exact H6. }
+      { exact H7. } { exact H8. }
+    - (* HEAD: absent *)
+      rewrite /gl_head. iIntros "!>" (k v I a b Φ) "_ _ _ [] _".
+    - (* TAINT *)
+      rewrite /gl_taint. iIntros "!>" (k b Φ) "#HT HΦ".
+      iApply ("Ht" $! k b Φ with "HT HΦ").
+  Qed.
+
+  Lemma pread_ret_res (k : nat) (v : era_pins) (n : nat)
+      (ws : list (list mobs * bv 8)) :
+    (0 < length ws)%nat ->
+    pread_ret g k v n ws -∗
+    PT ∨ (∃ (ps0 cs0 : list nat) (s0 : unit) (J : list (bv 8)),
+            ⌜length J = (n + length ws)%nat⌝ ∗ ⌜lm_rd_stage pipe_lm ps0 cs0 J⌝
+            ∗ inp_lb v J ∗ turn_lb v (length (lm_proc_before pipe_lm ps0 cs0 s0 J))
+            ∗ ps_lb v ps0 ∗ cs_lb v cs0 ∗ pipe_Wb k s0).
+  Proof using .
+    intros Hws. iIntros "Hr". rewrite /pread_ret.
+    iDestruct "Hr" as "[[#HT _] | [_ Hfacts]]"; [by iLeft |].
+    iDestruct "Hfacts" as (pops dl)
+      "(%Hrok & %Hdl & %Hpref & %Hidx & %Hdsc & #Hinp & %Hdi & Hrest)".
+    iDestruct "Hrest" as "[%Hws0 | Hbb]".
+    { exfalso. rewrite Hws0 in Hws. cbn in Hws. lia. }
+    iDestruct "Hbb" as (cs0 ps0) "(#Hcs0 & #Hps0 & %Hbd & #Htlb & %Hrs)".
+    iRight. iExists ps0, cs0, tt, (snd <$> (dl ++ ws)).
+    iFrame "Hinp Hps0 Hcs0".
+    iSplitR; [iPureIntro; rewrite length_fmap length_app Hdl; reflexivity |].
+    iSplitR; [iPureIntro; exact (proj1 (rd_stage_p_lm _ _ _) Hrs) |].
+    rewrite -proc_before_p_lm /pipe_Wb. iFrame "Htlb".
+  Qed.
+
+  Lemma pturn0_gen (k : nat) :
+    pturn_pre k -∗
+    (∃ v : era_pins, era_pin γ k v ∗ dl_cnt v (1/2) 0%nat ∗ inp_lb v [])
+    ∗ (∃ v : era_pins, era_pin γ k v ∗ pwc_ban k v [] 0%nat).
+  Proof using .
+    rewrite /pturn_pre /PipeOut.pturn /eturn. iIntros "Hturn".
+    iDestruct "Hturn" as (v) "(#Hpin & Htn & Hdl & #Hcs & #Hps & #HE)".
+    iSplitL "Hdl"; [iExists v; by iFrame "Hpin Hdl HE" |].
+    iExists v. iFrame "Hpin".
+    rewrite /gwc_ban. iLeft. iExists [], [], tt, 0%nat.
+    rewrite Nat.add_0_r /pipe_W. iFrame "Htn Hps Hcs HE".
+    iPureIntro. exact (lm_wr_ban_round0 pipe_lm tt).
+  Qed.
+
+  Lemma pwc_rres_res (v : era_pins) (I : list (bv 8)) :
+    pwc_rres v I -∗ gwc_rres pipe_lm pipe_params v I.
+  Proof using .
+    rewrite /pwc_rres /gwc_rres. iIntros "Hr".
+    iDestruct "Hr" as (ps0 cs0) "(%Hrs & #Htlb & #Hps0 & #Hcs0)".
+    iExists ps0, cs0, tt. iFrame "Hps0 Hcs0".
+    iSplitR; [iPureIntro; exact (proj1 (rd_stage_p_lm _ _ _) Hrs) |].
+    rewrite -proc_before_p_lm /pipe_Wb. iFrame "Htlb".
+  Qed.
+
+  (* =================================================================== *)
+  (*  S7  WHAT THE CONSUMERS NAME AT THE ONE-WRITER LINE: the generic     *)
+  (*      laws at this instance                                           *)
+  (* =================================================================== *)
   Lemma pwc_line_taint k v I : PT -∗ pwc_line k v I.
   Proof using .
-    iIntros "HT". rewrite /pwc_line. iLeft. by iApply pwc_pro_taint.
+    iIntros "HT". rewrite /pwc_line. iLeft.
+    by iApply (gwc_pro_taint pipe_lm pipe_params).
   Qed.
-
-  (* ---- the loose shapes and the tight ones ---- *)
-  Lemma pwc_pro_owed k v I : pwc_pro k v I -∗ pwc_owed k v I.
-  Proof using .
-    rewrite /pwc_pro /pwc_owed. iIntros "[Hl | #HT]"; last by iRight.
-    iDestruct "Hl" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE)".
-    iLeft. iExists ps, cs, P. iFrame "Htn Hps Hcs HE". iPureIntro. by left.
-  Qed.
-
-  Lemma pwc_blk_owed k v I a : pwc_blk k v I a 0%nat -∗ pwc_owed k v I.
-  Proof using .
-    rewrite /pwc_blk /pwc_owed. iIntros "[Hl | #HT]"; last by iRight.
-    iDestruct "Hl" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE)".
-    cbn [blkcs_p]. rewrite Nat.add_0_r.
-    iLeft. iExists ps, cs, P. iFrame "Htn Hps Hcs HE". iPureIntro. right.
-    exact (proj1 Hw).
-  Qed.
-
-  Lemma pwc_sp_t_sp k v I : pwc_sp_t k v I -∗ pwc_sp k v I.
-  Proof using .
-    rewrite /pwc_sp_t /pwc_sp. iIntros "[Hl | #HT]"; last by iRight.
-    iDestruct "Hl" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE)".
-    iLeft. iExists ps, cs, P. iFrame "Htn Hps Hcs HE". iPureIntro.
-    exact (proj1 Hw).
-  Qed.
-
-  Lemma pwc_open_t_open k v I : pwc_open_t k v I -∗ pwc_open k v I.
-  Proof using .
-    rewrite /pwc_open_t /pwc_open. iIntros "[Hl | #HT]"; last by iRight.
-    iDestruct "Hl" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE)".
-    iLeft. iExists ps, cs, P. iFrame "Htn Hps Hcs HE". iPureIntro.
-    exact (proj1 Hw).
-  Qed.
-
-  Lemma pwc_blk_0 k v I a a' :
-    pwc_blk k v I a 0%nat -∗ pwc_blk k v I a' 0%nat.
-  Proof using . rewrite /pwc_blk. cbn [blkcs_p]. iIntros "H". iExact "H". Qed.
 
   Lemma pwc_line_of_post k v I a :
     papr I a -> pwc_post k v I a -∗ pwc_line k v I.
@@ -1216,355 +1425,57 @@ Section pipe_links_line.
   Proof using .
     iIntros "Hc".
     iApply (pwc_line_of_post k v I (pnoc_of (pline_at I)) (papr_noc I)).
-    rewrite /pwc_post (pab_noc_len I). iApply (pwc_blk_0 with "Hc").
+    rewrite /pwc_post (pab_noc_len I).
+    iApply (gwc_blk_0 pipe_lm pipe_params with "Hc").
   Qed.
 
   Lemma pwc_lend_of_blk0 k v I a : pwc_blk k v I a 0%nat -∗ pwc_lend k v I.
-  Proof using .
-    rewrite /pwc_blk /pwc_lend. cbn [blkcs_p]. iIntros "[Hl | #HT]";
-      last by iRight.
-    iDestruct "Hl" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE)".
-    rewrite Nat.add_0_r. iLeft. iExists ps, cs, P.
-    iFrame "Htn Hps Hcs HE". by iPureIntro.
-  Qed.
-
-  (* ---- the banner's conversions ---- *)
-  Lemma pwc_ban_pro k v I : pwc_ban k v I 0%nat -∗ pwc_pro k v I.
-  Proof using .
-    rewrite /pwc_ban /pwc_pro. iIntros "[Hl | #HT]"; last by iRight.
-    iDestruct "Hl" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE)".
-    cbn [wr_banp_p] in Hw. rewrite Nat.add_0_r.
-    iLeft. iExists ps, cs, P. iFrame "Htn Hps Hcs HE". iPureIntro.
-    exact (wr_ban_pro_p ps cs I P Hw).
-  Qed.
-
-  Lemma pwc_ban_owed k v I : pwc_ban k v I 0%nat -∗ pwc_owed k v I.
-  Proof using .
-    iIntros "Hc". iApply pwc_pro_owed. iApply (pwc_ban_pro with "Hc").
-  Qed.
-
-  Lemma pwc_ban_done k v I :
-    pwc_ban k v I (length u_banner) -∗ pwc_owed k v I.
-  Proof using .
-    rewrite /pwc_ban /pwc_owed. iIntros "[Hl | #HT]"; last by iRight.
-    iDestruct "Hl" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE)".
-    assert (H18 : length u_banner = 18%nat) by (vm_compute; reflexivity).
-    rewrite H18 in Hw. cbn [wr_banp_p] in Hw. destruct Hw as (ps' & -> & Hw).
-    iLeft. iExists (ps' ++ [3%nat]), cs, (P + length u_banner)%nat.
-    iFrame "Htn Hps Hcs HE". iPureIntro. left.
-    exact (wr_ban_done_p ps' cs I P Hw).
-  Qed.
+  Proof using . apply (gwc_lend_of_blk0 pipe_lm pipe_params). Qed.
 
   Lemma pwc_ban_done_line k v I :
     pwc_ban k v I (length u_banner) -∗ pwc_line k v I.
   Proof using .
-    rewrite /pwc_ban. iIntros "[Hl | #HT]"; last by iApply pwc_line_taint.
-    iDestruct "Hl" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE)".
-    assert (H18 : length u_banner = 18%nat) by (vm_compute; reflexivity).
-    rewrite H18 in Hw. cbn [wr_banp_p] in Hw. destruct Hw as (ps' & -> & Hw).
-    iApply pwc_line_of_pro. rewrite /pwc_pro.
-    iLeft. iExists (ps' ++ [3%nat]), cs, (P + length u_banner)%nat.
-    iFrame "Htn Hps Hcs HE". iPureIntro. exact (wr_ban_done_p ps' cs I P Hw).
-  Qed.
-
-  Lemma pwc_ban_inp k v I :
-    pwc_ban k v I 0%nat -∗
-    pwc_ban k v I 0%nat ∗ ((inp_lb v I ∗ ⌜rest_of I = []⌝) ∨ PT).
-  Proof using .
-    rewrite /pwc_ban. iIntros "[Hl | #HT]"; last first.
-    { iSplit; [by iRight | iRight; iExact "HT"]. }
-    iDestruct "Hl" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE)".
-    cbn [wr_banp_p] in Hw. iSplitL "Htn".
-    - iLeft. iExists ps, cs, P. iFrame "Htn Hps Hcs HE". by iPureIntro.
-    - iLeft. iFrame "HE". iPureIntro. exact (proj1 (proj2 Hw)).
-  Qed.
-
-  (* =================================================================== *)
-  (*  S6  THE STEPS, THROUGH THE ERA'S LINKS                              *)
-  (* =================================================================== *)
-  Lemma pban_step (k : nat) (v : era_pins) (I : list (bv 8)) (i : nat)
-      (b : bv 8) (Φ : iProp Σ) :
-    u_banner !! i = Some b ->
-    era_pin γ k v -∗ pipe_links g -∗ pwc_ban k v I i -∗
-    (pwc_ban k v I (S i) -∗ Φ) -∗ out_link Uart0 k b Φ.
-  Proof using .
-    intros Hb. iIntros "#Hpin #Hlk Hc HΦ".
-    iDestruct (pipe_links_w with "Hlk") as "#Hw".
-    iDestruct (pipe_links_pro with "Hlk") as "#Hpro".
-    iDestruct (pipe_links_taint with "Hlk") as "#Ht".
-    rewrite /pwc_ban. iDestruct "Hc" as "[Hl | #HT]"; last first.
-    { iApply ("Ht" $! k b Φ with "HT [HΦ]").
-      iIntros "#HT'". iApply "HΦ". by iRight. }
-    iDestruct "Hl" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE)".
-    destruct i as [| i].
-    - cbn [wr_banp_p] in Hw.
-      pose proof (wr_ban_pro_p ps cs I P Hw) as Hpr.
-      pose proof Hw as (Hpin & Hm & Hdv & Hr & _).
-      destruct Hpr as (_ & _ & _ & _ & Hnd & HP).
-      rewrite Nat.add_0_r.
-      iApply ("Hpro" $! k v P 3%nat b ps cs I Φ
-                with "[%] [%] [%] [%] [%] [%] [%] [%] Hpin Htn Hps Hcs HE [HΦ]").
-      { exact Hm. }
-      { exact Hr. }
-      { lia. }
-      { exact Hpin. }
-      { exact Hnd. }
-      { exact HP. }
-      { rewrite pro_alts_length. lia. }
-      { exact (EchoLinks.wr_ban_head b Hb). }
-      iIntros "Hres". iApply "HΦ".
-      iDestruct "Hres" as "[(Htn' & Hps' & Hcs' & HE') | #HT]"; last by iRight.
-      iLeft. iExists (ps ++ [3%nat]), cs, P.
-      replace (P + 1)%nat with (S P) by lia.
-      iFrame "Htn' Hps' Hcs' HE'". iPureIntro. cbn [wr_banp_p]. by exists ps.
-    - cbn [wr_banp_p] in Hw. destruct Hw as (ps' & -> & Hw).
-      pose proof (wr_ban_byte_p ps' cs I P (S i) b Hw Hb) as Hby.
-      pose proof Hw as (Hpin & Hm & Hdv & Hr & _).
-      iApply ("Hw" $! k v (P + S i)%nat b (ps' ++ [3%nat]) cs I Φ
-                with "[%] [%] [%] Hpin Htn Hps Hcs HE [HΦ]").
-      { lia. }
-      { exact (pro_pin_p_mono ps' (ps' ++ [3%nat]) cs I ltac:(by eexists)
-                 Hpin). }
-      { exact Hby. }
-      iIntros "Hres". iApply "HΦ".
-      iDestruct "Hres" as "[(Htn' & Hps' & Hcs' & HE') | #HT]"; last by iRight.
-      iLeft. iExists (ps' ++ [3%nat]), cs, P.
-      replace (P + S (S i))%nat with (S (P + S i))%nat by lia.
-      iFrame "Htn' Hps' Hcs' HE'". iPureIntro. cbn [wr_banp_p]. by exists ps'.
-  Qed.
-
-  (* ONE BYTE OF THE BLOCK: the first FILES the alternative, the rest are
-     ordinary bytes of the block the choice fixed.  No admissibility
-     premise: [pab I a !! i = Some b] carries it ([pab_ok]). *)
-  Lemma pblk_step (k : nat) (v : era_pins) (I : list (bv 8)) (a i : nat)
-      (b : bv 8) (Φ : iProp Σ) :
-    pab I a !! i = Some b ->
-    era_pin γ k v -∗ pipe_links g -∗ pwc_blk k v I a i -∗
-    (pwc_blk k v I a (S i) -∗ Φ) -∗ out_link Uart0 k b Φ.
-  Proof using .
-    intros Hb. iIntros "#Hpin #Hlk Hc HΦ".
-    iDestruct (pipe_links_w with "Hlk") as "#Hw".
-    iDestruct (pipe_links_blk with "Hlk") as "#Hblk".
-    iDestruct (pipe_links_taint with "Hlk") as "#Ht".
-    pose proof (pab_ok I a i b Hb) as Hok.
-    pose proof (pab_nofork I a i b Hb) as Hfk.
-    rewrite /pwc_blk. iDestruct "Hc" as "[Hl | #HT]"; last first.
-    { iApply ("Ht" $! k b Φ with "HT [HΦ]").
-      iIntros "#HT'". iApply "HΦ". by iRight. }
-    iDestruct "Hl" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE)".
-    pose proof (proj1 Hw) as Hwb. pose proof Hwb as (Hpin & Hr & Hn & HP).
-    pose proof (wr_blk_nonnil_p ps cs I P Hwb) as Hne.
-    destruct i as [| i'].
-    - (* THE BLOCK-FIRST BYTE files the alternative *)
-      cbn [blkcs_p]. rewrite Nat.add_0_r.
-      iApply ("Hblk" $! k v P a b ps cs I Φ
-                with "[%] [%] [%] [%] [%] [%] [%] [%] Hpin Htn Hps Hcs HE [HΦ]").
-      { exact Hne. }
-      { exact Hr. }
-      { lia. }
-      { exact Hpin. }
-      { exact HP. }
-      { exact Hok. }
-      { exact Hfk. }
-      { rewrite (pab_is I a (conj Hok Hfk)) in Hb. exact Hb. }
-      iIntros "Hres". iApply "HΦ".
-      iDestruct "Hres" as "[(Htn' & Hps' & Hcs' & HE') | #HT]"; last by iRight.
-      iLeft. iExists ps, cs, P. cbn [blkcs_p]. rewrite Nat.add_1_r.
-      iFrame "Htn' Hps' Hcs' HE'". by iPureIntro.
-    - (* every byte after it, at the choice list the first one extended *)
-      cbn [blkcs_p].
-      iApply ("Hw" $! k v (P + S i')%nat b ps (cs ++ [a]) I Φ
-                with "[%] [%] [%] Hpin Htn Hps Hcs HE [HΦ]").
-      { rewrite (length_app cs [a]) Hn. cbn [length]. lia. }
-      { exact (wr_blk_pin_snoc_p ps cs I P a Hwb). }
-      { exact (wr_blk_byte_p ps cs I P a (S i') b Hwb Hb). }
-      iIntros "Hres". iApply "HΦ".
-      iDestruct "Hres" as "[(Htn' & Hps' & Hcs' & HE') | #HT]"; last by iRight.
-      iLeft. iExists ps, cs, P. cbn [blkcs_p].
-      replace (P + S (S i'))%nat with (S (P + S i'))%nat by lia.
-      iFrame "Htn' Hps' Hcs' HE'". by iPureIntro.
+    iIntros "H". iApply pwc_line_of_pro.
+    iApply (gwc_ban_done_pro pipe_lm pipe_params with "H").
   Qed.
 
   Lemma pwc_blk_sp k v I a :
     papr I a ->
     pwc_blk k v I a (length (pab I a) - 1)%nat -∗ pwc_sp_t k v I.
   Proof using .
-    intros Ha. rewrite /pwc_blk /pwc_sp_t. iIntros "[Hl | #HT]";
-      last by iRight.
-    iDestruct "Hl" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE)".
-    pose proof (pab_len_ge2 I a Ha) as Hlen.
-    assert (Hbc : blkcs_p cs a (length (pab I a) - 1) = cs ++ [a]).
-    { destruct (length (pab I a) - 1)%nat as [| kk] eqn:Hk;
-        [exfalso; lia | reflexivity]. }
-    rewrite Hbc.
-    iLeft. iExists ps, (cs ++ [a]), (P + (length (pab I a) - 1))%nat.
-    iFrame "Htn Hps Hcs HE". iPureIntro. exact (wr_blk_sp_p ps cs I P a Hw Ha).
+    intros Ha. rewrite pab_lm.
+    apply (gwc_blk_sp pipe_lm pipe_params k v I a (proj1 (papr_lm I a) Ha)).
   Qed.
 
-  (* ---- the shell's prompt, at the loose shapes ---- *)
-  Lemma pprompt_dollar (k : nat) (v : era_pins) (I : list (bv 8))
+  Lemma pblk_step (k : nat) (v : era_pins) (I : list (bv 8)) (a i : nat)
       (b : bv 8) (Φ : iProp Σ) :
+    pab I a !! i = Some b ->
+    era_pin γ k v -∗ pipe_links g -∗ pwc_blk k v I a i -∗
+    (pwc_blk k v I a (S i) -∗ Φ) -∗ out_link Uart0 k b Φ.
+  Proof using .
+    intros Hb.
+    apply (gblk_step pipe_lm pipe_params (pipe_links g) (pipe_links_persistent g)
+             pipe_links_gl k v I a i b Φ).
+    cbn [gK pipe_params]. by rewrite -pab_lm.
+  Qed.
+
+  (* the one-writer line is the generic line with the per-shape arm empty *)
+  Definition pipe_X0 (k : nat) (v : era_pins) (I : list (bv 8)) : iProp Σ := False%I.
+  Lemma pipe_X0_tl k v I : Timeless (pipe_X0 k v I).
+  Proof using . rewrite /pipe_X0. apply _. Qed.
+  Lemma pipe_X0_dollar (k : nat) (v : era_pins) (I : list (bv 8)) (b : bv 8)
+      (Φ : iProp Σ) :
     b = u_prompt !!! 0%nat ->
-    era_pin γ k v -∗ pipe_links g -∗ pwc_owed k v I -∗
-    (pwc_sp k v I -∗ Φ) -∗ out_link Uart0 k b Φ.
-  Proof using .
-    intros Hb. iIntros "#Hpin #Hlk Hc HΦ".
-    iDestruct (pipe_links_blk with "Hlk") as "#Hblk".
-    iDestruct (pipe_links_pro with "Hlk") as "#Hpro".
-    iDestruct (pipe_links_taint with "Hlk") as "#Ht".
-    rewrite /pwc_owed. iDestruct "Hc" as "[Hl | #HT]"; last first.
-    { iApply ("Ht" $! k b Φ with "HT [HΦ]").
-      iIntros "#HT'". iApply "HΦ". rewrite /pwc_sp. by iRight. }
-    iDestruct "Hl" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE)".
-    assert (Hhd : pro_alts !!! 0%nat !! 0%nat = Some b)
-      by (rewrite EchoLinks.wr_pro_alts_0 Hb; exact wr_prompt_head).
-    assert (Hhd2 : pcont (pline_at I) (palt_of (pnoc_of (pline_at I)))
-                     !! 0%nat = Some b)
-      by (rewrite (pcont_pnoc (pline_at I)) Hb; exact wr_prompt_head).
-    destruct Hw as [Hw | Hw].
-    - (* the round's prologue is open: the '$' files alternative 0 *)
-      pose proof (wr_pro_dollar_p ps cs I P Hw) as Hsp.
-      destruct Hw as (Hpin & Hm & Hdv & Hr & Hnd & HP).
-      iApply ("Hpro" $! k v P 0%nat b ps cs I Φ
-                with "[%] [%] [%] [%] [%] [%] [%] [%] Hpin Htn Hps Hcs HE [HΦ]").
-      { exact Hm. }
-      { exact Hr. }
-      { lia. }
-      { exact Hpin. }
-      { exact Hnd. }
-      { exact HP. }
-      { rewrite pro_alts_length. lia. }
-      { exact Hhd. }
-      iIntros "Hres". iApply "HΦ". rewrite /pwc_sp.
-      iDestruct "Hres" as "[(Htn' & Hps' & Hcs' & HE') | #HT]"; last by iRight.
-      iLeft. iExists (ps ++ [0%nat]), cs, (S P). iFrame "Htn' Hps' Hcs' HE'".
-      by iPureIntro.
-    - (* the round is settled: the '$' is the line's block, nobody chose *)
-      pose proof (wr_blk_dollar_p ps cs I P Hw) as Hsp.
-      pose proof (wr_blk_nonnil_p ps cs I P Hw) as Hne.
-      destruct Hw as (Hpin & Hm & Hdv & HP).
-      iApply ("Hblk" $! k v P (pnoc_of (pline_at I)) b ps cs I Φ
-                with "[%] [%] [%] [%] [%] [%] [%] [%] Hpin Htn Hps Hcs HE [HΦ]").
-      { exact Hne. }
-      { exact Hm. }
-      { lia. }
-      { exact Hpin. }
-      { exact HP. }
-      { exact (pnoc_of_ok (pline_at I)). }
-      { exact (pnoc_of_nofork (pline_at I)). }
-      { exact Hhd2. }
-      iIntros "Hres". iApply "HΦ". rewrite /pwc_sp.
-      iDestruct "Hres" as "[(Htn' & Hps' & Hcs' & HE') | #HT]"; last by iRight.
-      iLeft. iExists ps, (cs ++ [pnoc_of (pline_at I)]), (S P).
-      iFrame "Htn' Hps' Hcs' HE'". by iPureIntro.
-  Qed.
-
-  Lemma pprompt_space (k : nat) (v : era_pins) (I : list (bv 8))
-      (b : bv 8) (Φ : iProp Σ) :
-    b = u_prompt !!! 1%nat ->
-    era_pin γ k v -∗ pipe_links g -∗ pwc_sp k v I -∗
-    (pwc_open k v I -∗ Φ) -∗ out_link Uart0 k b Φ.
-  Proof using .
-    intros Hb. iIntros "#Hpin #Hlk Hc HΦ".
-    iDestruct (pipe_links_w with "Hlk") as "#Hw".
-    iDestruct (pipe_links_taint with "Hlk") as "#Ht".
-    rewrite /pwc_sp. iDestruct "Hc" as "[Hl | #HT]"; last first.
-    { iApply ("Ht" $! k b Φ with "HT [HΦ]").
-      iIntros "#HT'". iApply "HΦ". rewrite /pwc_open. by iRight. }
-    iDestruct "Hl" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE)".
-    destruct Hw as [Hop Hby].
-    pose proof Hop as (Hpin & Hm & Hdv & Hrd & HP).
-    iApply ("Hw" $! k v P b ps cs I Φ
-              with "[%] [%] [%] Hpin Htn Hps Hcs HE [HΦ]").
-    { lia. }
-    { exact Hpin. }
-    { rewrite Hby Hb. reflexivity. }
-    iIntros "Hres". iApply "HΦ". rewrite /pwc_open.
-    iDestruct "Hres" as "[(Htn' & Hps' & Hcs' & HE') | #HT]"; last by iRight.
-    iLeft. iExists ps, cs, (S P). iFrame "Htn' Hps' Hcs' HE'".
-    by iPureIntro.
-  Qed.
-
-  Lemma pprompt_dollar_ban (k : nat) (v : era_pins) (I : list (bv 8))
-      (b : bv 8) (Φ : iProp Σ) :
-    b = u_prompt !!! 0%nat ->
-    era_pin γ k v -∗ pipe_links g -∗ pwc_ban k v I 0%nat -∗
-    (pwc_sp k v I -∗ Φ) -∗ out_link Uart0 k b Φ.
-  Proof using .
-    intros Hb. iIntros "#Hpin #Hlk Hc HΦ".
-    iApply (pprompt_dollar k v I b Φ Hb with "Hpin Hlk [Hc] HΦ").
-    by iApply pwc_ban_owed.
-  Qed.
-
-  (* ---- the read ---- *)
-  Lemma pwc_read k v I l :
-    wl_nl ∉ l ->
-    inp_lb v (I ++ l ++ [wl_nl]) -∗ pwc_open k v I -∗
-    pwc_owed k v (I ++ l ++ [wl_nl]).
-  Proof using .
-    intros Hl. iIntros "#HE' Hc". rewrite /pwc_open /pwc_owed.
-    iDestruct "Hc" as "[Hl | #HT]"; last by iRight.
-    iDestruct "Hl" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE)".
-    iLeft. iExists ps, cs, P. iFrame "Htn Hps Hcs HE'".
-    iPureIntro. right. exact (wr_open_read_p ps cs I P l Hw Hl).
-  Qed.
-
-  Lemma pwc_read_t k v I a l :
-    wl_nl ∉ l ->
-    inp_lb v (I ++ l ++ [wl_nl]) -∗ pwc_open_t k v I -∗
-    pwc_blk k v (I ++ l ++ [wl_nl]) a 0%nat.
-  Proof using .
-    intros Hl. iIntros "#HE' Hc". rewrite /pwc_open_t /pwc_blk.
-    iDestruct "Hc" as "[Hl | #HT]"; last by iRight.
-    iDestruct "Hl" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE)".
-    iLeft. iExists ps, cs, P. cbn [blkcs_p]. rewrite Nat.add_0_r.
-    iFrame "Htn Hps Hcs HE'". iPureIntro.
-    exact (wr_open_read_t_p ps cs I P l Hw Hl).
-  Qed.
-
-  (* ---- the shell's prompt, at the tight shapes ---- *)
-  Lemma pprompt_dollar_post (k : nat) (v : era_pins) (I : list (bv 8))
-      (a : nat) (b : bv 8) (Φ : iProp Σ) :
-    papr I a -> b = u_prompt !!! 0%nat ->
-    era_pin γ k v -∗ pipe_links g -∗ pwc_post k v I a -∗
+    era_pin γ k v -∗ pipe_links g -∗ pipe_X0 k v I -∗
     (pwc_sp_t k v I -∗ Φ) -∗ out_link Uart0 k b Φ.
-  Proof using .
-    intros Ha Hb. iIntros "#Hpin #Hlk Hc HΦ".
-    pose proof (pab_len_ge2 I a Ha) as Hlen.
-    assert (Hby : pab I a !! (length (pab I a) - 2)%nat = Some b)
-      by (rewrite Hb; exact (pab_dollar I a Ha)).
-    iApply (pblk_step k v I a (length (pab I a) - 2)%nat b Φ Hby
-              with "Hpin Hlk Hc [HΦ]").
-    iIntros "Hc". iApply "HΦ".
-    replace (S (length (pab I a) - 2))%nat
-      with (length (pab I a) - 1)%nat by lia.
-    iApply (pwc_blk_sp k v I a Ha with "Hc").
-  Qed.
+  Proof using . iIntros (_) "_ _ [] _". Qed.
 
-  Lemma pprompt_space_t (k : nat) (v : era_pins) (I : list (bv 8))
-      (b : bv 8) (Φ : iProp Σ) :
-    b = u_prompt !!! 1%nat ->
-    era_pin γ k v -∗ pipe_links g -∗ pwc_sp_t k v I -∗
-    (pwc_open_t k v I -∗ Φ) -∗ out_link Uart0 k b Φ.
+  Lemma pwc_line_gen k v I :
+    pwc_line k v I -∗ gwc_line pipe_lm pipe_params pipe_X0 k v I.
   Proof using .
-    intros Hb. iIntros "#Hpin #Hlk Hc HΦ".
-    iDestruct (pipe_links_w with "Hlk") as "#Hw".
-    iDestruct (pipe_links_taint with "Hlk") as "#Ht".
-    rewrite /pwc_sp_t. iDestruct "Hc" as "[Hl | #HT]"; last first.
-    { iApply ("Ht" $! k b Φ with "HT [HΦ]").
-      iIntros "#HT'". iApply "HΦ". by iApply pwc_open_t_taint. }
-    iDestruct "Hl" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE)".
-    destruct Hw as [[Hop Hby] Ht].
-    pose proof Hop as (Hpin & Hr & Hn & Hrd & HP).
-    iApply ("Hw" $! k v P b ps cs I Φ
-              with "[%] [%] [%] Hpin Htn Hps Hcs HE [HΦ]").
-    { lia. }
-    { exact Hpin. }
-    { rewrite Hby Hb. reflexivity. }
-    iIntros "Hres". iApply "HΦ". rewrite /pwc_open_t.
-    iDestruct "Hres" as "[(Htn' & Hps' & Hcs' & HE') | #HT]"; last by iRight.
-    iLeft. iExists ps, cs, (S P). iFrame "Htn' Hps' Hcs' HE'".
-    iPureIntro. exact (wr_sp_open_t_p ps cs I P (conj (conj Hop Hby) Ht)).
+    rewrite /pwc_line /gwc_line. iIntros "[Hc | Hc]"; [by iLeft |].
+    iDestruct "Hc" as (a) "[%Ha Hc]". iRight. iLeft. iExists a.
+    iSplitR; [by iPureIntro |]. by rewrite (pwc_post_gen k v I a Ha).
   Qed.
 
   Lemma pprompt_dollar_line (k : nat) (v : era_pins) (I : list (bv 8))
@@ -1574,251 +1485,23 @@ Section pipe_links_line.
     (pwc_sp_t k v I -∗ Φ) -∗ out_link Uart0 k b Φ.
   Proof using .
     intros Hb. iIntros "#Hpin #Hlk Hc HΦ".
-    rewrite /pwc_line. iDestruct "Hc" as "[Hc | Hc]"; last first.
-    { iDestruct "Hc" as (a) "[%Ha Hc]".
-      iApply (pprompt_dollar_post k v I a b Φ Ha Hb with "Hpin Hlk Hc HΦ"). }
-    iDestruct (pipe_links_pro with "Hlk") as "#Hpro".
-    iDestruct (pipe_links_taint with "Hlk") as "#Ht".
-    rewrite /pwc_pro. iDestruct "Hc" as "[Hl | #HT]"; last first.
-    { iApply ("Ht" $! k b Φ with "HT [HΦ]").
-      iIntros "#HT'". iApply "HΦ". by iApply pwc_sp_t_taint. }
-    iDestruct "Hl" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE)".
-    assert (Hhd : pro_alts !!! 0%nat !! 0%nat = Some b)
-      by (rewrite EchoLinks.wr_pro_alts_0 Hb; exact wr_prompt_head).
-    pose proof (wr_pro_dollar_t_p ps cs I P Hw) as Hsp.
-    destruct Hw as (Hpin & Hr & Hn & Hopen & Hnd & HP).
-    iApply ("Hpro" $! k v P 0%nat b ps cs I Φ
-              with "[%] [%] [%] [%] [%] [%] [%] [%] Hpin Htn Hps Hcs HE [HΦ]").
-    { exact Hr. }
-    { exact Hopen. }
-    { lia. }
-    { exact Hpin. }
-    { exact Hnd. }
-    { exact HP. }
-    { rewrite pro_alts_length. lia. }
-    { exact Hhd. }
-    iIntros "Hres". iApply "HΦ". rewrite /pwc_sp_t.
-    iDestruct "Hres" as "[(Htn' & Hps' & Hcs' & HE') | #HT]"; last by iRight.
-    iLeft. iExists (ps ++ [0%nat]), cs, (S P). iFrame "Htn' Hps' Hcs' HE'".
-    by iPureIntro.
-  Qed.
-
-  (* ---- the panic's end: the next round's banner is owed ---- *)
-  Lemma pwc_panic_done k v I :
-    pwc_blk k v I 3%nat (length (pab I 3%nat)) -∗ pwc_ban k v I 0%nat.
-  Proof using .
-    rewrite /pwc_blk /pwc_ban. iIntros "[Hl | #HT]"; last by iRight.
-    iDestruct "Hl" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE)".
-    assert (Hbc : blkcs_p cs 3%nat (length (pab I 3%nat)) = cs ++ [3%nat]).
-    { destruct (length (pab I 3%nat)) as [| kk] eqn:Hk; [| reflexivity].
-      exfalso. rewrite pab_pan lb_panic_len in Hk. discriminate. }
-    rewrite Hbc.
-    iLeft. iExists ps, (cs ++ [3%nat]), (P + length (pab I 3%nat))%nat.
-    rewrite Nat.add_0_r. iFrame "Htn Hps Hcs HE". iPureIntro.
-    exact (wr_blk_ban_p ps cs I P Hw).
-  Qed.
-
-  (* ---- the discipline lemma, as the shell spends it ---- *)
-  Lemma powed_read_taint (k : nat) (v : era_pins) (n : nat)
-      (I : list (bv 8)) (ws : list (list mobs * bv 8)) :
-    length I = n -> (0 < length ws)%nat ->
-    pwc_owed k v I -∗ pread_ret g k v n ws -∗ PT.
-  Proof using .
-    intros HIn Hws. iIntros "Hc Hr".
-    rewrite /pwc_owed. iDestruct "Hc" as "[Hl | #HT]"; last by iExact "HT".
-    iDestruct "Hl" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE)".
-    rewrite /pread_ret. iDestruct "Hr" as "[[#HT Hdl] | [Hdlr Hfacts]]";
-      [by iExact "HT" |].
-    iDestruct "Hfacts" as (pops dl)
-      "(%Hrok & %Hdl & %Hpref & %Hidx & %Hdsc & #Hinp & %Hdi & Hrest)".
-    iDestruct "Hrest" as "[%Hws0 | Hbb]".
-    { exfalso. rewrite Hws0 in Hws. cbn in Hws. lia. }
-    iDestruct "Hbb" as (cs0 ps0) "(#Hcs0 & #Hps0 & %Hbd & #Htlb & %Hrs)".
-    iDestruct (ps_lb_cmp with "Hps Hps0") as %Hpsc.
-    iDestruct (cs_lb_cmp with "Hcs Hcs0") as %Hcsc.
-    iDestruct (turn_lb_le with "Htn Htlb") as %Hle.
-    iDestruct (inp_lb_cmp with "HE Hinp") as %Hic.
-    iExFalso. iPureIntro.
-    assert (Hlen : length (snd <$> (dl ++ ws)) = (n + length ws)%nat).
-    { by rewrite length_fmap length_app Hdl. }
-    assert (HI : I `prefix_of` (snd <$> (dl ++ ws))).
-    { destruct Hic as [Hc | Hc]; [exact Hc |].
-      exfalso. apply prefix_length in Hc. lia. }
-    assert (Hne : I <> (snd <$> (dl ++ ws)))
-      by (intros Hq; rewrite Hq Hlen in HIn; lia).
-    exact (wr_owed_read_refute_p ps cs ps0 cs0 I (snd <$> (dl ++ ws)) P Hw
-             HI Hne Hrs Hpsc Hcsc Hle).
-  Qed.
-
-  Lemma pban_read_taint (k : nat) (v : era_pins) (I l : list (bv 8)) :
-    wl_nl ∉ l ->
-    pwc_ban k v I 0%nat -∗ pwc_rres v (I ++ l ++ [wl_nl]) -∗ PT.
-  Proof using .
-    intro Hnl. iIntros "Hb #Hres".
-    rewrite /pwc_ban. iDestruct "Hb" as "[Hl | #HT]"; [| iExact "HT"].
-    iDestruct "Hl" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & _)".
-    cbn [wr_banp_p] in Hw. rewrite Nat.add_0_r.
-    rewrite /pwc_rres.
-    iDestruct "Hres" as (ps0 cs0) "(%Hrd & #Htlb & #Hps0 & #Hcs0)".
-    iDestruct (turn_lb_le v P _ with "Htn Htlb") as %Hle.
-    iDestruct (ps_lb_cmp v ps ps0 with "Hps Hps0") as %Hpsc.
-    iDestruct (cs_lb_cmp v cs cs0 with "Hcs Hcs0") as %Hcsc.
-    iExFalso. iPureIntro.
-    assert (Hpre : I `prefix_of` (I ++ l ++ [wl_nl])) by (by eexists).
-    assert (Hne : I <> I ++ l ++ [wl_nl]).
-    { intro Heq. apply (f_equal length) in Heq.
-      rewrite !length_app length_cons in Heq. lia. }
-    exact (wr_owed_read_refute_p ps cs ps0 cs0 I (I ++ l ++ [wl_nl]) P
-             (or_introl (wr_ban_pro_p ps cs I P Hw))
-             Hpre Hne Hrd Hpsc Hcsc Hle).
-  Qed.
-
-  (* ---- the era's turn comes apart ---- *)
-  Lemma pturn0 (k : nat) :
-    pturn_pre k -∗
-    (∃ v : era_pins, era_pin γ k v ∗ dl_cnt v (1/2) 0%nat ∗ inp_lb v [])
-    ∗ (∃ v : era_pins, era_pin γ k v ∗ pwc_ban k v [] 0%nat).
-  Proof using .
-    rewrite /pturn_pre /PipeOut.pturn /eturn. iIntros "Hturn".
-    iDestruct "Hturn" as (v) "(#Hpin & Htn & Hdl & #Hcs & #Hps & #HE)".
-    iSplitL "Hdl"; [iExists v; by iFrame "Hpin Hdl HE" | ].
-    iExists v. iFrame "Hpin".
-    rewrite /pwc_ban. iLeft. iExists [], [], 0%nat.
-    rewrite Nat.add_0_r. iFrame "Htn Hps Hcs HE".
-    iPureIntro. exact wr_ban_round0_p.
-  Qed.
-
-  Lemma pi_pin_epin (k : nat) (v : era_pins) :
-    era_pin γ k v -∗ era_pin γ k v.
-  Proof using . by iIntros "$". Qed.
-
-  (* =================================================================== *)
-  (*  S7  /INIT'S PROLOGUE DIAGNOSTICS ([EchoLinksPro] at this stage)      *)
-  (* =================================================================== *)
-  Definition pwc_pban (k : nat) (v : era_pins) (I : list (bv 8)) : iProp Σ :=
-    ((∃ ps cs P : _, ⌜wr_pban_p ps cs I P⌝ ∗ turn v P ∗ ps_lb v ps
-        ∗ cs_lb v cs ∗ inp_lb v I) ∨ PT)%I.
-
-  Definition pwc_pdg (k : nat) (v : era_pins) (I : list (bv 8)) (a i : nat)
-    : iProp Σ :=
-    ((∃ ps cs P : _, ⌜wr_pdiag_p ps cs I P a i⌝ ∗ turn v P ∗ ps_lb v ps
-        ∗ cs_lb v cs ∗ inp_lb v I) ∨ PT)%I.
-
-  Definition pwc_pdiag (k : nat) (v : era_pins) (I : list (bv 8)) (a i : nat)
-    : iProp Σ :=
-    match i with
-    | O => pwc_pban k v I
-    | S _ => pwc_pdg k v I a i
-    end.
-
-  Global Instance pwc_pban_timeless k v I : Timeless (pwc_pban k v I).
-  Proof using . rewrite /pwc_pban. tl_leaf. Qed.
-  Global Instance pwc_pdg_timeless k v I a i : Timeless (pwc_pdg k v I a i).
-  Proof using . rewrite /pwc_pdg. tl_leaf. Qed.
-  Global Instance pwc_pdiag_timeless k v I a i :
-    Timeless (pwc_pdiag k v I a i).
-  Proof using .
-    rewrite /pwc_pdiag. destruct i;
-      [apply pwc_pban_timeless | apply pwc_pdg_timeless].
-  Qed.
-
-  Lemma pwc_pban_taint k v I : PT -∗ pwc_pban k v I.
-  Proof using . iIntros "HT". rewrite /pwc_pban. by iRight. Qed.
-
-  Lemma pwc_pdiag_taint k v I a i : PT -∗ pwc_pdiag k v I a i.
-  Proof using .
-    iIntros "HT". rewrite /pwc_pdiag. destruct i.
-    - by iApply pwc_pban_taint.
-    - rewrite /pwc_pdg. by iRight.
-  Qed.
-
-  Lemma pwc_pdiag_0 k v I a : pwc_pban k v I -∗ pwc_pdiag k v I a 0%nat.
-  Proof using . by iIntros "$". Qed.
-
-  Lemma pwc_pban_of_ban_done k v I :
-    pwc_ban k v I (length u_banner) -∗ pwc_pban k v I.
-  Proof using .
-    rewrite /pwc_ban /pwc_pban. iIntros "[Hl | #HT]"; last by iRight.
-    iDestruct "Hl" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE)".
-    assert (H18 : length u_banner = 18%nat) by (vm_compute; reflexivity).
-    rewrite H18 in Hw. cbn [wr_banp_p] in Hw. destruct Hw as (ps' & -> & Hw).
-    iLeft. iExists (ps' ++ [3%nat]), cs, (P + length u_banner)%nat.
-    iFrame "Htn Hps Hcs HE". iPureIntro. exact (wr_pban_of_ban_p ps' cs I P Hw).
-  Qed.
-
-  Lemma pwc_pro_of_pban k v I : pwc_pban k v I -∗ pwc_pro k v I.
-  Proof using .
-    rewrite /pwc_pban /pwc_pro. iIntros "[Hl | #HT]"; last by iRight.
-    iDestruct "Hl" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE)".
-    iLeft. iExists ps, cs, P. iFrame "Htn Hps Hcs HE". iPureIntro.
-    exact (proj1 Hw).
-  Qed.
-
-  Lemma ppdiag_step (k : nat) (v : era_pins) (I : list (bv 8)) (a i : nat)
-      (b : bv 8) (Φ : iProp Σ) :
-    pro_alts !!! a !! i = Some b ->
-    era_pin γ k v -∗ pipe_links g -∗ pwc_pdiag k v I a i -∗
-    (pwc_pdiag k v I a (S i) -∗ Φ) -∗ out_link Uart0 k b Φ.
-  Proof using .
-    intros Hb. iIntros "#Hpin #Hlk Hc HΦ".
-    iDestruct (pipe_links_w with "Hlk") as "#Hw".
-    iDestruct (pipe_links_pro with "Hlk") as "#Hpro".
-    iDestruct (pipe_links_taint with "Hlk") as "#Ht".
-    pose proof (EchoLinksPro.pro_alts_lt_of_lookup a i b Hb) as Ha.
-    destruct i as [| i].
-    - rewrite /pwc_pdiag /pwc_pban /pwc_pdg.
-      iDestruct "Hc" as "[Hl | #HT]"; last first.
-      { iApply ("Ht" $! k b Φ with "HT [HΦ]").
-        iIntros "#HT'". iApply "HΦ". by iRight. }
-      iDestruct "Hl" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE)".
-      pose proof (wr_pdiag_1_of_pro_p ps cs I P a Hw) as Hw'.
-      destruct Hw as ((Hpin & Hm & Hdv & Hr & Hnd & HP) & _).
-      iApply ("Hpro" $! k v P a b ps cs I Φ
-                with "[%] [%] [%] [%] [%] [%] [%] [%] Hpin Htn Hps Hcs HE [HΦ]").
-      { exact Hm. }
-      { exact Hr. }
-      { lia. }
-      { exact Hpin. }
-      { exact Hnd. }
-      { exact HP. }
-      { exact Ha. }
-      { exact Hb. }
-      iIntros "Hres". iApply "HΦ".
-      iDestruct "Hres" as "[(Htn' & Hps' & Hcs' & HE') | #HT]"; last by iRight.
-      iLeft. iExists (ps ++ [a]), cs, (S P). iFrame "Htn' Hps' Hcs' HE'".
-      by iPureIntro.
-    - rewrite /pwc_pdiag /pwc_pdg.
-      iDestruct "Hc" as "[Hl | #HT]"; last first.
-      { iApply ("Ht" $! k b Φ with "HT [HΦ]").
-        iIntros "#HT'". iApply "HΦ". by iRight. }
-      iDestruct "Hl" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE)".
-      pose proof (wr_pdiag_byte_p ps cs I P a (S i) b Hw Hb) as Hby.
-      pose proof (wr_pdiag_S_p ps cs I P a (S i) Hw) as Hw'.
-      destruct Hw as (Hpin & Hm & Hdv & Hr & _).
-      iApply ("Hw" $! k v P b ps cs I Φ
-                with "[%] [%] [%] Hpin Htn Hps Hcs HE [HΦ]").
-      { lia. }
-      { exact Hpin. }
-      { exact Hby. }
-      iIntros "Hres". iApply "HΦ".
-      iDestruct "Hres" as "[(Htn' & Hps' & Hcs' & HE') | #HT]"; last by iRight.
-      iLeft. iExists ps, cs, (S P). iFrame "Htn' Hps' Hcs' HE'".
-      by iPureIntro.
-  Qed.
-
-  Lemma pwc_pdiag_done_1 (k : nat) (v : era_pins) (I : list (bv 8))
-      (i : nat) :
-    i = length (pro_alts !!! 1%nat) ->
-    pwc_pdiag k v I 1%nat i -∗ pwc_ban k v I 0%nat.
-  Proof using .
-    intros Hi. rewrite Hi EchoLinksPro.pro_alts_1_length.
-    rewrite /pwc_pdiag /pwc_pdg /pwc_ban.
-    iIntros "[Hl | #HT]"; last by iRight.
-    iDestruct "Hl" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE)".
-    iLeft. iExists ps, cs, P. rewrite Nat.add_0_r. iFrame "Htn Hps Hcs HE".
-    iPureIntro. cbn [wr_banp_p].
-    exact (wr_pdiag_done_1_p ps cs I P 21%nat
-             (eq_sym EchoLinksPro.pro_alts_1_length) Hw).
+    iApply (gprompt_dollar_line pipe_lm pipe_params pipe_X0 (pipe_links g)
+              (pipe_links_persistent g) pipe_links_gl pipe_X0_dollar k v I b Φ Hb
+              with "Hpin Hlk [Hc] HΦ").
+    iApply (pwc_line_gen with "Hc").
   Qed.
 
 End pipe_links_line.
+
+(* THE FAMILY NAMES, at the fixed part: abbreviations of the generic
+   families at [pipe_params] (printed back as [pwc_* g]) *)
+Notation pwc_pro g := (gwc_pro pipe_lm (pipe_params g)).
+Notation pwc_blk g := (gwc_blk pipe_lm (pipe_params g)).
+Notation pwc_owed g := (gwc_owed pipe_lm (pipe_params g)).
+Notation pwc_sp g := (gwc_sp pipe_lm (pipe_params g)).
+Notation pwc_open g := (gwc_open pipe_lm (pipe_params g)).
+Notation pwc_sp_t g := (gwc_sp_t pipe_lm (pipe_params g)).
+Notation pwc_open_t g := (gwc_open_t pipe_lm (pipe_params g)).
+Notation pwc_ban g := (gwc_ban pipe_lm (pipe_params g)).
+Notation pwc_lend g := (gwc_lend pipe_lm (pipe_params g)).
+Notation pwc_pr g := (gwc_pr pipe_lm (pipe_params g)).

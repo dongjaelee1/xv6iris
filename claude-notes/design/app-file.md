@@ -639,8 +639,9 @@ unowned critical item (WRITE-RELAY-3's `TB` guard).  RULES, replacing
   reading on both sides of `mknod_acre_inst`; a directory create owes `Nd`
   everywhere; the node separates the deed's row from the arm's, only the
   credential separates the console's); the prologue diagnostic family is
-  based on `fwc_pban_at`, not `fwc_pro_at` (the file loses echo's `j` at
-  `fwc_ban_done_pro_at`); `file_Wbf_at_of_boot` = /init's first credential
+  based on the banner-pending diagnostic family, not the prologue (the
+  file loses echo's `j` at the banner's end; `GenLinksLine.gwc_pban` /
+  `gwc_pro` since app-both M2c); `file_Wbf_at_of_boot` = /init's first credential
   out of `file_boot` alone.  `sh_hold_at` exists twice (UShRound's and
   UInitFileCons's, syntactically the same); the round's wins at the
   assembly.  Round 5 (989ca2114): the `pdiag` field set (eleven fields,
@@ -666,14 +667,17 @@ unowned critical item (WRITE-RELAY-3's `TB` guard).  RULES, replacing
   tied to the era's boot state BY A SHARED INDEX, not by `f0_lb` (which
   only exists after the era's first console byte, so `Wbf []` was
   uninhabitable at /init's first instruction).  The boot state is an ERA
-  CONSTANT: `file_link_inst_at (s0 : fstate) : LinkRec` at the `fwc_*_at s0`
-  families (`file_link_inst` its `∃ s0` packing), the round's section takes
+  CONSTANT: `file_link_inst_at (s0 : fstate) : LinkRec` at the families
+  indexed by `s0` (since app-both M2c: `GenLinksLine` at
+  `FileLinkGen.file_params_at s0`, whose witness is `f0w ∗ ⌜s = s0⌝`;
+  `file_link_inst` its `∃ s0` packing), the round's section takes
   `s0` beside `gen_id`, `Wcf I p := lk_lcred FI (S gen_id) I p ∗
   sh_hold_at s0 I` with no `f0_lb` in the hold; /init instantiates at
   `s0 := dst_content s_deed`.  Refused on the way: an era-head arm on
   `sh_hold` (names nothing), `∃ s0` outside the credential (breaks the
   dischargers' `lcred ∗ Hold` form).  Landed by INIT-FILE round 2
-  (`FileLinksAt.v`, `FileLinksAtBan.v`, `FileLinksAtLine.v`,
+  (`FileLinksAt.v` and, until app-both M2c part 2 retired them for the
+  generic section, `FileLinksAtBan.v`/`FileLinksAtLine.v`/`FileLinksAtPro.v`;
   `FileLinkInst.file_link_inst_at`, `file_Wbl_at_of_boot`; the taint arm
   names no state, so /init takes `s0 := None` under it).
 - RULING NM (2026-09-18, INIT-FILE findings 3.4): the generic create

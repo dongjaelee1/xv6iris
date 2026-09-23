@@ -89,6 +89,7 @@ Require Import PipeBoth.
 Require Import PipeLinks.
 Require Import PipeLinksLine.
 Require Import PipeLinkInst.
+Require Import GenLinksLine.
 Require Import PipeStageInst.
 Require Import UCodeShK.
 Require Import UkSh.
@@ -441,7 +442,7 @@ Section UShPipeLaw.
     PipeLinksLine.pwc_blk g k v I a i -∗
     PipeLinksLine.pwc_blk g k v I a i ∗ (inp_lb v I ∨ T).
   Proof using .
-    rewrite /PipeLinksLine.pwc_blk. iIntros "[Hl | #HT]"; last first.
+    rewrite pwc_blk_view. iIntros "[Hl | #HT]"; last first.
     { iSplit; [ iRight; iExact "HT" | iRight; iExact "HT" ]. }
     iDestruct "Hl" as (ps cs P) "(%Hw & Ht & #Hps & #Hcs & #HE)".
     iSplitL "Ht".
@@ -456,7 +457,7 @@ Section UShPipeLaw.
   Proof using .
     rewrite /pipe_Wcl_at (pipe_inst_lcred g (S gen_id) I 3%nat).
     iIntros "H". iDestruct "H" as (v) "[#Hpin Hc]".
-    cbn [PipeBoth.pwc_lpr2] in *.
+    cbn [gwc_lpr] in *.
     iDestruct (pwc_blk_inp (S gen_id) v I 0%nat 0%nat with "Hc") as "[Hc Hi]".
     iSplitL "Hc"; [ iExists v; iFrame "Hpin Hc" | ].
     iDestruct "Hi" as "[HE | HT]";
@@ -532,7 +533,7 @@ Section UShPipeLaw.
     rewrite /pipe_Wcl_at (pipe_inst_lcred g (S gen_id) I 3%nat).
     iDestruct "Hc" as (v') "[#Hpin' Hc]".
     iDestruct (era_pin_agree with "Hpin' Hpin") as %->.
-    cbn [PipeBoth.pwc_lpr2] in *.
+    cbn [gwc_lpr] in *.
     iMod (blk2_inv_alloc_at ⊤ v I L gL gR gM (pl_XL pn) (pl_YR pn L)
             Hline with "HgL1 HgR1 HgM1 [Hc]") as "#Hinv".
     { iApply (PipeLinksLine.pwc_lend_of_blk0 g (S gen_id) v I 0%nat

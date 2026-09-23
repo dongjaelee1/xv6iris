@@ -84,6 +84,8 @@ Require Import AppEcho.
 Require Import PipeOut.
 Require Import PipeLinks.
 Require Import PipeLinksLine.
+Require Import LinkRec.
+Require Import GenLinksLine.
 Require Import RiscvPtsto.
 Require Import WpUart.
 Require Import CtxIdDefs.
@@ -519,7 +521,7 @@ Section pipe_both.
     pboth_line I ->
     pwc_lend g k v I -∗ pwc_blk2 k v I R [] 0%nat 0%nat tm.
   Proof using .
-    intros Hl. iIntros "Hc". rewrite /pwc_lend /pwc_blk2.
+    intros Hl. iIntros "Hc". rewrite pwc_lend_view /pwc_blk2.
     iDestruct "Hc" as "[Hx | #HT]"; last by iRight.
     iDestruct "Hx" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE)".
     iLeft. iExists ps, cs, P.
@@ -1025,7 +1027,7 @@ Section pipe_both.
     intros Hcode Hnn Hb. iIntros "#HF #Ht #Hpin Hc HΦ".
     rewrite {1}/pwc_blk2. iDestruct "Hc" as "[Hx | #HT]"; last first.
     { iApply ("Ht" $! k b Φ with "HT [HΦ]").
-      iIntros "#HT'". iApply "HΦ". rewrite /pwc_sp_t. by iRight. }
+      iIntros "#HT'". iApply "HΦ". rewrite pwc_sp_t_view. by iRight. }
     iDestruct "Hx"
       as (ps cs P) "(%Hw & %Htl & Htn & #Hps & #Hcs & Hled & #HE)".
     pose proof (wr_blk2_p_sel_wf ps cs I P R sel c1 c2 Hw) as Hwf.
@@ -1040,9 +1042,9 @@ Section pipe_both.
     iModIntro. iExists o. rewrite pbchist_at0. iFrame "Hlb Hres".
     iApply "HΦ".
     iDestruct "Hret" as "[[Htn #Hcs'] | #HT]";
-      last by (rewrite /pwc_sp_t; iRight).
+      last by (rewrite pwc_sp_t_view; iRight).
     iApply (pwc_blk_sp g k v I a Hpapr).
-    rewrite /pwc_blk Hab. iLeft. iExists ps, cs, P.
+    rewrite pwc_blk_view Hab. iLeft. iExists ps, cs, P.
     replace (S (S (c1 + c2)) - 1)%nat with (S (c1 + c2))%nat by lia.
     cbn [blkcs_p].
     replace (P + S (c1 + c2))%nat with (S (P + c1 + c2))%nat by lia.
@@ -2079,7 +2081,7 @@ Section pipe_both.
     intros Hcode Hnn Hb. iIntros "#HF #Ht #Hpin Hc HΦ".
     rewrite {1}/pwc_blk2. iDestruct "Hc" as "[Hx | #HT]"; last first.
     { iApply ("Ht" $! k b Φ with "HT [HΦ]").
-      iIntros "#HT'". iApply "HΦ". rewrite /pwc_sp_t. by iRight. }
+      iIntros "#HT'". iApply "HΦ". rewrite pwc_sp_t_view. by iRight. }
     iDestruct "Hx"
       as (ps cs P) "(%Hw & %Htl & Htn & #Hps & #Hcs & Hled & #HE)".
     pose proof (wr_blk2_p_sel_wf ps cs I P R sel c1 c2 Hw) as Hwf.
@@ -2102,9 +2104,9 @@ Section pipe_both.
         by (rewrite Hlb; lia). iExact "Htn". }
     iIntros "Hret". iApply "HΦ".
     iDestruct "Hret" as "[(Htn & _ & #Hcs' & _) | #HT]";
-      last by (rewrite /pwc_sp_t; iRight).
+      last by (rewrite pwc_sp_t_view; iRight).
     iApply (pwc_blk_sp g k v I a Hpapr).
-    rewrite /pwc_blk Hab. iLeft. iExists ps, cs, P.
+    rewrite pwc_blk_view Hab. iLeft. iExists ps, cs, P.
     replace (S (S (c1 + c2)) - 1)%nat with (S (c1 + c2))%nat by lia.
     cbn [blkcs_p].
     replace (P + S (c1 + c2))%nat with (S (P + length (pend2 R sel)))%nat
@@ -2115,33 +2117,55 @@ Section pipe_both.
 
   (* THE WIDENED CREDENTIAL.  [PipeLinksLine.pwc_line]'s two arms, and a
      THIRD: the round's block COMPLETE but not yet filed. *)
-  Definition pwc_line2 (k : nat) (v : era_pins) (I : list (bv 8))
-    : iProp Σ :=
+  (* THE PER-SHAPE LINE ARM ([GenLinksLine]'s [X] at the pipeline): the
+     terminal round's block, written by two processes at the two cursors
+     and not yet filed *)
+  Definition pipe_X (k : nat) (v : era_pins) (I : list (bv 8)) : iProp Σ :=
+    (∃ (R : list (bv 8)) (sel : list bool) (c1 c2 a : nat),
+       ⌜pblk2_code I R sel a⌝ ∗ ⌜sel <> []⌝
+       ∗ pwc_blk2 k v I R sel c1 c2 false)%I.
+
+  Global Instance pipe_X_timeless k v I : Timeless (pipe_X k v I).
+  Proof using .
+    rewrite /pipe_X.
+    apply bi.exist_timeless; intro R.
+    apply bi.exist_timeless; intro sel.
+    apply bi.exist_timeless; intro c1.
+    apply bi.exist_timeless; intro c2.
+    apply bi.exist_timeless; intro a.
+    apply bi.sep_timeless; [apply bi.pure_timeless |].
+    apply bi.sep_timeless; [apply bi.pure_timeless | apply pwc_blk2_timeless].
+  Qed.
+
+  (* THE RECORD'S LINE CREDENTIAL, WIDENED (SH-PIPE-ROUND-4): the generic
+     line at the pipeline's parameters with this arm -- an abbreviation,
+     [pwc_line2 g] after the section -- and the pipeline's reading of it *)
+  Local Notation pwc_line2 := (gwc_line pipe_lm (pipe_params g) pipe_X).
+  Local Notation pwc_lpr2 := (gwc_lpr pipe_lm (pipe_params g) pipe_X).
+
+  Lemma pwc_line2_view k v I :
+    pwc_line2 k v I ⊣⊢
     (pwc_pro g k v I
      ∨ (∃ a : nat, ⌜papr I a⌝ ∗ pwc_post g k v I a)
-     ∨ (∃ (R : list (bv 8)) (sel : list bool) (c1 c2 a : nat),
-          ⌜pblk2_code I R sel a⌝ ∗ ⌜sel <> []⌝
-          ∗ pwc_blk2 k v I R sel c1 c2 false))%I.
-
-  Global Instance pwc_line2_timeless k v I : Timeless (pwc_line2 k v I).
+     ∨ pipe_X k v I)%I.
   Proof using .
-    rewrite /pwc_line2.
-    apply bi.or_timeless; [apply pwc_pro_timeless |].
-    apply bi.or_timeless.
-    - apply bi.exist_timeless; intro a.
-      apply bi.sep_timeless; [apply bi.pure_timeless | apply pwc_post_timeless].
-    - apply bi.exist_timeless; intro R.
-      apply bi.exist_timeless; intro sel.
-      apply bi.exist_timeless; intro c1.
-      apply bi.exist_timeless; intro c2.
-      apply bi.exist_timeless; intro a.
-      apply bi.sep_timeless; [apply bi.pure_timeless |].
-      apply bi.sep_timeless; [apply bi.pure_timeless | apply pwc_blk2_timeless].
+    rewrite /gwc_line. apply bi.equiv_entails; split.
+    - iIntros "[H | [H | H]]"; [by iLeft | | by iRight; iRight].
+      iDestruct "H" as (a) "[%Ha H]". iRight. iLeft. iExists a.
+      iSplitR; [by iPureIntro |]. rewrite (pwc_post_gen g k v I a Ha). iExact "H".
+    - iIntros "[H | [H | H]]"; [by iLeft | | by iRight; iRight].
+      iDestruct "H" as (a) "[%Ha H]". iRight. iLeft. iExists a.
+      iSplitR; [by iPureIntro |]. rewrite (pwc_post_gen g k v I a Ha). iExact "H".
+  Qed.
+
+  Lemma pwc_line2_timeless k v I : Timeless (pwc_line2 k v I).
+  Proof using .
+    apply (gwc_line_timeless pipe_lm (pipe_params g) pipe_X pipe_X_timeless).
   Qed.
 
   Lemma pwc_line2_of_line k v I : pwc_line g k v I -∗ pwc_line2 k v I.
   Proof using .
-    rewrite /pwc_line /pwc_line2. iIntros "[H | H]"; [by iLeft |].
+    rewrite /pwc_line pwc_line2_view. iIntros "[H | H]"; [by iLeft |].
     iRight. by iLeft.
   Qed.
 
@@ -2151,7 +2175,7 @@ Section pipe_both.
   Qed.
 
   Lemma pwc_line2_of_pro k v I : pwc_pro g k v I -∗ pwc_line2 k v I.
-  Proof using . rewrite /pwc_line2. iIntros "H". by iLeft. Qed.
+  Proof using . rewrite pwc_line2_view. iIntros "H". by iLeft. Qed.
 
   Lemma pwc_line2_of_post k v I a :
     papr I a -> pwc_post g k v I a -∗ pwc_line2 k v I.
@@ -2172,57 +2196,51 @@ Section pipe_both.
     pblk2_code I R sel a -> sel <> [] ->
     pwc_blk2 k v I R sel c1 c2 false -∗ pwc_line2 k v I.
   Proof using .
-    intros Hcode Hnn. iIntros "H". rewrite /pwc_line2. iRight. iRight.
-    iExists R, sel, c1, c2, a. by iFrame "H".
+    intros Hcode Hnn. iIntros "H". rewrite pwc_line2_view. iRight. iRight.
+    rewrite /pipe_X. iExists R, sel, c1, c2, a. by iFrame "H".
   Qed.
 
-  (* THE PROMPT STEP AT THE WIDENED CREDENTIAL: the first two arms are
-     [PipeLinksLine.pprompt_dollar_line] verbatim, the third is the
-     round's exit -- and both write the SAME byte into the SAME
-     [pwc_sp_t]. *)
+  (* THE PROMPT STEP AT THE THIRD ARM: the round's exit, which writes
+     the same byte into the same [pwc_sp_t] as the one-writer arms --
+     [GenLinksLine]'s [X_dollar], so the widened credential's prompt
+     step is the generic [gprompt_dollar_line]. *)
+  Lemma pipe_X_dollar (k : nat) (v : era_pins) (I : list (bv 8)) (b : bv 8)
+      (Φ : iProp Σ) :
+    b = u_prompt !!! 0%nat ->
+    era_pin γ k v -∗ PipeLinks.pipe_links g -∗ pipe_X k v I -∗
+    (pwc_sp_t g k v I -∗ Φ) -∗ out_link Uart0 k b Φ.
+  Proof using .
+    intros Hb. iIntros "#Hpin #Hlk Hx HΦ".
+    iDestruct "Hx" as (R sel c1 c2 a) "(%Hcode & %Hnn & Hc)".
+    iDestruct (PipeLinks.pipe_links_file with "Hlk") as "#HF".
+    iDestruct (PipeLinks.pipe_links_taint with "Hlk") as "#Ht".
+    iApply (pblk2_exit_lk k v I R sel c1 c2 a b Φ Hcode Hnn Hb
+              with "HF Ht Hpin Hc HΦ").
+  Qed.
+
   Lemma pprompt_dollar_line2 (k : nat) (v : era_pins) (I : list (bv 8))
       (b : bv 8) (Φ : iProp Σ) :
     b = u_prompt !!! 0%nat ->
     era_pin γ k v -∗ PipeLinks.pipe_links g -∗ pwc_line2 k v I -∗
     (pwc_sp_t g k v I -∗ Φ) -∗ out_link Uart0 k b Φ.
   Proof using .
-    intros Hb. iIntros "#Hpin #Hlk Hc HΦ".
-    rewrite /pwc_line2. iDestruct "Hc" as "[Hc | [Hc | Hc]]".
-    - iApply (pprompt_dollar_line g k v I b Φ Hb with "Hpin Hlk [Hc] HΦ").
-      rewrite /pwc_line. by iLeft.
-    - iApply (pprompt_dollar_line g k v I b Φ Hb with "Hpin Hlk [Hc] HΦ").
-      rewrite /pwc_line. by iRight.
-    - iDestruct "Hc" as (R sel c1 c2 a) "(%Hcode & %Hnn & Hc)".
-      iDestruct (PipeLinks.pipe_links_file with "Hlk") as "#HF".
-      iDestruct (PipeLinks.pipe_links_taint with "Hlk") as "#Ht".
-      iApply (pblk2_exit_lk k v I R sel c1 c2 a b Φ Hcode Hnn Hb
-                with "HF Ht Hpin Hc HΦ").
+    exact (gprompt_dollar_line pipe_lm (pipe_params g) pipe_X (pipe_links g)
+             (pipe_links_persistent g) (pipe_links_gl g) pipe_X_dollar k v I b Φ).
   Qed.
 
   Lemma pwc_ban_done_line2 k v I :
     pwc_ban g k v I (length u_banner) -∗ pwc_line2 k v I.
   Proof using .
-    iIntros "H". iApply pwc_line2_of_line.
-    iApply (pwc_ban_done_line g k v I with "H").
+    apply (gwc_ban_done_line pipe_lm (pipe_params g) pipe_X).
   Qed.
 
-  (* THE LOOP'S FAMILY AT THE WIDENED BOUNDARY ([PipeLinksLine.pwc_lpr]
-     with [pwc_line2] at 0; the other three slots are unchanged, so the
-     record's [lk_lpr_1]/[lk_lpr_2]/[lk_lpr_S3] stay [eq_refl]). *)
-  Definition pwc_lpr2 (k : nat) (v : era_pins) (I : list (bv 8)) (p : nat)
-    : iProp Σ :=
-    match p with
-    | O => pwc_line2 k v I
-    | S O => pwc_sp_t g k v I
-    | S (S O) => pwc_open_t g k v I
-    | _ => pwc_blk g k v I 0%nat 0%nat
-    end.
-
-  Global Instance pwc_lpr2_timeless k v I p : Timeless (pwc_lpr2 k v I p).
+  (* THE LOOP'S FAMILY AT THE WIDENED BOUNDARY: the generic [gwc_lpr]
+     with [pwc_line2] at 0; the other three slots are the one-writer
+     families, so the record's [lk_lpr_1]/[lk_lpr_2]/[lk_lpr_S3] stay
+     [eq_refl]. *)
+  Lemma pwc_lpr2_timeless k v I p : Timeless (pwc_lpr2 k v I p).
   Proof using .
-    rewrite /pwc_lpr2. destruct p as [| [| [| p]]];
-      [apply pwc_line2_timeless | apply pwc_sp_t_timeless
-       | apply pwc_open_t_timeless | apply pwc_blk_timeless].
+    apply (gwc_lpr_timeless pipe_lm (pipe_params g) pipe_X pipe_X_timeless).
   Qed.
 
   (* ================================================================= *)
@@ -2636,3 +2654,8 @@ Section pipe_both.
   Qed.
 
 End pipe_both.
+
+(* the widened line credential and the loop's family at it, at the fixed
+   part: abbreviations of the generic ones with the pipeline's arm *)
+Notation pwc_line2 g := (gwc_line pipe_lm (pipe_params g) (pipe_X g)).
+Notation pwc_lpr2 g := (gwc_lpr pipe_lm (pipe_params g) (pipe_X g)).

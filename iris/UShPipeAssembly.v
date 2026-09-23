@@ -92,6 +92,7 @@ Require Import PipeBoth.
 Require Import PipeLinks.
 Require Import PipeLinksLine.
 Require Import PipeLinkInst.
+Require Import GenLinksLine.
 Require Import UkShFork.
 Require Import UkShPipeFork.      (* [pterm_shape] -- the terminal payload *)
 Require Import UkShPipe.           (* [ush_pipe_call] *)
@@ -1070,8 +1071,9 @@ Section UShPipeAssemblyDiag.
     assert (Hapr : papr I (palt_code PPipe)).
     { rewrite /papr (palt_of_code PPipe) Hline. by split_and!. }
     iPoseProof (ush_execfail_law_holds_alt (pipe_link_inst_at g)
-                  (PS := PS) I (palt_code PPipe) Hapr with "[]") as "#Hx";
-      [ cbn [lk_links pipe_link_inst_at]; iExact "Hlk" | ].
+                  (PS := PS) I (palt_code PPipe)
+                  (proj2 (pipe_inst_apr g I (palt_code PPipe)) Hapr) with "[]") as "#Hx";
+      [ cbn [lk_links pipe_link_inst_at gen_link_inst]; iExact "Hlk" | ].
     rewrite (pipe_inst_ab g) (pab_is I (palt_code PPipe) Hgd)
             (palt_of_code PPipe) Hline /pcont /alt_pipe.
     assert (Hl5 : (length (wl_line PipeDisc.dg_pipe ++ u_prompt) - 2)%nat
@@ -1171,7 +1173,7 @@ Section UShPipeAssemblyDiag.
             HX HY HN Hn3 with "Hinv HcL HcR HcM") as (sel) "(Hf & HcM)".
     iModIntro. iFrame "HcM".
     rewrite /pipe_Wcl_at (pipe_inst_lcred g (S gen_id) I 0%nat).
-    iExists v. iFrame "Hpin". cbn [pwc_lpr2].
+    iExists v. iFrame "Hpin". cbn [gwc_lpr].
     rewrite {1}/pwc_blk2.
     iDestruct "Hf" as "[Hf | #HT]";
       [| iApply (pwc_line2_taint g (S gen_id) v I with "HT")].
@@ -1782,7 +1784,7 @@ Section UShPipeAssemblyDiag.
   Proof using .
     iIntros "#Hpin #HT".
     rewrite /pipe_Wcl_at (pipe_inst_lcred g (S gen_id) I 0%nat).
-    iExists v. iFrame "Hpin". cbn [pwc_lpr2].
+    iExists v. iFrame "Hpin". cbn [gwc_lpr].
     iApply (pwc_line2_taint g (S gen_id) v I with "HT").
   Qed.
 

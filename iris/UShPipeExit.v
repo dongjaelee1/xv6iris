@@ -92,6 +92,7 @@ Require Import AppEcho.
 Require Import PipeOut.
 Require Import PipeLinks.
 Require Import PipeLinksLine.
+Require Import GenLinksLine.
 Require Import PipeBoth.
 Require Import RiscvPtsto.
 Require Import WpUart.
@@ -189,7 +190,7 @@ Section pipe_exit.
     iDestruct "Hc" as (v2) "[#Hpin2 Hc]".
     iDestruct (era_pin_agree with "Hpin2 Hpin") as %->.
     iDestruct "Hc" as (cs0 fz0) "[%Hcs0 Hcsa]".
-    rewrite /pwc_post /pwc_blk.
+    rewrite /pwc_post pwc_blk_view.
     iDestruct "Hpost" as "[Hp | #HT]"; [| iExact "HT"].
     iDestruct "Hp" as (ps' cs' P') "(%Hw' & Htn' & #Hps' & #Hcs' & #HE')".
     iDestruct (pcs_lb_prefix with "Hcsa Hcs'") as %Hpre.
@@ -226,7 +227,7 @@ Section pipe_exit.
     iDestruct "Hc" as (v2) "[#Hpin2 Hc]".
     iDestruct (era_pin_agree with "Hpin2 Hpin") as %->.
     iDestruct "Hc" as (cs0 fz0) "[%Hcs0 Hcsa]".
-    rewrite /pwc_pro.
+    rewrite pwc_pro_view.
     iDestruct "Hpro" as "[Hp | #HT]"; [| iExact "HT"].
     iDestruct "Hp" as (ps' cs' P') "(%Hw' & Htn' & #Hps' & #Hcs' & #HE')".
     iDestruct (pcs_lb_prefix with "Hcsa Hcs'") as %Hpre.
@@ -309,7 +310,7 @@ Section pipe_exit.
     iIntros "#Hpin Hfam Hblk Hcl".
     rewrite /pecl. iDestruct "Hcl" as "[#HT | Hc]"; [iExact "HT" |].
     rewrite /pwc_blk2. iDestruct "Hfam" as "[Hf | #HT]"; [| iExact "HT"].
-    rewrite /pwc_blk. iDestruct "Hblk" as "[Hb | #HT]"; [| iExact "HT"].
+    rewrite pwc_blk_view. iDestruct "Hblk" as "[Hb | #HT]"; [| iExact "HT"].
     iDestruct "Hf" as (ps cs P) "(_ & _ & Htn1 & _)".
     iDestruct "Hb" as (ps' cs' P') "(_ & Htn2 & _)".
     iDestruct "Hc"

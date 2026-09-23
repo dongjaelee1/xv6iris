@@ -854,7 +854,11 @@ pwc_line2 k v I :=
 
 (the pure side may need `c1 = count_true sel`, `c2 = length sel - c1`,
 `pboth_line I`: whatever `pblk2_exit` asks beyond `pwc_blk2` itself) is
-the record's `lk_line`, and the prompt step `lk_prompt_dollar_line`
+the record's `lk_line` (since app-both M2c part 3 it is
+`GenLinksLine.gwc_line pipe_lm (pipe_params g) (pipe_X g)` -- the generic
+line with the third arm as the per-shape arm `PipeBoth.pipe_X`, and
+`pwc_line2 g` an abbreviation of it; `pwc_line2_view` is the reading
+above), and the prompt step `lk_prompt_dollar_line`
 gains the third case, `PipeBoth.pblk2_exit`, which writes exactly the
 byte the field writes and lands in `pwc_sp_t = Wcf I 1` as the other two
 cases do.  `lk_line_tl`/`lk_line_taint`/`lk_line_of_blk0/_post/_pro` are

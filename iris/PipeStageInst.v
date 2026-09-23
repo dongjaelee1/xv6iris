@@ -52,6 +52,7 @@ Require Import PipeOut.
 Require Import PipeLinks.
 Require Import PipeLinksLine.
 Require Import PipeLinkInst.
+Require Import GenLinksLine.
 Require Import EchoLinks.
 Require Import EchoLinksLine.
 Require Import LinkRec.
@@ -219,23 +220,25 @@ Section pipe_stage_inst.
               lk_post PI k v I 0%nat))
       ∨ lk_T PI.
   Proof using .
-    intro Hlok. rewrite /pwc_lend. iIntros "[Hl | #HT]"; last by iRight.
+    intro Hlok. rewrite pwc_lend_view. iIntros "[Hl | #HT]"; last by iRight.
     iDestruct "Hl" as (ps cs P) "(%Hw & Htn & #Hps & #Hcs & #HE)".
     iLeft. iExists (MkPipeStg I). cbn [ps_I].
     iSplitR; [ iPureIntro; split; [ exact Hlok | reflexivity ] | ].
     iSplitR; [ by iPureIntro | ].
     iSplitL "Htn".
-    - rewrite /pwc_blk. iLeft. iExists ps, cs, P.
+    - rewrite pwc_blk_view. iLeft. iExists ps, cs, P.
       cbn [blkcs_p]. rewrite Nat.add_0_r.
       iFrame "Htn Hps Hcs HE". by iPureIntro.
-    - iIntros "!> Hc". rewrite /lk_post. cbn [lk_blk lk_ab pipe_link_inst_at].
-      rewrite (pipe_pab0_len I Hlok). iExact "Hc".
+    - iIntros "!> Hc". rewrite /lk_post.
+      cbn [lk_blk lk_ab pipe_link_inst_at gen_link_inst gK pipe_params].
+      rewrite -pab_lm (pipe_pab0_len I Hlok). iExact "Hc".
   Qed.
 
   Local Lemma pi_apr0 (I : list (bv 8)) :
     pipe_lineok I -> lk_apr PI I 0%nat.
   Proof using .
-    intro Hl. cbn [lk_apr pipe_link_inst_at]. rewrite /papr.
+    intro Hl. cbn [lk_apr pipe_link_inst_at gen_link_inst gK pipe_params].
+    apply papr_lm. rewrite /papr.
     split_and!; [ exact (pipe_palt0_ok I Hl) | exact pipe_palt0_nopanic
                 | exact pipe_palt0_nofork ].
   Qed.

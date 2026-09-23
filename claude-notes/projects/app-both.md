@@ -375,10 +375,21 @@ warm check, not a make round.
 
 M3 STARTED (2026-09-23): the claim-shape table is §4 above (read off the
 three `*Out.v`/`*OutPure.v`/`*Links.v` side by side).  FIRST CUT = M3a,
-`GenOutPure.v`: begin with the consumer measure of the three pure tiers'
-names outside the tier, then `gstage M` and the stage functions over
-`lm_cont_at`/`lm_proc_before`, then the snoc lemmas; land with the three
-pure tiers as corollaries.  Nothing coded yet.
+`GenOutPure.v`.  FOUND on the way: `LineModel.v` already carries the
+stream layer (`lm_pending_at`, `lm_proc_before_from`, `lm_proc_before`,
+`lm_proc_stream`, from M1's second cut), so M3a's own list is exactly
+`gstage M`, `lm_D_from`/`lm_D` (structural on `E` with `lm_pending_at`
+and `echo_of`), `lm_pcount`, `lm_cs_len_ok`, `lm_ps_round`/`lm_ps_opens`
+/`lm_ps_len_ok`, `lm_E_disc`, `lm_dl_ok` (with `lines_bytes`, which is
+model-free -- it can move to `LineBytes`), `lm_out_pure`, their snoc and
+step lemmas, and the Disc-tier additions (`lm_disc_seg`, `lm_disc_seg'
+s`, `lm_disc`, `lm_expected_rel s`, `lm_good_out s`).  The pure tiers'
+importers: `EchoOutPure` 23 files (the echo tier's links and every pipe
+file, through `echoed`/`E_index`/`sess_prefix_det`/`cs_ok`),
+`FileOutPure` 9, `PipeOutPure` 16; a `grep -w` measure of their names is
+noisy for `D`/`pending` (common words in comments) -- measure with the
+qualified names or by removing the definition and compiling.  Nothing
+coded yet.
 
 M2c THIRD CUT, PART 3 (2026-09-23): THE PIPE SIDE SWITCHED, landed as
 `b6e2d6a63`.  Ruled on

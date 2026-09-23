@@ -59,6 +59,13 @@ Require Import PipeDiscDec.      (* [disc_p_dec]: the ledger's counter *)
 Require Import PipeOutPure.
 Require Import PipeBothPure.
 Require Import EchoOut.           (* the ghost algebra, [ch_E] and its laws *)
+Require Import LineModel.
+Require Import LineModelLinks.
+Require Import LineModelInst.     (* the stream equations at [pipe_lm] *)
+Require Import GenOutPure.
+Require Import GenOutHist.
+Require Import GenOut.            (* the claim once *)
+Require Import PipeHooks.         (* [pipe_hooks] *)
 Require Import AppEcho.           (* [echo_fixed], [echo_taint], [echo_cl] *)
 Local Open Scope list_scope.
 
@@ -1445,6 +1452,117 @@ Proof using.
 Qed.
 
 (* ====================================================================== *)
+(*  2d. THE STAGE AS THE MODEL'S (app-both M3b)                            *)
+(*                                                                        *)
+(*  The pipeline's stage is [EchoOut.ostage], with no state slot; the      *)
+(*  model's is [GenOutPure.gstage pipe_lm], whose state ([unit]) is filed  *)
+(*  exactly when something is written.  Every stage function and the whole *)
+(*  closed-round pure claim are the model's under that map.                *)
+(* ====================================================================== *)
+
+Definition pstage_g (so : postage) : gstage pipe_lm :=
+  MkGS pipe_lm (o_ps so) (o_cs so) (o_E so) (o_w so)
+    (if decide (o_E so = [] /\ o_w so = []) then None else Some tt).
+
+Definition pstage_o (so : gstage pipe_lm) : postage :=
+  MkO (gs_ps pipe_lm so) (gs_cs pipe_lm so) (gs_E pipe_lm so) (gs_w pipe_lm so).
+
+Lemma pstage_o_g (so : postage) : pstage_o (pstage_g so) = so.
+Proof using. by destruct so. Qed.
+
+(* a model stage whose state is filed exactly when something is written IS
+   a pipeline stage *)
+Lemma pstage_g_o (so : gstage pipe_lm) :
+  (gs_st pipe_lm so = None <-> (gs_E pipe_lm so = [] /\ gs_w pipe_lm so = [])) ->
+  pstage_g (pstage_o so) = so.
+Proof using.
+  destruct so as [ps cs E w st]. cbn [gs_st gs_E gs_w]. intros Hst.
+  rewrite /pstage_g /pstage_o /=. f_equal.
+  destruct st as [[] |].
+  - rewrite decide_False; [done |]. intros Hq. discriminate (proj2 Hst Hq).
+  - rewrite decide_True; [done |]. by apply Hst.
+Qed.
+
+Lemma pipe_st_tt (s : lm_st pipe_lm) : s = tt.
+Proof using. by destruct s. Qed.
+
+Lemma D_p_lm ps cs (s : lm_st pipe_lm) E : D_p ps cs E = lm_D pipe_lm ps cs s E.
+Proof using.
+  rewrite (pipe_st_tt s) /D_p /lm_D. generalize (@nil (bv 8)) as pre.
+  induction E as [| x E IH]; intros pre; [reflexivity |].
+  cbn [D_from_p lm_D_from]. by rewrite IH.
+Qed.
+
+Lemma pending_p_lm ps cs (s : lm_st pipe_lm) E :
+  pending_p ps cs E = lm_pending pipe_lm ps cs s E.
+Proof using. by rewrite (pipe_st_tt s). Qed.
+
+Lemma pending_at_p_lm_s ps cs (s : lm_st pipe_lm) I :
+  pending_at_p ps cs I = lm_pending_at pipe_lm ps cs s I.
+Proof using. by rewrite (pipe_st_tt s). Qed.
+
+Lemma proc_before_p_lm_s ps cs (s : lm_st pipe_lm) I :
+  proc_before_p ps cs I = lm_proc_before pipe_lm ps cs s I.
+Proof using. rewrite (pipe_st_tt s). apply proc_before_p_lm. Qed.
+
+Lemma pcount_p_lm ps cs (s : lm_st pipe_lm) E w :
+  pcount_p ps cs E w = lm_pcount pipe_lm ps cs s E w.
+Proof using. by rewrite /pcount_p /lm_pcount (proc_before_p_lm_s ps cs s). Qed.
+
+Lemma pout_pure_lm (k : nat) (ho : list mobs) (so : postage) (acc : list (bv 8)) :
+  pout_pure k ho so acc <-> lm_out_pure pipe_lm tt k ho (pstage_g so) acc.
+Proof using.
+  rewrite /pout_pure /lm_out_pure /pstage_g /cs_nofork /=.
+  set (st := gs_state pipe_lm tt _).
+  rewrite (D_p_lm _ _ st) (pending_p_lm _ _ st).
+  split.
+  - intros (H1 & H2 & H3 & H4 & H5 & H6 & H7 & H8 & H9 & H10 & H11 & H12).
+    split_and!; try done; try (by apply pro_pin_p_lm); by case_decide.
+  - intros (H1 & H2 & H3 & H4 & H5 & H6 & H7 & H8 & H9 & H10 & H11 & H12 & _ & _).
+    split_and!; try done; by apply pro_pin_p_lm.
+Qed.
+
+Lemma cs_len_ok_lm (so : postage) : cs_len_ok so <-> lm_cs_len_ok pipe_lm (pstage_g so).
+Proof using. done. Qed.
+
+Lemma ps_len_ok_p_lm (so : postage) :
+  ps_len_ok_p so <-> lm_ps_len_ok pipe_lm tt (pstage_g so).
+Proof using.
+  rewrite /ps_len_ok_p /lm_ps_len_ok /ps_round_p /lm_ps_round /ps_opens_p
+    /lm_ps_opens /pstage_g /= pro_idx_p_lm.
+  set (st := gs_state pipe_lm tt _).
+  split; intros [HA HB]; (split; [exact HA |]); intros Hop ps' Hp Hne.
+  - rewrite -(pending_at_p_lm_s ps' _ st). exact (HB Hop ps' Hp Hne).
+  - rewrite (pending_at_p_lm_s ps' _ st). exact (HB Hop ps' Hp Hne).
+Qed.
+
+Lemma pein_pure_lm k pops dl cs0 : pein_pure k pops dl cs0 <-> gin_pure pipe_lm k pops dl cs0.
+Proof using. done. Qed.
+
+Lemma ch_arm_era_p_lm k ho H : ch_arm_era_p k ho H <-> garm_era pipe_lm k ho H.
+Proof using.
+  rewrite /ch_arm_era_p /garm_era.
+  destruct (LogEntryDefs.ch_arm H) as [[[[h c] cs] j] |]; [| done].
+  split; intros (H1 & H2 & H3 & H4 & H5 & H6 & H7); split_and!; try done;
+    by apply disc_p_lm.
+Qed.
+
+Lemma dl_ok_lm (so : postage) dl : dl_ok so dl <-> lm_dl_ok pipe_lm (pstage_g so) dl.
+Proof using. done. Qed.
+
+(* THE CLOSED-ROUND PURE CLAIM IS THE MODEL'S *)
+Lemma pcl_pure_lm (k : nat) (ho : list mobs) (so : postage)
+    (H : LogEntryDefs.cons_hist) :
+  pcl_pure k ho so H <-> gcl_pure pipe_lm tt k ho (pstage_g so) H.
+Proof using.
+  rewrite /pcl_pure /gcl_pure.
+  rewrite pout_pure_lm cs_len_ok_lm ps_len_ok_p_lm pein_pure_lm ch_arm_era_p_lm
+    dl_ok_lm.
+  done.
+Qed.
+
+
+(* ====================================================================== *)
 (*  2b. THE ERA'S BYTE LEDGER: the ghosts and their laws                   *)
 (*                                                                        *)
 (*  [FileOut]'s second per-era record one application over.  The map is    *)
@@ -1883,6 +2001,122 @@ Section pipe_out.
 
   Global Instance pecl_timeless k ho H : Timeless (pecl k ho H).
   Proof using . rewrite /pecl. apply _. Qed.
+
+  (* ==================================================================== *)
+  (*  3b. THE CLAIM AS THE GENERIC ONE, AND THE OPEN ROUND (app-both M3b)  *)
+  (*                                                                      *)
+  (*  Between rounds the claim is [GenOut.gcl] at [pipe_lm]: no state      *)
+  (*  witness ([unit], filed by the era's first byte), and the STREAM      *)
+  (*  EXTENSION is the byte ledger with the round ghosts held whole.       *)
+  (*  While a two-writer round is open it is [popen], pipe-only.  Owner    *)
+  (*  ruling 2026-09-23: a claim-level disjunct.                           *)
+  (* ==================================================================== *)
+  Definition pipe_cparams : gen_cparams pipe_lm :=
+    MkGCP pipe_lm pipe_lm_laws pipe_hooks T _ _ (era_pin γ) _ _ (era_pin_agree γ)
+      (fun _ _ => emp%I) _ _.
+
+  Definition pext (k : nat) (l : list (bv 8)) : iProp Σ :=
+    (∃ (w : pipe_era) (r : nat) (gb : gname) (pre : list (bv 8)) (tm : bool),
+       pera_pin g k w ∗ blk_auth w l ∗ cur_half w 1 r gb tm ∗ rblk_auth gb pre)%I.
+
+  Global Instance pext_timeless k l : Timeless (pext k l).
+  Proof using . rewrite /pext. apply _. Qed.
+
+  Lemma pext_grow (k : nat) (l : list (bv 8)) (b : bv 8) :
+    pext k l ==∗ pext k (l ++ [b]).
+  Proof using .
+    iIntros "(%w & %r & %gb & %pre & %tm & #Hpe & Hblk & Hcur & Hrb)".
+    iMod (blk_auth_grow w l b with "Hblk") as "[Hblk _]".
+    iModIntro. iExists w, r, gb, pre, tm. iFrame "Hpe Hblk Hcur Hrb".
+  Qed.
+
+  Lemma pipe_wa_agree (k : nat) (st : option (lm_st pipe_lm)) (s0 : lm_st pipe_lm) :
+    (emp : iProp Σ) -∗ emp -∗ ⌜default tt st = s0⌝.
+  Proof using . iIntros "_ _". iPureIntro. by destruct (default tt st), s0. Qed.
+
+  Lemma pipe_wa_W (k : nat) (s0 : lm_st pipe_lm) :
+    (emp : iProp Σ) -∗ emp ∗ emp ∗ emp.
+  Proof using . iIntros "_". by iSplit; [| iSplit]. Qed.
+
+  Lemma pipe_wa_file (k : nat) (s0 : lm_st pipe_lm) :
+    (emp : iProp Σ) -∗ emp ==∗ emp ∗ emp.
+  Proof using . iIntros "_ _". by iModIntro; iSplit. Qed.
+
+  Lemma pipe_wa_free (k : nat) : (emp : iProp Σ) ==∗ emp.
+  Proof using . by iIntros "_". Qed.
+
+  Definition pipe_wa : gen_wa pipe_lm pipe_cparams tt :=
+    @MkGWA Σ _ pipe_lm pipe_cparams tt (fun _ _ => emp%I) _ pipe_wa_agree
+      (fun _ => emp%I) _ pipe_wa_W (fun _ _ => emp%I) pipe_wa_file
+      False (fun Hf => match Hf with end)
+      True (fun _ => pipe_wa_free)
+      pext _ pext_grow.
+
+  (* THE OPEN ROUND: the writer family holds the other half of the round
+     ghost, and the block is read off the round's ledger *)
+  Definition popen (k : nat) (ho : list mobs) (H : LogEntryDefs.cons_hist)
+      : iProp Σ :=
+    (∃ (v : era_pins) (w : pipe_era) (so : postage)
+       (r : nat) (gb : gname) (pre : list (bv 8)) (tm : bool),
+       era_pin γ k v ∗ pera_pin g k w ∗ blk_auth w (pstream so)
+       ∗ cur_half w (1/2) r gb tm ∗ rblk_auth gb pre
+       ∗ turn_auth v (pcount_p (o_ps so) (o_cs so) (o_E so) (o_w so))
+       ∗ pcs v (o_cs so) tm
+       ∗ ps_auth v (o_ps so)
+       ∗ Elist_auth v (o_E so)
+       ∗ dl_cnt v (1/2) (length (LogEntryDefs.ch_dl H))
+       ∗ dl_list_auth v (LogEntryDefs.ch_dl H)
+       ∗ ⌜pcl_pure_o k ho so r pre H⌝)%I.
+
+  Lemma pstream_lm_g (so : gstage pipe_lm) :
+    pstream (pstage_o so) = lm_stream pipe_lm tt so.
+  Proof using.
+    rewrite /pstream /lm_stream /pstage_o /=.
+    by rewrite (proc_before_p_lm_s _ _ (gs_state pipe_lm tt so)).
+  Qed.
+
+  (* THE PIPELINE'S CLAIM IS THE GENERIC ONE BETWEEN ROUNDS *)
+  Lemma pecl_gen (k : nat) (ho : list mobs) (H : LogEntryDefs.cons_hist) :
+    pecl k ho H ⊣⊢ gcl pipe_lm pipe_cparams tt pipe_wa k ho H ∨ popen k ho H.
+  Proof using .
+    rewrite /pecl /gcl. iSplit.
+    - iIntros "[#HT | Hp]"; [by iLeft; iLeft |].
+      iDestruct "Hp" as (v w so r gb pre opn tm)
+        "(#Hpin & #Hpe & Hblk & Hcur & Hrb & Hta & Hcs & Hps & HE & Hdl & Hdll & %Hall)".
+      destruct Hall as [[-> Hc] | [-> Ho]].
+      + iLeft. iRight. iExists v, (pstage_g so).
+        iFrame "Hpin". iSplitR; [done |].
+        iSplitL "Hblk Hcur Hrb".
+        { rewrite /pipe_wa /=. iExists w, r, gb, pre, tm.
+          rewrite -(pstream_lm_g (pstage_g so)) pstage_o_g.
+          iFrame "Hpe Hblk Hcur Hrb". }
+        cbn [gs_ps gs_cs gs_E gs_w pstage_g].
+        rewrite -(pcount_p_lm _ _ (gs_state pipe_lm tt (pstage_g so))).
+        rewrite /pcs /=. iFrame "Hta Hcs Hps HE Hdl Hdll".
+        iPureIntro. by apply pcl_pure_lm.
+      + iRight. iExists v, w, so, r, gb, pre, tm. iFrame "Hpin Hpe".
+        rewrite /pcs /=. iFrame "Hblk Hcur Hrb Hta Hcs Hps HE Hdl Hdll". by iPureIntro.
+    - iIntros "[[#HT | Hp] | Hp]"; [by iLeft | |].
+      + iDestruct "Hp" as (v so)
+          "(#Hpin & _ & Hext & Hta & Hcs & Hps & HE & Hdl & Hdll & %Hall)".
+        iDestruct "Hext" as (w r gb pre tm) "(#Hpe & Hblk & Hcur & Hrb)".
+        assert (Hst : gs_st pipe_lm so = None
+                      <-> (gs_E pipe_lm so = [] /\ gs_w pipe_lm so = [])).
+        { by destruct Hall as ((_ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & _ & H13 & _)
+                               & _). }
+        iRight. iExists v, w, (pstage_o so), r, gb, pre, false, tm.
+        iFrame "Hpin Hpe Hrb".
+        rewrite pstream_lm_g. iFrame "Hblk Hcur".
+        rewrite (pcount_p_lm _ _ (gs_state pipe_lm tt so)).
+        rewrite /pcs /=. iFrame "Hta Hcs Hps HE Hdl Hdll".
+        iPureIntro. left. split; [done |].
+        apply pcl_pure_lm. by rewrite pstage_g_o.
+      + iDestruct "Hp" as (v w so r gb pre tm)
+          "(#Hpin & #Hpe & Hblk & Hcur & Hrb & Hta & Hcs & Hps & HE & Hdl & Hdll & %Hall)".
+        iRight. iExists v, w, so, r, gb, pre, true, tm.
+        iFrame "Hpin Hpe Hblk Hcur Hrb Hta Hps HE Hdl Hdll".
+        rewrite /pcs /=. iFrame "Hcs". iPureIntro. by right.
+  Qed.
 
   (* THE TAG: [EchoOut.etag] at the PIPELINE discipline, on STAGE's
      corrected shape -- the trace's shape, and either the console is still

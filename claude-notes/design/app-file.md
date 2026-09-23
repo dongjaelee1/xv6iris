@@ -172,7 +172,15 @@ chosen existentially inside the admissible set:
         /\ Forall2 (good_out_f …) s0s (cycles_of h).
 
 `disc_f` is `EchoDisc.disc` with `disc_input_f` and `sessf` at the
-rate bound (`disc_pt` reads `sessf`, so D1/D2 are unchanged in shape).
+rate bound (`disc_pt_f` reads `sessf` at `LineWords.done_of`, so D1/D2 are
+echo's in shape: the RELAXED per-line rule, ruled 2026-09-23 -- a line may
+be typed as a burst).  What the file application's earlier strict per-byte
+rule bought its proof (F2: the log is complete below the byte being echoed,
+`FileOutPure.D2_next_input_f`, gone) is now the kernel's FIFO discipline
+exactly as at echo: `FileOut.ch_arm_era_f` records (K1) and the arm's echo
+at the open, `fein_pure` carries (A1) every entry echoed, `fecl_pure` carries
+(A2) `dl_ok_f`, and `fecl_pure_open` refutes the drop arm
+(`FileOutPure.cons_drop_refuted_f`, `flush_lost_zero_f`).
 Five machine transcripts are checked as witnesses by `vm_compute`
 (`FileDisc.demo_*`), including "echo, power off, cat" and "echo, crash
 mid-round, cat shows a prefix", and one NEGATIVE witness (`demo_f_bad`:

@@ -449,16 +449,11 @@ Section file_links.
     { iApply (file_cons_link_of_taint with "HT [HΦ]").
       by iApply file_cons_run. }
     iIntros (o H) "#Hlb Hres %Hok %Hev".
-    pose proof Hev as Hev0.
-    destruct Hev0 as (Hnone & _ & _ & Hord & _).
     rewrite fchist_at0.
-    iDestruct (fecl_lt g (S gen_id) h c (default [] o) H Hsh Hk Hends Hord
-                 with "Hres") as "[Hres [#HT | %Hlt]]".
-    { iModIntro. iExists o. iFrame "Hlb".
-      rewrite fchist_at0. iSplitR; [rewrite /fecl; by iLeft |].
-      by iApply file_cons_run. }
-    iDestruct (fecl_open g (S gen_id) (default [] o) H h c cs Hnone
-                 (disc_seg_f_open_seg h Hsh Hdisc) Hk Hdisc Hsh Hends Hord Hlt
+    (* the open takes NOTHING beyond the kernel's own event facts: (K1) and
+       the drop's reason are inside [Hev] ([EchoLinks]'s shape) *)
+    iDestruct (fecl_open g (S gen_id) (default [] o) H h c cs Hok Hev
+                 (disc_seg_f_open_seg h Hsh Hdisc) Hk Hdisc Hsh
                  with "Hres") as "Hres".
     iModIntro. iExists (Some h). cbn [obs_hist_lb_o from_option id].
     rewrite fchist_at0. iFrame "Hlbh Hres".

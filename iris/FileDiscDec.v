@@ -545,9 +545,10 @@ Proof using.
         [| exact (obs_wire_prefix Uart0 p seg
                     (proj1 (Forall_forall _ _) (in_pres_prefix_all seg) p Hp))].
       eapply infixed_prefix; [| exact (proj2 (Hpt p Hp))].
-      destruct (sessf_infix_blk ps cs (Some b0) (ins p) i ltac:(lia))
+      destruct (sessf_infix_blk ps cs (Some b0) (done_of (ins p)) i
+                  ltac:(rewrite nlines_done; lia))
         as (A & B & HE).
-      rewrite HE. apply infixed_app_ctx.
+      rewrite HE bodies_of_done. apply infixed_app_ctx.
       exact (alt_blk_f_infix ps cs (Some b0) (bodies_of (ins p)) i b0 Ha Hu). }
     exists (Some b0). split.
     { apply elem_of_list_further, elem_of_list_further, elem_of_list_fmap.
@@ -561,8 +562,9 @@ Proof using.
     split; [exact Hseg |]. exists ps, cs. split; [exact Hal |].
     intros p Hp. destruct (Hpt p Hp) as [Hpo Hpf]. split; [exact Hpo |].
     rewrite /disc_pt_f.
-    assert (Heq : sessf ps cs (Some []) (ins p) = sessf ps cs (Some b0) (ins p)).
-    { rewrite /sessf. f_equal. f_equal.
+    assert (Heq : sessf ps cs (Some []) (done_of (ins p))
+                  = sessf ps cs (Some b0) (done_of (ins p))).
+    { rewrite /sessf bodies_of_done nlines_done. f_equal. f_equal.
       symmetry. apply (alt_seq_f_cont_ext ps cs (Some b0) (Some [])).
       intros i Hi. apply dec_stable. intro Hne. apply HB.
       apply Exists_exists. exists p. split; [exact Hp |].
@@ -618,7 +620,8 @@ Proof using.
     destruct (pro_canon (S (pro_idx_f cs (nlines_max (in_pres seg))))
                 (length seg) ps HFps) as (ps0 & Hin0 & Hrd0 & Hag0).
     { intros r Hr. rewrite -Hpleq in Hr. split; [lia |].
-      etrans; [apply (sessf_pro_len ps cs s (ins pl) r); lia |].
+      etrans; [apply (sessf_pro_len ps cs s (done_of (ins pl)) r);
+               rewrite nlines_done; lia |].
       etrans; [apply prefix_length, Hptl |].
       etrans; [apply obs_wire_length |].
       exact (prefix_length _ _ Hplp). }
@@ -629,8 +632,10 @@ Proof using.
     assert (Hidxle : (pro_idx_f cs (nlines (ins p))
                       <= pro_idx_f cs (nlines_max (in_pres seg)))%nat)
       by (apply pro_idx_f_mono, nlines_max_ge, Hp).
-    assert (Hsame : sessf ps0 cs s (ins p) = sessf ps cs s (ins p)).
-    { apply sessf_ps_ext. intros r Hr. apply Hag0. lia. }
+    assert (Hsame : sessf ps0 cs s (done_of (ins p))
+                    = sessf ps cs s (done_of (ins p))).
+    { apply sessf_ps_ext. intros r Hr. rewrite nlines_done in Hr.
+      apply Hag0. lia. }
     split.
     + rewrite /pro_ok_f. split; [by eapply pro_cands_Forall | lia].
     + by rewrite /disc_pt_f Hsame.

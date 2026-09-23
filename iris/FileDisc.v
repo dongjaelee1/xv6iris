@@ -1530,13 +1530,28 @@ Proof using.
 Qed.
 
 (* D1/D2 AT ONE INPUT POSITION, at [EchoDisc.disc_pt]'s statement with
-   [sessf] in place of [sess]: the expected transcript for the input typed
-   so far -- read at the era's boot state -- is already on the wire. *)
+   [sessf] in place of [sess]: the expected transcript for the COMPLETE
+   LINES typed so far ([LineWords.done_of]) -- read at the era's boot
+   state -- is already on the wire.  The rule is the RELAXED per-line one
+   echo's is (ruled 2026-09-23): a user may type a line as a burst, and only
+   the previous line's block has to have ended before the next line's first
+   byte.  The rest of the wire's account -- that every typed byte is echoed
+   before the next is filed -- is the kernel's FIFO discipline, read off
+   [ConsLog.cons_ev_ok] at the arm's open ([FileOut.fecl_pure_open]). *)
 Definition disc_pt_f (ps cs : list nat) (s : fstate) (p : list mobs) : Prop :=
-  sessf ps cs s (ins p) `prefix_of` obs_wire Uart0 p.
+  sessf ps cs s (done_of (ins p)) `prefix_of` obs_wire Uart0 p.
 
 Global Instance disc_pt_f_dec ps cs s p : Decision (disc_pt_f ps cs s p).
 Proof using. rewrite /disc_pt_f. apply _. Defined.
+
+(* THE STRICT RULE IMPLIES THE RELAXED ONE, [EchoDisc.disc_pt_of_strict]'s
+   twin: a session that waited for every byte's echo is disciplined here. *)
+Lemma disc_pt_f_of_strict (ps cs : list nat) (s : fstate) (p : list mobs) :
+  sessf ps cs s (ins p) `prefix_of` obs_wire Uart0 p -> disc_pt_f ps cs s p.
+Proof using.
+  intro H. rewrite /disc_pt_f. etrans; [| exact H].
+  apply sessf_mono, done_of_prefix.
+Qed.
 
 (* the resolution's range condition, where [EchoDisc]'s was [c < 4]: every
    line's alternative is one ITS SHAPE admits.  [Forall2] also pins the
@@ -2086,13 +2101,10 @@ Proof using.
 Qed.
 
 (* THE COMPATIBILITY, at the whole history: a file session that is
-   echo-only is disciplined for the echo application too.
-
-   IT IS ONE WAY.  [disc_pt_f] asks, at every input point, for the
-   transcript of the WHOLE input typed so far; [EchoDisc.disc_pt] asks only
-   for the input's COMPLETE LINES.  So a user who types a line as a burst
-   is inside the echo application's discipline and outside this one --
-   which is by design: the file application keeps the per-byte rule. *)
+   echo-only is disciplined for the echo application too.  Both rules are
+   at the input's COMPLETE LINES, so the per-point step is [sessf_sess] at
+   [done_of] (which [echo_only] and the range condition both survive, being
+   prefix-closed and at [nlines_done]). *)
 Lemma disc_f_disc h :
   Forall disc_seg (cycles_of h) -> disc_f h -> disc h.
 Proof using.
@@ -2123,8 +2135,11 @@ Proof using.
     destruct (Hall p Hp) as [Hok Hpt].
     split.
     + by apply (pro_ok_f_ok ps cs (nlines (ins p)) Hc4).
-    + apply disc_pt_of_strict.
-      rewrite -(sessf_sess ps cs s (ins p) Hep Hc4). exact Hpt.
+    + rewrite /disc_pt.
+      rewrite -(sessf_sess ps cs s (done_of (ins p))
+                  (echo_only_prefix _ _ (done_of_prefix _) Hep)
+                  ltac:(rewrite nlines_done; exact Hc4)).
+      exact Hpt.
 Qed.
 
 (* ====================================================================== *)

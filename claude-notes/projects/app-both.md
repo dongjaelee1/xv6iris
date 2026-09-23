@@ -274,6 +274,54 @@ bodies (M2c's two shapes); `Proof using` closure; comments without `"`.
 
 ## RESUME HERE (2026-09-22, late)
 
+RELAXED-RULE PORT LANDED (2026-09-23; the ruling's step (1)-(4) below,
+MEASURED AGAIN before coding): the change list was FOUR SITES SHORT.  The
+file's F2 lemma `FileOutPure.D2_next_input_f` DERIVED the log-completeness
+count (`m = S (length E)`) from the strict rule -- the wire shows every
+typed byte, the claim's `E` must cover it -- where echo and the pipe take
+it as a KERNEL PREMISE (K1, `length E = m - 1`, off `ConsLog.cons_ev_ok`'s
+FIFO clause) and prove `Forall log_echoed` (A1) by refuting the drop arm at
+the open.  So the file claim took echo's whole console-log account, at the
+pipe's text (`PipeOut.pcl_pure_open`/the pipe's step are the file's route
+under the relaxed rule):
+- `FileOutPure`: `disc_seg_f'_in`/`_pt_last`/`disc_f_first_out` at
+  `done_of` (`nlines_done`, `bodies_of_done`, `done_of_nil`);
+  `D2_next_input_f` REPLACED by `next_input_of_complete_f` (K1 a premise,
+  the bound at `done_of (take (m-1) …)`, `done_of_rest_nil` closes the
+  complete-lines case, an open line owes nothing); NEW `disc_drop_byte_f`,
+  `disc_input_f_rest_short`, `lines_bytes_disc_bound_f`, `drop_refuted_f`,
+  `cons_drop_refuted_f`, `flush_lost_disc_f s` (at the boot state),
+  `flush_lost_zero_f` -- all `_p` twins with the names swapped.
+- `FileOut`: `fein_pure` + (A1); `ch_arm_era_f` now takes the HISTORY
+  (as echo's) and records `cs = [echo_of c]` and (K1); `fecl_pure` + (A2)
+  `dl_ok_f so (ch_dl H)` with `dl_ok_f_{0,mono,out,out_full,echo}`
+  (`_echo` at `alts_pre` through `pending_at_f_nonnil`); `fecl_pure_open`
+  takes `cons_hist_ok`/`cons_ev_ok` and refutes the drop
+  (`cons_drop_refuted_f` at `Hdlok`, `flush_lost_zero_f` for the receive
+  flush); `_close` proves (A1) at the filed entry from K3; `_out`/`_byte`
+  take a `dl_ok_f so'` premise paid at the five out-sites (`dl_ok_f_out`
+  with the write step's `Hcase`, `_out_full` with `HlenE`/`HI0dl` at the
+  block's first byte, `_echo` at the echo, trivial at the era's first
+  prologue byte); `fecl_step_echo` takes K1 in place of `Hlt`, spends
+  `Halle` for `Hcnt`, moves the bound with `Hok2`/`Hao2` (`nlines_done`,
+  `rewrite /alts_ok /lines_of bodies_of_done`), and `Hrnd` reads
+  `HokPres` through `nlines_done`; `fecl_step_byte` reads K1 off the arm.
+  DELETED: `fecl_lt`, `echoed_lt_ins_f` (the strict rule's counting fact).
+- `FileLinks`: the open takes `Hok Hev` and nothing else (echo's shape).
+- `FileDisc`: `disc_pt_f` at `done_of`, `disc_pt_f_of_strict`,
+  `disc_f_disc` through `sessf_sess` at `done_of` (the anti-vacuity literal
+  needed nothing: `done_of` is computable).  `FileDiscDec`: the chooser's
+  two sites at `done_of` (`bodies_of_done` after `sessf_infix_blk`'s split,
+  `nlines_done` in `Hag0`'s bound).
+Every file passed its warm check at the first try; whole-tree gate
+`--proofs -k` EXIT=0 (113 files), `audit-all-only` 13/14 (the baseline,
+no new axiom).  Design note `design/app-file.md` updated at `disc_f`'s
+paragraph.
+NEXT: `LineModel.lm_disc_pt ps cs s p`/`lm_disc_seg' s`/`lm_disc`/
+`lm_expected_rel s`/`lm_good_out s` with `disc`/`disc_f`/`disc_p` as
+corollaries (the pipe's `d4_p` clause via `lm_merge` if its guard is
+implied), then the pad family and `good_out_of_stage` in `GenOutPure`.
+
 M1 STARTED.  Landed: `iris/LineModel.v` -- the record `lmodel` (state,
 line, alternatives with their code and panic bit, continuation at a
 state, step) and over it `lm_at`, `lm_pro_idx`, `lm_upto`, `lm_cont_at`,

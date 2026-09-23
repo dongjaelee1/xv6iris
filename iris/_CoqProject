@@ -1509,6 +1509,7 @@ PipeDiscDec.v
 LogEntryDefs.v
 ConsLog.v
 EchoOutPure.v
+GenOutPure.v
 FileOutPure.v
 PipeOutPure.v
 LineModelInst.v

@@ -105,6 +105,25 @@ Arguments lml_term_merge {M} _.
 Arguments lml_merge_prefix {M} _.
 Arguments lml_cont_shape {M} _.
 
+(* THE BYTE LAWS: what the discipline says of a line's bytes, at the
+   model.  Separate from [lm_laws] (the byte SHAPE of continuations) so
+   that an instance can have the one without the other -- echo's model has
+   no [lm_laws] record in the landed tree.  Every instance proves the four
+   in a line each: a well-formed body is made of body bytes, is shorter
+   than the line buffer, a body byte is printable (which is what refutes
+   the carriage return, the erase bytes and ^D at once), and the
+   out-of-range reading of a choice list ([lm_dec M 0]) never panics. *)
+Record lm_byte_laws (M : lmodel) : Prop := MkLMB {
+  lmb_body_bytes : forall l, lm_body_ok M l -> Forall (lm_body_byte M) l;
+  lmb_body_short : forall l, lm_body_ok M l -> S (length l) < line_max;
+  lmb_byte_printable : forall b, lm_body_byte M b -> (32 <= bv_unsigned b < 127)%Z;
+  lmb_dec0_nopanic : lm_panic M (lm_dec M 0) = false;
+}.
+Arguments lmb_body_bytes {M} _.
+Arguments lmb_body_short {M} _.
+Arguments lmb_byte_printable {M} _.
+Arguments lmb_dec0_nopanic {M} _.
+
 Section line_model.
   Context (M : lmodel).
 
@@ -830,5 +849,112 @@ Section line_model.
       + pose proof (Hmono q (nlines I) ltac:(lia)). lia.
       + assert (q = nlines I) as -> by lia. exact Hlt.
   Qed.
+
+
+  (* ---- THE SESSION'S SNOC LAWS (the file's [sessf_snoc_nl] and its
+          three companions, once) ---- *)
+  Lemma lm_seq_bs_app ps cs s bs bs' q :
+    q <= length bs -> lm_seq ps cs s (bs ++ bs') q = lm_seq ps cs s bs q.
+  Proof using.
+    intro Hq. apply lm_seq_bs_ext. intros j Hj.
+    rewrite !list_lookup_total_alt lookup_app_l; [reflexivity | lia].
+  Qed.
+
+  Lemma lm_sess_snoc_nl ps cs s I :
+    lm_sess ps cs s (I ++ [wl_nl])
+    = lm_sess ps cs s I
+      ++ wl_nl :: lm_cont_at ps cs s (bodies_of I ++ [rest_of I]) (nlines I).
+  Proof using.
+    assert (Hidx : (bodies_of I ++ [rest_of I]) !!! (nlines I) = rest_of I).
+    { rewrite list_lookup_total_alt
+        (lookup_app_r (bodies_of I) [rest_of I] (nlines I)
+           ltac:(rewrite /nlines; lia)).
+      rewrite /nlines Nat.sub_diag. reflexivity. }
+    rewrite {1}/lm_sess bodies_of_snoc_nl nlines_snoc_nl rest_of_snoc_nl.
+    rewrite lm_seq_S (lm_seq_bs_app ps cs s (bodies_of I) [rest_of I]
+                        (nlines I) ltac:(rewrite /nlines; lia)).
+    rewrite /lm_blk Hidx app_nil_r /lm_sess.
+    by rewrite !app_assoc.
+  Qed.
+
+  Lemma lm_sess_snoc_other ps cs s I b :
+    b <> wl_nl -> lm_sess ps cs s (I ++ [b]) = lm_sess ps cs s I ++ [b].
+  Proof using.
+    intro Hb. rewrite /lm_sess (bodies_of_snoc_other I b Hb)
+      (nlines_snoc_other I b Hb) (rest_of_snoc_other I b Hb).
+    by rewrite !app_assoc.
+  Qed.
+
+  Lemma lm_sess_step ps cs s I b :
+    lm_sess ps cs s I `prefix_of` lm_sess ps cs s (I ++ [b]).
+  Proof using.
+    destruct (decide (b = wl_nl)) as [-> | Hb].
+    - rewrite lm_sess_snoc_nl. by eexists.
+    - rewrite (lm_sess_snoc_other ps cs s I b Hb). by eexists.
+  Qed.
+
+  Lemma lm_sess_mono ps cs s I I' :
+    I `prefix_of` I' -> lm_sess ps cs s I `prefix_of` lm_sess ps cs s I'.
+  Proof using.
+    intros [k ->]. induction k as [| b k IH] using rev_ind.
+    - rewrite app_nil_r. reflexivity.
+    - rewrite app_assoc. etrans; [exact IH | apply lm_sess_step].
+  Qed.
+
+  (* ---- THE INPUT DISCIPLINE'S CLOSURE LAWS, at the byte laws ---- *)
+  Section byte_laws.
+    Context (B : lm_byte_laws M).
+
+    Lemma lm_disc_input_snoc I b : lm_disc_input (I ++ [b]) -> lm_disc_input I.
+    Proof using B.
+      intros (Hb & Hr & Hs). destruct (decide (b = wl_nl)) as [-> | Hne].
+      - rewrite bodies_of_snoc_nl in Hb.
+        apply Forall_app in Hb as [Hb1 Hb2]. rewrite Forall_singleton in Hb2.
+        split; [exact Hb1 |]. split; [exact (lmb_body_bytes B _ Hb2) |].
+        exact (lmb_body_short B _ Hb2).
+      - rewrite (bodies_of_snoc_other I b Hne) in Hb.
+        rewrite (rest_of_snoc_other I b Hne) in Hr, Hs.
+        apply Forall_app in Hr as [Hr1 _].
+        split; [exact Hb |]. split; [exact Hr1 |].
+        rewrite (length_app (rest_of I) [b]) in Hs. cbn [length] in Hs. lia.
+    Qed.
+
+    Lemma lm_disc_input_prefix I I' :
+      I `prefix_of` I' -> lm_disc_input I' -> lm_disc_input I.
+    Proof using B.
+      intros [k ->]. induction k as [| b k IH] using rev_ind; intro Hd.
+      - by rewrite app_nil_r in Hd.
+      - apply IH. rewrite app_assoc in Hd. exact (lm_disc_input_snoc _ _ Hd).
+    Qed.
+
+    Lemma lm_disc_input_body I i l :
+      lm_disc_input I -> bodies_of I !! i = Some l -> lm_body_ok M l.
+    Proof using. intros (Hb & _ & _) Hi. exact (Forall_lookup_1 _ _ _ _ Hb Hi). Qed.
+
+    Lemma lm_disc_input_byte I b :
+      lm_disc_input I -> b ∈ I -> lm_body_byte M b \/ b = wl_nl.
+    Proof using B.
+      intros Hd Hin. pose proof Hd as (Hb & Hr & _).
+      rewrite (wl_cut_join I) in Hin.
+      apply elem_of_app in Hin as [Hin | Hin].
+      - destruct (join_elem_of (bodies_of I) b Hin) as [-> | (l & Hl & Hbl)];
+          [by right | left].
+        apply elem_of_list_lookup in Hl as [k Hk].
+        pose proof (lmb_body_bytes B l (lm_disc_input_body I k l Hd Hk)) as Hfb.
+        exact (proj1 (Forall_forall _ _) Hfb b Hbl).
+      - left. exact (proj1 (Forall_forall _ _) Hr b Hin).
+    Qed.
+
+    (* a disciplined byte is the newline or printable: what every refutation
+       of a control byte reads *)
+    Lemma lm_disc_input_byte_val I b :
+      lm_disc_input I -> b ∈ I ->
+      bv_unsigned b = 10%Z \/ (32 <= bv_unsigned b < 127)%Z.
+    Proof using B.
+      intros Hd Hin. destruct (lm_disc_input_byte I b Hd Hin) as [Hp | ->].
+      - right. exact (lmb_byte_printable B b Hp).
+      - left. by vm_compute.
+    Qed.
+  End byte_laws.
 
 End line_model.

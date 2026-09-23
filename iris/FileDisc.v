@@ -1829,6 +1829,19 @@ Proof using.
     intros Y Z Hcmp. exact (lb_out_eq_panic u Y Z Hnd Hnl Hcmp).
 Qed.
 
+Lemma file_lm_byte_laws : lm_byte_laws file_lm.
+Proof using.
+  constructor.
+  - intros l Hl. exact (fbody_ok_bytes l Hl).
+  - intros l Hl. exact (fbody_ok_short l Hl).
+  - intros b Hb. destruct Hb as [[Ha | ->] | ->].
+    + destruct Ha as [H | [H | H]]; lia.
+    + rewrite wl_sp_val. lia.
+    + rewrite (_ : bv_unsigned wl_gt = 62%Z); [lia | by vm_compute].
+  - change (ralt_panic (ralt_dec 0) = false).
+    rewrite (ralt_dec_lt4 0 ltac:(lia)). by vm_compute.
+Qed.
+
 Lemma sessf_prefix_det2 (ps ps' cs cs' : list nat) (s s' : fstate)
     (I' I : list (bv 8)) :
   Forall (fun a => (a < length pro_alts)%nat) ps ->

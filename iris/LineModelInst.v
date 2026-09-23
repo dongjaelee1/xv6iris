@@ -90,6 +90,17 @@ Definition echo_lm : lmodel :=
        (fun _ _ _ => tt) (fun _ k => k < 4) body_ok wl_body_byte
        line_ok (fun _ => True) (fun _ => false) (fun _ => False).
 
+Lemma echo_lm_byte_laws : lm_byte_laws echo_lm.
+Proof using.
+  constructor.
+  - intros l Hl. exact (body_ok_bytes l Hl).
+  - intros l Hl. exact (body_ok_short l Hl).
+  - intros b Hb. destruct Hb as [Ha | ->].
+    + destruct Ha as [H | [H | H]]; lia.
+    + rewrite wl_sp_val. lia.
+  - reflexivity.
+Qed.
+
 Lemma pro_idx_lm cs i : pro_idx cs i = lm_pro_idx echo_lm cs i.
 Proof using.
   induction i as [| i IH]; [reflexivity |]. cbn. rewrite IH.

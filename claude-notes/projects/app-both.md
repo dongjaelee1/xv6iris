@@ -373,6 +373,35 @@ for each deleted name before the commit.  Iteration: `rocq-warm check
 UShRound.v` replays in ~30 s (cold), so every UShRound fix was a
 warm check, not a make round.
 
+M3a FIRST CUT (2026-09-23): THE MODEL'S SIDE AND THE STAGE'S FIRST HALF.
+`LineModel.v` gained the byte laws `lm_byte_laws M` (a separate record
+from `lm_laws`, so echo can have it without a shape-laws record:
+`lmb_body_bytes`, `lmb_body_short`, `lmb_byte_printable` (32..126, which
+refutes CR/erase/^D at once instead of three per-model value tables),
+`lmb_dec0_nopanic`), the session's snoc laws (`lm_seq_bs_app`,
+`lm_sess_snoc_nl`, `lm_sess_snoc_other`, `lm_sess_step`, `lm_sess_mono`)
+and the discipline's closure laws at the byte laws (`lm_disc_input_snoc`/
+`_prefix`/`_body`/`_byte`/`_byte_val`); instances `file_lm_byte_laws`,
+`pipe_lm_byte_laws`, `echo_lm_byte_laws` (one line each);
+`LineModelLinks.lm_panic_ge`.  `iris/GenOutPure.v` (after `EchoOutPure`):
+`gstage M` (the stage with the boot state as an OPTION, read through the
+instance's default `gs_state sd`), `lm_pending`, `lm_D_from`/`lm_D`,
+`lm_E_disc`, `lm_pcount`, `lm_echo_of_disc`, and in `FileOutPure`'s
+order the D laws, the E_disc laws, `lm_D_pending_sess`/`_stage_prefix`,
+the cursor laws, `lm_proc_stream_prefix`, `lm_pcount_cs_prefix`,
+`lm_D_from_ext`/`lm_D_cs_prefix`, `lm_write_stage_byte`, the nonnil laws,
+the `lm_cs_len_ok` and `lm_ps_len_ok` families and `lm_out_pure` (+`_0`)
+-- 683 sentences, every proof the file's with the names swapped.
+`lm_out_pure` carries the pipe's `cs_nofork` as `Forall (lm_term = false)
+cs` and the file's two boot-state clauses (`gs_st = None <-> empty stage`,
+`lm_st_ok (st so)`), vacuous elsewhere.  Section context is `M L K B sd`
+(the hooks `K` only for the nonnil laws, through `lm_pending_at_nonnil`).
+Gotcha: a notation over the stage's state (`st so := gs_state sd so`)
+hides an unreduced `gs_state sd (MkGS …)` from `lia` -- `unfold
+gs_state in *; cbn [gs_st] in *` after the record `cbn`.  NOT YET: the
+pad family and `good_out_of_stage` (need the Disc-tier `lm_good_out`),
+the three tiers as corollaries (step 3), consumers untouched.
+
 M3 STARTED (2026-09-23): the claim-shape table is §4 above (read off the
 three `*Out.v`/`*OutPure.v`/`*Links.v` side by side).  FIRST CUT = M3a,
 `GenOutPure.v`.  FOUND on the way: `LineModel.v` already carries the

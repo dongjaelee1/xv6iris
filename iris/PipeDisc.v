@@ -2360,6 +2360,18 @@ Proof using.
     + exfalso. exact (lb_head_ne_panic u Y Z Hhd Hcmp).
 Qed.
 
+Lemma pipe_lm_byte_laws : lm_byte_laws pipe_lm.
+Proof using.
+  constructor.
+  - intros l Hl. exact (pbody_ok_bytes l Hl).
+  - intros l Hl. exact (pbody_ok_short l Hl).
+  - intros b Hb. destruct Hb as [[Ha | ->] | ->].
+    + destruct Ha as [H | [H | H]]; lia.
+    + rewrite wl_sp_val. lia.
+    + rewrite (_ : bv_unsigned wl_bar = 124%Z); [lia | by vm_compute].
+  - change (palt_panic (palt_of 0) = false). by vm_compute.
+Qed.
+
 Lemma sessp_prefix_det (ps ps' cs cs' : list nat) (I' I : list (bv 8)) :
   Forall (fun a => (a < length pro_alts)%nat) ps ->
   pro_ok_p ps' cs' (nlines I') ->

@@ -304,6 +304,10 @@ Section line_model_links.
     reflexivity.
   Qed.
 
+  Lemma lm_panic_ge (B : lm_byte_laws M) (cs : list nat) (i : nat) :
+    length cs <= i -> lm_panic M (lm_at M cs i) = false.
+  Proof using. intro Hi. rewrite (lm_at_ge cs i Hi). exact (lmb_dec0_nopanic B). Qed.
+
   (* the pin, and the round it settles *)
   Lemma lm_pro_pin_nil (ps cs : list nat) : lm_pro_pin M ps cs [].
   Proof using. intros q Hq. rewrite nstarted_nil in Hq. lia. Qed.

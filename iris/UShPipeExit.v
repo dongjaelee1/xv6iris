@@ -126,19 +126,20 @@ Section pipe_exit.
                 ⌜length cs = r⌝ ∗ pcs v cs fz)).
   Proof using .
     iIntros "#Hpera Hcw Hcl".
-    iEval (rewrite -pecl_v_eq /pecl_v) in "Hcl". iDestruct "Hcl" as "[#HT | Hc]"; [by iLeft |].
-    iDestruct "Hc"
-      as (v2 w2 so r2 gb2 pre opn tm2)
-         "(#Hpin2 & #Hpera2 & Hblk & Hcur & Hrb & Hta & Hcsa & Hpsa & HEa
-           & Hdl & Hdll & %Hall)".
-    iDestruct (pera_pin_agree with "Hpera Hpera2") as %->.
-    destruct Hall as [(Hfls & _) | (Htrue & Hopen)].
-    { rewrite Hfls. cbn [cur_frac].
+    iEval (rewrite pecl_view) in "Hcl".
+    iDestruct "Hcl" as "[#HT | [Hc | Hc]]"; [by iLeft | |].
+    (* between rounds the claim holds the whole ghost *)
+    { iDestruct "Hc" as (v2 w2 so r2 gb2 pre tm2) "(_ & #Hpera2 & _ & Hcur & _)".
+      iDestruct (pera_pin_agree with "Hpera Hpera2") as %->.
       iDestruct (cur_half_excl with "Hcur Hcw") as %[]. }
-    rewrite Htrue. cbn [cur_frac].
+    iDestruct "Hc"
+      as (v2 w2 so r2 gb2 pre tm2)
+         "(#Hpin2 & #Hpera2 & Hblk & Hcur & Hrb & Hta & Hcsa & Hpsa & HEa
+           & Hdl & Hdll & %Hopen)".
+    iDestruct (pera_pin_agree with "Hpera Hpera2") as %->.
     iDestruct (cur_half_agree with "Hcw Hcur") as %(Hr & _ & _).
     iRight. iExists v2. iFrame "Hpin2".
-    iExists (o_cs so), (true && tm2). iFrame "Hcsa".
+    iExists (o_cs so), tm2. iFrame "Hcsa".
     iPureIntro.
     destruct Hopen as (_ & Hop & _).
     destruct Hop as (Hreq & _ & _ & (a' & Hat & _)).
@@ -309,18 +310,15 @@ Section pipe_exit.
     pecl g k ho H -∗ PT.
   Proof using .
     iIntros "#Hpin Hfam Hblk Hcl".
-    iEval (rewrite -pecl_v_eq /pecl_v) in "Hcl". iDestruct "Hcl" as "[#HT | Hc]"; [iExact "HT" |].
+    iDestruct (pecl_turn_auth with "Hcl") as "[#HT | Hc]"; [iExact "HT" |].
     rewrite /pwc_blk2. iDestruct "Hfam" as "[Hf | #HT]"; [| iExact "HT"].
     rewrite pwc_blk_view. iDestruct "Hblk" as "[Hb | #HT]"; [| iExact "HT"].
     iDestruct "Hf" as (ps cs P) "(_ & _ & Htn1 & _)".
     iDestruct "Hb" as (ps' cs' P') "(_ & Htn2 & _)".
-    iDestruct "Hc"
-      as (v2 w so r gb pre opn tm2)
-         "(#Hpin2 & _ & _ & _ & _ & Hta & _)".
+    iDestruct "Hc" as (v2 nta) "(#Hpin2 & Hta)".
     iDestruct (era_pin_agree with "Hpin2 Hpin") as %->.
     iExFalso.
-    iApply (pipe_turn_three v (P + c1 + c2)%nat (P' + i)%nat
-              (pcount_p (o_ps so) (o_cs so) (o_E so) (o_w so))
+    iApply (pipe_turn_three v (P + c1 + c2)%nat (P' + i)%nat nta
               with "Htn1 Htn2 Hta").
   Qed.
 

@@ -314,11 +314,9 @@ Section UShPipeRound2.
     pecl g k ho H ={E}=∗ PT.
   Proof using .
     intros HX HY HN. iIntros "#Hpin #Hinv HcL Hlpr Hcl".
-    iEval (rewrite -pecl_v_eq /pecl_v) in "Hcl". iDestruct "Hcl" as "[#HT | Hc]";
+    iDestruct (pecl_turn_auth with "Hcl") as "[#HT | Hc]";
       [by iModIntro; iExact "HT" |].
-    iDestruct "Hc"
-      as (v2 w so r gb pre opn tm)
-         "(#Hpin2 & _ & _ & _ & _ & Hta & _)".
+    iDestruct "Hc" as (v2 nta) "(#Hpin2 & Hta)".
     iDestruct (era_pin_agree with "Hpin2 Hpin") as %->.
     iDestruct (pwc_lpr2_turn k v I p with "Hlpr") as "[Hb | #HT]";
       [| by iModIntro; iExact "HT"].
@@ -355,11 +353,9 @@ Section UShPipeRound2.
   Proof using .
     intros HX HY HN. iIntros "#Hpin (#Hinv & HcR & HcM & _) Hlpr Hcl".
     (* the claim's authority *)
-    iEval (rewrite -pecl_v_eq /pecl_v) in "Hcl". iDestruct "Hcl" as "[#HT | Hc]";
+    iDestruct (pecl_turn_auth with "Hcl") as "[#HT | Hc]";
       [by iModIntro; iExact "HT" |].
-    iDestruct "Hc"
-      as (v2 w so r gb pre opn tm)
-         "(#Hpin2 & _ & _ & _ & _ & Hta & _)".
+    iDestruct "Hc" as (v2 nta) "(#Hpin2 & Hta)".
     iDestruct (era_pin_agree with "Hpin2 Hpin") as %->.
     (* the boundary credential's own writer *)
     iDestruct (pwc_lpr2_turn k v I p with "Hlpr") as "[Hb | #HT]";

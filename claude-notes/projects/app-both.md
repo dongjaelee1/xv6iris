@@ -299,13 +299,19 @@ k ho H ∨ popen k ho H`.
   nonempty-wire premise `fecl_drain` has (AppPipe supplies it).
 - 40 dead closed-arm lemmas deleted (PipeOut 4318 -> 3313 lines,
   PipeOutPure 1864 -> 1710).
-- CLEANUP ITEM: the old one-existential claim survives as the proof view
-  `pecl_v` (`pecl_v_eq : pecl_v ⊣⊢ pecl`), used by the pipe-only round
-  steps `pecl_blk2_open_gen/byte_gen/file`, `era_full_split_p`, and the
-  open-round readers in `UShPipeRound2` (2 sites) and `UShPipeExit` (2
-  sites).  Restate those as gcl -> popen / popen -> popen / popen -> gcl
-  and delete the view (and then `pcl_pure2` and friends).
-NEXT: M3c (the link bundles), with the pecl_v cleanup item open.
+- pecl_v CLEANUP DONE (2026-09-23): the one-existential view, `pcl_pure2`,
+  `cur_frac` and the `opn` flag are gone.  The pipe reads its claim three
+  ways (`pecl_view : pecl ⊣⊢ T ∨ pclosed ∨ popen`), where `pclosed` is the
+  generic claim in the pipeline's terms (`gcl_pipe_view : gcl ⊣⊢ T ∨
+  pclosed`, through `pstage_o`).  The round steps say which arm they move:
+  `pecl_blk2_open_gen` pclosed -> popen (refutes popen),
+  `pecl_blk2_byte_gen` popen -> popen and `pecl_blk2_file` popen -> pclosed
+  (both refute pclosed by `cur_half_excl`); the founding lands in pclosed.
+  Downstream: `pecl_turn_auth` (either arm's turn authority) serves the
+  three turn-counting refutations in UShPipeRound2/UShPipeExit;
+  `pecl_open_cs_len` reads the view.  Open-arm pure readers are
+  `pcl_pure_o_E/pein/dl_E/rd_stage`.
+NEXT: M3c (the link bundles).
 
 FileOutPure DEAD CODE REMOVED (2026-09-23): 92 of 169 declarations
 (the whole claim-stage layer -- `D_f`, `pending_f`, `pcount_f`, the

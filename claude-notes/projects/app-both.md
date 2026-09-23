@@ -373,7 +373,8 @@ for each deleted name before the commit.  Iteration: `rocq-warm check
 UShRound.v` replays in ~30 s (cold), so every UShRound fix was a
 warm check, not a make round.
 
-M3a FIRST CUT (2026-09-23): THE MODEL'S SIDE AND THE STAGE'S FIRST HALF.
+M3a FIRST CUT (2026-09-23): THE MODEL'S SIDE AND THE STAGE'S FIRST HALF,
+landed as `0895fd71e`.
 `LineModel.v` gained the byte laws `lm_byte_laws M` (a separate record
 from `lm_laws`, so echo can have it without a shape-laws record:
 `lmb_body_bytes`, `lmb_body_short`, `lmb_byte_printable` (32..126, which

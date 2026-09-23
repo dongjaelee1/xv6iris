@@ -69,7 +69,15 @@ proved ONCE over that.
   is where RULINGS §4.3f–p live; they are not re-argued, they are
   re-housed).  Exit: `EchoLinkInst`/`FileLinkInst`/`PipeLinkInst` are
   applications of the generic record; the three tiers' link files
-  deleted.
+  deleted.  **DONE for the file and the pipe 2026-09-23** (`01e2bb126`,
+  `b6e2d6a63`: `FileLinkInst`/`PipeLinkInst` are `gen_link_inst`; the
+  file's families and laws are deleted, `FileLinksLine`/`FileLinksAt`
+  keep the file's own pieces (`f0w`, `fhead`, the residue, the turn);
+  the pipe's names are abbreviations of the generic families with
+  `_view` readings, `PipeLinksLine` keeps the pure sections and those;
+  `FileLinksAtBan/AtLine/AtPro.v`, `LineModelWr.v`, `PipeLinkGen.v`
+  gone).  Echo's instance (`EchoLinkInst`) is deferred to M5 with the
+  echo tier, where it is the pipe's corollary (see RESUME HERE, M2a).
 - **M3 — the generic console claim.**  `GenOut.v`: the stage as the
   model's stage + a per-shape extension; the write/read/drain steps once;
   `EchoOut`/`FileOut`/`PipeOut` as instances.
@@ -289,7 +297,8 @@ for each deleted name before the commit.  Iteration: `rocq-warm check
 UShRound.v` replays in ~30 s (cold), so every UShRound fix was a
 warm check, not a make round.
 
-M2c THIRD CUT, PART 3 (2026-09-23): THE PIPE SIDE SWITCHED.  Ruled on
+M2c THIRD CUT, PART 3 (2026-09-23): THE PIPE SIDE SWITCHED, landed as
+`b6e2d6a63`.  Ruled on
 the shape:
 the pipeline's families are NOT redefined and NOT deleted -- the names
 `pwc_pro g`, `pwc_blk g`, … become ABBREVIATIONS (`Notation pwc_blk g

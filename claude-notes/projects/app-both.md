@@ -373,6 +373,34 @@ for each deleted name before the commit.  Iteration: `rocq-warm check
 UShRound.v` replays in ~30 s (cold), so every UShRound fix was a
 warm check, not a make round.
 
+M3a OPEN QUESTION FOR THE OWNER (2026-09-23, found reading the Disc
+tiers for `lm_good_out`): THE THREE DISCIPLINES ARE NOT ONE SHAPE.  Echo
+and the pipe state the per-cycle rule at the RELAXED per-line form --
+`disc_pt ps cs p := sess ps cs (done_of (ins p)) `prefix_of` wire p`
+(only the COMPLETED lines are owed at every prefix), `disc_seg'` with
+`length cs = nlines (ins seg)` and `Forall (< 4) cs` (echo) or
+`alts_ok_p` + the merge clause `d4_p cs (ins seg)` (pipe: a `|` line's
+mergeable continuation is the last thing on the cycle) -- while the file
+states the STRICT per-byte form with a state: `disc_pt_f ps cs s p :=
+sessf ps cs s (ins p) `prefix_of` wire p`, `disc_seg_f' s`, `disc_f h :=
+Forall (∃ s, fstate_ok s ∧ disc_seg_f' s _) (cycles_of h)`.
+`EchoDisc.disc_pt_of_strict` says the strict rule implies the relaxed one.
+A generic `lm_disc_seg' s`/`lm_disc`/`lm_good_out s` therefore needs
+EITHER (a) a per-model EXTRA clause hook (the pipe's `d4_p`, `True`
+elsewhere) and the relaxed `done_of` form at echo/pipe vs the strict
+form at the file -- two shapes, i.e. not one predicate -- OR (b) the
+union's discipline stated ONCE at the strict per-byte rule with a state
+and the pipe's merge clause folded into the model (as a law about
+`lm_merge`), with echo's and the pipe's adequacy theorems RESTATED under
+the strict rule (their landed `disc`/`disc_p` are the top-level
+ASSUMPTION of `UEchoBootAdequacy`/`UPipeBootAdequacy`; the strict rule
+is the stronger assumption, so the theorems weaken).  (b) is the clean
+abstraction; it changes what the echo and pipe theorems assume.  NOT
+DECIDED HERE.  Until ruled: `lm_good_out`, the pad family and
+`good_out_of_stage` stay out of `GenOutPure`; the claim's DRAIN step
+(M3b) is the only consumer.  Everything else in M3a (the tiers as
+corollaries, step 3) does not depend on it.
+
 M3a FIRST CUT (2026-09-23): THE MODEL'S SIDE AND THE STAGE'S FIRST HALF,
 landed as `0895fd71e`.
 `LineModel.v` gained the byte laws `lm_byte_laws M` (a separate record

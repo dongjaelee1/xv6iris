@@ -5,7 +5,7 @@ Read `brief-common.md` first.  Design: `claude-notes/design/app-pipe.md`
 §5.1 (the parser paragraph) and §1 (the canonical line: one blank each
 side of `|`, the right command the single word `cat`).  THE MOULD is
 upstream's redirect-shape parser work, lane for lane: read
-`claude-notes/projects/app-file.md` sections "SH-REDIR", "SH-PARSE",
+`claude-notes/completed/app-file.md` sections "SH-REDIR", "SH-PARSE",
 "SH-PARSE-2", "SH-LEX-REDIR" (their findings ARE your map: which
 function walks live where, what `parsepipe` at the `>` shape looks like,
 the parser theorem's shape, malloc's second call), and the files they

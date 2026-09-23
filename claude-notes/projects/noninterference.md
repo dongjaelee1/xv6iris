@@ -11,11 +11,8 @@ owner's word only.  Below: CAMPAIGN OPENED
 closed).  §§0–7 below are the design discussion as
 checkpointed 2026-09-04 (Fable, with the owner) and remain the design of
 record until a lane's as-landed note contradicts them; the LANES section
-is the live worklist.  **EXECUTION IS GATED ON A BUILD MIRROR**: the
-project has had no EC2 box since ~2026-09-10 (the old mirror is gone;
-the instance offered 09-11 belonged to another project and was handed
-back clean).  Briefs and design may proceed; no proof lane compiles
-until a box exists — the standing order (never build locally) holds.
+is the live worklist.  The build host exists again: the proofs build on this EC2 machine
+(durable-notes, Build), so nothing here is gated on a box any more.
 
 ## Lanes (opened 2026-09-15)
 
@@ -25,14 +22,13 @@ claim files around the engine, so M0's re-cut of `uexec_ret_F` WAITS for
 that to settle (or goes to upstream with it — relay if they want it);
 M1's ledgers are fresh ground and go first.
 
-- [ ] **NI-LEDGER-KALLOC** (M1's first ledger; kernel; BLOCKED on the
-  build box).  The allocator's ghost ledger on the FREE POOL pattern
+- [ ] **NI-LEDGER-KALLOC** (M1's first ledger; kernel).  The allocator's ghost ledger on the FREE POOL pattern
   (`bitmap_inv`, per §2/§7): an abstract free set in the allocator's
   invariant; `kalloc` fails iff it is empty; each `kalloc`/`kfree`
   appends an actor-labelled `Alloc`/`Free` event.  Deliverables: the
   event vocabulary + ledger file; `SpecKalloc`'s rows deterministic in
   the ledger; callers served by the invariant (not per-caller
-  fragments).  Cut the lane brief from §2/§7 when the box exists.
+  fragments).  Cut the lane brief from §2/§7.
 - [ ] **NI-LEDGER-REST** (M1 remainder): `nextpid` — coordinate with
   the landed TRAP-ROWS `upid`/`ukn_pid` work, the U tier already sees
   pid numbers — then `ticks`, the zombie set; then the per-process key

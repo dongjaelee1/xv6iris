@@ -16,7 +16,7 @@ arm is the theorem's one named premise (`pipe_both_law`).
 - Each lane works in ITS OWN worktree of this tree (`/shared/xv6iris-pipe-<lane>`,
   branch `app-pipe/<lane>` off the SHA the brief names) and builds ONLY
   on the EC2 mirror, in a fully built clone of the same name there,
-  through `claude-notes/projects/app-pipe-briefs/ec2-lane.sh <lane>
+  through `claude-notes/completed/app-pipe-briefs/ec2-lane.sh <lane>
   check|build|run` (which syncs first).  Never a local `rocq`/`coqc`/
   `make` (the standing order; this machine is the owner's, 8 cores/15 GB).
   Lanes do not share a remote clone, so they do not race each other.
@@ -79,7 +79,7 @@ arm is the theorem's one named premise (`pipe_both_law`).
   demos §1 lists including the NEGATIVE one.  Bar: `Closed under the
   global context`.
 - [x] **SH-PARSE-PIPE** (U tier, sh's parser, design §5.1).  Mould:
-  upstream's SH-PARSE / SH-PARSE-2 findings in `projects/app-file.md`.
+  upstream's SH-PARSE / SH-PARSE-2 findings in `completed/app-file.md`.
   `parsepipe` turns ONCE for ` | cat` (today `wp_kshp_parsepipe_gt` is the
   `>`-shape walk); `pipecmd` into the node catalogue (`ush_cmd` at `UPipe
   (UExec l) (UExec r)`); `nulterminate`'s PIPE row; `parseline`/`parsecmd`

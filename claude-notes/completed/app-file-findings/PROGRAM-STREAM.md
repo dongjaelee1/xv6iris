@@ -1842,7 +1842,7 @@ cat_uexec_slot, cat_slot_of_kexec}`, and `UCatKernel` whole — so that
 `UkCatMain`, `UkRunSys` are ALREADY generic (section binders).
 
 THE cat CHILD'S DRAFT IS PARKED as
-`claude-notes/projects/app-file-findings/UShRound-cat-child.patch` (439 lines
+`claude-notes/completed/app-file-findings/UShRound-cat-child.patch` (439 lines
 against `UShRound.v` at `app-file/cat-walk`): everything in it elaborates and
 checks up to that one `udep`; re-apply it once the chain is generic.
 

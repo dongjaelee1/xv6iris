@@ -9,7 +9,7 @@ lane is the SAME construction one application over, and SIMPLER (a pipe
 dies with its era: NO per-era extra state, NO boot value, NO typed
 witness, NO f-state in the session):
 
-- `projects/app-file.md` findings "STAGE", "STAGE-2", "FILE-DEC", "LINK-GEN"
+- `completed/app-file.md` findings "STAGE", "STAGE-2", "FILE-DEC", "LINK-GEN"
   (read all four whole; they are the map of what each file does and what
   bit them);
 - `iris/FileOutPure.v` (EchoOutPure's twin at `sessf`), `iris/FileOut.v`

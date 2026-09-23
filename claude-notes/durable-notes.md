@@ -168,6 +168,12 @@ proof and is not.
   LOCATIONS), and the failure is the same "inconsistent assumptions" as a real
   change. Never `touch` a `.vo` to dodge a rebuild, and never edit a file low in
   the cone while its dependents are compiling.
+- **A `-vok` check of a CONSUMER reads a dependency's stale `.vo`** whenever
+  that dependency's `.vos` is the empty one a full `coqc` leaves, so a `-vok`
+  measurement of a change to a dependency's STATEMENTS is meaningless until
+  the dependency is rebuilt as `.vo`. `-vok` iteration is for edits to the
+  consumer's own proofs; after editing a file whose statements a consumer
+  applies, `make Foo.vo` first.
 - **Editing near the bottom of the tree kills the single-file check loop** —
   every downstream `coqc <one file>` fails with "inconsistent assumptions", and
   no hand-ordered sequence of single-file compiles works. Validate with
@@ -784,6 +790,13 @@ records the `uexecSG` half; `UkCatDeed.v`'s the `uprogSG` half. The same
 trap one class in: a second `ghost_varG`/`ctokG` beside `!xv6G Σ` (which
 already carries both). The hoist is still worth doing first — it is what
 turns the hang into a readable failure. (CAT-WALK-2, 2026-09-17)
+- **Under a backtick binder, QUALIFY the class name.**  `Context \`{PS :
+  uprogSG Σ}` in a file that does not import the class's module is not an
+  error: the backtick GENERALISES the unbound name into a fresh variable
+  `uprogSG : gFunctors → Type`, `PS` gets that bogus type, every use in the
+  file still resolves the real class at the ambient instance, and nothing is
+  captured — silently, until a consumer at the real class meets a leaf with
+  the spurious binder and hangs. Write `UexecSG.uprogSG Σ`.
 
 ### A fourth silent hang: a transparent obligation under a variable predicate
 

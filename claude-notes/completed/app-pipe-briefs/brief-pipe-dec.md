@@ -3,12 +3,12 @@
 Clone: `/shared/xv6iris-pipe-dec`, branch `app-pipe/pipe-dec`.
 Read `brief-common.md` first.  Why this lane exists: upstream's STAGE lane
 found that the application's ledger counter sits at `decide (disc h)` and
-so the discipline must be DECIDABLE (`projects/app-file.md`, "STAGE …
+so the discipline must be DECIDABLE (`completed/app-file.md`, "STAGE …
 BLOCKER 1" and "FILE-DEC"); `EchoDisc` has `disc_dec`, `FileDiscDec.v`
 built `disc_f_dec`.  The pipe stage (lane PIPE-STAGE, running in
 parallel, takes `Context {Hdp : forall h, Decision (disc_p h)}` until you
 land) needs `disc_p_dec`.  THE MOULD is `iris/FileDiscDec.v` (643 lines,
-D1–D5) and its findings block ("FILE-DEC" in `projects/app-file.md`):
+D1–D5) and its findings block ("FILE-DEC" in `completed/app-file.md`):
 read both whole before writing anything.  The model is `iris/PipeDisc.v`
 (lane PIPE-MODEL + PIPE-MODEL-2; read its §9 assumptions list and the
 `### PIPE-MODEL-2` Findings block in `projects/app-pipe.md` — especially

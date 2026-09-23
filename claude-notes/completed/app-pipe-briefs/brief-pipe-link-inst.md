@@ -6,7 +6,7 @@ mould for ours) is stated end to end at the link RECORD instance
 `FileLinkInst.file_link_inst_at g s0`, and `PipeLinks.v` is only the link
 BUNDLE — SH-PIPE-ROUND's STOP B (design §5.8; its Findings block).  THE
 MOULD, file for file: `iris/LinkRec.v` (the record: 94 fields in six groups
-— read LINK-GEN's Findings in `projects/app-file.md` for what each group is
+— read LINK-GEN's Findings in `completed/app-file.md` for what each group is
 and why `lk_pr`/`lk_lpr` are FIELDS), `iris/EchoLinks.v` + `EchoLinksLine.v`
 (echo's families and laws, the ORIGINAL), `iris/FileLinksLine.v` (2,081:
 the FILE families and laws at the file stage) and `iris/FileLinkInst.v`

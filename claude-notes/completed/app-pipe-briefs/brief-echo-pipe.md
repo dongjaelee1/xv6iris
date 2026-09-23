@@ -12,7 +12,7 @@ echo's landed entry at the CONSOLE and upstream's at a FILE: `iris/UEchoOut.v`
 at a LEDGER slot, how the exit payload is handed back), `iris/UEchoFile.v`
 + `iris/UEchoKernel.v` (upstream's twin at fd 1 = a file; note it was a
 SKELETON with `Admitted` for a while — read its current state and its
-Findings in `projects/app-file.md` "SKELETON", "ECHO-FILE" if present),
+Findings in `completed/app-file.md` "SKELETON", "ECHO-FILE" if present),
 `iris/UkEcho.v` (echo's code walk — UNTOUCHED by you), `iris/UkWritePipe.v`
 §4 (`wp_uk_ecall_write_pipe_std` at slot 1 with its `∀ M pm sz, uheap -∗
 uheap ∗ pipe_wpay …` wrapper), `iris/PipeProto.v` (`pipe_wpay_of_inv_fupd`,

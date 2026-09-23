@@ -1,7 +1,7 @@
 # Design: the FILE application (`AppFile`) — `echo … > f` survives a power cycle, `cat f` prints it
 
 Status: DESIGN OF RECORD (2026-09-17, Fable).  The worklist is
-[`../projects/app-file.md`](../projects/app-file.md).  This page builds on
+[`../completed/app-file.md`](../completed/app-file.md).  This page builds on
 [`applications.md`](applications.md) (the two-instance claim, the
 transport, the record), the echo application (`iris/AppEcho.v`,
 `iris/EchoDisc.v`, `iris/EchoOut.v`, `iris/EchoOutPure.v`: the console
@@ -899,7 +899,7 @@ unowned critical item (WRITE-RELAY-3's `TB` guard).  RULES, replacing
   and fix every literal in one pass before assembling.
 - MERGE AT LANE END ONLY; no tree-wide rename or deletion until
   `file_Hinit_boot` closes; findings go to a PER-LANE file
-  `claude-notes/projects/app-file-findings/<LANE>.md` (the single
+  `claude-notes/completed/app-file-findings/<LANE>.md` (the single
   worklist file cost 22 merge conflicts).
 - Every new `∨ app_taint` arm gets a vacuity `Example`; every new entry
   or round premise an inhabited witness; a post's witness is bound in the

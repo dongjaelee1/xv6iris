@@ -12,13 +12,13 @@ Nothing in `iris/` was edited.
    (`UFileBootAdequacy.file_prog_law`, `iris/UFileBootAdequacy.v:121`),
    and that premise — the verified program tier — has **zero lines
    landed** (no `UEchoFile.v`, `UShRound.v`, `UShCat.v` exist; `SH-ROUND`
-   and `ECHO-FILE` are unstarted in `projects/app-file.md`).  It is, by
+   and `ECHO-FILE` are unstarted in `completed/app-file.md`).  It is, by
    the echo application's own size (`UInitBoot.v`+`UInitSh.v`+`UShLine.v`+
    `UShPanic.v`+`UShRest.v`+`UShEchoPay.v`+`UEchoOut.v`+`UInitBanner.v`+
    `UInitConsK.v`+`EchoLinks.v`+`EchoLinksLine.v` ≈ 9,500 lines), the
    LARGEST remaining item, and it has never been priced in the worklist.
 2. Six of the seven OFF-HAND lanes built machinery that the sixth deleted
-   (`projects/app-file.md`, OFF-HAND-6: "the exec crossing's all-parked
+   (`completed/app-file.md`, OFF-HAND-6: "the exec crossing's all-parked
    row is DELETED on BOTH arms together with the whole
    `fdv_held_in`/`ukn_held` carrier"), and the seventh is building on a
    shape that still cannot pay echo's first write (§A1 below: F-WRITE's
@@ -568,7 +568,7 @@ existential-offset form; `PinnedObs` §8 (F-OPEN-2 says §8a supersedes it).
    refutation was a statement-level fact; `UCatKernel.cat_round_at` is the
    proof this works (two vacuous shapes caught before a lane).  Make
    "compiles as a statement" the bar for a ruling.
-5. **Restate the process rules in `projects/app-file.md`**: a lane's brief
+5. **Restate the process rules in `completed/app-file.md`**: a lane's brief
    names the STATEMENTS it may move (as OFF-HAND-6 reported them) and is
    sized so a refuted ruling wastes at most one file's sweep; a ruling
    cites the definition (mask, persistence, home across `kexec`) it was

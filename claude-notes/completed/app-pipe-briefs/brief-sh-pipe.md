@@ -5,7 +5,7 @@ Read `brief-common.md` first.  Design: `claude-notes/design/app-pipe.md`
 §5.1 (the arm), §4.2 (what the arm's two waits hand back — you state it
 ABSTRACTLY here), §2 (the pipe leaf's coming shape — you do NOT depend on
 it; you take the call as a premise).  The mould is upstream's REDIR arm:
-`claude-notes/projects/app-file.md` "SH-REDIR" (how the `open` became a
+`claude-notes/completed/app-file.md` "SH-REDIR" (how the `open` became a
 CALL PREMISE `ush_open_call`, and why: the walk compiles before the kernel
 lane lands), "F-OPEN-2" (`UkShRedirAns.ush_open_call2`, the `-1` payload);
 files `iris/UkShRedir.v`, `UkShRedirAns.v`, `UkShRedirEx.v`,

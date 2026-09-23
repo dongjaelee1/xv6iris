@@ -29,12 +29,12 @@ names, and to REPORT — precisely — anything the design got wrong.
   BUILT at the base SHA, so dependencies never need building.  Use the
   helper in this directory, from anywhere:
 
-      claude-notes/projects/app-pipe-briefs/ec2-lane.sh <lane> check File.v   # seconds: statement check (make File.vos)
-      claude-notes/projects/app-pipe-briefs/ec2-lane.sh <lane> build File.vo  # this file and its cone, for real (DETACHED; returns at once)
-      claude-notes/projects/app-pipe-briefs/ec2-lane.sh <lane> build          # the whole iris tree (DETACHED) -- before you report "landed"
-      claude-notes/projects/app-pipe-briefs/ec2-lane.sh <lane> wait           # poll the detached build to its RC line; if YOUR tool call
+      claude-notes/completed/app-pipe-briefs/ec2-lane.sh <lane> check File.v   # seconds: statement check (make File.vos)
+      claude-notes/completed/app-pipe-briefs/ec2-lane.sh <lane> build File.vo  # this file and its cone, for real (DETACHED; returns at once)
+      claude-notes/completed/app-pipe-briefs/ec2-lane.sh <lane> build          # the whole iris tree (DETACHED) -- before you report "landed"
+      claude-notes/completed/app-pipe-briefs/ec2-lane.sh <lane> wait           # poll the detached build to its RC line; if YOUR tool call
                                                                               # times out, run `wait` again -- the build keeps running
-      claude-notes/projects/app-pipe-briefs/ec2-lane.sh <lane> run '<cmd>'    # e.g. run 'make -f CoqMakefile audit-echo-only' if the brief asks
+      claude-notes/completed/app-pipe-briefs/ec2-lane.sh <lane> run '<cmd>'    # e.g. run 'make -f CoqMakefile audit-echo-only' if the brief asks
 
   `<lane>` is the suffix of your worktree (`/shared/xv6iris-pipe-<lane>`).
   Every call first SYNCS your worktree's modified/new/committed files to

@@ -1,6 +1,11 @@
 # Project: the FILE application — `echo … > f`, power cycle, `cat f`
 
-**STATUS: OPEN (started 2026-09-17).**  Design of record:
+**STATUS: COMPLETE, ARCHIVED 2026-09-23.**  The theorem is closed since
+`cb28f045c` (`UInitFile.file_adequacy_closed`, audited by `FileAssumptions.v`
+at fourteen; RULING F0-BOOT).  Its successor is the `app-both` campaign
+(`../projects/app-both.md`), whose union retires this tier's theorem into a
+corollary.  Lane findings: `app-file-findings/` beside this file.  The
+worklist below is kept as it stood (started 2026-09-17).  Design of record:
 [`../design/app-file.md`](../design/app-file.md).  Read that first; this
 file is only what is LEFT, lane by lane, and what each lane found.
 
@@ -7212,7 +7217,7 @@ is `UkShWords.wl_tokens` at `wl_words cmd_cat_f` with no new induction —
 
 Branch `app-file/cat-entry`, worktree `/shared/xv6iris-3-lanes/cat-entry`,
 merged with `main` twice (`7753cbf42`, then SKELETON's `5894e21dc`; the
-only conflicts were `claude-notes/projects/app-file.md`, resolved by
+only conflicts were `claude-notes/completed/app-file.md`, resolved by
 keeping every findings block).  Commits: `daf938ef3` (M1), `5af1d6f20`
 (M2), and the entry's.
 

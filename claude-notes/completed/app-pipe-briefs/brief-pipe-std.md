@@ -8,7 +8,7 @@ descriptor ledger: `UserFd.ustd l` for the standard slots below `NSTD`,
 `user-write.md` (the ONE read walk `UkRunSys.wp_uk_ecall_read_at` and ONE
 write walk `wp_uk_ecall_write_at`, D/K-parametric, of which every member is
 a corollary).  THE MOULD is upstream's ledger-slot write leaf:
-`claude-notes/projects/app-file.md`, lane "OFF-LINK", block "THE LEDGER
+`claude-notes/completed/app-file.md`, lane "OFF-LINK", block "THE LEDGER
 SLOT (L5's third item…)" — `UkWriteFile.v` section 6: `uwr_fd_st_std`,
 `udepwf_std_write_file`, `wp_uk_ecall_write_std` "proved through
 `UkRunSys.wp_uk_ecall_write_at` at `K fdv := take NSTD fdv = l` with

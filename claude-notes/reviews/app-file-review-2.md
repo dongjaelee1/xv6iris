@@ -166,7 +166,7 @@ not move.
 - "Merge main into <lane>" / "Merge remote-tracking" / "Merge branch
   'main'": **22**.  Commits titled fix-forward/repair: **7**.  Commit
   messages mentioning "conflict": **25**.
-- `claude-notes/projects/app-file.md`: touched by **53** commits, **22**
+- `claude-notes/completed/app-file.md`: touched by **53** commits, **22**
   of them merges — every lane appends to one 10,811-line file and every
   merge of it conflicts.
 - Findings blocks appended since review 1: **23** (SKELETON, WRITE-RELAY,

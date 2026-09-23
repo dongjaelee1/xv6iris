@@ -1697,6 +1697,7 @@ UPipeBootAdequacy.v
 UInitFileCons.v
 
 UEchoFile.v
+UkFileDev.v
 UShRedirPay.v
 UShRound.v
 UInitFileCC.v

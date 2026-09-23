@@ -1822,6 +1822,50 @@ Proof using. rewrite /fstate_after /lm_after. apply fstate_upto_lm. Qed.
 Lemma pro_ok_f_lm ps cs q : pro_ok_f ps cs q <-> lm_pro_ok file_lm ps cs q.
 Proof using. rewrite /pro_ok_f /lm_pro_ok pro_idx_f_lm. reflexivity. Qed.
 
+(* ---- the discipline and the claim, as the model's ---- *)
+Lemma disc_pt_f_lm ps cs s p : disc_pt_f ps cs s p <-> lm_disc_pt file_lm ps cs s p.
+Proof using. rewrite /disc_pt_f /lm_disc_pt sessf_lm. done. Qed.
+
+Lemma disc_seg_f'_lm s seg : disc_seg_f' s seg <-> lm_disc_seg' file_lm s seg.
+Proof using.
+  rewrite /disc_seg_f' /lm_disc_seg' /disc_seg_f disc_input_f_lm. split.
+  - intros [Hd (ps & cs & Hao & Hall)]. split; [exact Hd |]. exists ps, cs.
+    split; [by rewrite -alts_ok_lm |].
+    split; [apply lm_d4_noterm; intro a; reflexivity |].
+    intros p Hp. destruct (Hall p Hp) as [Hok Hpt].
+    split; [by apply pro_ok_f_lm | by apply disc_pt_f_lm].
+  - intros [Hd (ps & cs & Hao & _ & Hall)]. split; [exact Hd |]. exists ps, cs.
+    split; [by rewrite alts_ok_lm |].
+    intros p Hp. destruct (Hall p Hp) as [Hok Hpt].
+    split; [by apply pro_ok_f_lm | by apply disc_pt_f_lm].
+Qed.
+
+Lemma disc_f_lm h : disc_f h <-> lm_disc file_lm h.
+Proof using.
+  rewrite /disc_f /lm_disc. split; intros H.
+  - eapply Forall_impl; [exact H |]. intros seg (s & Hs & Hd).
+    exists s. split; [exact Hs | by apply disc_seg_f'_lm].
+  - eapply Forall_impl; [exact H |]. intros seg (s & Hs & Hd).
+    exists s. split; [exact Hs | by apply disc_seg_f'_lm].
+Qed.
+
+Lemma expected_rel_f_lm s I out :
+  (exists ps cs : list nat,
+     pro_ok_f ps cs (nlines I) /\ alts_ok I cs /\ out `prefix_of` sessf ps cs s I)
+  <-> lm_expected_rel file_lm s I out.
+Proof using.
+  rewrite /lm_expected_rel. split.
+  - intros (ps & cs & Hok & Hao & Hw). exists ps, cs.
+    split; [by apply pro_ok_f_lm |]. split; [by rewrite -alts_ok_lm |].
+    by rewrite -sessf_lm.
+  - intros (ps & cs & Hok & Hao & Hw). exists ps, cs.
+    split; [by apply pro_ok_f_lm |]. split; [by rewrite alts_ok_lm |].
+    by rewrite sessf_lm.
+Qed.
+
+Lemma good_out_f_lm s seg : good_out_f s seg <-> lm_good_out file_lm s seg.
+Proof using. rewrite /good_out_f /lm_good_out. apply expected_rel_f_lm. Qed.
+
 Lemma pro_pin_f_lm ps cs I : pro_pin_f ps cs I <-> lm_pro_pin file_lm ps cs I.
 Proof using.
   rewrite /pro_pin_f /lm_pro_pin. split; intros H q Hq; specialize (H q Hq);

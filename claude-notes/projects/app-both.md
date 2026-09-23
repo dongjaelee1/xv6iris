@@ -274,6 +274,44 @@ bodies (M2c's two shapes); `Proof using` closure; comments without `"`.
 
 ## RESUME HERE (2026-09-22, late)
 
+M3a DISC TIER ONCE (2026-09-23): `LineModel` gained `lm_disc_pt ps cs s
+p` (at `done_of`), `lm_d4 cs s I` (the pipe's D4 at the determinacy
+section's own guard: an admitting-a-coverage-ending-arm line whose
+continuation is mergeable is the last line and the input ends there;
+`lm_d4_noterm` makes it vacuous where `lm_term` is constantly false),
+`lm_disc_seg' s` (disc_input, `lm_alts_ok`, `lm_d4`, per-point pro_ok +
+disc_pt), `lm_disc` (∃ s with `lm_st_ok` per cycle), `lm_expected_rel s`,
+`lm_good_out s`, and the choice-list extensionality `lm_upto/seq/sess_
+cs_ext` (+ `lm_pro_idx_ext`, moved down from `LineModelLinks`, whose six
+uses now pass `M`).  The three tiers' predicates are IFFs with the model's:
+`FileDisc.{disc_pt_f,disc_seg_f',disc_f,expected_rel_f,good_out_f}_lm`,
+`PipeDisc.{disc_pt_p,d4_p,disc_seg_p',disc_p,expected_rel_p,good_out_p}_lm`
+(`d4_p_lm`: the pipe's guard `pline_is_pipe` IS "admits a coverage-ending
+arm" -- `palt_ok_forkS_pipe` one way, `palt_ok_forkS_old` the other),
+`LineModelInst.{alts_ok,disc_pt,disc_seg',disc,expected_rel,good_out}_lm`
+(echo's `length cs = nlines /\ Forall (<4)` IS `lm_alts_ok echo_lm`;
+`expected_rel_lm` pads echo's resolution to `nlines` with 0s through
+`lm_sess_cs_ext`, since echo's `expected_rel` does not pin the length).
+FOUND for the pad family: NO new hook -- `lmh_noc` (the silent round) is
+per line admissible, non-panicking and free (so non-terminal), which is
+all a pad entry needs.
+
+FileReadInst HANG (2026-09-23, NOT this cut: it reproduced at `ddd3faeac`
+with the cut stashed, although gate 1 compiled the same content the night
+before -- cause of the change not found; toolchain, switch and sibling
+trees unchanged).  `file_read_inst_at := MkReadRec FIs disc_input_f (rk_rd
+FI …) (rk_rd_taint FI …) fri_arms_at` sat at 100% CPU / 1.7 GB for 20+
+min; `Timeout` did not fire.  Bisected by rewriting the record as a proof
+script: the stall is `exact (rk_rd FI (file_read_inst g Htag))` against
+the `FIs` field -- the goal and the term differ ONLY in `lk_links`/
+`lk_pin`/`lk_rr` at `FI` vs `FIs`, each of which converts instantly alone
+(`eq_refl` probes), but unifying the whole entailment tries `FIs =?= FI`
+first (two different records, unfolded field by field).  FIX:
+`fri_rd_at`/`fri_rd_taint_at` `change` each link field to `FI`'s spelling
+and then `exact`; the file compiles in 5.6 s.  RECIPE for the next such
+hang: split a record literal into a `refine` + one `exact` per field with
+`-time`; `Set Printing Implicit. Show.` against `Check` of the term.
+
 RELAXED-RULE PORT LANDED (2026-09-23; the ruling's step (1)-(4) below,
 MEASURED AGAIN before coding): the change list was FOUR SITES SHORT.  The
 file's F2 lemma `FileOutPure.D2_next_input_f` DERIVED the log-completeness

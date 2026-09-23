@@ -247,19 +247,10 @@ Section line_model_links.
     by rewrite /lm_at (Hc q ltac:(lia)) (Hb q ltac:(lia)).
   Qed.
 
-  Lemma lm_pro_idx_ext cs1 cs2 q :
-    (forall j, j < q -> cs1 !!! j = cs2 !!! j) ->
-    forall j, j <= q -> lm_pro_idx M cs1 j = lm_pro_idx M cs2 j.
-  Proof using.
-    intros Hj j. induction j as [| j IH]; intros Hjq; [done |].
-    rewrite !lm_pro_idx_S IH; [| lia].
-    by rewrite /lm_at (Hj j ltac:(lia)).
-  Qed.
-
   Lemma lm_pro_idx_app_le (cs z : list nat) (q : nat) :
     q <= length cs -> lm_pro_idx M (cs ++ z) q = lm_pro_idx M cs q.
   Proof using.
-    intro Hq. apply (lm_pro_idx_ext (cs ++ z) cs q); [| lia].
+    intro Hq. apply (lm_pro_idx_ext M (cs ++ z) cs q); [| lia].
     intros j Hj. rewrite !list_lookup_total_alt lookup_app_l; [done | lia].
   Qed.
 
@@ -278,7 +269,7 @@ Section line_model_links.
     lm_pro_idx M (cs ++ [a]) (S (length cs)) = lm_pro_idx M cs (length cs).
   Proof using.
     intros Ha. rewrite lm_pro_idx_S /lm_at ll_snoc_lookup_total Ha.
-    rewrite (lm_pro_idx_ext (cs ++ [a]) cs (length cs)
+    rewrite (lm_pro_idx_ext M (cs ++ [a]) cs (length cs)
                ltac:(intros j Hj; rewrite list_lookup_total_alt lookup_app_l;
                      [by rewrite -list_lookup_total_alt | lia])
                (length cs) ltac:(lia)).
@@ -290,7 +281,7 @@ Section line_model_links.
     lm_pro_idx M (cs ++ [a]) (S (length cs)) = S (lm_pro_idx M cs (length cs)).
   Proof using.
     intros Ha. rewrite lm_pro_idx_S /lm_at ll_snoc_lookup_total Ha.
-    rewrite (lm_pro_idx_ext (cs ++ [a]) cs (length cs)
+    rewrite (lm_pro_idx_ext M (cs ++ [a]) cs (length cs)
                ltac:(intros j Hj; rewrite list_lookup_total_alt lookup_app_l;
                      [by rewrite -list_lookup_total_alt | lia])
                (length cs) ltac:(lia)).
@@ -406,7 +397,7 @@ Section line_model_links.
     rewrite (lm_upto_ext cs0 cs s0 (bodies_of I) (bodies_of I)
                (nlines I - 1) ltac:(intros j Hj; apply Hlk; lia)
                ltac:(intros j Hj; reflexivity)).
-    by rewrite (lm_pro_idx_ext cs0 cs (nlines I) Hlk (nlines I - 1)
+    by rewrite (lm_pro_idx_ext M cs0 cs (nlines I) Hlk (nlines I - 1)
                   ltac:(lia)).
   Qed.
 
@@ -820,7 +811,7 @@ Section line_model_links.
     intros Hw. pose proof (lm_wr_blk_started ps cs s0 I P Hw) as Hst.
     destruct Hw as (Hpin & _).
     intros q Hq. rewrite Hst in Hq.
-    rewrite (lm_pro_idx_ext (cs ++ [a]) cs q
+    rewrite (lm_pro_idx_ext M (cs ++ [a]) cs q
                ltac:(intros j Hj; rewrite list_lookup_total_alt lookup_app_l;
                      [by rewrite -list_lookup_total_alt | lia])
                q ltac:(lia)).
@@ -1246,7 +1237,7 @@ Section line_model_links.
     assert (Hlow : lm_pro_idx M (cs ++ [lmh_pan K (lm_line_at I)]) (nlines I - 1)
                    = lm_pro_idx M cs (length cs)).
     { replace (nlines I - 1) with (length cs) by lia.
-      exact (lm_pro_idx_ext (cs ++ [lmh_pan K (lm_line_at I)]) cs (length cs)
+      exact (lm_pro_idx_ext M (cs ++ [lmh_pan K (lm_line_at I)]) cs (length cs)
                ltac:(intros j Hj; rewrite list_lookup_total_alt lookup_app_l;
                      [by rewrite -list_lookup_total_alt | lia])
                (length cs) ltac:(lia)). }

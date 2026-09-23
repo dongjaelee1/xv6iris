@@ -125,3 +125,80 @@ Proof using. rewrite /sess /lm_sess. by rewrite alt_seq_lm. Qed.
 
 Lemma pro_ok_lm ps cs q : pro_ok ps cs q <-> lm_pro_ok echo_lm ps cs q.
 Proof using. rewrite /pro_ok /lm_pro_ok pro_idx_lm. reflexivity. Qed.
+
+(* ---- the discipline and the claim, as the model's.  Echo's range
+   condition ([length cs = nlines] and every code below 4) IS the model's
+   [lm_alts_ok], whose per-line admissibility ignores the line. ---- *)
+Lemma alts_ok_lm I cs :
+  length cs = nlines I /\ Forall (fun c => (c < 4)%nat) cs
+  <-> lm_alts_ok echo_lm I cs.
+Proof using.
+  rewrite /lm_alts_ok. split.
+  - intros [Hl HF].
+    apply Forall2_same_length_lookup_2; [by rewrite length_fmap Hl |].
+    intros i l c _ Hc. exact (Forall_lookup_1 _ _ _ _ HF Hc).
+  - intros H. split.
+    + apply Forall2_length in H. by rewrite length_fmap in H.
+    + apply Forall_lookup. intros i c Hc.
+      destruct (Forall2_lookup_r _ _ _ _ _ H Hc) as (l & _ & Hok). exact Hok.
+Qed.
+
+Lemma disc_pt_lm ps cs p : disc_pt ps cs p <-> lm_disc_pt echo_lm ps cs tt p.
+Proof using. rewrite /disc_pt /lm_disc_pt sess_lm. done. Qed.
+
+Lemma disc_seg'_lm seg : disc_seg' seg <-> lm_disc_seg' echo_lm tt seg.
+Proof using.
+  rewrite /disc_seg' /lm_disc_seg' /disc_seg. split.
+  - intros [Hd (ps & cs & Hl & HF & Hall)]. split; [exact Hd |]. exists ps, cs.
+    split; [by apply alts_ok_lm |].
+    split; [apply lm_d4_noterm; intro a; reflexivity |].
+    intros p Hp. destruct (Hall p Hp) as [Hok Hpt].
+    split; [by apply pro_ok_lm | by apply disc_pt_lm].
+  - intros [Hd (ps & cs & Hao & _ & Hall)]. split; [exact Hd |]. exists ps, cs.
+    destruct (proj2 (alts_ok_lm _ _) Hao) as [Hl HF].
+    split; [exact Hl |]. split; [exact HF |].
+    intros p Hp. destruct (Hall p Hp) as [Hok Hpt].
+    split; [by apply pro_ok_lm | by apply disc_pt_lm].
+Qed.
+
+Lemma disc_lm h : disc h <-> lm_disc echo_lm h.
+Proof using.
+  rewrite /disc /lm_disc. split; intros H.
+  - eapply Forall_impl; [exact H |]. intros seg Hd. exists tt. split; [exact Logic.I | by apply disc_seg'_lm].
+  - eapply Forall_impl; [exact H |]. intros seg ([] & _ & Hd). by apply disc_seg'_lm.
+Qed.
+
+Lemma expected_rel_lm I out :
+  expected_rel I out <-> lm_expected_rel echo_lm tt I out.
+Proof using.
+  rewrite /expected_rel /lm_expected_rel. split.
+  - (* echo's resolution need not be as long as the input: pad it with
+       [0]s, which neither the transcript nor the round pointer reads *)
+    intros (ps & cs & Hok & HF & Hw).
+    set (cs' := take (nlines I) (cs ++ replicate (nlines I) 0%nat)).
+    assert (Hext : forall j, (j < nlines I)%nat -> cs' !!! j = cs !!! j).
+    { intros j Hj. rewrite /cs' list_lookup_total_alt lookup_take; [| lia].
+      destruct (decide (j < length cs)%nat) as [Hlt | Hge].
+      - rewrite lookup_app_l; [| lia]. by rewrite -list_lookup_total_alt.
+      - rewrite lookup_app_r; [| lia]. rewrite lookup_replicate_2; [| lia].
+        rewrite list_lookup_total_alt (lookup_ge_None_2 cs j ltac:(lia)).
+        reflexivity. }
+    assert (Hlen : length cs' = nlines I).
+    { rewrite /cs' length_take length_app length_replicate. lia. }
+    assert (HF' : Forall (fun c => (c < 4)%nat) cs').
+    { apply Forall_take, Forall_app. split; [exact HF |].
+      apply Forall_replicate. lia. }
+    exists ps, cs'. split.
+    { apply pro_ok_lm. destruct Hok as [Hps Hlt]. split; [exact Hps |].
+      by rewrite (pro_idx_ext cs' cs (nlines I) Hext (nlines I) (Nat.le_refl _)). }
+    split; [by apply alts_ok_lm |].
+    rewrite -(lm_sess_cs_ext echo_lm ps cs cs' tt I
+                ltac:(intros j Hj; by rewrite Hext)).
+    by rewrite -sess_lm.
+  - intros (ps & cs & Hok & Hao & Hw). exists ps, cs.
+    destruct (proj2 (alts_ok_lm _ _) Hao) as [_ HF].
+    split; [by apply pro_ok_lm |]. split; [exact HF |]. by rewrite sess_lm.
+Qed.
+
+Lemma good_out_lm seg : good_out seg <-> lm_good_out echo_lm tt seg.
+Proof using. rewrite /good_out /lm_good_out. apply expected_rel_lm. Qed.

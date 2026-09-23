@@ -24,8 +24,12 @@
 From Stdlib Require Import ZArith Lia List.
 From stdpp Require Import list bitvector.definitions.
 Require Import LineWords.        (* [bodies_of], [rest_of], [nlines], [nstarted], [wl_nl] *)
-Require Import EchoDisc.         (* [pro_of], [pro_from], [pro_rounds], [pro_alts] *)
+Require Import EchoDisc.         (* [pro_of], [pro_from], [pro_rounds], [pro_alts], [in_pres] *)
 Require Import LineBytes.        (* [nodollar], the '$'-split, the panic collision *)
+(* AFTER the three above, so the library load order is unchanged for every
+   file above this one ([EchoDisc] already loads both) *)
+Require Import RiscvLang.        (* [mobs] *)
+Require Import ObsTrace.         (* [obs_wire Uart0], [cycles_of] *)
 From stdpp Require Import ssreflect.
 
 Local Open Scope nat_scope.
@@ -900,6 +904,112 @@ Section line_model.
     - rewrite app_nil_r. reflexivity.
     - rewrite app_assoc. etrans; [exact IH | apply lm_sess_step].
   Qed.
+
+  (* ---- THE CHOICE LIST IS READ ONLY BELOW THE INPUT'S LINE COUNT: two
+     lists that agree there give the same pointer, states and transcript
+     ([FileDisc.alt_seq_f_cs_ext]'s shape, once) ---- *)
+  Lemma lm_pro_idx_ext cs1 cs2 q :
+    (forall j, j < q -> cs1 !!! j = cs2 !!! j) ->
+    forall j, j <= q -> lm_pro_idx cs1 j = lm_pro_idx cs2 j.
+  Proof using.
+    intros H j. induction j as [| j IH]; intros Hj; [reflexivity |].
+    cbn [lm_pro_idx]. rewrite IH; [| lia]. by rewrite /lm_at (H j ltac:(lia)).
+  Qed.
+
+  Lemma lm_upto_cs_ext cs1 cs2 s bs q :
+    (forall j, j < q -> cs1 !!! j = cs2 !!! j) ->
+    lm_upto cs1 s bs q = lm_upto cs2 s bs q.
+  Proof using.
+    intros H. induction q as [| q IH]; [reflexivity |].
+    cbn [lm_upto]. rewrite IH; [| intros j Hj; apply H; lia].
+    by rewrite /lm_at (H q ltac:(lia)).
+  Qed.
+
+  Lemma lm_seq_cs_ext ps cs1 cs2 s bs q :
+    (forall j, j < q -> cs1 !!! j = cs2 !!! j) ->
+    lm_seq ps cs1 s bs q = lm_seq ps cs2 s bs q.
+  Proof using.
+    intros H. rewrite /lm_seq. f_equal. apply list_fmap_ext.
+    intros i x Hx. apply lookup_seq in Hx as [-> Hi].
+    rewrite /lm_blk /lm_cont_at /lm_at.
+    rewrite (lm_upto_cs_ext cs1 cs2 s bs (0 + i)
+               ltac:(intros j Hj; apply H; lia)).
+    rewrite (H (0 + i) ltac:(lia)).
+    rewrite (lm_pro_idx_ext cs1 cs2 q H (0 + i) ltac:(lia)). reflexivity.
+  Qed.
+
+  Lemma lm_sess_cs_ext ps cs1 cs2 s I :
+    (forall j, j < nlines I -> cs1 !!! j = cs2 !!! j) ->
+    lm_sess ps cs1 s I = lm_sess ps cs2 s I.
+  Proof using.
+    intros H. rewrite /lm_sess. by rewrite (lm_seq_cs_ext ps cs1 cs2 s _ _ H).
+  Qed.
+
+  (* ====================================================================== *)
+  (*  THE DISCIPLINE AND THE CLAIM, ONCE                                     *)
+  (*                                                                        *)
+  (*  [EchoDisc.disc_pt]/[disc_seg']/[disc]/[expected_rel]/[good_out] with   *)
+  (*  the era's boot state a parameter ([tt] where no line touches the file  *)
+  (*  system).  The per-point rule is the RELAXED per-line one at all three  *)
+  (*  applications (ruled 2026-09-23): what the wire must show at every      *)
+  (*  input byte is the transcript of the COMPLETE lines typed so far.       *)
+  (* ====================================================================== *)
+
+  Definition lm_disc_pt (ps cs : list nat) (s : lm_st M) (p : list mobs) : Prop :=
+    lm_sess ps cs s (done_of (ins p)) `prefix_of` obs_wire Uart0 p.
+
+  (* D4, [PipeDisc.d4_p] at the determinacy section's guard: a round whose
+     line admits a coverage-ending arm and whose continuation is a mergeable
+     output is the input's LAST line, and the input ends at its newline --
+     the discipline reads nothing of the era past such an arm.  Vacuous
+     where no arm ends coverage. *)
+  Definition lm_d4 (cs : list nat) (s : lm_st M) (I : list (bv 8)) : Prop :=
+    forall i, i < nlines I ->
+      (exists c, lm_ok M (lm_of M (bodies_of I !!! i)) c /\ lm_term M c = true) ->
+      lm_merge M (lm_cont M (lm_upto cs s (bodies_of I) i)
+                    (lm_of M (bodies_of I !!! i)) (lm_at cs i)) ->
+      nlines I = S i /\ rest_of I = [].
+
+  Lemma lm_d4_noterm cs s I :
+    (forall a, lm_term M a = false) -> lm_d4 cs s I.
+  Proof using.
+    intros Hnt i _ (c & _ & Hc). rewrite Hnt in Hc. discriminate Hc.
+  Qed.
+
+  (* THE PER-CYCLE DISCIPLINE: D3, the range condition, D4, and at every
+     input byte D1 under ONE resolution of the prologue's and the per-line
+     alternatives, read at the era's boot state *)
+  Definition lm_disc_seg' (s : lm_st M) (seg : list mobs) : Prop :=
+    lm_disc_input (ins seg)
+    /\ exists ps cs : list nat,
+         lm_alts_ok (ins seg) cs
+         /\ lm_d4 cs s (ins seg)
+         /\ forall p : list mobs, p ∈ in_pres seg ->
+              lm_pro_ok ps cs (nlines (ins p)) /\ lm_disc_pt ps cs s p.
+
+  (* ...and at the whole history: every power cycle is disciplined at SOME
+     admissible boot state *)
+  Definition lm_disc (h : list mobs) : Prop :=
+    Forall (fun seg => exists s, lm_st_ok M s /\ lm_disc_seg' s seg) (cycles_of h).
+
+  (* THE OUTPUT CLAIM for one power cycle, at a boot state: everything on the
+     console wire is a prefix of the transcript this cycle's input calls for,
+     under some resolution *)
+  Definition lm_expected_rel (s : lm_st M) (I out : list (bv 8)) : Prop :=
+    exists ps cs : list nat,
+      lm_pro_ok ps cs (nlines I)
+      /\ lm_alts_ok I cs
+      /\ out `prefix_of` lm_sess ps cs s I.
+
+  Lemma lm_expected_rel_out_mono s I out out' :
+    out' `prefix_of` out -> lm_expected_rel s I out -> lm_expected_rel s I out'.
+  Proof using.
+    intros Hp (ps & cs & Hok & Hcs & Hout). exists ps, cs.
+    split; [exact Hok |]. split; [exact Hcs |]. by etrans.
+  Qed.
+
+  Definition lm_good_out (s : lm_st M) (seg : list mobs) : Prop :=
+    lm_expected_rel s (ins seg) (obs_wire Uart0 seg).
 
   (* ---- THE INPUT DISCIPLINE'S CLOSURE LAWS, at the byte laws ---- *)
   Section byte_laws.

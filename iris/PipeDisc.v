@@ -2341,6 +2341,63 @@ Proof using.
     by rewrite -?pro_idx_p_lm ?pro_idx_p_lm in H |- *.
 Qed.
 
+(* ---- the discipline and the claim, as the model's ---- *)
+Lemma disc_pt_p_lm ps cs p : disc_pt_p ps cs p <-> lm_disc_pt pipe_lm ps cs tt p.
+Proof using. rewrite /disc_pt_p /lm_disc_pt sessp_lm. done. Qed.
+
+(* D4's guard, [pline_is_pipe], IS the model's: only a pipeline line admits
+   a coverage-ending arm ([palt_ok_forkS_pipe]), and every pipeline line
+   admits one ([palt_ok_forkS_old]) *)
+Lemma d4_p_lm cs I : d4_p cs I <-> lm_d4 pipe_lm cs tt I.
+Proof using.
+  split.
+  - intros Hd i Hi (c & Hc & Hf) Hm.
+    destruct (palt_isforkS_inv c Hf) as [sel ->].
+    exact (d4_p_at cs I i Hd Hi (palt_ok_forkS_pipe _ sel Hc) Hm).
+  - intros H. apply d4_p_intro. intros i Hi Hpipe Hm.
+    apply (H i Hi); [| exact Hm].
+    destruct (pline_of (bodies_of I !!! i)) as [ws | ws] eqn:Hl;
+      [discriminate Hpipe |].
+    exists (PForkS sel_forkc). split; [| reflexivity].
+    change (palt_ok (pline_of (bodies_of I !!! i)) (PForkS sel_forkc)).
+    rewrite Hl. exact (palt_ok_forkS_old ws).
+Qed.
+
+Lemma disc_seg_p'_lm seg : disc_seg_p' seg <-> lm_disc_seg' pipe_lm tt seg.
+Proof using.
+  rewrite /disc_seg_p' /lm_disc_seg' /disc_seg_p disc_input_p_lm. split.
+  - intros [Hd (ps & cs & Hao & Hd4 & Hall)]. split; [exact Hd |]. exists ps, cs.
+    split; [by rewrite -alts_ok_p_lm |]. split; [by apply d4_p_lm |].
+    intros p Hp. destruct (Hall p Hp) as [Hok Hpt].
+    split; [by apply pro_ok_p_lm | by apply disc_pt_p_lm].
+  - intros [Hd (ps & cs & Hao & Hd4 & Hall)]. split; [exact Hd |]. exists ps, cs.
+    split; [by rewrite alts_ok_p_lm |]. split; [by apply d4_p_lm |].
+    intros p Hp. destruct (Hall p Hp) as [Hok Hpt].
+    split; [by apply pro_ok_p_lm | by apply disc_pt_p_lm].
+Qed.
+
+Lemma disc_p_lm h : disc_p h <-> lm_disc pipe_lm h.
+Proof using.
+  rewrite /disc_p /lm_disc. split; intros H.
+  - eapply Forall_impl; [exact H |]. intros seg Hd. exists tt. split; [exact Logic.I | by apply disc_seg_p'_lm].
+  - eapply Forall_impl; [exact H |]. intros seg ([] & _ & Hd). by apply disc_seg_p'_lm.
+Qed.
+
+Lemma expected_rel_p_lm I out :
+  expected_rel_p I out <-> lm_expected_rel pipe_lm tt I out.
+Proof using.
+  rewrite /expected_rel_p /lm_expected_rel. split.
+  - intros (ps & cs & Hok & Hao & Hw). exists ps, cs.
+    split; [by apply pro_ok_p_lm |]. split; [by rewrite -alts_ok_p_lm |].
+    by rewrite -sessp_lm.
+  - intros (ps & cs & Hok & Hao & Hw). exists ps, cs.
+    split; [by apply pro_ok_p_lm |]. split; [by rewrite alts_ok_p_lm |].
+    by rewrite sessp_lm.
+Qed.
+
+Lemma good_out_p_lm seg : good_out_p seg <-> lm_good_out pipe_lm tt seg.
+Proof using. rewrite /good_out_p /lm_good_out. apply expected_rel_p_lm. Qed.
+
 (* the byte shape: what sections 2 and 3 proved of the alternatives *)
 Lemma pipe_lm_laws : lm_laws pipe_lm.
 Proof using.

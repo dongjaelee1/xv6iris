@@ -1499,6 +1499,7 @@ FileState.v
 EchoDisc.v
 LineBytes.v
 LineModel.v
+LineModelLinks.v
 ExecWords.v
 FileDisc.v
 FileDiscDec.v
@@ -1518,6 +1519,7 @@ EchoLinksPro.v
 EchoLinksLine.v
 EchoLinksBan.v
 LinkRec.v
+GenLinksLine.v
 StageRec.v
 ReadRec.v
 FileLineWit.v
@@ -1538,6 +1540,7 @@ AppPipe.v
 FileLinks.v
 FileLinksLine.v
 FileLinkInst.v
+FileLinkGen.v
 AppFileRec.v
 AppTree.v
 
@@ -1694,10 +1697,10 @@ UEchoPipe.v
 UShEchoPipePay.v
 UCatPipe.v
 PipeLinksLine.v
-LineModelWr.v
 PipeBoth.v
 PipeForkGap.v
 PipeLinkInst.v
+PipeLinkGen.v
 PipeStageInst.v
 UShPipeRound.v
 UkShCat.v

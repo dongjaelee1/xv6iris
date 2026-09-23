@@ -31,7 +31,7 @@
 (*  [PipeLinks.pipe_write_link_blk]'s [palt_ok] premise would be          *)
 (*  unsuppliable -- i.e. [lk_blk_step] would be unprovable.               *)
 (* ===================================================================== *)
-From Stdlib Require Import ZArith Lia List.
+From Stdlib Require Import ZArith Lia List FunctionalExtensionality.
 From stdpp Require Import gmap list bitvector.definitions.
 From iris.proofmode Require Import proofmode.
 From iris.base_logic.lib Require Import mono_nat own ghost_var ghost_map.
@@ -48,6 +48,9 @@ Require Import EchoOutPure.
 Require Import PipeDisc.
 Require Import PipeDiscDec.
 Require Import PipeOutPure.
+Require Import LineModel.       (* the line model, and its writer-side reading *)
+Require Import LineModelLinks.
+Require Import LineModelInst.   (* the stream equations at [pipe_lm] *)
 Require Import EchoOut.
 Require Import AppEcho.
 Require Import PipeOut.
@@ -98,23 +101,8 @@ Definition papr (I : list (bv 8)) (a : nat) : Prop :=
   palt_ok (pline_at I) (palt_of a) /\ palt_panic (palt_of a) = false
   /\ palt_isforkS (palt_of a) = false.
 
-Lemma pab_ok (I : list (bv 8)) (a i : nat) (b : bv 8) :
-  pab I a !! i = Some b -> palt_ok (pline_at I) (palt_of a).
-Proof using.
-  rewrite /pab. case_decide as H;
-    [by intros _; destruct H | by rewrite lookup_nil].
-Qed.
 
-Lemma pab_nofork (I : list (bv 8)) (a i : nat) (b : bv 8) :
-  pab I a !! i = Some b -> palt_isforkS (palt_of a) = false.
-Proof using.
-  rewrite /pab. case_decide as H;
-    [by intros _; destruct H | by rewrite lookup_nil].
-Qed.
 
-Lemma pab_is (I : list (bv 8)) (a : nat) :
-  pab_gd I a -> pab I a = pcont (pline_at I) (palt_of a).
-Proof using. intro H. rewrite /pab decide_True; [reflexivity | done]. Qed.
 
 (* ---- THE BLOCK'S LAST TWO BYTES ARE THE SHELL'S PROMPT.  [pcont_shape]
         says so under [pline_ok]; a writer holds no such thing, so the
@@ -163,31 +151,8 @@ Proof using.
     exact wr_prompt_tail.
 Qed.
 
-Lemma pab_len_ge2 (I : list (bv 8)) (a : nat) :
-  papr I a -> (2 <= length (pab I a))%nat.
-Proof using.
-  intros (Hok & Hp & Hfk). rewrite (pab_is I a (conj Hok Hfk)).
-  destruct (pcont_prompt (pline_at I) (palt_of a) Hok Hp Hfk) as (u & Hu).
-  exact (proj1 (prompt_tail_facts _ u Hu)).
-Qed.
 
-Lemma pab_dollar (I : list (bv 8)) (a : nat) :
-  papr I a ->
-  pab I a !! (length (pab I a) - 2)%nat = Some (u_prompt !!! 0%nat).
-Proof using.
-  intros (Hok & Hp & Hfk). rewrite (pab_is I a (conj Hok Hfk)).
-  destruct (pcont_prompt (pline_at I) (palt_of a) Hok Hp Hfk) as (u & Hu).
-  exact (proj1 (proj2 (prompt_tail_facts _ u Hu))).
-Qed.
 
-Lemma pab_space (I : list (bv 8)) (a : nat) :
-  papr I a ->
-  pab I a !! (length (pab I a) - 1)%nat = Some (u_prompt !!! 1%nat).
-Proof using.
-  intros (Hok & Hp & Hfk). rewrite (pab_is I a (conj Hok Hfk)).
-  destruct (pcont_prompt (pline_at I) (palt_of a) Hok Hp Hfk) as (u & Hu).
-  exact (proj2 (proj2 (prompt_tail_facts _ u Hu))).
-Qed.
 
 (* ---- THE THREE NAMED ALTERNATIVES ------------------------------------ *)
 
@@ -211,11 +176,6 @@ Proof using. apply pcont_panic. exact ppan_panic. Qed.
 Lemma ppan_nofork : palt_isforkS (palt_of 3%nat) = false.
 Proof using. rewrite palt_of_3. reflexivity. Qed.
 
-Lemma pab_pan (I : list (bv 8)) : pab I 3%nat = alt_panic.
-Proof using.
-  rewrite (pab_is I 3%nat (conj (ppan_ok _) ppan_nofork)).
-  exact (pcont_ppan _).
-Qed.
 
 (* THE EXEC-FAILED CHILD'S alternative is PER-LINE and the design's
    "literally 1" is refuted at the statement: [palt_ok (LPipe ws)
@@ -268,20 +228,7 @@ Proof using.
   - rewrite (palt_of_code PExecL). reflexivity.
 Qed.
 
-Lemma pab_exf (I : list (bv 8)) :
-  pab I (pexf_of (pline_at I)) = pexfb (pline_at I).
-Proof using.
-  rewrite (pab_is I _ (conj (pexf_of_ok (pline_at I))
-                         (pexf_of_nofork (pline_at I)))).
-  exact (pcont_pexf _).
-Qed.
 
-Lemma papr_exf (I : list (bv 8)) : papr I (pexf_of (pline_at I)).
-Proof using.
-  rewrite /papr. split_and!;
-    [ exact (pexf_of_ok (pline_at I)) | exact (pexf_of_nopanic (pline_at I))
-    | exact (pexf_of_nofork (pline_at I)) ].
-Qed.
 
 (* THE ALTERNATIVE A ROUND TAKES WHEN NOBODY WROTE: the shell's own prompt
    IS the block's first byte.  [PEcho 2] at an echo line, [PSilent] at a
@@ -327,23 +274,142 @@ Proof using.
   - rewrite (palt_of_code PSilent). reflexivity.
 Qed.
 
+
+
+
+
+
+(* ---- THE MODEL'S HOOKS ([LineModelLinks.lm_hooks] at the pipeline
+        model): the panic is the literal 3, the exec failure and the
+        silent alternative are per-line, state-freedom is [~ PForkS] (the
+        arm written by two processes never goes through this layer), and
+        what a WRITER knows of a continuation is [pcont_prompt] /
+        [PipeOutPure.pcont_nonnil].  Everything section 0 said of [pab] /
+        [papr] is then [LineModelLinks]'s lemma read back through the
+        equations below. ---- *)
+Lemma pfree_term (a : palt) : negb (palt_isforkS a) = true -> palt_isforkS a = false.
+Proof using. destruct (palt_isforkS a); [discriminate | reflexivity]. Qed.
+
+Lemma pfree_of_nofork (a : palt) : palt_isforkS a = false -> negb (palt_isforkS a) = true.
+Proof using. intros ->. reflexivity. Qed.
+
+Lemma pcont_nonnil_dec (l : pline) (a : palt) :
+  palt_ok l a \/ a = palt_of 0%nat -> pcont l a <> [].
+Proof using.
+  rewrite (palt_of_lt4 0%nat ltac:(lia)). exact (pcont_nonnil l a).
+Qed.
+
+Definition pipe_hooks : lm_hooks pipe_lm :=
+  MkLMH pipe_lm (fun a => negb (palt_isforkS a)) tt (fun _ => 3%nat) pexf_of pexfb
+    pnoc_of palt_ok_dec
+    (fun _ _ _ _ _ => eq_refl) pfree_term
+    ppan_ok (fun _ => pfree_of_nofork _ ppan_nofork) (fun _ => ppan_panic)
+    pexf_of_ok (fun l => pfree_of_nofork _ (pexf_of_nofork l)) pexf_of_nopanic
+    (fun _ l => pcont_pexf l)
+    pnoc_of_ok (fun l => pfree_of_nofork _ (pnoc_of_nofork l)) pnoc_of_nopanic
+    (fun _ l => pcont_pnoc l)
+    (fun _ l a Hok Hp Ht => pcont_prompt l a Hok Hp Ht)
+    (fun _ l a H => pcont_nonnil_dec l a H).
+
+Lemma pline_at_lm (I : list (bv 8)) : pline_at I = lm_line_at pipe_lm I.
+Proof using. reflexivity. Qed.
+
+Lemma pab_lm (I : list (bv 8)) (a : nat) : pab I a = lm_ab pipe_lm pipe_hooks I a.
+Proof using.
+  rewrite /pab /lm_ab. case_decide as H1; case_decide as H2; [reflexivity | | | reflexivity].
+  - exfalso. apply H2. split; [exact (proj1 H1) | exact (pfree_of_nofork _ (proj2 H1))].
+  - exfalso. apply H1. split; [exact (proj1 H2) | exact (pfree_term _ (proj2 H2))].
+Qed.
+
+Lemma papr_lm (I : list (bv 8)) (a : nat) : papr I a <-> lm_apr pipe_lm pipe_hooks I a.
+Proof using.
+  split.
+  - intros (H1 & H2 & H3). exact (conj H1 (conj (pfree_of_nofork _ H3) H2)).
+  - intros (H1 & H2 & H3). exact (conj H1 (conj H3 (pfree_term _ H2))).
+Qed.
+
+Lemma rd_stage_p_lm ps0 cs0 I : rd_stage_p ps0 cs0 I <-> lm_rd_stage pipe_lm ps0 cs0 I.
+Proof using.
+  rewrite /rd_stage_p /lm_rd_stage.
+  split; intros (H1 & H2 & H3 & H4);
+    (split_and!; [exact H1 | exact H2 | by apply pro_pin_p_lm | exact H4]).
+Qed.
+
+(* ---- what section 0 said, as corollaries ---- *)
+Lemma pab_ok (I : list (bv 8)) (a i : nat) (b : bv 8) :
+  pab I a !! i = Some b -> palt_ok (pline_at I) (palt_of a).
+Proof using.
+  rewrite pab_lm. intros H. exact (proj1 (lm_ab_ok pipe_lm pipe_hooks I a i b H)).
+Qed.
+
+Lemma pab_nofork (I : list (bv 8)) (a i : nat) (b : bv 8) :
+  pab I a !! i = Some b -> palt_isforkS (palt_of a) = false.
+Proof using.
+  rewrite pab_lm. intros H.
+  exact (pfree_term _ (proj2 (lm_ab_ok pipe_lm pipe_hooks I a i b H))).
+Qed.
+
+Lemma pab_is (I : list (bv 8)) (a : nat) :
+  pab_gd I a -> pab I a = pcont (pline_at I) (palt_of a).
+Proof using.
+  intros [H1 H2]. rewrite pab_lm.
+  exact (lm_ab_is pipe_lm pipe_hooks I a H1 (pfree_of_nofork _ H2)).
+Qed.
+
+Lemma pab_len_ge2 (I : list (bv 8)) (a : nat) :
+  papr I a -> (2 <= length (pab I a))%nat.
+Proof using.
+  rewrite pab_lm. intros Hpr.
+  exact (lm_ab_len_ge2 pipe_lm pipe_hooks I a (proj1 (papr_lm I a) Hpr)).
+Qed.
+
+Lemma pab_dollar (I : list (bv 8)) (a : nat) :
+  papr I a ->
+  pab I a !! (length (pab I a) - 2)%nat = Some (u_prompt !!! 0%nat).
+Proof using.
+  rewrite pab_lm. intros Hpr.
+  exact (lm_ab_dollar pipe_lm pipe_hooks I a (proj1 (papr_lm I a) Hpr)).
+Qed.
+
+Lemma pab_space (I : list (bv 8)) (a : nat) :
+  papr I a ->
+  pab I a !! (length (pab I a) - 1)%nat = Some (u_prompt !!! 1%nat).
+Proof using.
+  rewrite pab_lm. intros Hpr.
+  exact (lm_ab_space pipe_lm pipe_hooks I a (proj1 (papr_lm I a) Hpr)).
+Qed.
+
+Lemma pab_pan (I : list (bv 8)) : pab I 3%nat = alt_panic.
+Proof using.
+  rewrite pab_lm. exact (lm_ab_pan pipe_lm pipe_lm_laws pipe_hooks I).
+Qed.
+
+Lemma pab_exf (I : list (bv 8)) :
+  pab I (pexf_of (pline_at I)) = pexfb (pline_at I).
+Proof using.
+  rewrite pab_lm pline_at_lm. apply (lm_ab_exf pipe_lm pipe_hooks).
+Qed.
+
+Lemma papr_exf (I : list (bv 8)) : papr I (pexf_of (pline_at I)).
+Proof using.
+  apply papr_lm. apply (lm_apr_exf pipe_lm pipe_hooks).
+Qed.
+
 Lemma pab_noc (I : list (bv 8)) : pab I (pnoc_of (pline_at I)) = u_prompt.
 Proof using.
-  rewrite (pab_is I _ (conj (pnoc_of_ok (pline_at I))
-                         (pnoc_of_nofork (pline_at I)))).
-  exact (pcont_pnoc _).
+  rewrite pab_lm pline_at_lm. apply (lm_ab_noc pipe_lm pipe_hooks).
 Qed.
 
 Lemma papr_noc (I : list (bv 8)) : papr I (pnoc_of (pline_at I)).
 Proof using.
-  rewrite /papr. split_and!;
-    [ exact (pnoc_of_ok (pline_at I)) | exact (pnoc_of_nopanic (pline_at I))
-    | exact (pnoc_of_nofork (pline_at I)) ].
+  apply papr_lm. apply (lm_apr_noc pipe_lm pipe_hooks).
 Qed.
 
 Lemma pab_noc_len (I : list (bv 8)) :
   (length (pab I (pnoc_of (pline_at I))) - 2)%nat = 0%nat.
-Proof using. rewrite pab_noc wr_prompt_len. reflexivity. Qed.
+Proof using.
+  rewrite pab_lm pline_at_lm. apply (lm_ab_noc_len pipe_lm pipe_hooks).
+Qed.
 
 
 (* ===================================================================== *)
@@ -422,21 +488,50 @@ Definition wr_open_t_p (ps cs : list nat) (I : list (bv 8)) (P : nat) : Prop :=
 Definition blkcs_p (cs : list nat) (a i : nat) : list nat :=
   match i with O => cs | S _ => cs ++ [a] end.
 
+(* ---- the writer's stages are [LineModel]'s, by the stream equations ---- *)
+Lemma wr_pro_p_lm ps cs I P : wr_pro_p ps cs I P = lm_wr_pro pipe_lm ps cs tt I P.
+Proof using. rewrite /wr_pro_p /lm_wr_pro ?proc_stream_p_lm ?proc_before_p_lm pro_idx_p_lm. reflexivity. Qed.
+Lemma wr_blk_p_lm ps cs I P : wr_blk_p ps cs I P = lm_wr_blk pipe_lm ps cs tt I P.
+Proof using. rewrite /wr_blk_p /lm_wr_blk ?proc_stream_p_lm ?proc_before_p_lm. reflexivity. Qed.
+Lemma wr_open_p_lm ps cs I P : wr_open_p ps cs I P = lm_wr_open pipe_lm ps cs tt I P.
+Proof using. rewrite /wr_open_p /lm_wr_open ?proc_stream_p_lm ?proc_before_p_lm pro_idx_p_lm. reflexivity. Qed.
+Lemma wr_owed_p_lm ps cs I P : wr_owed_p ps cs I P = lm_wr_owed pipe_lm ps cs tt I P.
+Proof using. rewrite /wr_owed_p /lm_wr_owed wr_pro_p_lm wr_blk_p_lm. reflexivity. Qed.
+Lemma wr_sp_p_lm ps cs I P : wr_sp_p ps cs I P = lm_wr_sp pipe_lm ps cs tt I P.
+Proof using. rewrite /wr_sp_p /lm_wr_sp wr_open_p_lm proc_stream_p_lm. reflexivity. Qed.
+Lemma wr_ban_p_lm ps cs I P : wr_ban_p ps cs I P = lm_wr_ban pipe_lm ps cs tt I P.
+Proof using. rewrite /wr_ban_p /lm_wr_ban ?proc_stream_p_lm ?proc_before_p_lm pro_idx_p_lm. reflexivity. Qed.
+Lemma wr_banp_p_lm ps cs I P i : wr_banp_p ps cs I P i = lm_wr_banp pipe_lm ps cs tt I P i.
+Proof using.
+  rewrite /wr_banp_p /lm_wr_banp. destruct i; [apply wr_ban_p_lm |].
+  f_equal. apply functional_extensionality. intros ps'. by rewrite wr_ban_p_lm.
+Qed.
+Lemma wr_tail_p_lm ps cs : wr_tail_p ps cs = lm_wr_tail pipe_lm ps cs.
+Proof using. rewrite /wr_tail_p /lm_wr_tail pro_idx_p_lm. reflexivity. Qed.
+Lemma wr_blk_t_p_lm ps cs I P : wr_blk_t_p ps cs I P = lm_wr_blk_t pipe_lm ps cs tt I P.
+Proof using. rewrite /wr_blk_t_p /lm_wr_blk_t wr_blk_p_lm wr_tail_p_lm. reflexivity. Qed.
+Lemma wr_sp_t_p_lm ps cs I P : wr_sp_t_p ps cs I P = lm_wr_sp_t pipe_lm ps cs tt I P.
+Proof using. rewrite /wr_sp_t_p /lm_wr_sp_t wr_sp_p_lm wr_tail_p_lm. reflexivity. Qed.
+Lemma wr_open_t_p_lm ps cs I P : wr_open_t_p ps cs I P = lm_wr_open_t pipe_lm ps cs tt I P.
+Proof using. rewrite /wr_open_t_p /lm_wr_open_t wr_open_p_lm wr_tail_p_lm. reflexivity. Qed.
+
 (* ---- what the shapes say about the input's parse ---- *)
 Lemma wr_blk_nonnil_p (ps cs : list nat) (I : list (bv 8)) (P : nat) :
   wr_blk_p ps cs I P -> I <> [].
 Proof using.
-  intros (_ & _ & Hn & _) Heq. rewrite Heq nlines_nil in Hn. discriminate.
+  rewrite wr_blk_p_lm. apply (lm_wr_blk_nonnil pipe_lm).
 Qed.
 
 Lemma wr_blk_lines_p (ps cs : list nat) (I : list (bv 8)) (P : nat) :
   wr_blk_p ps cs I P -> nlines I = S (length cs).
-Proof using. by intros (_ & _ & Hn & _). Qed.
+Proof using.
+  rewrite wr_blk_p_lm. apply (lm_wr_blk_lines pipe_lm).
+Qed.
 
 Lemma wr_blk_started_p (ps cs : list nat) (I : list (bv 8)) (P : nat) :
   wr_blk_p ps cs I P -> nstarted I = S (length cs).
 Proof using.
-  intros (_ & Hr & Hn & _). by rewrite (pop_nstarted_rest_nil I Hr) Hn.
+  rewrite wr_blk_p_lm. apply (lm_wr_blk_started pipe_lm).
 Qed.
 
 Lemma wr_blk_t_stage_p (ps cs : list nat) (I : list (bv 8)) (P : nat) :
@@ -447,7 +542,9 @@ Lemma wr_blk_t_stage_p (ps cs : list nat) (I : list (bv 8)) (P : nat) :
   /\ pro_pin_p ps cs I
   /\ wr_tail_p ps cs.
 Proof using.
-  intros [(Hpin & Hr & Hn & HP) Ht]. split_and!; assumption.
+  rewrite wr_blk_t_p_lm proc_before_p_lm wr_tail_p_lm. intros Hw.
+  destruct (lm_wr_blk_t_stage pipe_lm ps cs tt I P Hw) as (H1 & H2 & H3 & H4 & H5).
+  split_and!; [exact H1 | exact H2 | exact H3 | by apply pro_pin_p_lm | exact H5].
 Qed.
 
 (* ---- the round pointer under a filed alternative ---- *)
@@ -455,42 +552,33 @@ Lemma pro_idx_p_snoc_ne (cs : list nat) (a : nat) :
   palt_panic (palt_of a) = false ->
   pro_idx_p (cs ++ [a]) (S (length cs)) = pro_idx_p cs (length cs).
 Proof using.
-  intros Ha.
-  rewrite pro_idx_p_S /palt_at (EchoLinksLine.snoc_lookup_total cs a) Ha
-          (pro_idx_p_app_le cs [a] (length cs) ltac:(lia)). lia.
+  rewrite !pro_idx_p_lm. apply (lm_pro_idx_snoc_ne pipe_lm).
 Qed.
 
 Lemma pro_idx_p_snoc_3 (cs : list nat) :
   pro_idx_p (cs ++ [3%nat]) (S (length cs)) = S (pro_idx_p cs (length cs)).
 Proof using.
-  rewrite pro_idx_p_S /palt_at (EchoLinksLine.snoc_lookup_total cs 3%nat)
-          ppan_panic (pro_idx_p_app_le cs [3%nat] (length cs) ltac:(lia)). lia.
+  rewrite !pro_idx_p_lm. apply (lm_pro_idx_snoc_pan pipe_lm). exact ppan_panic.
 Qed.
 
 Lemma wr_tail_snoc_p (ps cs : list nat) (a : nat) :
   palt_panic (palt_of a) = false -> wr_tail_p ps cs -> wr_tail_p ps (cs ++ [a]).
 Proof using.
-  intros Ha Ht. rewrite /wr_tail_p length_app. cbn [length].
-  rewrite Nat.add_1_r (pro_idx_p_snoc_ne cs a Ha). exact Ht.
+  rewrite !wr_tail_p_lm. apply (lm_wr_tail_snoc pipe_lm).
 Qed.
 
 (* ---- filing an alternative reads no block below the boundary ---- *)
 Lemma wr_blk_pin_snoc_p (ps cs : list nat) (I : list (bv 8)) (P a : nat) :
   wr_blk_p ps cs I P -> pro_pin_p ps (cs ++ [a]) I.
 Proof using.
-  intros Hw. pose proof (wr_blk_started_p ps cs I P Hw) as Hst.
-  destruct Hw as (Hpin & _).
-  intros q Hq. rewrite (pro_idx_p_app_le cs [a] q ltac:(lia)).
-  exact (Hpin q Hq).
+  rewrite wr_blk_p_lm. intros Hw. apply pro_pin_p_lm.
+  exact (lm_wr_blk_pin_snoc pipe_lm ps cs tt I P a Hw).
 Qed.
 
 Lemma wr_blk_low_p (ps cs : list nat) (I : list (bv 8)) (P a : nat) :
   wr_blk_p ps cs I P -> proc_before_p ps (cs ++ [a]) I = proc_before_p ps cs I.
 Proof using.
-  intros Hw. pose proof Hw as (Hpin & Hr & Hn & HP). symmetry.
-  apply (proc_before_p_cs_prefix ps ps cs (cs ++ [a]) I
-           ltac:(reflexivity) ltac:(by eexists) Hpin).
-  rewrite (pop_nlines_removelast I Hr) Hn. lia.
+  rewrite wr_blk_p_lm !proc_before_p_lm. apply (lm_wr_blk_low pipe_lm).
 Qed.
 
 (* ---- the block a [wr_blk_p] owes, once alternative [a] is filed ---- *)
@@ -519,11 +607,7 @@ Lemma wr_blk_cont_p (ps cs : list nat) (I : list (bv 8)) (P a : nat) :
   wr_blk_p ps cs I P -> palt_panic (palt_of a) = false ->
   pending_at_p ps (cs ++ [a]) I = pcont (pline_at I) (palt_of a).
 Proof using.
-  intros Hw Ha.
-  rewrite (wr_blk_pending_p ps cs I P a Hw) /alt_cont_p /palt_at
-          (EchoLinksLine.snoc_lookup_total cs a) Ha
-          (wr_blk_line_p ps cs I P Hw).
-  exact (app_nil_r _).
+  rewrite wr_blk_p_lm pending_at_p_lm pline_at_lm. apply (lm_wr_blk_pending_s pipe_lm).
 Qed.
 
 Lemma wr_blk_cont3_p (ps cs : list nat) (I : list (bv 8)) (P a : nat) :
@@ -566,38 +650,22 @@ Lemma pending_at_p_round_snoc (ps cs : list nat) (I : list (bv 8)) (a : nat) :
   (pro_idx_p cs (nlines I) <= pro_rounds ps)%nat ->
   pending_at_p (ps ++ [a]) cs I = pending_at_p ps cs I ++ pro_alts !!! a.
 Proof using.
-  intros Hm Hr Hnd Hle.
-  rewrite (pending_at_p_round_pre (ps ++ [a]) cs I Hm Hr)
-          (pending_at_p_round_pre ps cs I Hm Hr)
-          (pro_from_snoc_le (pro_idx_p cs (nlines I)) ps a Hle)
-          (EchoLinks.pro_of_open_snoc_eq _ a Hnd).
-  by rewrite app_assoc.
+  rewrite !pending_at_p_lm !pro_idx_p_lm.
+  apply (lm_pending_at_round_snoc pipe_lm pipe_lm_laws).
 Qed.
 
 (* ---- THE ROUND'S BANNER, STILL OWED ---- *)
 Lemma wr_ban_pro_p (ps cs : list nat) (I : list (bv 8)) (P : nat) :
   wr_ban_p ps cs I P -> wr_pro_p ps cs I P.
 Proof using.
-  intros (Hpin & Hm & Hdv & Hr & (j & Hopen & HP)).
-  rewrite /wr_pro_p. split_and!; try assumption.
-  - rewrite Hopen. exact (pro_done_fail j).
-  - rewrite /proc_stream_p
-            (length_app (proc_before_p ps cs I) (pending_at_p ps cs I))
-            (pending_at_p_round_pre ps cs I Hm Hr)
-            (length_app (wr_pre_p cs I)
-               (pro_of (pro_from (pro_idx_p cs (nlines I)) ps)))
-            Hopen pro_of_fail_length HP.
-    lia.
+  rewrite wr_ban_p_lm wr_pro_p_lm. apply (lm_wr_ban_pro pipe_lm pipe_lm_laws).
 Qed.
 
 Lemma wr_ban_low_p (ps cs : list nat) (I : list (bv 8)) (P : nat) :
   wr_ban_p ps cs I P ->
   proc_before_p (ps ++ [3%nat]) cs I = proc_before_p ps cs I.
 Proof using.
-  intros (Hpin & _ & _ & _ & _).
-  symmetry. apply proc_before_p_ext. intros J HJ Hne.
-  apply (pending_at_p_ps_ext ps (ps ++ [3%nat]) cs J); [by eexists |].
-  exact (Hpin (nlines J) (nstarted_strict J I HJ Hne)).
+  rewrite wr_ban_p_lm !proc_before_p_lm. apply (lm_wr_ban_low pipe_lm).
 Qed.
 
 Lemma wr_ban_filed_p (ps cs : list nat) (I : list (bv 8)) (P : nat) :
@@ -607,12 +675,9 @@ Lemma wr_ban_filed_p (ps cs : list nat) (I : list (bv 8)) (P : nat) :
     /\ P = (length (proc_before_p (ps ++ [3%nat]) cs I) + length (wr_pre_p cs I)
             + pro_round * j)%nat.
 Proof using.
-  intros Hw. pose proof Hw as (Hpin & Hm & Hdv & Hr & (j & Hopen & HP)).
-  exists j. split.
-  - rewrite (pro_from_snoc_le _ ps 3%nat
-               (pro_pin_p_round_le ps cs I Hm Hr Hpin)).
-    by rewrite Hopen.
-  - by rewrite (wr_ban_low_p ps cs I P Hw).
+  rewrite wr_ban_p_lm proc_before_p_lm pro_idx_p_lm. intros Hw.
+  destruct (lm_wr_ban_filed pipe_lm ps cs tt I P Hw) as (j & H1 & H2).
+  exists j. exact (conj H1 H2).
 Qed.
 
 Lemma wr_ban_byte_p (ps cs : list nat) (I : list (bv 8)) (P i : nat)
@@ -620,54 +685,18 @@ Lemma wr_ban_byte_p (ps cs : list nat) (I : list (bv 8)) (P i : nat)
   wr_ban_p ps cs I P -> u_banner !! i = Some b ->
   proc_stream_p (ps ++ [3%nat]) cs I !! (P + i)%nat = Some b.
 Proof using.
-  intros Hw Hb. pose proof Hw as (Hpin & Hm & Hdv & Hr & _).
-  destruct (wr_ban_filed_p ps cs I P Hw) as (j & Hopen & HP).
-  rewrite HP /wr_pre_p.
-  exact (proc_stream_p_round_banner_open (ps ++ [3%nat]) cs I j i b Hm Hr
-           Hopen Hb).
+  rewrite wr_ban_p_lm proc_stream_p_lm. apply (lm_wr_ban_byte pipe_lm pipe_lm_laws).
 Qed.
 
 Lemma wr_ban_done_p (ps cs : list nat) (I : list (bv 8)) (P : nat) :
   wr_ban_p ps cs I P -> wr_pro_p (ps ++ [3%nat]) cs I (P + length u_banner)%nat.
 Proof using.
-  intros Hw. pose proof Hw as (Hpin & Hm & Hdv & Hr & (j & Hopen & HP)).
-  assert (Hle : (pro_idx_p cs (nlines I) <= pro_rounds ps)%nat)
-    by exact (pro_pin_p_round_le ps cs I Hm Hr Hpin).
-  assert (Hnd : ~ pro_done (pro_from (pro_idx_p cs (nlines I)) ps))
-    by (rewrite Hopen; exact (pro_done_fail j)).
-  rewrite /wr_pro_p. split_and!.
-  - exact (pro_pin_p_mono ps (ps ++ [3%nat]) cs I ltac:(by eexists) Hpin).
-  - exact Hm.
-  - exact Hdv.
-  - exact Hr.
-  - rewrite (pro_from_snoc_le _ ps 3%nat Hle) Hopen.
-    apply pro_done_cont. rewrite Forall_app. split; [exact (pro_fail_cont j) |].
-    constructor; [by right | constructor].
-  - rewrite /proc_stream_p
-            (length_app (proc_before_p (ps ++ [3%nat]) cs I)
-               (pending_at_p (ps ++ [3%nat]) cs I))
-            (wr_ban_low_p ps cs I P Hw)
-            (pending_at_p_round_snoc ps cs I 3%nat Hm Hr Hnd Hle)
-            (length_app (pending_at_p ps cs I) (pro_alts !!! 3%nat))
-            (pending_at_p_round_pre ps cs I Hm Hr)
-            (length_app (wr_pre_p cs I)
-               (pro_of (pro_from (pro_idx_p cs (nlines I)) ps)))
-            Hopen pro_of_fail_length pro_alts_3 HP.
-    lia.
+  rewrite wr_ban_p_lm wr_pro_p_lm. apply (lm_wr_ban_done pipe_lm pipe_lm_laws).
 Qed.
 
 Lemma wr_ban_round0_p : wr_ban_p [] [] [] 0%nat.
 Proof using.
-  rewrite /wr_ban_p. split_and!.
-  - intros q Hq. rewrite nstarted_nil in Hq. lia.
-  - exact rest_of_nil.
-  - by rewrite nlines_nil.
-  - by left.
-  - exists 0%nat. split.
-    + by rewrite nlines_nil pro_fail_0.
-    + rewrite proc_before_p_nil /wr_pre_p.
-      case_decide as Hd; [| by destruct (Hd eq_refl)].
-      cbn [length]. lia.
+  rewrite wr_ban_p_lm. apply (lm_wr_ban_round0 pipe_lm).
 Qed.
 
 (* ---- a run of inputs that owe nothing leaves the stream alone ---- *)
@@ -676,41 +705,16 @@ Lemma proc_before_from_p_gap (ps cs : list nat) (pre k : list (bv 8)) :
      pending_at_p ps cs (pre ++ J) = []) ->
   proc_before_from_p ps cs pre k = [].
 Proof using.
-  revert pre. induction k as [| b k IH]; intros pre Hj; [reflexivity |].
-  assert (H0 : pending_at_p ps cs pre = []).
-  { rewrite -(app_nil_r pre). apply Hj; [apply prefix_nil | discriminate]. }
-  cbn [proc_before_from_p]. rewrite H0 app_nil_l.
-  apply IH. intros J HJ Hne.
-  rewrite (epu_app_snoc pre b J). apply Hj.
-  - destruct HJ as [z ->]. exists z. by cbn [app].
-  - intros Heq. apply Hne. by injection Heq.
+  rewrite proc_before_from_p_lm. intros Hj.
+  apply (lm_proc_before_from_gap pipe_lm). intros J HJ Hne.
+  rewrite -pending_at_p_lm. exact (Hj J HJ Hne).
 Qed.
 
 Lemma proc_before_p_line (ps cs : list nat) (I l : list (bv 8)) :
   rest_of I = [] -> wl_nl ∉ l ->
   proc_before_p ps cs (I ++ l ++ [wl_nl]) = proc_stream_p ps cs I.
 Proof using.
-  intros Hr Hl. rewrite proc_before_p_app /proc_stream_p. f_equal.
-  destruct l as [| b l'].
-  - cbn [app proc_before_from_p]. by rewrite app_nil_r.
-  - destruct (wl_nonl_cons b l' Hl) as [Hb Hl'].
-    assert (Hgap : proc_before_from_p ps cs (I ++ [b]) (l' ++ [wl_nl]) = []).
-    { apply proc_before_from_p_gap. intros J HJ Hne.
-      assert (HJl : J `prefix_of` l').
-      { rewrite -(epu_removelast_snoc l' wl_nl).
-        exact (pop_prefix_of_removelast J (l' ++ [wl_nl]) HJ Hne). }
-      assert (HJn : wl_nl ∉ J).
-      { intro Hin. destruct HJl as [z ->].
-        apply Hl'. apply elem_of_app. by left. }
-      assert (Hshape : (I ++ [b]) ++ J = I ++ (b :: J)) by apply epu_app_snoc.
-      rewrite Hshape /pending_at_p.
-      rewrite decide_False;
-        [| intros Hq; by destruct (app_eq_nil I (b :: J) Hq) as [_ Hc]].
-      rewrite decide_False; [reflexivity |].
-      rewrite (EchoLinks.rest_of_app_nonl I (b :: J) Hr
-                 (wl_nonl_cons_2 b J Hb HJn)).
-      discriminate. }
-    cbn [app proc_before_from_p]. rewrite Hgap app_nil_r. reflexivity.
+  rewrite proc_before_p_lm proc_stream_p_lm. apply (lm_proc_before_line pipe_lm).
 Qed.
 
 (* ===================================================================== *)
@@ -721,33 +725,7 @@ Qed.
 Lemma wr_pro_dollar_p (ps cs : list nat) (I : list (bv 8)) (P : nat) :
   wr_pro_p ps cs I P -> wr_sp_p (ps ++ [0%nat]) cs I (S P).
 Proof using.
-  intros (Hpin & Hm & Hdv & Hr & Hnd & HP).
-  assert (Hle : (pro_idx_p cs (nlines I) <= pro_rounds ps)%nat)
-    by exact (pro_pin_p_round_le ps cs I Hm Hr Hpin).
-  assert (Hpre : ps `prefix_of` (ps ++ [0%nat])) by by eexists.
-  assert (Hlow : proc_before_p (ps ++ [0%nat]) cs I = proc_before_p ps cs I).
-  { symmetry. apply proc_before_p_ext. intros J HJ Hne.
-    apply (pending_at_p_ps_ext ps (ps ++ [0%nat]) cs J Hpre).
-    exact (Hpin (nlines J) (nstarted_strict J I HJ Hne)). }
-  assert (Hup : proc_stream_p (ps ++ [0%nat]) cs I
-                = proc_stream_p ps cs I ++ u_prompt).
-  { rewrite {1}/proc_stream_p Hlow
-      (pending_at_p_round_snoc ps cs I 0%nat Hm Hr Hnd Hle)
-      EchoLinks.wr_pro_alts_0.
-    by rewrite /proc_stream_p app_assoc. }
-  assert (Hlen : length (proc_stream_p (ps ++ [0%nat]) cs I) = S (S P)).
-  { rewrite Hup (length_app (proc_stream_p ps cs I) u_prompt) wr_prompt_len.
-    lia. }
-  split.
-  - rewrite /wr_open_p. split_and!.
-    + exact (pro_pin_p_mono ps (ps ++ [0%nat]) cs I Hpre Hpin).
-    + exact Hm.
-    + exact Hdv.
-    + rewrite pro_rounds_app EchoLinks.pro_rounds_one. lia.
-    + by rewrite Hlen.
-  - rewrite Hup lookup_app_r; [| lia].
-    replace (S P - length (proc_stream_p ps cs I))%nat with 1%nat by lia.
-    exact wr_prompt_tail.
+  rewrite wr_pro_p_lm wr_sp_p_lm. apply (lm_wr_pro_dollar pipe_lm pipe_lm_laws).
 Qed.
 
 (* (2) THE LINE'S CHOICE BYTE, at a settled round whose last line still
@@ -787,37 +765,22 @@ Lemma wr_blk_dollar_p (ps cs : list nat) (I : list (bv 8)) (P : nat) :
   wr_blk_p ps cs I P ->
   wr_sp_p ps (cs ++ [pnoc_of (pline_at I)]) I (S P).
 Proof using.
-  intro Hw.
-  exact (wr_blk_dollar_c_p ps cs I P (pnoc_of (pline_at I)) Hw
-           (pnoc_of_nopanic (pline_at I)) (pcont_pnoc (pline_at I))).
+  rewrite wr_blk_p_lm wr_sp_p_lm. apply (lm_wr_blk_dollar pipe_lm pipe_hooks).
 Qed.
 
 (* (3) THE SPACE *)
 Lemma wr_sp_open_p (ps cs : list nat) (I : list (bv 8)) (P : nat) :
   wr_sp_p ps cs I P -> wr_open_p ps cs I (S P).
-Proof using. by intros [H _]. Qed.
+Proof using.
+  rewrite wr_sp_p_lm wr_open_p_lm. apply (lm_wr_sp_open pipe_lm).
+Qed.
 
 (* (4) THE READ *)
 Lemma wr_open_read_p (ps cs : list nat) (I : list (bv 8)) (P : nat)
       (l : list (bv 8)) :
   wr_open_p ps cs I P -> wl_nl ∉ l -> wr_blk_p ps cs (I ++ l ++ [wl_nl]) P.
 Proof using.
-  intros (Hpin & Hm & Hdv & Hrd & HP) Hl.
-  assert (Hassoc : I ++ l ++ [wl_nl] = (I ++ l) ++ [wl_nl])
-    by (by rewrite app_assoc).
-  assert (Hnl : nlines (I ++ l) = nlines I)
-    by exact (EchoLinks.nlines_app_nonl I l Hl).
-  assert (Hlines : nlines (I ++ l ++ [wl_nl]) = S (length cs))
-    by (rewrite Hassoc nlines_snoc_nl Hnl Hdv; reflexivity).
-  rewrite /wr_blk_p. split_and!.
-  - intros q Hq. rewrite Hassoc pop_nstarted_snoc Hnl Hdv in Hq.
-    destruct (decide (q < length cs)%nat) as [Hlt | Hge].
-    + apply Hpin. rewrite (pop_nstarted_rest_nil I Hm) Hdv. exact Hlt.
-    + assert (Hqe : q = length cs) by lia.
-      rewrite Hqe -Hdv. exact Hrd.
-  - rewrite Hassoc. exact (rest_of_snoc_nl (I ++ l)).
-  - exact Hlines.
-  - rewrite (proc_before_p_line ps cs I l Hm Hl). exact HP.
+  rewrite wr_open_p_lm wr_blk_p_lm. apply (lm_wr_open_read pipe_lm).
 Qed.
 
 (* ---- the tight shapes' steps ---- *)
@@ -825,38 +788,22 @@ Lemma wr_blk_open_p (ps cs : list nat) (I : list (bv 8)) (P a : nat) :
   wr_blk_t_p ps cs I P -> papr I a ->
   wr_open_t_p ps (cs ++ [a]) I (P + length (pab I a))%nat.
 Proof using.
-  intros [Hw Ht] Hpr. pose proof Hpr as (Hok & Hnp & Hfk).
-  pose proof (wr_blk_started_p ps cs I P Hw) as Hst.
-  pose proof Hw as (Hpin & Hr & Hn & HP).
-  split; [| exact (wr_tail_snoc_p ps cs a Hnp Ht)].
-  rewrite /wr_open_p. split_and!.
-  - exact (wr_blk_pin_snoc_p ps cs I P a Hw).
-  - exact Hr.
-  - rewrite (length_app cs [a]) Hn. cbn [length]. lia.
-  - rewrite Hn (pro_idx_p_snoc_ne cs a Hnp). apply Hpin. lia.
-  - rewrite /proc_stream_p (wr_blk_low_p ps cs I P a Hw)
-            (wr_blk_cont_p ps cs I P a Hw Hnp) -(pab_is I a (conj Hok Hfk))
-            (length_app (proc_before_p ps cs I) (pab I a)) HP.
-    reflexivity.
+  rewrite wr_blk_t_p_lm wr_open_t_p_lm pab_lm. intros Hw Hpr.
+  exact (lm_wr_blk_open pipe_lm pipe_hooks ps cs tt I P a Hw (proj1 (papr_lm I a) Hpr)).
 Qed.
 
 Lemma wr_blk_sp_p (ps cs : list nat) (I : list (bv 8)) (P a : nat) :
   wr_blk_t_p ps cs I P -> papr I a ->
   wr_sp_t_p ps (cs ++ [a]) I (P + (length (pab I a) - 1))%nat.
 Proof using.
-  intros Hw Hpr. pose proof (pab_len_ge2 I a Hpr) as Hlen.
-  destruct (wr_blk_open_p ps cs I P a Hw Hpr) as [Hop Ht].
-  split; [| exact Ht]. split.
-  - replace (S (P + (length (pab I a) - 1)))%nat
-      with (P + length (pab I a))%nat by lia.
-    exact Hop.
-  - exact (wr_blk_byte_p ps cs I P a _ _ (proj1 Hw) (pab_space I a Hpr)).
+  rewrite wr_blk_t_p_lm wr_sp_t_p_lm pab_lm. intros Hw Hpr.
+  exact (lm_wr_blk_sp pipe_lm pipe_hooks ps cs tt I P a Hw (proj1 (papr_lm I a) Hpr)).
 Qed.
 
 Lemma wr_sp_open_t_p (ps cs : list nat) (I : list (bv 8)) (P : nat) :
   wr_sp_t_p ps cs I P -> wr_open_t_p ps cs I (S P).
 Proof using.
-  intros [Hs Ht]. split; [exact (wr_sp_open_p ps cs I P Hs) | exact Ht].
+  rewrite wr_sp_t_p_lm wr_open_t_p_lm. apply (lm_wr_sp_open_t pipe_lm).
 Qed.
 
 Lemma wr_open_read_t_p (ps cs : list nat) (I : list (bv 8)) (P : nat)
@@ -864,29 +811,19 @@ Lemma wr_open_read_t_p (ps cs : list nat) (I : list (bv 8)) (P : nat)
   wr_open_t_p ps cs I P -> wl_nl ∉ l ->
   wr_blk_t_p ps cs (I ++ l ++ [wl_nl]) P.
 Proof using.
-  intros [Ho Ht] Hl.
-  split; [exact (wr_open_read_p ps cs I P l Ho Hl) | exact Ht].
+  rewrite wr_open_t_p_lm wr_blk_t_p_lm. apply (lm_wr_open_read_t pipe_lm).
 Qed.
 
 Lemma wr_pro_tail_p (ps cs : list nat) (I : list (bv 8)) (P : nat) :
   wr_pro_p ps cs I P -> wr_tail_p (ps ++ [0%nat]) cs.
 Proof using.
-  intros (Hpin & Hr & Hn & Hopen & Hnd & HP).
-  pose proof (pro_pin_p_round_le ps cs I Hr Hopen Hpin) as Hle.
-  rewrite Hn in Hnd Hle.
-  rewrite /wr_tail_p.
-  replace (S (pro_idx_p cs (length cs)))
-    with (pro_idx_p cs (length cs) + 1)%nat by lia.
-  rewrite -(pro_from_add 1 (pro_idx_p cs (length cs)))
-          (pro_from_snoc_le (pro_idx_p cs (length cs)) ps 0%nat Hle).
-  cbn [pro_from]. exact (pro_tail_open_snoc _ 0%nat Hnd).
+  rewrite wr_pro_p_lm wr_tail_p_lm. apply (lm_wr_pro_tail pipe_lm).
 Qed.
 
 Lemma wr_pro_dollar_t_p (ps cs : list nat) (I : list (bv 8)) (P : nat) :
   wr_pro_p ps cs I P -> wr_sp_t_p (ps ++ [0%nat]) cs I (S P).
 Proof using.
-  intros Hw. split;
-    [exact (wr_pro_dollar_p ps cs I P Hw) | exact (wr_pro_tail_p ps cs I P Hw)].
+  rewrite wr_pro_p_lm wr_sp_t_p_lm. apply (lm_wr_pro_dollar_t pipe_lm pipe_lm_laws).
 Qed.
 
 (* (5) THE PANIC LINE OPENS A FRESH ROUND AT THE SAME INPUT *)
@@ -894,21 +831,8 @@ Lemma wr_blk_ban_p (ps cs : list nat) (I : list (bv 8)) (P : nat) :
   wr_blk_t_p ps cs I P ->
   wr_ban_p ps (cs ++ [3%nat]) I (P + length (pab I 3%nat))%nat.
 Proof using.
-  intros [Hw Ht]. pose proof (wr_blk_nonnil_p ps cs I P Hw) as Hne.
-  pose proof Hw as (Hpin & Hr & Hn & HP).
-  rewrite /wr_ban_p. split_and!.
-  - exact (wr_blk_pin_snoc_p ps cs I P 3%nat Hw).
-  - exact Hr.
-  - rewrite (length_app cs [3%nat]) Hn. cbn [length]. lia.
-  - right. rewrite Hn.
-    replace (S (length cs) - 1)%nat with (length cs) by lia.
-    rewrite /palt_at (EchoLinksLine.snoc_lookup_total cs 3%nat).
-    exact ppan_panic.
-  - exists 0%nat. split.
-    + rewrite Hn pro_idx_p_snoc_3 pro_fail_0. exact Ht.
-    + rewrite (wr_blk_low_p ps cs I P 3%nat Hw) -HP /wr_pre_p.
-      rewrite decide_False; [| exact Hne].
-      rewrite pab_pan. lia.
+  rewrite wr_blk_t_p_lm wr_ban_p_lm pab_lm.
+  apply (lm_wr_blk_ban pipe_lm pipe_lm_laws pipe_hooks).
 Qed.
 
 
@@ -927,93 +851,9 @@ Lemma wr_owed_read_refute_p (ps cs ps0 cs0 : list nat) (I I0 : list (bv 8))
   (cs `prefix_of` cs0 \/ cs0 `prefix_of` cs) ->
   (length (proc_before_p ps0 cs0 I0) <= P)%nat -> False.
 Proof using.
-  intros Hw HI Hne Hrs Hps Hcs Hle.
-  pose proof Hrs as (HFps0 & Hao0 & Hpin0 & Hbnd0).
-  assert (Hqle : (nlines I <= length cs0)%nat).
-  { etrans; [| exact Hbnd0].
-    apply nlines_prefix, (pop_prefix_of_removelast I I0 HI Hne). }
-  destruct Hw as [Hw | Hw]; last first.
-  { (* the block owed: its first byte is unwritten *)
-    pose proof (wr_blk_nonnil_p ps cs I P Hw) as Hnil.
-    pose proof Hw as (Hpin & Hm & Hdv & HP).
-    assert (Hstar : nstarted I = S (length cs))
-      by exact (wr_blk_started_p ps cs I P Hw).
-    assert (Hb1 : (nlines (removelast I) <= length cs)%nat)
-      by (rewrite (pop_nlines_removelast I Hm); lia).
-    assert (Hcs' : cs `prefix_of` cs0).
-    { destruct Hcs as [Hc | Hc]; [exact Hc |].
-      apply prefix_length in Hc. exfalso. lia. }
-    destruct Hcs' as [z Hz].
-    assert (Hpin0c : pro_pin_p ps0 cs I).
-    { intros q Hq.
-      rewrite -(pro_idx_p_app_le cs z q ltac:(lia)) -Hz.
-      apply Hpin0. pose proof (nstarted_strict I I0 HI Hne). lia. }
-    assert (Hlow : proc_before_p ps0 cs0 I = proc_before_p ps cs I).
-    { destruct Hps as [Hps | Hps].
-      - symmetry.
-        exact (proc_before_p_cs_prefix ps ps0 cs cs0 I Hps ltac:(by eexists)
-                 Hpin Hb1).
-      - transitivity (proc_before_p ps0 cs I).
-        + symmetry.
-          exact (proc_before_p_cs_prefix ps0 ps0 cs cs0 I ltac:(reflexivity)
-                   ltac:(by eexists) Hpin0c Hb1).
-        + exact (proc_before_p_cs_prefix ps0 ps cs cs I Hps ltac:(reflexivity)
-                   Hpin0c Hb1). }
-    assert (Hpend : pending_at_p ps0 cs0 I <> [])
-      by exact (pending_at_p_nonnil_pre ps0 cs0 I I0 HI Hao0 Hnil Hm).
-    assert (Hpl : (0 < length (pending_at_p ps0 cs0 I))%nat).
-    { destruct (pending_at_p ps0 cs0 I) as [| y ys];
-        [by destruct (Hpend eq_refl) | cbn [length]; lia]. }
-    assert (Hmono : (length (proc_stream_p ps0 cs0 I)
-                     <= length (proc_before_p ps0 cs0 I0))%nat)
-      by (apply prefix_length, (proc_stream_p_before ps0 cs0 I I0 HI Hne)).
-    rewrite /proc_stream_p
-      (length_app (proc_before_p ps0 cs0 I) (pending_at_p ps0 cs0 I)) Hlow
-      in Hmono.
-    lia. }
-  (* the prologue open: the reader's round is settled, so its prologue is
-     strictly longer than the writer's *)
-  pose proof Hw as (Hpin & Hm & Hdv & Hr & Hnd & HP).
-  assert (Hcs' : cs `prefix_of` cs0).
-  { destruct Hcs as [Hc | Hc]; [exact Hc |].
-    pose proof (prefix_length _ _ Hc) as Hlc.
-    rewrite (prefix_length_eq _ _ Hc ltac:(lia)). reflexivity. }
-  destruct Hcs' as [z Hz].
-  assert (Hidx : pro_idx_p cs0 (nlines I) = pro_idx_p cs (nlines I)).
-  { rewrite Hz. apply pro_idx_p_app_le. lia. }
-  assert (Hdone0 : pro_done (pro_from (pro_idx_p cs (nlines I)) ps0)).
-  { apply pro_from_done. rewrite -Hidx.
-    exact (Hpin0 (nlines I) (nstarted_strict I I0 HI Hne)). }
-  destruct Hps as [Hps | Hps]; last first.
-  { apply Hnd. exact (pro_done_mono _ _ (pro_from_mono _ _ _ Hps) Hdone0). }
-  assert (Hlow : proc_before_p ps cs I = proc_before_p ps0 cs0 I).
-  { apply (proc_before_p_cs_prefix ps ps0 cs cs0 I Hps ltac:(by eexists) Hpin).
-    etrans; [apply nlines_prefix, pop_removelast_prefix | lia]. }
-  assert (Hr0 : I = [] \/ palt_panic (palt_at cs0 (nlines I - 1)%nat) = true).
-  { destruct (decide (I = [])) as [-> | Hn0]; [by left | right].
-    destruct Hr as [Hr | Hr]; [done |].
-    assert (Hq1 : (1 <= length cs)%nat)
-      by (pose proof (nlines_pos_of_rest_nil I Hn0 Hm); lia).
-    rewrite /palt_at Hz
-      (pop_lta_prefix cs (cs ++ z) (nlines I - 1)%nat
-         ltac:(by eexists) ltac:(lia)).
-    exact Hr. }
-  assert (Hlt : (length (pending_at_p ps cs I)
-                 < length (pending_at_p ps0 cs0 I))%nat).
-  { rewrite (pending_at_p_round_pre ps cs I Hm Hr)
-            (pending_at_p_round_pre ps0 cs0 I Hm Hr0).
-    rewrite !(length_app (if decide (I = []) then [] else alt_panic) _) Hidx.
-    pose proof (pro_of_open_done_lt _ _ Hnd Hdone0 (pro_from_mono _ _ _ Hps)
-                  (pro_from_Forall _ _ _ HFps0)).
-    lia. }
-  assert (Hmono : (length (proc_stream_p ps0 cs0 I)
-                   <= length (proc_before_p ps0 cs0 I0))%nat)
-    by (apply prefix_length, (proc_stream_p_before ps0 cs0 I I0 HI Hne)).
-  rewrite HP /proc_stream_p
-    (length_app (proc_before_p ps cs I) (pending_at_p ps cs I)) Hlow in Hle.
-  rewrite /proc_stream_p
-    (length_app (proc_before_p ps0 cs0 I) (pending_at_p ps0 cs0 I)) in Hmono.
-  lia.
+  rewrite wr_owed_p_lm proc_before_p_lm. intros Hw HI Hne Hrs.
+  exact (lm_wr_owed_read_refute pipe_lm pipe_lm_laws pipe_hooks ps cs ps0 cs0 tt I I0 P
+           Hw HI Hne (proj1 (rd_stage_p_lm _ _ _) Hrs)).
 Qed.
 
 
@@ -1028,20 +868,22 @@ Lemma pending_at_p_round_wr_pre (ps cs : list nat) (I : list (bv 8)) :
   pending_at_p ps cs I
   = wr_pre_p cs I ++ pro_of (pro_from (pro_idx_p cs (nlines I)) ps).
 Proof using.
-  intros Hm Hr. rewrite /wr_pre_p. exact (pending_at_p_round_pre ps cs I Hm Hr).
+  rewrite pending_at_p_lm pro_idx_p_lm.
+  apply (lm_pending_at_round_pre pipe_lm pipe_lm_laws).
 Qed.
 
 Definition wr_pban_p (ps cs : list nat) (I : list (bv 8)) (P : nat) : Prop :=
   wr_pro_p ps cs I P
   /\ (exists j : nat,
         pro_from (pro_idx_p cs (nlines I)) ps = pro_fail j ++ [3%nat]).
+Lemma wr_pban_p_lm ps cs I P : wr_pban_p ps cs I P = lm_wr_pban pipe_lm ps cs tt I P.
+Proof using. rewrite /wr_pban_p /lm_wr_pban wr_pro_p_lm pro_idx_p_lm. reflexivity. Qed.
 
 Lemma wr_pban_of_ban_p (ps cs : list nat) (I : list (bv 8)) (P : nat) :
   wr_ban_p ps cs I P ->
   wr_pban_p (ps ++ [3%nat]) cs I (P + length u_banner)%nat.
 Proof using.
-  intros Hw. split; [exact (wr_ban_done_p ps cs I P Hw) |].
-  destruct (wr_ban_filed_p ps cs I P Hw) as (j & Hj & _). by exists j.
+  rewrite wr_ban_p_lm wr_pban_p_lm. apply (lm_wr_pban_of_ban pipe_lm pipe_lm_laws).
 Qed.
 
 Definition wr_pdiag_p (ps cs : list nat) (I : list (bv 8)) (P a i : nat)
@@ -1054,6 +896,8 @@ Definition wr_pdiag_p (ps cs : list nat) (I : list (bv 8)) (P a i : nat)
         pro_from (pro_idx_p cs (nlines I)) ps = pro_fail j ++ [3%nat; a]
         /\ P = (length (proc_before_p ps cs I) + length (wr_pre_p cs I)
                 + pro_round * j + length u_banner + i)%nat).
+Lemma wr_pdiag_p_lm ps cs I P a i : wr_pdiag_p ps cs I P a i = lm_wr_pdiag pipe_lm ps cs tt I P a i.
+Proof using. rewrite /wr_pdiag_p /lm_wr_pdiag proc_before_p_lm !pro_idx_p_lm. reflexivity. Qed.
 
 Lemma wr_pdiag_byte_p (ps cs : list nat) (I : list (bv 8)) (P a i : nat)
       (b : bv 8) :
@@ -1105,8 +949,7 @@ Qed.
 Lemma wr_pdiag_S_p (ps cs : list nat) (I : list (bv 8)) (P a i : nat) :
   wr_pdiag_p ps cs I P a i -> wr_pdiag_p ps cs I (S P) a (S i).
 Proof using.
-  intros (Hpin & Hm & Hdv & Hr & (j & Hj & HP)).
-  split_and!; try assumption. exists j. split; [exact Hj | lia].
+  rewrite !wr_pdiag_p_lm. apply (lm_wr_pdiag_S pipe_lm).
 Qed.
 
 Lemma wr_pdiag_done_1_p (ps cs : list nat) (I : list (bv 8)) (P i : nat) :

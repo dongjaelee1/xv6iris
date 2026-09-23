@@ -343,11 +343,18 @@ the walks' `_at` forms; cat's payers repointed, lane/payers 9f2f7428b:
 filed_some/filed_none` and `ukn_const` binders on the two taint-open
 lemmas, `UCatPipe.pcat_w_taint`'s post is `kcat_wpost`, `UShPipeLaw.
 pl_kcat_dg` takes `ukn_const`; audits 13/13/14/14 unmoved).  The haltable
-output device (`DOutH`/`DHalt`) is in.  IN FLIGHT, cut 4(c) device lanes
-in sibling checkouts (design §3.4b): lane/cons (`UkConsOut.v`, the
-console at the generic claim), lane/filedev (`UkFileDev.v`, the file at
-the deed), lane/pipedev (`UkPipeDev.v`, the pipe at the protocol); then
-the union's `ep_iface` from the three, and cut 5.
+output device (`DOutH`/`DHalt`) is in.  Cut 4(c) device lanes LANDED
+(design §3.4c): lane/cons `UkConsOut.v` (`cons_dev`, `cons_write`),
+lane/filedev `UkFileDev.v` (`file_in`/`file_out`, `file_read`,
+`file_write`, `file_open_present/absent`, `file_close(_in)`), lane/pipedev
+`UkPipeDev.v` (`pipe_out`/`pipe_halt`/`pipe_in`/`pipe_in_eof`,
+`pipe_write(_halt/_nil)`, `pipe_read`, `pipe_close(_fd)`); the interface
+moved to their findings (taint, five device kinds, zero-length writes,
+persistent path, chunked file output).  NEXT: the file application's
+`ep_iface` (`UkFileIface.v`: console + file, `ei_taint := file_taint`,
+`ei_taint_pays` from the free handler -- the read hole's count bound is
+the risk) with `cat f`/`echo > f` paid end to end from
+`tree_pay_of_conforms`; then the pipeline's; then cut 5.
 
 FileOutPure DEAD CODE REMOVED (2026-09-23): 92 of 169 declarations
 (the whole claim-stage layer -- `D_f`, `pending_f`, `pcount_f`, the

@@ -104,14 +104,14 @@ Section UkHandler.
          ∧ (ei_fds fdm -∗ ei_halt d -∗ K (-1))
          ∧ (∀ x, ei_taint -∗ K x)) -∗
         wr_obl N P fd bs K;
-    (* at a device where a write may miss: the count, or -1, the device
-       owing the rest either way *)
-    ei_write_m : forall (fdm : fdmap) (fd : Z) (d : nat) (alts : list bytes)
-                   (a bs : bytes) (K : Z -> iProp Σ),
-        bs <> [] -> fdm fd = Some d -> a ∈ alts -> bs `prefix_of` a ->
-        ei_fds fdm -∗ ei_outm d alts -∗
-        ((ei_fds fdm -∗ ei_outm d [drop (length bs) a] -∗ K (Z.of_nat (length bs)))
-         ∧ (ei_fds fdm -∗ ei_outm d [drop (length bs) a] -∗ K (-1))
+    (* at a device where a write may miss, owed as chunks: the next chunk
+       whole, the count or -1, the device owing the rest either way *)
+    ei_write_m : forall (fdm : fdmap) (fd : Z) (d : nat) (rest : list bytes)
+                   (bs : bytes) (K : Z -> iProp Σ),
+        bs <> [] -> fdm fd = Some d ->
+        ei_fds fdm -∗ ei_outm d (bs :: rest) -∗
+        ((ei_fds fdm -∗ ei_outm d rest -∗ K (Z.of_nat (length bs)))
+         ∧ (ei_fds fdm -∗ ei_outm d rest -∗ K (-1))
          ∧ (∀ x, ei_taint -∗ K x)) -∗
         wr_obl N P fd bs K;
     ei_write_halt : forall (fdm : fdmap) (fd : Z) (d : nat) (bs : bytes)
@@ -179,8 +179,7 @@ Section UkHandler.
         cl_obl N P fd K;
     (* the exit, with every device drained *)
     ei_exit : forall (s : Z) (fdm : fdmap) (dv : nat -> dspec) (ds : gset nat),
-        (forall d alts, d ∈ ds -> dv d = DOut alts \/ dv d = DOutH alts \/ dv d = DOutM alts
-                        -> [] ∈ alts) ->
+        (forall d, d ∈ ds -> drained (dv d)) ->
         ei_fds fdm -∗
         ([∗ set] d ∈ ds, match dv d with
                          | DOut alts => ei_out d alts
@@ -381,7 +380,7 @@ Section UkHandler.
         destruct Hc as [(-> & Hk0 & Hk1)
                        | [(Hne & alts & a & Hd & Ha & Hpre & Hk)
                        | [(Hne & alts & a & Hd & Ha & Hpre & Hk & Hkh)
-                       | [(Hne & alts & a & Hd & Ha & Hpre & Hk & Hkm)
+                       | [(Hne & rest & Hd & Hk & Hkm)
                        | (Hne & Hd & Hk)]]]].
         * iApply (ei_write_nil I (pe_fd E) fd d with "Hfds"); [exact Hfd |].
           iSplit; [| iSplit; [| taint_arm I]].
@@ -405,14 +404,14 @@ Section UkHandler.
             iApply (cf_inv_move I E ds d DHalt with "Hfds Hfiles Hh Hrest");
               [exact Hin | exact Hkh | exact Hdom]. }
         * iDestruct (dev_res_take I _ ds d Hin with "Hdev") as "[Hdr Hrest]". rewrite Hd.
-          iApply (ei_write_m I (pe_fd E) fd d alts a bs with "Hfds Hdr");
-            [exact Hne | exact Hfd | exact Ha | exact Hpre |].
+          iApply (ei_write_m I (pe_fd E) fd d rest bs with "Hfds Hdr");
+            [exact Hne | exact Hfd |].
           iSplit; [| iSplit; [| taint_arm I]].
           { iIntros "Hfds Hout".
-            iApply (cf_inv_move I E ds d (DOutM [drop (length bs) a]) with "Hfds Hfiles Hout Hrest");
+            iApply (cf_inv_move I E ds d (DOutM rest) with "Hfds Hfiles Hout Hrest");
               [exact Hin | exact Hk | exact Hdom]. }
           { iIntros "Hfds Hout".
-            iApply (cf_inv_move I E ds d (DOutM [drop (length bs) a]) with "Hfds Hfiles Hout Hrest");
+            iApply (cf_inv_move I E ds d (DOutM rest) with "Hfds Hfiles Hout Hrest");
               [exact Hin | exact Hkm | exact Hdom]. }
         * iDestruct (dev_res_take I _ ds d Hin with "Hdev") as "[Hdr Hrest]". rewrite Hd.
           iApply (ei_write_halt I (pe_fd E) fd d bs with "Hfds Hdr"); [exact Hne | exact Hfd |].
@@ -422,7 +421,7 @@ Section UkHandler.
             [exact Hin | by rewrite (env_set_dev_id E d _ Hd) | exact Hdom].
       + (* EExit *)
         iApply (ei_exit I s (pe_fd E) (pe_dev E) ds with "Hfds Hdev").
-        intros d alts _ Hd'. exact (Hc d alts Hd').
+        intros d _. exact (Hc d).
   Qed.
 
   Theorem tree_pay_of_conforms (I : ep_iface) (E : penv) (ds : gset nat) (t : proc) :

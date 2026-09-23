@@ -280,6 +280,53 @@ alternatives are the branches' outputs, per device, and their PAIRING
 across devices (content on the pipe with no diagnostic on the console)
 is the line model's, not the process's.
 
+### 3.4c What the three device instances found (landed)
+
+`UkConsOut.v` (the console at the generic claim), `UkFileDev.v` (a file
+at the deed) and `UkPipeDev.v` (a pipe's two ends at the protocol) are
+in, each stated with the ledger/handles explicit where `ep_iface` says
+`ei_fds`, each with echo's and cat's stub instances as witnesses.  What
+they forced on the pure layer and the interface, all honest to the
+kernel:
+
+- **The taint.** The deed's read and open leaves and the pipe's leaves
+  have an arm where the application is tainted and the answer is
+  anything.  `ep_iface` has `ei_taint` with `ei_taint_pays : ∀ t,
+  ei_taint -∗ tree_pay t`, every law's continuation an additive
+  `(∀ x, ei_taint -∗ K x)`, and the glue's invariant a paid arm.  The
+  instance must prove `ei_taint_pays` -- the FREE handler at every hole,
+  and a read hole demands the count bound the generic free read leaf does
+  not export (§3.2): the paid read leaf at the taint's supply has the
+  kernel's `sys_rw_count`; if that route fails, the bound is a kernel-row
+  purchase (`UsysMemOk`'s read row saying `-1 ≤ r ≤ count`).
+- **Devices are of five kinds.**  `DOut` (the console: never short, never
+  fails), `DOutH`/`DHalt` (a pipe's write end: the reader may go, a write
+  then answers -1 and the end stays halted), `DOutM` (a file: a write at
+  a full disk answers -1 and the process goes on; owed as CHUNKS, each
+  write the next one whole, because the file application records a file
+  as the chunks of a line that landed), `DIn` (a file, which never ends
+  early) and `DInE`/`DInEnd` (a pipe's read end: the writer may close
+  first).
+- **Zero-length writes** answer 0 or -1 at the kernel's whim and move
+  nothing (`cf_write_nil`, `ei_write_nil`); the other write rules take
+  `bs ≠ []`.  **A read asks for at least one byte** (`read(fd, buf, 0)`
+  answers 0 whatever is owed).
+- **The path is persistent** (`upath_at` at the discarded fraction): the
+  open leaves read it through a boxed image view.
+- **Every console alternative is under 2^31 bytes** (`cons_short`): the
+  kernel reads the count as a C int.  The console's unfiled state owes a
+  LIST of admissible codes' continuations (not all of them -- no model
+  enumerates its codes), and the alternative a write chooses (§3.3) is
+  the code it files.
+- **The stub law** hands the middle continuation the `c.jr ra` step
+  (`stub_law`'s return wand) -- a handler learns the answer only inside
+  the ecall leaf's result.
+
+The union's record (§3.4b) is assembled per application: the file
+application's from the console and the file, the pipeline's from the
+console and the pipe; the union of the two applications (M5) unites the
+registries.
+
 ### 3.5 The line model's continuation becomes a theorem
 
 `lmodel`'s `lm_cont s l a` is hand-written bytes per alternative.  With

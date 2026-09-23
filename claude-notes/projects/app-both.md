@@ -396,7 +396,43 @@ the strict rule (their landed `disc`/`disc_p` are the top-level
 ASSUMPTION of `UEchoBootAdequacy`/`UPipeBootAdequacy`; the strict rule
 is the stronger assumption, so the theorems weaken).  (b) is the clean
 abstraction; it changes what the echo and pipe theorems assume.  NOT
-DECIDED HERE.  Until ruled: `lm_good_out`, the pad family and
+DECIDED HERE.
+RULED 2026-09-23 (owner): (c) THE FILE APPLICATION MOVES TO THE RELAXED
+PER-LINE DISCIPLINE, as echo's -- `disc_pt_f ps cs s p := sessf ps cs s
+(done_of (ins p)) `prefix_of` wire p`.  Echo and the pipe are untouched;
+the file's assumption WEAKENS (its theorem strengthens), and every file
+proof that spent the strict rule is re-proved at echo's argument.  So
+`lm_disc_pt` is one predicate with a state (echo/pipe: `tt`), and the
+pipe's merge clause is the one per-model extra (fold it into the model
+via `lm_merge` if its `pline_is_pipe` guard is implied; else a hook).
+THE CHANGE LIST (measured 2026-09-23; every site that unfolds
+`disc_pt_f`): (1) `FileDisc.disc_pt_f ps cs s p := sessf ps cs s
+(done_of (ins p)) `prefix_of` obs_wire Uart0 p`; add `disc_pt_f_of_strict`
+(strict -> relaxed, `EchoDisc.disc_pt_of_strict`'s twin via `sessf_mono`
++ `done_of_prefix`) so the anti-vacuity literal at `FileDisc.v:2185`
+(`disc_seg_f'_intro` with `disc_pt_all_f`) keeps its `vm_compute`
+witness through it; the compatibility lemma `disc_f_disc` loses its
+`disc_pt_of_strict` step (both sides are now `done_of`; use `sessf_sess`
+at `done_of (ins p)`, `echo_only` is prefix-closed); the "IT IS ONE WAY"
+comment at `FileDisc.v:2085` goes.  (2) `FileOutPure.disc_seg_f'_in`
+(l.271): `sessf_take` at `done_of (ins p)` with `nlines_done`;
+`disc_seg_f'_pt_last` (l.1351): conclusion becomes echo's -- `sessf ps'
+cs' s (done_of (removelast (ins seg))) `prefix_of` wire` -- and its ONE
+consumer `FileOut.fecl_step_echo` (l.1742) takes the D1/D2 bound at
+`done_of`, exactly as `EchoOut.ecl_step_echo` (l.2925) does (echo's
+proof is the port source); `disc_f_first_out` (l.2011): `done_of_nil`.
+(3) `FileDiscDec`: `disc_pt_all_f_canon` (l.352) unchanged in shape;
+the boot-state chooser in `disc_seg_f'_ex_dec` (l.563, `sessf_infix_blk`
+/`alt_seq_f_cont_ext` at `ins p`) and l.636 (`sessf_ps_ext`) move to
+`done_of (ins p)` -- `nlines_done` keeps every index bound.  (4) Nothing
+above `FileOut` unfolds the rule (`UkSh`, `UShRound`, `UInitFile*`,
+`AppFileRec`, `UFileBootAdequacy` only pass `disc_f` around).  Then
+`LineModel` gains `lm_disc_pt ps cs s p`, `lm_disc_seg' s seg` (echo's
+`length cs = nlines ∧ Forall (<4)` IS `lm_alts_ok` at `echo_lm`; the
+pipe's `d4_p` clause pending the `lm_merge` fold), `lm_disc h` (∃ s per
+cycle with `lm_st_ok s`; `tt` at echo/pipe), `lm_expected_rel s`,
+`lm_good_out s`; `disc`/`disc_f`/`disc_p` as corollaries; and
+`GenOutPure` gets the pad family and `good_out_of_stage`.  Until ruled: `lm_good_out`, the pad family and
 `good_out_of_stage` stay out of `GenOutPure`; the claim's DRAIN step
 (M3b) is the only consumer.  Everything else in M3a (the tiers as
 corollaries, step 3) does not depend on it.

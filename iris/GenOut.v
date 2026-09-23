@@ -369,7 +369,7 @@ Section gen_out.
   (* (H) THE ERA'S HEAD WRITE: nothing is written and nothing echoed, so
      the stage is empty; the first process byte files the boot state
      ([gwa_file]) and opens the prologue at the alternative [a] the
-     writer chose.  [FileOut.fecl_step_write_first] once. *)
+     writer chose.  The file's former [fecl_step_write_first], once. *)
   Lemma gcl_step_write_first (k : nat) (v : era_pins) (a : nat) (b : bv 8)
       (s0 : lm_st M) (ho : list mobs) (H : LogEntryDefs.cons_hist) :
     lm_st_ok M s0 ->
@@ -492,7 +492,7 @@ Section gen_out.
 
   (* (W) THE ORDINARY WRITE: the writer's witness pins the state the stage
      reads ([gwa_agree]), so the byte it computes from the stream is the
-     byte the claim owes.  [FileOut.fecl_step_write] once. *)
+     byte the claim owes.  The file's former [fecl_step_write], once. *)
   Lemma gcl_step_write (k : nat) (v : era_pins) (P : nat) (b : bv 8)
       (ps0 cs0 : list nat) (s0 : lm_st M) (I0 : list (bv 8))
       (ho : list mobs) (H : LogEntryDefs.cons_hist) :
@@ -608,7 +608,7 @@ Section gen_out.
 
   (* (W') THE WRITE AT A BLOCK'S FIRST BYTE: the alternative [a] is the
      program's knowledge and this step files it; the block is read at the
-     state the writer's witness pins.  [FileOut.fecl_step_write_blk] once,
+     state the writer's witness pins.  The file's former [fecl_step_write_blk], once,
      with the model's no-coverage-ending clause as a premise (the pipe's
      terminal arm is its own step). *)
   Lemma gcl_step_write_blk (k : nat) (v : era_pins) (P a : nat) (b : bv 8)
@@ -793,7 +793,7 @@ Section gen_out.
 
   (* (W-pro) THE WRITE AT A PROLOGUE ROUND'S CHOICE BYTE: init's own
      knowledge of which alternative its restart loop is taking, filed into
-     the claim.  [FileOut.fecl_step_write_pro] once.  ONE PREMISE MORE than
+     the claim.  The file's former [fecl_step_write_pro], once.  ONE PREMISE MORE than
      the file's: [0 < P] (the writer is past the era's head), OR the
      instance's witness forces filing ([gwa_strict], the file's case), OR
      the state needs no evidence and this byte files it ([gwa_free], echo's
@@ -1157,7 +1157,7 @@ Section gen_out.
   (* THE READ.  The reader's receipt carries the window's facts and, past
      an empty window, the writer's witness at the filed state ([gwa_W]),
      with the claim's choice list cut to the window's own line count.
-     [FileOut.fecl_step_read] once. *)
+     The file's former [fecl_step_read], once. *)
   Lemma gcl_step_read (k : nat) (v : era_pins) (n : nat) (ho : list mobs)
       (CH : LogEntryDefs.cons_hist) (ws : list (list mobs * bv 8)) :
     read_ok (LogEntryDefs.ch_log CH) (LogEntryDefs.ch_dl CH) ws ->
@@ -1463,7 +1463,7 @@ Section gen_out.
      claim's at ITS OWN boot state (the model's determinacy theorem at two
      states), the claim's resolution PADDED to a full one first, and (K1)
      with (A1) make the era's input the segment's minus the byte being
-     echoed.  [FileOut.fecl_step_echo] once; D4's two side conditions are
+     echoed.  The file's former [fecl_step_echo], once; D4's two side conditions are
      discharged by the claim's no-coverage-ending clause (and the pad's)
      and by the discipline's own D4 below its last byte. *)
   Lemma gcl_step_echo (k : nat) (h : list mobs) (c : bv 8)
@@ -1730,7 +1730,7 @@ Section gen_out.
 
   (* ...AND THE BYTE, which takes NOTHING: the arm is the history's own
      field, and everything the step needs is inside the claim and the
-     event's premises.  [FileOut.fecl_step_byte] once. *)
+     event's premises.  The file's former [fecl_step_byte], once. *)
   Lemma gcl_step_byte (k : nat) (ho : list mobs)
       (CH : LogEntryDefs.cons_hist) (b : bv 8) :
     ConsLog.cons_hist_ok CH ->

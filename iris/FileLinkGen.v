@@ -36,7 +36,9 @@ Require Import FileOut.
 Require Import FileLinks.
 Require Import FileLinksLine.
 Require Import FileHooks.         (* S0 of [FileLinksLine], moved *)
-Require Import FileLinksAt.      (* [fhead_at], [f0pre_at], the indexed residue *)
+Require Import FileLinksAt.
+Require Import GenOut.
+Require Import GenLinksGl.      (* [fhead_at], [f0pre_at], the indexed residue *)
 Require Import LinkRec.
 Require Import GenLinksLine.
 Require Import RiscvPtsto.
@@ -120,75 +122,37 @@ Section file_link_gen.
   (* =================================================================== *)
   (*  2.  THE LINKS ENTAIL THE INTERFACE                                  *)
   (* =================================================================== *)
-  Lemma file_links_gl : file_links g -∗ glinks file_lm file_params.
+  (* the claim's writer's witness, and the head's boot evidence, in the
+     claim's words ([GenLinksGl.gcl_glinks]' two bridges) *)
+  Lemma f0w_cw (k : nat) (s : fstate) : f0w g k s -∗ f0cw g k s.
+  Proof using . iIntros "[_ H]". iExact "H". Qed.
+
+  Lemma fhead_boot (k : nat) (v : era_pins) (I : list (bv 8)) :
+    fhead g k v I -∗
+      turn v 0 ∗ ps_lb v [] ∗ cs_lb v [] ∗ inp_lb v []
+      ∗ ∃ s0 : fstate, ⌜fstate_ok s0⌝ ∗ (f0boot g k s0 ∨ FT)
+          ∗ (f0cw g k s0 -∗ f0w g k s0).
   Proof using .
-    iIntros "#Hlk".
-    iDestruct (file_links_w with "Hlk") as "#Hw".
-    iDestruct (file_links_blk with "Hlk") as "#Hblk".
-    iDestruct (file_links_pro with "Hlk") as "#Hpro".
-    iDestruct (file_links_first with "Hlk") as "#Hfst".
-    iDestruct (file_links_taint with "Hlk") as "#Ht".
-    rewrite /glinks. iSplitR; [| iSplitR; [| iSplitR; [| iSplitR]]].
-    - (* W *)
-      rewrite /gl_w. iIntros "!>" (k v P b ps0 cs0 s0 I0 Φ) "%H1 %H2 %H3 #Hpin #Hf Htn #Hps #Hcs #HE HΦ".
-      iDestruct "Hf" as "[%Hk Hvf]". iDestruct "Hvf" as (vf) "[#Hvf #Hf0]".
-      iApply ("Hw" $! k v vf P b ps0 cs0 s0 I0 Φ
-                with "[%] [%] [%] Hpin Hvf Htn Hps Hcs HE Hf0 [HΦ]").
-      { exact H1. }
-      { exact (proj2 (pro_pin_f_lm _ _ _) H2). }
-      { rewrite proc_stream_f_lm. exact H3. }
-      iIntros "Hres". iApply "HΦ".
-      iDestruct "Hres" as "[(Htn' & Hps' & Hcs' & HE' & _) | #HT]"; [iLeft | by iRight].
-      by iFrame "Htn' Hps' Hcs' HE'".
-    - (* BLK *)
-      rewrite /gl_blk.
-      iIntros "!>" (k v P a b ps0 cs0 s0 I0 Φ) "%H1 %H2 %H3 %H4 %H5 %H6 %H7 %H8 #Hpin #Hf Htn #Hps #Hcs #HE HΦ".
-      iDestruct "Hf" as "[%Hk Hvf]". iDestruct "Hvf" as (vf) "[#Hvf #Hf0]".
-      iApply ("Hblk" $! k v vf P a b ps0 cs0 s0 I0 Φ
-                with "[%] [%] [%] [%] [%] [%] [%] Hpin Hvf Htn Hps Hcs HE Hf0 [HΦ]").
-      { exact H1. } { exact H2. } { exact H3. }
-      { exact (proj2 (pro_pin_f_lm _ _ _) H4). }
-      { rewrite proc_before_f_lm. exact H5. }
-      { exact H6. }
-      { rewrite /lm_abs -fstate_upto_lm in H8. exact H8. }
-      iIntros "Hres". iApply "HΦ".
-      iDestruct "Hres" as "[(Htn' & Hps' & Hcs' & HE' & _) | #HT]"; [iLeft | by iRight].
-      by iFrame "Htn' Hps' Hcs' HE'".
-    - (* PRO *)
-      rewrite /gl_pro.
-      iIntros "!>" (k v P a b ps0 cs0 s0 I0 Φ) "%H1 %H2 %H3 %H4 %H5 %H6 %H7 %H8 #Hpin #Hf Htn #Hps #Hcs #HE HΦ".
-      iDestruct "Hf" as "[%Hk Hvf]". iDestruct "Hvf" as (vf) "[#Hvf #Hf0]".
-      iApply ("Hpro" $! k v vf P a b ps0 cs0 s0 I0 Φ
-                with "[%] [%] [%] [%] [%] [%] [%] [%] Hpin Hvf Htn Hps Hcs HE Hf0 [HΦ]").
-      { exact H1. } { exact H2. } { exact H3. }
-      { exact (proj2 (pro_pin_f_lm _ _ _) H4). }
-      { rewrite pro_idx_f_lm. exact H5. }
-      { rewrite proc_stream_f_lm. exact H6. }
-      { exact H7. } { exact H8. }
-      iIntros "Hres". iApply "HΦ".
-      iDestruct "Hres" as "[(Htn' & Hps' & Hcs' & HE' & _) | #HT]"; [iLeft | by iRight].
-      by iFrame "Htn' Hps' Hcs' HE'".
-    - (* HEAD *)
-      rewrite /gl_head.
-      iIntros "!>" (k v I a b Φ) "%H1 %H2 #Hpin Hh HΦ".
-      rewrite /fhead.
-      iDestruct "Hh" as "(-> & -> & Htn & #Hps & #Hcs & #HE & Hvf & Hpre)".
-      iDestruct "Hvf" as (vf) "#Hvf".
-      iDestruct "Hpre" as (s0) "(%Hok & Hty & Hbw)".
-      iDestruct "Hbw" as "[_ Hbw]". iDestruct "Hbw" as (vf') "[#Hvf' #Hbl]".
-      iDestruct (file_era_pin_agree with "Hvf Hvf'") as %<-.
-      iApply ("Hfst" $! (S gen_id) v vf a b s0 Φ
-                with "[%] [%] [%] Hpin Hvf Htn Hps Hcs HE Hbl Hty [HΦ]").
-      { exact Hok. } { exact H1. } { exact H2. }
-      iIntros "Hres". iApply "HΦ".
-      iDestruct "Hres" as "[(Htn' & Hps' & Hcs' & HE' & Hf0) | #HT]"; [iLeft | by iRight].
-      iExists s0. iFrame "Htn' Hps' Hcs' HE'".
-      rewrite /f0w. iSplitR; [by iPureIntro |]. iExists vf. by iFrame "Hvf Hf0".
-    - (* TAINT *)
-      rewrite /gl_taint. iIntros "!>" (k b Φ) "#HT HΦ".
-      iApply ("Ht" $! k b Φ with "HT HΦ").
+    rewrite /fhead.
+    iIntros "(_ & -> & Htn & #Hps & #Hcs & #HE & Hvf & Hpre)".
+    iDestruct "Hvf" as (vf) "#Hvf".
+    iDestruct "Hpre" as (s0) "(%Hok & Hty & Hbw)".
+    iDestruct "Hbw" as "[_ Hbw]". iDestruct "Hbw" as (vf') "[#Hvf' #Hbl]".
+    iDestruct (file_era_pin_agree with "Hvf Hvf'") as %<-.
+    iFrame "Htn Hps Hcs HE". iExists s0. iSplitR; [by iPureIntro |].
+    iSplitL "Hty".
+    { iDestruct "Hty" as "[#Hty | #HT]"; [iLeft | by iRight].
+      iExists vf. by iFrame "Hvf Hbl Hty". }
+    iIntros "Hw". rewrite /f0w. iSplitR; [by iPureIntro | iExact "Hw"].
   Qed.
 
+  (* the links are the claim's: the bundle is the record equation *)
+  Lemma file_links_gl : file_links g -∗ glinks file_lm file_params.
+  Proof using .
+    iIntros "%Hc".
+    iApply (gcl_glinks file_lm (file_cparams g) file_lm_byte_laws None (file_wa g) Hc file_params eq_refl eq_refl f0w_cw
+              (or_introl I) fhead_boot).
+  Qed.
   (* =================================================================== *)
   (*  3.  THE READ RECEIPT, THE TURN, THE RESIDUE                         *)
   (* =================================================================== *)
@@ -307,71 +271,36 @@ Section file_link_gen.
       f0bwk _ _ (S gen_id) (f0w_at_bwk s0) (f0w_at_bwk0 s0) f0bwk_agree
       (fhead_at g s0) _ (fhead_at_cur s0) (fhead_at_inp s0).
 
+  Lemma f0w_at_cw (s0 : fstate) (k : nat) (s : fstate) :
+    f0w_at s0 k s -∗ f0cw g k s.
+  Proof using . iIntros "[[_ H] _]". iExact "H". Qed.
+
+  Lemma fhead_at_boot (s0 : fstate) (k : nat) (v : era_pins) (I : list (bv 8)) :
+    fhead_at g s0 k v I -∗
+      turn v 0 ∗ ps_lb v [] ∗ cs_lb v [] ∗ inp_lb v []
+      ∗ ∃ s1 : fstate, ⌜fstate_ok s1⌝ ∗ (f0boot g k s1 ∨ FT)
+          ∗ (f0cw g k s1 -∗ f0w_at s0 k s1).
+  Proof using .
+    rewrite /fhead_at /f0pre_at.
+    iIntros "(_ & -> & Htn & #Hps & #Hcs & #HE & Hvf & (%Hok & Hty & Hbw))".
+    iDestruct "Hvf" as (vf) "#Hvf".
+    iDestruct "Hbw" as "[_ Hbw]". iDestruct "Hbw" as (vf') "[#Hvf' #Hbl]".
+    iDestruct (file_era_pin_agree with "Hvf Hvf'") as %<-.
+    iFrame "Htn Hps Hcs HE". iExists s0. iSplitR; [by iPureIntro |].
+    iSplitL "Hty".
+    { iDestruct "Hty" as "[#Hty | #HT]"; [iLeft | by iRight].
+      iExists vf. by iFrame "Hvf Hbl Hty". }
+    iIntros "Hw". rewrite /f0w_at /f0w.
+    iSplitL; [iSplitR; [by iPureIntro | iExact "Hw"] | by iPureIntro].
+  Qed.
+
   Lemma file_links_gl_at (s0 : fstate) :
     file_links g -∗ glinks file_lm (file_params_at s0).
   Proof using .
-    iIntros "#Hlk".
-    iDestruct (file_links_w with "Hlk") as "#Hw".
-    iDestruct (file_links_blk with "Hlk") as "#Hblk".
-    iDestruct (file_links_pro with "Hlk") as "#Hpro".
-    iDestruct (file_links_first with "Hlk") as "#Hfst".
-    iDestruct (file_links_taint with "Hlk") as "#Ht".
-    rewrite /glinks. iSplitR; [| iSplitR; [| iSplitR; [| iSplitR]]].
-    - rewrite /gl_w. iIntros "!>" (k v P b ps0 cs0 s I0 Φ) "%H1 %H2 %H3 #Hpin #Hf Htn #Hps #Hcs #HE HΦ".
-      iDestruct "Hf" as "[[%Hk Hvf] %Hs]". iDestruct "Hvf" as (vf) "[#Hvf #Hf0]".
-      iApply ("Hw" $! k v vf P b ps0 cs0 s I0 Φ
-                with "[%] [%] [%] Hpin Hvf Htn Hps Hcs HE Hf0 [HΦ]").
-      { exact H1. }
-      { exact (proj2 (pro_pin_f_lm _ _ _) H2). }
-      { rewrite proc_stream_f_lm. exact H3. }
-      iIntros "Hres". iApply "HΦ".
-      iDestruct "Hres" as "[(Htn' & Hps' & Hcs' & HE' & _) | #HT]"; [iLeft | by iRight].
-      by iFrame "Htn' Hps' Hcs' HE'".
-    - rewrite /gl_blk.
-      iIntros "!>" (k v P a b ps0 cs0 s I0 Φ) "%H1 %H2 %H3 %H4 %H5 %H6 %H7 %H8 #Hpin #Hf Htn #Hps #Hcs #HE HΦ".
-      iDestruct "Hf" as "[[%Hk Hvf] %Hs]". iDestruct "Hvf" as (vf) "[#Hvf #Hf0]".
-      iApply ("Hblk" $! k v vf P a b ps0 cs0 s I0 Φ
-                with "[%] [%] [%] [%] [%] [%] [%] Hpin Hvf Htn Hps Hcs HE Hf0 [HΦ]").
-      { exact H1. } { exact H2. } { exact H3. }
-      { exact (proj2 (pro_pin_f_lm _ _ _) H4). }
-      { rewrite proc_before_f_lm. exact H5. }
-      { exact H6. }
-      { rewrite /lm_abs -fstate_upto_lm in H8. exact H8. }
-      iIntros "Hres". iApply "HΦ".
-      iDestruct "Hres" as "[(Htn' & Hps' & Hcs' & HE' & _) | #HT]"; [iLeft | by iRight].
-      by iFrame "Htn' Hps' Hcs' HE'".
-    - rewrite /gl_pro.
-      iIntros "!>" (k v P a b ps0 cs0 s I0 Φ) "%H1 %H2 %H3 %H4 %H5 %H6 %H7 %H8 #Hpin #Hf Htn #Hps #Hcs #HE HΦ".
-      iDestruct "Hf" as "[[%Hk Hvf] %Hs]". iDestruct "Hvf" as (vf) "[#Hvf #Hf0]".
-      iApply ("Hpro" $! k v vf P a b ps0 cs0 s I0 Φ
-                with "[%] [%] [%] [%] [%] [%] [%] [%] Hpin Hvf Htn Hps Hcs HE Hf0 [HΦ]").
-      { exact H1. } { exact H2. } { exact H3. }
-      { exact (proj2 (pro_pin_f_lm _ _ _) H4). }
-      { rewrite pro_idx_f_lm. exact H5. }
-      { rewrite proc_stream_f_lm. exact H6. }
-      { exact H7. } { exact H8. }
-      iIntros "Hres". iApply "HΦ".
-      iDestruct "Hres" as "[(Htn' & Hps' & Hcs' & HE' & _) | #HT]"; [iLeft | by iRight].
-      by iFrame "Htn' Hps' Hcs' HE'".
-    - rewrite /gl_head.
-      iIntros "!>" (k v I a b Φ) "%H1 %H2 #Hpin Hh HΦ".
-      rewrite /fhead_at.
-      iDestruct "Hh" as "(-> & -> & Htn & #Hps & #Hcs & #HE & Hvf & Hpre)".
-      iDestruct "Hvf" as (vf) "#Hvf".
-      rewrite /f0pre_at. iDestruct "Hpre" as "(%Hok & Hty & Hbw)".
-      iDestruct "Hbw" as "[_ Hbw]". iDestruct "Hbw" as (vf') "[#Hvf' #Hbl]".
-      iDestruct (file_era_pin_agree with "Hvf Hvf'") as %<-.
-      iApply ("Hfst" $! (S gen_id) v vf a b s0 Φ
-                with "[%] [%] [%] Hpin Hvf Htn Hps Hcs HE Hbl Hty [HΦ]").
-      { exact Hok. } { exact H1. } { exact H2. }
-      iIntros "Hres". iApply "HΦ".
-      iDestruct "Hres" as "[(Htn' & Hps' & Hcs' & HE' & Hf0) | #HT]"; [iLeft | by iRight].
-      iExists s0. iFrame "Htn' Hps' Hcs' HE'". rewrite /f0w_at /f0w.
-      iSplitL; [| by iPureIntro]. iSplitR; [by iPureIntro |]. iExists vf. by iFrame "Hvf Hf0".
-    - rewrite /gl_taint. iIntros "!>" (k b Φ) "#HT HΦ".
-      iApply ("Ht" $! k b Φ with "HT HΦ").
+    iIntros "%Hc".
+    iApply (gcl_glinks file_lm (file_cparams g) file_lm_byte_laws None (file_wa g) Hc (file_params_at s0) eq_refl eq_refl
+              (f0w_at_cw s0) (or_introl I) (fhead_at_boot s0)).
   Qed.
-
   Lemma fturn0_gen_at (s0 : fstate) (k : nat) :
     fturn_pre_at g s0 k -∗
     (∃ v : era_pins, FPIN k v ∗ dl_cnt v (1/2) 0%nat ∗ inp_lb v [])

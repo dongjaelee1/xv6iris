@@ -173,7 +173,7 @@ Section UInitFileCons.
   (*  [AppFile.file_boot]'s second conjunct, so the two halves of         *)
   (*  [app_boot] and [app_turn] meet HERE and nowhere else, and what      *)
   (*  spends the result is the era's first banner byte through            *)
-  (*  [FileLinks.file_write_link_first].                                  *)
+  (*  [GenLinks.gwrite_link_first].                                       *)
   (*                                                                     *)
   (*  THE LATER IS THE CALLER'S TO STRIP: [file_boot] puts its witness    *)
   (*  under one [▷] (the boot transport only ever sees it there) and      *)
@@ -408,7 +408,7 @@ Section UInitFileCons.
   (*  vf s0].  That resource cannot exist before the era's first console  *)
   (*  byte: [f0_lb] is a lower bound of [f0_auth vf (opt_list (fo_f0      *)
   (*  so))], the stage's [fo_f0] is [None] until a byte is written, and   *)
-  (*  the only producer is [FileLinks.file_write_link_first], fired by    *)
+  (*  the only producer is [GenLinks.gwrite_link_first], fired by         *)
   (*  the banner's first byte.  The lane's findings record the repair.    *)
   (* =================================================================== *)
   Definition file_hold_head : iProp Σ :=

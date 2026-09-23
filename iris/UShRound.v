@@ -463,7 +463,7 @@ Section UShRound.
   (* ...AND THE ERA'S BOOT STATE (RULING H', 2026-09-18).  The round's
      hold is tied to the era's first state BY A SHARED INDEX and not by
      [FileOut.f0_lb]: that lower bound only exists after the era's first
-     console byte ([FileLinks.file_write_link_first] is its only producer),
+     console byte ([GenLinks.gwrite_link_first] is its only producer),
      so a hold that asked for it was uninhabitable at /init's first
      instruction, where [UInitKernel.init_boot_pay] asks for [cc_wbn Cr 0]
      -- i.e. for [Wbf []] -- and the taint is not available and must not be

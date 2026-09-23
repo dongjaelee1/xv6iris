@@ -28,7 +28,7 @@
 (*        the link record wants it: [AppFile.file_boot]'s typed witness   *)
 (*        and [FileOut.fturn] are ONE resource, and the era's first       *)
 (*        banner byte files the boot state out of it                      *)
-(*        ([FileLinks.file_write_link_first], through                     *)
+(*        ([GenLinks.gwrite_link_first], through                          *)
 (*        [FileLinksLine.fban_step]).                                     *)
 (*    [file_kinit_ban0] / [file_kinit_ban_law]  the banner, at            *)
 (*        [UInitBanner]'s generic lemmas at [FileLinkInst.                *)

@@ -8,7 +8,7 @@
    entailment.
 
    WHAT IS SIMPLER THAN [FileLinks].  There is no per-era extra state, so
-   there is no [file_write_link_first]: the era's FIRST process byte is the
+   there is no [GenLinks.gwrite_link_first]: the era's FIRST process byte is the
    prologue's first letter and goes out through [pipe_write_link_pro] at the
    empty stage, exactly as at the echo application.  The bundle therefore
    has SIX components where the file's has seven, and a writer's argument

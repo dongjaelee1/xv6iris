@@ -576,7 +576,7 @@ Definition wr_banp_f (ps cs : list nat) (s0 : fstate) (I : list (bv 8))
 (*  cursor ([fcur]), the era's HEAD ([fhead]: the first process byte has  *)
 (*  not been written, so there is no boot state to pin -- the deed's own  *)
 (*  typed witness stands in its place, which                              *)
-(*  [FileLinks.file_write_link_first] consumes), the reader's residue     *)
+(*  [GenLinks.gwrite_link_first] consumes), the reader's residue          *)
 (*  ([fwc_rres]) with the typed lines' witness ([flw]), and the turn.     *)
 (* ===================================================================== *)
 Section file_links_line.

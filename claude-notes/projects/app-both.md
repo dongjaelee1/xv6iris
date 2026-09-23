@@ -274,6 +274,26 @@ bodies (M2c's two shapes); `Proof using` closure; comments without `"`.
 
 ## RESUME HERE (2026-09-22, late)
 
+M3b SECOND CUT (2026-09-23): THE CLAIM ONCE, `iris/GenOut.v` (after
+`GenLinksLine`).  `gen_wa M G sd` is the ONE hook the claim adds to M2's
+`gen_params`: the state witness's authority `gwa k st` (the file's `∃ vf,
+file_era_pin k vf ∗ f0f_auth vf (opt_list st) ∗ f0_wit vf st ∗ f0_typed
+(default None st)`; `emp` at echo/pipe) with `gwa_agree : gwa k st -∗ gW k
+s0 -∗ ⌜default sd st = s0⌝` (NOT `st = Some s0`: echo files its trivial
+state at the head too -- `lm_out_pure` forces `gs_st = None` only while
+nothing is written -- and `emp` must satisfy the law) and `gwa_W : gwa k
+(Some s0) -∗ gwa k (Some s0) ∗ gW k s0` (the read's and the drain's
+receipt).  The FILING law joins the record with the head step (boot
+evidence -> `gwa k (Some s0) ∗ gW k s0`; the file's is `f0f_file` at
+`file_era_pin ∗ f0_bl ∗ f0_typed`).  `gcl k ho H := gT ∨ ∃ v so, gPIN k v ∗
+gwa k (gs_st so) ∗ turn_auth v (lm_pcount …) ∗ cs_auth ∗ ps_auth ∗
+Elist_auth ∗ dl_cnt ½ ∗ dl_list_auth ∗ ⌜gcl_pure M sd k ho so H⌝`, with
+`gcl_sup`/`_close`/`_open`/`_arm`.  NEXT (third cut): the write steps
+(`write_first` -> the filing law, `write`, `write_blk`, `write_pro`) from
+`FileOut` §4 with `gW`/`gwa_agree` where the file reads `f0_lb`/
+`f0f_auth_lb_agree`; then read, echo, byte, drain; then switch `fecl :=
+gcl file_lm …` (the pipe's claim needs the EXT hook, a later cut).
+
 M3b FIRST CUT (2026-09-23): THE CLAIM'S PURE HISTORY LAYER ONCE,
 `iris/GenOutHist.v` (after `EchoOut`; section context `M K B sd`).  The
 drop/flush refutations at the model's byte laws (`lm_disc_drop_byte`,

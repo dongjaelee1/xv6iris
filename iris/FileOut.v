@@ -11,12 +11,13 @@
 
    WHAT THE FILE ADDS, and where it lives.
 
-   - ONE VALUE PER ERA.  [FileOutPure.fostage] is [EchoOut.ostage] with
-     [fo_f0 : option fstate]: [None] until the era's first process byte files
-     it, [Some s0] from then on.  [feout_pure]'s two extra clauses are that
-     [None] only ever occurs at the empty stage and that the state is a
+   - ONE VALUE PER ERA.  The claim is [GenOut.gcl] at [file_lm], whose
+     stage carries the state as an [option]: [None] until the era's first
+     process byte files it, [Some s0] from then on; [GenOutPure.lm_out_pure]
+     says [None] only ever occurs at the empty stage and that the state is a
      CONTENT ([FileDisc.fstate_ok]) -- the second is what the determinacy
-     argument spends.
+     argument spends.  The file's state authority is the claim's one hook
+     ([f0wa], [file_wa]).
    - A SECOND PER-ERA RECORD.  [EchoOut.era_pins] is not edited, so the
      boot state's [mono_list] gets its own gname in a record of its own
      ([file_era]) and its own per-era map, which the file ledger allocates
@@ -852,7 +853,7 @@ Section file_out.
          [FileDisc.file_phi] VERBATIM, its antecedent included: that is what
          lets the era's boot state be fixed at the era's FIRST drain, where
          the cycle has typed nothing ([FileOutPure.efl_of_first_out]).
-         [disc_f] is prefix-closed ([disc_f_prefix]), so every step below
+         [disc_f] is prefix-closed, so every step below
          assumes the NEW history's discipline and reads the old one's
          witnesses off it. ---- *)
   Definition file_phi_res (h : list mobs) : iProp Σ :=

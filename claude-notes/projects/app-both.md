@@ -274,6 +274,14 @@ bodies (M2c's two shapes); `Proof using` closure; comments without `"`.
 
 ## RESUME HERE (2026-09-22, late)
 
+FileOutPure DEAD CODE REMOVED (2026-09-23): 92 of 169 declarations
+(the whole claim-stage layer -- `D_f`, `pending_f`, `pcount_f`, the
+`cs_len_ok_f`/`ps_len_ok_f` families, `fostage`, `feout_pure`, the pad-at-
+stage and `good_out_f_of_stage`, the drop/flush refutations, the F2 lemma)
+deleted; 2387 -> 1080 lines.  Measured by comment-stripped use outside the
+file, closed under the kept lemmas' own references (scratchpad script).
+What stays is the file's own residue (header rewritten).
+
 M3b FOURTH CUT (2026-09-23): THE FILE'S CLAIM IS THE GENERIC ONE.
 `FileOut.fecl g := gcl file_lm (file_cparams g) None (file_wa g)`; FileOut
 2.6k -> ~0.9k sentences.  What changed around it:

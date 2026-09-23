@@ -180,7 +180,8 @@ rule bought its proof (F2: the log is complete below the byte being echoed,
 exactly as at echo: `FileOut.ch_arm_era_f` records (K1) and the arm's echo
 at the open, `fein_pure` carries (A1) every entry echoed, `fecl_pure` carries
 (A2) `dl_ok_f`, and `fecl_pure_open` refutes the drop arm
-(`FileOutPure.cons_drop_refuted_f`, `flush_lost_zero_f`).
+(`GenOutHist.lm_cons_drop_refuted`, `lm_flush_lost_zero`; the file's claim
+is `GenOut.gcl` since `730a2b36a`).
 Five machine transcripts are checked as witnesses by `vm_compute`
 (`FileDisc.demo_*`), including "echo, power off, cat" and "echo, crash
 mid-round, cat shows a prefix", and one NEGATIVE witness (`demo_f_bad`:

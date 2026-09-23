@@ -571,8 +571,7 @@ Section gen_out_pure.
       pose proof (lm_pro_idx_le cs m). lia.
   Qed.
 
-  (* THE STAGE'S TRANSCRIPT AT A FULL RESOLUTION ([FileOutPure.
-     stage_sessf_pad] once): the padded list agrees with the stage's
+  (* THE STAGE'S TRANSCRIPT AT A FULL RESOLUTION (the file's former [stage_sessf_pad] once): the padded list agrees with the stage's
      wherever the stage reads it, and the stage's transcript is below the
      padded session *)
   Lemma lm_stage_sess_pad (ps cs : list nat) (s : lm_st M)
@@ -610,7 +609,7 @@ Section gen_out_pure.
   Qed.
 
   (* THE CLAIM GIVES [lm_good_out] AT THE SEGMENT, at the stage's own boot
-     state ([FileOutPure.good_out_f_of_stage] once): the prologue list is
+     state (the file's former [good_out_f_of_stage] once): the prologue list is
      padded with settled rounds and the choice list with silent ones *)
   Lemma lm_good_out_of_stage (ps cs : list nat) (s : lm_st M)
       (E : list (list mobs * bv 8)) (w : list (bv 8)) (seg : list mobs) :

@@ -128,7 +128,7 @@ Global Arguments gwa_agree_strict {Σ _ M G sd} _ _ _ _ _.
 #[export] Existing Instances gwa_tl gwa_ty_pers.
 
 (* the reader's range condition grows by the alternative a block files
-   ([FileOutPure.alts_pre_snoc] once) *)
+   (the file's former law, once) *)
 Lemma lm_alts_pre_snoc (M : lmodel) I cs a :
   lm_alts_pre M I cs -> length cs < nlines I ->
   lm_ok M (lm_of M (bodies_of I !!! length cs)) (lm_dec M a) ->
@@ -1283,7 +1283,7 @@ Section gen_out.
 
   (* THE DISCIPLINE'S LOWER BOUND AT THE OPEN CYCLE'S LAST INPUT, at the
      cycle's own boot state and at the COMPLETE LINES of the input before
-     that byte, with D4 read there ([FileOutPure.disc_seg_f'_pt_last] and
+     that byte, with D4 read there (the file's former lemma and
      [PipeOutPure.disc_seg_p'_pt_last] once) *)
   Lemma lm_disc_seg'_pt_last (s : lm_st M) (seg : list mobs) (c : bv 8) :
     lm_disc_seg' M s seg -> obs_ends_in Uart0 seg c ->
@@ -1339,8 +1339,7 @@ Section gen_out.
   (* F2: the process output owed at this stage is complete.  That the
      echoed list holds every earlier input of the era is the KERNEL's FIFO
      discipline and a premise; that the output is complete is the
-     discipline's, read at [LineWords.done_of] ([FileOutPure.
-     next_input_of_complete_f] once) *)
+     discipline's, read at [LineWords.done_of] (the file's former F2 lemma once) *)
   Lemma lm_next_input_of_complete (ps cs : list nat) (s : lm_st M)
       (E : list (list mobs * bv 8)) (w W : list (bv 8)) (h : list mobs)
       (c : bv 8) (m : nat) :

@@ -69,13 +69,6 @@ Require Import CtxIdDefs.
 Local Open Scope list_scope.
 
 
-Lemma rd_stage_p_lm ps0 cs0 I : rd_stage_p ps0 cs0 I <-> lm_rd_stage pipe_lm ps0 cs0 I.
-Proof using.
-  rewrite /rd_stage_p /lm_rd_stage.
-  split; intros (H1 & H2 & H3 & H4);
-    (split_and!; [exact H1 | exact H2 | by apply pro_pin_p_lm | exact H4]).
-Qed.
-
 (* ===================================================================== *)
 (*  S1  THE PURE SHAPES, AT THE PIPELINE MODEL                            *)
 (*                                                                       *)

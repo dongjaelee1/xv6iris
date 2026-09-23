@@ -251,9 +251,14 @@ Section PipeApp.
         rewrite -(DevModel.uart_tx_pop_acc u b u' Htxp) /DevModel.uart_acc
                 (DevModel.uart_tx_pop_out u b u' Htxp).
         exists (u_tx u'). by rewrite -app_assoc. }
+      assert (Hne : obs_wire Uart0 (open_seg h ++ [ObsUartOut Uart0 b]) <> []).
+      { rewrite obs_wire_app.
+        replace (obs_wire Uart0 [ObsUartOut Uart0 b]) with [b] by reflexivity.
+        intros Hz. apply (f_equal length) in Hz.
+        rewrite length_app in Hz. cbn [length] in Hz. lia. }
       iDestruct (pecl_drain c (S gen_id) h ho H
                    (open_seg h ++ [ObsUartOut Uart0 b])
-                   Hsh Hbt Hpo Hins ltac:(rewrite Hacc; exact Hpre)
+                   Hsh Hbt Hpo Hins ltac:(rewrite Hacc; exact Hpre) Hne
                    with "Ho") as "[Ho Hgo]".
       iModIntro. iFrame "Ho".
       iDestruct "Hgo" as "[HT | %Hg]"; [by iLeft |].

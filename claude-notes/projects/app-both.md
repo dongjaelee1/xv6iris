@@ -285,8 +285,10 @@ generic claim `GenOut.v` over `gstage`, written against `GenOutPure`),
 switch one application's claim to it (the file's: 10 importers), and
 delete that tier's pure file with its claim; keep step 3 only for names a
 NON-claim consumer uses (for the file: `LineModelInst`, `UShRound`,
-`UInitFile*`, `UCatOut`, `FileLinks*` -- measure those alone).  NOT
-DECIDED HERE.
+`UInitFile*`, `UCatOut`, `FileLinks*` -- measure those alone).
+RULED 2026-09-23 (owner): STRAIGHT TO M3b, as recommended.  Step 3 is
+dropped as a milestone; a tier name survives only as long as a non-claim
+consumer needs it, and then as a corollary of the generic.
 
 M3a PAD FAMILY AND THE CLAIM'S CONCLUSION ONCE (2026-09-23): `GenOutPure`
 §5b -- `lm_alts_pad I cs := cs ++ (lmh_noc K ∘ lm_of M) <$> drop (length

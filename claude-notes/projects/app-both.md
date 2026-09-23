@@ -313,6 +313,29 @@ k ho H ∨ popen k ho H`.
   `pcl_pure_o_E/pein/dl_E/rd_stage`.
 NEXT: M3c (the link bundles).
 
+M3c DONE (2026-09-23; `3bad7720c`, `506ce7da7`, `3993b1ed5`).
+- `GenLinks.v` (after GenOut): the console links once over `gcl` from the
+  record equation -- taint links, the four writes, the read + `gread_ret`,
+  close, byte, a whole run.  `GenLinksGl.v`: `gcl_glinks`, M2's `glinks`
+  from the claim (bridges: taint/pin equal, `gW -∗ gcW`, the head hands
+  boot evidence, strict ∨ free).  Its own file: `GenLinksLine` loads the
+  echo link tier's instances, which must stay out of `FileLinks`' scope.
+- The file's links are GenLinks at `file_lm`; FileOut's seven step
+  wrappers only FileLinks spent are deleted.
+- BOTH BUNDLES ARE THEIR RECORD EQUATIONS: `file_links g := ⌜cons_res =
+  fecl g⌝`, `pipe_links g := ⌜cons_res = pecl g⌝` (opaque to TC as
+  before; `pipe_links_eq` reads it back).  Every link is read off the
+  equation where spent: `file_links_gl`/`_at` are `gcl_glinks` (bridges
+  `f0w_cw`/`fhead_boot` + `_at` twins); `pipe_links_gl` calls the pipe's
+  write links at the equation; the rd/taint/file leaves likewise.
+- The pipe's links stay pipe-own: by the claim-level-disjunct ruling its
+  claim is `gcl ∨ popen`, so GenLinks' write links do not apply to it.
+- Echo is not an instance of `gcl` (EchoOut is below GenOut); per M2's
+  deferral, echo's tier moves at M5.
+- Gotcha: `iSplit` on the `glinks` body diverges (GenLinksLine's Persistent
+  warning); use `iSplitR`.
+NEXT: M4 (the child laws as modules).
+
 FileOutPure DEAD CODE REMOVED (2026-09-23): 92 of 169 declarations
 (the whole claim-stage layer -- `D_f`, `pending_f`, `pcount_f`, the
 `cs_len_ok_f`/`ps_len_ok_f` families, `fostage`, `feout_pure`, the pad-at-

@@ -1706,6 +1706,7 @@ UInitFileBoot.v
 UInitFile.v
 PipeKillMark.v
 UEchoPipe.v
+UkPipeDev.v
 UShEchoPipePay.v
 UCatPipe.v
 PipeLinksLine.v

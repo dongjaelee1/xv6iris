@@ -853,12 +853,18 @@ Section UkPipeDev.
     iPureIntro. intros j Hj. exact (proj2 (Hall j Hj)).
   Qed.
 
-  (* ---- THE READ LAW ([UkHandler.ei_read]'s shape, and two more
-     conjuncts): a read of [n > 0] bytes answers a NONEMPTY chunk of what
-     is owed, the device owing the rest; or an end of file, at the EOF
-     snapshot, whatever is still owed (finding 2); or the taint -- which
-     is also where the reader's kill goes (finding 1). ---- *)
-  Lemma pipe_read (pn : pnames) (γp : pipe_names) (L S : list (bv 8))
+  (* ---- THE READ LAW AT AN EXACT CURSOR (lane copyinst): a read of
+     [n > 0] bytes at the reader's permit [c] answers a NONEMPTY chunk of
+     what the line owes past [c], the permit moved by its length; or an end
+     of file, the permit unmoved and the EOF snapshot at [take c L],
+     whatever is still owed (finding 2); or the taint -- which is also
+     where the reader's kill goes (finding 1).  The two answering arms are
+     FANCY UPDATES at the top mask: the answer is delivered into the WP the
+     call resumes into ([fupd_wp]), so a consumer may open an invariant
+     against it -- [pipe_read_eof] below refutes the chunk after the end
+     of file that way.  [pipe_read] is this law at the abstract device
+     ([UkHandler.ei_read]'s shape, and two more conjuncts). ---- *)
+  Lemma pipe_read_at (pn : pnames) (γp : pipe_names) (L : list (bv 8)) (c : nat)
       (l : list fdstate) (fd : nat) (wb : bool) (n : nat)
       (K : rd_ans -> iProp Σ) :
     (fd < NSTD)%nat ->
@@ -866,15 +872,15 @@ Section UkPipeDev.
     (0 < n)%nat ->
     pipe_inv pn γp L -∗
     UserFd.ustd γfd l -∗
-    pipe_in pn L S -∗
-    ((∀ c' S' : list (bv 8), ⌜chunk_ok n S c' S'⌝ -∗
-        UserFd.ustd γfd l -∗ pipe_in pn L S' -∗ K (RdBytes c'))
-     ∧ (UserFd.ustd γfd l -∗ pipe_in_eof pn L S -∗ K (RdBytes []))
+    rcur pn c -∗
+    ((∀ cb : list (bv 8),
+        ⌜cb <> [] /\ chunk_ok n (drop c L) cb (drop (c + length cb) L)⌝ -∗
+        UserFd.ustd γfd l -∗ rcur pn (c + length cb) ={⊤}=∗ K (RdBytes cb))
+     ∧ (UserFd.ustd γfd l -∗ rcur pn c -∗ eof_shot pn (take c L) ={⊤}=∗ K (RdBytes []))
      ∧ (UserFd.ustd γfd l -∗ app_taint -∗ ∀ x : rd_ans, K x)) -∗
     rd_obl N P (Z.of_nat fd) n K.
   Proof using Hsr.
-    intros Hlt Hl Hn. iIntros "#Hinv Hstd Hin HK".
-    iDestruct "Hin" as (c) "[%HS Hr]".
+    intros Hlt Hl Hn. iIntros "#Hinv Hstd Hr HK".
     iIntros (h m avail a f) "%Ha0 %Ha1 %Ha2 Hcode Hbuf Hrun Hcont".
     iDestruct (pdev_ubytes_bnd with "Hrun Hbuf") as %Hab.
     assert (Hua : uint (mword_of_int a : mword 64) = a).
@@ -923,12 +929,17 @@ Section UkPipeDev.
       - left. exact pdev_signed_m1.
       - right. rewrite (pdev_signed_nat d' ltac:(change (2 ^ 31) with 2147483648; lia)).
         lia. }
-    iApply ("Hcont" $! h3 r g with "[%] [HK Hstd Hrp] Hbuf Hrun"); [ exact Hok | ].
     iDestruct (pipe_rpost_line Pt pn γp L c _ n r M' (mword_of_int a) with "Hrp")
       as "[H | [#Ht _]]"; last first.
-    { iDestruct "HK" as "(_ & _ & HK)". iApply ("HK" with "Hstd Ht"). }
+    { iApply ("Hcont" $! h3 r g with "[%] [HK Hstd] Hbuf Hrun"); [ exact Hok | ].
+      iDestruct "HK" as "(_ & _ & HK)". iApply ("HK" with "Hstd Ht"). }
     iDestruct "H" as (acc d') "(%Hacc & %Himg' & HQ & Hcase)".
     iDestruct "HQ" as "[Hr %Htk]".
+    (* the answer is delivered under a fancy update, into the WP resumed *)
+    iApply fupd_wp.
+    iAssert (|={⊤}=> K (rd_ans_of r g))%I with "[HK Hstd Hr Hcase]" as ">HK";
+      last first.
+    { iModIntro. iApply ("Hcont" $! h3 r g with "[%] HK Hbuf Hrun"). exact Hok. }
     iDestruct "Hcase" as "[[%Hr Heof] | [[%Hr %Hd0] Hwhy]]".
     - (* the count the kernel delivered *)
       destruct Hacc as [Hacc Hlen]. subst r.
@@ -946,23 +957,93 @@ Section UkPipeDev.
         destruct acc; [ | simpl in Hlen; lia ].
         iEval (rewrite Nat.add_0_r) in "Hsh".
         iEval (cbn [length]; rewrite Nat.add_0_r) in "Hr".
-        iDestruct "HK" as "(_ & HK & _)". iApply ("HK" with "Hstd").
-        rewrite /pipe_in_eof. iExists c. iFrame "Hr Hsh". by iPureIntro.
+        iDestruct "HK" as "(_ & HK & _)". iApply ("HK" with "Hstd Hr Hsh").
       + (* a nonempty chunk of what is owed *)
         iDestruct "HK" as "[HK _]".
-        iApply ("HK" $! acc (drop (length acc) S) with "[%] Hstd").
-        { assert (HtS : acc = take (length acc) S) by (rewrite HS; exact Htk).
-          rewrite /chunk_ok. split; [ | split ].
-          - rewrite {1}HtS. symmetry. apply take_drop.
-          - lia.
-          - intros ->. simpl in Hlen. lia. }
-        rewrite /pipe_in. iExists (c + length acc)%nat. iFrame "Hr".
-        iPureIntro. rewrite HS drop_drop. reflexivity.
+        iApply ("HK" $! acc with "[%] Hstd Hr").
+        split; [ intros Hnil; rewrite Hnil in Hlen; simpl in Hlen; lia | ].
+        assert (HtS : acc = take (length acc) (drop c L)) by exact Htk.
+        rewrite /chunk_ok. split; [ | split ].
+        * rewrite {1}HtS -drop_drop. symmetry. apply take_drop.
+        * lia.
+        * intros ->. simpl in Hlen. lia.
     - (* -1 *)
       iDestruct "Hwhy" as "[%Hflt | [[_ #Ht] | %Hn0]]".
       + exfalso. apply Hflt. subst d'. apply Hnf. exact Hn.
-      + iDestruct "HK" as "(_ & _ & HK)". iApply ("HK" with "Hstd Ht").
+      + iDestruct "HK" as "(_ & _ & HK)". iModIntro. iApply ("HK" with "Hstd Ht").
       + lia.
+  Qed.
+
+  (* ---- THE READ LAW ([UkHandler.ei_read]'s shape, and two more
+     conjuncts), at the abstract device: [pipe_read_at] with the permit
+     repacked ---- *)
+  Lemma pipe_read (pn : pnames) (γp : pipe_names) (L S : list (bv 8))
+      (l : list fdstate) (fd : nat) (wb : bool) (n : nat)
+      (K : rd_ans -> iProp Σ) :
+    (fd < NSTD)%nat ->
+    l !! fd = Some (FdOpen true wb (FdPipe γp)) ->
+    (0 < n)%nat ->
+    pipe_inv pn γp L -∗
+    UserFd.ustd γfd l -∗
+    pipe_in pn L S -∗
+    ((∀ c' S' : list (bv 8), ⌜chunk_ok n S c' S'⌝ -∗
+        UserFd.ustd γfd l -∗ pipe_in pn L S' -∗ K (RdBytes c'))
+     ∧ (UserFd.ustd γfd l -∗ pipe_in_eof pn L S -∗ K (RdBytes []))
+     ∧ (UserFd.ustd γfd l -∗ app_taint -∗ ∀ x : rd_ans, K x)) -∗
+    rd_obl N P (Z.of_nat fd) n K.
+  Proof using Hsr.
+    intros Hlt Hl Hn. iIntros "#Hinv Hstd Hin HK".
+    iDestruct "Hin" as (c) "[%HS Hr]".
+    iApply (pipe_read_at pn γp L c l fd wb n K Hlt Hl Hn with "Hinv Hstd Hr").
+    iSplit; [ | iSplit ].
+    - iIntros (cb) "[%Hne %Hchk] Hstd Hr". iModIntro.
+      iDestruct "HK" as "[HK _]".
+      iApply ("HK" $! cb (drop (c + length cb) L) with "[%] Hstd [Hr]").
+      { rewrite HS. exact Hchk. }
+      rewrite /pipe_in. iExists (c + length cb)%nat. iFrame "Hr". by iPureIntro.
+    - iIntros "Hstd Hr #Hsh". iModIntro.
+      iDestruct "HK" as "(_ & HK & _)". iApply ("HK" with "Hstd").
+      rewrite /pipe_in_eof. iExists c. iFrame "Hr Hsh". by iPureIntro.
+    - iIntros "Hstd #Ht". iDestruct "HK" as "(_ & _ & HK)". iApply ("HK" with "Hstd Ht").
+  Qed.
+
+  (* ---- THE READ AFTER THE END OF FILE (lane copyinst): at the reader's
+     permit [c] with the EOF snapshot at [take c L], a read answers 0 (or
+     the taint).  A nonempty chunk is refuted in the protocol: (P3) says
+     the contents are frozen at the snapshot, (P5) that the reader never
+     runs ahead of them, and the moved permit would -- read under the
+     answering arm's fancy update. ---- *)
+  Lemma pipe_read_eof (pn : pnames) (γp : pipe_names) (L : list (bv 8)) (c : nat)
+      (l : list fdstate) (fd : nat) (wb : bool) (n : nat)
+      (K : rd_ans -> iProp Σ) :
+    (fd < NSTD)%nat ->
+    l !! fd = Some (FdOpen true wb (FdPipe γp)) ->
+    (0 < n)%nat ->
+    pipe_inv pn γp L -∗
+    UserFd.ustd γfd l -∗
+    rcur pn c -∗
+    eof_shot pn (take c L) -∗
+    ((UserFd.ustd γfd l -∗ rcur pn c -∗ K (RdBytes []))
+     ∧ (UserFd.ustd γfd l -∗ app_taint -∗ ∀ x : rd_ans, K x)) -∗
+    rd_obl N P (Z.of_nat fd) n K.
+  Proof using Hsr.
+    intros Hlt Hl Hn. iIntros "#Hinv Hstd Hr #Heof HK".
+    iApply (pipe_read_at pn γp L c l fd wb n K Hlt Hl Hn with "Hinv Hstd Hr").
+    iSplit; [ | iSplit ].
+    - (* the chunk after the end: (P3) and (P5) against the moved permit *)
+      iIntros (cb) "[%Hne %Hchk] Hstd Hr".
+      iInv "Hinv" as (s0) ">(Hf & Hh & Hbw & Hbr & %Hpre & %Hrle & Hoe & Hro)" "Hclose".
+      iDestruct (rcur_agree with "Hbr Hr") as %Hrp.
+      iDestruct "Hoe" as "[Hp | (%w0 & #Hs0 & %Hw0 & Hrpe)]".
+      { iDestruct (eof_pending_shot with "Hp Heof") as %[]. }
+      iDestruct (eof_shot_agree with "Hs0 Heof") as %Hww.
+      exfalso. destruct Hw0 as [Hw0 _]. rewrite Hww in Hw0.
+      rewrite -Hw0 length_take in Hrle.
+      pose proof (Nat.le_min_l c (length L)) as Hmin.
+      destruct cb as [| b cb']; [ by destruct Hne | ]. cbn [length] in Hrp. lia.
+    - iIntros "Hstd Hr _". iModIntro. iDestruct "HK" as "[HK _]".
+      iApply ("HK" with "Hstd Hr").
+    - iIntros "Hstd #Ht". iDestruct "HK" as "[_ HK]". iApply ("HK" with "Hstd Ht").
   Qed.
 
   (* =================================================================== *)

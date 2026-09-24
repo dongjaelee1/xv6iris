@@ -468,6 +468,30 @@ alts) -> conforms (copy_env (DCopy h L []) alts files paths) (cat_tree
 [cat])` with fd 0 and fd 1 on device 1 and fd 2 on the console
 device 0 owing `alts` (the instance chooses `alts` per the round).
 
+INSTANCE LANDED (lane/copyinst c49e7335c, `UkPipeIface.v`): `PDCopy`
+holds the read cursor `rcur pn c` and the console cursor `pcat_ch g gR
+gM w` with `w <= c <= |L|`, `S = drop c L`, `pending = drop w (take c
+L)`; the first byte's `YR` is derived from `rcur` inside the byte
+link's fancy update (`pws_lb_of_rcur`, a section fact `pws_lb pn (take
+1 L) ⊢ YR` discharged at the round); `pipe_read_at` (exact cursor,
+nonempty chunk, fupd arms) and `pipe_read_eof` in `UkPipeDev`; the
+exit wand `pif_exit_k : (T ∨ pif_cend) -∗ ukn_pay N (-1)` with
+`pif_cend` textually `pl_Cend`, carried in `ei_fds` when a `PDCopy` is
+registered, applied at exit or at the last close of an ENDED copy
+device; `cat_copy_paid_of_round` takes exactly `pl_RcR`'s entry state
+(no `YR`, no up-front payload; fd 2 at the new `PDMute` kind).  What
+the instance FORCED on the pure layer: `drained (DCopy …) = False` (an
+open device cannot hold the EOF shot the reader's payoff needs; cat
+exits only after a 0 read), the copy read's chunk is nonempty, and
+the copy device's reads are events only at `copy_in = 0`, writes only
+at `copy_out = 1` (two kernel objects under one number).  Open:
+`Hclose_open` (the last close of a copy device BEFORE its end while
+the wand is held -- cat never does it; the honest fix is a `drained`
+premise at the copy kinds of `ei_close`/`cf_close`, a type change to
+coordinate with the file instance); echo's left instance keeps the
+up-front payload; `h = true` (the middle cat) vacuous until a
+three-process line exists.
+
 ### 3.4e Cut 5: the entries at a handler parameter (planned 2026-09-24)
 
 The entries compose: `wp_k*_start_env I E ds := tree_pay_of_conforms ∘

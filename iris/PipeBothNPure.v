@@ -640,7 +640,7 @@ Lemma pipesN_wit_of_blk fc adm l pre b :
   pipesN_wit fc adm l pre.
 Proof using.
   intros Ha Hb Hp. exists (PLRun b). cbn [pipes_lm lm_ok lm_panic lm_term lm_cont plpanic plterm plcont].
-  split; [split; [exact Ha | exact (blkN_line_blocks fc l b Hb)] |].
+  split; [right; split; [exact Ha | exact (blkN_line_blocks fc l b Hb)] |].
   split; [reflexivity | split; [reflexivity |]].
   etrans; [exact Hp |]. by eexists.
 Qed.

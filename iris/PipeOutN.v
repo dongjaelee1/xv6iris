@@ -1010,8 +1010,7 @@ Section pipes_out_n.
     exists (plalt_code (PLRun bl)).
     cbn [pipes_lm lm_ok lm_panic lm_term lm_cont lm_dec]. rewrite plalt_of_code.
     split_and!.
-    - exact Ha.
-    - exact (blkN_line_blocks fc _ bl Hb).
+    - right. split; [exact Ha | exact (blkN_line_blocks fc _ bl Hb)].
     - reflexivity.
     - reflexivity.
     - etrans; [exact Hp |]. by eexists.
@@ -1041,7 +1040,7 @@ Section pipes_out_n.
     iDestruct "Hled" as (w gb) "(#Hpera & Hcur & #Hrlb)".
     assert (Hok : lm_ok PM (lm_of PM (bodies_of I !!! (nlines I - 1)%nat))
                     (lm_dec PM (plalt_code (PLRun pre)))).
-    { cbn [pipes_lm lm_ok lm_dec]. rewrite plalt_of_code. split; [exact Ha | exact Hbl]. }
+    { cbn [pipes_lm lm_ok lm_dec]. rewrite plalt_of_code. right. split; [exact Ha | exact Hbl]. }
     assert (Hpan : lm_panic PM (lm_dec PM (plalt_code (PLRun pre))) = false).
     { cbn [pipes_lm lm_panic lm_dec]. by rewrite plalt_of_code. }
     assert (Hterm : lm_term PM (lm_dec PM (plalt_code (PLRun pre))) = false).

@@ -567,19 +567,53 @@ Definition plalt_ok (fc : bytes -> option bytes) (l : pline') (a : plalt) : Prop
 Definition pl_merge (fc : bytes -> option bytes) (adm : pline' -> bool) (u : bytes) : Prop :=
   exists l b, adm l = true /\ plalt_ok fc l (PLTerm b) /\ u `prefix_of` b.
 
+(* THE SHELL'S OWN ALTERNATIVES.  The shell reads ANY line, and names
+   three alternatives at it whatever the line is ([LineModelLinks.lm_hooks]:
+   the main loop's fork panic, the silent round, the exec diagnostic of the
+   round's first process).  They are admissible at EVERY line; every other
+   alternative only at an admitted one.  At an admitted line with a cat
+   ([pl_nz]) the three are blocks of the line anyway ([plsafe_ok]), so the
+   range condition there is exactly [plalt_ok] ([pipes_lm_ok_iff]); at a
+   line the application does not admit the discipline never lets a body
+   parse to it. *)
+Definition pl_exfb (l : pline') : bytes :=
+  match l with LEcho' _ => dg_execL | LPipes p _ => st_dg_exec (SProd p) end.
+
+Definition plsafe (l : pline') (a : plalt) : Prop :=
+  a = PLPanic \/ a = PLRun [] \/ a = PLRun (pl_exfb l).
+
+Global Instance plsafe_dec l a : Decision (plsafe l a).
+Proof using. unfold plsafe. apply _. Defined.
+
+(* a line with at least one cat, or an echo line: a line with runs *)
+Definition pl_nz (l : pline') : Prop :=
+  match l with LPipes _ 0 => False | _ => True end.
+
+Lemma pl_ok_nz l : pl_ok l -> pl_nz l.
+Proof using. destruct l as [ws | p [| n]]; cbn; [done | lia | done]. Qed.
+
 (* THE LINE MODEL.  State [unit]: nothing survives a round; [fc] is the
    content function [cat f] reads, [adm] the line shapes the application
    admits. *)
 Definition pipes_lm (fc : bytes -> option bytes) (adm : pline' -> bool) : lmodel :=
   MkLM unit pline' pl_of plalt plalt_of plpanic (fun _ _ a => plcont a)
-       (fun _ _ _ => tt) (fun l a => adm l = true /\ plalt_ok fc l a)
+       (fun _ _ _ => tt) (fun l a => plsafe l a \/ (adm l = true /\ plalt_ok fc l a))
        (pl_body_ok adm) pbody_byte pl_ok (fun _ => True) plterm (pl_merge fc adm).
 
 Lemma pipes_lm_cont_run fc adm s l b : lm_cont (pipes_lm fc adm) s l (PLRun b) = b ++ u_prompt.
 Proof using. reflexivity. Qed.
-Lemma pipes_lm_ok_run fc adm l b :
-  adm l = true -> (lm_ok (pipes_lm fc adm) l (PLRun b) <-> line_blocks fc l b).
-Proof using. intros Ha. cbn. tauto. Qed.
+
+Lemma pipes_lm_ok_intro fc adm l a :
+  adm l = true -> plalt_ok fc l a -> lm_ok (pipes_lm fc adm) l a.
+Proof using. intros Ha Hok. right. split; [exact Ha | exact Hok]. Qed.
+
+(* a coverage-ending alternative is never one of the shell's own *)
+Lemma pipes_lm_ok_term fc adm l b :
+  lm_ok (pipes_lm fc adm) l (PLTerm b) <-> adm l = true /\ plalt_ok fc l (PLTerm b).
+Proof using.
+  split; [| intros H; right; exact H].
+  intros [Hs | H]; [| exact H]. exfalso. destruct Hs as [H | [H | H]]; discriminate H.
+Qed.
 Lemma pipes_lm_term fc adm a : lm_term (pipes_lm fc adm) a = true <-> exists b, a = PLTerm b.
 Proof using. destruct a; cbn; split; try discriminate; try (intros [? ?]; discriminate); eauto. Qed.
 Lemma pipes_lm_merge fc adm u :
@@ -1124,6 +1158,74 @@ Proof using.
     rewrite (inj Some _ _ Hx). exact (elem_of_list_lookup_2 _ _ _ alt_panic_head).
 Qed.
 
+(* ---- THE SHELL'S OWN ALTERNATIVES ARE BLOCKS of a line with runs ---- *)
+
+(* a suffix every stage of which exits silently: nothing below a pipe
+   vouches for anything *)
+Lemma sfx_run_silent fc L m win wc :
+  1 <= m -> sfx_run fc L m win wc (replicate m []).
+Proof using.
+  intros Hm. revert win wc. induction m as [| [| m] IH]; intros win wc; [lia | |].
+  - apply (sr_last fc L win wc (MkSO [] (st_rd_dead SLast) (st_wr_dead SLast))).
+    + apply so_silent.
+    + cbn. destruct win; exact I.
+  - cbn [replicate].
+    apply (sr_node fc L m win wc (MkSO [] (st_rd_dead SMid) (st_wr_dead SMid))).
+    + apply so_silent.
+    + cbn. destruct win; exact I.
+    + exact (IH ltac:(lia) _ _).
+Qed.
+
+(* one stream beside silent ones merges to itself *)
+Lemma merge_all_nils (x : bytes) (k : nat) : merge_all (x :: replicate k []) x.
+Proof using.
+  induction x as [| y x IH].
+  - apply ma_done. constructor; [reflexivity |]. apply Forall_replicate. reflexivity.
+  - apply (ma_take _ 0 y x); [reflexivity | exact IH].
+Qed.
+
+Lemma plsafe_ok fc l a : pl_nz l -> plsafe l a -> plalt_ok fc l a.
+Proof using.
+  intros Hnz [-> | [-> | ->]]; [exact I | |].
+  - destruct l as [ws | p [| n]]; [| destruct Hnz |].
+    + exists [[]]. split; [apply lr_echo_silent | apply merge_all_one; reflexivity].
+    + exists ([] :: replicate (S n) []).
+      split; [| exact (merge_all_nils [] (S n))].
+      apply (lr_node fc p (S n) (MkSO [] (st_rd_dead (SProd p)) (st_wr_dead (SProd p)))).
+      * apply so_silent.
+      * exact (sfx_run_silent _ _ (S n) _ _ ltac:(lia)).
+  - destruct l as [ws | p [| n]]; [| destruct Hnz |].
+    + exists [dg_execL]. split; [apply lr_echo_exec | apply merge_all_one; reflexivity].
+    + exists (st_dg_exec (SProd p) :: replicate (S n) []).
+      split; [| exact (merge_all_nils _ (S n))].
+      apply (lr_node fc p (S n)
+               (MkSO (st_dg_exec (SProd p)) (st_rd_dead (SProd p)) (st_wr_dead (SProd p)))).
+      * apply so_exec.
+      * exact (sfx_run_silent _ _ (S n) _ _ ltac:(lia)).
+Qed.
+
+(* AT AN ADMITTED LINE WITH RUNS the range condition is [plalt_ok] *)
+Lemma pipes_lm_ok_iff fc adm l a :
+  adm l = true -> pl_nz l -> (lm_ok (pipes_lm fc adm) l a <-> plalt_ok fc l a).
+Proof using.
+  intros Ha Hnz. cbn [pipes_lm lm_ok]. split.
+  - intros [Hs | [_ Hok]]; [exact (plsafe_ok fc l a Hnz Hs) | exact Hok].
+  - intros Hok. right. split; [exact Ha | exact Hok].
+Qed.
+
+Lemma pipes_lm_ok_run fc adm l b :
+  adm l = true -> pl_nz l -> (lm_ok (pipes_lm fc adm) l (PLRun b) <-> line_blocks fc l b).
+Proof using. intros Ha Hnz. exact (pipes_lm_ok_iff fc adm l (PLRun b) Ha Hnz). Qed.
+
+(* the exec diagnostic has a word line's shape *)
+Lemma pl_exfb_shape l : lshape (pl_exfb l).
+Proof using.
+  destruct l as [ws | [ws | f] n]; cbn [pl_exfb st_dg_exec].
+  - exact (pd_wl_line_shape' dg_exec ltac:(bdec)).
+  - exact (pd_wl_line_shape' dg_exec ltac:(bdec)).
+  - exact (pd_wl_line_shape' dg_exec_cat ltac:(bdec)).
+Qed.
+
 (* THE BYTE SHAPE OF A BLOCK *)
 Lemma pipes_block_shape fc adm l b :
   fc_ok fc -> adm_ok fc adm -> adm l = true -> pl_ok l -> line_blocks fc l b ->
@@ -1188,14 +1290,23 @@ Proof using.
   - intros s l a _ _ _. exact I.
   - intros s l a H. destruct a; [reflexivity | cbn in H; discriminate H | cbn in H; discriminate H].
   - intros a H. destruct a; [cbn in H; discriminate H | cbn in H; discriminate H | reflexivity].
-  - intros s l a [Ha Hok] Ht. destruct a as [| b | b]; [cbn in Ht; discriminate Ht | cbn in Ht; discriminate Ht |].
+  - intros s l a Hok Ht. destruct a as [| b | b]; [cbn in Ht; discriminate Ht | cbn in Ht; discriminate Ht |].
+    apply (pipes_lm_ok_term fc adm) in Hok as [Ha Hok].
     exists l, b. split; [exact Ha | split; [exact Hok | reflexivity]].
   - intros u' u Hp (l & b & Ha & Hok & Hu). exists l, b.
     split; [exact Ha | split; [exact Hok | etrans; [exact Hp | exact Hu]]].
-  - intros s l a _ Hl [Ha Hok] Hp Ht. destruct a as [| b | b];
+  - intros s l a _ Hl Hok Hp Ht. destruct a as [| b | b];
       [cbn in Hp; discriminate Hp | | cbn in Ht; discriminate Ht].
-    destruct (pipes_block_shape fc adm l b Hfc Hadm Ha Hl Hok) as [Hnd Hcmp].
-    exists b. split; [reflexivity | split; [exact Hnd | exact Hcmp]].
+    destruct Hok as [Hs | [Ha Hok]].
+    + (* the shell's own: the silent round, or the exec diagnostic *)
+      assert (Hsh : lshape b).
+      { destruct Hs as [Hq | [Hq | Hq]]; [discriminate Hq | injection Hq as -> | injection Hq as ->].
+        - split; [constructor | left; apply not_elem_of_nil].
+        - exact (pl_exfb_shape l). }
+      destruct Hsh as [Hnd Hnl]. exists b. split; [reflexivity |].
+      split; [exact Hnd |]. intros Y Z Hcmp. exact (lb_out_eq_panic b Y Z Hnd Hnl Hcmp).
+    + destruct (pipes_block_shape fc adm l b Hfc Hadm Ha Hl Hok) as [Hnd Hcmp].
+      exists b. split; [reflexivity | split; [exact Hnd | exact Hcmp]].
 Qed.
 
 Theorem pipes_lm_byte_laws fc adm : lm_byte_laws (pipes_lm fc adm).
@@ -1295,7 +1406,7 @@ Theorem pipes_lm_fork2_no_laws fc adm : adm l_fork2 = true -> ~ lm_laws (pipes_l
 Proof using.
   intros Ha HL.
   destruct (lml_cont_shape HL tt l_fork2 (PLRun (alt_panic ++ cat_dg_write)) I l_fork2_ok
-              (conj Ha (fork2_corner fc)) eq_refl eq_refl) as (u & Hu & _ & Hcmp).
+              (or_intror (conj Ha (fork2_corner fc))) eq_refl eq_refl) as (u & Hu & _ & Hcmp).
   cbn [pipes_lm lm_cont plcont] in Hu. apply app_inv_tail in Hu. subst u.
   assert (Heq : alt_panic ++ cat_dg_write = alt_panic).
   { apply (Hcmp [] (cat_dg_write ++ u_prompt)). left.
@@ -1620,9 +1731,9 @@ Theorem pipes_one_iff fc adm ws a :
   (lm_ok (pipes_lm fc adm) (LPipes (PrEcho ws) 1) a
    <-> exists pa, palt_ok (LPipe ws) pa /\ a = palt_to (LPipe ws) pa).
 Proof using.
-  intros Ha. cbn [pipes_lm lm_ok]. split.
-  - intros [_ Hok]. exact (palt_of_ok fc (LPipe ws) a Hok).
-  - intros (pa & Hok & ->). split; [exact Ha | exact (palt_to_ok fc (LPipe ws) pa Hok)].
+  intros Ha. rewrite (pipes_lm_ok_iff fc adm _ a Ha I). split.
+  - intros Hok. exact (palt_of_ok fc (LPipe ws) a Hok).
+  - intros (pa & Hok & ->). exact (palt_to_ok fc (LPipe ws) pa Hok).
 Qed.
 
 Theorem pipes_echo_iff fc adm ws a :
@@ -1630,9 +1741,9 @@ Theorem pipes_echo_iff fc adm ws a :
   (lm_ok (pipes_lm fc adm) (LEcho' ws) a
    <-> exists pa, palt_ok (PipeDisc.LEcho ws) pa /\ a = palt_to (PipeDisc.LEcho ws) pa).
 Proof using.
-  intros Ha. cbn [pipes_lm lm_ok]. split.
-  - intros [_ Hok]. exact (palt_of_ok fc (PipeDisc.LEcho ws) a Hok).
-  - intros (pa & Hok & ->). split; [exact Ha | exact (palt_to_ok fc (PipeDisc.LEcho ws) pa Hok)].
+  intros Ha. rewrite (pipes_lm_ok_iff fc adm _ a Ha I). split.
+  - intros Hok. exact (palt_of_ok fc (PipeDisc.LEcho ws) a Hok).
+  - intros (pa & Hok & ->). exact (palt_to_ok fc (PipeDisc.LEcho ws) pa Hok).
 Qed.
 
 Theorem pipes_one_cont fc adm s l pa :
@@ -1758,13 +1869,20 @@ Qed.
 Lemma corr_ok b c c' : corr b c c' -> lm_ok pipes_lm1 (lm_of pipes_lm1 b) (lm_dec pipes_lm1 c').
 Proof using.
   intros (Hok & Hc & Hof). cbn [pipes_lm1 pipes_lm lm_ok lm_of lm_dec].
-  rewrite Hof, Hc. split; [apply ptr_adm1 | exact (palt_to_ok _ _ _ Hok)].
+  rewrite Hof, Hc. right. split; [apply ptr_adm1 | exact (palt_to_ok _ _ _ Hok)].
 Qed.
 
+Lemma adm1_nz l : adm1 l = true -> pl_nz l.
+Proof using. destruct l as [ws | [ws | f] [| [| n]]]; cbn; done. Qed.
+
+(* ...at a line the landed application admits: the shell's own
+   alternatives at a line it does not admit have no landed twin *)
 Lemma corr_of_ok b c' :
+  adm1 (pl_of b) = true ->
   lm_ok pipes_lm1 (lm_of pipes_lm1 b) (lm_dec pipes_lm1 c') -> exists c, corr b c c'.
 Proof using.
-  cbn [pipes_lm1 pipes_lm lm_ok lm_of lm_dec]. intros [Ha Hok].
+  intros Ha Hok0. cbn [pipes_lm1 lm_of lm_dec] in Hok0.
+  apply (pipes_lm_ok_iff _ _ _ _ Ha (adm1_nz _ Ha)) in Hok0 as Hok.
   pose proof (pl_of_adm1_any b Ha) as Hof. rewrite Hof in Hok.
   destruct (palt_of_ok _ _ _ Hok) as (pa & Hpa & Heq).
   exists (palt_code pa). unfold corr. rewrite palt_of_code.
@@ -1886,10 +2004,13 @@ Proof using.
       intros i Hi (c & Hc & Ht) Hm.
       pose proof (Hcorr i Hi) as Hcr. destruct Hcr as (Hpa & Hc' & Hof).
       apply (d4_p_at cs (ins seg) i Hd4 Hi).
-      * change (adm1 (pl_of (bodies_of (ins seg) !!! i)) = true
-                /\ plalt_ok (fun _ => None) (pl_of (bodies_of (ins seg) !!! i)) c) in Hc.
+      * change (plsafe (pl_of (bodies_of (ins seg) !!! i)) c
+                \/ (adm1 (pl_of (bodies_of (ins seg) !!! i)) = true
+                    /\ plalt_ok (fun _ => None) (pl_of (bodies_of (ins seg) !!! i)) c)) in Hc.
         change (plterm c = true) in Ht.
-        destruct Hc as [_ Hok]. rewrite Hof in Hok.
+        destruct Hc as [Hs | [_ Hok]].
+        { exfalso. destruct Hs as [Hq | [Hq | Hq]]; rewrite Hq in Ht; discriminate Ht. }
+        rewrite Hof in Hok.
         destruct (palt_of_ok _ _ _ Hok) as (pa & Hpa' & ->).
         rewrite (palt_to_term _ _ Hpa') in Ht.
         exact (palt_ok_isforkS_pipe _ _ Hpa' Ht).
@@ -1933,12 +2054,17 @@ Proof using.
 Qed.
 
 (* THIS MODEL'S CLAIM IS THE LANDED ONE, at [adm1] *)
-Theorem good_out_ps_good_out_p seg : lm_good_out pipes_lm1 tt seg -> good_out_p seg.
+(* at a segment whose lines the landed application admits (the
+   discipline's [lm_disc_input] gives it) *)
+Theorem good_out_ps_good_out_p seg :
+  Forall (fun b => adm1 (pl_of b) = true) (bodies_of (ins seg)) ->
+  lm_good_out pipes_lm1 tt seg -> good_out_p seg.
 Proof using.
-  intros (ps & cs' & [Hps Hidx] & Hao & Hout).
+  intros Hadm (ps & cs' & [Hps Hidx] & Hao & Hout).
   assert (Hch : forall i, i < nlines (ins seg) ->
-                  exists c, corr (bodies_of (ins seg) !!! i) c (cs' !!! i))
-    by (intros i Hi; exact (corr_of_ok _ _ (lm_alts_ok_at pipes_lm1 _ _ i Hao Hi))).
+                  exists c, corr (bodies_of (ins seg) !!! i) c (cs' !!! i)).
+  { intros i Hi. apply corr_of_ok; [| exact (lm_alts_ok_at pipes_lm1 _ _ i Hao Hi)].
+    apply (Forall_lookup_1 _ _ i _ Hadm). apply list_lookup_lookup_total_lt. exact Hi. }
   destruct (nat_choice_list _ _ Hch) as (cs & Hlen & Hcs).
   exists ps, cs. split; [split; [exact Hps |] | split].
   - rewrite pro_idx_p_lm, (corr_panics cs cs' (ins seg) (nlines (ins seg))); [exact Hidx | lia | exact Hcs].

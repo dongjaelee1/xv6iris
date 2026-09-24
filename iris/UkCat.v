@@ -1134,7 +1134,7 @@ Section UkCat.
                   = mword_of_int 0x3ca)
       by (apply bv_eq; vm_compute; reflexivity).
     rewrite E1r.
-    iIntros (h2 ret g) "Hbs Hrun".
+    iIntros (h2 ret g) "_ Hbs Hrun".
     set (m2 := <[Regidx a0_idx := ret]> m1).
     (* ---- 0x3ca  c.jr ra ---- *)
     assert (Hrar : m2 !!! Regidx ra_idx = m !!! Regidx ra_idx).

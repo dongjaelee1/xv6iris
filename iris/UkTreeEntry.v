@@ -23,7 +23,10 @@
 (* named.                                                                 *)
 (*                                                                        *)
 (* The interface is quantified over the minted record                     *)
-(* ([I : forall N', ep_iface N' (prog N')]) because the record is what     *)
+(* ([I : forall N', ep_iface N' (prog N')], and in the [_c] forms over the *)
+(* payload equation too: [I N' (Hpq : ukn_pay N' = Q)], since an instance  *)
+(* whose free handler pays the exit needs [ukn_const N'] -- lane F)        *)
+(* because the record is what                                             *)
 (* the constructor allocates; the caller's environment resources are       *)
 (* handed over at that record, given its payload, the ledger of the       *)
 (* standard streams at the exec channel's table and the working           *)
@@ -238,12 +241,19 @@ Section UkTreeEntry.
   (* [UEchoFile.efile_image_entry]'s mould with the payment replaced by an
      interface: whoever enters echo at the channel with the line's tree
      conforming to an environment [E] over the devices [ds], and the
-     environment's resources at the minted record, has the entry. *)
-  Lemma echo_image_entry_env (ws : list (list (bv 8))) (M : gmap Z (bv 8))
+     environment's resources at the minted record, has the entry.
+
+     THE INTERFACE MAY READ THE PAYLOAD EQUATION (lane F, cut 5): an
+     instance whose free handler pays the exit at every status needs
+     [ukn_const N'], which only [ukn_pay N' = Q] at a constant [Q] gives --
+     and the record is minted inside the entry, so the equation is the only
+     handle on it.  [I] takes it; [echo_image_entry_env] below is the
+     equation-free reading, a corollary. *)
+  Lemma echo_image_entry_env_c (ws : list (list (bv 8))) (M : gmap Z (bv 8))
       (s0 t : Z) (g : nat -> bv 8) (sts : list fdstate)
       (cw : Z) (cs : gset gname) (pidv : mword 32)
       (Q : Z -> iProp Σ) (Pay : iProp Σ)
-      (I : forall N' : uk_names Σ, ep_iface N' (echo_prog N'))
+      (I : forall N' : uk_names Σ, ukn_pay N' = Q -> ep_iface N' (echo_prog N'))
       (E : penv) (ds : gset nat) :
     EchoDisc.line_ok ws ->
     UShEcho.echo_node_img ws M s0 t g ->
@@ -251,12 +261,11 @@ Section UkTreeEntry.
     length sts = NOFILE ->
     conforms E (echo_tree ws) ->
     safe_fds (dom (pe_fd E)) (echo_tree ws) ->
-    □ (∀ N' : uk_names Σ,
-         ⌜ukn_pay N' = Q⌝ -∗
+    □ (∀ (N' : uk_names Σ) (Hpq : ukn_pay N' = Q),
          UserFd.ustd (ukn_fd N') (take NSTD sts) -∗
          UserCwd.ucwd (ukn_cwd N') cw -∗
          Pay -∗
-         env_res N' (echo_prog N') (I N') E ds) -∗
+         env_res N' (echo_prog N') (I N' Hpq) E ds) -∗
     UkRun.urun_nopipe sts -∗
     udep -∗
     image_entry ElfUser.echo_elf M (mword_of_int (t + 8) : mword 64) sts
@@ -318,13 +327,13 @@ Section UkTreeEntry.
               with "Hdep Hnpw' Hmp").
     iIntros (N' h) "%Hpayeq %Hsz _ #Ht Hstd Hcwf _ _ #HA Hrun".
     rewrite Hpc.
-    iApply (wp_kecho_start_env N' (I N') E ds h (tf_resume_gpr0 (uvis_tf W'))
+    iApply (wp_kecho_start_env N' (I N' Hpayeq) E ds h (tf_resume_gpr0 (uvis_tf W'))
               (uvis_av W')
               (echo_args (uvis_M W') (uvis_av W') (Z.to_nat (uvis_argc W')))
               0 Hc' Hs' Ha0 Ha1
               with "[Hstd Hcwf HPay] [] [] [] Hrun").
-    { iApply ("Henv" $! N' with "[%] [Hstd] [Hcwf] HPay");
-        [ exact Hpayeq | rewrite <- Hfd; iExact "Hstd" | rewrite <- Hcwv; iExact "Hcwf" ]. }
+    { iApply ("Henv" $! N' Hpayeq with "[Hstd] [Hcwf] HPay");
+        [ rewrite <- Hfd; iExact "Hstd" | rewrite <- Hcwv; iExact "Hcwf" ]. }
     { iApply (echo_code_of_text (ukn_t N') (uvis_M W') (uvis_perm W') Hsub Hx
                 with "Ht"). }
     { iApply (echo_rodata_of_text (ukn_t N') (uvis_M W') (uvis_perm W')
@@ -334,6 +343,40 @@ Section UkTreeEntry.
                 Hsp0 Hargsrow Havd Havs with "HA"). }
   Qed.
 
+  (* ...and at an interface that does not read the equation (lane C's
+     statement, unchanged) *)
+  Lemma echo_image_entry_env (ws : list (list (bv 8))) (M : gmap Z (bv 8))
+      (s0 t : Z) (g : nat -> bv 8) (sts : list fdstate)
+      (cw : Z) (cs : gset gname) (pidv : mword 32)
+      (Q : Z -> iProp Σ) (Pay : iProp Σ)
+      (I : forall N' : uk_names Σ, ep_iface N' (echo_prog N'))
+      (E : penv) (ds : gset nat) :
+    EchoDisc.line_ok ws ->
+    UShEcho.echo_node_img ws M s0 t g ->
+    UkShEcho.echo_argv_bytes ws g ->
+    length sts = NOFILE ->
+    conforms E (echo_tree ws) ->
+    safe_fds (dom (pe_fd E)) (echo_tree ws) ->
+    □ (∀ N' : uk_names Σ,
+         ⌜ukn_pay N' = Q⌝ -∗
+         UserFd.ustd (ukn_fd N') (take NSTD sts) -∗
+         UserCwd.ucwd (ukn_cwd N') cw -∗
+         Pay -∗
+         env_res N' (echo_prog N') (I N') E ds) -∗
+    UkRun.urun_nopipe sts -∗
+    udep -∗
+    image_entry ElfUser.echo_elf M (mword_of_int (t + 8) : mword 64) sts
+      cw cs pidv Q Pay uslot.
+  Proof using .
+    intros Hline Himg Hbytes Hfdl Hc Hs.
+    iIntros "#Henv #Hnpw #Hdep".
+    iApply (echo_image_entry_env_c ws M s0 t g sts cw cs pidv Q Pay
+              (fun N' _ => I N') E ds Hline Himg Hbytes Hfdl Hc Hs
+              with "[] Hnpw Hdep").
+    iIntros "!>" (N' Hpq) "Hstd Hcwf HPay".
+    iApply ("Henv" $! N' with "[%] Hstd Hcwf HPay"). exact Hpq.
+  Qed.
+
   (* ------------------------------------------------------------------- *)
   (*  1b. cat                                                             *)
   (* ------------------------------------------------------------------- *)
@@ -341,12 +384,14 @@ Section UkTreeEntry.
   (* [UCatKernel.cat_image_entry]'s mould with the payment replaced by an
      interface, at the tree of the LINE: the key's argv is the line's
      words ([cat_argv_words]), so no word of the line is pinned here --
-     the entry holds at [cat_tree ws] for any admissible line. *)
-  Lemma cat_image_entry_env (ws : list (list (bv 8))) (Mn : gmap Z (bv 8))
+     the entry holds at [cat_tree ws] for any admissible line.  The
+     interface may read the payload equation ([echo_image_entry_env_c]'s
+     note); [cat_image_entry_env] is the equation-free corollary. *)
+  Lemma cat_image_entry_env_c (ws : list (list (bv 8))) (Mn : gmap Z (bv 8))
       (sv t : Z) (gn : nat -> bv 8)
       (sts : list fdstate) (cw : Z) (cs : gset gname) (pidv : mword 32)
       (Q : Z -> iProp Σ) (Pay : iProp Σ)
-      (I : forall N' : uk_names Σ, ep_iface N' (cat_prog N'))
+      (I : forall N' : uk_names Σ, ukn_pay N' = Q -> ep_iface N' (cat_prog N'))
       (E : penv) (ds : gset nat) :
     exec_ok ws ->
     UShEcho.echo_node_img ws Mn sv t gn ->
@@ -354,12 +399,11 @@ Section UkTreeEntry.
     length sts = NOFILE ->
     conforms E (cat_tree ws) ->
     safe_fds (dom (pe_fd E)) (cat_tree ws) ->
-    □ (∀ N' : uk_names Σ,
-         ⌜ukn_pay N' = Q⌝ -∗
+    □ (∀ (N' : uk_names Σ) (Hpq : ukn_pay N' = Q),
          UserFd.ustd (ukn_fd N') (take NSTD sts) -∗
          UserCwd.ucwd (ukn_cwd N') cw -∗
          Pay -∗
-         env_res N' (cat_prog N') (I N') E ds) -∗
+         env_res N' (cat_prog N') (I N' Hpq) E ds) -∗
     UkRun.urun_nopipe sts -∗
     udep -∗
     image_entry ElfUser.cat_elf Mn (mword_of_int (t + 8) : mword 64) sts
@@ -440,12 +484,46 @@ Section UkTreeEntry.
     assert (Ha1 : tf_resume_gpr0 (uvis_tf W') !!! Regidx (mword_of_int 11 : mword 5)
                   = mword_of_int (uvis_av W')).
     { unfold uvis_av. symmetry. apply moi_of_uint. }
-    iApply (wp_kcat_start_env N' (I N') E ds h (tf_resume_gpr0 (uvis_tf W'))
+    iApply (wp_kcat_start_env N' (I N' Hpayeq) E ds h (tf_resume_gpr0 (uvis_tf W'))
               (uvis_av W') (UShCat.cat_args W') (fun _ : nat => ubyte0) 0%nat
               Hc' Hs' Hptr Ha0 Ha1
               with "[Hstd Hcwf HPay] Hcode Hro Hargv Hbuf' Hrun").
-    iApply ("Henv" $! N' with "[%] [Hstd] [Hcwf] HPay");
-      [ exact Hpayeq | rewrite <- Hfd; iExact "Hstd" | rewrite <- Hcwv; iExact "Hcwf" ].
+    iApply ("Henv" $! N' Hpayeq with "[Hstd] [Hcwf] HPay");
+      [ rewrite <- Hfd; iExact "Hstd" | rewrite <- Hcwv; iExact "Hcwf" ].
+  Qed.
+
+  (* ...and at an interface that does not read the equation (lane C's
+     statement, unchanged) *)
+  Lemma cat_image_entry_env (ws : list (list (bv 8))) (Mn : gmap Z (bv 8))
+      (sv t : Z) (gn : nat -> bv 8)
+      (sts : list fdstate) (cw : Z) (cs : gset gname) (pidv : mword 32)
+      (Q : Z -> iProp Σ) (Pay : iProp Σ)
+      (I : forall N' : uk_names Σ, ep_iface N' (cat_prog N'))
+      (E : penv) (ds : gset nat) :
+    exec_ok ws ->
+    UShEcho.echo_node_img ws Mn sv t gn ->
+    UkShEcho.echo_argv_bytes ws gn ->
+    length sts = NOFILE ->
+    conforms E (cat_tree ws) ->
+    safe_fds (dom (pe_fd E)) (cat_tree ws) ->
+    □ (∀ N' : uk_names Σ,
+         ⌜ukn_pay N' = Q⌝ -∗
+         UserFd.ustd (ukn_fd N') (take NSTD sts) -∗
+         UserCwd.ucwd (ukn_cwd N') cw -∗
+         Pay -∗
+         env_res N' (cat_prog N') (I N') E ds) -∗
+    UkRun.urun_nopipe sts -∗
+    udep -∗
+    image_entry ElfUser.cat_elf Mn (mword_of_int (t + 8) : mword 64) sts
+      cw cs pidv Q Pay uslot.
+  Proof using .
+    intros Hok Himg Hbytes Hfdl Hc Hs.
+    iIntros "#Henv #Hnpw #Hdep".
+    iApply (cat_image_entry_env_c ws Mn sv t gn sts cw cs pidv Q Pay
+              (fun N' _ => I N') E ds Hok Himg Hbytes Hfdl Hc Hs
+              with "[] Hnpw Hdep").
+    iIntros "!>" (N' Hpq) "Hstd Hcwf HPay".
+    iApply ("Henv" $! N' with "[%] Hstd Hcwf HPay"). exact Hpq.
   Qed.
 
   (* ...and at the line `cat f` the landed entry pins (SS3.4e's plan):

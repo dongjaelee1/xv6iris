@@ -34,6 +34,7 @@ Require Import LineWords.
 Require Import EchoDisc.
 Require Import UkShParse.
 Require Import UkShParseSym.
+Require Import UkShWords.
 Require Import UkShRedirLine.
 Require Import UShLexRedir.
 Require Import UkShPipeLex.
@@ -377,22 +378,22 @@ Proof using.
   destruct rs as [| r2 rs ].
   - apply ushq_tail_is_one in H. destruct H as (Hw & Hb & Hlen & Hnl).
     exfalso.
-    destruct (lt_dec j (c + length r)) as [ Hlt | Hge ].
+    destruct (lt_dec j (c + length r)%nat) as [ Hlt | Hge ].
     + rewrite (proj2 (ushq_tail_word g c r Hw Hb j ltac:(lia))) in Hs.
       discriminate.
     + assert (Hje : j = (c + length r)%nat) by lia. rewrite Hje in Hs.
       rewrite Hnl, ushs_nl_not_sym in Hs. discriminate.
   - apply ushq_tail_is_two in H.
     destruct H as (Hw & Hb & Hsp1 & Hbar & Hsp2 & Ht).
-    destruct (lt_dec j (c + length r)) as [ Hlt | Hge ].
+    destruct (lt_dec j (c + length r)%nat) as [ Hlt | Hge ].
     { exfalso.
       rewrite (proj2 (ushq_tail_word g c r Hw Hb j ltac:(lia))) in Hs.
       discriminate. }
-    destruct (Nat.eq_dec j (c + length r)) as [ Hj0 | Hn0 ].
+    destruct (Nat.eq_dec j (c + length r)%nat) as [ Hj0 | Hn0 ].
     { exfalso. rewrite Hj0, Hsp1, ushs_sp_not_sym in Hs. discriminate. }
-    destruct (Nat.eq_dec j (c + length r + 1)) as [ Hj1 | Hn1 ].
+    destruct (Nat.eq_dec j (c + length r + 1)%nat) as [ Hj1 | Hn1 ].
     { rewrite Hj1. exact Hbar. }
-    destruct (Nat.eq_dec j (c + length r + 2)) as [ Hj2 | Hn2 ].
+    destruct (Nat.eq_dec j (c + length r + 2)%nat) as [ Hj2 | Hn2 ].
     { exfalso. rewrite Hj2, Hsp2, ushs_sp_not_sym in Hs. discriminate. }
     exact (IH _ Ht j ltac:(lia) Hs).
 Qed.
@@ -437,7 +438,7 @@ Proof using.
     apply UshqBarsLast.
     + lia.
     + intros j Hj.
-      destruct (lt_dec j (c + length r)) as [ Hlt | Hge ].
+      destruct (lt_dec j (c + length r)%nat) as [ Hlt | Hge ].
       * exact (proj2 (ushq_tail_word g c r Hw Hb j ltac:(lia))).
       * assert (Hje : j = (c + length r)%nat) by lia. rewrite Hje, Hnl.
         exact ushs_nl_not_sym.
@@ -509,18 +510,18 @@ Proof using.
   (* every symbol of the line is a bar *)
   assert (Hsym : ushq_sym_ok len g).
   { intros j Hj Hs. left. rewrite Eg in Hs.
-    destruct (lt_dec j (length (wl_body ws))) as [ Hlo | Hge ].
+    destruct (lt_dec j (length (wl_body ws))%nat) as [ Hlo | Hge ].
     { exfalso. rewrite (Hbody j Hlo) in Hs.
       rewrite (ushs_body_not_sym _
                  (Forall_lookup_1 _ _ _ _
                     (wl_body_bytes ws (line_ok_wf ws Hok))
                     (list_lookup_lookup_total_lt (wl_body ws) j Hlo))) in Hs.
       discriminate. }
-    destruct (Nat.eq_dec j (length (wl_body ws))) as [ Hj0 | Hn0 ].
+    destruct (Nat.eq_dec j (length (wl_body ws))%nat) as [ Hj0 | Hn0 ].
     { exfalso. rewrite Hj0, Hsp1, ushs_sp_not_sym in Hs. discriminate. }
-    destruct (Nat.eq_dec j (length (wl_body ws) + 1)) as [ Hj1 | Hn1 ].
+    destruct (Nat.eq_dec j (length (wl_body ws) + 1)%nat) as [ Hj1 | Hn1 ].
     { rewrite Hj1. exact Hg0. }
-    destruct (Nat.eq_dec j (length (wl_body ws) + 2)) as [ Hj2 | Hn2 ].
+    destruct (Nat.eq_dec j (length (wl_body ws) + 2)%nat) as [ Hj2 | Hn2 ].
     { exfalso.
       replace (k + j)%nat with (k + length (wl_body ws) + 2)%nat in Hs
         by lia.
@@ -551,7 +552,7 @@ Proof using.
     + lia.
     + right. rewrite Hg0. exact ushq_bar_not_ws.
     + intros j Hj. rewrite Eg.
-      destruct (Nat.eq_dec j (length (wl_body ws))) as [ -> | Hne ].
+      destruct (Nat.eq_dec j (length (wl_body ws))%nat) as [ -> | Hne ].
       * rewrite Hsp1.
         pose proof (wl_lta_app_r (wl_body ws) [wl_sp] 0%nat) as Hr.
         rewrite Nat.add_0_r in Hr. rewrite Hr. reflexivity.

@@ -1668,7 +1668,7 @@ Section UkFileIface.
   (* ------------------------------------------------------------------- *)
 
   Definition file_iface : ep_iface N P.
-  Proof using Hcons Heq HPc HNc Hsr Hsw Hso Hsc Hse.
+  Proof using Hcons Heq HPc HNc Hsr Hsw Hso Hsc Hse γreg fifRegG0.
     refine (MkEI N P fif_fds fif_out (fun _ _ => False%I) (fun _ => False%I) fif_outm
               fif_in (fun _ _ => False%I) (fun _ => False%I)
               (fun _ _ _ _ => False%I) (fun _ _ _ => False%I) (fun _ => False%I)

@@ -44,30 +44,24 @@ Require Import Riscv.rv64d_types Riscv.rv64d Riscv.riscv_extras.
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.MachineWord.
 Require Import RiscvLang RiscvPtsto RiscvExtras RiscvModelBytes.
 Require Import RegFile.
-Require Import UmodeArith UmodeAbi.
+Require Import UmodeArith.
 Require Import UserHeap UkRun UkRunSys.
-Require Import VcGen.
 Require Import SpecConsolewrite.   (* [cons_out_chain] *)
 Require Import SpecSysRead.        (* [sys_rw_count] *)
 Require Import WpUart.             (* [out_link] *)
 Require Import UkWriteLeaf.
-Require Import UCodeCat.
 Require User.CatSyms User.CatInstrs.
-Require Import FdSlots ProcGeom UserFd UserCwd.
-Require Import UexecSG UexecSlot UexecRet.
+Require Import FdSlots UserFd.
+Require Import UexecSG UexecSlot.
 Require Import UkCat.
-Require Import UkCatCat.
 Require Import ConsoleInv.
 Require Import Xv6Cameras Xv6G IrefSlots ProcAvail FileInvDefs.
-Require Import ObsTrace ConsLog.
-Require Import LineWords EchoDisc.
 Require Import EchoOut AppEcho.
-Require Import EchoOutPure.
 Require Import PipeDisc.
-Require Import PipeOutPure PipeOut.
+Require Import PipeOut.
 Require Import PipeBothPure PipeBoth.
-Require Import PipeNames PipeQueue PipeProto.  (* [pipeN] *)
-Require Import PipeLinks PipeLinksLine PipeLinkInst.
+Require Import PipeProto.  (* [pipeN] *)
+Require Import PipeLinks.
 Require Import UCatKernel.         (* [cat_fam] / [cat_count_is] / [cat_moi_uint] *)
 Require Import UShPipeRound2.      (* [blk2N] and its two mask facts *)
 Require Import UShPipeAssembly.    (* [out_step] / [out_chain_of_step] *)

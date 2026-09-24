@@ -47,13 +47,10 @@ Require Import ObsTrace.
 Require Import LineWords.
 Require Import EchoDisc.
 Require Import ConsLog.
-Require Import EchoOutPure.
 Require Import FileDisc.
 Require Import FileDiscDec.   (* [disc_f_dec]: the ledger's counter *)
 Require Import FileOutPure.
-Require Import LineModel.
 Require Import LineModelLinks.
-Require Import LineModelInst.    (* the stream equations at [file_lm] *)
 Require Import GenOutPure.
 Require Import FileHooks.        (* [file_hooks] *)
 Require Import EchoOut.          (* the ghost algebra, [ch_E] and its laws *)

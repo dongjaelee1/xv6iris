@@ -43,13 +43,11 @@ Require Import ProcGeom.
 Require Import UserPerm.
 From Stdlib Require Import FunctionalExtensionality.
 Require Import UserHeap UkRun UkRunLeaf.
-Require Import UkFork.
 Require Import FdSlots UserFd.
 Require Import UCodeShK UCodeShP.
 Require Import FileDisc.
 Require Import UkSh.
 Require Import UkShParse.
-Require Import UkShRun.
 Require Import UkShDiag.
 Require Import UkShMalloc.
 Require Import UkShLoop.
@@ -59,7 +57,6 @@ Require User.ShSyms User.ShInstrs.
 Require Import ChildTok.
 Require Import UexecRet.
 Require Import LineWords.
-Require Import EchoDisc.
 Require Import UkShFork.
 Require Import UkShPipeWait.
 Require Import UserCwd.

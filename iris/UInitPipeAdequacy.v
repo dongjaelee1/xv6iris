@@ -39,26 +39,19 @@ Require Import FsCrash.
 Require Import VirtioModel.
 Require Import IrefSlots.
 Require Import Xv6Cameras.
-Require Import FsImg.
 Require Import ProcAvail.
 Require Import Xv6G.
 Require Import UserFd.
-Require Import AppCfg.
-Require Import AppInv.
-Require Import FsCfg.
-Require Import InitBoot.
 Require Import SystemAdequacy.
 Require Import FsBootParams.
 Require Import FsImgCheck.
 Require Import FsImgDisk.
 Require Import App.
-Require Import InodeInv.
 Require Import EchoDisc.            (* [disc] / [good_out]: the echo corollary *)
 Require Import PipeDisc.
 Require Import EchoOut.
 Require Import PipeOut.
 Require Import AppPipe.
-Require Import PipeProto.           (* [pipeProtoG]: the protocol's ghosts *)
 Require Import UPipeBootAdequacy.   (* [pipe_prog_law] / [pipeSigma] *)
 Require Import UInitPipe.           (* [pipe_Hinit_boot] / the premise *)
 

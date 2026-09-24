@@ -30,7 +30,6 @@ Require Import LineModel.
 Require Import LineModelLinks.
 Require Import GenOutPure.
 Require Import EchoOut.
-Require Import GenOutHist.
 Require Import GenOut.
 Require Import RiscvPtsto.
 Require Import WpUart.

@@ -59,7 +59,7 @@ Require Import SysReadDefs.     (* [ard_count] *)
 Require Import Xv6Cameras Xv6G IrefSlots ProcAvail FileInvDefs.
 Require Import LineWords EchoDisc.
 Require Import FileState FileDisc FileOut.
-Require Import EchoOut AppEcho.
+Require Import EchoOut.
 Require Import UCatOut.
 Require Import UkCatMain.    (* [cm_lit] / [cm_msg_q] / [kcat_dg_open] *)
 Require Import SpecKexec.    (* [kexec_image_ok] and its readings *)

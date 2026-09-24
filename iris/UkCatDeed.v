@@ -55,7 +55,7 @@ Require Import FsImg.            (* [FsImg.ROOTINO] *)
 Require Import ProcGeom.         (* [NOFILE] *)
 Require Import SysReadDefs.     (* [ard_count] -- what a read of a parked row delivers *)
 Require Import Xv6Cameras Xv6G IrefSlots ProcAvail FileInvDefs.
-Require Import EchoOut AppEcho.
+Require Import EchoOut.
 Import Defs.
 
 Local Open Scope Z_scope.

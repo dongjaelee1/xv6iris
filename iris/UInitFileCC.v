@@ -9,76 +9,39 @@ Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.Mac
 Require Import Riscv.rv64d_types Riscv.rv64d.
 Require Import RiscvLang RiscvPtsto.
 Require Import WpUart.
-Require Import CtxIdDefs.
 Require Import Xv6Cameras.
 Require Import Xv6G.
 Require Import FdSlots.
 Require Import IrefSlots.
 Require Import ProcAvail.
 Require Import FileInvDefs.
-Require Import ChildTok.
-Require Import UexecSlot.
-Require Import UexecRet.
 Require Import UexecSG.
-Require Import PathElems.
 Require Import AppCfg.
 Require Import AppInv.
 Require Import FsCfg.
 Require Import ConsoleInv.
-Require Import SpecKexec.
-Require Import FsAbsDefs.
-Require Import FsAbsEra.
-Require Import PinnedExec.
 Require Import UexecExecInst.
 Require Import UkRun.
 Require Import UkInit.
-Require Import UexecExecMint.
-Require Import UkWriteClosed.
-Require Import UInitKernel.
-Require Import LineWords.
-Require Import EchoLinks.
 Require Import UInitDiag.
 Require Import UInitBanner.
 Require Import UInitCons.
-Require Import UInitConsK.
 Require Import UInitSh.
-Require Import UShPanic.
-Require Import UShEcho.
-Require Import EchoLinksPro.
-Require Import EchoLinksLine.
-Require Import EchoLinksBan.
 Require Import UShLine.
 Require Import AppEcho.
 Require Import EchoOut.
 Require Import UserConsole.
 Require Import UserFd.
-Require Import LinkUserinit.
 Require Import UkSh.
 Require Import UShConsK.
-Require Import KexecDefs.
-Require Import PageGeom.
-Require Import InitBoot.
-Require Import ElfUser.
-Require Import ElfLoadable.
-Require Import FsInitPin.
-Require Import FsInitPinBoot.
-Require Import UInitBoot.          (* [init_deps_of_laws] / [init_boot_bundle_of_pinned] *)
 (* ---- the pipeline era's own layers ---- *)
 Require Import LinkRec.
-Require Import ReadRec.
-Require FsImg.
-Require InodeInv.
 Require Import FileDisc.
 Require Import FileState.
 Require Import AppFile.
 Require Import FileOut.
 Require Import FileLinks.
-Require Import FileLinksLine.
-Require Import FileHooks.         (* S0 of [FileLinksLine], moved *)
-Require Import FileLinksAt.
 Require Import FileLinkInst.
-Require Import GenLinksLine.
-Require Import FileLinkGen.
 Require Import FileReadInst.       (* [file_read_leaf_holds_at]: the read leaf at the index *)
 Require Import UShRound.           (* the round, its families and their laws *)
 Require Import UInitFileCons.      (* the claim's laws at /init *)

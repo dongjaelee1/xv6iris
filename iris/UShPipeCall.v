@@ -47,23 +47,16 @@ Require Import FdSlots.             (* [fdstate] / [fd_lowest_closed] *)
 Require Import IrefSlots.
 Require Import ProcAvail.
 Require Import FileInvDefs.
-Require Import PipeInvDefs.
 Require Import PipeNames.           (* [pipe_names] / [pn_queue] / [pst0] *)
 Require Import PipeQueue.           (* [pipe_qfrag] *)
 Require Import PipeReg.             (* [pipe_reg]: what the registrar answers *)
-Require Import ChildTok.
 Require Import UexecExecInst.       (* THE INSTANCE: [uexecSG_xv6] *)
 Require Import UexecExecMint.       (* [udepw_cl_of_reg_close]: a registered
                                        pipe end pays its own close *)
-Require Import UserPtTree.
 Require Import UserFd.
-Require Import UserHeap.
-Require Import ProcGeom.            (* [NOFILE] / [NSTD] *)
-Require Import VcGen.               (* [trunc32] *)
-Require Import UexecSlot UexecRet UsysMemOk UexecSG.
+Require Import UexecSG.
 Require Import UkRun UkRunLeaf UkRunSys.
 Require Import UCodeShK.
-Require Import UkSh.
 Require Import UkShRedir.            (* [ushx_cs_ne] *)
 Require Import UkShPipe.             (* [ush_pipe_call] / [ush_cldep] *)
 Require Import UkReadPipe.           (* [wp_uk_pipe_read_end] *)

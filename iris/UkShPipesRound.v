@@ -36,8 +36,9 @@
 (* instance.  The left and last laws are the stage entries at the         *)
 (* N-writer console family, the entry law is where node [k+1]'s pipe       *)
 (* names, protocol and console writers are allocated, and the bundle's    *)
-(* wait law is the free reading unless the fork arm relays the child's    *)
-(* pid (see the lane report).                                             *)
+(* wait law may be the PAID one at every node: the entry law hands node   *)
+(* [k+1]'s process its own pid fragment ([ush_entry_law_g], lane          *)
+(* PID-CHILD), and §3's inner nodes take it.                              *)
 (* ===================================================================== *)
 From Stdlib Require Import ZArith Bool Lia List.
 From stdpp Require Import gmap bitvector.definitions.
@@ -276,6 +277,133 @@ Section UkShPipesRound.
          |={⊤}=> ush_node_obl N' (<[0%nat := rd γp]> ld0) szv cwdv ∅ av
                    (Qc (S k) (rd γp)) (RcL (S k) (rd γp)) (RcR (S k) (rd γp)))%I.
 
+    (* ...AND THE ENTRY WITH THE CHILD'S PID (lane PID-CHILD): the right
+       child of node [k] is handed its own pid fragment too
+       ([UkShPipe.wp_kshr_pipe_arm_g3], out of [UkShRun.wp_kshr_fork1]'s
+       child row), so node [k+1]'s bundle may take the PAID wait reading
+       [UkSh.ush_pid N' / UkShPipe.ush_wait_pid_ans] -- the one whose reap
+       names the generation it reaped.  The landed [ush_entry_law] is the
+       reading that drops it ([ush_entry_law_g_of]). *)
+    Definition ush_entry_law_g : iProp Σ :=
+      (∀ (k : nat) (st0 : fdstate) (N' : uk_names Σ) (γ' : gname)
+         (γp : pipe_names) (av : nat),
+         ⌜ (S (S k) < length stgs)%nat ⌝ -∗
+         ⌜ (n <= av)%nat ⌝ -∗
+         ⌜ ukn_pay N' = Qc k st0 ⌝ -∗
+         my_pay γ' (Qc k st0) -∗
+         RcR k st0 γp -∗
+         UkSh.ush_pid N' -∗
+         shk_code (ukn_t N') -∗
+         ush_jtab (ukn_t N') -∗
+         |={⊤}=> ush_node_obl N' (<[0%nat := rd γp]> ld0) szv cwdv ∅ av
+                   (Qc (S k) (rd γp)) (RcL (S k) (rd γp)) (RcR (S k) (rd γp)))%I.
+
+    Lemma ush_entry_law_g_of : ush_entry_law -∗ ush_entry_law_g.
+    Proof using .
+      rewrite /ush_entry_law /ush_entry_law_g.
+      iIntros "Hent" (k st0 N' γ' γp av) "%Hlt %Hav %Hpeq Hmy HRc _ Hck Hjt".
+      iApply ("Hent" $! k st0 N' γ' γp av with "[%] [%] [%] Hmy HRc Hck Hjt");
+        [ exact Hlt | exact Hav | exact Hpeq ].
+    Qed.
+
+    (* THE LAW, AT THE ENTRY THAT RECEIVES THE PID (lane PID-CHILD).  The
+       landed [wp_kshr_runcmd_pipes_law] below is its corollary. *)
+    Lemma wp_kshr_runcmd_pipes_law_g :
+      forall (rest : list (list uarg)) (a b : list uarg) (k : nat)
+             (N : uk_names Σ) `{!ukn_const N} (h : CpuId) (m : regfile)
+             (t : Z) (st0 : fdstate) (Sc : gset gname),
+        drop k stgs = a :: b :: rest ->
+        m !!! Regidx a0_idx = (mword_of_int t : mword 64) ->
+        st0 <> FdClosed ->
+        □ ush_left_law -∗
+        □ ush_last_law -∗
+        □ ush_entry_law_g -∗
+        shk_code (ukn_t N) -∗
+        ush_jtab (ukn_t N) -∗
+        ush_cmd (ukn_d N) t (ush_pipes a (b :: rest)) -∗
+        usz (ukn_s N) szv -∗
+        UserFd.ustd (ukn_fd N) (<[0%nat := st0]> ld0) -∗
+        ush_cldep st0 -∗
+        UserCwd.ucwd (ukn_cwd N) cwdv -∗
+        UserChildren.uch (ukn_ch N) Sc -∗
+        ush_node_obl N (<[0%nat := st0]> ld0) szv cwdv Sc
+          (6 * length rest + n) (Qc k st0) (RcL k st0) (RcR k st0) -∗
+        urun N h m (mword_of_int ShSyms.runcmd)
+          (6 + (2 + (UkShDiag.ush_Dg + (6 * length rest + n)))) -∗
+        mWP (Loop : expr riscv_lang).
+    Proof using Hpsok_free HQc Hl1 Hne1 Hnp1 Hl0len.
+      induction rest as [| c rest IH ];
+        intros a b k N Hcst h m t st0 Sc Hdrop Ha0 Hne0;
+        iIntros "#Hleft #Hlast #Hent #Hcode #Hjt #Htree Hsz Hstd #Hcd0 Hcwd Hch
+                 Hobl Hrun".
+      all: rewrite /ush_left_law /ush_last_law /ush_entry_law_g.
+      (* the stage facts off the drop *)
+      all: assert (Hka : stgs !! k = Some a)
+             by (rewrite -(Nat.add_0_r k) -lookup_drop Hdrop; reflexivity).
+      all: assert (Hkb : stgs !! S k = Some b)
+             by (rewrite -(Nat.add_1_r k) -lookup_drop Hdrop; reflexivity).
+      all: pose proof (f_equal length Hdrop) as Hlen;
+           rewrite length_drop in Hlen; cbn [length] in Hlen.
+      all: assert (Hl0 : (<[0%nat := st0]> ld0) !! 0%nat = Some st0)
+             by exact (list_lookup_insert ld0 0%nat st0 Hl0len).
+      all: assert (Hl1' : (<[0%nat := st0]> ld0) !! 1%nat = Some st1)
+             by (rewrite list_lookup_insert_ne; [ exact Hl1 | lia ]).
+      all: iDestruct "Hobl" as (Cr Wr Pw R Rk Cx)
+             "(#Hkw & Hcr & Hsplit & Hpipe & HWr & #Hwl & #Hp1 & #Hp2 & #Hp3
+               & Hpar)".
+      all: iApply (wp_kshr_pipe_arm_g3 Hpsok_free N (UExec a) _ h m t szv cwdv
+                     (<[0%nat := st0]> ld0) st0 st1 Sc _
+                     R (RcL k st0) (RcR k st0) Rk Cx (Qc k st0) Cr Wr Pw
+                     (HQc k st0) Ha0 Hl0 Hl1' Hne0 Hne1 Hnp1
+                     with "Hcode Hjt Htree Hsz Hstd Hcd0 Hcwd Hch Hkw Hcr Hsplit
+                           Hpipe HWr Hwl Hp1 Hp2 Hp3 Hrun [] [] Hpar").
+      - (* ---- rest = []: the LEFT stage ---- *)
+        iIntros (N' h' m' γ' γp q) "%Hpeq %Ha0' Hmy #Hck #Hjt2 #Hqc Hsz Hstd
+                                    Hcwd Hch Hpid #Hcd1 #Hcd2 HRc Hrun".
+        iApply ("Hleft" $! k st0 a N' h' m' γ' γp q (6 * 0 + n)%nat
+                  with "[] [] [] [] [] Hmy Hck Hjt2 Hqc Hsz Hstd Hcwd Hch
+                        Hcd1 Hcd2 HRc Hrun");
+          iPureIntro; [ exact Hka | lia | lia | exact Hpeq | exact Ha0' ].
+      - (* ---- rest = []: the LAST stage ---- *)
+        iIntros (N' h' m' γ' γp q) "%Hpeq %Ha0' Hmy #Hck #Hjt2 #Hqc Hsz Hstd
+                                    Hcwd Hch Hpid #Hcd1 #Hcd2 HRc Hrun".
+        rewrite list_insert_insert.
+        iApply ("Hlast" $! k st0 b N' h' m' γ' γp q (6 * 0 + n)%nat
+                  with "[] [] [] [] [] Hmy Hck Hjt2 Hqc Hsz Hstd Hcwd Hch
+                        Hcd1 Hcd2 HRc Hrun");
+          iPureIntro; [ exact Hkb | lia | lia | exact Hpeq | exact Ha0' ].
+      - (* ---- a longer spine: the LEFT stage ---- *)
+        iIntros (N' h' m' γ' γp q) "%Hpeq %Ha0' Hmy #Hck #Hjt2 #Hqc Hsz Hstd
+                                    Hcwd Hch Hpid #Hcd1 #Hcd2 HRc Hrun".
+        iApply ("Hleft" $! k st0 a N' h' m' γ' γp q
+                  (6 * length (c :: rest) + n)%nat
+                  with "[] [] [] [] [] Hmy Hck Hjt2 Hqc Hsz Hstd Hcwd Hch
+                        Hcd1 Hcd2 HRc Hrun");
+          iPureIntro; [ exact Hka | lia | lia | exact Hpeq | exact Ha0' ].
+      - (* ---- a longer spine: THE SUFFIX, the induction hypothesis ---- *)
+        iIntros (N' h' m' γ' γp q) "%Hpeq %Ha0' Hmy #Hck #Hjt2 #Hqc Hsz Hstd
+                                    Hcwd Hch Hpid #Hcd1 #Hcd2 HRc Hrun".
+        pose proof (ukn_const_of_eq N' (Qc k st0) Hpeq (HQc k st0)) as Hcst'.
+        rewrite list_insert_insert.
+        iApply fupd_mwp_ps.
+        iMod ("Hent" $! k st0 N' γ' γp (6 * length rest + n)%nat
+                with "[] [] [] Hmy HRc Hpid Hck Hjt2") as "Hobl'".
+        { iPureIntro. lia. }
+        { iPureIntro. lia. }
+        { iPureIntro. exact Hpeq. }
+        iModIntro.
+        assert (Hdrop' : drop (S k) stgs = b :: c :: rest).
+        { rewrite -(Nat.add_1_r k) -drop_drop Hdrop. reflexivity. }
+        assert (E : (2 + (UkShDiag.ush_Dg + (6 * length (c :: rest) + n)))%nat
+                    = (6 + (2 + (UkShDiag.ush_Dg + (6 * length rest + n))))%nat)
+          by (cbn [length]; lia).
+        rewrite E.
+        iApply (IH b c (S k) N' Hcst' h' m' q (rd γp) ∅ Hdrop' Ha0'
+                  ltac:(discriminate)
+                  with "Hleft Hlast Hent Hck Hjt2 Hqc Hsz Hstd Hcd1 Hcwd Hch
+                        Hobl' Hrun").
+    Qed.
+
     Lemma wp_kshr_runcmd_pipes_law :
       forall (rest : list (list uarg)) (a b : list uarg) (k : nat)
              (N : uk_names Σ) `{!ukn_const N} (h : CpuId) (m : regfile)
@@ -300,76 +428,11 @@ Section UkShPipesRound.
           (6 + (2 + (UkShDiag.ush_Dg + (6 * length rest + n)))) -∗
         mWP (Loop : expr riscv_lang).
     Proof using Hpsok_free HQc Hl1 Hne1 Hnp1 Hl0len.
-      induction rest as [| c rest IH ];
-        intros a b k N Hcst h m t st0 Sc Hdrop Ha0 Hne0;
-        iIntros "#Hleft #Hlast #Hent #Hcode #Hjt #Htree Hsz Hstd #Hcd0 Hcwd Hch
-                 Hobl Hrun".
-      all: rewrite /ush_left_law /ush_last_law /ush_entry_law.
-      (* the stage facts off the drop *)
-      all: assert (Hka : stgs !! k = Some a)
-             by (rewrite -(Nat.add_0_r k) -lookup_drop Hdrop; reflexivity).
-      all: assert (Hkb : stgs !! S k = Some b)
-             by (rewrite -(Nat.add_1_r k) -lookup_drop Hdrop; reflexivity).
-      all: pose proof (f_equal length Hdrop) as Hlen;
-           rewrite length_drop in Hlen; cbn [length] in Hlen.
-      all: assert (Hl0 : (<[0%nat := st0]> ld0) !! 0%nat = Some st0)
-             by exact (list_lookup_insert ld0 0%nat st0 Hl0len).
-      all: assert (Hl1' : (<[0%nat := st0]> ld0) !! 1%nat = Some st1)
-             by (rewrite list_lookup_insert_ne; [ exact Hl1 | lia ]).
-      all: iDestruct "Hobl" as (Cr Wr Pw R Rk Cx)
-             "(#Hkw & Hcr & Hsplit & Hpipe & HWr & #Hwl & #Hp1 & #Hp2 & #Hp3
-               & Hpar)".
-      all: iApply (wp_kshr_pipe_arm_g2 Hpsok_free N (UExec a) _ h m t szv cwdv
-                     (<[0%nat := st0]> ld0) st0 st1 Sc _
-                     R (RcL k st0) (RcR k st0) Rk Cx (Qc k st0) Cr Wr Pw
-                     (HQc k st0) Ha0 Hl0 Hl1' Hne0 Hne1 Hnp1
-                     with "Hcode Hjt Htree Hsz Hstd Hcd0 Hcwd Hch Hkw Hcr Hsplit
-                           Hpipe HWr Hwl Hp1 Hp2 Hp3 Hrun [] [] Hpar").
-      - (* ---- rest = []: the LEFT stage ---- *)
-        iIntros (N' h' m' γ' γp q) "%Hpeq %Ha0' Hmy #Hck #Hjt2 #Hqc Hsz Hstd
-                                    Hcwd Hch #Hcd1 #Hcd2 HRc Hrun".
-        iApply ("Hleft" $! k st0 a N' h' m' γ' γp q (6 * 0 + n)%nat
-                  with "[] [] [] [] [] Hmy Hck Hjt2 Hqc Hsz Hstd Hcwd Hch
-                        Hcd1 Hcd2 HRc Hrun");
-          iPureIntro; [ exact Hka | lia | lia | exact Hpeq | exact Ha0' ].
-      - (* ---- rest = []: the LAST stage ---- *)
-        iIntros (N' h' m' γ' γp q) "%Hpeq %Ha0' Hmy #Hck #Hjt2 #Hqc Hsz Hstd
-                                    Hcwd Hch #Hcd1 #Hcd2 HRc Hrun".
-        rewrite list_insert_insert.
-        iApply ("Hlast" $! k st0 b N' h' m' γ' γp q (6 * 0 + n)%nat
-                  with "[] [] [] [] [] Hmy Hck Hjt2 Hqc Hsz Hstd Hcwd Hch
-                        Hcd1 Hcd2 HRc Hrun");
-          iPureIntro; [ exact Hkb | lia | lia | exact Hpeq | exact Ha0' ].
-      - (* ---- a longer spine: the LEFT stage ---- *)
-        iIntros (N' h' m' γ' γp q) "%Hpeq %Ha0' Hmy #Hck #Hjt2 #Hqc Hsz Hstd
-                                    Hcwd Hch #Hcd1 #Hcd2 HRc Hrun".
-        iApply ("Hleft" $! k st0 a N' h' m' γ' γp q
-                  (6 * length (c :: rest) + n)%nat
-                  with "[] [] [] [] [] Hmy Hck Hjt2 Hqc Hsz Hstd Hcwd Hch
-                        Hcd1 Hcd2 HRc Hrun");
-          iPureIntro; [ exact Hka | lia | lia | exact Hpeq | exact Ha0' ].
-      - (* ---- a longer spine: THE SUFFIX, the induction hypothesis ---- *)
-        iIntros (N' h' m' γ' γp q) "%Hpeq %Ha0' Hmy #Hck #Hjt2 #Hqc Hsz Hstd
-                                    Hcwd Hch #Hcd1 #Hcd2 HRc Hrun".
-        pose proof (ukn_const_of_eq N' (Qc k st0) Hpeq (HQc k st0)) as Hcst'.
-        rewrite list_insert_insert.
-        iApply fupd_mwp_ps.
-        iMod ("Hent" $! k st0 N' γ' γp (6 * length rest + n)%nat
-                with "[] [] [] Hmy HRc Hck Hjt2") as "Hobl'".
-        { iPureIntro. lia. }
-        { iPureIntro. lia. }
-        { iPureIntro. exact Hpeq. }
-        iModIntro.
-        assert (Hdrop' : drop (S k) stgs = b :: c :: rest).
-        { rewrite -(Nat.add_1_r k) -drop_drop Hdrop. reflexivity. }
-        assert (E : (2 + (UkShDiag.ush_Dg + (6 * length (c :: rest) + n)))%nat
-                    = (6 + (2 + (UkShDiag.ush_Dg + (6 * length rest + n))))%nat)
-          by (cbn [length]; lia).
-        rewrite E.
-        iApply (IH b c (S k) N' Hcst' h' m' q (rd γp) ∅ Hdrop' Ha0'
-                  ltac:(discriminate)
-                  with "Hleft Hlast Hent Hck Hjt2 Hqc Hsz Hstd Hcd1 Hcwd Hch
-                        Hobl' Hrun").
+      intros rest a b k N Hcst h m t st0 Sc Hdrop Ha0 Hne0.
+      iIntros "#Hleft #Hlast #Hent".
+      iApply (wp_kshr_runcmd_pipes_law_g rest a b k N h m t st0 Sc
+                Hdrop Ha0 Hne0 with "Hleft Hlast []").
+      iModIntro. iApply (ush_entry_law_g_of with "Hent").
     Qed.
 
   End Law.
@@ -378,10 +441,14 @@ Section UkShPipesRound.
   (* §3 THE TAINT INSTANCE                                                  *)
   (* ===================================================================== *)
 
-  (* the bundle at the FREE instance: [UkShPipe.wp_kshr_pipe_arm2]'s own
-     discharge of the arm's premises, out of [UkSh.sh_deps] *)
-  Lemma ush_node_obl_free (N : uk_names Σ) `{!ukn_const N} (ld : list fdstate)
-      (szv cwdv : Z) (Sc : gset gname) (av : nat) :
+  (* the bundle at the taint instance, AT ANY WAIT READING (lane
+     PID-CHILD): [UkShPipe.wp_kshr_pipe_arm2]'s own discharge of the arm's
+     premises, out of [UkSh.sh_deps], with the wait credential and its law
+     the caller's.  [ush_node_obl_free] is it at the free reading and
+     [ush_node_obl_free_pid] at the pid-naming one. *)
+  Lemma ush_node_obl_free_w (N : uk_names Σ) `{!ukn_const N} (ld : list fdstate)
+      (szv cwdv : Z) (Sc : gset gname) (av : nat) (Wr : iProp Σ)
+      (Pw : mword 64 -> gset gname -> gset gname -> iProp Σ) :
     (⊢ ukn_pay N (-1)) ->
     fd_lowest_closed ld = None ->
     UkSh.sh_deps -∗
@@ -390,14 +457,16 @@ Section UkShPipesRound.
     □ (app_taint -∗ ukn_pay N (-1)) -∗
     app_taint -∗
     udepw_law 21 -∗
+    Wr -∗
+    ush_wait0_law N Wr Pw -∗
     ush_node_obl N ld szv cwdv Sc av (ukn_pay N)
       (fun _ => emp)%I (fun _ => emp)%I.
   Proof using Hpsok_free.
     intros Hpx Hnone.
-    iIntros "#Hdp #Hcode #Hjt #Hkw #Hkc #Hcw".
+    iIntros "#Hdp #Hcode #Hjt #Hkw #Hkc #Hcw HWr #Hwl".
     iDestruct (UkSh.ush_jtab_ro with "Hjt") as "#Hro".
     rewrite /ush_node_obl.
-    iExists emp%I, emp%I, uwait_ans, (fun _ => emp%I), (fun _ => emp%I),
+    iExists emp%I, Wr, Pw, (fun _ => emp%I), (fun _ => emp%I),
       (fun _ => ukn_pay N (-1)).
     iSplitR; [ iExact "Hkw" | ].
     iSplitR; [ done | ].
@@ -407,8 +476,8 @@ Section UkShPipesRound.
       iApply Hpx. }
     iSplitR.
     { iApply (ush_pipe_call_of_leaf Hpsok_free N ld Hnone with "Hkc Hcw"). }
-    iSplitR; [ done | ].
-    iSplitR; [ iApply (ush_wait0_law_free Hpsok_free N) | ].
+    iSplitL "HWr"; [ iExact "HWr" | ].
+    iSplitR; [ iExact "Hwl" | ].
     iSplitR.
     { (* panic("pipe") *)
       iIntros "!>" (h' m') "%Ha0' Hstd' _ Hrun'".
@@ -447,10 +516,59 @@ Section UkShPipesRound.
     { iApply (uis_shk_ec with "Hcode"). }
   Qed.
 
+  (* the FREE reading: no credential, the reap names nobody *)
+  Lemma ush_node_obl_free (N : uk_names Σ) `{!ukn_const N} (ld : list fdstate)
+      (szv cwdv : Z) (Sc : gset gname) (av : nat) :
+    (⊢ ukn_pay N (-1)) ->
+    fd_lowest_closed ld = None ->
+    UkSh.sh_deps -∗
+    shk_code (ukn_t N) -∗
+    ush_jtab (ukn_t N) -∗
+    □ (app_taint -∗ ukn_pay N (-1)) -∗
+    app_taint -∗
+    udepw_law 21 -∗
+    ush_node_obl N ld szv cwdv Sc av (ukn_pay N)
+      (fun _ => emp)%I (fun _ => emp)%I.
+  Proof using Hpsok_free.
+    intros Hpx Hnone.
+    iIntros "#Hdp #Hcode #Hjt #Hkw #Hkc #Hcw".
+    iApply (ush_node_obl_free_w N ld szv cwdv Sc av emp%I uwait_ans Hpx Hnone
+              with "Hdp Hcode Hjt Hkw Hkc Hcw [] []"); [ done | ].
+    iApply (ush_wait0_law_free Hpsok_free N).
+  Qed.
+
+  (* ...AND THE PAID ONE (lane PID-CHILD): a node process that holds its own
+     pid fragment -- sh at the top, and at every inner node the forked
+     child [UkShPipe.wp_kshr_pipe_arm_g3] now hands it to -- takes
+     [UkShPipe.ush_wait_pid_ans], whose reap names the generation it
+     reaped ([UkShPipe.ush_wait_pid_reap]). *)
+  Lemma ush_node_obl_free_pid (N : uk_names Σ) `{!ukn_const N}
+      (ld : list fdstate) (szv cwdv : Z) (Sc : gset gname) (av : nat) :
+    (⊢ ukn_pay N (-1)) ->
+    fd_lowest_closed ld = None ->
+    UkSh.sh_deps -∗
+    shk_code (ukn_t N) -∗
+    ush_jtab (ukn_t N) -∗
+    □ (app_taint -∗ ukn_pay N (-1)) -∗
+    app_taint -∗
+    udepw_law 21 -∗
+    UkSh.ush_pid N -∗
+    ush_node_obl N ld szv cwdv Sc av (ukn_pay N)
+      (fun _ => emp)%I (fun _ => emp)%I.
+  Proof using Hpsok_free.
+    intros Hpx Hnone.
+    iIntros "#Hdp #Hcode #Hjt #Hkw #Hkc #Hcw Hpid".
+    iApply (ush_node_obl_free_w N ld szv cwdv Sc av (UkSh.ush_pid N)
+              ush_wait_pid_ans Hpx Hnone
+              with "Hdp Hcode Hjt Hkw Hkc Hcw Hpid []").
+    iApply (ush_wait0_law_pid Hpsok_free N).
+  Qed.
+
   (* THE LAW'S PREMISES ARE SATISFIABLE: [UkShPipe.
      wp_kshr_runcmd_pipes_closed]'s consumer test, re-proved through §2 --
      every stage law is [UkShDiag.wp_kshr_runcmd_final] and the entry law
-     is [ush_node_obl_free] at the forked child. *)
+     is [ush_node_obl_free_pid] at the forked child, whose pid the arm
+     now hands it (lane PID-CHILD). *)
   Lemma wp_kshr_runcmd_pipes_free (a b : list uarg) (rest : list (list uarg))
       (N : uk_names Σ) `{!ukn_const N} (h : CpuId) (m : regfile)
       (t szv cwdv : Z) (ld : list fdstate) (st0 st1 : fdstate)
@@ -486,7 +604,11 @@ Section UkShPipesRound.
     iAssert (UserFd.ustd (ukn_fd N) (<[0%nat := st0]> ld)) with "[Hstd]"
       as "Hstd".
     { rewrite (list_insert_id ld 0%nat st0 Hl0). iExact "Hstd". }
-    iApply (wp_kshr_runcmd_pipes_law (a :: b :: rest) ld st1 szv cwdv (6 + n)
+    (* THROUGH THE LAW AT THE PID-CARRYING ENTRY (lane PID-CHILD): every
+       inner node takes the PAID wait reading, out of the pid fragment the
+       arm now hands its right child; the top node keeps the free one,
+       since this statement hands sh no pid. *)
+    iApply (wp_kshr_runcmd_pipes_law_g (a :: b :: rest) ld st1 szv cwdv (6 + n)
               (fun _ _ => ukn_pay N) (fun _ _ _ => emp%I) (fun _ _ _ => emp%I)
               (fun _ _ x y => ukn_const_eq (N := N) x y) Hl1 Hne1 Hnp1 Hl0len
               rest a b 0%nat N h m t st0 Sc eq_refl Ha0 Hne0
@@ -535,19 +657,19 @@ Section UkShPipesRound.
                 with "Hdp Hck Hexs' Hkw' Hjt2 Hqc Hsz Hstd [Hcwd] [Hch] Hrun").
       { iApply (UserCwd.ucwd_any_of with "Hcwd"). }
       { iApply (UserChildren.uch_any_of with "Hch"). }
-    - (* the ENTRY: the free bundle at the forked child *)
-      iModIntro. rewrite /ush_entry_law.
-      iIntros (k st0' N' γ' γp av) "%Hlt %Hav %Hpeq _ _ #Hck #Hjt2".
+    - (* the ENTRY: the PID-READING bundle at the forked child *)
+      iModIntro. rewrite /ush_entry_law_g.
+      iIntros (k st0' N' γ' γp av) "%Hlt %Hav %Hpeq _ _ Hpid #Hck #Hjt2".
       cbv beta in Hpeq |- *.
       pose proof (ukn_const_of_eq N' (ukn_pay N) Hpeq (ukn_const_eq (N := N))) as Hcst'.
       assert (Hpx' : ⊢ ukn_pay N' (-1)) by (rewrite Hpeq; exact Hpx).
       iAssert (□ (app_taint -∗ ukn_pay N' (-1)))%I as "#Hkw'".
       { rewrite Hpeq. iExact "Hkw". }
       iModIntro. rewrite -Hpeq.
-      iApply (ush_node_obl_free N' _ szv cwdv ∅ av Hpx'
+      iApply (ush_node_obl_free_pid N' _ szv cwdv ∅ av Hpx'
                 (ush_fd_lowest_insert0 ld (FdOpen true false (FdPipe γp))
                    ltac:(discriminate) Hnone)
-                with "Hdp Hck Hjt2 Hkw' Hkc Hcw").
+                with "Hdp Hck Hjt2 Hkw' Hkc Hcw Hpid").
     - iApply (ush_cldep_of_law with "Hcw").
     - (* the top node's bundle *)
       cbv beta.

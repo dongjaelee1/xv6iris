@@ -464,7 +464,26 @@ at every minted record (the pipe instance's four refused fields:
 `Hhalt_long`, `Hnil_ro`, `Hclose_open`, new `Hclose_open_w` -- the last
 two want a `drained` premise at `ei_close`/`cf_close`, a coordinated
 interface cut), and for cat the address bounds `< 2^38`, fd 2's row,
-`L <> []`, `|L| < 2^31`.  NEXT: lane E (`UkFileEntries.v`, in flight).  The
+`L <> []`, `|L| < 2^31`.  Cut 5 lane E LANDED PARTLY (lane/cut5-e
+611997708, VM c5emerge1 EXIT=0, audits 13/13/14/14): `UkFileEntries.v` --
+`cat_child_of_entry_of_tree` with `UCatKernel.cat_child_of_entry`'s
+statement word for word plus `fifRegG Σ`, `wr_tail_f ps0 cs0` (the
+round's `wr_blk_t_f`) and the file's content `< 2^31` (the console's C
+int; the round must get it from the file's ledger); the registry is
+allocated inside the slot (`uslot_bupd`), not in `Pay`.
+`echo_cons_image_entry_of_tree` at the FILE application's link record
+(the landed `echo_slot_of_kexec_at_at` is generic in the era's link
+record, which no one instance reproduces), with
+`fif_exit_k_echo_cons_d` (the glue passing the core's deed, sh's own
+fraction, on to the round).  `echo > f` NOT REACHED -- a design gap in
+`UkFileIface`: `fif_core` always holds a deed fraction `fdq r qf sf`,
+but at a redirect the child's whole share of the deed is inside the
+write cursor (`ef_pay` -> `efq` -> `file_wq`) and the claim holds the
+other half, so only a tainted round could supply the core's fraction
+(`echo_f_paid_of_redirect` has the same vacuity).  FIX (lane
+DEED-SPLIT): the core holds the deed only while no registered device
+holds it.  NEXT: DEED-SPLIT; then the pipe instance's two close gaps
+(a `drained` premise at `ei_close`); then repointing the assemblies.  The
 pipeline's CONSOLE device LANDED (lane/pcons 246f51ca4, design SS3.4d:
 `UkConsOut` split into a claim-free core and a `gen_params` instance,
 `UkPipeConsOut.v` with the single-writer and the `popen` devices).

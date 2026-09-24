@@ -1504,6 +1504,7 @@ LineWords.v
 ProgTree.v
 FileState.v
 ProgTreeFile.v
+ProgTreePipes.v
 EchoDisc.v
 LineBytes.v
 LineModel.v

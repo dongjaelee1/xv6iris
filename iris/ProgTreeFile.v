@@ -18,7 +18,7 @@ Lemma echo_word_conforms_m (w : bytes) (rest_c : list bytes) files (rest : proc)
   conforms (pipe_env (DOutM (w :: rest_c)) files) (Vis (EWrite 1 w) (fun _ => rest)).
 Proof.
   intros Hne Hrest.
-  eapply cf_write_m with (d := 0%nat) (rest := rest_c); [exact Hne | done | done | |];
+  eapply cf_write_m with (d := 0%nat) (rest := rest_c); [exact Hne | fdlk | done | |];
     rewrite pipe_env_set; exact Hrest.
 Qed.
 

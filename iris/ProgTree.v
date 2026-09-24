@@ -33,7 +33,7 @@
 (* [StringBytes] only.                                                     *)
 (* ===================================================================== *)
 From Stdlib Require Import ZArith Lia List String.
-From stdpp Require Import list bitvector.definitions.
+From stdpp Require Import list gmap bitvector.definitions.
 Require Import StringBytes LineWords.
 
 Local Open Scope Z_scope.
@@ -581,19 +581,26 @@ Inductive dspec :=
   | DInEnd.                       (* ended: every read answers end of file *)
 
 Record penv := MkEnv {
-  pe_fd : Z -> option nat;        (* descriptor -> device *)
+  pe_fd : gmap Z nat;             (* descriptor -> device *)
   pe_dev : nat -> dspec;
   pe_files : bytes -> option bytes;
+  pe_paths : list bytes;          (* the paths the environment DESCRIBES: an
+                                     open of any other path is outside it *)
 }.
 
 Definition env_dev (E : penv) (fd : Z) : option dspec :=
-  match pe_fd E fd with Some d => Some (pe_dev E d) | None => None end.
+  match pe_fd E !! fd with Some d => Some (pe_dev E d) | None => None end.
 Definition env_set_dev (E : penv) (d : nat) (s : dspec) : penv :=
-  MkEnv (pe_fd E) (fun d' => if decide (d' = d) then s else pe_dev E d') (pe_files E).
-Definition env_bind (E : penv) (fd : Z) (d : option nat) : penv :=
-  MkEnv (fun fd' => if decide (fd' = fd) then d else pe_fd E fd') (pe_dev E) (pe_files E).
+  MkEnv (pe_fd E) (fun d' => if decide (d' = d) then s else pe_dev E d') (pe_files E) (pe_paths E).
+Definition env_bind (E : penv) (fd : Z) (d : nat) : penv :=
+  MkEnv (<[fd := d]> (pe_fd E)) (pe_dev E) (pe_files E) (pe_paths E).
+Definition env_unbind (E : penv) (fd : Z) : penv :=
+  MkEnv (delete fd (pe_fd E)) (pe_dev E) (pe_files E) (pe_paths E).
+
+(* an open mode that creates (O_CREATE, kernel/fcntl.h) *)
+Definition mode_create (m : Z) : Prop := Z.land m 0x200 <> 0.
 Definition env_fresh (E : penv) (d : nat) : Prop :=
-  forall fd, pe_fd E fd <> Some d.
+  forall fd, pe_fd E !! fd <> Some d.
 
 (* a read's answer: a chunk of at most [n], empty only at end of file *)
 Definition chunk_ok (n : nat) (S c S' : bytes) : Prop :=
@@ -618,7 +625,7 @@ Definition cf_step (R : penv -> proc -> Prop) (E : penv) (t : proc) : Prop :=
   | Vis e k =>
       match e as e return (ans e -> proc) -> Prop with
       | EWrite fd bs => fun k =>
-          exists d, pe_fd E fd = Some d /\
+          exists d, pe_fd E !! fd = Some d /\
           ((bs = [] /\ R E (k 0) /\ R E (k (-1)))
            \/ (bs <> [] /\ exists alts a, pe_dev E d = DOut alts
               /\ a ∈ alts /\ bs `prefix_of` a
@@ -632,7 +639,7 @@ Definition cf_step (R : penv -> proc -> Prop) (E : penv) (t : proc) : Prop :=
               /\ R (env_set_dev E d (DOutM rest)) (k (-1)))
            \/ (bs <> [] /\ pe_dev E d = DHalt /\ R E (k (-1))))
       | ERead fd n => fun k =>
-          exists d, pe_fd E fd = Some d /\ (0 < n)%nat /\
+          exists d, pe_fd E !! fd = Some d /\ (0 < n)%nat /\
           ((exists S, pe_dev E d = DIn S
               /\ forall c S', chunk_ok n S c S' -> R (env_set_dev E d (DIn S')) (k (RdBytes c)))
            \/ (exists S, pe_dev E d = DInE S
@@ -640,14 +647,15 @@ Definition cf_step (R : penv -> proc -> Prop) (E : penv) (t : proc) : Prop :=
               /\ R (env_set_dev E d DInEnd) (k (RdBytes [])))
            \/ (pe_dev E d = DInEnd /\ R E (k (RdBytes []))))
       | EOpen p m => fun k =>
-          (m = 0 /\ exists content, pe_files E p = Some content
+          p ∈ pe_paths E /\
+          ((m = 0 /\ exists content, pe_files E p = Some content
              (* the kernel hands back a descriptor the process did not hold *)
-             /\ (forall fd d, 0 <= fd -> pe_fd E fd = None -> env_fresh E d ->
-                   R (env_set_dev (env_bind E fd (Some d)) d (DIn content)) (k fd))
+             /\ (forall fd d, 0 <= fd -> pe_fd E !! fd = None -> env_fresh E d ->
+                   R (env_set_dev (env_bind E fd d) d (DIn content)) (k fd))
              /\ R E (k (-1)))
-          \/ (pe_files E p = None /\ R E (k (-1)))
+          \/ (~ mode_create m /\ pe_files E p = None /\ R E (k (-1))))
       | EClose fd => fun k =>
-          exists d, pe_fd E fd = Some d /\ R (env_bind E fd None) (k 0)
+          exists d, pe_fd E !! fd = Some d /\ R (env_unbind E fd) (k 0)
       | EExit s => fun _ => forall d, drained (pe_dev E d)
       end k
   end.
@@ -660,19 +668,19 @@ CoInductive conforms : penv -> proc -> Prop :=
      the landed payers do); what is owed is then that one's rest *)
   (* a zero-length write: 0 or -1, at the kernel's whim, nothing moves *)
   | cf_write_nil E fd d k :
-      pe_fd E fd = Some d ->
+      pe_fd E !! fd = Some d ->
       conforms E (k 0) -> conforms E (k (-1)) ->
       conforms E (Vis (EWrite fd []) k)
   | cf_write E fd d alts a bs k :
       bs <> [] ->
-      pe_fd E fd = Some d -> pe_dev E d = DOut alts ->
+      pe_fd E !! fd = Some d -> pe_dev E d = DOut alts ->
       a ∈ alts -> bs `prefix_of` a ->
       conforms (env_set_dev E d (DOut [drop (length bs) a])) (k (Z.of_nat (length bs))) ->
       conforms E (Vis (EWrite fd bs) k)
   (* ...at a haltable device the tree is ready for both answers *)
   | cf_write_h E fd d alts a bs k :
       bs <> [] ->
-      pe_fd E fd = Some d -> pe_dev E d = DOutH alts ->
+      pe_fd E !! fd = Some d -> pe_dev E d = DOutH alts ->
       a ∈ alts -> bs `prefix_of` a ->
       conforms (env_set_dev E d (DOutH [drop (length bs) a])) (k (Z.of_nat (length bs))) ->
       conforms (env_set_dev E d DHalt) (k (-1)) ->
@@ -681,49 +689,51 @@ CoInductive conforms : penv -> proc -> Prop :=
      the device owes the rest either way *)
   | cf_write_m E fd d rest bs k :
       bs <> [] ->
-      pe_fd E fd = Some d -> pe_dev E d = DOutM (bs :: rest) ->
+      pe_fd E !! fd = Some d -> pe_dev E d = DOutM (bs :: rest) ->
       conforms (env_set_dev E d (DOutM rest)) (k (Z.of_nat (length bs))) ->
       conforms (env_set_dev E d (DOutM rest)) (k (-1)) ->
       conforms E (Vis (EWrite fd bs) k)
   | cf_write_halt E fd d bs k :
       bs <> [] ->
-      pe_fd E fd = Some d -> pe_dev E d = DHalt ->
+      pe_fd E !! fd = Some d -> pe_dev E d = DHalt ->
       conforms E (k (-1)) ->
       conforms E (Vis (EWrite fd bs) k)
   (* a read asks for at least one byte (a zero-length read answers 0
      whatever is owed) *)
   | cf_read E fd d S n k :
       (0 < n)%nat ->
-      pe_fd E fd = Some d -> pe_dev E d = DIn S ->
+      pe_fd E !! fd = Some d -> pe_dev E d = DIn S ->
       (forall c S', chunk_ok n S c S' ->
          conforms (env_set_dev E d (DIn S')) (k (RdBytes c))) ->
       conforms E (Vis (ERead fd n) k)
   (* ...at a device that may end early the tree is ready for end of file *)
   | cf_read_e E fd d S n k :
       (0 < n)%nat ->
-      pe_fd E fd = Some d -> pe_dev E d = DInE S ->
+      pe_fd E !! fd = Some d -> pe_dev E d = DInE S ->
       (forall c S', chunk_ok n S c S' ->
          conforms (env_set_dev E d (DInE S')) (k (RdBytes c))) ->
       conforms (env_set_dev E d DInEnd) (k (RdBytes [])) ->
       conforms E (Vis (ERead fd n) k)
   | cf_read_end E fd d n k :
       (0 < n)%nat ->
-      pe_fd E fd = Some d -> pe_dev E d = DInEnd ->
+      pe_fd E !! fd = Some d -> pe_dev E d = DInEnd ->
       conforms E (k (RdBytes [])) ->
       conforms E (Vis (ERead fd n) k)
   | cf_open_present E p content k :
+      p ∈ pe_paths E ->
       pe_files E p = Some content ->
-      (forall fd d, 0 <= fd -> pe_fd E fd = None -> env_fresh E d ->
-         conforms (env_set_dev (env_bind E fd (Some d)) d (DIn content)) (k fd)) ->
+      (forall fd d, 0 <= fd -> pe_fd E !! fd = None -> env_fresh E d ->
+         conforms (env_set_dev (env_bind E fd d) d (DIn content)) (k fd)) ->
       conforms E (k (-1)) ->
       conforms E (Vis (EOpen p 0) k)
   | cf_open_absent E p m k :
+      p ∈ pe_paths E -> ~ mode_create m ->
       pe_files E p = None ->
       conforms E (k (-1)) ->
       conforms E (Vis (EOpen p m) k)
   | cf_close E fd d k :
-      pe_fd E fd = Some d ->
-      conforms (env_bind E fd None) (k 0) ->
+      pe_fd E !! fd = Some d ->
+      conforms (env_unbind E fd) (k 0) ->
       conforms E (Vis (EClose fd) k)
   | cf_exit E s k :
       (forall d, drained (pe_dev E d)) ->
@@ -744,11 +754,16 @@ Proof.
   - exists d. split; [assumption |]. split; [assumption |]. left. exists S. auto.
   - exists d. split; [assumption |]. split; [assumption |]. right. left. exists S. auto.
   - exists d. split; [assumption |]. split; [assumption |]. right. right. auto.
-  - left. split; [reflexivity |]. exists content. auto.
-  - right. auto.
+  - split; [assumption |]. left. split; [reflexivity |]. exists content. auto.
+  - split; [assumption |]. right. auto.
   - exists d. auto.
   - exact H.
 Qed.
+
+(* a descriptor's device in a literal environment *)
+Ltac fdlk := first [ apply lookup_insert | apply lookup_singleton
+                   | by rewrite lookup_insert_ne; [| lia]
+                   | by simplify_map_eq ].
 
 (* ---- echo conforms to a console owing its line -------------------- *)
 
@@ -756,7 +771,7 @@ Lemma env_set_dev_dev (E : penv) (d : nat) (x : dspec) :
   pe_dev (env_set_dev E d x) d = x.
 Proof. unfold env_set_dev. simpl. by rewrite decide_True. Qed.
 Lemma env_set_dev_fd (E : penv) (d : nat) (x : dspec) (fd : Z) :
-  pe_fd (env_set_dev E d x) fd = pe_fd E fd.
+  pe_fd (env_set_dev E d x) = pe_fd E.
 Proof. reflexivity. Qed.
 Lemma env_set_dev_set_dev (E : penv) (d : nat) (x y : dspec) :
   env_set_dev (env_set_dev E d x) d y = env_set_dev E d y.
@@ -769,7 +784,7 @@ Qed.
    owed after it is that alternative's rest, in any set that has it *)
 Lemma write_bytes_conforms (E : penv) (fd : Z) (d : nat) (bs S' : bytes)
     (alts : list bytes) (rest : proc) :
-  pe_fd E fd = Some d -> pe_dev E d = DOut alts -> bs ++ S' ∈ alts ->
+  pe_fd E !! fd = Some d -> pe_dev E d = DOut alts -> bs ++ S' ∈ alts ->
   (forall alts', S' ∈ alts' -> conforms (env_set_dev E d (DOut alts')) rest) ->
   conforms E (write_bytes fd bs rest).
 Proof.
@@ -777,7 +792,7 @@ Proof.
   - simpl in Hin. simpl.
     specialize (Hrest alts Hin).
     assert (env_set_dev E d (DOut alts) = E) as Heq.
-    { destruct E as [f g files]. unfold env_set_dev. simpl in *. f_equal.
+    { destruct E as [f g files paths]. unfold env_set_dev. simpl in *. f_equal.
       apply functional_extensionality. intros d'.
       destruct (decide (d' = d)) as [-> | ]; [by rewrite Hd | reflexivity]. }
     by rewrite Heq in Hrest.
@@ -794,8 +809,8 @@ Qed.
 
 (* the console device is 0 and fd 1 names it *)
 Definition cons_env (owed : bytes) (files : bytes -> option bytes) : penv :=
-  MkEnv (fun fd => if decide (fd = 1) then Some 0%nat else None)
-        (fun d => if decide (d = 0%nat) then DOut [owed] else DOut [[]]) files.
+  MkEnv {[1 := 0%nat]}
+        (fun d => if decide (d = 0%nat) then DOut [owed] else DOut [[]]) files [].
 
 Lemma cons_env_set (owed owed' : bytes) (files : bytes -> option bytes) :
   env_set_dev (cons_env owed files) 0 (DOut [owed']) = cons_env owed' files.
@@ -812,9 +827,9 @@ Lemma echo_word_conforms (w S' : bytes) files (rest : proc) :
   conforms (cons_env (w ++ S') files) (Vis (EWrite 1 w) (fun _ => rest)).
 Proof.
   intros Hrest. destruct w as [| b w].
-  - apply cf_write_nil with (d := 0%nat); [done | exact Hrest | exact Hrest].
+  - apply cf_write_nil with (d := 0%nat); [fdlk | exact Hrest | exact Hrest].
   - eapply cf_write with (d := 0%nat) (alts := [(b :: w) ++ S']) (a := (b :: w) ++ S');
-      [done | done | done | by left | by eexists |].
+      [done | fdlk | done | by left | by eexists |].
     rewrite drop_app_length, cons_env_set. exact Hrest.
 Qed.
 
@@ -851,46 +866,46 @@ Qed.
 (* the console is device 0 on descriptors 1 and 2; an input device [din]
    on descriptor [fdin]; every other device owes nothing *)
 Definition cat_env (fdin : Z) (din : nat) (S_in : bytes) (alts : list bytes)
-    (files : bytes -> option bytes) : penv :=
-  MkEnv (fun fd => if decide (fd = 1 \/ fd = 2) then Some 0%nat
-                   else if decide (fd = fdin) then Some din else None)
+    (files : bytes -> option bytes) (paths : list bytes) : penv :=
+  MkEnv (<[1 := 0%nat]> (<[2 := 0%nat]> {[fdin := din]}))
         (fun d => if decide (d = 0%nat) then DOut alts
-                  else if decide (d = din) then DIn S_in else DOut [[]]) files.
+                  else if decide (d = din) then DIn S_in else DOut [[]]) files paths.
 
 (* ...and before any file is open *)
-Definition cat_env0 (alts : list bytes) (files : bytes -> option bytes) : penv :=
-  MkEnv (fun fd => if decide (fd = 1 \/ fd = 2) then Some 0%nat else None)
-        (fun d => if decide (d = 0%nat) then DOut alts else DOut [[]]) files.
+Definition cat_env0 (alts : list bytes) (files : bytes -> option bytes)
+    (paths : list bytes) : penv :=
+  MkEnv (<[1 := 0%nat]> {[2 := 0%nat]})
+        (fun d => if decide (d = 0%nat) then DOut alts else DOut [[]]) files paths.
 
-Lemma cat_env_in (fdin : Z) (din : nat) (S S' : bytes) (alts : list bytes) files :
+Lemma cat_env_in (fdin : Z) (din : nat) (S S' : bytes) (alts : list bytes) files paths :
   din <> 0%nat ->
-  env_set_dev (cat_env fdin din S alts files) din (DIn S') = cat_env fdin din S' alts files.
+  env_set_dev (cat_env fdin din S alts files paths) din (DIn S') = cat_env fdin din S' alts files paths.
 Proof.
   intros Hd. unfold env_set_dev, cat_env. f_equal. apply functional_extensionality.
   intros d. cbn [pe_dev pe_fd]. destruct (decide (d = din)) as [-> | ]; [| reflexivity].
   rewrite decide_False; [| exact Hd]. first [ by rewrite decide_True | done ].
 Qed.
-Lemma cat_env_out (fdin : Z) (din : nat) (S : bytes) (alts alts' : list bytes) files :
-  env_set_dev (cat_env fdin din S alts files) 0 (DOut alts') = cat_env fdin din S alts' files.
+Lemma cat_env_out (fdin : Z) (din : nat) (S : bytes) (alts alts' : list bytes) files paths :
+  env_set_dev (cat_env fdin din S alts files paths) 0 (DOut alts') = cat_env fdin din S alts' files paths.
 Proof.
   unfold env_set_dev, cat_env. f_equal. apply functional_extensionality.
   intros d. cbn [pe_dev pe_fd]. destruct (decide (d = 0%nat)); reflexivity.
 Qed.
-Lemma cat_env_exit (fdin : Z) (din : nat) (S : bytes) (alts : list bytes) files (st : Z) :
-  [] ∈ alts -> conforms (cat_env fdin din S alts files) (exit_ st).
+Lemma cat_env_exit (fdin : Z) (din : nat) (S : bytes) (alts : list bytes) files paths (st : Z) :
+  [] ∈ alts -> conforms (cat_env fdin din S alts files paths) (exit_ st).
 Proof.
   intros Hin. apply cf_exit. intros d. unfold drained. cbn [pe_dev cat_env cat_env0].
   destruct (decide (d = 0%nat)); [exact Hin |].
   destruct (decide (d = din)); [exact I | by left].
 Qed.
-Lemma cat_env0_exit (alts : list bytes) files (st : Z) :
-  [] ∈ alts -> conforms (cat_env0 alts files) (exit_ st).
+Lemma cat_env0_exit (alts : list bytes) files paths (st : Z) :
+  [] ∈ alts -> conforms (cat_env0 alts files paths) (exit_ st).
 Proof.
   intros Hin. apply cf_exit. intros d. unfold drained. cbn [pe_dev cat_env cat_env0].
   destruct (decide (d = 0%nat)); [exact Hin | by left].
 Qed.
-Lemma cat_env0_out (alts alts' : list bytes) files :
-  env_set_dev (cat_env0 alts files) 0 (DOut alts') = cat_env0 alts' files.
+Lemma cat_env0_out (alts alts' : list bytes) files paths :
+  env_set_dev (cat_env0 alts files paths) 0 (DOut alts') = cat_env0 alts' files paths.
 Proof.
   unfold env_set_dev, cat_env0. f_equal. apply functional_extensionality.
   intros d. cbn [pe_dev pe_fd]. destruct (decide (d = 0%nat)); reflexivity.
@@ -899,16 +914,17 @@ Qed.
 (* one call of cat(fdin): what the console owes after it is what it owed
    after the input, in every alternative that had it *)
 Lemma cat_loop_conforms (fdin : Z) (din : nat) (S : bytes) (alts : list bytes)
-    files (rest : proc) :
+    files paths (rest : proc) :
   din <> 0%nat -> fdin <> 1 -> fdin <> 2 -> S ∈ alts ->
-  (forall alts', [] ∈ alts' -> conforms (cat_env fdin din [] alts' files) rest) ->
-  conforms (cat_env fdin din S alts files) (cat_loop fdin rest).
+  (forall alts', [] ∈ alts' -> conforms (cat_env fdin din [] alts' files paths) rest) ->
+  conforms (cat_env fdin din S alts files paths) (cat_loop fdin rest).
 Proof.
   intros Hd Hf1 Hf2. revert S alts. cofix CIH. intros S alts Hin Hrest.
   rewrite cat_loop_unfold.
   eapply cf_read with (d := din) (S := S).
   { unfold cat_bufsz. lia. }
-  { cbv [cat_env pe_fd pe_dev]. rewrite decide_False; [| lia]. first [ by rewrite decide_True | done ]. }
+  { cbv [cat_env pe_fd]. rewrite lookup_insert_ne; [| lia].
+    rewrite lookup_insert_ne; [| lia]. apply lookup_singleton. }
   { cbv [cat_env pe_fd pe_dev]. rewrite decide_False; [| exact Hd]. first [ by rewrite decide_True | done ]. }
   intros c S' (HS & Hlen & Hnil). rewrite cat_env_in; [| exact Hd].
   destruct c as [| b c'].
@@ -918,7 +934,7 @@ Proof.
   - rewrite HS in Hin.
     eapply cf_write with (d := 0%nat) (alts := alts) (a := (b :: c') ++ S').
     { done. }
-    { cbv [cat_env cat_env0 pe_fd pe_dev]. by rewrite decide_True; [| by left]. }
+    { cbv [cat_env cat_env0 pe_fd]. apply lookup_insert. }
     { cbv [cat_env pe_fd pe_dev]. by rewrite decide_True. }
     { exact Hin. }
     { by eexists. }
@@ -927,8 +943,8 @@ Proof.
     apply cf_tau. apply CIH; [by left | exact Hrest].
 Qed.
 
-Theorem cat_stdin_conforms (S : bytes) files :
-  conforms (cat_env 0 1 S [S] files) (cat_tree [sb "cat"]).
+Theorem cat_stdin_conforms (S : bytes) files paths :
+  conforms (cat_env 0 1 S [S] files paths) (cat_tree [sb "cat"]).
 Proof.
   simpl. apply cat_loop_conforms; [done | done | done | by left |].
   intros alts' Hin. apply cat_env_exit. exact Hin.
@@ -936,21 +952,21 @@ Qed.
 
 (* ---- cat f: the console owes the content OR the diagnostic ---------- *)
 
-Lemma cat_env0_open (alts : list bytes) files (fd : Z) (d : nat) (content : bytes) :
-  pe_fd (cat_env0 alts files) fd = None -> env_fresh (cat_env0 alts files) d ->
-  env_set_dev (env_bind (cat_env0 alts files) fd (Some d)) d (DIn content)
-  = cat_env fd d content alts files.
+Lemma cat_env0_open (alts : list bytes) files paths (fd : Z) (d : nat) (content : bytes) :
+  pe_fd (cat_env0 alts files paths) !! fd = None -> env_fresh (cat_env0 alts files paths) d ->
+  env_set_dev (env_bind (cat_env0 alts files paths) fd d) d (DIn content)
+  = cat_env fd d content alts files paths.
 Proof.
-  intros Hfd Hfr. cbv [env_set_dev env_bind cat_env0 cat_env pe_fd pe_dev pe_files] in *.
+  intros Hfd Hfr. cbv [cat_env0 pe_fd] in Hfd.
+  assert (fd <> 1 /\ fd <> 2) as [Hf1 Hf2].
+  { split; intros ->; simplify_map_eq. }
   assert (d <> 0%nat) as Hd0.
-  { intros ->. apply (Hfr 1). cbv [pe_fd]. by rewrite decide_True; [| by left]. }
-  f_equal.
-  - apply functional_extensionality. intros fd'.
-    destruct (decide (fd' = fd)) as [-> | Hne].
-    + destruct (decide (fd = 1 \/ fd = 2)); [discriminate Hfd |].
-      first [ reflexivity | by rewrite decide_True ].
-    + destruct (decide (fd' = 1 \/ fd' = 2)); [reflexivity |].
-      first [ reflexivity | by rewrite decide_False ].
+  { intros ->. apply (Hfr 1). cbv [cat_env0 pe_fd]. apply lookup_insert. }
+  cbv [env_set_dev env_bind cat_env0 cat_env pe_fd pe_dev pe_files pe_paths]. f_equal.
+  - apply map_eq. intros k.
+    destruct (decide (k = fd)) as [-> |]; [by simplify_map_eq |].
+    destruct (decide (k = 1)) as [-> |]; [by simplify_map_eq |].
+    destruct (decide (k = 2)) as [-> |]; by simplify_map_eq.
   - apply functional_extensionality. intros d'.
     destruct (decide (d' = d)) as [-> | Hne].
     + rewrite decide_False; [| exact Hd0]. first [ reflexivity | by rewrite decide_True ].
@@ -960,26 +976,27 @@ Qed.
 
 Theorem cat_file_conforms (f content : bytes) files :
   files f = Some content ->
-  conforms (cat_env0 [content; cat_dg_open f] files) (cat_tree [sb "cat"; f]).
+  conforms (cat_env0 [content; cat_dg_open f] files [f]) (cat_tree [sb "cat"; f]).
 Proof.
   intros Hf. simpl.
-  eapply cf_open_present; [exact Hf | |].
+  eapply cf_open_present; [by left | exact Hf | |].
   - intros fd d Hfd Hnone Hfr. rewrite cat_env0_open; [| exact Hnone | exact Hfr].
     rewrite decide_False; [| lia].
     assert (fd <> 1 /\ fd <> 2) as [Hf1 Hf2].
-    { cbv [cat_env0 pe_fd] in Hnone. destruct (decide (fd = 1 \/ fd = 2)); [discriminate Hnone | lia]. }
+    { cbv [cat_env0 pe_fd] in Hnone. split; intros ->; simplify_map_eq. }
     assert (d <> 0%nat) as Hd0.
-    { intros ->. apply (Hfr 1). cbv [cat_env0 pe_fd]. by rewrite decide_True; [| by left]. }
+    { intros ->. apply (Hfr 1). cbv [cat_env0 pe_fd]. apply lookup_insert. }
     apply cat_loop_conforms; [exact Hd0 | exact Hf1 | exact Hf2 | by left |].
     intros alts' Hin.
     eapply cf_close with (d := d).
-    { cbv [cat_env pe_fd pe_dev]. rewrite decide_False; [| lia]. first [ by rewrite decide_True | done ]. }
-    simpl. apply cf_exit. intros d'. unfold drained. cbv [env_bind cat_env pe_dev].
+    { cbv [cat_env pe_fd]. rewrite lookup_insert_ne; [| lia].
+      rewrite lookup_insert_ne; [| lia]. apply lookup_singleton. }
+    simpl. apply cf_exit. intros d'. unfold drained. cbv [env_unbind cat_env pe_dev].
     destruct (decide (d' = 0%nat)); [exact Hin |].
     destruct (decide (d' = d)); [exact I | by left].
   - cbv beta. rewrite decide_True; [| lia].
     eapply write_bytes_conforms with (d := 0%nat) (S' := []) (alts := [content; cat_dg_open f]).
-    { cbv [cat_env cat_env0 pe_fd pe_dev]. by rewrite decide_True; [| by right]. }
+    { cbv [cat_env cat_env0 pe_fd]. rewrite lookup_insert_ne; [| lia]. apply lookup_singleton. }
     { reflexivity. }
     { rewrite app_nil_r. by right; left. }
     intros alts' Hin. rewrite cat_env0_out. apply cat_env0_exit. exact Hin.
@@ -987,13 +1004,13 @@ Qed.
 
 Theorem cat_file_absent_conforms (f : bytes) files :
   files f = None ->
-  conforms (cat_env0 [cat_dg_open f] files) (cat_tree [sb "cat"; f]).
+  conforms (cat_env0 [cat_dg_open f] files [f]) (cat_tree [sb "cat"; f]).
 Proof.
   intros Hf. simpl.
-  eapply cf_open_absent; [exact Hf |].
+  eapply cf_open_absent; [by left | unfold mode_create; vm_compute; intros H; exact (H eq_refl) | exact Hf |].
   cbv beta. rewrite decide_True; [| lia].
   eapply write_bytes_conforms with (d := 0%nat) (S' := []) (alts := [cat_dg_open f]).
-  { cbv [cat_env cat_env0 pe_fd pe_dev]. by rewrite decide_True; [| by right]. }
+  { cbv [cat_env cat_env0 pe_fd]. rewrite lookup_insert_ne; [| lia]. apply lookup_singleton. }
   { reflexivity. }
   { rewrite app_nil_r. by left. }
   intros alts' Hin. rewrite cat_env0_out. apply cat_env0_exit. exact Hin.
@@ -1002,8 +1019,8 @@ Qed.
 (* ---- echo at a device that may halt (a pipe's write end) ------------- *)
 
 Definition pipe_env (spec : dspec) (files : bytes -> option bytes) : penv :=
-  MkEnv (fun fd => if decide (fd = 1) then Some 0%nat else None)
-        (fun d => if decide (d = 0%nat) then spec else DOut [[]]) files.
+  MkEnv {[1 := 0%nat]}
+        (fun d => if decide (d = 0%nat) then spec else DOut [[]]) files [].
 
 Lemma pipe_env_set (spec spec' : dspec) files :
   env_set_dev (pipe_env spec files) 0 spec' = pipe_env spec' files.
@@ -1027,8 +1044,8 @@ Lemma echo_word_halted (w : bytes) files (rest : proc) :
   conforms (pipe_env DHalt files) (Vis (EWrite 1 w) (fun _ => rest)).
 Proof.
   intros Hrest. destruct w as [| b w].
-  - apply cf_write_nil with (d := 0%nat); [done | exact Hrest | exact Hrest].
-  - eapply cf_write_halt with (d := 0%nat); [done | done | done | exact Hrest].
+  - apply cf_write_nil with (d := 0%nat); [fdlk | exact Hrest | exact Hrest].
+  - eapply cf_write_halt with (d := 0%nat); [done | fdlk | done | exact Hrest].
 Qed.
 
 Lemma echo_words_halted (ws : list bytes) files (rest : proc) :
@@ -1052,9 +1069,9 @@ Lemma echo_word_conforms_h (w S' : bytes) files (rest : proc) :
   conforms (pipe_env (DOutH [w ++ S']) files) (Vis (EWrite 1 w) (fun _ => rest)).
 Proof.
   intros Hrest Hhalt. destruct w as [| b w].
-  - apply cf_write_nil with (d := 0%nat); [done | exact Hrest | exact Hrest].
+  - apply cf_write_nil with (d := 0%nat); [fdlk | exact Hrest | exact Hrest].
   - eapply cf_write_h with (d := 0%nat) (alts := [(b :: w) ++ S']) (a := (b :: w) ++ S');
-      [done | done | done | by left | by eexists | |].
+      [done | fdlk | done | by left | by eexists | |].
     + rewrite drop_app_length, pipe_env_set. exact Hrest.
     + rewrite pipe_env_set. exact Hhalt.
 Qed.
@@ -1089,4 +1106,102 @@ Proof.
   intros Hne. unfold echo_tree. apply echo_words_conforms_h; [exact Hne | |].
   - apply pipe_env_exit. by left.
   - apply pipe_env_exit. exact I.
+Qed.
+
+(* ===================================================================== *)
+(*  9.  THE DESCRIPTOR DISCIPLINE UNDER ANY ANSWER                        *)
+(*                                                                        *)
+(*  What a payer at the TAINT needs of a tree: along EVERY path, whatever  *)
+(*  the kernel answered, it closes only descriptors it holds and reads at  *)
+(*  least one byte.  Conformance says this along the paths it covers; the  *)
+(*  taint arm of a law continues at an answer conformance did not cover,   *)
+(*  and the free handler there has exactly the process's handles and the   *)
+(*  free leaves, which is what these two clauses are.                      *)
+(* ===================================================================== *)
+
+Definition sf_step (R : gset Z -> proc -> Prop) (held : gset Z) (t : proc) : Prop :=
+  match t with
+  | Ret v => match v with end
+  | Tau t' => R held t'
+  | Vis e k =>
+      match e as e return (ans e -> proc) -> Prop with
+      | EWrite fd bs => fun k => forall x, R held (k x)
+      | ERead fd n => fun k => (0 < n)%nat /\ forall x, R held (k x)
+      | EOpen p m => fun k =>
+          (forall fd, 0 <= fd -> R ({[fd]} ∪ held) (k fd)) /\ R held (k (-1))
+      | EClose fd => fun k => fd ∈ held /\ forall x, R (held ∖ {[fd]}) (k x)
+      | EExit s => fun _ => True
+      end k
+  end.
+
+CoInductive safe_fds : gset Z -> proc -> Prop :=
+  | sf_tau held t : safe_fds held t -> safe_fds held (Tau t)
+  | sf_write held fd bs k :
+      (forall x, safe_fds held (k x)) -> safe_fds held (Vis (EWrite fd bs) k)
+  | sf_read held fd n k :
+      (0 < n)%nat -> (forall x, safe_fds held (k x)) -> safe_fds held (Vis (ERead fd n) k)
+  | sf_open held p m k :
+      (forall fd, 0 <= fd -> safe_fds ({[fd]} ∪ held) (k fd)) ->
+      safe_fds held (k (-1)) ->
+      safe_fds held (Vis (EOpen p m) k)
+  | sf_close held fd k :
+      fd ∈ held -> (forall x, safe_fds (held ∖ {[fd]}) (k x)) ->
+      safe_fds held (Vis (EClose fd) k)
+  | sf_exit held s k : safe_fds held (Vis (EExit s) k).
+
+Lemma safe_fds_unfold (held : gset Z) (t : proc) :
+  safe_fds held t -> sf_step safe_fds held t.
+Proof. intros H. destruct H; simpl; auto. Qed.
+
+(* echo only writes and exits *)
+Lemma echo_words_safe (ws : list bytes) (rest : proc) (held : gset Z) :
+  safe_fds held rest -> safe_fds held (echo_words ws rest).
+Proof.
+  revert rest. induction ws as [| w r IH]; intros rest Hrest; [exact Hrest |].
+  destruct r as [| w' r']; simpl.
+  - apply sf_write. intros _. apply sf_write. intros _. exact Hrest.
+  - apply sf_write. intros _. apply sf_write. intros _. apply IH. exact Hrest.
+Qed.
+
+Theorem echo_tree_safe (argv : list bytes) (held : gset Z) :
+  safe_fds held (echo_tree argv).
+Proof. unfold echo_tree. apply echo_words_safe. apply sf_exit. Qed.
+
+(* cat reads 512 bytes at a time, closes what it opened *)
+Lemma write_bytes_safe (fd : Z) (bs : bytes) (rest : proc) (held : gset Z) :
+  safe_fds held rest -> safe_fds held (write_bytes fd bs rest).
+Proof.
+  induction bs as [| b bs IH]; intros Hrest; [exact Hrest |].
+  simpl. apply sf_write. intros _. apply IH. exact Hrest.
+Qed.
+
+Lemma cat_loop_safe (fd : Z) (rest : proc) (held : gset Z) :
+  safe_fds held rest -> safe_fds held (cat_loop fd rest).
+Proof.
+  intros Hrest. revert fd rest held Hrest. cofix CIH. intros fd rest held Hrest.
+  rewrite cat_loop_unfold. apply sf_read; [unfold cat_bufsz; lia |].
+  intros [| bs].
+  - apply (write_bytes_safe 2 cat_dg_read (exit_ 1)). apply sf_exit.
+  - destruct bs as [| b bs]; [exact Hrest |].
+    apply sf_write. intros r. destruct (decide (r = Z.of_nat (length (b :: bs)))).
+    + apply sf_tau. exact (CIH fd rest held Hrest).
+    + apply (write_bytes_safe 2 cat_dg_write (exit_ 1)). apply sf_exit.
+Qed.
+
+Lemma cat_files_safe (paths : list bytes) (held : gset Z) :
+  safe_fds held (cat_files paths (exit_ 0)).
+Proof.
+  revert held. induction paths as [| p r IH]; intros held; simpl; [apply sf_exit |].
+  apply sf_open.
+  - intros fd Hfd. rewrite decide_False; [| lia].
+    apply cat_loop_safe. apply sf_close; [set_solver |]. intros _. apply IH.
+  - rewrite decide_True; [| lia]. apply (write_bytes_safe 2 (cat_dg_open p) (exit_ 1)). apply sf_exit.
+Qed.
+
+Theorem cat_tree_safe (argv : list bytes) (held : gset Z) :
+  safe_fds held (cat_tree argv).
+Proof.
+  unfold cat_tree. destruct (drop 1 argv) as [| p r].
+  - apply cat_loop_safe. apply sf_exit.
+  - apply cat_files_safe.
 Qed.

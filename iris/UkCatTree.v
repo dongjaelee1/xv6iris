@@ -52,6 +52,7 @@ Require Import VcGen.        (* [trunc32_mword_of_int], [trunc32_subrange] *)
 Require Import StringBytes LineWords.
 Require Import ProgTree UkTree.
 Require Import UkCat UkCatLit UkCatCat UkCatMain.
+Require Import UkHandler.       (* [ep_iface] / [env_res] / [tree_pay_of_conforms] *)
 Local Open Scope Z_scope.
 Import Defs.
 
@@ -516,6 +517,37 @@ Section UkCatTree.
     - iApply (kcat_pay_all_tree with "Hargv Ht").
     - iIntros "H". by rewrite kcat_exit_ex_obl.
     - done.
+  Qed.
+
+  (* ------------------------------------------------------------------- *)
+  (*  6.  the entry at a handler (program-specs cut 5, lane C)            *)
+  (* ------------------------------------------------------------------- *)
+
+  (* [wp_kcat_start_tree] with the tree paid by an ENVIRONMENT
+     ([UkHandler.tree_pay_of_conforms]); [UkEchoTree.wp_kecho_start_env]'s
+     twin. *)
+  Lemma wp_kcat_start_env (I : ep_iface N cat_prog) (E : penv) (ds : gset nat)
+      (h : CpuId) (m : regfile) (av : Z) (args : list uarg)
+      (f : nat -> bv 8) (n : nat) :
+    conforms E (cat_tree (map uarg_bytes args)) ->
+    safe_fds (dom (pe_fd E)) (cat_tree (map uarg_bytes args)) ->
+    (forall (j : nat) (g : uarg), args !! j = Some g -> ua_ptr g <> 0) ->
+    m !!! Regidx (mword_of_int 10 : mword 5)
+      = mword_of_int (Z.of_nat (length args)) ->
+    m !!! Regidx (mword_of_int 11 : mword 5) = mword_of_int av ->
+    env_res N cat_prog I E ds -∗
+    cat_code γt -∗
+    cat_rodata γt -∗
+    uargv γd av args -∗
+    ubytes γd CatSyms.buf 512 f -∗
+    urun N h m (mword_of_int CatSyms.start)
+      (2 + (6 + (8 + (10 + (12 + (4 + n)))))) -∗
+    mWP (Loop : expr riscv_lang).
+  Proof using .
+    intros Hc Hs Hptr Ha0 Ha1. iIntros "Henv #Hcode #Hro #Hargv Hbuf Hrun".
+    iApply (wp_kcat_start_tree h m av args f n Hptr Ha0 Ha1
+              with "[Henv] Hcode Hro Hargv Hbuf Hrun").
+    iApply (tree_pay_of_conforms N cat_prog I E ds _ Hc Hs with "Henv").
   Qed.
 
 End UkCatTree.

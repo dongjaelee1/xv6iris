@@ -24,8 +24,9 @@
 (* WHAT IS HERE: cat f at the landed statement plus two pure facts      *)
 (* (section 2); echo at the console at the file application's record     *)
 (* (section 3: the landed entry is generic in the era's link record, and *)
-(* the exit glue has to hand the round's deed back); and NOT echo > f    *)
-(* (section 4).                                                           *)
+(* the exit glue has to hand the round's deed back); and echo > f at the  *)
+(* instance's WRITE MODE, where the core holds no deed (section 4, lane   *)
+(* DEED-SPLIT).                                                           *)
 (* ===================================================================== *)
 From Stdlib Require Import ZArith Bool Lia List.
 From stdpp Require Import gmap list bitvector.definitions.
@@ -76,6 +77,8 @@ Require Import GenLinksLine.          (* [gwc_blk] / [gwc_post] *)
 Require Import ConsoleInv.             (* [CONSOLE] *)
 Require Import UkConsOut ProgTreeFile.
 Require Import UCatOut UCatKernel.    (* [cch], [catq_cat], [cat_lend], [cat_child_of_entry] *)
+Require Import FsInitPin FsShPin FsEchoPin FsCatPin.   (* the four image inodes *)
+Require Import UkFileDev FileWrite UEchoFile.         (* [file_out], [ef_pay], [ef_exit] *)
 Require Import UkFileIface.
 Local Open Scope Z_scope.
 Import Defs.
@@ -305,6 +308,7 @@ Section UkFileEntriesCat.
     set (w0 := fun _ : nat => FDCons v I0 [ralt_enc RCRan; ralt_enc RCNoOpen]).
     assert (Hw0 : forall d, d ∈ [0%nat] -> forall i γo, w0 d <> FDIn false i γo)
       by (intros; discriminate).
+    assert (Hrd : fif_wr [0%nat] w0 = false) by reflexivity.
     rewrite /image_entry.
     iIntros "!>" (na alen afun W') "%Hok' %Hcw' %Hlz %Hch %Hpid %Hargs Hmp HPay".
     iApply uslot_bupd.
@@ -341,12 +345,14 @@ Section UkFileEntriesCat.
                 (cat_env0 alts (fif_files (snd <$> s)) [FileDisc.fname_f])
                 (take NSTD sts) eq_refl Hd0 Hrow Hbnd ltac:(discriminate)
                 ltac:(intros; reflexivity)
-                ltac:(cbn [cat_env0 pe_paths]; intros p; rewrite elem_of_list_singleton; done)
+                ltac:(cbn [cat_env0 pe_paths]; intros p; rewrite elem_of_list_singleton;
+                      intros ->; split; [done | exact Hrd])
                 ltac:(cbn [cat_env0 pe_files]; apply fif_files_f)
-                with "Hstd [Hcwd] Hk [] Hdq Hpool [Hcch]").
+                with "Hstd [Hcwd] Hk [] [Hdq] Hpool [Hcch]").
       - by rewrite Hcw.
-      - rewrite /fif_env. iFrame "Hbr Hkc Hinv". iSplitR; [| by iExists jo].
+      - rewrite /fif_env. iFrame "Hbr Hkc Hinv". iSplitR; [| rewrite /fif_cred Hrd; by iExists jo].
         iIntros "!> HT". rewrite Hpq. iApply ("HQt" with "HT").
+      - rewrite /fif_dq Hrd. iExact "Hdq".
       - iIntros "Htk". cbn [cat_env0 pe_dev]. case_decide as Hc0; [| done]. simpl.
         iExists v, I0, _. iFrame "Htk". iApply ("Hlendw" with "Hcch"). }
     iApply ("He" $! na alen afun W' with "[%] [%] [%] [%] [%] [%] Hmp [Hpool HPay]");
@@ -481,6 +487,8 @@ Section UkFileEntriesEcho.
     intros HD0 Hw. iIntros "#Hvf #Hf0 #HQ HF".
     iIntros (fdm l vs w files paths dv ds) "%Hdr %Hdom Hcore _ Hdev".
     iDestruct "Hcore" as "(_ & _ & %Hok & _ & Htoks & _ & Hdq & #(_ & _ & Hpay & _))".
+    iEval (rewrite (fif_dq_rd r D0 w0 qf sf ltac:(by rewrite (fif_wr_0 D0 w0 HD0) Hw)))
+      in "Hdq".
     iDestruct (fif_exit_dev0 g r γreg D0 w0 sf fdm l vs dv ds HD0 Hdr Hdom Hok
                  with "Hdev") as "(%Hd0 & %Hv0 & Hd0)".
     rewrite Hw in Hv0.
@@ -575,6 +583,7 @@ Section UkFileEntriesEcho.
     set (w0 := fun _ : nat => FDCons v I0 [0%nat]).
     assert (Hw0 : forall d, d ∈ [0%nat] -> forall i γo, w0 d <> FDIn false i γo)
       by (intros; discriminate).
+    assert (Hrd : fif_wr [0%nat] w0 = false) by reflexivity.
     set (E := cons_env (wl_line (drop 1 ws)) (fif_files (snd <$> s))).
     rewrite /image_entry.
     iIntros "!>" (na alen afun W') "%Hok' %Hcw' %Hlz %Hch %Hpid %Hargs Hmp HPay".
@@ -618,10 +627,11 @@ Section UkFileEntriesEcho.
                 ltac:(intros; reflexivity)
                 ltac:(cbn [E cons_env pe_paths]; intros p Hp; by apply elem_of_nil in Hp)
                 ltac:(cbn [E cons_env pe_files]; apply fif_files_f)
-                with "Hstd [Hcwd] Hk [] Hdq Hpool [Hb]").
+                with "Hstd [Hcwd] Hk [] [Hdq] Hpool [Hb]").
       - by rewrite Hcw.
-      - rewrite /fif_env. iFrame "Hbr Hkc Hinv". iSplitR; [| by iExists jo].
+      - rewrite /fif_env. iFrame "Hbr Hkc Hinv". iSplitR; [| rewrite /fif_cred Hrd; by iExists jo].
         iIntros "!> HT". rewrite Hpq. iApply ("HQt" with "HT").
+      - rewrite /fif_dq Hrd. iExact "Hdq".
       - iIntros "Htk". cbn [E cons_env pe_dev]. case_decide as Hc0; [| done]. simpl.
         iExists v, I0, [0%nat]. iFrame "Htk".
         iApply (fif_echo_lend g v I0 ws Hfl Hshort with "Hlk Hpin Hb"). }
@@ -633,17 +643,177 @@ Section UkFileEntriesEcho.
 End UkFileEntriesEcho.
 
 (* ===================================================================== *)
-(*  4.  echo > f: NOT FROM THE TREE, as the instance stands               *)
+(*  4.  echo > f FROM THE TREE: [UEchoFile.efile_image_entry]              *)
 (*                                                                       *)
-(*  [UEchoFile.efile_image_entry] has no corollary here.  The instance's *)
-(*  core holds a fraction of the deed at a pinned value throughout        *)
-(*  ([UkFileIface.fif_core]'s [fdq r qf sf]), and the redirect child has  *)
-(*  none to give it: its whole share -- the holder's half,                *)
-(*  [AppFile.fown] -- rides in the write cursor ([UEchoFile.ef_pay]'s     *)
-(*  [efq], [FileWrite.file_wq]), and the claim holds the other half       *)
-(*  ([AppFile.file_pred_exact]).  A premise supplying the core's fraction *)
-(*  could only be met by a tainted round, so the corollary would be       *)
-(*  vacuous; [UkFileIface.echo_f_paid_of_redirect] asks for the same two  *)
-(*  resources side by side.  The fix is the instance's: a core that       *)
-(*  holds the deed only while no registered device holds it.              *)
+(*  At the WRITE MODE of the instance (lane DEED-SPLIT: the entry device *)
+(*  is `f` held for writing, [UkFileIface.fif_wr]) the core holds no     *)
+(*  deed, so the redirect child's lend -- the era's credential [Wq] and   *)
+(*  the cursor [efq] at no chunk, whose [file_wq] carries the child's     *)
+(*  whole share -- is exactly what the environment needs: the cursor is  *)
+(*  the write device at chunk 0, [Wq] rides in the exit wand            *)
+(*  ([UkFileIface.fif_exit_k_redir]), and the core's deed and cred are    *)
+(*  [emp]/[True].  The statement is the landed one's plus what the free   *)
+(*  handler and the instance's core read (listed at the lemma).          *)
 (* ===================================================================== *)
+
+(* the line's pure facts the tree route reads off [line_ok] *)
+Lemma efe_drop1_ne (ws : list (list (bv 8))) : EchoDisc.line_ok ws -> drop 1 ws <> [].
+Proof.
+  intros Hl Hd. pose proof (line_ok_ge2 ws Hl) as H2.
+  apply (f_equal length) in Hd. rewrite length_drop in Hd. simpl in Hd. lia.
+Qed.
+
+Lemma efe_words_nn (ws : list (list (bv 8))) :
+  EchoDisc.line_ok ws -> Forall (fun w => w <> []) (drop 1 ws).
+Proof.
+  intros Hl.
+  pose proof (line_ok_wf ws Hl) as Hwf. unfold wl_wf in Hwf.
+  apply (Forall_drop _ 1) in Hwf.
+  apply (proj2 (Forall_forall (fun w : list (bv 8) => w <> []) (drop 1 ws))).
+  intros w Hw Heq. subst w.
+  pose proof (wl_word_pos [] (proj1 (Forall_forall _ _) Hwf [] Hw)) as H. simpl in H. lia.
+Qed.
+
+Lemma efe_args_chunks_short (n : nat) (args : list (list (bv 8))) :
+  (1 <= n)%nat -> Forall (fun a => (length a <= n)%nat) args ->
+  Forall (fun ch => (length ch <= n)%nat) (echo_args_chunks args).
+Proof.
+  intros Hn. induction args as [| a rest IH]; intros Hf; [constructor |].
+  apply Forall_cons_1 in Hf as [Ha Hr].
+  destruct rest as [| a' rest'].
+  - cbn [echo_args_chunks]. constructor; [exact Ha |].
+    constructor; [simpl; lia | constructor].
+  - change (echo_args_chunks (a :: a' :: rest'))
+      with (a :: [wl_sp] :: echo_args_chunks (a' :: rest')).
+    constructor; [exact Ha |]. constructor; [simpl; lia |]. exact (IH Hr).
+Qed.
+
+Lemma efe_chunks_short (ws : list (list (bv 8))) :
+  EchoDisc.line_ok ws ->
+  Forall (fun ch => (length ch <= EchoDisc.line_max)%nat) (echo_chunks ws).
+Proof.
+  intros Hl. unfold echo_chunks.
+  apply efe_args_chunks_short; [unfold EchoDisc.line_max; lia |].
+  apply Forall_lookup. intros k w Hk. rewrite lookup_drop in Hk.
+  pose proof (wl_off_lt_line ws (1 + k) w (length w) Hk ltac:(lia)) as H.
+  destruct Hl as (_ & _ & _ & _ & Hlen). lia.
+Qed.
+
+Section UkFileEntriesRedir.
+  Context `{HRg : !riscvGS Σ}.
+  Context `{!xv6G Σ, !bioslotG Σ, !fdslotG Σ, !fileG Σ,
+            !irefslotG Σ, !pavG Σ, !wchG Σ, !ufdG Σ}.
+  Context `{GEN : GenId} `{XI : CurCtx}.
+  Context `{PS : UexecSG.uprogSG Σ}.
+  Context `{!echoOutG Σ, !inG Σ (mono_listR (leibnizO Z)), !fileAppG Σ,
+            !fileOutG Σ}.
+  Context `{!fifRegG Σ}.
+  Context (g : file_gn).
+  Context (Hcons : @riscv_cons_res Σ (@riscv_fixedGS Σ HRg) = fecl g).
+
+  Local Instance fe_redir_code_persistent (N : uk_names Σ) :
+    Persistent (up_code (echo_prog N)).
+  Proof using . simpl. apply _. Qed.
+
+  (* THE ENTRY: [UEchoFile.efile_image_entry]'s statement, at the file
+     application's claim [c = fgn_cl g] (the instance's console needs the
+     era's record, [Hcons]), with [udep] at the section's deposit instance
+     ([PS := uprogSG_free] is the landed one's), and FOUR premises the
+     landed entry does not take:
+       - [cw = FsImg.ROOTINO]: the instance's core holds the cwd at the
+         root (its opens resolve `f` there);
+       - [□ (file_taint c -∗ app_taint)] and [□ (file_taint c -∗ Q (-1))]:
+         the free handler's taint ([UkFreeHandler.fh_taint]) raises the
+         machine's taint and pays the exit from the application's taint
+         alone, at every hole of the tree;
+       - the registry's class [fifRegG] (the registry is born in the slot). *)
+  Lemma efile_image_entry_of_tree (ws : wordline) (M : gmap Z (bv 8))
+      (s0 t : Z) (gb : nat -> bv 8) (sts : list fdstate)
+      (cw : Z) (cs : gset gname) (pidv : mword 32)
+      (c : file_fixed) (r : file_names) (Wq : iProp Σ)
+      (i : Z) (γo : gname) (rb : bool)
+      (Q : Z -> iProp Σ) :
+    (forall x y : Z, Q x = Q y) ->
+    file_app = MkAppcfg file_names (file_pred c) r ->
+    c = fgn_cl g ->
+    EchoDisc.line_ok ws ->
+    UShEcho.echo_node_img ws M s0 t gb ->
+    UkShEcho.echo_argv_bytes ws gb ->
+    length sts = NOFILE ->
+    cw = FsImg.ROOTINO ->
+    take NSTD sts !! 1%nat = Some (FdOpen rb true (FdInode i γo OffHeld)) ->
+    i <> INIT_INO -> i <> SH_INO -> i <> ECHO_INO -> i <> CAT_INO ->
+    □ (UEchoFile.ef_exit c r Wq i γo ws -∗ Q (-1)) -∗
+    □ (app_taint -∗ file_taint c) -∗
+    □ (file_taint c -∗ app_taint) -∗
+    □ (file_taint c -∗ Q (-1)) -∗
+    app_inv fsc_fs -∗
+    UkRun.urun_nopipe sts -∗
+    udep -∗
+    image_entry ElfUser.echo_elf M (mword_of_int (t + 8) : mword 64) sts
+      cw cs pidv Q (UEchoFile.ef_pay c r Wq i γo ws) uslot.
+  Proof using Hcons fifRegG0 ufdG0.
+    intros HQc Heq Hgc Hline Himg Hbytes Hfdl Hcw Hl1 Hi1 Hi2 Hi3 Hi4.
+    subst c.
+    iIntros "#HQ #Hbr #Hkc #HQt #Hinv #Hnpw #Hdep".
+    pose proof (efe_drop1_ne ws Hline) as Hne.
+    pose proof (efe_words_nn ws Hline) as Hnn.
+    assert (Hwok : fif_out_ok i ws).
+    { unfold fif_out_ok. split_and!; [exact Hi1 | exact Hi2 | exact Hi3 | exact Hi4 |].
+      exact (efe_chunks_short ws Hline). }
+    set (w0 := fun _ : nat => FDFile i γo ws).
+    assert (Hw0 : forall d, d ∈ [0%nat] -> forall i' γo', w0 d <> FDIn false i' γo')
+      by (intros; discriminate).
+    assert (Hwr : fif_wr [0%nat] w0 = true) by reflexivity.
+    set (E := pipe_env (DOutM (echo_chunks ws)) (fif_files (snd <$> (None : dst)))).
+    rewrite /image_entry.
+    iIntros "!>" (na alen afun W') "%Hok' %Hcw' %Hlz %Hch %Hpid %Hargs Hmp HPay".
+    iApply uslot_bupd.
+    iMod (fif_reg_alloc w0) as (γreg) "Hpool". iModIntro.
+    set (I := fun (N' : uk_names Σ) (Hpq : ukn_pay N' = Q) =>
+                file_iface g r Heq Hcons N' (echo_prog N') (HNc := ukn_const_of_eq N' Q Hpq HQc)
+                  (echo_stub_read N') (echo_stub_write N') (echo_stub_open N')
+                  (echo_stub_close N') (echo_stub_exit N') γreg [0%nat] w0 1%Qp None Hw0).
+    iPoseProof (echo_image_entry_env_c ws M s0 t gb sts cw cs pidv Q
+                  (own γreg (fif_pool ∅ w0) ∗ UEchoFile.ef_pay (fgn_cl g) r Wq i γo ws)%I
+                  I E {[0%nat]}
+                  Hline Himg Hbytes Hfdl (echo_file_conforms ws _ Hne Hnn)
+                  (echo_tree_safe _ _) (fif_dp0 [0%nat] eq_refl)
+                  with "[] Hnpw Hdep") as "#He".
+    { iIntros "!>" (N' Hpq) "Hstd Hcwd (Hpool & HWq & Hc)".
+      (* the exit wand: [Wq] framed, the cursor read off the drained device *)
+      iAssert (fif_exit_k g r N' γreg [0%nat] w0 1%Qp None)%I with "[HWq]" as "Hk".
+      { iApply (fif_exit_k_redir g r N' γreg [0%nat] w0 1%Qp None i γo ws Wq eq_refl eq_refl
+                  with "[] HWq").
+        iIntros "!> Hx". rewrite Hpq. iApply ("HQ" with "Hx"). }
+      iApply (fif_env_res g r Heq Hcons N' (echo_prog N') (HNc := ukn_const_of_eq N' Q Hpq HQc)
+                (echo_stub_read N') (echo_stub_write N') (echo_stub_open N')
+                (echo_stub_close N') (echo_stub_exit N') γreg [0%nat] w0 1%Qp None Hw0
+                E (take NSTD sts) eq_refl
+                ltac:(cbn [E pipe_env pe_fd]; intros fd d; rewrite lookup_singleton_Some;
+                      intros [_ <-]; reflexivity)
+                ltac:(cbn [E pipe_env pe_fd]; intros fd d; rewrite lookup_singleton_Some;
+                      intros [<- _]; split; [unfold NSTD; lia | by exists rb])
+                ltac:(cbn [E pipe_env pe_fd]; intros fd d; rewrite lookup_singleton_Some;
+                      unfold NOFILE; intros [<- _]; lia)
+                ltac:(discriminate)
+                ltac:(intros; reflexivity)
+                ltac:(cbn [E pipe_env pe_paths]; intros p Hp; by apply elem_of_nil in Hp)
+                ltac:(cbn [E pipe_env pe_files]; apply fif_files_f)
+                with "Hstd [Hcwd] Hk [] [] Hpool [Hc]").
+      - by rewrite Hcw.
+      - (* [fif_cred] is [True] at the write mode; the frame closes it *)
+        rewrite /fif_env. iFrame "Hbr Hkc Hinv".
+        iIntros "!> HT". rewrite Hpq. iApply ("HQt" with "HT").
+      - iApply (fif_dq_wr r [0%nat] w0 1%Qp None Hwr).
+      - iIntros "Htk". cbn [E pipe_env pe_dev]. case_decide as Hc0; [| done]. simpl.
+        iExists i, γo, ws. iFrame "Htk". iExists 0%nat.
+        iSplit; [done |]. iSplit; [iPureIntro; exact Hwok |].
+        rewrite /file_out.
+        iApply (UEchoFile.efany_of (fgn_cl g) r i γo ws 0%nat [] ltac:(constructor) with "Hc"). }
+    iApply ("He" $! na alen afun W' with "[%] [%] [%] [%] [%] [%] Hmp [Hpool HPay]");
+      [ exact Hok' | exact Hcw' | exact Hlz | exact Hch | exact Hpid | exact Hargs | ].
+    iFrame "Hpool HPay".
+  Qed.
+
+End UkFileEntriesRedir.

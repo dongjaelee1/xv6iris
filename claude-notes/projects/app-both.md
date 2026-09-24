@@ -449,7 +449,22 @@ the last close of an entry device is a SHARED close, since dropping it
 would lose the cursor the exit wand needs; `tree_pay_of_conforms_p`
 takes `dp_in Dp ds`.  (The pipe instance instead applies its wand at
 the copy device's close, since a closed copy device's end IS what the
-round is owed.)  NEXT: lane E (`UkFileEntries.v`), lane F (in flight).  The
+round is owed.)  Cut 5 lane F LANDED (lane/cut5-f 82813f455, VM
+c5fmerge1 EXIT=0, audits 13/13/14/14): `UkPipeEntries.v` --
+`pe_cat_image_entry` (cat at the pipe from `cat_image_entry_env_c` at
+the copy device; `_qc` at the round's own payload via `pl_qc_of_cend`;
+at the NEAREST statement to `cat_image_entry_1w`, whose `pcat_pay_at`
+interface belongs to the old route) and `pe_echo_image_entry`
+(`ep_image_entry`'s statement, the exit through the LEFT wand
+`pif_exit_k_left`).  `UkTreeEntry` gained `_c` forms whose interface also
+takes `ukn_pay N' = Q` (a free handler paying the exit needs
+`ukn_const N'`).  Premises the tree route adds over the landed entries:
+the registry pool in `Pay` (only a caller can allocate it), `pif_refused`
+at every minted record (the pipe instance's four refused fields:
+`Hhalt_long`, `Hnil_ro`, `Hclose_open`, new `Hclose_open_w` -- the last
+two want a `drained` premise at `ei_close`/`cf_close`, a coordinated
+interface cut), and for cat the address bounds `< 2^38`, fd 2's row,
+`L <> []`, `|L| < 2^31`.  NEXT: lane E (`UkFileEntries.v`, in flight).  The
 pipeline's CONSOLE device LANDED (lane/pcons 246f51ca4, design SS3.4d:
 `UkConsOut` split into a claim-free core and a `gen_params` instance,
 `UkPipeConsOut.v` with the single-writer and the `popen` devices).

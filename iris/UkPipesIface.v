@@ -63,7 +63,8 @@
 (* pipeline application's [PipesDisc.pipes_lmE] (lane AMBIG: [adm_echo]    *)
 (* admits [echo fork | cat | cat]) is an instance, its laws                *)
 (* [pipes_lm_echo_laws] the section's [LW]; the family's non-terminal     *)
-(* witness is [pns_HWIT], [PipeOutN.pipesN_HWIT] without [adm_ok].        *)
+(* witness is [PipeOutN.pipesN_HWIT] (no [adm_ok] since C5b), the claim  *)
+(* [pecl'] at the model's own hooks ([PipesDiscDec.pipes_hooks]).        *)
 (*                                                                        *)
 (* WHAT IS LEFT AS NAMED PREMISES (carried by the devices, supplied by    *)
 (* the round's lend): the family's firing and step premises               *)
@@ -564,30 +565,6 @@ Section PipesDevU.
   Qed.
 End PipesDevU.
 
-(* THE MODEL'S BLOCKS AS THE CLAIM'S NON-TERMINAL WITNESS, at ANY
-   admission: [PipeOutN.pipesN_HWIT] without its [adm_ok] premise, which
-   fed only the blocks' dollar-freedom -- [PipesDisc.pipes_block_nodollar]
-   gives that at every admission since lane AMBIG (the owner's ruling:
-   [PipesDisc.pipes_lmE] admits [echo fork | cat | cat], and [adm_echo] is
-   not [adm_ok]).  Restated here because [PipeOutN] is lane C5b's. *)
-Lemma pns_HWIT (fc : bytes -> option bytes) (adm : pline' -> bool) (I : list (bv 8)) :
-  fc_ok fc -> adm (lineN fc adm I) = true -> pl_ok (lineN fc adm I) ->
-  forall pre bl, blkN (wids (lcats (lineN fc adm I))) (runN fc (lineN fc adm I)) bl ->
-    pre `prefix_of` bl -> pwitN fc adm I false pre.
-Proof.
-  intros Hfc Ha Hl pre bl Hb Hp.
-  exists (plalt_code (PLRun bl)).
-  cbn [pipes_lm lm_ok lm_panic lm_term lm_cont lm_dec]. rewrite plalt_of_code.
-  split_and!.
-  - exact Ha.
-  - exact (blkN_line_blocks fc _ bl Hb).
-  - reflexivity.
-  - reflexivity.
-  - etrans; [exact Hp |]. by eexists.
-  - intros _. exact (prefix_forall _ _ _ Hp
-                       (pipes_block_nodollar fc _ bl Hfc Hl (blkN_line_blocks fc _ bl Hb))).
-Qed.
-
 (* THE ROUND'S TWO PURE FACTS, named: the line fits a write count, and
    the round's line is admitted -- behind definitions so that [lia] in the
    section below does not read them (and drag [L] and the model into every
@@ -619,8 +596,8 @@ Section UkPipesIface.
   Local Notation γ := (pgn_cl g).
   Local Notation T := (echo_taint γ).
   Context (fc : bytes -> option bytes) (adm : pline' -> bool).
-  Context (LW : lm_laws (pipes_lm fc adm)) (LH : lm_hooks (pipes_lm fc adm)).
-  Context (Hcons : @riscv_cons_res Σ (@riscv_fixedGS Σ HRg) = pecl' g fc adm LW LH).
+  Context (LW : lm_laws (pipes_lm fc adm)).
+  Context (Hcons : @riscv_cons_res Σ (@riscv_fixedGS Σ HRg) = pecl' g fc adm LW).
   Context (Hkill : @app_taint Σ (@riscv_fixedGS Σ HRg) = T).
   Context (rn : echo_names).
   Context (Heq : file_app = MkAppcfg echo_names (pipe_pred γ) rn).
@@ -669,9 +646,9 @@ Section UkPipesIface.
     out_link Uart0 (S gen_id) b Φ.
   Proof using Hadmit Hcons Hfc Hplok dep_tl.
     intros Hw Hc Hb Hok. iIntros "#Hinv HcW HmW HΦ".
-    iApply (blkN_cstep wsN (wids_NoDup _) (pecl' g fc adm LW LH) Hcons RUNN PWN
+    iApply (blkN_cstep wsN (wids_NoDup _) (pecl' g fc adm LW) Hcons RUNN PWN
               (pwc_blkN_timeless g fc adm v I) TKN (ptkN_persistent g v I) WITN
-              (pns_HWIT fc adm I Hfc Hadmit Hplok) TERM TOK dep dep_tl
+              (pipesN_HWIT fc adm I Hfc Hadmit Hplok) TERM TOK dep dep_tl
               pnsN (S gen_id) γc γm w s c b Φ pnsN_uart Hw Hc Hb Hok
               with "[] Hinv HcW HmW [HΦ]").
     - iApply pblkN_ecl_holds.
@@ -687,9 +664,9 @@ Section UkPipesIface.
     out_link Uart0 (S gen_id) b Φ.
   Proof using Hadmit Hcons Hfc Hplok dep_tl.
     intros Hw Hb. iIntros "[(%EXCL & %Hok & #Hex) _] #Hinv HcW HmW Hdep HΦ".
-    iApply (blkN_fire wsN (wids_NoDup _) (pecl' g fc adm LW LH) Hcons RUNN PWN
+    iApply (blkN_fire wsN (wids_NoDup _) (pecl' g fc adm LW) Hcons RUNN PWN
               (pwc_blkN_timeless g fc adm v I) TKN (ptkN_persistent g v I) WITN
-              (pns_HWIT fc adm I Hfc Hadmit Hplok) TERM TOK dep dep_tl
+              (pipesN_HWIT fc adm I Hfc Hadmit Hplok) TERM TOK dep dep_tl
               pnsN (↑pipeN) (S gen_id) γc γm w s b EXCL Φ pnsN_uart pnsN_pipeN Hw Hb Hok
               with "Hex [] Hinv HcW HmW Hdep [HΦ]").
     - iApply pblkN_ecl_holds.
@@ -738,7 +715,7 @@ Section UkPipesIface.
   Proof using Hcons.
     iIntros "#HT HΦ". rewrite /out_link. iIntros (o H) "#Hlb _".
     iModIntro. iExists o. iFrame "Hlb HΦ".
-    rewrite /chist_at Hcons. iApply (pecl'_taint g fc adm LW LH with "HT").
+    rewrite /chist_at Hcons. iApply (pecl'_taint g fc adm LW with "HT").
   Qed.
 
   (* ------------------------------------------------------------------- *)
@@ -1032,7 +1009,7 @@ Section UkPipesIface.
   Lemma pns_row_open (ov : option pdev) (fd : Z) (l : list fdstate) :
     pns_row ov fd l ->
     fd < Z.of_nat NSTD /\ exists st, l !! Z.to_nat fd = Some st /\ st <> FdClosed.
-  Proof using L TERM dep.
+  Proof using L TERM dep fc.
     destruct ov as [[w A | | pn gp | pn gp | [pin gin] sk] |]; cbn [pns_row]; intros H;
       [| | | | | destruct H].
     1-4: destruct H as (Hlt & b & Hlk); (split; [exact Hlt |]); eexists;
@@ -1059,7 +1036,7 @@ Section UkPipesIface.
   Lemma pns_ok_close fdm l vs (k : nat) d :
     pns_ok fdm l vs -> fdm !! Z.of_nat k = Some d -> ~ fd_shared_p Dp fdm (Z.of_nat k) d ->
     pns_ok (delete (Z.of_nat k) fdm) (<[k := FdClosed]> l) (delete d vs).
-  Proof using L TERM dep.
+  Proof using L TERM dep fc.
     intros (H1 & H2 & H3 & H4) Hfd Hnsp.
     assert (Hns : ~ fd_shared fdm (Z.of_nat k) d)
       by (intros H; apply Hnsp, fd_shared_p_iff; by right).
@@ -1082,7 +1059,7 @@ Section UkPipesIface.
   Lemma pns_ok_close_shared fdm l vs (k : nat) d :
     pns_ok fdm l vs -> fdm !! Z.of_nat k = Some d -> fd_shared_p Dp fdm (Z.of_nat k) d ->
     pns_ok (delete (Z.of_nat k) fdm) (<[k := FdClosed]> l) vs.
-  Proof using L TERM dep.
+  Proof using L TERM dep fc.
     intros (H1 & H2 & H3 & H4) Hfd Hsh. apply fd_shared_p_iff in Hsh.
     split; [| split; [| split]].
     - intros fd' d'. rewrite lookup_delete_Some. intros [_ Hf]. exact (H1 fd' d' Hf).
@@ -1111,7 +1088,7 @@ Section UkPipesIface.
       (kd : pdev) :
     pns_ok fdm l vs -> fdm !! fd = Some d -> vs !! d = Some kd ->
     exists k : nat, fd = Z.of_nat k /\ (k < NSTD)%nat /\ pns_row (Some kd) (Z.of_nat k) l.
-  Proof using L TERM dep.
+  Proof using L TERM dep fc.
     intros (H1 & H2 & _) Hfd Hv. pose proof (H1 fd d Hfd) as H0.
     pose proof (H2 fd d Hfd) as Hrow. rewrite Hv in Hrow.
     destruct (Z_of_nat_complete fd H0) as [k ->]. exists k. split; [reflexivity |].
@@ -1122,7 +1099,7 @@ Section UkPipesIface.
       (sk : csink) :
     pns_row (Some (PDCopy (pin, gin) sk)) (Z.of_nat k) l -> Z.of_nat k = copy_in ->
     k = 0%nat /\ exists wb, l !! 0%nat = Some (FdOpen true wb (FdPipe gin)).
-  Proof using L TERM dep.
+  Proof using L TERM dep fc.
     intros [[Hk Hlk] | [Hk _]] Hfd; [| unfold copy_in, copy_out in *; lia].
     split; [unfold copy_in in Hk; lia | exact Hlk].
   Qed.
@@ -1131,7 +1108,7 @@ Section UkPipesIface.
       (sk : csink) :
     pns_row (Some (PDCopy (pin, gin) sk)) (Z.of_nat k) l -> Z.of_nat k = copy_out ->
     k = 1%nat /\ exists rb, l !! 1%nat = Some (FdOpen rb true (pns_sink_ty sk)).
-  Proof using L TERM dep.
+  Proof using L TERM dep fc.
     intros [[Hk _] | [Hk Hlk]] Hfd; [unfold copy_in, copy_out in *; lia |].
     split; [unfold copy_out in Hk; lia | exact Hlk].
   Qed.
@@ -1193,7 +1170,7 @@ Section UkPipesIface.
 
   Lemma pns_lexit_of_lend (pn : pnames) (gp : pipe_names) :
     pipe_inv pn gp L -∗ (pipe_out pn L [] ∨ pipe_halt pn) ={⊤}=∗ pns_lexit pn.
-  Proof using TERM dep.
+  Proof using TERM dep fc.
     iIntros "#Hinv [Hd | Hd]".
     - iDestruct "Hd" as (c) "([%HS _] & Hw & #Hlb)".
       iInv "Hinv" as (s0) ">(Hf & Hh & Hbw & Hbr & %Hpre & %Hrle & Heof & Hro)" "Hclose".
@@ -1320,7 +1297,7 @@ Section UkPipesIface.
   Lemma pns_taint_of_fds (fdm : fdmap) (l : list fdstate) (vs : gmap nat pdev) :
     pns_ok fdm l vs ->
     app_taint -∗ UserFd.ustd γfd l -∗ pns_xk -∗ pns_env vs -∗ pns_taint (dom fdm).
-  Proof using Hkill TERM dep.
+  Proof using Hkill TERM dep fc.
     intros Hok. iIntros "#Ht Hstd Hxk #He". rewrite /pns_env.
     iDestruct "He" as "(#Hk & #Hs & _)".
     iEval (rewrite Hkill) in "Ht".
@@ -1405,7 +1382,7 @@ Section UkPipesIface.
      ∧ (pns_fds fdm -∗ pns_halt d -∗ K (-1))
      ∧ (∀ x, pns_taint (dom fdm) -∗ K x)) -∗
     wr_obl N P fd bs K.
-  Proof using Hkill Hsw TERM dep.
+  Proof using Hkill Hsw TERM dep fc.
     intros Hne Hfd Ha' Hpre. iIntros "Hfds Hout HK".
     iDestruct "Hout" as (pn gp) "[Htk Hd]". iDestruct "Hd" as (S) "[-> Hd]".
     iDestruct "Hfds" as (l vs wv) "(Hstd & Hxk & %Hok & %Hkd & Hpool & Htoks & #He)".
@@ -1434,7 +1411,7 @@ Section UkPipesIface.
     pns_fds fdm -∗ pns_halt d -∗
     ((pns_fds fdm -∗ pns_halt d -∗ K (-1)) ∧ (∀ x, pns_taint (dom fdm) -∗ K x)) -∗
     wr_obl N P fd bs K.
-  Proof using Hkill Hsw TERM dep.
+  Proof using Hkill Hsw TERM dep fc.
     intros Hne Hbnd Hfd. iIntros "Hfds Hh HK".
     iDestruct "Hh" as (pn gp) "[Htk Hh]".
     iDestruct "Hfds" as (l vs wv) "(Hstd & Hxk & %Hok & %Hkd & Hpool & Htoks & #He)".
@@ -1460,7 +1437,7 @@ Section UkPipesIface.
     (fd < NSTD)%nat -> l !! fd = Some (FdOpen rb true (FdDevice CONSOLE)) ->
     UserFd.ustd γfd l -∗ R -∗ (UserFd.ustd γfd l -∗ R -∗ K 0) -∗
     wr_obl N P (Z.of_nat fd) [] K.
-  Proof using HPc Hsw L TERM dep.
+  Proof using HPc Hsw L TERM dep fc.
     intros Hfd Hlk. iIntros "Hstd Hd HK".
     iIntros (h m avail ua tx dq f) "%Hf %Ha0 %Ha1 %Ha2 #Hcode Hsrc Hrun Hcont".
     cbn [length] in *.
@@ -1604,7 +1581,7 @@ Section UkPipesIface.
      ∧ (pns_fds fdm -∗ pns_in_end d -∗ K (RdBytes []))
      ∧ (∀ x, pns_taint (dom fdm) -∗ K x)) -∗
     rd_obl N P fd n K.
-  Proof using Hkill Hsr TERM dep.
+  Proof using Hkill Hsr TERM dep fc.
     intros Hn Hfd. iIntros "Hfds Hin HK".
     iDestruct "Hin" as (pn gp) "[Htk Hd]". iDestruct "Hd" as (c) "[%HS Hr]".
     iDestruct "Hfds" as (l vs wv) "(Hstd & Hxk & %Hok & %Hkd & Hpool & Htoks & #He)".
@@ -1636,7 +1613,7 @@ Section UkPipesIface.
     ((pns_fds fdm -∗ pns_in_end d -∗ K (RdBytes []))
      ∧ (∀ x, pns_taint (dom fdm) -∗ K x)) -∗
     rd_obl N P fd n K.
-  Proof using Hkill Hsr TERM dep.
+  Proof using Hkill Hsr TERM dep fc.
     intros Hn Hfd. iIntros "Hfds Hd HK".
     iDestruct "Hd" as (pn gp) "[Htk Hd]".
     iDestruct "Hd" as (S c) "(%Hc & Hr & #Heof)".
@@ -1851,7 +1828,7 @@ Section UkPipesIface.
      ∧ (UserFd.ustd γfd l -∗ (∃ c' : nat, wcur pn c') -∗ ro_shot pn -∗ K (-1))
      ∧ (UserFd.ustd γfd l -∗ app_taint -∗ ∀ z : Z, K z)) -∗
     wr_obl N P copy_out bs K.
-  Proof using HL31 Hsw TERM dep.
+  Proof using HL31 Hsw TERM dep fc.
     intros Hne Hv Hl1 Hwc HcL Hp Hpre.
     iIntros "#He Hstd #H0 Hw #Hlb HK".
     iPoseProof (pns_env_lookup vs d _ Hv with "He") as "Hi". cbn [pns_pk_inv].
@@ -1960,7 +1937,7 @@ Section UkPipesIface.
     pns_fds fdm -∗ pns_copy_halt d -∗
     ((pns_fds fdm -∗ pns_copy_halt d -∗ K (-1)) ∧ (∀ x, pns_taint (dom fdm) -∗ K x)) -∗
     wr_obl N P fd bs K.
-  Proof using Hkill Hsw TERM dep.
+  Proof using Hkill Hsw TERM dep fc.
     intros Hne Hbnd Hfd Hfd1. iIntros "Hfds Hd HK". subst fd.
     iDestruct "Hd" as (pin gin pn gp) "(Htk & %c & %wc & Hr & Hw & #Hsh)".
     iDestruct "Hfds" as (l vs wv) "(Hstd & Hxk & %Hok & %Hkd & Hpool & Htoks & #He)".
@@ -2019,7 +1996,7 @@ Section UkPipesIface.
     vs !! d = Some kd -> pns_row (Some kd) (Z.of_nat k) l -> (k < NSTD)%nat ->
     pns_env vs -∗ UserFd.ustd γfd l -∗ (UserFd.ustd γfd (<[k := FdClosed]> l) -∗ K 0) -∗
     cl_obl N P (Z.of_nat k) K.
-  Proof using Hsc TERM dep.
+  Proof using Hsc TERM dep fc.
     intros Hv Hrow Hlt. iIntros "#He Hstd HK".
     iPoseProof (pns_env_lookup vs d kd Hv with "He") as "Hi".
     destruct kd as [w A | | pn gp | pn gp | [pin gin] sk]; cbn [pns_row pns_pk_inv] in Hrow |- *.
@@ -2056,7 +2033,7 @@ Section UkPipesIface.
     own γreg (pns_pool (dom vs) wv) -∗
     ([∗ map] d ↦ x ∈ vs, pns_tok d (1/2) x) -∗ pns_tok d (1/2) kd -∗ pns_env vs -∗
     pns_fds (delete (Z.of_nat k) fdm).
-  Proof using TERM dep.
+  Proof using TERM dep fc.
     intros Hok Hfd Hns Hv Hkd HD. iIntros "Hstd Hxk Hpool Htoks Htk #He".
     iDestruct (big_sepM_delete _ _ _ _ Hv with "Htoks") as "[Htk' Htoks]".
     iAssert (pns_tok d 1 kd) with "[Htk Htk']" as "Htk".
@@ -2103,7 +2080,7 @@ Section UkPipesIface.
     pns_fds fdm -∗
     ((pns_fds (delete fd fdm) -∗ K 0) ∧ (∀ y, pns_taint (dom fdm ∖ {[fd]}) -∗ K y)) -∗
     cl_obl N P fd K.
-  Proof using Hsc TERM dep.
+  Proof using Hsc TERM dep fc.
     intros Hfd Hsh. iIntros "Hfds HK".
     iDestruct "Hfds" as (l vs wv) "(Hstd & Hxk & %Hok & %Hkd & Hpool & Htoks & #He)".
     destruct (pns_ok_lookup _ _ _ _ _ Hok Hfd) as [kd Hv].
@@ -2278,7 +2255,7 @@ Section UkPipesIface.
     pns_copy_lend w2 A2 alts2 pin gin sk (ukn_pay N) -∗
     env_res N P pipes_iface (copy_env (DCopy (pns_sink_h sk) L []) alts2 files [])
       {[0%nat; 1%nat]}.
-  Proof using Heq Hkill.
+  Proof using Heq.
     intros Hk Hw0 Hw1 Hl0 Hl1 Hl2.
     set (fdm := (<[0 := 1%nat]> (<[1 := 1%nat]> {[2 := 0%nat]}) : fdmap)).
     set (vs := (<[0%nat := PDCon w2 A2]> {[1%nat := PDCopy (pin, gin) sk]} : gmap nat pdev)).
@@ -2357,7 +2334,7 @@ Section UkPipesIface.
     l !! 1%nat = Some (FdOpen rb true (FdPipe gp)) ->
     UserFd.ustd γfd l -∗ own γreg (pns_pool ∅ wv) -∗ pns_echo_lend pn gp (ukn_pay N) -∗
     env_res N P pipes_iface (pipe_env (DOutH [L]) files) {[0%nat]}.
-  Proof using Heq Hkill HL31.
+  Proof using Heq.
     intros Hk Hw0 Hl1.
     set (fdm := ({[1 := 0%nat]} : fdmap)).
     set (vs := ({[0%nat := PDWr pn gp]} : gmap nat pdev)).
@@ -2407,8 +2384,7 @@ Section UkPipesIface.
     [] ∈ alts2 -> (h = true -> cat_dg_write ∈ alts2) -> dp_in (kds.*1) {[0%nat; 1%nat]} ->
     env_res N P pipes_iface (copy_env (DCopy h L []) alts2 files []) {[0%nat; 1%nat]} -∗
     tree_pay N P (cat_tree [sb "cat"]).
-  Proof using Hcons Hkill HPc HNc Hsr Hsw Hso Hsc Hse Hfc Hadmit Hplok dep_tl HL31
-              Hkds v TERM TOK γc γm γreg pnsRegG0 pipesNG0 pipeProtoG0.
+  Proof using .
     intros Hnil Hdg Hdp. iIntros "H".
     iApply (tree_pay_of_conforms_p N P pipes_iface _ _ _
               (cat_copy_conforms h L alts2 files [] Hnil Hdg) (cat_tree_safe _ _) Hdp with "H").
@@ -2419,8 +2395,7 @@ Section UkPipesIface.
     drop 1 argv <> [] -> L = wl_line (drop 1 argv) -> dp_in (kds.*1) {[0%nat]} ->
     env_res N P pipes_iface (pipe_env (DOutH [L]) files) {[0%nat]} -∗
     tree_pay N P (echo_tree argv).
-  Proof using Hcons Hkill HPc HNc Hsr Hsw Hso Hsc Hse Hfc Hadmit Hplok dep_tl HL31
-              Hkds v TERM TOK γc γm γreg pnsRegG0 pipesNG0 pipeProtoG0.
+  Proof using .
     intros Hne HL Hdp. iIntros "H".
     pose proof HL31 as HL'. rewrite /pns_short HL in HL'. rewrite HL.
     iApply (tree_pay_of_conforms_p N P pipes_iface _ _ _

@@ -131,8 +131,8 @@ Section UkPipesEntries.
   Local Notation γ := (pgn_cl g).
   Local Notation T := (echo_taint γ).
   Context (fc : bytes -> option bytes) (adm : pline' -> bool).
-  Context (LW : lm_laws (pipes_lm fc adm)) (LH : lm_hooks (pipes_lm fc adm)).
-  Context (Hcons : @riscv_cons_res Σ (@riscv_fixedGS Σ HRg) = pecl' g fc adm LW LH).
+  Context (LW : lm_laws (pipes_lm fc adm)).
+  Context (Hcons : @riscv_cons_res Σ (@riscv_fixedGS Σ HRg) = pecl' g fc adm LW).
   Context (Hkill : @app_taint Σ (@riscv_fixedGS Σ HRg) = T).
   Context (rn : echo_names).
   Context (Heq : file_app = MkAppcfg echo_names (pipe_pred γ) rn).
@@ -157,7 +157,7 @@ Section UkPipesEntries.
   Definition pse_iface_cat (γreg : gname) (kds : list (nat * pdev))
       (Hkds : stdpp.base.NoDup kds.*1) (N' : uk_names Σ) (HNc : ukn_const N') :
       ep_ifaceP (Dp := kds.*1) N' (cat_prog N') :=
-    pipes_iface g fc adm LW LH Hcons Hkill Hfc v I Hadmit Hplok L HL31 TERM TOK dep dep_tl
+    pipes_iface g fc adm LW Hcons Hkill Hfc v I Hadmit Hplok L HL31 TERM TOK dep dep_tl
       γc γm N' (cat_prog N') (HNc := HNc)
       (cat_stub_read N') (cat_stub_write N') (cat_stub_open N')
       (cat_stub_close N') (cat_stub_exit N') γreg kds Hkds.
@@ -165,7 +165,7 @@ Section UkPipesEntries.
   Definition pse_iface_echo (γreg : gname) (kds : list (nat * pdev))
       (Hkds : stdpp.base.NoDup kds.*1) (N' : uk_names Σ) (HNc : ukn_const N') :
       ep_ifaceP (Dp := kds.*1) N' (echo_prog N') :=
-    pipes_iface g fc adm LW LH Hcons Hkill Hfc v I Hadmit Hplok L HL31 TERM TOK dep dep_tl
+    pipes_iface g fc adm LW Hcons Hkill Hfc v I Hadmit Hplok L HL31 TERM TOK dep dep_tl
       γc γm N' (echo_prog N') (HNc := HNc)
       (echo_stub_read N') (echo_stub_write N') (echo_stub_open N')
       (echo_stub_close N') (echo_stub_exit N') γreg kds Hkds.
@@ -221,7 +221,7 @@ Section UkPipesEntries.
     { iIntros "!>" (N' Hpq) "Hstd _ [Hpool Hlend]".
       rewrite /If /pse_iface_echo.
       iEval (rewrite -Hpq) in "Hlend".
-      iApply (pns_echo_env_res g fc adm LW LH Hcons Hkill rn Heq Hfc v I Hadmit Hplok L HL31
+      iApply (pns_echo_env_res g fc adm LW Hcons Hkill rn Heq Hfc v I Hadmit Hplok L HL31
                 TERM TOK dep dep_tl γc γm N' (echo_prog N')
                 (HNc := ukn_const_of_eq N' Q Hpq HQc)
                 (echo_stub_read N') (echo_stub_write N') (echo_stub_open N')
@@ -279,7 +279,7 @@ Section UkPipesEntries.
     { iIntros "!>" (N' Hpq) "Hstd _ [Hpool Hlend]".
       rewrite /If /pse_iface_cat.
       iEval (rewrite -Hpq) in "Hlend".
-      iApply (pns_copy_env_res g fc adm LW LH Hcons Hkill rn Heq Hfc v I Hadmit Hplok L HL31
+      iApply (pns_copy_env_res g fc adm LW Hcons Hkill rn Heq Hfc v I Hadmit Hplok L HL31
                 TERM TOK dep dep_tl γc γm N' (cat_prog N')
                 (HNc := ukn_const_of_eq N' Q Hpq HQc)
                 (cat_stub_read N') (cat_stub_write N') (cat_stub_open N')

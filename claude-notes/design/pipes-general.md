@@ -4,7 +4,16 @@ Owner ask (2026-09-24): `echo | cat | cat` must not be a special case of
 three; `echo | cat | cat | cat`, `cat f.txt | cat`, etc.  Standing ruling:
 cat is the only program at a pipe's end.  This file is the design of
 record for that effort; program-specs.md (the programs' trees, the copy
-device) is its base.  STATUS: RULED (owner, 2026-09-24): SS2.4's corner is (B), the loose
+device) is its base.  RULED (owner, 2026-09-24, later): NO BRIDGE BACK to the landed
+theorems -- 'there's no need to bridge back to existing theorems; the
+new unified theorem is fine'.  So C8 switches the pipeline application
+to the N-stage machinery and its top theorem states the NEW model
+(`pipes_lmE`) directly; the n = 1 bridge (`pipes_one_iff`,
+`disc_p_disc_ps`, `good_out_ps_good_out_p`) and the N = 2 checks are
+not required, and the landed one-pipe files are deleted rather than
+re-derived.
+
+STATUS: RULED (owner, 2026-09-24): SS2.4's corner is (B), the loose
 corner (a middle cat's `cat: write error` may sit beside any prefix of
 the content; only at three or more stages); PSilent (argv[0] empty)
 stays a stage outcome; M5's pipe shape IS this N-stage module (M5 had

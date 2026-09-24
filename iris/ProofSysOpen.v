@@ -709,6 +709,10 @@ Section ProofSysOpenBody.
     (* ...and the walk's wand fires there, once: from here down the block
        speaks [FsAbsEra.ex_start] at the one path. *)
     iDestruct ("Hwp" $! (bview pk bf) with "[%]") as "Hwp"; [ exact Hpof | ].
+    (* ...and the truncate's permit stands at that path too: the terminal
+       cursor bare, where the bundle carried it under the reading *)
+    iDestruct (open_trunc_piece_term_arg_to_at _ vom (us_M U) v (bview pk bf)
+                 P Ft Hpof with "Htc") as "Htc".
     iApply (wp_blt_x0_fall_s_sconf (CID := CID15) (mword_of_int (SO + 0x24))
               (mword_of_int 166 : mword 13) Ra5 R2 (K - 24)%nat b
               ltac:(nz)

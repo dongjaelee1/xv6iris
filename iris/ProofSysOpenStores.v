@@ -106,6 +106,7 @@ Require Import FsBytesGamma.
 Require Import ArgPath.         (* [arg_path_of]: the reading of trapframe
                                    argument 0, which the walk is at *)
 Require Import SysOpenDefs.
+Require Import SpecSysOpen.   (* [cur_kept], [plain_trunc_kept]: the tail's residue slots *)
 Require Import FsAbsOpenFire.
 Require Import ProofSysOpenBits.
 Require Import ProofSysOpenShared.
@@ -328,9 +329,9 @@ Section ProofSysOpenStores.
     (pa_stk sp0 24) ↦₈[KT1] w24 -∗
     (* ---- THE AU RESIDUE: the cursor at the end of the walk, the FIRED
        terminal observation, and the trunc commit still in hand ---- *)
-    P (length (path_elems pl)) (bv_unsigned inum) -∗
+    cur_kept vom P (length (path_elems pl)) (bv_unsigned inum) -∗
     so_obs Fo (bv_unsigned inum) (era_node dn bm data) -∗
-    open_trunc_at (fs_gamma_L fsc_fs) vom (bv_unsigned inum) Ft -∗
+    plain_trunc_kept (fs_gamma_L fsc_fs) vom pl P (bv_unsigned inum) Ft -∗
     wp_next true (proc_addr jx)
       (so_cont_au omo gf nsj
                dqb dqs (proc_addr jx) pidv Mim pvv vom U sts P Pmiss Fo Ft m K eb b lks) -∗
@@ -893,16 +894,22 @@ Section ProofSysOpenStores.
        arm the [andi a5,a5,1024] / [c.beqz] pair fell through, so the
        caller's omode has O_TRUNC and [open_trunc_at] is the commit at
        THIS inode ([SysOpenDefs.open_trunc_at_true]); the permit that
-       keyed it was paid where the call still held what pays it. *)
+       keyed it -- the walk's terminal cursor -- was paid at the join
+       ([SpecSysOpen.plain_trunc_key]), so this fires the caller's own
+       family with that cursor on the refund side, which the fire does not
+       read. *)
     assert (Htrue : om_trunc vom = true).
     { destruct (om_trunc vom) eqn:Hot; [reflexivity |]. exfalso.
       assert (Hz : so_and om 1024 = (mword_of_int 0 : mword 64))
         by (rewrite Hom; apply (proj2 (soau_trunc_zero_iff vom)); exact Hot).
       rewrite Hz so_eqz_zero in Htr. discriminate. }
-    iEval (rewrite (open_trunc_at_true _ vom (bv_unsigned inum) Ft Htrue))
+    iEval (rewrite /plain_trunc_kept
+             (open_trunc_at_true _ vom (bv_unsigned inum) _ Htrue))
       in "Htc".
     iApply fupd_wp.
-    iMod (opf_atrunc_fire fsc_fs ⊤ Ft (bv_unsigned inum)
+    iMod (opf_atrunc_fire fsc_fs ⊤
+            (cre_ft_kept (trunc_term_at pl P) (bv_unsigned inum) Ft)
+            (bv_unsigned inum)
             (fn_file_bytes (era_node dn bm data))
             (fn_nlink (era_node dn bm data))
             (era_node dn bm data)
@@ -917,6 +924,8 @@ Section ProofSysOpenStores.
             with "[] [] Htc Htop") as "[Htop Htr2]";
       [iApply (ireg_inv_ftop with "Hireg") | iApply (ireg_inv_app with "Hireg") |].
     iModIntro.
+    (* the kept family's receipt IS the caller's ([SysOpenDefs.cre_ft_kept]) *)
+    iEval (cbn [cre_ft_kept pf_recv]) in "Htr2".
     iDestruct (so_trunc_loaded kk inum dn Htynz Htynd Hrl
                  with "Hat Hmeta Hmap Hblk Htop") as "Hload".
     (* ===== +0x154 c.j +0xb8 ===== *)

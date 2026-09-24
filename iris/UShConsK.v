@@ -317,7 +317,7 @@ Section UShConsK.
     iDestruct (init_cons_recv fsc_fs T i
                  (uvis_M W) (mword_of_int UkSh.sh_cons_pv) (mword_of_int 2)
                  (pfam_triv (fun (_ : aview) (_ : Z) (_ : list (bv 8)) => True%I))
-                 (uvis_fd W) ret fdv' Hpath with "Hrc") as "Hans".
+                 (uvis_fd W) ret fdv' Hpath init_cons_om2_trunc with "Hrc") as "Hans".
     (* ---- 0xccc  c.jr ra ---- *)
     set (m2 := <[Regidx a0_idx := ret]> m1).
     assert (Hra : m2 !!! Regidx ra_idx = m !!! Regidx ra_idx).
@@ -462,7 +462,7 @@ Section UShConsK.
             (uvis_M W) (mword_of_int UkSh.sh_cons_pv) (mword_of_int 2)
             (pfam_triv (fun (_ : aview) (_ : Z) (_ : anode) => True%I))
             (pfam_triv (fun (_ : aview) (_ : Z) (_ : list (bv 8)) => True%I))
-            (uvis_fd W) ret fdv' HPT Hpath with "Hrc") as "Hans".
+            (uvis_fd W) ret fdv' HPT init_cons_om2_trunc Hpath with "Hrc") as "Hans".
     iModIntro.
     (* ---- 0xccc  c.jr ra ---- *)
     set (m2 := <[Regidx a0_idx := ret]> m1).

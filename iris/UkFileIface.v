@@ -27,8 +27,8 @@
 (* slot), the READ ([file_read] at the tail handle the token names,       *)
 (* [file_read_std] at a standard slot), the open of `f` present -- the    *)
 (* descriptor landing where the LEDGER says ([UserFd.ualloc]: the lowest  *)
-(* closed standard slot, else a fresh tail handle) -- and absent at a     *)
-(* non-truncating mode, EVERY close (an input's, at its handle or its     *)
+(* closed standard slot, else a fresh tail handle) -- and absent at any   *)
+(* non-creating mode, EVERY close (an input's, at its handle or its       *)
 (* standard slot, with the deed's fraction home and the token back to the *)
 (* pool; a standard stream of any kind, its ledger slot to [FdClosed];    *)
 (* a shared standard stream keeping its device; a shared tail descriptor  *)
@@ -38,31 +38,13 @@
 (*                                                                        *)
 (* WHAT IS NOT, as section hypotheses at the narrowest refused case:      *)
 (*                                                                        *)
-(*   [Hopen_trunc]  the open of an absent `f` at a truncating mode that    *)
-(*             does not create.  NOT a leaf artefact (lane leaf-filedev,  *)
-(*             2026-09-23): the kernel's plain open surface                *)
-(*             ([SysOpenDefs.open_au_plain_at]) owes the truncate piece   *)
-(*             at the TRIVIAL permit ([SysOpenDefs.trunc_permit_triv]) -- *)
-(*             an [AppInv.app_step] at EVERY file row, handed in before   *)
-(*             the walk and untied to its terminal -- and the file claim  *)
-(*             cannot pay that at the four pinned binaries                *)
-(*             ([FileFsPure.file_fs_pure]); only the taint's [app_sup]     *)
-(*             can ([FsAbsInvFire]).  [UkFileOpen]'s miss leaf takes      *)
-(*             [om_trunc = false] because [PinnedOpen]'s dead bundle       *)
-(*             supplies the piece by [open_trunc_piece_none], which is the *)
-(*             only supplier outside the taint.  Closing it is kernel     *)
-(*             work: a plain-surface permit tied to the walk's terminal   *)
-(*             cursor, as the create surface's [trunc_permit_of] is, paid *)
-(*             where [ProofSysOpenWalk] keys the piece at the inode namei *)
-(*             reached ([open_trunc_at_of_triv]), with the file arms of   *)
-(*             [SpecSysOpen.open_post_ok_plain] returning what the permit *)
-(*             took through [Ft].                                         *)
-(*   (The zero-length write at an INPUT -- a tail handle, or the read-only *)
-(*   standard slot of [FDIn true] -- WAS on this list while row 16 carried *)
-(*   no return blanket; it is proved now, [fif_nil_in], off the blanket   *)
-(*   at count 0 (lane NIL-RET).  At the console: [fif_cons_nil]; at the    *)
-(*   file held for writing: [fif_file_nil] over                            *)
-(*   [UkFileDev.file_write_nil].)                                          *)
+(*   Nothing, any more.  The truncating open of an absent `f` closed       *)
+(*   kernel-side (TRUNC-PERMIT: the plain surface's permit tied to the     *)
+(*   walk's terminal), and the zero-length write at an INPUT -- a tail    *)
+(*   handle, or the read-only standard slot of [FDIn true] -- closed off  *)
+(*   row 16's return blanket at count 0 ([fif_nil_in], lane NIL-RET).      *)
+(*   At the console: [fif_cons_nil]; at the file held for writing:        *)
+(*   [fif_file_nil] over [UkFileDev.file_write_nil].                       *)
 (*                                                                        *)
 (* THE TAINT PAYS ANY DISCIPLINED TREE ([fif_taint_pays]): the free       *)
 (* handler at every hole, out of the application's supply (write, read,   *)
@@ -1341,17 +1323,18 @@ Section UkFileIface.
       iApply (fif_open_taint l ret fdm vs Hlen Hok with "Htn Hrb Hpay Hof Hhs").
   Qed.
 
-  (* [ei_open_absent] for `f`, at a mode that does not truncate *)
+  (* [ei_open_absent] for `f`, at any mode that does not create (the
+     truncate's permit at an absent `f` is the dead walk's cursor, paid
+     out of the taint: [UkFileDev.file_open_absent], lane TRUNC-PERMIT) *)
   Lemma fif_open_absent_nt (fdm : fdmap) (files : list (bv 8) -> option (list (bv 8)))
       (paths : list (list (bv 8))) (path : list (bv 8)) (m : Z) (K : Z -> iProp Σ) :
     path ∈ paths -> ~ mode_create m -> files path = None ->
-    SysOpenDefs.om_trunc (mword_of_int m : mword 64) = false ->
     fif_fds fdm -∗ fif_filesr files paths -∗
     ((fif_fds fdm -∗ fif_filesr files paths -∗ K (-1))
      ∧ (∀ x, ⌜x = -1 \/ 0 <= x⌝ -∗ fif_taint (open_held fdm x) -∗ K x)) -∗
     op_obl N P path m K.
   Proof using Heq Hso.
-    intros Hp Hcm Hf Htr. iIntros "Hfds Hfiles HK".
+    intros Hp Hcm Hf. iIntros "Hfds Hfiles HK".
     iDestruct "Hfiles" as "[%Hpaths Hfiles]". pose proof (Hpaths path Hp) as ->.
     iDestruct "Hfiles" as (s q) "[%Hfs Hd]".
     assert (Hs : s = None).
@@ -1361,7 +1344,7 @@ Section UkFileIface.
     iDestruct "He" as "(#Hbr & #Hrb & #Hinv & #Hm)".
     iDestruct (UserFd.ustd_len with "Hstd") as %Hlen.
     iApply (file_open_absent c r Heq N P Hso l FsImg.ROOTINO q m K eq_refl
-              (fif_om_create m Hcm) Htr with "Hinv Hstd Hcwd Hd").
+              (fif_om_create m Hcm) with "Hinv Hstd Hcwd Hd").
     iSplit.
     - iIntros "Hstd Hcwd Hd". iDestruct "HK" as "[HK _]".
       iApply ("HK" with "[Hstd Hcwd Hpay Hpool Htoks Hhs] [Hd]").
@@ -1515,20 +1498,6 @@ Section UkFileIface.
      ∧ (∀ y, fif_taint (dom fdm) -∗ K y)) -∗
     wr_obl N P fd [] K.
 
-  (* NOT PROVABLE AT THE LEAF (header, WHAT IS NOT): the plain open
-     surface owes its truncate piece at the trivial permit, an application
-     step at every file row, and the file claim has no such step outside
-     the taint.  A kernel-side permit tied to the walk's terminal closes it. *)
-  Definition fif_open_trunc_law : Prop :=
-    forall (fdm : fdmap) (files : list (bv 8) -> option (list (bv 8)))
-      (paths : list (list (bv 8))) (path : list (bv 8)) (m : Z) (K : Z -> iProp Σ),
-    path ∈ paths -> ~ mode_create m -> files path = None ->
-    SysOpenDefs.om_trunc (mword_of_int m : mword 64) = true ->
-    fif_fds fdm -∗ fif_filesr files paths -∗
-    ((fif_fds fdm -∗ fif_filesr files paths -∗ K (-1))
-     ∧ (∀ x, ⌜x = -1 \/ 0 <= x⌝ -∗ fif_taint (open_held fdm x) -∗ K x)) -∗
-    op_obl N P path m K.
-
   (* THE INPUT'S ZERO-LENGTH WRITE IS PROVED (lane NIL-RET): row 16
      carries [SpecFilewrite.filewrite_ret], so at a read-only row -- where
      [filewrite_extra] is [emp] -- the U tier still learns the answer is 0
@@ -1577,8 +1546,6 @@ Section UkFileIface.
         * iExists false, i, γo. iFrame "Htk". iExact "Hin".
   Qed.
 
-  Hypothesis Hopen_trunc : fif_open_trunc_law.
-
 
   (* the laws assembled from their cases *)
   Lemma fif_write_nil (fdm : fdmap) (fd : Z) (d : nat) (x : dspec) (K : Z -> iProp Σ) :
@@ -1617,11 +1584,8 @@ Section UkFileIface.
     ((fif_fds fdm -∗ fif_filesr files paths -∗ K (-1))
      ∧ (∀ x, ⌜x = -1 \/ 0 <= x⌝ -∗ fif_taint (open_held fdm x) -∗ K x)) -∗
     op_obl N P path m K.
-  Proof using Heq Hso Hopen_trunc.
-    intros Hp Hcm Hf.
-    destruct (SysOpenDefs.om_trunc (mword_of_int m : mword 64)) eqn:Etr.
-    - exact (Hopen_trunc fdm files paths path m K Hp Hcm Hf Etr).
-    - exact (fif_open_absent_nt fdm files paths path m K Hp Hcm Hf Etr).
+  Proof using Heq Hso.
+    exact (fif_open_absent_nt fdm files paths path m K).
   Qed.
 
   Lemma fif_close (fdm : fdmap) (fd : Z) (d : nat) (x : dspec)
@@ -1704,7 +1668,7 @@ Section UkFileIface.
   (* ------------------------------------------------------------------- *)
 
   Definition file_iface : ep_iface N P.
-  Proof using Hcons Heq HPc HNc Hsr Hsw Hso Hsc Hse Hopen_trunc.
+  Proof using Hcons Heq HPc HNc Hsr Hsw Hso Hsc Hse.
     refine (MkEI N P fif_fds fif_out (fun _ _ => False%I) (fun _ => False%I) fif_outm
               fif_in (fun _ _ => False%I) (fun _ => False%I)
               (fun _ _ _ _ => False%I) (fun _ _ _ => False%I) (fun _ => False%I)
@@ -1740,7 +1704,7 @@ Section UkFileIface.
     files fname_f = Some content ->
     env_res N P file_iface (cat_env0 [content; cat_dg_open fname_f] files [fname_f]) {[0%nat]} -∗
     tree_pay N P (cat_tree [sb "cat"; fname_f]).
-  Proof using Hcons Heq HPc HNc Hsr Hsw Hso Hsc Hse Hopen_trunc.
+  Proof using Hcons Heq HPc HNc Hsr Hsw Hso Hsc Hse.
     intros Hf. iIntros "H".
     iApply (tree_pay_of_conforms N P file_iface _ _ _
               (cat_file_conforms fname_f content files Hf) (cat_tree_safe _ _) with "H").
@@ -1750,7 +1714,7 @@ Section UkFileIface.
     files fname_f = None ->
     env_res N P file_iface (cat_env0 [cat_dg_open fname_f] files [fname_f]) {[0%nat]} -∗
     tree_pay N P (cat_tree [sb "cat"; fname_f]).
-  Proof using Hcons Heq HPc HNc Hsr Hsw Hso Hsc Hse Hopen_trunc.
+  Proof using Hcons Heq HPc HNc Hsr Hsw Hso Hsc Hse.
     intros Hf. iIntros "H".
     iApply (tree_pay_of_conforms N P file_iface _ _ _
               (cat_file_absent_conforms fname_f files Hf) (cat_tree_safe _ _) with "H").
@@ -1760,7 +1724,7 @@ Section UkFileIface.
     drop 1 argv <> [] -> Forall (fun w => w <> []) (drop 1 argv) ->
     env_res N P file_iface (pipe_env (DOutM (echo_chunks argv)) files) {[0%nat]} -∗
     tree_pay N P (echo_tree argv).
-  Proof using Hcons Heq HPc HNc Hsr Hsw Hso Hsc Hse Hopen_trunc.
+  Proof using Hcons Heq HPc HNc Hsr Hsw Hso Hsc Hse.
     intros Hne Hnn. iIntros "H".
     iApply (tree_pay_of_conforms N P file_iface _ _ _
               (echo_file_conforms argv files Hne Hnn) (echo_tree_safe _ _) with "H").
@@ -1824,7 +1788,7 @@ Section UkFileIface.
     fif_env -∗ fdq r q (Some (i, content)) -∗ own γreg (fif_pool ∅ w) -∗
     cons_dev file_lm (file_params g) (file_links g) [content; cat_dg_open fname_f] -∗
     tree_pay N P (cat_tree [sb "cat"; fname_f]).
-  Proof using Hcons Heq HPc HNc Hsr Hsw Hso Hsc Hse Hopen_trunc.
+  Proof using Hcons Heq HPc HNc Hsr Hsw Hso Hsc Hse.
     intros Hw Hl1 Hl2. iIntros "Hstd Hcwd Hpay He Hd Hp Hc".
     iApply (cat_f_paid content _ (fif_files_f _)).
     iApply (cat_env_res l rb1 rb2 (Some (i, content)) q w with "Hstd Hcwd Hpay He Hd Hp Hc");
@@ -1840,7 +1804,7 @@ Section UkFileIface.
     fif_env -∗ fdq r q None -∗ own γreg (fif_pool ∅ w) -∗
     cons_dev file_lm (file_params g) (file_links g) [cat_dg_open fname_f] -∗
     tree_pay N P (cat_tree [sb "cat"; fname_f]).
-  Proof using Hcons Heq HPc HNc Hsr Hsw Hso Hsc Hse Hopen_trunc.
+  Proof using Hcons Heq HPc HNc Hsr Hsw Hso Hsc Hse.
     intros Hw Hl1 Hl2. iIntros "Hstd Hcwd Hpay He Hd Hp Hc".
     iApply (cat_f_absent_paid _ (fif_files_f None)).
     iApply (cat_env_res l rb1 rb2 None q w with "Hstd Hcwd Hpay He Hd Hp Hc"); assumption.
@@ -1901,7 +1865,7 @@ Section UkFileIface.
     UserFd.ustd γfd l -∗ UserCwd.ucwd (ukn_cwd N) FsImg.ROOTINO -∗ ukn_pay N (-1) -∗
     fif_env -∗ fdq r q s -∗ own γreg (fif_pool ∅ w) -∗ file_out c r i γo argv 0 -∗
     tree_pay N P (echo_tree argv).
-  Proof using Hcons Heq HPc HNc Hsr Hsw Hso Hsc Hse Hopen_trunc.
+  Proof using Hcons Heq HPc HNc Hsr Hsw Hso Hsc Hse.
     intros Hw Hl1 Hwok Hne Hnn. iIntros "Hstd Hcwd Hpay He Hd Hp Hc".
     iApply (echo_f_paid argv _ Hne Hnn).
     iApply (echo_env_res l rb i γo s q w argv with "Hstd Hcwd Hpay He Hd Hp Hc"); assumption.
@@ -1968,12 +1932,11 @@ Section UkFileIfaceEcho.
   Context (Hcons : @riscv_cons_res Σ (@riscv_fixedGS Σ HRg) = fecl g).
   Context (N : uk_names Σ) `{!ukn_const N}.
   Context (γreg : gname).
-  Hypothesis Hopen_trunc : fif_open_trunc_law g r N (echo_prog N) γreg.
 
   Definition file_iface_echo : ep_iface N (echo_prog N) :=
     file_iface g r Heq Hcons N (echo_prog N) (echo_stub_read N) (echo_stub_write N)
       (echo_stub_open N) (echo_stub_close N) (echo_stub_exit N) γreg
-      Hopen_trunc.
+     .
 
   Definition echo_f_paid_echo (argv : list (list (bv 8)))
       (files : list (bv 8) -> option (list (bv 8))) :
@@ -1982,7 +1945,7 @@ Section UkFileIfaceEcho.
     -∗ tree_pay N (echo_prog N) (echo_tree argv) :=
     echo_f_paid g r Heq Hcons N (echo_prog N) (echo_stub_read N) (echo_stub_write N)
       (echo_stub_open N) (echo_stub_close N) (echo_stub_exit N) γreg
-      Hopen_trunc argv files.
+      argv files.
 
   Definition echo_f_paid_of_redirect_echo (l : list fdstate) (rb : bool) (i : Z) (γo : gname)
       (s : dst) (q : Qp) (w : nat -> fdev) (argv : list (list (bv 8))) :
@@ -1996,5 +1959,5 @@ Section UkFileIfaceEcho.
     tree_pay N (echo_prog N) (echo_tree argv) :=
     echo_f_paid_of_redirect g r Heq Hcons N (echo_prog N) (echo_stub_read N)
       (echo_stub_write N) (echo_stub_open N) (echo_stub_close N) (echo_stub_exit N)
-      γreg Hopen_trunc l rb i γo s q w argv.
+      γreg l rb i γo s q w argv.
 End UkFileIfaceEcho.

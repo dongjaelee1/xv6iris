@@ -168,6 +168,7 @@ Section UConsOpen.
   (* =================================================================== *)
   Definition xfam_open (omo : offmode) (P Pmiss : nat -> Z -> iProp Σ)
       (Fo : pfam Σ (aview -> Z -> anode -> iProp Σ))
+      (Ft : pfam Σ (aview -> Z -> list (bv 8) -> iProp Σ))
       (Q : Z -> iProp Σ) : xfam :=
     {| xf_P     := fun _ _ => True%I;
        xf_Pmiss := fun _ _ => True%I;
@@ -184,7 +185,7 @@ Section UConsOpen.
        of_Fok   := pfam_triv (fun _ _ _ _ => True%I);
        of_Fex   := pfam_triv (fun _ _ _ _ => True%I);
        of_Fo    := Fo;
-       of_Ft    := pfam_triv (fun _ _ _ => True%I);
+       of_Ft    := Ft;
        of_om    := omo;
        wf_Q     := fun _ => True%I;
        nf_P     := fun _ _ => True%I;
@@ -449,18 +450,21 @@ Section UConsOpen.
       (Ft : pfam Σ (aview -> Z -> list (bv 8) -> iProp Σ))
       (sts : list fdstate) (r : mword 64) (fdv' : list fdstate) :
     Persistent T ->
+    om_trunc vom = false ->
     arg_path_of M pv init_cons_pl ->
     open_receipt_plain OffParked (fs_gamma_L γfs) γfs FsImg.ROOTINO M pv vom
       (cons_P_dead T K FsImg.ROOTINO) (cons_Pmiss T K) Fo Ft sts r fdv' -∗
     |={⊤}=> ((⌜r = (mword_of_int (-1) : mword 64)⌝ ∗ ⌜fdv' = sts⌝
               ∗ (K ∨ T)) ∨ T).
   Proof using .
-    intros HPT Hpath. iIntros "Hrc". rewrite /open_receipt_plain.
+    intros HPT Htr Hpath. iIntros "Hrc". rewrite /open_receipt_plain.
     iDestruct "Hrc" as "[(%Hr & %Hfd & Hfail) | Hok]"; last first.
     { (* THE SUCCESS FOLD: the terminal cursor is at hop 1, and the
-         credential arm demands hop 0 *)
+         credential arm demands hop 0 -- and no O_TRUNC, so the cursor is
+         whole ([SpecSysOpen.cur_kept]) *)
       iDestruct "Hok" as (pl' av i) "(%Hpath' & HP & _)".
       rewrite (arg_path_of_uniq M pv pl' init_cons_pl Hpath' Hpath).
+      iEval (rewrite /cur_kept Htr) in "HP".
       rewrite /cons_P_dead.
       iDestruct "HP" as "[[%Hz _] | #HT]".
       - exfalso. destruct Hz as [Hz _]. rewrite init_cons_elems_len in Hz.
@@ -495,6 +499,7 @@ Section UConsOpen.
           iSplitR; [ by iPureIntro | ]. rewrite /cons_Pmiss. iExact "HPm".
       + (* THE CALL FAILED AFTER THE WALK: the terminal cursor again *)
         iDestruct "Hterm" as (i) "(HP & _ & _)".
+        iEval (rewrite /cur_kept Htr) in "HP".
         rewrite /cons_P_dead.
         iDestruct "HP" as "[[%Hz _] | #HT]".
         * exfalso. destruct Hz as [Hz _]. rewrite init_cons_elems_len in Hz.
@@ -508,7 +513,8 @@ Section UConsOpen.
      evar is resolved and so does not convert. *)
   Definition init_cons_absent_fam (T K : iProp Σ) (Q : Z -> iProp Σ) : sfam :=
     xfam_open OffParked (cons_P_dead T K FsImg.ROOTINO) (cons_Pmiss T K)
-      (pfam_triv (fun (_ : aview) (_ : Z) (_ : anode) => True%I)) Q.
+      (pfam_triv (fun (_ : aview) (_ : Z) (_ : anode) => True%I))
+      (pfam_triv (fun (_ : aview) (_ : Z) (_ : list (bv 8)) => True%I)) Q.
 
   (* THE SUPPLIER AT THE MISSING PIN, at the CALLER's own literal.  The
      path reading is a premise because it is the one thing that is the
@@ -555,7 +561,8 @@ Section UConsOpen.
   Definition init_cons_console_fam (T : iProp Σ) (i : Z) (Q : Z -> iProp Σ)
       : sfam :=
     xfam_open OffParked (pobs_P T [FsImg.ROOTINO; i]) (pobs_Pmiss T)
-      (pobs_Fo (cons_present_at i) T) Q.
+      (pobs_Fo (cons_present_at i) T)
+      (pfam_triv (fun (_ : aview) (_ : Z) (_ : list (bv 8)) => True%I)) Q.
 
   (* ...AND AT THE RESOLVING PIN.  The credential does NOT appear: the
      flag [AppEcho.cons_made r i] is persistent, which is what lets sh have

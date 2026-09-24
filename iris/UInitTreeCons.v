@@ -226,6 +226,7 @@ Section UInitTreeCons.
       (sts : list fdstate) (rv : mword 64) (fdv' : list fdstate) :
     pin_resolves_abs Pin cw pl hops ino (ADev ma mi) ->
     arg_path_of M pv pl ->
+    om_trunc vom = false ->
     open_receipt_plain OffParked (fs_gamma_L γfs) γfs cw M pv vom
       (pobs_P T hops) (pobs_Pmiss T) (pobs_Fo Pin T) Ft sts rv fdv' -∗
       ((⌜rv = (mword_of_int (-1) : mword 64)⌝ ∗ ⌜fdv' = sts⌝)
@@ -233,11 +234,13 @@ Section UInitTreeCons.
              sts rv fdv'⌝
        ∨ T).
   Proof using .
-    intros Hres Hpath. iIntros "Hrc". rewrite /open_receipt_plain.
+    intros Hres Hpath Htr. iIntros "Hrc". rewrite /open_receipt_plain.
     iDestruct "Hrc" as "[(%Hr & %Hfd & _) | Hok]".
     { iLeft. iPureIntro. exact (conj Hr Hfd). }
     iDestruct "Hok" as (pl' av i) "(%Hpath' & HP & Harm)".
     rewrite (arg_path_of_uniq M pv pl' pl Hpath' Hpath).
+    (* no O_TRUNC, so the cursor is whole ([SpecSysOpen.cur_kept]) *)
+    iEval (rewrite /cur_kept Htr) in "HP".
     iDestruct "Harm" as "[Hdev | [Hfile | Hdir]]".
     - (* THE DEVICE: the identification names the major *)
       iDestruct "Hdev" as (ma' mi' nl') "(%Hrow & %Hnd & Hrecv & Ht & %Hfdr)".
@@ -376,7 +379,7 @@ Section UInitTreeCons.
                  (uvis_M W) pv (m !!! Regidx a1_idx) _ (uvis_fd W) rv fdv'
                  (tree_pin_resolves_dev root d i t ma mi cw pl
                     Hp Hstart Hd Hres)
-                 (Hpath (uvis_M W) Himg) with "Hrc") as "Hans".
+                 (Hpath (uvis_M W) Himg) Htr with "Hrc") as "Hans".
     iApply ("Hcont" $! h' rv with "[Hfd Hans] Hcwd Hrun").
     iDestruct "Hans" as "[[%Hr %Hfdv] | [%Hrcpt | #HT]]"; last first.
     { iRight. iRight. iFrame "HT".

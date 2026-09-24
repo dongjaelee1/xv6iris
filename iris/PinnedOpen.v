@@ -28,7 +28,13 @@
 (* [pinned_open_bundle_notrunc] below: no [Ft] premise, no                 *)
 (* [AppInv.app_step] at a row the application pins.  At [om_trunc vom =    *)
 (* true] the piece is still the caller's, and it is a premise of the       *)
-(* general form.                                                           *)
+(* general form -- keyed by the WALK'S TERMINAL CURSOR                     *)
+(* ([SysOpenDefs.trunc_term_arg], lane TRUNC-PERMIT), which is what lets   *)
+(* an open at an ABSENT pin pay it out of the taint alone                  *)
+(* ([pobs_dead_trunc_piece]): the walk dies at its first hop, so the       *)
+(* terminal cursor the permit hands over IS the taint.  A truncating open  *)
+(* spends that cursor ([SpecSysOpen.cur_kept]), so the receipt readers    *)
+(* that need it on the FILE arm take [om_trunc vom = false].               *)
 (* ===================================================================== *)
 From Stdlib Require Import ZArith Lia List.
 From stdpp Require Import gmap list bitvector.definitions.
@@ -94,7 +100,7 @@ Section PinnedOpen.
     □ (∀ v : aview, app_pred app_run v -∗
                       app_pred app_run v ∗ (⌜Pin v⌝ ∨ T)) -∗
     app_inv γfs -∗
-    open_trunc_piece (fs_gamma_L γfs) vom trunc_permit_triv Ft -∗
+    open_trunc_piece (fs_gamma_L γfs) vom (trunc_term_arg M pv (pobs_P T hops)) Ft -∗
     open_au_plain_at (fs_gamma_L γfs) γfs cw M pv vom
       (pobs_P T hops) (pobs_Pmiss T) (pobs_Fo Pin T) Ft.
   Proof using .
@@ -124,7 +130,7 @@ Section PinnedOpen.
     □ (∀ v : aview, app_pred app_run v -∗
                       app_pred app_run v ∗ (⌜Pin v⌝ ∨ T)) -∗
     app_inv γfs -∗
-    open_trunc_piece (fs_gamma_L γfs) vom trunc_permit_triv Ft -∗
+    open_trunc_piece (fs_gamma_L γfs) vom (trunc_term_arg M pv (pobs_P T hops)) Ft -∗
     open_in (fs_gamma_L γfs) γfs cw M pv vom
       (pobs_P T hops) (pobs_Pmiss T) Farm Fun Fok Fex (pobs_Fo Pin T) Ft.
   Proof using .
@@ -174,7 +180,9 @@ Section PinnedOpen.
      WHAT COMES BACK ON THE SUCCESS ARM: the pure descriptor receipt
      ([SysOpenDefs.open_fd_rcpt]) at the pinned major, and the caller's
      TRUNCATION piece, unfired -- the omode has no O_TRUNC and a device is
-     not truncated, so the arm hands the whole piece back. *)
+     not truncated, so the arm hands the whole piece back.  AT
+     [om_trunc vom = false]: a truncating open spends the terminal cursor
+     into the permit and the FILE arm's refutation needs it (header). *)
   Lemma pinned_open_dev (γfs : fs_names)
       (omo : offmode)
       (Pin : aview -> Prop) (T : iProp Σ) `{!Persistent T} `{!Timeless T}
@@ -185,6 +193,7 @@ Section PinnedOpen.
       (sts : list fdstate) (r : mword 64) (fdv' : list fdstate) :
     pin_resolves_at Pin cw pl hops ino (MkAnode (ADev ma mi) nl) ->
     arg_path_of M pv pl ->
+    om_trunc vom = false ->
     open_receipt_plain omo (fs_gamma_L γfs) γfs cw M pv vom
       (pobs_P T hops) (pobs_Pmiss T) (pobs_Fo Pin T) Ft sts r fdv' -∗
       (* THE WALK MISSED, or the call failed after it: nothing moved *)
@@ -196,7 +205,7 @@ Section PinnedOpen.
        (* ...or the application is tainted *)
        ∨ T).
   Proof using .
-    intros Hres Hpath. iIntros "Hrc". rewrite /open_receipt_plain.
+    intros Hres Hpath Htr. iIntros "Hrc". rewrite /open_receipt_plain.
     iDestruct "Hrc" as "[(%Hr & %Hfd & _) | Hok]".
     { iLeft. iPureIntro. exact (conj Hr Hfd). }
     iDestruct "Hok" as (pl' av i) "(%Hpath' & HP & Harm)".
@@ -204,9 +213,12 @@ Section PinnedOpen.
        caller's argument 0, and the reading is a function of it
        ([ArgPath.arg_path_of_uniq]) *)
     rewrite (arg_path_of_uniq M pv pl' pl Hpath' Hpath).
+    (* no O_TRUNC: the cursor is whole *)
+    iEval (rewrite /cur_kept Htr) in "HP".
     iDestruct "Harm" as "[Hdev | [Hfile | Hdir]]".
     - (* DEVICE: the identification names the major *)
       iDestruct "Hdev" as (ma' mi' nl') "(%Hrow & %Hnd & Hrecv & Ht & %Hfdr)".
+      iDestruct (plain_trunc_kept_forget with "Ht") as "Ht".
       iDestruct (pobs_node Pin T cw pl hops ino (MkAnode (ADev ma mi) nl)
                    av i (MkAnode (ADev ma' mi') nl') Hres with "HP Hrecv")
         as "[%Hid | #HT]"; last first.
@@ -292,15 +304,17 @@ Section PinnedOpen.
       (sts : list fdstate) (r : mword 64) (fdv' : list fdstate) :
     arg_path_of M pv pl ->
     path_elems pl <> [] ->
+    om_trunc vom = false ->
     open_receipt_plain omo (fs_gamma_L γfs) γfs cw M pv vom
       (pobs_P_dead T d0) Pmiss Fo Ft sts r fdv' -∗
       ((⌜r = (mword_of_int (-1) : mword 64)⌝ ∗ ⌜fdv' = sts⌝) ∨ T).
   Proof using .
-    intros Hpath Hne. iIntros "Hrc". rewrite /open_receipt_plain.
+    intros Hpath Hne Htr. iIntros "Hrc". rewrite /open_receipt_plain.
     iDestruct "Hrc" as "[(%Hr & %Hfd & _) | Hok]".
     { iLeft. iPureIntro. exact (conj Hr Hfd). }
     iDestruct "Hok" as (pl' av i) "(%Hpath' & HP & _)".
     rewrite (arg_path_of_uniq M pv pl' pl Hpath' Hpath).
+    iEval (rewrite /cur_kept Htr) in "HP".
     iRight.
     iApply (pobs_dead_term T d0 (length (path_elems pl)) i with "HP").
     intros Hz. apply Hne. by apply nil_length_inv.
@@ -316,7 +330,104 @@ Section PinnedOpen.
   (*  instead: the credential rides the cursor, and both arms of the       *)
   (*  failure fold hand it back.                                          *)
   (* ------------------------------------------------------------------ *)
+  Lemma pinned_open_bundle_dead_lin_at (γfs : fs_names)
+      (Pin : aview -> Prop) (T : iProp Σ) `{!Persistent T} `{!Timeless T}
+      (K : iProp Σ) `{!Timeless K} (Pmiss : nat -> Z -> iProp Σ)
+      (cw : Z) (pl : list (bv 8)) (d0 : Z)
+      (M : gmap Z (bv 8)) (pv vom : mword 64)
+      (Ft : pfam Σ (aview -> Z -> list (bv 8) -> iProp Σ))
+      (Farm Fun : pfam Σ (aview -> Z -> iProp Σ))
+      (Fok Fex : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ)) :
+    om_create vom = false ->
+    pin_misses_at Pin cw pl d0 ->
+    arg_path_of M pv pl ->
+    □ (∀ v : aview, K -∗ app_pred app_run v -∗
+                      app_pred app_run v ∗ K ∗ (⌜Pin v⌝ ∨ T)) -∗
+    pobs_miss_taint T Pmiss -∗
+    pobs_miss_hold K Pmiss -∗
+    app_inv γfs -∗
+    K -∗
+    (* the truncate's piece, at the dead walk's own terminal permit *)
+    open_trunc_piece (fs_gamma_L γfs) vom
+      (trunc_term_arg M pv (pobs_P_dead_lin T K d0)) Ft -∗
+    open_in (fs_gamma_L γfs) γfs cw M pv vom
+      (pobs_P_dead_lin T K d0) Pmiss Farm Fun Fok Fex
+      (pfam_triv (fun (_ : aview) (_ : Z) (_ : anode) => True%I)) Ft.
+  Proof using .
+    intros Hcr Hres Hpath. iIntros "#Hcl #Hmt #Hmh #Hinv HK Ht".
+    rewrite /open_in Hcr /open_au_plain_at.
+    iSplitL "HK".
+    { iIntros (pl') "%Hpath'".
+      rewrite (arg_path_of_uniq M pv pl' pl Hpath' Hpath).
+      iApply (pobs_walk_dead_lin γfs Pin T K Pmiss cw pl d0 Hres
+                with "Hcl Hmt Hmh Hinv HK"). }
+    iSplitR; [ iApply pobs_aopen_triv | ].
+    iExact "Ht".
+  Qed.
+
+  (* THE PIECE AT A DEAD PIN COSTS THE TAINT AND NOTHING ELSE (lane
+     TRUNC-PERMIT).  The permit is the walk's terminal cursor, and at any
+     hop but the first that cursor IS the taint ([PinnedObs.
+     pobs_dead_term_lin]); the taint answers for every view
+     ([AppInv.app_sup]), so the step is paid out of the supply and its
+     receipt is the taint again -- which is what the receipt reader below
+     collects on the FILE arm. *)
+  Lemma pobs_dead_trunc_piece (γfs : fs_names) (T K : iProp Σ)
+      `{!Persistent T} (d0 : Z)
+      (M : gmap Z (bv 8)) (pv vom : mword 64) (pl : list (bv 8)) :
+    arg_path_of M pv pl ->
+    path_elems pl <> [] ->
+    □ (T -∗ app_sup) -∗
+    open_trunc_piece (fs_gamma_L γfs) vom
+      (trunc_term_arg M pv (pobs_P_dead_lin T K d0))
+      (pfam_triv (fun (_ : aview) (_ : Z) (_ : list (bv 8)) => T)).
+  Proof using .
+    intros Hpath Hne. iIntros "#Hsup". rewrite /open_trunc_piece.
+    destruct (om_trunc vom); [| done].
+    iApply pf_at_triv. rewrite /atrunc_of_permit. iIntros (i) "Hk".
+    iDestruct (trunc_term_at_of_arg M pv pl _ i Hpath with "Hk") as "Hk".
+    rewrite /trunc_term_at.
+    iDestruct (pobs_dead_term_lin T K d0 (length (path_elems pl)) i
+                 ltac:(intros Hz; apply Hne; by apply nil_length_inv)
+                 with "Hk") as "#HT".
+    iApply atrunc_commit_i_of_at.
+    iApply (atrunc_commit_at_unit_pers γfs appE T with "[] HT").
+    iApply ("Hsup" with "HT").
+  Qed.
+
+  (* ...so the dead open's bundle owes NO trunc piece at any mode: at the
+     taint's receipt family, which is the one the piece can be paid at *)
   Lemma pinned_open_bundle_dead_lin (γfs : fs_names)
+      (Pin : aview -> Prop) (T : iProp Σ) `{!Persistent T} `{!Timeless T}
+      (K : iProp Σ) `{!Timeless K} (Pmiss : nat -> Z -> iProp Σ)
+      (cw : Z) (pl : list (bv 8)) (d0 : Z)
+      (M : gmap Z (bv 8)) (pv vom : mword 64)
+      (Farm Fun : pfam Σ (aview -> Z -> iProp Σ))
+      (Fok Fex : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ)) :
+    om_create vom = false ->
+    pin_misses_at Pin cw pl d0 ->
+    arg_path_of M pv pl ->
+    path_elems pl <> [] ->
+    □ (∀ v : aview, K -∗ app_pred app_run v -∗
+                      app_pred app_run v ∗ K ∗ (⌜Pin v⌝ ∨ T)) -∗
+    pobs_miss_taint T Pmiss -∗
+    pobs_miss_hold K Pmiss -∗
+    app_inv γfs -∗
+    □ (T -∗ app_sup) -∗
+    K -∗
+    open_in (fs_gamma_L γfs) γfs cw M pv vom
+      (pobs_P_dead_lin T K d0) Pmiss Farm Fun Fok Fex
+      (pfam_triv (fun (_ : aview) (_ : Z) (_ : anode) => True%I))
+      (pfam_triv (fun (_ : aview) (_ : Z) (_ : list (bv 8)) => T)).
+  Proof using .
+    intros Hcr Hres Hpath Hne. iIntros "#Hcl #Hmt #Hmh #Hinv #Hsup HK".
+    iApply (pinned_open_bundle_dead_lin_at γfs Pin T K Pmiss cw pl d0 M pv vom
+              _ Farm Fun Fok Fex Hcr Hres Hpath with "Hcl Hmt Hmh Hinv HK").
+    iApply (pobs_dead_trunc_piece γfs T K d0 M pv vom pl Hpath Hne with "Hsup").
+  Qed.
+
+  (* ...and at a mode without O_TRUNC, at any receipt family *)
+  Lemma pinned_open_bundle_dead_lin_notrunc (γfs : fs_names)
       (Pin : aview -> Prop) (T : iProp Σ) `{!Persistent T} `{!Timeless T}
       (K : iProp Σ) `{!Timeless K} (Pmiss : nat -> Z -> iProp Σ)
       (cw : Z) (pl : list (bv 8)) (d0 : Z)
@@ -339,13 +450,8 @@ Section PinnedOpen.
       (pfam_triv (fun (_ : aview) (_ : Z) (_ : anode) => True%I)) Ft.
   Proof using .
     intros Hcr Htr Hres Hpath. iIntros "#Hcl #Hmt #Hmh #Hinv HK".
-    rewrite /open_in Hcr /open_au_plain_at.
-    iSplitL "HK".
-    { iIntros (pl') "%Hpath'".
-      rewrite (arg_path_of_uniq M pv pl' pl Hpath' Hpath).
-      iApply (pobs_walk_dead_lin γfs Pin T K Pmiss cw pl d0 Hres
-                with "Hcl Hmt Hmh Hinv HK"). }
-    iSplitR; [ iApply pobs_aopen_triv | ].
+    iApply (pinned_open_bundle_dead_lin_at γfs Pin T K Pmiss cw pl d0 M pv vom
+              Ft Farm Fun Fok Fex Hcr Hres Hpath with "Hcl Hmt Hmh Hinv HK").
     iApply (open_trunc_piece_none _ vom _ Ft Htr).
   Qed.
 
@@ -353,7 +459,12 @@ Section PinnedOpen.
      AND THE CREDENTIAL IS BACK, or the application is tainted.  The one
      [={⊤}=>] is the failure fold's first arm: argstr may never have
      answered, so what comes back there is the walk one-shot itself and
-     the cursor is behind its fupd ([PinnedObs.pobs_dead_start_refund]). *)
+     the cursor is behind its fupd ([PinnedObs.pobs_dead_start_refund]).
+     AT A TRUNCATING MODE the success fold's FILE arm has spent the cursor
+     ([SpecSysOpen.cur_kept]) and reports the truncate's own receipt in its
+     place, so the reader asks that receipt to carry the taint -- which is
+     the family the bundle above pays at; the guard makes the premise
+     free at every other mode. *)
   Lemma pinned_open_dead_lin (γfs : fs_names) (T K : iProp Σ)
       (omo : offmode)
       (cw : Z) (pl : list (bv 8)) (d0 : Z)
@@ -363,19 +474,36 @@ Section PinnedOpen.
       (sts : list fdstate) (r : mword 64) (fdv' : list fdstate) :
     arg_path_of M pv pl ->
     path_elems pl <> [] ->
+    (om_trunc vom = true ->
+       forall (av : aview) (i : Z) (bs : list (bv 8)), Ft.(pf_recv) av i bs ⊢ T) ->
     open_receipt_plain omo (fs_gamma_L γfs) γfs cw M pv vom
       (pobs_P_dead_lin T K d0) (pobs_Pmiss_ref T K) Fo Ft sts r fdv'
     ={⊤}=∗ ((⌜r = (mword_of_int (-1) : mword 64)⌝ ∗ ⌜fdv' = sts⌝ ∗ K) ∨ T).
   Proof using .
-    intros Hpath Hne. iIntros "Hrc". rewrite /open_receipt_plain.
+    intros Hpath Hne Hft. iIntros "Hrc". rewrite /open_receipt_plain.
     assert (Hlen : length (path_elems pl) <> 0%nat)
       by (intros Hz; apply Hne; by apply nil_length_inv).
     iDestruct "Hrc" as "[(%Hr & %Hfd & Hfail) | Hok]"; last first.
-    { iDestruct "Hok" as (pl' av i) "(%Hpath' & HP & _)".
+    { iDestruct "Hok" as (pl' av i) "(%Hpath' & HP & Harm)".
       rewrite (arg_path_of_uniq M pv pl' pl Hpath' Hpath).
       iModIntro. iRight.
-      iApply (pobs_dead_term_lin T K d0 (length (path_elems pl)) i Hlen
-                with "HP"). }
+      (* the terminal cursor: whole, on the kept piece's refund, or -- at
+         a truncating FILE arm -- spent, and the receipt is the taint *)
+      iDestruct "Harm" as "[Hdev | [Hfile | Hdir]]".
+      - iDestruct "Hdev" as (ma mi nl) "(_ & _ & _ & Ht & _)".
+        iDestruct (plain_cur_of_kept with "HP Ht") as "HP".
+        iApply (pobs_dead_term_lin T K d0 (length (path_elems pl)) i Hlen
+                  with "HP").
+      - iDestruct "Hfile" as (bs0 nl) "(_ & _ & Htr & _)".
+        destruct (om_trunc vom) eqn:Hot.
+        + iDestruct "Htr" as (av') "[_ Hrv]". iApply (Hft eq_refl av' i bs0 with "Hrv").
+        + iEval (rewrite /cur_kept Hot) in "HP".
+          iApply (pobs_dead_term_lin T K d0 (length (path_elems pl)) i Hlen
+                    with "HP").
+      - iDestruct "Hdir" as (ents nl) "(_ & _ & _ & Ht & _)".
+        iDestruct (plain_cur_of_kept with "HP Ht") as "HP".
+        iApply (pobs_dead_term_lin T K d0 (length (path_elems pl)) i Hlen
+                  with "HP"). }
     rewrite /open_post_fail_plain.
     iDestruct "Hfail" as "[Hpre | Hrest]".
     - rewrite /open_au_plain_at. iDestruct "Hpre" as "(Hw & _ & _)".
@@ -388,7 +516,8 @@ Section PinnedOpen.
     - iDestruct "Hrest" as (pl') "(%Hpath' & Hr2)".
       rewrite (arg_path_of_uniq M pv pl' pl Hpath' Hpath).
       iDestruct "Hr2" as "[Hdead | Hpost]"; last first.
-      { iDestruct "Hpost" as (i) "(HP & _ & _)".
+      { iDestruct "Hpost" as (i) "(HP & _ & Ht)".
+        iDestruct (plain_cur_of_kept with "HP Ht") as "HP".
         iModIntro. iRight.
         iApply (pobs_dead_term_lin T K d0 (length (path_elems pl)) i Hlen
                   with "HP"). }

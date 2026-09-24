@@ -248,7 +248,8 @@ Section UInitCons.
     □ (∀ v : aview, app_pred app_run v -∗
                       app_pred app_run v ∗ (⌜cons_present_at i v⌝ ∨ T)) -∗
     app_inv γfs -∗
-    open_trunc_piece (fs_gamma_L γfs) vom trunc_permit_triv Ft -∗
+    open_trunc_piece (fs_gamma_L γfs) vom
+      (trunc_term_arg M pv (pobs_P T [FsImg.ROOTINO; i])) Ft -∗
     open_in (fs_gamma_L γfs) γfs FsImg.ROOTINO M pv vom
       (pobs_P T [FsImg.ROOTINO; i]) (pobs_Pmiss T) Farm Fun Fok Fex
       (pobs_Fo (cons_present_at i) T) Ft.
@@ -301,6 +302,7 @@ Section UInitCons.
       (Ft : pfam Σ (aview -> Z -> list (bv 8) -> iProp Σ))
       (sts : list fdstate) (r : mword 64) (fdv' : list fdstate) :
     arg_path_of M pv init_cons_pl ->
+    om_trunc vom = false ->
     open_receipt_plain OffParked (fs_gamma_L γfs) γfs FsImg.ROOTINO M pv vom
       (pobs_P T [FsImg.ROOTINO; i]) (pobs_Pmiss T)
       (pobs_Fo (cons_present_at i) T) Ft sts r fdv' -∗
@@ -310,10 +312,10 @@ Section UInitCons.
           ∗ open_trunc_at (fs_gamma_L γfs) vom i Ft)
        ∨ T).
   Proof using .
-    intros Hpath. iIntros "Hrc".
+    intros Hpath Htr. iIntros "Hrc".
     iApply (pinned_open_dev γfs OffParked (cons_present_at i) T FsImg.ROOTINO
               init_cons_pl [FsImg.ROOTINO; i] i CONSOLE 0 1%nat M pv vom Ft
-              sts r fdv' (cons_pin_resolves_at i) Hpath with "Hrc").
+              sts r fdv' (cons_pin_resolves_at i) Hpath Htr with "Hrc").
   Qed.
 
   (* =================================================================== *)
@@ -383,7 +385,7 @@ Section UInitCons.
   Proof using .
     intros Hom Hpath. iIntros "#Hcl #Hmt #Hmh #Hinv HK".
     destruct (om_rdwr_plain vom Hom) as [Hcr Htr].
-    iApply (pinned_open_bundle_dead_lin γfs cons_absent T K Pmiss
+    iApply (pinned_open_bundle_dead_lin_notrunc γfs cons_absent T K Pmiss
               FsImg.ROOTINO init_cons_pl FsImg.ROOTINO M pv vom Ft
               Farm Fun Fok Fex
               Hcr Htr cons_pin_misses_at Hpath with "Hcl Hmt Hmh Hinv HK").
@@ -398,16 +400,19 @@ Section UInitCons.
       (Fo : pfam Σ (aview -> Z -> anode -> iProp Σ))
       (Ft : pfam Σ (aview -> Z -> list (bv 8) -> iProp Σ))
       (sts : list fdstate) (r : mword 64) (fdv' : list fdstate) :
+    om_arg vom = 2 ->
     arg_path_of M pv init_cons_pl ->
     open_receipt_plain OffParked (fs_gamma_L γfs) γfs FsImg.ROOTINO M pv vom
       (pobs_P_dead_lin T K FsImg.ROOTINO) (pobs_Pmiss_ref T K) Fo Ft
       sts r fdv'
     ={⊤}=∗ ((⌜r = (mword_of_int (-1) : mword 64)⌝ ∗ ⌜fdv' = sts⌝ ∗ K) ∨ T).
   Proof using .
-    intros Hpath. iIntros "Hrc".
+    intros Hom Hpath. iIntros "Hrc".
+    destruct (om_rdwr_plain vom Hom) as [_ Htr].
     iApply (pinned_open_dead_lin γfs T K OffParked FsImg.ROOTINO init_cons_pl
               FsImg.ROOTINO M pv vom Fo Ft sts r fdv' Hpath
-              init_cons_path_elems_ne with "Hrc").
+              init_cons_path_elems_ne
+              ltac:(intros Hc; rewrite Htr in Hc; discriminate) with "Hrc").
   Qed.
 
   (* =================================================================== *)

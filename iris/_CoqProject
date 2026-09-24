@@ -1721,6 +1721,7 @@ UkPipeDev.v
 UShEchoPipePay.v
 PipeLinksLine.v
 PipeBoth.v
+PipeBothN.v
 PipeForkGap.v
 PipeLinkInst.v
 PipeStageInst.v

@@ -617,8 +617,23 @@ claim (M1–M3) do not move; the conversion discipline is theirs.
    bought as a kernel row; four section hypotheses at missing kernel
    leaves -- the worklist lists them).  NEXT: the leaves; the pipeline
    application's instance (§3.4d, lane/pcons).
-5. The two entries at a handler parameter; the five landed entries as
-   corollaries; then the shape modules (M4) and the union (M5) as planned.
+5. DONE (2026-09-24) except one entry: the two entries at a handler
+   parameter (`UkTreeEntry.v`, with `_c` forms taking the payload
+   equation); the landed entries reproduced from the tree route beside
+   the landed ones -- `cat f` (`UkFileEntries.cat_child_of_entry_of_tree`,
+   the landed statement plus three premises), echo at the console (at
+   the file application's link record, not the era-generic one), cat at
+   the pipe (`UkPipeEntries.pe_cat_image_entry`, nearest statement) and
+   echo at the pipe (`pe_echo_image_entry`).  OPEN: `echo > f` waits on
+   DEED-SPLIT (the file instance's core must not hold the deed while a
+   write device holds the child's share).  NEXT, in order: DEED-SPLIT;
+   the close gaps (`Hclose_open`/`Hclose_open_w`: a `drained` premise at
+   the copy and write-end kinds of `ei_close`/`cf_close`); then REPOINT
+   the assemblies (`UShRound`, `UShCatPay`, `UShEchoPipePay`) at the
+   corollaries, discharging the added premises from the round, and
+   delete the old per-program payers; then the shape modules (M4) and
+   the union (M5).  `echo | cat | cat` (the copy device at `h = true`)
+   waits for a three-process line in the pipeline application.
 
 The risk is in 4(c)'s console instance at the two-writer arm, which
 stays pipe-own; nothing above the entries changes statement.

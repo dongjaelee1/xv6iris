@@ -271,6 +271,80 @@ Section UkShPipeRight.
   (* the '|' ([ushq_gettok_fin_bar] = [S (S p)]).                            *)
   (* ===================================================================== *)
 
+  (* THE LAST STAGE OF A PIPELINE OF ANY LENGTH (lane PIPES-C3): the same
+     one application of the landed symbol-free walk, at ANY cursor [c]
+     above which the line is symbol-free and at ANY token list of the
+     suffix.  [wp_kshp_parsepipe_right] below is the one-bar line's
+     instance: the cursor after its '|' and its one word. *)
+  Lemma wp_kshp_parsepipe_tail {Pex : iProp Σ} (h : CpuId) (m : regfile)
+      (dq dw dv : dfrac) (ps s0 : Z) (len c : nat) (f : nat -> bv 8)
+      (toks : list (nat * nat)) (nn : nat) :
+    m !!! Regidx a0_idx = mword_of_int ps ->
+    m !!! Regidx a1_idx = mword_of_int (s0 + Z.of_nat len) ->
+    (c <= len)%nat ->
+    ushq_nosym_from len f c ->
+    ushp_tokens (len - c) (fun j : nat => f (c + j)%nat) 0%nat toks ->
+    (length toks < 10)%nat ->
+    0 <= s0 -> s0 + Z.of_nat len < Z64 ->
+    0 < ps -> ps mod 8 = 0 -> ps + 8 < Z64 ->
+    shp_code γt -∗
+    shp_rodata γt -∗
+    uword γd ps (mword_of_int (s0 + Z.of_nat c)) -∗
+    ustr γd dq s0 len f -∗
+    ustr γd dw ushp_whitespace 5 ushp_ws_f -∗
+    ustr γd dv ushp_symbols 7 ushp_sym_f -∗
+    UMalloc -∗
+    □ (Pex -∗ ukn_pay N (-1)) -∗
+    Pex -∗
+    urun N h m (mword_of_int ShSyms.parsepipe) (6 + (16 + (24 + nn))) -∗
+    (∀ q : Z,
+       ⌜ q + 168 < Z64 ⌝ -∗
+       ushp_exec_at s0 q (ushq_shift c toks) -∗
+       uword γd ps (mword_of_int (s0 + Z.of_nat len)) -∗
+       ustr γd dq s0 len f -∗
+       ustr γd dw ushp_whitespace 5 ushp_ws_f -∗
+       ustr γd dv ushp_symbols 7 ushp_sym_f -∗
+         ∀ (h' : CpuId) (m' : regfile),
+           ⌜ ucallee_saved m m' ⌝ -∗
+           ⌜ m' !!! Regidx a0_idx = mword_of_int q ⌝ -∗
+           UMalloc' -∗
+           Pex -∗
+           urun N h' m' (ret_pc (m !!! Regidx ra_idx))
+             (6 + (16 + (24 + nn))) -∗
+           mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
+  Proof using ushp_malloc_ok.
+    intros Ha0 Ha1 Hcle Hns Htoks Htlen Hs0 Hs64 Hps0 Hps8 Hpssz.
+    iIntros "#Hcode #Hro Hcur Hstr Hws Hsy HM #Hpx Hpay Hrun Hcont".
+    (* the line's SUFFIX, at the base the cursor is at *)
+    iDestruct (ustr_split dq s0 len c (len - c)%nat f ltac:(lia) with "Hstr")
+      as "(Hpre & Hsuf & Hcl)".
+    assert (Ea1 : (s0 + Z.of_nat c + Z.of_nat (len - c))%Z
+                  = (s0 + Z.of_nat len)%Z) by lia.
+    assert (Ew0 : (s0 + Z.of_nat c + Z.of_nat 0%nat)%Z
+                  = (s0 + Z.of_nat c)%Z) by lia.
+    iApply (wp_kshp_parsepipe h m dq dw dv ps (s0 + Z.of_nat c)
+              (len - c)%nat 0%nat (fun j : nat => f (c + j)%nat)
+              (mword_of_int (s0 + Z.of_nat c)) toks nn
+              Ha0
+              ltac:(rewrite Ha1; f_equal; lia)
+              ltac:(lia)
+              ltac:(rewrite Ew0; reflexivity)
+              (ushq_nosym_shift len f c Hns)
+              Htoks Htlen
+              ltac:(lia) ltac:(lia) Hps0 Hps8 Hpssz
+              with "Hcode Hro Hcur Hsuf Hws Hsy HM Hpx Hpay Hrun").
+    iIntros (q) "%Hqsz Hnode Hcur Hsuf Hws Hsy".
+    iIntros (h' m') "%Hcs %Ha0' HM' Hpay Hrun".
+    iDestruct ("Hcl" with "Hpre Hsuf") as "Hstr".
+    iDestruct (ushp_exec_at_rebase s0 c q toks with "Hnode") as "Hnode".
+    rewrite Ea1.
+    iApply ("Hcont" $! q with "[] Hnode Hcur Hstr Hws Hsy [] [] HM' Hpay Hrun").
+    - iPureIntro. exact Hqsz.
+    - iPureIntro. exact Hcs.
+    - iPureIntro. exact Ha0'.
+  Qed.
+
   Lemma wp_kshp_parsepipe_right {Pex : iProp Σ} (h : CpuId) (m : regfile)
       (dq dw dv : dfrac) (ps s0 : Z) (len p e : nat) (f : nat -> bv 8)
       (nn : nat) :
@@ -307,43 +381,20 @@ Section UkShPipeRight.
     mWP (Loop : expr riscv_lang).
   Proof using ushp_malloc_ok.
     intros Ha0 Ha1 Hq Hs0 Hs64 Hps0 Hps8 Hpssz.
-    iIntros "#Hcode #Hro Hcur Hstr Hws Hsy HM #Hpx Hpay Hrun Hcont".
-    set (c := S (S p)).
-    assert (Hcle : (c <= len)%nat)
-      by (destruct Hq as (_ & _ & _ & _ & H1 & H2 & _); unfold c; lia).
-    assert (Hele : (c <= e)%nat)
-      by (destruct Hq as (_ & _ & _ & _ & H1 & _); unfold c; lia).
-    (* the line's SUFFIX, at the base gettoken left the cursor at *)
-    iDestruct (ustr_split dq s0 len c (len - c)%nat f ltac:(lia) with "Hstr")
-      as "(Hpre & Hsuf & Hcl)".
-    assert (Ea1 : (s0 + Z.of_nat c + Z.of_nat (len - c))%Z
-                  = (s0 + Z.of_nat len)%Z) by lia.
-    assert (Ew0 : (s0 + Z.of_nat c + Z.of_nat 0%nat)%Z
-                  = (s0 + Z.of_nat c)%Z) by lia.
-    iApply (wp_kshp_parsepipe h m dq dw dv ps (s0 + Z.of_nat c)
-              (len - c)%nat 0%nat (fun j : nat => f (c + j)%nat)
-              (mword_of_int (s0 + Z.of_nat c))
-              [(0%nat, (e - c)%nat)] nn
-              Ha0
-              ltac:(rewrite Ha1; f_equal; lia)
-              ltac:(lia)
-              ltac:(rewrite Ew0; reflexivity)
-              (ushq_nosym_shift len f c (ushq_pipe_nosym_from len f p e Hq))
-              (ushq_toks_right len f p e Hq)
-              ltac:(cbn [length]; lia)
-              ltac:(lia) ltac:(lia) Hps0 Hps8 Hpssz
-              with "Hcode Hro Hcur Hsuf Hws Hsy HM Hpx Hpay Hrun").
-    iIntros (q) "%Hqsz Hnode Hcur Hsuf Hws Hsy".
-    iIntros (h' m') "%Hcs %Ha0' HM' Hpay Hrun".
-    iDestruct ("Hcl" with "Hpre Hsuf") as "Hstr".
-    iDestruct (ushp_exec_at_rebase s0 c q [(0%nat, (e - c)%nat)]
-                 with "Hnode") as "Hnode".
+    iIntros "Hcode Hro Hcur Hstr Hws Hsy HM Hpx Hpay Hrun Hcont".
+    assert (Hcle : (S (S p) <= len)%nat)
+      by (destruct Hq as (_ & _ & _ & _ & H1 & H2 & _); lia).
+    assert (Hele : (S (S p) <= e)%nat)
+      by (destruct Hq as (_ & _ & _ & _ & H1 & _); lia).
+    iApply (wp_kshp_parsepipe_tail h m dq dw dv ps s0 len (S (S p)) f
+              [(0%nat, (e - S (S p))%nat)] nn
+              Ha0 Ha1 Hcle (ushq_pipe_nosym_from len f p e Hq)
+              (ushq_toks_right len f p e Hq) ltac:(cbn [length]; lia)
+              Hs0 Hs64 Hps0 Hps8 Hpssz
+              with "Hcode Hro Hcur Hstr Hws Hsy HM Hpx Hpay Hrun").
+    iIntros (q) "%Hqsz Hnode".
     rewrite (ushq_shift_right p e Hele).
-    rewrite Ea1.
-    iApply ("Hcont" $! q with "[] Hnode Hcur Hstr Hws Hsy [] [] HM' Hpay Hrun").
-    - iPureIntro. exact Hqsz.
-    - iPureIntro. exact Hcs.
-    - iPureIntro. exact Ha0'.
+    iApply ("Hcont" $! q with "[] Hnode"). iPureIntro. exact Hqsz.
   Qed.
 
 End UkShPipeRight.

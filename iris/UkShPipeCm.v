@@ -74,6 +74,7 @@ Require Import UkShPipeCmd.
 Require Import UkShParseCmd.
 Require Import UkShPipePex.
 Require Import UkShPipeRight.
+Require Import UkShPipesLex.  (* [ushq_barw]: a bar read locally (lane PIPES-C3) *)
 
 Section UkShPipeCm.
   Context `{!riscvGS Σ}.
@@ -200,6 +201,86 @@ Section UkShPipeCm.
               mWP (Loop : expr riscv_lang)) -∗
        mWP (Loop : expr riscv_lang))%I.
 
+  (* ...AT ANY CURSOR (lane PIPES-C3).  The same call with the cursor word
+     [w0] a parameter: a pipeline's stages after the first are parsed from
+     the cursor the previous bar's gettoken left.  [ushq_pex_left] is this
+     at the line's first byte ([ushq_pex_left_to_at]). *)
+  Definition ushq_pex_left_at (dq dw dv : dfrac) (ps s0 : Z) (w0 : mword 64)
+      (len gp : nat) (f : nat -> bv 8) (args : list (nat * nat))
+      (Pex : iProp Σ) (av : nat) : iProp Σ :=
+    (∀ (h : CpuId) (m : regfile) (rpc : mword 64),
+       ⌜ m !!! Regidx a0_idx = mword_of_int ps ⌝ -∗
+       ⌜ m !!! Regidx a1_idx = mword_of_int (s0 + Z.of_nat len) ⌝ -∗
+       ⌜ ret_pc (m !!! Regidx ra_idx) = rpc ⌝ -∗
+       shp_code γt -∗
+       shp_rodata γt -∗
+       uword γd ps w0 -∗
+       ustr γd dq s0 len f -∗
+       ustr γd dw ushp_whitespace 5 ushp_ws_f -∗
+       ustr γd dv ushp_symbols 7 ushp_sym_f -∗
+       UM0 -∗
+       □ (Pex -∗ ukn_pay N (-1)) -∗
+       Pex -∗
+       urun N h m (mword_of_int ShSyms.parseexec) av -∗
+       (∀ pl : Z,
+          ⌜ pl + 168 < Z64 ⌝ -∗
+          ushp_exec_at s0 pl args -∗
+          uword γd ps (mword_of_int (s0 + Z.of_nat gp)) -∗
+          ustr γd dq s0 len f -∗
+          ustr γd dw ushp_whitespace 5 ushp_ws_f -∗
+          ustr γd dv ushp_symbols 7 ushp_sym_f -∗
+            ∀ (h' : CpuId) (m' : regfile),
+              ⌜ ucallee_saved m m' ⌝ -∗
+              ⌜ m' !!! Regidx a0_idx = mword_of_int pl ⌝ -∗
+              UM1 -∗
+              Pex -∗
+              urun N h' m' rpc av -∗
+              mWP (Loop : expr riscv_lang)) -∗
+       mWP (Loop : expr riscv_lang))%I.
+
+  Lemma ushq_pex_left_to_at {Pex : iProp Σ} (dq dw dv : dfrac) (ps s0 : Z)
+      (len gp : nat) (f : nat -> bv 8) (args : list (nat * nat)) (av : nat) :
+    ushq_pex_left dq dw dv ps s0 len gp f args Pex av -∗
+    ushq_pex_left_at dq dw dv ps s0 (mword_of_int s0) len gp f args Pex av.
+  Proof using . rewrite /ushq_pex_left /ushq_pex_left_at. iIntros "H". iExact "H". Qed.
+
+  (* (iii) THE RECURSION (lane PIPES-C3): [parsepipe] on the rest of the
+     line, from the cursor gettoken leaves after the bar, answering an
+     ABSTRACT tree [Tr] at the node it returns.  The landed turn discharges
+     it with the symbol-free walk (one word after the bar); a pipeline of
+     more stages discharges it with the turn itself, one bar shorter
+     ([UkShPipesParse.wp_kshp_parsepipe_bars]). *)
+  Definition ushq_rec_call (dq dw dv : dfrac) (ps s0 : Z) (len c : nat)
+      (f : nat -> bv 8) (Tr : Z -> iProp Σ) (Pex : iProp Σ) (av : nat)
+      : iProp Σ :=
+    (∀ (h : CpuId) (m : regfile),
+       ⌜ m !!! Regidx a0_idx = mword_of_int ps ⌝ -∗
+       ⌜ m !!! Regidx a1_idx = mword_of_int (s0 + Z.of_nat len) ⌝ -∗
+       shp_code γt -∗
+       shp_rodata γt -∗
+       uword γd ps (mword_of_int (s0 + Z.of_nat c)) -∗
+       ustr γd dq s0 len f -∗
+       ustr γd dw ushp_whitespace 5 ushp_ws_f -∗
+       ustr γd dv ushp_symbols 7 ushp_sym_f -∗
+       UM1 -∗
+       □ (Pex -∗ ukn_pay N (-1)) -∗
+       Pex -∗
+       urun N h m (mword_of_int ShSyms.parsepipe) av -∗
+       (∀ q : Z,
+          Tr q -∗
+          uword γd ps (mword_of_int (s0 + Z.of_nat len)) -∗
+          ustr γd dq s0 len f -∗
+          ustr γd dw ushp_whitespace 5 ushp_ws_f -∗
+          ustr γd dv ushp_symbols 7 ushp_sym_f -∗
+            ∀ (h' : CpuId) (m' : regfile),
+              ⌜ ucallee_saved m m' ⌝ -∗
+              ⌜ m' !!! Regidx a0_idx = mword_of_int q ⌝ -∗
+              UM2 -∗
+              Pex -∗
+              urun N h' m' (ret_pc (m !!! Regidx ra_idx)) av -∗
+              mWP (Loop : expr riscv_lang)) -∗
+       mWP (Loop : expr riscv_lang))%I.
+
   (* (ii) [pipecmd] (0x260).  Stated as [UkShRedirCmd.wp_kshp_redircmd_n] is:
      the two subtrees ride through in an ABSTRACT [Sub], because the node
      and its children are relayed SEPARATELY all the way up to the parser
@@ -313,17 +394,25 @@ Section UkShPipeCm.
   (* in one from this worktree -- see the lane's findings.                   *)
   (* ===================================================================== *)
 
-  Lemma wp_kshp_parsepipe_bar {Pex : iProp Σ} (h : CpuId) (m : regfile)
-      (dq dw dv : dfrac) (ps s0 : Z) (len gp ge : nat) (f : nat -> bv 8)
-      (args : list (nat * nat)) (nn : nat) :
+  (* THE TURN AT A BAR READ LOCALLY, THE RECURSION A PREMISE (lane
+     PIPES-C3).  The walk below at [UkShPipesLex.ushq_barw], from ANY
+     cursor [w0], with the recursive [parsepipe] as premise (iii) answering
+     an abstract [Tr]: the step of [UkShPipesParse.wp_kshp_parsepipe_bars],
+     whose induction hypothesis discharges (iii).  The landed
+     [wp_kshp_parsepipe_bar] after it is the one-bar line's instance, (iii)
+     discharged by the symbol-free walk. *)
+  Lemma wp_kshp_parsepipe_bar_g {Pex : iProp Σ} (h : CpuId) (m : regfile)
+      (dq dw dv : dfrac) (ps s0 : Z) (w0 : mword 64) (len gp : nat)
+      (f : nat -> bv 8) (args : list (nat * nat)) (Tr : Z -> iProp Σ)
+      (nn : nat) :
     m !!! Regidx a0_idx = mword_of_int ps ->
     m !!! Regidx a1_idx = mword_of_int (s0 + Z.of_nat len) ->
-    ushq_pipe len f gp ge ->
+    ushq_barw len f gp ->
     0 <= s0 -> s0 + Z.of_nat len < Z64 ->
     0 < ps -> ps mod 8 = 0 -> ps + 8 < Z64 ->
     shp_code γt -∗
     shp_rodata γt -∗
-    uword γd ps (mword_of_int s0) -∗
+    uword γd ps w0 -∗
     ustr γd dq s0 len f -∗
     ustr γd dw ushp_whitespace 5 ushp_ws_f -∗
     ustr γd dv ushp_symbols 7 ushp_sym_f -∗
@@ -331,17 +420,20 @@ Section UkShPipeCm.
     □ (Pex -∗ ukn_pay N (-1)) -∗
     Pex -∗
     (* (i) the LEFT command's parse, as a CALL PREMISE *)
-    ushq_pex_left dq dw dv ps s0 len gp f args Pex (16 + (24 + (8 + nn))) -∗
+    ushq_pex_left_at dq dw dv ps s0 w0 len gp f args Pex
+      (16 + (24 + (8 + nn))) -∗
+    (* (iii) the RECURSION, as a CALL PREMISE *)
+    ushq_rec_call dq dw dv ps s0 len (S (S gp)) f Tr Pex
+      (16 + (24 + (8 + nn))) -∗
     (* (ii) [pipecmd], as a CALL PREMISE *)
     ushq_pipecmd_call Pex (16 + (24 + (8 + nn))) -∗
     urun N h m (mword_of_int ShSyms.parsepipe)
       (6 + (16 + (24 + (8 + nn)))) -∗
     (∀ t pl pr : Z,
        ⌜ pl + 168 < Z64 ⌝ -∗
-       ⌜ pr + 168 < Z64 ⌝ -∗
        ushp_pipe_node t pl pr -∗
        ushp_exec_at s0 pl args -∗
-       ushp_exec_at s0 pr [(S (S gp), ge)] -∗
+       Tr pr -∗
        uword γd ps (mword_of_int (s0 + Z.of_nat len)) -∗
        ustr γd dq s0 len f -∗
        ustr γd dw ushp_whitespace 5 ushp_ws_f -∗
@@ -355,15 +447,16 @@ Section UkShPipeCm.
              (6 + (16 + (24 + (8 + nn)))) -∗
            mWP (Loop : expr riscv_lang)) -∗
     mWP (Loop : expr riscv_lang).
-  Proof using ushp_malloc_ok12.
+  Proof using .
     intros Ha0 Ha1 Hpq Hs0 Hs64 Hps0 Hps8 Hpssz.
-    iIntros "#Hcode #Hro Hcur Hstr Hws Hsy HM0 #Hpx Hpay Hleft Hpipec Hrun Hcont".
+    iIntros "#Hcode #Hro Hcur Hstr Hws Hsy HM0 #Hpx Hpay Hleft Hrec Hpipec Hrun
+             Hcont".
     rewrite shpp_parsepipe.
     (* the cursor the LEFT parse leaves is AT the '|', so the guard's own
        blank scan does not move and the peek answers at [gp] itself *)
     assert (Egp0 : (gp + ushp_skipws (len - gp) gp f)%nat = gp)
-      by (rewrite (ushq_skipws_at_bar len f gp ge (len - gp)%nat Hpq); lia).
-    assert (Hgplt : (gp < len)%nat) by exact (ushq_pipe_lt len f gp ge Hpq).
+      by (rewrite (ushq_skipws_at_barw len f gp (len - gp)%nat Hpq); lia).
+    assert (Hgplt : (gp < len)%nat) by exact (ushq_barw_lt len f gp Hpq).
     assert (Hgple : (gp <= len)%nat) by lia.
     set (vals := fun i : nat =>
                    match i with
@@ -673,7 +766,8 @@ Section UkShPipeCm.
     (* THE GUARD TURNS.  peek's table at 0x1320 is the one byte '|', and the
        byte at the cursor IS it -- the one fact no landed walk could produce
        ([UkShPipeEx.ushq_peek_pipe_hit_pipe]). *)
-    rewrite (ushq_peek_pipe_hit_pipe len f gp ge Hpq) in Ha0_13.
+    rewrite (ushp_peek_pipe_hit len f gp (ushq_barw_lt len f gp Hpq)
+               (ushq_barw_bar len f gp Hpq)) in Ha0_13.
     (* ---- the register file the turn starts from ---- *)
     assert (Hs1_13 : m13 !!! Regidx s1_idx
                      = mword_of_int (s0 + Z.of_nat len)).
@@ -838,7 +932,7 @@ Section UkShPipeCm.
               len gp f (mword_of_int (s0 + Z.of_nat gp))
               (mword_of_int 0) (mword_of_int 0) (38 + nn)
               Ha0_q5 Ha1_q5 Ha2_q5 Ha3_q5 Hgple eq_refl
-              (ushq_sym_ok_pipe len f gp ge Hpq) Hs0 Hs64
+              (ushq_barw_sym_ok len f gp Hpq) Hs0 Hs64
               Hps0 Hps8 Hpssz
               with "Hcode Hcur [] [] Hstr Hws Hsy Hrun").
     { iLeft. iPureIntro. reflexivity. }
@@ -848,7 +942,7 @@ Section UkShPipeCm.
     (* the cursor gettoken leaves: [S (S gp)], the right command's first
        byte ([UkShPipeLex.ushq_gettok_fin_bar]) *)
     rewrite Egp0.
-    rewrite (ushq_gettok_fin_bar len f gp ge Hpq).
+    rewrite (ushq_gettok_fin_barw len f gp Hpq).
     (* ---- 0x6ce  c.mv a1,s1 ---- *)
     assert (Hs1_g1 : g1 !!! Regidx s1_idx
                      = mword_of_int (s0 + Z.of_nat len)).
@@ -928,13 +1022,12 @@ Section UkShPipeCm.
                (regval_into_reg
                   (mword_of_int (s0 + Z.of_nat len) : mword 64))). }
     rewrite <- shpp_parsepipe.
-    (* the recursive call is the LANDED symbol-free walk, on the line's own
-       SUFFIX ([UkShPipeRight.wp_kshp_parsepipe_right]) *)
-    iApply (UkShPipeRight.wp_kshp_parsepipe_right N UM1 UM2 ushp_malloc_ok12
-              h23 g4 dq dw dv ps s0 len gp ge f (2 + nn)
-              Ha0_g4 Ha1_g4 Hpq Hs0 Hs64 Hps0 Hps8 Hpssz
-              with "Hcode Hro Hcur Hstr Hws Hsy HM1 Hpx Hpay Hrun").
-    iIntros (pr) "%Hprsz Hnoder Hcur Hstr Hws Hsy".
+    (* the recursive call is premise (iii) *)
+    iApply ("Hrec" $! h23 g4 with "[] [] Hcode Hro Hcur Hstr Hws Hsy HM1 Hpx
+                                    Hpay Hrun").
+    { iPureIntro. exact Ha0_g4. }
+    { iPureIntro. exact Ha1_g4. }
+    iIntros (pr) "Hnoder Hcur Hstr Hws Hsy".
     iIntros (h24 r1) "%Hcsr %Ha0_r HM2 Hpay Hrun".
     rewrite Eret_r.
     (* ---- 0x6d6  c.mv a1,a0  --  the RIGHT node ---- *)
@@ -1008,7 +1101,7 @@ Section UkShPipeCm.
       exact (upd_eq r1 (Regidx a1_idx)
                (regval_into_reg (mword_of_int pr : mword 64))). }
     iApply ("Hpipec" $! h27 r4 pl pr (mword_of_int 0x6de)
-              (ushp_exec_at s0 pl args ∗ ushp_exec_at s0 pr [(S (S gp), ge)])%I
+              (ushp_exec_at s0 pl args ∗ Tr pr)%I
               with "[] [] [] Hcode HM2 Hpx Hpay [Hnodel Hnoder] Hrun").
     { iPureIntro. exact Ha0_r4. }
     { iPureIntro. exact Ha1_r4. }
@@ -1165,9 +1258,8 @@ Section UkShPipeCm.
     { iApply (uis_shp_6c0 with "Hcode"). }
     iIntros (hf) "Hrun".
     iApply ("Hcont" $! t pl pr
-              with "[] [] Hpnode Hnodel Hnoder Hcur Hstr Hws Hsy [] [] HM3 Hpay Hrun").
+              with "[] Hpnode Hnodel Hnoder Hcur Hstr Hws Hsy [] [] HM3 Hpay Hrun").
     - iPureIntro. exact Hplsz.
-    - iPureIntro. exact Hprsz.
     - iPureIntro.
       apply (ushp_frame_cs [(ra_idx, mword_of_int 5 : mword 6);
                (s0_idx, mword_of_int 4 : mword 6);
@@ -1197,6 +1289,75 @@ Section UkShPipeCm.
         destruct i as [| [| [| [| [| [| i ]]]]]];
           cbn in Hi; try discriminate Hi;
           injection Hi as Hr Hu0; subst; vm_compute in He; discriminate.
+  Qed.
+
+  Lemma wp_kshp_parsepipe_bar {Pex : iProp Σ} (h : CpuId) (m : regfile)
+      (dq dw dv : dfrac) (ps s0 : Z) (len gp ge : nat) (f : nat -> bv 8)
+      (args : list (nat * nat)) (nn : nat) :
+    m !!! Regidx a0_idx = mword_of_int ps ->
+    m !!! Regidx a1_idx = mword_of_int (s0 + Z.of_nat len) ->
+    ushq_pipe len f gp ge ->
+    0 <= s0 -> s0 + Z.of_nat len < Z64 ->
+    0 < ps -> ps mod 8 = 0 -> ps + 8 < Z64 ->
+    shp_code γt -∗
+    shp_rodata γt -∗
+    uword γd ps (mword_of_int s0) -∗
+    ustr γd dq s0 len f -∗
+    ustr γd dw ushp_whitespace 5 ushp_ws_f -∗
+    ustr γd dv ushp_symbols 7 ushp_sym_f -∗
+    UM0 -∗
+    □ (Pex -∗ ukn_pay N (-1)) -∗
+    Pex -∗
+    (* (i) the LEFT command's parse, as a CALL PREMISE *)
+    ushq_pex_left dq dw dv ps s0 len gp f args Pex (16 + (24 + (8 + nn))) -∗
+    (* (ii) [pipecmd], as a CALL PREMISE *)
+    ushq_pipecmd_call Pex (16 + (24 + (8 + nn))) -∗
+    urun N h m (mword_of_int ShSyms.parsepipe)
+      (6 + (16 + (24 + (8 + nn)))) -∗
+    (∀ t pl pr : Z,
+       ⌜ pl + 168 < Z64 ⌝ -∗
+       ⌜ pr + 168 < Z64 ⌝ -∗
+       ushp_pipe_node t pl pr -∗
+       ushp_exec_at s0 pl args -∗
+       ushp_exec_at s0 pr [(S (S gp), ge)] -∗
+       uword γd ps (mword_of_int (s0 + Z.of_nat len)) -∗
+       ustr γd dq s0 len f -∗
+       ustr γd dw ushp_whitespace 5 ushp_ws_f -∗
+       ustr γd dv ushp_symbols 7 ushp_sym_f -∗
+         ∀ (h' : CpuId) (m' : regfile),
+           ⌜ ucallee_saved m m' ⌝ -∗
+           ⌜ m' !!! Regidx a0_idx = mword_of_int t ⌝ -∗
+           UM3 -∗
+           Pex -∗
+           urun N h' m' (ret_pc (m !!! Regidx ra_idx))
+             (6 + (16 + (24 + (8 + nn)))) -∗
+           mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
+  Proof using ushp_malloc_ok12.
+    intros Ha0 Ha1 Hpq Hs0 Hs64 Hps0 Hps8 Hpssz.
+    iIntros "Hcode Hro Hcur Hstr Hws Hsy HM0 #Hpx Hpay Hleft Hpipec Hrun Hcont".
+    iApply (wp_kshp_parsepipe_bar_g h m dq dw dv ps s0 (mword_of_int s0)
+              len gp f args
+              (fun pr : Z => ⌜ pr + 168 < Z64 ⌝ ∗ ushp_exec_at s0 pr [(S (S gp), ge)])%I
+              nn Ha0 Ha1 (ushq_barw_of_pipe len f gp ge Hpq)
+              Hs0 Hs64 Hps0 Hps8 Hpssz
+              with "Hcode Hro Hcur Hstr Hws Hsy HM0 Hpx Hpay [Hleft] [] Hpipec Hrun
+                    [Hcont]").
+    - iApply (ushq_pex_left_to_at with "Hleft").
+    - (* (iii): the landed symbol-free walk on the line's suffix *)
+      iIntros (h1 m1) "%Ha0' %Ha1' Hcode' Hro' Hcur Hstr Hws Hsy HM1 _ Hpay
+                       Hrun Hk".
+      iApply (UkShPipeRight.wp_kshp_parsepipe_right N UM1 UM2 ushp_malloc_ok12
+                h1 m1 dq dw dv ps s0 len gp ge f (2 + nn)
+                Ha0' Ha1' Hpq Hs0 Hs64 Hps0 Hps8 Hpssz
+                with "Hcode' Hro' Hcur Hstr Hws Hsy HM1 Hpx Hpay Hrun").
+      iIntros (pr) "%Hprsz Hnoder".
+      iApply ("Hk" $! pr with "[Hnoder]").
+      iSplitR; [ iPureIntro; exact Hprsz | iExact "Hnoder" ].
+    - iIntros (t pl pr) "%Hplsz Hpnode Hnodel [%Hprsz Hnoder]".
+      iApply ("Hcont" $! t pl pr with "[] [] Hpnode Hnodel Hnoder").
+      + iPureIntro. exact Hplsz.
+      + iPureIntro. exact Hprsz.
   Qed.
 
   (* ===================================================================== *)

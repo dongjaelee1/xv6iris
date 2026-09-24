@@ -19,7 +19,17 @@ inductive `reach_exit` and `cat_copy_exits`/`echo_pipe_exits`/
 clause, landed `pipe_inv := pipe_invU … True`, 29 lemmas generalised,
 `pipe_payLD`, `wr_final`/`rd_final`, `node_reading(_T)`, `flow_chain`,
 `flow_chain_excl`; minimal outcomes in `PipesPair.v` for C2 to adopt).
-C3 in flight; C2 next.
+C3 (7b84d3d93: `wp_kshr_pipe_arm_g2` -- the PIPE arm with fd 0 a
+pipe, `ush_cldep` in place of the not-a-pipe premise; scope `ush_rpipe`
+and `wp_kshr_runcmd_rpipe_closed` by induction on the stages at the
+taint instance; `UkShPipesLex`/`UkShPipesParse`/`UkShPipesSeam`:
+`wp_kshp_parsepipe_bars` by induction on the bars, sh.c's allocation
+order verified at the instruction level -- N `execcmd` then N-1
+`pipecmd` innermost first -- and a malloc chain for up to 170 stages;
+landed lemmas byte-identical as corollaries).  LEFT for C3b:
+`nulterminate`/`parseline`/`parsecmd` at N stages (the seam assumes
+the cut line, as the one-bar seam does) and the `UkShPipesRound` child
+walk.  C2 in flight.
 
 # Design: arbitrary pipelines `P0 | cat | … | cat` by induction on the command tree
 

@@ -68,6 +68,7 @@ Require Import UkShRedirPr.
 
 Require Import UexecSG.   (* [uexecSG] / [uprogSG]: the ARM deposit class *)
 Require Import UkShPipeLex.
+Require Import UkShPipesLex.  (* [ushq_barw]: a bar read locally (lane PIPES-C3) *)
 Require Import UkShPipePr.
 Require Import UkShPipeEx2.
 
@@ -170,14 +171,20 @@ Section UkShPipePex.
   (*   the answer -> the exec node, and the cursor stops AT the '|'           *)
   (* ===================================================================== *)
 
-  Lemma wp_kshp_parseexec_bar {Pex : iProp Σ} (h : CpuId) (m : regfile)
+  (* AT A BAR READ LOCALLY (lane PIPES-C3): the walk passes the line's bar
+     to the argument loop and reads nothing else of it, so it is stated at
+     [UkShPipesLex.ushq_barw] -- which a line with more bars after this one
+     satisfies -- and [wp_kshp_parseexec_bar] below is the one-bar line's
+     instance.  This is the parse of EVERY stage of a pipeline but the
+     last. *)
+  Lemma wp_kshp_parseexec_barw {Pex : iProp Σ} (h : CpuId) (m : regfile)
       (dq dw dv : dfrac) (ps s0 : Z) (len off : nat) (f : nat -> bv 8)
-      (w0 : mword 64) (toks : list (nat * nat)) (gp ge : nat) (nn : nat) :
+      (w0 : mword 64) (toks : list (nat * nat)) (gp : nat) (nn : nat) :
     m !!! Regidx a0_idx = mword_of_int ps ->
     m !!! Regidx a1_idx = mword_of_int (s0 + Z.of_nat len) ->
     (off <= len)%nat ->
     w0 = mword_of_int (s0 + Z.of_nat off) ->
-    ushq_pipe len f gp ge ->
+    ushq_barw len f gp ->
     ushs_toks len f gp off toks ->
     (0 < length toks)%nat ->
     (length toks < 10)%nat ->
@@ -1065,8 +1072,8 @@ Section UkShPipePex.
     assert (Hsp8al : (uint sp0 - 128) mod 8 = 0).
     { rewrite Zminus_mod Hal8. reflexivity. }
     (* ---- 0x622..0x662  THE ARGUMENT LOOP ---- *)
-    iApply (UkShPipeEx2.wp_kshp_pex_loop_bar N dq dw dv s0 ps p (uint sp0)
-              len f gp ge nn
+    iApply (UkShPipeEx2.wp_kshp_pex_loop_barw N dq dw dv s0 ps p (uint sp0)
+              len f gp nn
               toks (@nil (nat * nat)) off1 h29 m25 wq weq
               Hpq Hs0 Hs64 Hps0 Hps8 Hpssz
               ltac:(lia) Hsp8al ltac:(lia) ltac:(lia)
@@ -1573,6 +1580,51 @@ Section UkShPipePex.
         destruct i as [| [| [| [| [| i ]]]]];
           cbn in Hi; try discriminate Hi;
           injection Hi as Hr Hu0; subst; vm_compute in He; discriminate.
+  Qed.
+
+  Lemma wp_kshp_parseexec_bar {Pex : iProp Σ} (h : CpuId) (m : regfile)
+      (dq dw dv : dfrac) (ps s0 : Z) (len off : nat) (f : nat -> bv 8)
+      (w0 : mword 64) (toks : list (nat * nat)) (gp ge : nat) (nn : nat) :
+    m !!! Regidx a0_idx = mword_of_int ps ->
+    m !!! Regidx a1_idx = mword_of_int (s0 + Z.of_nat len) ->
+    (off <= len)%nat ->
+    w0 = mword_of_int (s0 + Z.of_nat off) ->
+    ushq_pipe len f gp ge ->
+    ushs_toks len f gp off toks ->
+    (0 < length toks)%nat ->
+    (length toks < 10)%nat ->
+    0 <= s0 -> s0 + Z.of_nat len < Z64 ->
+    0 < ps -> ps mod 8 = 0 -> ps + 8 < Z64 ->
+    shp_code γt -∗
+    shp_rodata γt -∗
+    uword γd ps w0 -∗
+    ustr γd dq s0 len f -∗
+    ustr γd dw ushp_whitespace 5 ushp_ws_f -∗
+    ustr γd dv ushp_symbols 7 ushp_sym_f -∗
+    UM0 -∗
+    □ (Pex -∗ ukn_pay N (-1)) -∗
+    Pex -∗
+    urun N h m (mword_of_int ShSyms.parseexec) (16 + (24 + (8 + nn))) -∗
+    (∀ p : Z,
+       ⌜ p + 168 < Z64 ⌝ -∗
+       ushp_exec_at s0 p toks -∗
+       uword γd ps (mword_of_int (s0 + Z.of_nat gp)) -∗
+       ustr γd dq s0 len f -∗
+       ustr γd dw ushp_whitespace 5 ushp_ws_f -∗
+       ustr γd dv ushp_symbols 7 ushp_sym_f -∗
+         ∀ (h' : CpuId) (m' : regfile),
+           ⌜ ucallee_saved m m' ⌝ -∗
+           ⌜ m' !!! Regidx a0_idx = mword_of_int p ⌝ -∗
+           UM1 -∗
+           Pex -∗
+           urun N h' m' (ret_pc (m !!! Regidx ra_idx))
+             (16 + (24 + (8 + nn))) -∗
+           mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
+  Proof using ushp_malloc_ok0.
+    intros Ha0 Ha1 Hoffle Hw0 Hpq.
+    exact (wp_kshp_parseexec_barw h m dq dw dv ps s0 len off f w0 toks gp nn
+             Ha0 Ha1 Hoffle Hw0 (ushq_barw_of_pipe len f gp ge Hpq)).
   Qed.
 
 End UkShPipePex.

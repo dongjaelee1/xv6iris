@@ -512,8 +512,24 @@ and echo at the console (new `echo_exec_sup_file` over
 `lm_ab`, `gwc_post` `lm_abs`) call the corollaries; `Hchild_echo`/
 `sh_child_law_file` gained `∃ jo, file_cons_cred`; `fifRegG` threaded
 to `fileΣ`.  THE FILE APPLICATION'S ECHO AND CAT ARE NOW PROVED ONCE,
-by their trees.  NEXT: the pipeline's sites (lane/repoint-pipe, in
-flight), then the sweeps.  The
+by their trees.  SWEEP-FILE LANDED (e6c31503d): `UCatKernel` (2423 lines),
+`UkCatDeed` (951), `UShRedirPay` (188) deleted, `UEchoFile` -793,
+`UkFileIface`'s superseded witnesses -235; the five live names moved to
+`UCatLend.v`.  REPOINT-PIPE LANDED (59f742814, merge 2b67cbe30, VM
+rppmerge1 EXIT=0, audits 13/13/14/14): `UShPipeLaw`'s `pl_right_child`/
+`pl_left_child` call the allocating tree entries
+`pe_cat_image_entry_qc_alloc`/`pe_echo_image_entry_alloc` through new
+supply twins that take the entry from the caller
+(`UShCatPay.sh_exec_sup_cat_of_entry`, `wp_kshr_exec_cat_paid_of_entry`,
+`UShEchoPipePay.sh_exec_sup_echo_pipe_of_entry`; so `UShCatPay` does not
+pull the pipe instance into the file cone); the resource layer split to
+`UShPipeLawRes.v` (the cycle); `r`/`Heq`/`pifRegG` threaded up to
+`pipeΣ`.  ECHO AND CAT ARE NOW PROVED ONCE, BY THEIR TREES, IN BOTH
+APPLICATIONS' FIVE CHILD SITES.  Still on the old walks: the pipeline's
+echo at the console (`UShPipeRound` 419/545) and the echo application
+(`UShRest`), both via `UShEchoPay`.  NEXT: SWEEP-PIPE (the old pipe
+entries now without consumers), then the pipe instance's console exit
+wand (to move `UShPipeRound`'s echo), then M4/M5.  The
 pipeline's CONSOLE device LANDED (lane/pcons 246f51ca4, design SS3.4d:
 `UkConsOut` split into a claim-free core and a `gen_params` instance,
 `UkPipeConsOut.v` with the single-writer and the `popen` devices).

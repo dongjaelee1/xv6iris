@@ -1673,11 +1673,10 @@ UkFileOpen.v
 UkShRedirAns.v
 UkShRedirPaid.v
 UkShRedirChild.v
-UkCatDeed.v
 UCatOut.v
 UShCat.v
 UkTreeEntry.v
-UCatKernel.v
+UCatLend.v
 UInitTree.v
 UInitTreeCons.v
 UInitTreeBoot.v
@@ -1704,7 +1703,6 @@ UkFileDev.v
 UkFreeHandler.v
 UkFileIface.v
 UkFileEntries.v
-UShRedirPay.v
 UShRound.v
 UInitFileCC.v
 UInitFileBoot.v

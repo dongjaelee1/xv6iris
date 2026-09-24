@@ -1,9 +1,9 @@
 (* ===================================================================== *)
 (* UkFileIface.v -- THE FILE APPLICATION'S ENDPOINT INTERFACE: one         *)
 (* [UkHandler.ep_ifaceP] from the console ([UkConsOut]) and the file       *)
-(* ([UkFileDev]), and cat f / echo > f / echo paid end to end through the *)
-(* once-glue [UkHandler.tree_pay_of_conforms_p] (program-specs cut 4(c),  *)
-(* cut 5 lane D).                                                         *)
+(* ([UkFileDev]), which [UkFileEntries] spends through the once-glue     *)
+(* [UkHandler.tree_pay_of_conforms_p] to pay cat f / echo > f / echo      *)
+(* (program-specs cut 4(c), cut 5 lane D).                                *)
 (*                                                                        *)
 (* Design: claude-notes/design/program-specs.md SS3.4b-SS3.4e.             *)
 (*                                                                        *)
@@ -29,12 +29,12 @@
 (* drained devices.  The round's indices are PINNED in the registry: the  *)
 (* entry devices [D0] have the values [w0] throughout ([fif_ok]'s last    *)
 (* clause), so the wand finds the console at the round's [(v, I, C)] and *)
-(* the file at its [(i, γo, ws)].  The three glue lemmas prove the wand   *)
-(* from the landed entries' payloads: [fif_exit_k_cat] from                *)
-(* [UCatKernel.catq_cat]'s wand (the drained console names a code of      *)
+(* the file at its [(i, γo, ws)].  The glue lemmas prove the wand from   *)
+(* the landed entries' payloads: [fif_exit_k_cat] from                    *)
+(* [UCatLend.catq_cat]'s wand (the drained console names a code of        *)
 (* [RCRan; RCNoOpen], and its body's length is [UCatOut.cat_out_len]),    *)
-(* [fif_exit_k_redir] from [UEchoFile.ef_exit]'s, [fif_exit_k_echo_cons]   *)
-(* from a wand at [GenLinksLine.gwc_post] (the round's [lk_post] shape). *)
+(* [fif_exit_k_redir] from [UEchoFile.ef_exit]'s; echo at the console's   *)
+(* is [UkFileEntries.fif_exit_k_echo_cons_d].                             *)
 (*                                                                        *)
 (* THE PROTECTED DEVICES.  A close of an entry device's last descriptor  *)
 (* would drop the very cursor the wand needs, so the record's [Dp] is     *)
@@ -80,8 +80,8 @@
 (* every landed entry already takes.                                      *)
 (*                                                                        *)
 (* AND AT ECHO: [UkEchoTree.echo_prog] names all five stubs at echo's own *)
-(* addresses, so SS5 instantiates the record and the theorems at echo's  *)
-(* program with no stub hypothesis and no other.                         *)
+(* addresses, so SS5 instantiates the record at echo's program with no  *)
+(* stub hypothesis and no other.                                         *)
 (* ===================================================================== *)
 From Stdlib Require Import ZArith Bool Lia List.
 From stdpp Require Import gmap list bitvector.definitions.
@@ -126,7 +126,7 @@ Require Import FileLinks FileLinksLine FileLinkGen.   (* [file_links], [f0w], [f
 Require Import UkConsOut UkFileDev.
 Require Import UkHandler UkFreeHandler ProgTreeFile.
 Require Import GenLinksLine LineModelLinks FileHooks.   (* [gwc_post], [lm_body], [fline] *)
-Require Import UCatOut UCatKernel.        (* [cch], [catq_cat]: the round's cat payload *)
+Require Import UCatOut UCatLend.          (* [cch], [catq_cat]: the round's cat payload *)
 Require Import UCodeCat UkCatTree.
 Require Import UCodeEcho UkEchoTree.   (* echo's instance: [echo_prog] *)
 Local Open Scope Z_scope.
@@ -1756,7 +1756,7 @@ Section UkFileIface.
     rewrite fif_gT. iExact "HT".
   Qed.
 
-  (* cat's lend ([UCatKernel.cat_lend]'s cursor, [UCatOut.cch] at the block's
+  (* cat's lend ([UCatLend.cat_lend]'s cursor, [UCatOut.cch] at the block's
      first byte) is the console owing content-or-diagnostic at a present
      deed, the diagnostic at an absent one *)
   Lemma fif_cat_lend_some (v : era_pins) (vf : file_era) (ps cs : list nat) (s0 : fstate)
@@ -1924,7 +1924,7 @@ Section UkFileIface.
     apply (fif_ok_D0 [0%nat] w0 fdm l vs 0%nat Hok). constructor.
   Qed.
 
-  (* THE GLUE, ONE: cat at `f` -- the payload [UCatKernel.catq_cat] the
+  (* THE GLUE, ONE: cat at `f` -- the payload [UCatLend.catq_cat] the
      landed entry ([cat_child_of_entry]) is paid with, at the round's cat
      line, out of the drained console (its code is one of the two lent)
      and the core's deed *)
@@ -1934,7 +1934,7 @@ Section UkFileIface.
     fline I0 = LCat ->
     file_era_pin g (S gen_id) vf -∗ f0_lb vf s0 -∗
     □ (∀ (ps cs : list nat) (pos : nat), ⌜lm_wr_blk_t file_lm ps cs s0 I0 pos⌝ -∗
-         UCatKernel.catq_cat g c r qf sf v vf ps cs s0 I0 pos (-1) -∗ F -∗ ukn_pay N (-1)) -∗
+         UCatLend.catq_cat g c r qf sf v vf ps cs s0 I0 pos (-1) -∗ F -∗ ukn_pay N (-1)) -∗
     F -∗ fif_exit_k.
   Proof using .
     intros HD0 Hw Hfl. iIntros "#Hvf #Hf0 #HQ HF".
@@ -1952,7 +1952,7 @@ Section UkFileIface.
       { iApply ("Hpay" with "HT"). }
       iDestruct "Hd" as (ps cs pos a) "(%Hw' & %HaC & %Hadm & _ & Ht & #Hps & #Hcs & #HI)".
       iApply ("HQ" $! ps cs pos with "[%] [Ht Hdq] HF"); [exact Hw' |].
-      rewrite /UCatKernel.catq_cat. iSplitL "Ht"; [| iLeft; iExact "Hdq"].
+      rewrite /UCatLend.catq_cat. iSplitL "Ht"; [| iLeft; iExact "Hdq"].
       iEval (rewrite (fif_cat_body_len s0 cs I0 a Hfl)) in "Ht".
       iEval (rewrite (fif_cat_body_len s0 cs I0 a Hfl) /lm_blkcs) in "Hcs".
       apply elem_of_cons in HaC as [-> | HaC];
@@ -1995,83 +1995,9 @@ Section UkFileIface.
       discriminate Heqv.
   Qed.
 
-  (* THE GLUE, THREE: echo at the console -- the round's wand at the block
-     written up to its prompt ([GenLinksLine.gwc_post], [lk_post]'s
-     shape), at the code the console filed, one of those lent *)
-  Lemma fif_exit_k_echo_cons (v : era_pins) (vf : file_era) (I0 : list (bv 8)) (s0 : fstate)
-      (C : list nat) (F : iProp Σ) :
-    D0 = [0%nat] -> w0 0%nat = FDCons v I0 C ->
-    file_era_pin g (S gen_id) vf -∗ f0_lb vf s0 -∗
-    □ (∀ a : nat, ⌜a ∈ C⌝ -∗ ⌜cons_adm file_lm I0 a⌝ -∗
-         gwc_post file_lm (file_params_at g s0) (S gen_id) v I0 a -∗ F -∗ ukn_pay N (-1)) -∗
-    F -∗ fif_exit_k.
-  Proof using .
-    intros HD0 Hw. iIntros "#Hvf #Hf0 #HQ HF".
-    iIntros (fdm l vs w files paths dv ds) "%Hdr %Hdom Hcore _ Hdev".
-    iDestruct "Hcore" as "(_ & _ & %Hok & _ & Htoks & _ & _ & #(_ & _ & Hpay & _))".
-    iDestruct (fif_exit_dev0 fdm l vs dv ds HD0 Hdr Hdom Hok with "Hdev") as "(%Hd0 & %Hv0 & Hd0)".
-    rewrite Hw in Hv0.
-    destruct (dv 0%nat) as [alts | | cs' | | S' | | | | |]; simpl in Hd0; simpl;
-      try (iDestruct "Hd0" as "[]").
-    - iDestruct "Hd0" as (v' I' C') "[Htk Hd]".
-      iDestruct (fif_toks_agree vs 0%nat _ _ _ Hv0 with "Htoks Htk") as "(%Heqv & _ & _)".
-      injection Heqv as <- <- <-.
-      iDestruct (fif_cons_drained_post C v vf I0 s0 alts Hd0 with "Hvf Hf0 Hd") as "[#HT | Hd]".
-      { iApply ("Hpay" with "HT"). }
-      iDestruct "Hd" as (a) "(%HaC & %Hadm & Hpost)".
-      iApply ("HQ" $! a with "[%] [%] [Hpost] HF"); [exact HaC | exact Hadm |].
-      iApply (gwc_post_file_at s0 vf v I0 a with "Hvf Hf0 Hpost").
-    - iDestruct "Hd0" as (i γo ws) "[Htk _]".
-      iDestruct (fif_toks_agree vs 0%nat _ _ _ Hv0 with "Htoks Htk") as "(%Heqv & _ & _)".
-      discriminate Heqv.
-    - iDestruct "Hd0" as (s i γo p) "(Htk & _)".
-      iDestruct (fif_toks_agree vs 0%nat _ _ _ Hv0 with "Htoks Htk") as "(%Heqv & _ & _)".
-      discriminate Heqv.
-  Qed.
-
   (* =================================================================== *)
-  (*  3.  END TO END: cat f, echo > f, echo                              *)
+  (*  3.  WHAT THE ROUND LENDS, as [env_res] ([UkFileEntries] reads it)  *)
   (* =================================================================== *)
-
-  Theorem cat_f_paid (content : list (bv 8)) (files : list (bv 8) -> option (list (bv 8))) :
-    dp_in D0 {[0%nat]} -> files fname_f = Some content ->
-    env_res N P file_iface (cat_env0 [content; cat_dg_open fname_f] files [fname_f]) {[0%nat]} -∗
-    tree_pay N P (cat_tree [sb "cat"; fname_f]).
-  Proof using Hcons Heq HPc HNc Hsr Hsw Hso Hsc Hse D0 w0 Hw0 qf sf γreg fifRegG0.
-    intros Hdp Hf. iIntros "H".
-    iApply (tree_pay_of_conforms_p N P file_iface _ _ _
-              (cat_file_conforms fname_f content files Hf) (cat_tree_safe _ _) Hdp with "H").
-  Qed.
-
-  Theorem cat_f_absent_paid (files : list (bv 8) -> option (list (bv 8))) :
-    dp_in D0 {[0%nat]} -> files fname_f = None ->
-    env_res N P file_iface (cat_env0 [cat_dg_open fname_f] files [fname_f]) {[0%nat]} -∗
-    tree_pay N P (cat_tree [sb "cat"; fname_f]).
-  Proof using Hcons Heq HPc HNc Hsr Hsw Hso Hsc Hse D0 w0 Hw0 qf sf γreg fifRegG0.
-    intros Hdp Hf. iIntros "H".
-    iApply (tree_pay_of_conforms_p N P file_iface _ _ _
-              (cat_file_absent_conforms fname_f files Hf) (cat_tree_safe _ _) Hdp with "H").
-  Qed.
-
-  Theorem echo_f_paid (argv : list (list (bv 8))) (files : list (bv 8) -> option (list (bv 8))) :
-    dp_in D0 {[0%nat]} -> drop 1 argv <> [] -> Forall (fun w => w <> []) (drop 1 argv) ->
-    env_res N P file_iface (pipe_env (DOutM (echo_chunks argv)) files) {[0%nat]} -∗
-    tree_pay N P (echo_tree argv).
-  Proof using Hcons Heq HPc HNc Hsr Hsw Hso Hsc Hse D0 w0 Hw0 qf sf γreg fifRegG0.
-    intros Hdp Hne Hnn. iIntros "H".
-    iApply (tree_pay_of_conforms_p N P file_iface _ _ _
-              (echo_file_conforms argv files Hne Hnn) (echo_tree_safe _ _) Hdp with "H").
-  Qed.
-
-  Theorem echo_cons_paid (argv : list (list (bv 8))) (files : list (bv 8) -> option (list (bv 8))) :
-    dp_in D0 {[0%nat]} -> drop 1 argv <> [] ->
-    env_res N P file_iface (cons_env (wl_line (drop 1 argv)) files) {[0%nat]} -∗
-    tree_pay N P (echo_tree argv).
-  Proof using Hcons Heq HPc HNc Hsr Hsw Hso Hsc Hse D0 w0 Hw0 qf sf γreg fifRegG0.
-    intros Hdp Hne. iIntros "H".
-    iApply (tree_pay_of_conforms_p N P file_iface _ _ _
-              (echo_conforms argv files Hne) (echo_tree_safe _ _) Hdp with "H").
-  Qed.
 
   (* ---- what the round lends: the ledger with the standard streams the
           environment names, the cwd, the exit wand, the application's
@@ -2162,122 +2088,6 @@ Section UkFileIface.
       intros [[<- _] | (_ & <- & _)]; lia.
   Qed.
 
-  (* THE END-TO-END FORMS AT THE ROUND'S LEND: no payload up front, the
-     console device at the round's own body *)
-  Theorem cat_f_paid_of_round (l : list fdstate) (rb1 rb2 : bool) (v : era_pins)
-      (I0 : list (bv 8)) (i : Z) (content : list (bv 8)) :
-    D0 = [0%nat] -> w0 0%nat = FDCons v I0 [ralt_enc RCRan; ralt_enc RCNoOpen] ->
-    sf = Some (i, content) ->
-    l !! 1%nat = Some (FdOpen rb1 true (FdDevice CONSOLE)) ->
-    l !! 2%nat = Some (FdOpen rb2 true (FdDevice CONSOLE)) ->
-    UserFd.ustd γfd l -∗ UserCwd.ucwd (ukn_cwd N) FsImg.ROOTINO -∗ fif_exit_k -∗
-    fif_env -∗ fdq r qf sf -∗ own γreg (fif_pool ∅ w0) -∗
-    fcons_atc [ralt_enc RCRan; ralt_enc RCNoOpen] v I0 [content; cat_dg_open fname_f] -∗
-    tree_pay N P (cat_tree [sb "cat"; fname_f]).
-  Proof using Hcons Heq HPc HNc Hsr Hsw Hso Hsc Hse D0 w0 Hw0 qf sf γreg fifRegG0.
-    intros HD0 Hw Hsf Hl1 Hl2. iIntros "Hstd Hcwd Hk He Hd Hp Hc".
-    destruct (fif_cat_env_pure l rb1 rb2 v I0 _ [content; cat_dg_open fname_f]
-                (fif_files (snd <$> sf)) Hw Hl1 Hl2) as (Hd0 & Hrow & Hbnd).
-    iApply (cat_f_paid content (fif_files (snd <$> sf)) (fif_dp0 HD0) (fif_files_some i content Hsf)).
-    iApply (fif_env_res (cat_env0 [content; cat_dg_open fname_f] (fif_files (snd <$> sf)) [fname_f])
-              l HD0 Hd0 Hrow Hbnd ltac:(rewrite Hw; discriminate)
-              ltac:(intros; rewrite Hw; reflexivity)
-              ltac:(cbn [cat_env0 pe_paths]; intros p; rewrite elem_of_list_singleton;
-                    intros ->; split; [done | by rewrite (fif_wr_0 D0 w0 HD0) Hw])
-              ltac:(cbn [cat_env0 pe_files]; apply fif_files_f)
-              with "Hstd Hcwd Hk He [Hd] Hp [Hc]").
-    { rewrite (fif_dq_rd ltac:(by rewrite (fif_wr_0 D0 w0 HD0) Hw)). iExact "Hd". }
-    iIntros "Htk". cbn [cat_env0 pe_dev]. case_decide as Hc0; [| done]. simpl.
-    iExists v, I0, _. rewrite Hw. iFrame "Htk Hc".
-  Qed.
-
-  Theorem cat_f_absent_paid_of_round (l : list fdstate) (rb1 rb2 : bool) (v : era_pins)
-      (I0 : list (bv 8)) :
-    D0 = [0%nat] -> w0 0%nat = FDCons v I0 [ralt_enc RCRan; ralt_enc RCNoOpen] ->
-    sf = None ->
-    l !! 1%nat = Some (FdOpen rb1 true (FdDevice CONSOLE)) ->
-    l !! 2%nat = Some (FdOpen rb2 true (FdDevice CONSOLE)) ->
-    UserFd.ustd γfd l -∗ UserCwd.ucwd (ukn_cwd N) FsImg.ROOTINO -∗ fif_exit_k -∗
-    fif_env -∗ fdq r qf sf -∗ own γreg (fif_pool ∅ w0) -∗
-    fcons_atc [ralt_enc RCRan; ralt_enc RCNoOpen] v I0 [cat_dg_open fname_f] -∗
-    tree_pay N P (cat_tree [sb "cat"; fname_f]).
-  Proof using Hcons Heq HPc HNc Hsr Hsw Hso Hsc Hse D0 w0 Hw0 qf sf γreg fifRegG0.
-    intros HD0 Hw Hsf Hl1 Hl2. iIntros "Hstd Hcwd Hk He Hd Hp Hc".
-    destruct (fif_cat_env_pure l rb1 rb2 v I0 _ [cat_dg_open fname_f]
-                (fif_files (snd <$> sf)) Hw Hl1 Hl2) as (Hd0 & Hrow & Hbnd).
-    iApply (cat_f_absent_paid (fif_files (snd <$> sf)) (fif_dp0 HD0) (fif_files_none Hsf)).
-    iApply (fif_env_res (cat_env0 [cat_dg_open fname_f] (fif_files (snd <$> sf)) [fname_f])
-              l HD0 Hd0 Hrow Hbnd ltac:(rewrite Hw; discriminate)
-              ltac:(intros; rewrite Hw; reflexivity)
-              ltac:(cbn [cat_env0 pe_paths]; intros p; rewrite elem_of_list_singleton;
-                    intros ->; split; [done | by rewrite (fif_wr_0 D0 w0 HD0) Hw])
-              ltac:(cbn [cat_env0 pe_files]; apply fif_files_f)
-              with "Hstd Hcwd Hk He [Hd] Hp [Hc]").
-    { rewrite (fif_dq_rd ltac:(by rewrite (fif_wr_0 D0 w0 HD0) Hw)). iExact "Hd". }
-    iIntros "Htk". cbn [cat_env0 pe_dev]. case_decide as Hc0; [| done]. simpl.
-    iExists v, I0, _. rewrite Hw. iFrame "Htk Hc".
-  Qed.
-
-  (* AT A REDIRECT the round holds no deed beside the write cursor: the
-     child's whole share rides in [file_out] and the core holds none (the
-     write mode, [fif_wr]) *)
-  Theorem echo_f_paid_of_redirect (l : list fdstate) (rb : bool) (i : Z) (γo : gname)
-      (argv : list (list (bv 8))) :
-    D0 = [0%nat] -> w0 0%nat = FDFile i γo argv ->
-    l !! 1%nat = Some (FdOpen rb true (FdInode i γo OffHeld)) ->
-    fif_out_ok i argv ->
-    drop 1 argv <> [] -> Forall (fun w => w <> []) (drop 1 argv) ->
-    UserFd.ustd γfd l -∗ UserCwd.ucwd (ukn_cwd N) FsImg.ROOTINO -∗ fif_exit_k -∗
-    fif_env -∗ own γreg (fif_pool ∅ w0) -∗ file_out c r i γo argv 0 -∗
-    tree_pay N P (echo_tree argv).
-  Proof using Hcons Heq HPc HNc Hsr Hsw Hso Hsc Hse D0 w0 Hw0 qf sf γreg fifRegG0.
-    intros HD0 Hw Hl1 Hwok Hne Hnn. iIntros "Hstd Hcwd Hk He Hp Hc".
-    iApply (echo_f_paid argv (fif_files (snd <$> sf)) (fif_dp0 HD0) Hne Hnn).
-    iApply (fif_env_res (pipe_env (DOutM (echo_chunks argv)) (fif_files (snd <$> sf))) l HD0
-              ltac:(cbn [pipe_env pe_fd]; intros fd d; rewrite lookup_singleton_Some; intros [_ <-]; reflexivity)
-              ltac:(cbn [pipe_env pe_fd]; intros fd d; rewrite lookup_singleton_Some Hw; simpl;
-                    intros [<- _]; split; [unfold NSTD; lia | by exists rb])
-              ltac:(cbn [pipe_env pe_fd]; intros fd d; rewrite lookup_singleton_Some; unfold NOFILE;
-                    intros [<- _]; lia)
-              ltac:(rewrite Hw; discriminate)
-              ltac:(intros; rewrite Hw; reflexivity)
-              ltac:(cbn [pipe_env pe_paths]; intros p Hp; by apply elem_of_nil in Hp)
-              ltac:(cbn [pipe_env pe_files]; apply fif_files_f)
-              with "Hstd Hcwd Hk He [] Hp [Hc]").
-    { iApply (fif_dq_wr ltac:(by rewrite (fif_wr_0 D0 w0 HD0) Hw)). }
-    iIntros "Htk". cbn [pipe_env pe_dev]. case_decide as Hc0; [| done]. simpl.
-    iExists i, γo, argv. rewrite Hw. iFrame "Htk". iExists 0%nat. iFrame "Hc". iPureIntro.
-    split; [done | exact Hwok].
-  Qed.
-
-  Theorem echo_paid_of_cons (l : list fdstate) (rb : bool) (v : era_pins) (I0 : list (bv 8))
-      (C : list nat) (argv : list (list (bv 8))) :
-    D0 = [0%nat] -> w0 0%nat = FDCons v I0 C ->
-    l !! 1%nat = Some (FdOpen rb true (FdDevice CONSOLE)) ->
-    drop 1 argv <> [] ->
-    UserFd.ustd γfd l -∗ UserCwd.ucwd (ukn_cwd N) FsImg.ROOTINO -∗ fif_exit_k -∗
-    fif_env -∗ fdq r qf sf -∗ own γreg (fif_pool ∅ w0) -∗
-    fcons_atc C v I0 [wl_line (drop 1 argv)] -∗
-    tree_pay N P (echo_tree argv).
-  Proof using Hcons Heq HPc HNc Hsr Hsw Hso Hsc Hse D0 w0 Hw0 qf sf γreg fifRegG0.
-    intros HD0 Hw Hl1 Hne. iIntros "Hstd Hcwd Hk He Hd Hp Hc".
-    iApply (echo_cons_paid argv (fif_files (snd <$> sf)) (fif_dp0 HD0) Hne).
-    iApply (fif_env_res (cons_env (wl_line (drop 1 argv)) (fif_files (snd <$> sf))) l HD0
-              ltac:(cbn [cons_env pe_fd]; intros fd d; rewrite lookup_singleton_Some; intros [_ <-]; reflexivity)
-              ltac:(cbn [cons_env pe_fd]; intros fd d; rewrite lookup_singleton_Some Hw; simpl;
-                    intros [<- _]; split; [unfold NSTD; lia | by exists rb])
-              ltac:(cbn [cons_env pe_fd]; intros fd d; rewrite lookup_singleton_Some; unfold NOFILE;
-                    intros [<- _]; lia)
-              ltac:(rewrite Hw; discriminate)
-              ltac:(intros; rewrite Hw; reflexivity)
-              ltac:(cbn [cons_env pe_paths]; intros p Hp; by apply elem_of_nil in Hp)
-              ltac:(cbn [cons_env pe_files]; apply fif_files_f)
-              with "Hstd Hcwd Hk He [Hd] Hp [Hc]").
-    { rewrite (fif_dq_rd ltac:(by rewrite (fif_wr_0 D0 w0 HD0) Hw)). iExact "Hd". }
-    iIntros "Htk". cbn [cons_env pe_dev]. case_decide as Hc0; [| done]. simpl.
-    iExists v, I0, C. rewrite Hw. iFrame "Htk Hc".
-  Qed.
-
 End UkFileIface.
 
 (* the registry's birth: the whole pool, at any values *)
@@ -2323,7 +2133,7 @@ Section UkFileIfaceCat.
 End UkFileIfaceCat.
 
 (* ===================================================================== *)
-(*  5.  ECHO'S INSTANCE: the record and the theorems at [echo_prog],      *)
+(*  5.  ECHO'S INSTANCE: the record at [echo_prog],                       *)
 (*      no stub hypothesis (the gap by name)                              *)
 (* ===================================================================== *)
 
@@ -2348,32 +2158,4 @@ Section UkFileIfaceEcho.
     file_iface g r Heq Hcons N (echo_prog N) (echo_stub_read N) (echo_stub_write N)
       (echo_stub_open N) (echo_stub_close N) (echo_stub_exit N) γreg D0 w0 qf sf
       Hw0.
-
-  Definition echo_f_paid_of_redirect_echo (l : list fdstate) (rb : bool) (i : Z) (γo : gname)
-      (argv : list (list (bv 8))) :
-    D0 = [0%nat] -> w0 0%nat = FDFile i γo argv ->
-    l !! 1%nat = Some (FdOpen rb true (FdInode i γo OffHeld)) ->
-    fif_out_ok i argv ->
-    drop 1 argv <> [] -> Forall (fun w => w <> []) (drop 1 argv) ->
-    UserFd.ustd (ukn_fd N) l -∗ UserCwd.ucwd (ukn_cwd N) FsImg.ROOTINO -∗
-    fif_exit_k g r N γreg D0 w0 qf sf -∗ fif_env g r N D0 w0 -∗
-    own γreg (fif_pool ∅ w0) -∗ file_out (fgn_cl g) r i γo argv 0 -∗
-    tree_pay N (echo_prog N) (echo_tree argv) :=
-    echo_f_paid_of_redirect g r Heq Hcons N (echo_prog N) (echo_stub_read N)
-      (echo_stub_write N) (echo_stub_open N) (echo_stub_close N) (echo_stub_exit N)
-      γreg D0 w0 qf sf Hw0 l rb i γo argv.
-
-  Definition echo_paid_of_cons_echo (l : list fdstate) (rb : bool) (v : era_pins)
-      (I0 : list (bv 8)) (C : list nat) (argv : list (list (bv 8))) :
-    D0 = [0%nat] -> w0 0%nat = FDCons v I0 C ->
-    l !! 1%nat = Some (FdOpen rb true (FdDevice CONSOLE)) ->
-    drop 1 argv <> [] ->
-    UserFd.ustd (ukn_fd N) l -∗ UserCwd.ucwd (ukn_cwd N) FsImg.ROOTINO -∗
-    fif_exit_k g r N γreg D0 w0 qf sf -∗ fif_env g r N D0 w0 -∗ fdq r qf sf -∗
-    own γreg (fif_pool ∅ w0) -∗
-    cons_dev_atc file_lm (file_params g) (file_links g) C v I0 [wl_line (drop 1 argv)] -∗
-    tree_pay N (echo_prog N) (echo_tree argv) :=
-    echo_paid_of_cons g r Heq Hcons N (echo_prog N) (echo_stub_read N)
-      (echo_stub_write N) (echo_stub_open N) (echo_stub_close N) (echo_stub_exit N)
-      γreg D0 w0 qf sf Hw0 l rb v I0 C argv.
 End UkFileIfaceEcho.

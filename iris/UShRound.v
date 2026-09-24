@@ -92,7 +92,7 @@ Require Import FileOut.
 Require Import FileLinks.
 Require Import FileOpen.                 (* [fdq], [file_open_pay] *)
 Require Import FileWrite.                (* [file_wq]: what the ran exit reads back *)
-Require Import UEchoFile.                (* K1: [efile_image_entry], echo at a file *)
+Require Import UEchoFile.                (* [ef_pay] / [efq]: echo at a file *)
 Require Import FsAbsDefs.                (* [anode] / [MkAnode] / [AFile] *)
 Require Import ExecRun.                  (* [udepw_at_refR_of_sup]: the U-tier exec rule *)
 Require Import UkShRedirBody.            (* [ushs_fd1f], [sh_redir_child_law] *)
@@ -135,7 +135,7 @@ Require Import UShEchoPay.        (* the paid child's laws at a record *)
 Require Import UShKernel.
 Require Import UInitSh.
 Require Import UCatOut.                  (* [cat_tie] -- the pure round tie *)
-Require Import UCatKernel.
+Require Import UCatLend.          (* [catq_cat] / [cat_lend] *)
 Require UkFileIface.                     (* [fifRegG]: the binder below needs it in scope *)
 Require UkFileEntries.                   (* the three entries from the tree route *)
 Require FileDeltas.                      (* [f_bytes_typed_short] *)
@@ -2491,7 +2491,7 @@ Section UShRound.
                                           [Htn Hd]");
       [ exact Hok | exact Hcwd0 | exact Hlzf | exact Hch0 | exact Hpid0
       | exact Hargs | ].
-    rewrite /UCatKernel.cat_lend /fown /fdeed /FileOpen.fdq.
+    rewrite /UCatLend.cat_lend /fown /fdeed /FileOpen.fdq.
     iDestruct "Hd" as "[Hdq Htk]". iFrame "Hdq Htk".
     rewrite /UCatOut.cch /UCatOut.catcs. iLeft.
     rewrite Nat.add_0_r. iFrame "Htn Hps Hcs HE Hf0".

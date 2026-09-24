@@ -68,7 +68,7 @@ Require Import PipeOutPure PipeOut.
 Require Import PipeBothPure PipeBoth.
 Require Import PipeNames PipeQueue PipeProto.  (* [pipeN] *)
 Require Import PipeLinks PipeLinksLine PipeLinkInst.
-Require Import UCatKernel.         (* [cat_fam] / [cat_count_is] / [cat_moi_uint] *)
+Require Import UCatLend.           (* [cat_fam] / [cat_count_is] / [cat_moi_uint] *)
 Require Import UShPipeRound2.      (* [blk2N] and its two mask facts *)
 Require Import UShPipeAssembly.    (* [out_step] / [out_chain_of_step] *)
 Require Import CtxIdDefs.
@@ -98,7 +98,7 @@ Section UShPipeCatRound.
      instance -- both sides elaborate it to [uexecSG_xv6 Sigma HRg xv6G0
      fileG0 GEN], measured with [Set Printing Implicit] -- and a
      [Context {SG}] here would in fact CREATE one, because
-     [UCatKernel.cat_fam], which this file's proof applies, binds none. *)
+     [UCatLend.cat_fam], which this file's proof applies, binds none. *)
   Context `{!ghost_varG Σ Z}.
   Context `{!ghost_varG Σ (gset gname)}.
   Context `{!echoOutG Σ, !inG Σ (mono_listR (leibnizO Z))}.
@@ -401,7 +401,7 @@ Section UShPipeCatRound.
       iExact "Hpre". }
     (* ---- THE CALL ---- *)
     iApply (UkCat.wp_kcat_write_chain N h m avail
-              (UCatKernel.cat_fam N
+              (UCatLend.cat_fam N
                  (fun j : nat =>
                     (pcat_ch gR gM (c0 + j)%nat
                      ∗ ubytesq γd (DfracOwn (1/2))

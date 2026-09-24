@@ -76,7 +76,7 @@ Require Import FileLinks FileLinksLine FileLinkGen FileHooks.
 Require Import GenLinksLine.          (* [gwc_blk] / [gwc_post] *)
 Require Import ConsoleInv.             (* [CONSOLE] *)
 Require Import UkConsOut ProgTreeFile.
-Require Import UCatOut UCatKernel.    (* [cch], [catq_cat], [cat_lend], [cat_child_of_entry] *)
+Require Import UCatOut UCatLend.      (* [cch], [catq_cat], [cat_lend] *)
 Require Import FsInitPin FsShPin FsEchoPin FsCatPin.   (* the four image inodes *)
 Require Import UkFileDev FileWrite UEchoFile.         (* [file_out], [ef_pay], [ef_exit] *)
 Require Import UkFileIface.
@@ -232,11 +232,11 @@ Section UkFileEntriesCat.
       (r : file_names) (q : Qp) (s : dst) (x : Z) :
     lm_wr_blk_t file_lm ps cs s0 I0 pos -> lm_wr_blk_t file_lm ps0 cs0 s0 I0 P ->
     ps_lb v ps0 -∗ cs_lb v cs0 -∗
-    UCatKernel.catq_cat g (fgn_cl g) r q s v vf ps cs s0 I0 pos x -∗
-    UCatKernel.catq_cat g (fgn_cl g) r q s v vf ps0 cs0 s0 I0 P x.
+    UCatLend.catq_cat g (fgn_cl g) r q s v vf ps cs s0 I0 pos x -∗
+    UCatLend.catq_cat g (fgn_cl g) r q s v vf ps0 cs0 s0 I0 P x.
   Proof using .
     intros Hw Hw0. iIntros "#Hps0 #Hcs0 [Hf Hd]".
-    rewrite /UCatKernel.catq_cat. iFrame "Hd".
+    rewrite /UCatLend.catq_cat. iFrame "Hd".
     rewrite /UCatOut.catq_filed /UCatOut.cch.
     iDestruct "Hf" as "[[(Ht & #Hps & #Hcs & #HI & #Hf0) | #HT] | [(Ht & #Hps & #Hcs & #HI & #Hf0) | #HT]]".
     - iDestruct (cch_pins v ps cs ps0 cs0 s0 I0 _ pos P _ Hw Hw0 with "Hps Hps0 Hcs Hcs0")
@@ -293,7 +293,7 @@ Section UkFileEntriesCat.
        cons_dev_atc file_lm (file_params g) (file_links g)
          [ralt_enc RCRan; ralt_enc RCNoOpen] v I0 alts) -∗
     □ (app_taint -∗ file_taint (fgn_cl g)) -∗ □ (file_taint (fgn_cl g) -∗ app_taint) -∗
-    □ (UCatKernel.catq_cat g (fgn_cl g) r q s v vf ps0 cs0 s0 I0 P (-1) -∗ F -∗ Q (-1)) -∗
+    □ (UCatLend.catq_cat g (fgn_cl g) r q s v vf ps0 cs0 s0 I0 P (-1) -∗ F -∗ Q (-1)) -∗
     □ (file_taint (fgn_cl g) -∗ Q (-1)) -∗
     file_cons_cred (fgn_cl g) r jo -∗
     app_inv fsc_fs -∗
@@ -301,7 +301,7 @@ Section UkFileEntriesCat.
     UkRun.urun_nopipe sts -∗ udep -∗
     image_entry ElfUser.cat_elf Mn (mword_of_int (t + 8) : mword 64) sts
       cw cs pidv Q
-      (UCatKernel.cat_lend g r q s v vf ps0 cs0 s0 I0 P ∗ F) uslot.
+      (UCatLend.cat_lend g r q s v vf ps0 cs0 s0 I0 P ∗ F) uslot.
   Proof using Hcons fifRegG0 ufdG0.
     intros HQc Heq Hwb Hfl Hok Himg Hbytes Hfdl Hws2 Halen1 Hfname Hcw Hl1 Hl2 Hconf.
     iIntros "#Hlendw #Hbr #Hkc #HQ #HQt #Hmade #Hinv #Hfp #Hnpw #Hdep".
@@ -319,7 +319,7 @@ Section UkFileEntriesCat.
                   (cat_stub_close N') (cat_stub_exit N') γreg [0%nat] w0 q s Hw0).
     iPoseProof (cat_image_entry_env_f_c ws Mn sv t gn sts cw cs pidv Q
                   (own γreg (fif_pool ∅ w0)
-                   ∗ (UCatKernel.cat_lend g r q s v vf ps0 cs0 s0 I0 P ∗ F))%I
+                   ∗ (UCatLend.cat_lend g r q s v vf ps0 cs0 s0 I0 P ∗ F))%I
                   I (cat_env0 alts (fif_files (snd <$> s)) [FileDisc.fname_f]) {[0%nat]}
                   Hok Himg Hbytes Hfdl Hws2 Halen1 Hfname Hconf
                   (cat_tree_safe _ _) (fif_dp0 [0%nat] eq_refl)
@@ -395,7 +395,7 @@ Section UkFileEntriesCat.
     (forall (i : Z) (bs : list (bv 8)), s = Some (i, bs) ->
        (Z.of_nat (length bs) < 2 ^ 31)%Z) ->
     □ (app_taint -∗ file_taint c) -∗ □ (file_taint c -∗ app_taint) -∗
-    □ (UCatKernel.catq_cat g c r q s v vf ps0 cs0 s0 I0 P (-1) -∗ F -∗ Q (-1)) -∗
+    □ (UCatLend.catq_cat g c r q s v vf ps0 cs0 s0 I0 P (-1) -∗ F -∗ Q (-1)) -∗
     □ (file_taint c -∗ Q (-1)) -∗
     file_cons_cred c r jo -∗
     app_inv fsc_fs -∗
@@ -404,7 +404,7 @@ Section UkFileEntriesCat.
     UkRun.urun_nopipe sts -∗ udep -∗
     image_entry ElfUser.cat_elf Mn (mword_of_int (t + 8) : mword 64) sts
       cw cs pidv Q
-      (UCatKernel.cat_lend g r q s v vf ps0 cs0 s0 I0 P ∗ F) uslot.
+      (UCatLend.cat_lend g r q s v vf ps0 cs0 s0 I0 P ∗ F) uslot.
   Proof using Hcons fifRegG0 ufdG0.
     intros HQc Heq Hgc Hst Htie Hok Himg Hbytes Hfdl Hws2 Halen1 Hfname
            Hcw Hl1 Hl2 Hnone Htail Hshort.

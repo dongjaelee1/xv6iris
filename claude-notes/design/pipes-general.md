@@ -116,7 +116,21 @@ discharged via `flow_chain_excl`), silent writers' commits
 (`blkN_silence`) after the node's waits, the sh-side writers (sigma_k
 panics, exec failures), the halted-cat/diagnostic pairing at exit, and
 moving `pe_cat_1w_args`/`pe_line_len`/`pe_drop1_ne` before
-`UkPipeEntries` is deleted.  The pipeline's exclusions are caller premises
+`UkPipeEntries` is deleted.  C7a (bcea40a05, VM pc7amerge1, audits
+13/13/14/14): `UShPipesDefs`/`UShPipesStage`/`UShPipesNode` --
+`wp_kshr_runcmd_pipes_law_g` at a PAYING instance: the round names its
+pipes and two fork one-shots per node before the walk; the family's
+deposits make every exclusion a pair of refuting deposits (the flow
+chain for content vs an exec failure; the one-shots for a panic vs the
+writers it never forked); stage laws for echo, middle cat, last cat
+(C6's entries on success, family writer `exf_writer` on exec failure);
+nodes register `pipe(2)` at the flow parameter, panics as `WSh k`, and
+after both waits pair the children (`node_read`), commit silent writers,
+pay the parent.  `wp_pipes_round`: the forked sh on `echo … | cat | … |
+cat` pays `Qtop` at EVERY n >= 1 under ONE pure premise `Hfire`.  Also
+C5's invariant reads uncommitted writers as SILENT (`runS`), so a silent
+commit is admissible at every state (`silence_okN_tok`, no premise).
+C7b (discharging `Hfire`) in flight.  The pipeline's exclusions are caller premises
 (`fire_okN`/`silence_okN`), discharged in C6/C7 from the flow chain.
 
 # Design: arbitrary pipelines `P0 | cat | … | cat` by induction on the command tree

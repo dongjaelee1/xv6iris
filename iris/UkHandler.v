@@ -207,9 +207,11 @@ Section UkHandler.
          ∧ (ei_fds fdm -∗ ei_outm d rest -∗ K (-1))
          ∧ (∀ x, ei_taint (dom fdm) -∗ K x)) -∗
         wr_obl N P fd bs K;
+    (* ...at a count the kernel reads as a positive C int ([ProgTree.
+       cf_write_halt]) *)
     ei_write_halt : forall (fdm : fdmap) (fd : Z) (d : nat) (bs : bytes)
                       (K : Z -> iProp Σ),
-        bs <> [] -> fdm !! fd = Some d ->
+        bs <> [] -> Z.of_nat (length bs) < 2 ^ 31 -> fdm !! fd = Some d ->
         ei_fds fdm -∗ ei_halt d -∗
         ((ei_fds fdm -∗ ei_halt d -∗ K (-1)) ∧ (∀ x, ei_taint (dom fdm) -∗ K x)) -∗
         wr_obl N P fd bs K;
@@ -317,7 +319,7 @@ Section UkHandler.
          ∧ (∀ x, ei_taint (dom fdm) -∗ K x)) -∗
         wr_obl N P fd bs K;
     ei_write_copy_halt : forall (fdm : fdmap) (fd : Z) (d : nat) (bs : bytes) (K : Z -> iProp Σ),
-        bs <> [] -> fdm !! fd = Some d -> fd = copy_out ->
+        bs <> [] -> Z.of_nat (length bs) < 2 ^ 31 -> fdm !! fd = Some d -> fd = copy_out ->
         ei_fds fdm -∗ ei_copy_halt d -∗
         ((ei_fds fdm -∗ ei_copy_halt d -∗ K (-1)) ∧ (∀ x, ei_taint (dom fdm) -∗ K x)) -∗
         wr_obl N P fd bs K;
@@ -634,10 +636,10 @@ Section UkHandler.
                        | [(Hne & alts & a & Hd & Ha & Hpre & Hk)
                        | [(Hne & alts & a & Hd & Ha & Hpre & Hk & Hkh)
                        | [(Hne & rest & Hd & Hk & Hkm)
-                       | [(Hne & Hd & Hk)
+                       | [(Hne & Hbnd & Hd & Hk)
                        | [(Hne & Hfd1 & h & Sin & p & Hd & Hpre & Hk & Hkh)
                        | [(Hne & Hfd1 & h & p & Hd & Hpre & Hk & Hkh)
-                       | (Hne & Hfd1 & Hd & Hk)]]]]]]].
+                       | (Hne & Hbnd & Hfd1 & Hd & Hk)]]]]]]].
         * iApply (ei_write_nil I (pe_fd E) fd d (pe_dev E d) with "Hfds Hdr"); [exact Hfd |].
           iSplit; [| iSplit; [| iIntros (y) "Ht"; iApply (cf_inv_taint I _ with "Ht"); apply Hs]].
           { iIntros "Hfds Hdr".
@@ -674,7 +676,8 @@ Section UkHandler.
             iApply (cf_inv_move I E ds d (DOutM rest) with "Hfds Hfiles Hout Hrest");
               [exact Hin | exact Hkm | apply Hs | exact Hdp | exact Hdom]. }
         * rewrite Hd.
-          iApply (ei_write_halt I (pe_fd E) fd d bs with "Hfds Hdr"); [exact Hne | exact Hfd |].
+          iApply (ei_write_halt I (pe_fd E) fd d bs with "Hfds Hdr");
+            [exact Hne | exact Hbnd | exact Hfd |].
           iSplit; [| iIntros (x) "Ht"; iApply (cf_inv_taint I _ with "Ht"); apply Hs].
           iIntros "Hfds Hh".
           iApply (cf_inv_move I E ds d DHalt with "Hfds Hfiles Hh Hrest");
@@ -714,7 +717,7 @@ Section UkHandler.
               [exact Hin | exact Hk | apply Hs | exact Hdp | exact Hdom]. }
         * rewrite Hd.
           iApply (ei_write_copy_halt I (pe_fd E) fd d bs with "Hfds Hdr");
-            [exact Hne | exact Hfd | exact Hfd1 |].
+            [exact Hne | exact Hbnd | exact Hfd | exact Hfd1 |].
           iSplit; [| iIntros (x) "Ht"; iApply (cf_inv_taint I _ with "Ht"); apply Hs].
           iIntros "Hfds Hh".
           iApply (cf_inv_move I E ds d DCopyHalt with "Hfds Hfiles Hh Hrest");

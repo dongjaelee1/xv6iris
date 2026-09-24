@@ -689,14 +689,15 @@ Definition cf_step (R : penv -> proc -> Prop) (E : penv) (t : proc) : Prop :=
            \/ (bs <> [] /\ exists rest, pe_dev E d = DOutM (bs :: rest)
               /\ R (env_set_dev E d (DOutM rest)) (k (Z.of_nat (length bs)))
               /\ R (env_set_dev E d (DOutM rest)) (k (-1)))
-           \/ (bs <> [] /\ pe_dev E d = DHalt /\ R E (k (-1)))
+           \/ (bs <> [] /\ Z.of_nat (length bs) < 2 ^ 31 /\ pe_dev E d = DHalt /\ R E (k (-1)))
            \/ (bs <> [] /\ fd = copy_out /\ exists h S p, pe_dev E d = DCopy h S p /\ bs `prefix_of` p
               /\ R (env_set_dev E d (DCopy h S (drop (length bs) p))) (k (Z.of_nat (length bs)))
               /\ (h = true -> R (env_set_dev E d DCopyHalt) (k (-1))))
            \/ (bs <> [] /\ fd = copy_out /\ exists h p, pe_dev E d = DCopyEnd h p /\ bs `prefix_of` p
               /\ R (env_set_dev E d (DCopyEnd h (drop (length bs) p))) (k (Z.of_nat (length bs)))
               /\ (h = true -> R (env_set_dev E d DCopyHalt) (k (-1))))
-           \/ (bs <> [] /\ fd = copy_out /\ pe_dev E d = DCopyHalt /\ R E (k (-1))))
+           \/ (bs <> [] /\ Z.of_nat (length bs) < 2 ^ 31 /\ fd = copy_out
+               /\ pe_dev E d = DCopyHalt /\ R E (k (-1))))
       | ERead fd n => fun k =>
           exists d, pe_fd E !! fd = Some d /\ (0 < n)%nat /\
           ((exists S, pe_dev E d = DIn S
@@ -759,8 +760,15 @@ CoInductive conforms : penv -> proc -> Prop :=
       conforms (env_set_dev E d (DOutM rest)) (k (Z.of_nat (length bs))) ->
       conforms (env_set_dev E d (DOutM rest)) (k (-1)) ->
       conforms E (Vis (EWrite fd bs) k)
+  (* at a HALTED device the answer is -1 only at a count the kernel reads
+     as a positive C int: sys_write takes the count by argint, so a write
+     of 2^31 bytes or more is read as the count modulo 2^32, signed --
+     negative (filewrite answers -1 before the pipe, and the landed write
+     contract admits 0 there), or 0 at a multiple of 2^32 (pipewrite's loop
+     never runs and the answer is 0, halted or not).  The tree promises
+     no such write at a halted device *)
   | cf_write_halt E fd d bs k :
-      bs <> [] ->
+      bs <> [] -> Z.of_nat (length bs) < 2 ^ 31 ->
       pe_fd E !! fd = Some d -> pe_dev E d = DHalt ->
       conforms E (k (-1)) ->
       conforms E (Vis (EWrite fd bs) k)
@@ -782,7 +790,7 @@ CoInductive conforms : penv -> proc -> Prop :=
       (h = true -> conforms (env_set_dev E d DCopyHalt) (k (-1))) ->
       conforms E (Vis (EWrite fd bs) k)
   | cf_write_copy_halt E fd d bs k :
-      bs <> [] -> fd = copy_out ->
+      bs <> [] -> Z.of_nat (length bs) < 2 ^ 31 -> fd = copy_out ->
       pe_fd E !! fd = Some d -> pe_dev E d = DCopyHalt ->
       conforms E (k (-1)) ->
       conforms E (Vis (EWrite fd bs) k)
@@ -1156,28 +1164,57 @@ Proof.
   destruct (decide (d = 0%nat)); [exact Hs | by left].
 Qed.
 
-(* once halted, echo's remaining writes all answer -1 and it exits *)
+(* once halted, echo's remaining writes all answer -1 and it exits -- each
+   of them under 2^31 bytes (the halted rule's C int, [cf_write_halt]);
+   the separators are one byte *)
+Lemma wlen_one (b : bv 8) : Z.of_nat (length [b]) < 2 ^ 31.
+Proof. vm_compute. reflexivity. Qed.
+
+(* every word of a line is no longer than its body *)
+Lemma wl_words_le (ws : list bytes) :
+  Forall (fun w => (length w <= length (wl_body ws))%nat) ws.
+Proof.
+  induction ws as [| w r IH]; constructor.
+  - rewrite wl_body_cons, length_app. lia.
+  - assert (Ht : (length (wl_body r) <= length (wl_tail r))%nat).
+    { destruct r as [| w' r']; [simpl; lia |]. rewrite wl_tail_cons. simpl. lia. }
+    eapply List.Forall_impl; [| exact IH]. intros x Hx. cbv beta in *.
+    rewrite wl_body_cons, length_app. lia.
+Qed.
+
+Lemma wl_words_short (ws : list bytes) :
+  Z.of_nat (length (wl_line ws)) < 2 ^ 31 ->
+  Forall (fun w => Z.of_nat (length w) < 2 ^ 31) ws.
+Proof.
+  intros HL. rewrite wl_line_length in HL.
+  eapply List.Forall_impl; [| exact (wl_words_le ws)]. intros w Hw. cbv beta in *.
+  change (2 ^ 31) with 2147483648 in *. lia.
+Qed.
+
 (* one word at a halted device: -1 (or, empty, 0 or -1) and on it goes *)
 Lemma echo_word_halted (w : bytes) files (rest : proc) :
+  Z.of_nat (length w) < 2 ^ 31 ->
   conforms (pipe_env DHalt files) rest ->
   conforms (pipe_env DHalt files) (Vis (EWrite 1 w) (fun _ => rest)).
 Proof.
-  intros Hrest. destruct w as [| b w].
+  intros Hw Hrest. destruct w as [| b w].
   - apply cf_write_nil with (d := 0%nat); [fdlk | exact Hrest | exact Hrest].
-  - eapply cf_write_halt with (d := 0%nat); [done | fdlk | done | exact Hrest].
+  - eapply cf_write_halt with (d := 0%nat); [done | exact Hw | fdlk | done | exact Hrest].
 Qed.
 
 Lemma echo_words_halted (ws : list bytes) files (rest : proc) :
+  Forall (fun w => Z.of_nat (length w) < 2 ^ 31) ws ->
   conforms (pipe_env DHalt files) rest ->
   conforms (pipe_env DHalt files) (echo_words ws rest).
 Proof.
-  revert rest. induction ws as [| w r IH]; intros rest Hrest; [exact Hrest |].
+  revert rest. induction ws as [| w r IH]; intros rest Hb Hrest; [exact Hrest |].
+  inversion Hb as [| ? ? Hw Hr]; subst.
   destruct r as [| w' r']; simpl.
-  - apply echo_word_halted.
-    apply echo_word_halted. exact Hrest.
-  - apply echo_word_halted.
-    apply echo_word_halted.
-    apply IH. exact Hrest.
+  - apply echo_word_halted; [exact Hw |].
+    apply echo_word_halted; [apply wlen_one | exact Hrest].
+  - apply echo_word_halted; [exact Hw |].
+    apply echo_word_halted; [apply wlen_one |].
+    apply IH; [exact Hr | exact Hrest].
 Qed.
 
 (* one word at a haltable device: the chunk (then the rest), or the halt
@@ -1197,32 +1234,39 @@ Qed.
 
 Lemma echo_words_conforms_h (ws : list bytes) files (rest : proc) :
   ws <> [] ->
+  Forall (fun w => Z.of_nat (length w) < 2 ^ 31) ws ->
   conforms (pipe_env (DOutH [[]]) files) rest ->
   conforms (pipe_env DHalt files) rest ->
   conforms (pipe_env (DOutH [wl_line ws]) files) (echo_words ws rest).
 Proof.
-  revert rest. induction ws as [| w r IH]; intros rest Hne Hrest Hhalt; [done |].
+  revert rest. induction ws as [| w r IH]; intros rest Hne Hb Hrest Hhalt; [done |].
+  inversion Hb as [| ? ? Hw Hr]; subst.
   destruct r as [| w' r'].
   - simpl. unfold wl_line. simpl. rewrite app_nil_r.
     apply echo_word_conforms_h.
     + change [wl_nl] with ([wl_nl] ++ []).
       apply echo_word_conforms_h; [exact Hrest | exact Hhalt].
-    + apply echo_word_halted. exact Hhalt.
+    + apply echo_word_halted; [apply wlen_one | exact Hhalt].
   - simpl. unfold wl_line. rewrite wl_body_cons, wl_tail_cons.
     rewrite <- app_assoc.
     apply echo_word_conforms_h.
     + apply (echo_word_conforms_h [wl_sp] (wl_body (w' :: r') ++ [wl_nl])).
-      * apply IH; [done | exact Hrest | exact Hhalt].
-      * apply (echo_words_halted (w' :: r') files rest). exact Hhalt.
-    + apply echo_word_halted.
-      apply (echo_words_halted (w' :: r') files rest). exact Hhalt.
+      * apply IH; [done | exact Hr | exact Hrest | exact Hhalt].
+      * apply (echo_words_halted (w' :: r') files rest); [exact Hr | exact Hhalt].
+    + apply echo_word_halted; [apply wlen_one |].
+      apply (echo_words_halted (w' :: r') files rest); [exact Hr | exact Hhalt].
 Qed.
 
+(* the line under 2^31 bytes: what a pipe's write end owes always is
+   ([UkPipeDev.pipe_out]), and what keeps every write after a halt a
+   positive C int *)
 Theorem echo_pipe_conforms (argv : list bytes) files :
   drop 1 argv <> [] ->
+  Z.of_nat (length (wl_line (drop 1 argv))) < 2 ^ 31 ->
   conforms (pipe_env (DOutH [wl_line (drop 1 argv)]) files) (echo_tree argv).
 Proof.
-  intros Hne. unfold echo_tree. apply echo_words_conforms_h; [exact Hne | |].
+  intros Hne HL. unfold echo_tree.
+  apply echo_words_conforms_h; [exact Hne | exact (wl_words_short _ HL) | |].
   - apply pipe_env_exit. by left.
   - apply pipe_env_exit. exact I.
 Qed.

@@ -77,29 +77,20 @@
 (* what [UShPipeLaw.pl_RcR] holds at the entry (no [YR], no payload) and  *)
 (* [echo_pipe_paid_of_round'] takes [UEchoPipe.ep_exit -∗ Q (-1)]'s box   *)
 (* with the frame [side_L ∗ Wq] lent, no payload before the child runs.   *)
-(* [pif_refused] packages the refused fields below so that a file above   *)
-(* can assume them at every minted record ([UkPipeEntries]).             *)
 (*                                                                        *)
-(* WHAT IS PROVED: the console write at all three console kinds, the     *)
-(* pipe write (count, halt, taint), the halted write, every zero-length  *)
-(* write but one, the pipe read at DInE / DInEnd INCLUDING the early end  *)
-(* of file (the end at any point of the line, and the read after the     *)
-(* end: [UkPipeDev.pipe_read_eof]), the copy device's read (chunk, end),  *)
-(* the read after its end, its write (per byte through the console core  *)
-(* [UkConsOut.cons_write] at [pif_wD], the family's step                  *)
+(* WHAT IS PROVED: every law, with NO section hypothesis beyond the       *)
+(* stubs and the round -- the console write at all three console kinds,  *)
+(* the pipe write (count, halt, taint), the halted write, every           *)
+(* zero-length write (at a read end open read-only through row 16's       *)
+(* return blanket, [pif_nil_ro]), the pipe read at DInE / DInEnd          *)
+(* INCLUDING the early end of file (the end at any point of the line, and *)
+(* the read after the end: [UkPipeDev.pipe_read_eof]), the copy device's  *)
+(* read (chunk, end), the read after its end, its write (per byte through *)
+(* the console core [UkConsOut.cons_write] at [pif_wD], the family's step *)
 (* [UShPipeCatRound.pcat_step_at]), the close of any descriptor (last or *)
 (* shared; a copy device's last close at its end pays the exit), the     *)
 (* exit, the open laws (vacuous), and [ei_taint_pays] from the generic    *)
 (* free handler [UkFreeHandler] at [echo_taint].                          *)
-(*                                                                        *)
-(* WHAT IS NOT, as section hypotheses at the narrowest refused case:      *)
-(*                                                                        *)
-(*   [Hhalt_long]   a write of 2^31 bytes or more at a halted write end:  *)
-(*             [UkPipeDev.pipe_write_halt] takes the count as a C int.    *)
-(*   [Hnil_ro]  a zero-length write at a pipe's read end open read-only  *)
-(*             (a PDRd row, or the copy device on [copy_in]):             *)
-(*             [UkPipeDev.pipe_write_nil] needs a writable row; the      *)
-(*             kernel answers -1 there and no leaf says so.              *)
 (*                                                                        *)
 (* CLOSED (lane closegap): the LAST close of a copy device before its end *)
 (* ([pif_close_open]) or of the write end before it is drained            *)
@@ -107,6 +98,15 @@
 (* EOF shot and equal cursors, or the line's end or the reader's shot.    *)
 (* [ProgTree.cf_close] asks such a device [drained_at_close] and          *)
 (* [ei_close] receives the fact, so both cases are refuted.               *)
+(*                                                                        *)
+(* CLOSED (lane pipegaps): a write of 2^31 bytes or more at a HALTED      *)
+(* write end -- the kernel reads the count as a C int (argint), so there  *)
+(* the answer is -1 at a negative reading and 0 at a multiple of 2^32,    *)
+(* not the -1 the halted rule promised; [ProgTree.cf_write_halt] now      *)
+(* takes the count under 2^31 and [ei_write_halt] receives it, so         *)
+(* [pif_write_halt] is [UkPipeDev.pipe_write_halt] at every count the    *)
+(* tree can reach (echo's words lie inside its line, which the write end  *)
+(* bounds already).                                                       *)
 (*                                                                        *)
 (* WHAT THE INSTANCE FORCED ON THE PURE LAYER (ProgTree, UkHandler; the   *)
 (* file application fills the copy laws with [_]):                        *)
@@ -116,7 +116,9 @@
 (*     is NONEMPTY (the tree at [DCopy h [] []] no longer needs to exit); *)
 (*   - the copy device is a FILTER's: reads at [copy_in], writes at       *)
 (*     [copy_out] ([ProgTree]); the two descriptors are two kernel        *)
-(*     objects, and a read at the sink is not a pipe read.               *)
+(*     objects, and a read at the sink is not a pipe read;               *)
+(*   - the halted rules ([cf_write_halt], [cf_write_copy_halt]) take the  *)
+(*     count under 2^31 (lane pipegaps, above).                           *)
 (* ===================================================================== *)
 From Stdlib Require Import ZArith Bool Lia List.
 From stdpp Require Import gmap list bitvector.definitions.
@@ -851,50 +853,6 @@ Section UkPipeIface.
     split; [unfold copy_out in Hk; lia | exact Hl].
   Qed.
 
-  (* ------------------------------------------------------------------- *)
-  (*  THE FIELDS THE KERNEL REFUSES (the header's list)                   *)
-  (* ------------------------------------------------------------------- *)
-
-  (* ...packaged as ONE proposition first (lane F), so that a file above
-     this section can assume them at any minted record and any registry
-     name in one binder: [pif_refused_holds] below is the tie to the two
-     hypotheses the laws are stated at. *)
-  Definition pif_refused : Prop :=
-    (forall (fdm : fdmap) (fd : Z) (d : nat) (bs : list (bv 8)) (K : Z -> iProp Σ),
-       bs <> [] -> fdm !! fd = Some d -> 2 ^ 31 <= Z.of_nat (length bs) ->
-       pif_fds fdm -∗ pif_halt d -∗
-       ((pif_fds fdm -∗ pif_halt d -∗ K (-1)) ∧ (∀ x, pif_taint (dom fdm) -∗ K x)) -∗
-       wr_obl N P fd bs K)
-    /\ (forall (fdm : fdmap) (l : list fdstate) (vs : gmap nat pdev)
-          (w : nat -> pdev) (fd : nat) (d : nat) (x : dspec) (K : Z -> iProp Σ),
-          fdm !! Z.of_nat fd = Some d -> (vs !! d = Some PDRd \/ vs !! d = Some PDCopy) ->
-          l !! fd = Some (FdOpen true false (FdPipe γp)) ->
-          pif_fds_at fdm l vs w -∗ pif_dev d x -∗
-          ((pif_fds fdm -∗ pif_dev d x -∗ K 0) ∧ (pif_fds fdm -∗ pif_dev d x -∗ K (-1))
-           ∧ (∀ y, pif_taint (dom fdm) -∗ K y)) -∗
-          wr_obl N P (Z.of_nat fd) [] K).
-
-  Hypothesis Hhalt_long : forall (fdm : fdmap) (fd : Z) (d : nat) (bs : list (bv 8))
-      (K : Z -> iProp Σ),
-    bs <> [] -> fdm !! fd = Some d -> 2 ^ 31 <= Z.of_nat (length bs) ->
-    pif_fds fdm -∗ pif_halt d -∗
-    ((pif_fds fdm -∗ pif_halt d -∗ K (-1)) ∧ (∀ x, pif_taint (dom fdm) -∗ K x)) -∗
-    wr_obl N P fd bs K.
-
-  Hypothesis Hnil_ro : forall (fdm : fdmap) (l : list fdstate) (vs : gmap nat pdev)
-      (w : nat -> pdev) (fd : nat) (d : nat) (x : dspec) (K : Z -> iProp Σ),
-    fdm !! Z.of_nat fd = Some d -> (vs !! d = Some PDRd \/ vs !! d = Some PDCopy) ->
-    l !! fd = Some (FdOpen true false (FdPipe γp)) ->
-    pif_fds_at fdm l vs w -∗ pif_dev d x -∗
-    ((pif_fds fdm -∗ pif_dev d x -∗ K 0) ∧ (pif_fds fdm -∗ pif_dev d x -∗ K (-1))
-     ∧ (∀ y, pif_taint (dom fdm) -∗ K y)) -∗
-    wr_obl N P (Z.of_nat fd) [] K.
-
-  Lemma pif_refused_holds : pif_refused.
-  Proof using Hhalt_long Hnil_ro.
-    exact (conj Hhalt_long Hnil_ro).
-  Qed.
-
   (* THE CLOSE GAP, CLOSED (lane closegap): the LAST close of a copy device
      BEFORE its end while the exit wand is held -- the wand wants the EOF
      shot and the two cursors equal, which an open device does not have --
@@ -1032,19 +990,15 @@ Section UkPipeIface.
       iApply (pif_taint_of_fds fdm l vs Hok with "Ht Hstd Hkp He").
   Qed.
 
-  (* [ei_write_halt]: -1 at the halted write end, at a count the kernel
-     reads as a C int; the rest is [Hhalt_long] *)
+  (* [ei_write_halt]: -1 at the halted write end, at the count the kernel
+     reads as a positive C int ([ProgTree.cf_write_halt] promises it) *)
   Lemma pif_write_halt (fdm : fdmap) (fd : Z) (d : nat) (bs : list (bv 8)) (K : Z -> iProp Σ) :
-    bs <> [] -> fdm !! fd = Some d ->
+    bs <> [] -> Z.of_nat (length bs) < 2 ^ 31 -> fdm !! fd = Some d ->
     pif_fds fdm -∗ pif_halt d -∗
     ((pif_fds fdm -∗ pif_halt d -∗ K (-1)) ∧ (∀ x, pif_taint (dom fdm) -∗ K x)) -∗
     wr_obl N P fd bs K.
-  Proof using Hkill Hsw Hhalt_long.
-    intros Hne Hfd.
-    destruct (decide (Z.of_nat (length bs) < 2 ^ 31)) as [Hbnd | Hbnd]; last first.
-    { assert (Hge : 2 ^ 31 <= Z.of_nat (length bs))
-        by (change (2 ^ 31) with 2147483648 in Hbnd |- *; lia).
-      exact (Hhalt_long fdm fd d bs K Hne Hfd Hge). }
+  Proof using Hkill Hsw.
+    intros Hne Hbnd Hfd.
     iIntros "Hfds [Htk Hh] HK".
     iDestruct "Hfds" as (l vs w) "(Hstd & Hkp & %Hok & Hpool & Htoks & #He)".
     destruct (pif_ok_lookup _ _ _ _ _ Hok Hfd) as [kd Hv].
@@ -1129,7 +1083,34 @@ Section UkPipeIface.
       iExact "Hs1".
   Qed.
 
-  (* a zero-length write at a pipe row, writable or [Hnil_ro] *)
+  (* A ZERO-LENGTH WRITE AT A READ END OPEN READ-ONLY (a PDRd row, or the
+     copy device on [copy_in]): the deposit costs nothing at a row that is
+     not writable and row 16's return blanket at count 0 says 0 or -1
+     (lane NIL-RET) -- [UkFileDev.file_write_nil_std_ro], which is generic
+     in the row's type, at [FdPipe gp]; nothing moves *)
+  Lemma pif_nil_ro (fdm : fdmap) (l : list fdstate) (vs : gmap nat pdev)
+      (w : nat -> pdev) (fd : nat) (d : nat) (x : dspec) (K : Z -> iProp Σ) :
+    fdm !! Z.of_nat fd = Some d -> (vs !! d = Some PDRd \/ vs !! d = Some PDCopy) ->
+    l !! fd = Some (FdOpen true false (FdPipe γp)) ->
+    pif_fds_at fdm l vs w -∗ pif_dev d x -∗
+    ((pif_fds fdm -∗ pif_dev d x -∗ K 0) ∧ (pif_fds fdm -∗ pif_dev d x -∗ K (-1))
+     ∧ (∀ y, pif_taint (dom fdm) -∗ K y)) -∗
+    wr_obl N P (Z.of_nat fd) [] K.
+  Proof using Hsw.
+    intros Hfd Hv Hrow. iIntros "(Hstd & Hkp & %Hok & Hpool & Htoks & #He) Hd HK".
+    assert (Hlt : (fd < NSTD)%nat).
+    { destruct Hv as [Hv | Hv];
+        destruct (pif_fds_row _ _ _ _ _ _ Hok Hfd Hv) as (k & Hk & Hk' & _);
+        apply Nat2Z.inj in Hk; subst k; exact Hk'. }
+    iApply (file_write_nil_std_ro N P Hsw fd l true (FdPipe γp) K Hlt Hrow with "Hstd").
+    iSplit.
+    - iIntros "Hstd". iDestruct "HK" as "[HK _]".
+      iApply ("HK" with "[-Hd] Hd"). pif_repack.
+    - iIntros "Hstd". iDestruct "HK" as "[_ [HK _]]".
+      iApply ("HK" with "[-Hd] Hd"). pif_repack.
+  Qed.
+
+  (* a zero-length write at a pipe row, writable or read-only *)
   Local Ltac pif_pipe_nil_arms :=
     iSplit; [| iSplit];
     [ iIntros "Hstd Hd"; iDestruct "HK" as "[HK _]"; iApply ("HK" with "[-Hd] Hd"); pif_repack
@@ -1144,7 +1125,7 @@ Section UkPipeIface.
     ((pif_fds fdm -∗ pif_dev d x -∗ K 0) ∧ (pif_fds fdm -∗ pif_dev d x -∗ K (-1))
      ∧ (∀ y, pif_taint (dom fdm) -∗ K y)) -∗
     wr_obl N P fd [] K.
-  Proof using Hkill Hsw HPc Hnil_ro.
+  Proof using Hkill Hsw HPc.
     intros Hfd. iIntros "Hfds Hd HK".
     iDestruct (pif_dev_tok with "Hd") as (kd) "(%Hkd & Htk & Hback)".
     iDestruct "Hfds" as (l vs w) "(Hstd & Hkp & %Hok & Hpool & Htoks & #He)".
@@ -1171,12 +1152,12 @@ Section UkPipeIface.
       destruct Hrow as (_ & rb & Hrow). rewrite Nat2Z.id in Hrow.
       iApply (pipe_write_nil N P Hsw γp l k rb (pif_dev d x) K Hlt Hrow with "Hstd Hd").
       pif_pipe_nil_arms.
-    - (* the read end: writable, or [Hnil_ro] *)
+    - (* the read end: writable, or read-only ([pif_nil_ro]) *)
       destruct Hrow as (_ & wb & Hrow). rewrite Nat2Z.id in Hrow.
       destruct wb.
       + iApply (pipe_write_nil N P Hsw γp l k true (pif_dev d x) K Hlt Hrow with "Hstd Hd").
         pif_pipe_nil_arms.
-      + iApply (Hnil_ro fdm l vs w k d x K Hfd (or_introl Hv) Hrow
+      + iApply (pif_nil_ro fdm l vs w k d x K Hfd (or_introl Hv) Hrow
                   with "[Hstd Hkp Hpool Htoks] Hd HK").
         iFrame "Hstd Hkp Hpool Htoks He". by iPureIntro.
     - (* the copy device: its read end, or its console *)
@@ -1185,7 +1166,7 @@ Section UkPipeIface.
         destruct wb.
         * iApply (pipe_write_nil N P Hsw γp l 0 true (pif_dev d x) K Hlt Hrow with "Hstd Hd").
           pif_pipe_nil_arms.
-        * iApply (Hnil_ro fdm l vs w 0 d x K Hfd (or_intror Hv) Hrow
+        * iApply (pif_nil_ro fdm l vs w 0 d x K Hfd (or_intror Hv) Hrow
                     with "[Hstd Hkp Hpool Htoks] Hd HK").
           iFrame "Hstd Hkp Hpool Htoks He". by iPureIntro.
       + assert (k = 1%nat) as -> by (unfold copy_out in Hk; lia).
@@ -1790,7 +1771,7 @@ Section UkPipeIface.
 
   Definition pipe_iface : ep_iface N P.
   Proof using Hcons Hkill HPc HNc Hsr Hsw Hso Hsc Hse Hnd Hwit1 Hwit2 XL_tl YR_tl YR_pers Hyr
-              Hhalt_long Hnil_ro.
+              v gL gR gM γp γreg pifRegG0.
     refine (MkEI N P pif_fds pif_out pif_outh pif_halt (fun _ _ => False%I)
               (fun _ _ => False%I) pif_in pif_in_end
               pif_copy pif_copy_end (fun _ => False%I)
@@ -1826,8 +1807,7 @@ Section UkPipeIface.
   Theorem cat_copy_paid (files : list (bv 8) -> option (list (bv 8))) :
     env_res N P pipe_iface (copy_env (DCopy false L []) [[]] files []) {[0%nat; 1%nat]} -∗
     tree_pay N P (cat_tree [sb "cat"]).
-  Proof using Hcons Hkill HPc HNc Hsr Hsw Hso Hsc Hse Hnd Hwit1 Hwit2 XL_tl YR_tl YR_pers Hyr
-              Hhalt_long Hnil_ro.
+  Proof using Hcons Hkill HPc HNc Hsr Hsw Hso Hsc Hse Hnd Hwit1 Hwit2 XL_tl YR_tl YR_pers Hyr.
     iIntros "H".
     iApply (tree_pay_of_conforms N P pipe_iface _ _ _
               (cat_copy_conforms false L [[]] files []
@@ -1839,13 +1819,13 @@ Section UkPipeIface.
   (* THE LEFT PROCESS: fd 1 the write end owing the line, which may halt *)
   Theorem echo_pipe_paid (argv : list (list (bv 8))) (files : list (bv 8) -> option (list (bv 8))) :
     drop 1 argv <> [] -> L = wl_line (drop 1 argv) ->
+    Z.of_nat (length L) < 2 ^ 31 ->
     env_res N P pipe_iface (pipe_env (DOutH [L]) files) {[0%nat]} -∗
     tree_pay N P (echo_tree argv).
-  Proof using Hcons Hkill HPc HNc Hsr Hsw Hso Hsc Hse Hnd Hwit1 Hwit2 XL_tl YR_tl YR_pers Hyr
-              Hhalt_long Hnil_ro.
-    intros Hne HL. iIntros "H". rewrite HL.
+  Proof using Hcons Hkill HPc HNc Hsr Hsw Hso Hsc Hse Hnd Hwit1 Hwit2 XL_tl YR_tl YR_pers Hyr.
+    intros Hne HL Hbnd. iIntros "H". rewrite HL. rewrite HL in Hbnd.
     iApply (tree_pay_of_conforms N P pipe_iface _ _ _
-              (echo_pipe_conforms argv files Hne) (echo_tree_safe _ _) with "H").
+              (echo_pipe_conforms argv files Hne Hbnd) (echo_tree_safe _ _) with "H").
   Qed.
 
   (* ---- what the round lends cat ([UShPipeLaw.pl_RcR] and [pl_cat_fd0]):
@@ -1948,7 +1928,7 @@ Section UkPipeIface.
     PipeBoth.wcur gR (1/2) 0%nat -∗ PipeBoth.wcur gM (1/2) 0%nat -∗
     tree_pay N P (cat_tree [sb "cat"]).
   Proof using Hcons Heq Hkill HPc HNc Hsr Hsw Hso Hsc Hse Hnd Hwit1 Hwit2 XL_tl YR_tl YR_pers
-              Hyr Hhalt_long Hnil_ro.
+              Hyr.
     intros Hw0 Hw1 Hl0 Hl1 Hl2 HL.
     iIntros "Hstd Hpool Hk Hinv Hrt Hpin Hlt Hblk Hex HgR HgM".
     iApply (cat_copy_paid (fun _ => None)).
@@ -2029,9 +2009,9 @@ Section UkPipeIface.
     pipe_inv pn γp L -∗ wcur pn 0%nat -∗ pws_lb pn [] -∗
     tree_pay N P (echo_tree argv).
   Proof using Hcons Heq Hkill HPc HNc Hsr Hsw Hso Hsc Hse Hnd Hwit1 Hwit2 XL_tl YR_tl YR_pers
-              Hyr Hhalt_long Hnil_ro.
+              Hyr v gL gR gM.
     intros Hw0 Hl1 Hne HLw HL. iIntros "Hstd Hpay Hpool Hinv Hw Hlb".
-    iApply (echo_pipe_paid argv (fun _ => None) Hne HLw).
+    iApply (echo_pipe_paid argv (fun _ => None) Hne HLw HL).
     iApply (echo_env_res l rb w (fun _ => None) Hw0 Hl1 HL with "Hstd Hpay Hpool Hinv Hw Hlb").
   Qed.
 
@@ -2053,9 +2033,9 @@ Section UkPipeIface.
     pipe_inv pn γp L -∗ wcur pn 0%nat -∗ pws_lb pn [] -∗
     tree_pay N P (echo_tree argv).
   Proof using Hcons Heq Hkill HPc HNc Hsr Hsw Hso Hsc Hse Hnd Hwit1 Hwit2 XL_tl YR_tl YR_pers
-              Hyr Hhalt_long Hnil_ro.
+              Hyr v gL gR gM.
     intros Hw0 Hl1 Hne HLw HL. iIntros "#Hq Hfr Hstd Hpool Hinv Hw Hlb".
-    iApply (echo_pipe_paid argv (fun _ => None) Hne HLw).
+    iApply (echo_pipe_paid argv (fun _ => None) Hne HLw HL).
     iApply (echo_env_res_k l rb w (fun _ => None) Hw0 Hl1 HL
               with "Hstd [Hfr] Hpool Hinv Hw Hlb").
     iApply (pif_kpay_left _ 0%nat (lookup_singleton _ _)).

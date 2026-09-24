@@ -488,8 +488,14 @@ theorems lost `fdq` and are non-vacuous; `efile_image_entry_of_tree`
 has `efile_image_entry`'s statement plus `cw = ROOTINO`, `□ (file_taint
 c -∗ app_taint)`, `□ (file_taint c -∗ Q (-1))`, `fifRegG`, `g`/`Hcons`
 with `c = fgn_cl g`.  ALL FIVE ENTRIES now have a tree-route corollary.
-NEXT: the pipe instance's two close gaps
-(a `drained` premise at `ei_close`); then repointing the assemblies.  The
+CLOSE-GAP LANDED (a1b8e77a7, VM cgmerge1 EXIT=0, audits 13/13/14/14):
+`cf_close`/`ei_close` take `fd_last … -> drained_at_close (pe_dev E d)`
+(drained required at the LAST close of a copy device or a haltable
+output only; inputs may still close unread); `Hclose_open`/
+`Hclose_open_w` are the lemmas `pif_close_open`/`pif_close_open_w`;
+`pif_refused` is down to `Hhalt_long /\ Hnil_ro`.  (Was: the pipe
+instance's two close gaps
+(a `drained` premise at `ei_close`).)  NEXT: the two remaining pipe gaps and repointing the assemblies.  The
 pipeline's CONSOLE device LANDED (lane/pcons 246f51ca4, design SS3.4d:
 `UkConsOut` split into a claim-free core and a `gen_params` instance,
 `UkPipeConsOut.v` with the single-writer and the `popen` devices).

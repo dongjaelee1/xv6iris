@@ -11,8 +11,9 @@
 (*                                                                       *)
 (*  1. The open reading, pure and over ANY line model ([lm_blk_open],    *)
 (*     [gcl_pure_o]), with the three out-steps of the pure part.         *)
-(*  2. The claim at [pipes_lm]: its parameters (the laws and the hooks   *)
-(*     are the caller's), [popenN], [pecl'], and the three claim steps   *)
+(*  2. The claim at [pipes_lm]: its parameters (the laws are the        *)
+(*     caller's, the hooks the model's own [PipesDiscDec.pipes_hooks]),  *)
+(*     [popenN], [pecl'], and the three claim steps                      *)
 (*     [pecl'_blkN_open_gen] / [_byte_gen] / [_file], the twins of the   *)
 (*     landed [PipeOut.pecl_blk2_*].                                     *)
 (*  3. The family's credential [pwc_blkN] and the ONE obligation         *)
@@ -52,6 +53,7 @@ Require Import PipeOut.
 Require Import ProgTree.
 Require Import PipesPair.
 Require Import PipesDisc.
+Require Import PipesDiscDec.      (* [pipes_hooks] *)
 Require Import PipeBothNPure.
 Require Import PipeBothN.
 Require Import PipeHooks.         (* [pline_at] *)
@@ -276,11 +278,13 @@ Section pipes_out_n.
   Local Notation γ := (pgn_cl g).
   Notation T := (echo_taint γ).
   (* THE MODEL: the content function, the admitted lines, and the laws
-     and hooks of [pipes_lm fc adm], which are the caller's (the laws at
-     [PipesDisc.pipes_lm_laws], the hooks a later cut's) *)
+     of [pipes_lm fc adm], which are the caller's (at
+     [PipesDisc.pipes_lm_laws]) *)
   Context (fc : bytes -> option bytes) (adm : pline' -> bool).
-  Context (Lw : lm_laws (pipes_lm fc adm)) (K : lm_hooks (pipes_lm fc adm)).
+  Context (Lw : lm_laws (pipes_lm fc adm)).
   Local Notation PM := (pipes_lm fc adm).
+  (* THE HOOKS are the model's own ([PipesDiscDec.pipes_hooks]) *)
+  Local Notation K := (pipes_hooks fc adm).
   Local Notation PB := (pipes_lm_byte_laws fc adm).
 
   (* the model's state is [unit]: nothing survives a round *)
@@ -371,7 +375,7 @@ Section pipes_out_n.
             ∗ (⌜lm_term PM (lm_dec PM a) = false⌝
                ∨ cs_frozen_at v (nlines I0 - 1)%nat)
             ∗ ps_lb v ps0 ∗ cs_lb v cs0 ∗ inp_lb v I0) ∨ T).
-  Proof using K.
+  Proof using .
     intros Hne0 Hr0 Hdiv Hpin0 HPeq Halt Hpan Hhead Hfarm.
     pose proof (nlines_pos_of_rest_nil I0 Hne0 Hr0) as Hpos0.
     pose proof (ll_nlines_removelast I0 Hr0) as Hrl0.
@@ -546,7 +550,7 @@ Section pipes_out_n.
           ∗ cur_half w (1/2) r gb (tmi || lm_term PM (lm_dec PM a))
           ∗ rblk_lb gb (pre0 ++ [b])
           ∗ (⌜lm_term PM (lm_dec PM a) = false⌝ ∨ cs_frozen_at v r)) ∨ T).
-  Proof using K.
+  Proof using .
     intros Hne0 Hr0 Hreq Hcseq Hpin0 HPeq Halt Hpan Hpref Hfarm.
     pose proof (nlines_pos_of_rest_nil I0 Hne0 Hr0) as Hpos0.
     iIntros "#Hpin #Hperaw Ht Hcw #Hrlb0 #Hpslb #Hcslb #Hilb Hcl".
@@ -711,7 +715,7 @@ Section pipes_out_n.
       pecl' k ho (ConsLog.cons_step H (ConsLog.EvOut b))
       ∗ ((turn v (S (P + length pre0))%nat ∗ ps_lb v ps0
           ∗ cs_lb v (cs0 ++ [a]) ∗ inp_lb v I0) ∨ T).
-  Proof using K.
+  Proof using .
     intros Hne0 Hr0 Hreq Hcseq Hpin0 HPeq Halt Hpan Hfk Hcont Hbv.
     pose proof (nlines_pos_of_rest_nil I0 Hne0 Hr0) as Hpos0.
     iIntros "#Hpin #Hperaw Ht Hcw #Hrlb0 #Hpslb #Hcslb #Hilb Hcl".
@@ -940,7 +944,7 @@ Section pipes_out_n.
      round, every further byte (any writer's) appends to its ledger *)
   Theorem pblkN_ecl_holds (v : era_pins) (I : list (bv 8)) :
     ⊢ eclN pecl' (pwc_blkN v I) (ptkN v I) (pwitN I).
-  Proof using K.
+  Proof using .
     rewrite /eclN. iModIntro.
     iIntros (k ho H pre b tm tm' Htmt Hwit) "Hpw Hcl".
     destruct Hwit as (a & Hok & Hpan & Hterm & Hpref & Hnd).
@@ -1029,7 +1033,7 @@ Section pipes_out_n.
       ∗ ((∃ (ps cs : list nat) (P : nat),
             ⌜wr_blkN ps cs I P⌝ ∗ turn v (S (P + length pre))%nat
             ∗ ps_lb v ps ∗ cs_lb v (cs ++ [plalt_code (PLRun pre)]) ∗ inp_lb v I) ∨ T).
-  Proof using K.
+  Proof using .
     intros Ha Hbl Hne Hbv. iIntros "Hpw Hcl".
     iDestruct "Hpw" as "[Hx | #HT]"; last first.
     { iModIntro. iSplitR; [by iApply pecl'_taint | by iRight]. }
@@ -1109,8 +1113,8 @@ Section pipes_family.
   Context `{HRg : !riscvGS Σ}.
   Context `{!ghost_varG Σ (option (list (bv 8)))}.
   Context (g : pipe_gn) (fc : bytes -> option bytes) (adm : pline' -> bool).
-  Context (Lw : lm_laws (pipes_lm fc adm)) (K : lm_hooks (pipes_lm fc adm)).
-  Context (Hcons : @riscv_cons_res Σ (@riscv_fixedGS Σ HRg) = pecl' g fc adm Lw K).
+  Context (Lw : lm_laws (pipes_lm fc adm)).
+  Context (Hcons : @riscv_cons_res Σ (@riscv_fixedGS Σ HRg) = pecl' g fc adm Lw).
   Context (Hfc : fc_ok fc) (Hadm : adm_ok fc adm).
   Context (v : era_pins) (I : list (bv 8)).
   Context (Ha : adm (lineN fc adm I) = true) (Hl : pl_ok (lineN fc adm I)).
@@ -1153,7 +1157,7 @@ Section pipes_family.
     out_link Uart0 k b Φ.
   Proof using Hcons Hfc Hadm Ha Hl.
     intros Hns Hw Hc Hb Hok. iIntros "#Hinv HcW HmW HΦ".
-    iApply (blkN_cstep wsN (wids_NoDup _) (pecl' g fc adm Lw K) Hcons RUNN PWN
+    iApply (blkN_cstep wsN (wids_NoDup _) (pecl' g fc adm Lw) Hcons RUNN PWN
               (pwc_blkN_timeless g fc adm v I) TKN (ptkN_persistent g v I) WITN
               (pipesN_HWIT fc adm I Hfc Hadm Ha Hl) TERM TOK dep dep_tl
               N k γc γm w s c b Φ Hns Hw Hc Hb Hok
@@ -1180,7 +1184,7 @@ Section pipes_family.
     out_link Uart0 k b Φ.
   Proof using Hcons Hfc Hadm Ha Hl.
     intros Hns HEx Hw Hb Hok. iIntros "#Hex #Hinv HcW HmW Hdep HΦ".
-    iApply (blkN_fire wsN (wids_NoDup _) (pecl' g fc adm Lw K) Hcons RUNN PWN
+    iApply (blkN_fire wsN (wids_NoDup _) (pecl' g fc adm Lw) Hcons RUNN PWN
               (pwc_blkN_timeless g fc adm v I) TKN (ptkN_persistent g v I) WITN
               (pipesN_HWIT fc adm I Hfc Hadm Ha Hl) TERM TOK dep dep_tl
               N Eex k γc γm w s b EXCL Φ Hns HEx Hw Hb Hok

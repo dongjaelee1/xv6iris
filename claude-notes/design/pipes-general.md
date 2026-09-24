@@ -29,7 +29,17 @@ order verified at the instruction level -- N `execcmd` then N-1
 landed lemmas byte-identical as corollaries).  LEFT for C3b:
 `nulterminate`/`parseline`/`parsecmd` at N stages (the seam assumes
 the cut line, as the one-bar seam does) and the `UkShPipesRound` child
-walk (C3b in flight).  C2 (5f2aa37ab: `PipesDisc.v`/`PipesDiscDec.v` --
+walk -- DONE by C3b (6c61e6fa6: `UkShPipesCmd.v` --
+`wp_kshp_nulterminate_pipes`, `wp_kshp_parseline_pipes`,
+`wp_kshp_parsecmd_pipes`, `ushq_cuts_ok_bars`; `UkShPipesRound.v` --
+`wp_kshm_child_pipes_g` from the raw line at 0x9c0 to `runcmd`, and
+`wp_kshr_runcmd_pipes_law` by induction on the stages at an abstract
+payment with three per-node laws `ush_left_law`/`ush_last_law`/
+`ush_entry_law`; the taint instance discharges all of them end to end,
+`wp_kshm_child_pipes_closed_um`).  C3b FINDING: an inner node can only
+use the FREE wait reading, since `UkShRun.wp_kshr_fork1` drops the pid
+fragment the child would need for `ush_pid`/`ush_wait_pid_ans`
+(lane PID-CHILD fixes it).  C2 (5f2aa37ab: `PipesDisc.v`/`PipesDiscDec.v` --
 `stage_out` derived from C1's exit lemmas, `pipe_pairB` with the ruled
 corner (B), `sfx_run`/`line_run`, `merge_all`, `line_blocks`,
 `line_term_blocks`, `plalt`, `pipes_lm fc adm`; laws proved under

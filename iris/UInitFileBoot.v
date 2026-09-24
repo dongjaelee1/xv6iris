@@ -38,6 +38,7 @@ Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.Mac
 Require Import Riscv.rv64d_types Riscv.rv64d.
 Require Import RiscvLang RiscvPtsto.
 Require Import WpUart.
+Require Import CtxIdDefs.
 Require Import Xv6Cameras.
 Require Import Xv6G.
 Require Import FdSlots.
@@ -47,20 +48,30 @@ Require Import FileInvDefs.
 Require Import ChildTok.
 Require Import UexecSlot.
 Require Import UexecRet.
+Require Import UexecSG.
+Require Import PathElems.
 Require Import AppCfg.
 Require Import AppInv.
 Require Import FsCfg.
+Require Import ConsoleInv.
 Require Import SpecKexec.
 Require Import FsAbsDefs.
+Require Import FsAbsEra.
+Require Import PinnedExec.
 Require Import UexecExecInst.
 Require Import UkRun.
 Require Import UkInit.
 Require Import UexecExecMint.
+Require Import UkWriteClosed.
 Require Import UInitKernel.
 Require Import LineWords.
+Require Import EchoLinks.
 Require Import UInitDiag.
+Require Import UInitBanner.
 Require Import UInitCons.
+Require Import UInitConsK.
 Require Import UInitSh.
+Require Import UShPanic.
 Require Import UShEcho.
 Require Import UShCatPay.
 Require Import UShLine.
@@ -68,20 +79,37 @@ Require Import AppEcho.
 Require Import EchoOut.
 Require Import UserConsole.
 Require Import UserFd.
+Require Import LinkUserinit.
 Require Import UkSh.
+Require Import UShConsK.
+Require Import KexecDefs.
+Require Import PageGeom.
 Require Import InitBoot.
 Require Import ElfUser.
+Require Import ElfLoadable.
+Require Import FsInitPin.
+Require Import FsInitPinBoot.
 Require Import UInitBoot.          (* [init_boot_bundle_of_pinned] *)
+Require Import LinkRec.
+Require Import ReadRec.
+Require Import FileDisc.
 Require Import FileState.
 Require Import EchoFsPure.
 Require Import FileFsPure.
+Require Import FileOutPure.
 Require Import FileOut.
 Require Import AppFile.
 Require Import AppFileCons.        (* [file_cons_cred] *)
 Require Import AppFileRec.         (* [file_ifc] and its projections *)
 Require Import FileLinks.
+Require Import FileLinksLine.
+Require Import FileHooks.         (* S0 of [FileLinksLine], moved *)
 Require Import FileLinksAt.
+Require Import FileLinksAtInp.     (* [file_wb_inp_at] *)
 Require Import FileLinkInst.
+Require Import GenLinksLine.
+Require Import FileLinkGen.
+Require Import FileReadInst.
 Require Import UkShRedirBody.      (* [ush_line_file] *)
 Require Import UInitFileCons.      (* the claim's readings, the boot filing *)
 Require Import UInitConsFile.      (* the console dance's file leaves *)

@@ -76,7 +76,7 @@ Require Import FsImgCheck.         (* [fname_f] *)
 Require Import FsAbsEra.
 Require Import PinnedObs.
 Require Import EchoOut.
-Require Import EchoDisc.
+Require Import AppEcho.
 Require Import AppFile.
 Require Import AppFileCons.      (* [file_cons_cred]: the console credential over [option Z] *)
 Require Import FileOpen.

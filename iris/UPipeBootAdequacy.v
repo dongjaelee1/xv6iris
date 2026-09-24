@@ -69,6 +69,7 @@ Require Import App.                (* [xv6_app_adequacy] and the record *)
 Require Import InodeInv.           (* [ROOTINO] *)
 Require Import PipeDisc.           (* [pipe_phi] -- the conclusion, spelled out *)
 Require Import EchoOut.            (* [echoOutG] / [echoOutSigma] *)
+Require Import PipeProto.          (* [pipeProtoSigma]: the pipe protocol's cameras -- every round mints a pipe's ghosts *)
 Require Import PipeOut.            (* [pipeOutG] / [pipeOutSigma] -- NOT dead:
                                       the section below generalises over
                                       [pipeOutG] and a missing import makes it

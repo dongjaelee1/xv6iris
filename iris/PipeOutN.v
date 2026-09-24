@@ -1006,11 +1006,11 @@ Section pipes_out_n.
   (* THE MODEL'S BLOCKS ARE THE CLAIM'S NON-TERMINAL WITNESS: the family's
      [HWIT] at the pipeline, for a well-formed admitted line *)
   Lemma pipesN_HWIT (I : list (bv 8)) :
-    fc_ok fc -> adm_ok fc adm -> adm (lineN I) = true -> pl_ok (lineN I) ->
+    fc_ok fc -> adm (lineN I) = true -> pl_ok (lineN I) ->
     forall pre bl, blkN (wids (lcats (lineN I))) (runN fc (lineN I)) bl ->
       pre `prefix_of` bl -> pwitN I false pre.
   Proof using .
-    intros Hfc Hadm Ha Hl pre bl Hb Hp.
+    intros Hfc Ha Hl pre bl Hb Hp.
     exists (plalt_code (PLRun bl)).
     cbn [pipes_lm lm_ok lm_panic lm_term lm_cont lm_dec]. rewrite plalt_of_code.
     split_and!.
@@ -1018,7 +1018,7 @@ Section pipes_out_n.
     - reflexivity.
     - reflexivity.
     - etrans; [exact Hp |]. by eexists.
-    - intros _. exact (prefix_forall _ _ _ Hp (pipesN_blk_nodollar fc adm _ bl Hfc Hadm Ha Hl Hb)).
+    - intros _. exact (prefix_forall _ _ _ Hp (pipesN_blk_nodollar fc _ bl Hfc Hl Hb)).
   Qed.
 
   (* THE FILING, at the credential: once the family has handed the block
@@ -1115,7 +1115,7 @@ Section pipes_family.
   Context (g : pipe_gn) (fc : bytes -> option bytes) (adm : pline' -> bool).
   Context (Lw : lm_laws (pipes_lm fc adm)).
   Context (Hcons : @riscv_cons_res Σ (@riscv_fixedGS Σ HRg) = pecl' g fc adm Lw).
-  Context (Hfc : fc_ok fc) (Hadm : adm_ok fc adm).
+  Context (Hfc : fc_ok fc).
   Context (v : era_pins) (I : list (bv 8)).
   Context (Ha : adm (lineN fc adm I) = true) (Hl : pl_ok (lineN fc adm I)).
 
@@ -1155,11 +1155,11 @@ Section pipes_family.
     (wcurN γc w (1/2) (S c) -∗ wmodeN γm w (1/2) (Some s)
      -∗ (⌜TERM w s = false⌝ ∨ TKN k) -∗ Φ) -∗
     out_link Uart0 k b Φ.
-  Proof using Hcons Hfc Hadm Ha Hl.
+  Proof using Hcons Hfc Ha Hl.
     intros Hns Hw Hc Hb Hok. iIntros "#Hinv HcW HmW HΦ".
     iApply (blkN_cstep wsN (wids_NoDup _) (pecl' g fc adm Lw) Hcons RUNN PWN
               (pwc_blkN_timeless g fc adm v I) TKN (ptkN_persistent g v I) WITN
-              (pipesN_HWIT fc adm I Hfc Hadm Ha Hl) TERM TOK dep dep_tl
+              (pipesN_HWIT fc adm I Hfc Ha Hl) TERM TOK dep dep_tl
               N k γc γm w s c b Φ Hns Hw Hc Hb Hok
               with "[] Hinv HcW HmW HΦ").
     iApply pblkN_ecl_holds.
@@ -1182,11 +1182,11 @@ Section pipes_family.
     (wcurN γc w (1/2) 1 -∗ wmodeN γm w (1/2) (Some s)
      -∗ (⌜TERM w s = false⌝ ∨ TKN k) -∗ Φ) -∗
     out_link Uart0 k b Φ.
-  Proof using Hcons Hfc Hadm Ha Hl.
+  Proof using Hcons Hfc Ha Hl.
     intros Hns HEx Hw Hb Hok. iIntros "#Hex #Hinv HcW HmW Hdep HΦ".
     iApply (blkN_fire wsN (wids_NoDup _) (pecl' g fc adm Lw) Hcons RUNN PWN
               (pwc_blkN_timeless g fc adm v I) TKN (ptkN_persistent g v I) WITN
-              (pipesN_HWIT fc adm I Hfc Hadm Ha Hl) TERM TOK dep dep_tl
+              (pipesN_HWIT fc adm I Hfc Ha Hl) TERM TOK dep dep_tl
               N Eex k γc γm w s b EXCL Φ Hns HEx Hw Hb Hok
               with "Hex [] Hinv HcW HmW Hdep HΦ").
     iApply pblkN_ecl_holds.
@@ -1207,10 +1207,10 @@ Section pipes_family.
     ([∗ list] w ∈ wsN, wcurN γc w (1/2) (length (sw w))
                         ∗ wmodeN γm w (1/2) (Some (sw w))) ={E}=∗
     ∃ pre : list (bv 8), PWN k pre false ∗ ⌜line_blocks fc lN pre⌝.
-  Proof using Hfc Hadm Ha Hl.
+  Proof using Hfc Ha Hl.
     intros HN HT. iIntros "#Hinv Hall".
     iMod (blkN_file wsN (wids_NoDup _) RUNN PWN (pwc_blkN_timeless g fc adm v I)
-            WITN (pipesN_HWIT fc adm I Hfc Hadm Ha Hl) TERM TOK dep dep_tl
+            WITN (pipesN_HWIT fc adm I Hfc Ha Hl) TERM TOK dep dep_tl
             E N k γc γm sw HN ltac:(rewrite /wids; destruct (lcats _); discriminate) HT
             with "Hinv Hall") as (pre) "[HPW %Hb]".
     iModIntro. iExists pre. iFrame "HPW". iPureIntro. exact (blkN_line_blocks fc lN pre Hb).
@@ -1401,11 +1401,11 @@ Section pipes_family.
            wcurN γc x.1.1 (1/2) x.2 ∗ wmodeN γm x.1.1 (1/2) (Some x.1.2))
      -∗ Φ) -∗
     out_link Uart0 k b Φ.
-  Proof using Hcons Hfc Hadm Ha Hl.
+  Proof using Hcons Hfc Ha Hl.
     intros Hns Hw Hc Hb Hhin. iIntros "Hex Hh HΦ".
     iApply (pprompt_forkN_h wsN (wids_NoDup _) (pecl' g fc adm Lw) Hcons RUNN PWN
               (pwc_blkN_timeless g fc adm v I) TKN (ptkN_persistent g v I) WITN
-              (pipesN_HWIT fc adm I Hfc Hadm Ha Hl) termw TOKN dep dep_tl
+              (pipesN_HWIT fc adm I Hfc Ha Hl) termw TOKN dep dep_tl
               N k γc γm (WSh k) alt_forkc c b (heldN k sw) Φ Hns Hw Hc Hb Hhin
               (cstep_okNh_prompt k sw c Hc (lookup_lt_Some _ _ _ Hb))
               with "[] Hex Hh HΦ").

@@ -588,6 +588,9 @@ Section pipes_hooks.
   Proof using. cbn [pipes_hooks lmh_noc pipes_lm lm_dec]. apply plalt_of_code. Qed.
 End pipes_hooks.
 
+(* ...AT THE PIPELINE APPLICATION'S MODEL (every echo pipeline, no [cat f]) *)
+Definition pipes_hooksE : lm_hooks pipes_lmE := pipes_hooks (fun _ => None) adm_echo.
+
 (* ===================================================================== *)
 (*  3.  DEMOS                                                             *)
 (* ===================================================================== *)
@@ -609,8 +612,8 @@ Example demo_foo3_run : line_blocks fc0 l_foo3 (sb "foo" ++ nlb').
 Proof using. apply line_blocksb_spec. vm_compute. reflexivity. Qed.
 
 Example demo_foo3_lm :
-  lm_ok (pipes_lm fc0 adm_echo_safe) l_foo3 (PLRun (sb "foo" ++ nlb'))
-  /\ lm_cont (pipes_lm fc0 adm_echo_safe) tt l_foo3 (PLRun (sb "foo" ++ nlb'))
+  lm_ok (pipes_lm fc0 adm_echo) l_foo3 (PLRun (sb "foo" ++ nlb'))
+  /\ lm_cont (pipes_lm fc0 adm_echo) tt l_foo3 (PLRun (sb "foo" ++ nlb'))
      = sb "foo" ++ nlb' ++ sb "$ ".
 Proof using. split; [right; split; [vm_compute; reflexivity | exact demo_foo3_run] | reflexivity]. Qed.
 
@@ -693,7 +696,7 @@ Qed.
 Example demo_term_not_landed : ~ pmergeable term_blk.
 Proof using. unfold pmergeable. vm_compute. discriminate. Qed.
 
-Example demo_term_merge : lm_merge (pipes_lm fc0 adm_echo_safe) term_blk.
+Example demo_term_merge : lm_merge (pipes_lm fc0 adm_echo) term_blk.
 Proof using. exists l_foo2, term_blk. split; [vm_compute; reflexivity | split; [exact demo_term_foo2 | reflexivity]]. Qed.
 
 (* THE TERMINAL ARM, DECIDED: the demo block above, and a NEGATIVE one --

@@ -661,28 +661,27 @@ Proof using.
 Qed.
 
 (* ...and every block of the model is '$'-free, so the open round's block
-   is too (the claim's non-terminal reading asks for it) *)
-Lemma pipesN_blk_nodollar fc adm l b :
-  fc_ok fc -> adm_ok fc adm -> adm l = true -> pl_ok l ->
-  blkN (wids (lcats l)) (runN fc l) b -> Forall nodollar b.
+   is too (the claim's non-terminal reading asks for it) -- at every
+   admission ([PipesDisc.pipes_block_nodollar]) *)
+Lemma pipesN_blk_nodollar fc l b :
+  fc_ok fc -> pl_ok l -> blkN (wids (lcats l)) (runN fc l) b -> Forall nodollar b.
 Proof using.
-  intros Hfc Hadm Ha Hl Hb.
-  exact (proj1 (pipes_block_shape fc adm l b Hfc Hadm Ha Hl (blkN_line_blocks fc l b Hb))).
+  intros Hfc Hl Hb. exact (pipes_block_nodollar fc l b Hfc Hl (blkN_line_blocks fc l b Hb)).
 Qed.
 
 (* ...and at a well-formed line the partial block is '$'-free, which is
    what the claim's non-terminal open reading asks beside the witness *)
 Theorem pipesN_complete_nd fc adm l (md : wid -> option bytes) (sel : list wid) :
-  fc_ok fc -> adm_ok fc adm -> adm l = true -> pl_ok l ->
+  fc_ok fc -> adm l = true -> pl_ok l ->
   (forall x, x ∈ sel -> x ∈ wids (lcats l)) -> sel_firedN md sel ->
   sel_wfN (srcN md) sel -> compatN (runN fc l) md ->
   pipesN_wit fc adm l (pendN md sel) /\ Forall nodollar (pendN md sel).
 Proof using.
-  intros Hfc Hadm Ha Hl Hin Hfd Hwf Hc.
+  intros Hfc Ha Hl Hin Hfd Hwf Hc.
   destruct (pendN_complete (wids (lcats l)) (runN fc l) md sel (wids_NoDup _) Hin Hfd Hwf Hc)
     as (b & Hb & Hp).
   split; [exact (pipesN_wit_of_blk fc adm l _ b Ha Hb Hp) |].
-  exact (prefix_forall _ _ _ Hp (pipesN_blk_nodollar fc adm l b Hfc Hadm Ha Hl Hb)).
+  exact (prefix_forall _ _ _ Hp (pipesN_blk_nodollar fc l b Hfc Hl Hb)).
 Qed.
 
 (* ===================================================================== *)

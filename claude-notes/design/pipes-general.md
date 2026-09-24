@@ -81,7 +81,17 @@ the `lm_hooks` instance for `pipes_lm` (needs a decider for `PLTerm`
 admissibility), the other claim events at `popenN` (close, open, arm,
 read, echo, byte, drain), a per-writer terminal model (terminal
 witnesses and `TOK` are caller premises now), filing an empty block via
-`gcl_step_write_blk`.  The pipeline's exclusions are caller premises
+`gcl_step_write_blk`. -- ALL DONE by C5b (80b9f71a2..9662bc356: `line_termb_spec`, the
+hooks `pipes_hooks fc adm` for every model, `pecl'` without `K`; the
+per-writer terminal model `termN`/`termN_blocks`, `TOK := tokN`;
+`PipeOutNEv.v` -- close/open/arm/sup/read/echo/byte/drain at `popenN`,
+`pwc_blkN_file_empty`, `peclE` at `pipes_lmE`; N = 2 check of the pure
+open reading.  MODEL CHANGE: `lm_ok := plsafe l a ∨ (adm l ∧ plalt_ok)`
+-- the shell's own three outcomes (panic, silent round, first exec
+failure) admitted at EVERY line, since the hooks' ok-laws quantify over
+every line; no line is excluded.  The landed claim cannot be renamed
+into `popenN` (mono-list of codes), so C8's bridge is pure-level: the
+application's claim is born at the new model).  The pipeline's exclusions are caller premises
 (`fire_okN`/`silence_okN`), discharged in C6/C7 from the flow chain.
 
 # Design: arbitrary pipelines `P0 | cat | … | cat` by induction on the command tree

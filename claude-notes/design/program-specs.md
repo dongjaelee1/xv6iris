@@ -392,6 +392,16 @@ splits in two:
   is the writer's OWN source `rsrc L n`, never the merge (the pipe module
   files the merge `sel` at the prompt), and cat exits drained.
 
+LANDED (lane/pcons 246f51ca4): `UkConsOut.v` is the core
+(`UkConsOutCore`: `D`, `D_short`, `D_sub`, `D_step`) and the instance
+(`UkConsOutGen` over `gen_params` and three link projections; the file
+application's witnesses at `file_links_gl`); `UkPipeConsOut.v` has the
+single-writer instance at `pipe_links_gl` and the `popen` device
+`pcons_dev` (its `D_step` is `pcat_step_at`; `YR` is a persistent
+conjunct of the device, since every byte consumes it).  The old generic
+statement over `gcl` alone could not be kept: a `gen_params` is not
+constructible from a `gen_cparams` (no source for `gWb_agree`/`gH`).
+
 OPEN (owner ruling): the mode fire at the right writer's FIRST byte needs
 `YR`, a fact about the READ side (a byte reached the reader, from
 `rcur`), which `ei_write` cannot supply -- a tree at `DOut [L]` may

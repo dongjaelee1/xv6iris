@@ -64,6 +64,8 @@ Require Import PipeOutPure PipeOut.
 Require Import PipeBothPure PipeBoth.
 Require Import PipeNames PipeProto.
 Require Import PipeLinks.
+Require Import PipeLinksLine GenLinksLine.   (* [pipe_params], [gwc_blk] / [gwc_post]: the console's lend and post *)
+Require Import PipeHooks.                    (* [pline_at]: the single-writer round's line *)
 Require Import UShPipeRound2.
 Require Import AppCfg AppInv AppPipeClaim.
 Require Import CtxIdDefs.
@@ -225,17 +227,17 @@ Section UkPipeEntries.
 
   Definition pe_iface_cat (N' : uk_names Σ) (HNc : ukn_const N') :
       ep_iface N' (cat_prog N') :=
-    pipe_iface g Hcons Hkill v I L gL gR gM XL YR Hnd Hwit2 Hwit1 pn γp pe_yr
+    pipe_iface g Hcons Hkill v I L gL gR gM XL YR pn γp pe_yr
       N' (cat_prog N') (HNc := HNc)
       (cat_stub_read N') (cat_stub_write N') (cat_stub_open N')
-      (cat_stub_close N') (cat_stub_exit N') γreg.
+      (cat_stub_close N') (cat_stub_exit N') γreg [].
 
   Definition pe_iface_echo (N' : uk_names Σ) (HNc : ukn_const N') :
       ep_iface N' (echo_prog N') :=
-    pipe_iface g Hcons Hkill v I L gL gR gM XL YR Hnd Hwit2 Hwit1 pn γp pe_yr
+    pipe_iface g Hcons Hkill v I L gL gR gM XL YR pn γp pe_yr
       N' (echo_prog N') (HNc := HNc)
       (echo_stub_read N') (echo_stub_write N') (echo_stub_open N')
-      (echo_stub_close N') (echo_stub_exit N') γreg.
+      (echo_stub_close N') (echo_stub_exit N') γreg [].
 
   (* ------------------------------------------------------------------- *)
   (*  2a. CAT AT THE PIPE: [UShCatPay.cat_image_entry_1w]'s statement,    *)
@@ -281,12 +283,12 @@ Section UkPipeEntries.
     rewrite /pl_RcR. iDestruct "Hrc" as "(#Hblk & #Hpi & Hrt & HsR & HgR & HgM)".
     iDestruct (pipe_excl_wtok_lb_pipeN pn γp L HLne with "Hpi") as "#Hex".
     rewrite /pe_iface_cat.
-    iApply (copy_env_res g Hcons Hkill r Heq v I L gL gR gM XL YR Hnd Hwit2 Hwit1
+    iApply (copy_env_res g Hcons Hkill r Heq v I L gL gR gM XL YR
               pn γp pe_yr N' (cat_prog N') (HNc := ukn_const_of_eq N' Q Hpq HQc)
               (cat_stub_read N') (cat_stub_write N') (cat_stub_open N')
-              (cat_stub_close N') (cat_stub_exit N') γreg
+              (cat_stub_close N') (cat_stub_exit N') γreg []
               (take NSTD sts) wb rb1 rb2 w (fun _ => None)
-              Hw0 Hw1 Hl0 Hl1 Hl2 HL
+              Hw0 Hw1 Hl0 Hl1 Hl2 HL (conj Hnd (conj Hwit2 Hwit1))
               with "Hstd Hpool [HsR] Hpi Hrt Hpin Hlt Hblk Hex HgR HgM").
     iIntros "Hce". rewrite Hpq. iApply "Hq". iFrame "HsR". iExact "Hce".
   Qed.
@@ -361,13 +363,13 @@ Section UkPipeEntries.
     iIntros "!>" (N' Hpq) "Hstd _ [Hpay Hpool]".
     rewrite /ep_pay. iDestruct "Hpay" as "(#Hpi & Hfr & Hw & Hlb)".
     rewrite /pe_iface_echo.
-    iApply (echo_env_res_k g Hcons Hkill r Heq v I L gL gR gM XL YR Hnd Hwit2 Hwit1
+    iApply (echo_env_res_k g Hcons Hkill r Heq v I L gL gR gM XL YR
               pn γp pe_yr N' (echo_prog N') (HNc := ukn_const_of_eq N' Q Hpq HQc)
               (echo_stub_read N') (echo_stub_write N') (echo_stub_open N')
-              (echo_stub_close N') (echo_stub_exit N') γreg
+              (echo_stub_close N') (echo_stub_exit N') γreg []
               (take NSTD sts) rb w (fun _ => None) Hw0 Hl1 HL
               with "Hstd [Hfr] Hpool Hpi Hw Hlb").
-    iApply (pif_kpay_left g L gR gM pn N' _ 0%nat (lookup_singleton _ _)).
+    iApply (pif_kpay_left g v I L gR gM pn N' [] _ 0%nat (lookup_singleton _ _)).
     iApply (pif_exit_k_left_of g Hkill L pn N').
     iIntros "Hle". rewrite Hpq. iApply "Hq".
     rewrite /ep_exit /ep_car /ep_frame. iFrame "Hfr".
@@ -486,3 +488,138 @@ Section UkPipeEntriesAlloc.
   Qed.
 
 End UkPipeEntriesAlloc.
+
+(* ===================================================================== *)
+(*  4.  ECHO AT THE CONSOLE, AT THE PIPELINE'S LINK RECORD (lane          *)
+(*      PIPECONS-EXIT; program-specs SS3.4g)                              *)
+(*                                                                        *)
+(*  The pipeline's single-writer round: echo's tree at [cons_env], the    *)
+(*  console device 0 the single-writer kind [PDCons [0]] lent out of the *)
+(*  round's block credential at its first byte ([gwc_blk ... 0 0],        *)
+(*  [UkPipeIface.pif_echo_lend]) and PROTECTED ([Dp = [0]]), and the exit *)
+(*  through the CONSOLE EXIT WAND ([UkPipeIface.pif_exit_k_cons]) fed by  *)
+(*  the round's post wand at code 0 -- [UkFileEntries.                    *)
+(*  echo_cons_image_entry_of_tree]'s mould at the pipeline's record, with *)
+(*  no deed to hand back.  The registry is allocated inside the slot.     *)
+(*                                                                        *)
+(*  The instance is the pipeline's ONE record; at this round there is no  *)
+(*  pipe, so its two-writer context is at inert names ([pe_pn0],          *)
+(*  [pe_gp0], the empty line, [True] for the two sides' facts): no pipe   *)
+(*  device is registered, the protocol's invariant is never asked for     *)
+(*  ([UkPipeIface.pif_env] at a pipe-free registry), and the two-writer   *)
+(*  round's pure facts live in the devices that write there.              *)
+(* ===================================================================== *)
+
+(* the inert names of the absent pipe *)
+Definition pe_pn0 : pnames :=
+  MkPNames 1%positive 1%positive 1%positive 1%positive 1%positive 1%positive 1%positive.
+Definition pe_gp0 : pipe_names :=
+  MkPipeNames 1%positive 1%positive 1%positive 1%positive 1%positive.
+
+(* echo's device list at the console: device 0 is the protected one *)
+Lemma pe_dp0 : dp_in [0%nat] {[0%nat]}.
+Proof using . intros d Hd. apply elem_of_list_singleton in Hd as ->. set_solver. Qed.
+
+Section UkPipeEntriesCons.
+  Context `{HRg : !riscvGS Σ}.
+  Context `{!xv6G Σ, !bioslotG Σ, !fdslotG Σ, !fileG Σ,
+            !irefslotG Σ, !pavG Σ, !wchG Σ, !ufdG Σ}.
+  Context `{GEN : GenId} `{XI : CurCtx}.
+  Context `{!echoOutG Σ, !inG Σ (mono_listR (leibnizO Z))}.
+  Context `{!pipeOutG Σ, !pipeProtoG Σ, !pifRegG Σ}.
+  Context `{PS : UexecSG.uprogSG Σ}.
+
+  Context (g : pipe_gn).
+  Local Notation γ := (pgn_cl g).
+  Context (Hcons : @riscv_cons_res Σ (@riscv_fixedGS Σ HRg) = pecl g).
+  Context (Hkill : @app_taint Σ (@riscv_fixedGS Σ HRg) = echo_taint γ).
+  Context (r : echo_names).
+  Context (Heq : file_app = MkAppcfg echo_names (pipe_pred γ) r).
+
+  (* the links bundle, named at priority 0 (UShPipeRound's finding: the
+     search does not reach it through the transparent tree) *)
+  #[local] Instance pe_pipe_links_pers0 : Persistent (PipeLinks.pipe_links g) | 0
+    := PipeLinks.pipe_links_persistent g.
+
+  Local Instance pe_cons_code_persistent (N' : uk_names Σ) :
+    Persistent (up_code (echo_prog N')).
+  Proof using . simpl. apply _. Qed.
+
+  (* the reader's fact of the absent pipe *)
+  Lemma pe_hyr0 : pws_lb pe_pn0 (take 1%nat ([] : list (bv 8))) ⊢ (True : iProp Σ).
+  Proof using . iIntros "_". done. Qed.
+
+  (* THE INSTANCE AT THE ROUND [(v, I)], at the minted record *)
+  Definition pe_iface_cons (v : era_pins) (I : list (bv 8)) (γreg : gname)
+      (N' : uk_names Σ) (HNc : ukn_const N') :
+      ep_ifaceP (Dp := [0%nat]) N' (echo_prog N') :=
+    pipe_iface g Hcons Hkill v I [] 1%positive 1%positive 1%positive True%I True%I
+      pe_pn0 pe_gp0 pe_hyr0 N' (echo_prog N') (HNc := HNc)
+      (echo_stub_read N') (echo_stub_write N') (echo_stub_open N')
+      (echo_stub_close N') (echo_stub_exit N') γreg [0%nat].
+
+  (* THE ENTRY: echo at the console at the pipeline's link record, from the
+     tree.  The lend is the round's block credential at the block's first
+     byte; what echo hands back is the block written up to its prompt
+     (the round's [gwc_post] at code 0), or the taint *)
+  Lemma pe_echo_cons_image_entry_alloc (ws : list (list (bv 8))) (M : gmap Z (bv 8))
+      (s0 t : Z) (gb : nat -> bv 8) (sts : list fdstate)
+      (cw : Z) (cs : gset gname) (pidv : mword 32)
+      (v : era_pins) (I : list (bv 8)) (rb : bool) (Q : Z -> iProp Σ) :
+    (forall x y : Z, Q x = Q y) ->
+    EchoDisc.line_ok ws ->
+    UShEcho.echo_node_img ws M s0 t gb ->
+    UkShEcho.echo_argv_bytes ws gb ->
+    length sts = NOFILE ->
+    take NSTD sts !! 1%nat = Some (FdOpen rb true (FdDevice CONSOLE)) ->
+    pline_at I = LEcho ws ->
+    □ (gwc_post pipe_lm (pipe_params g) (S gen_id) v I 0%nat -∗ Q (-1)) -∗
+    □ (echo_taint γ -∗ Q (-1)) -∗
+    era_pin γ (S gen_id) v -∗
+    UkRun.urun_nopipe sts -∗ udep -∗
+    image_entry ElfUser.echo_elf M (mword_of_int (t + 8) : mword 64) sts
+      cw cs pidv Q (gwc_blk pipe_lm (pipe_params g) (S gen_id) v I 0%nat 0%nat) uslot.
+  Proof using Hcons Hkill Heq ufdG0 pifRegG0 pipeProtoG0.
+    intros HQc Hline Himg Hbytes Hfdl Hl1 Hpl.
+    iIntros "#HQ #HQt #Hpin #Hnpw #Hdep".
+    iPoseProof (PipeLinks.pipe_links_holds g Hcons) as "#Hlk".
+    pose proof (pe_drop1_ne ws Hline) as Hne.
+    pose proof (pe_line_len ws Hline) as Hshort.
+    set (w0 := fun _ : nat => PDCons [0%nat]).
+    set (E := cons_env (wl_line (drop 1 ws)) (fun _ => None)).
+    rewrite /image_entry.
+    iIntros "!>" (na alen afun W') "%Hok' %Hcw' %Hlz %Hch %Hpid %Hargs Hmp HPay".
+    iApply uslot_bupd.
+    iMod (pif_reg_alloc w0) as (γreg) "Hpool". iModIntro.
+    set (If := fun (N' : uk_names Σ) (Hpq : ukn_pay N' = Q) =>
+                 pe_iface_cons v I γreg N' (ukn_const_of_eq N' Q Hpq HQc)).
+    iPoseProof (echo_image_entry_env_c ws M s0 t gb sts cw cs pidv Q
+                  (own γreg (pif_pool ∅ w0)
+                   ∗ gwc_blk pipe_lm (pipe_params g) (S gen_id) v I 0%nat 0%nat)%I
+                  If E {[0%nat]}
+                  Hline Himg Hbytes Hfdl (echo_conforms ws _ Hne)
+                  (echo_tree_safe _ _) pe_dp0
+                  with "[] Hnpw Hdep") as "#He".
+    { iIntros "!>" (N' Hpq) "Hstd _ (Hpool & Hb)".
+      rewrite /If /pe_iface_cons.
+      iApply (cons_env_res g Hcons Hkill r Heq v I [] 1%positive 1%positive 1%positive
+                True%I True%I pe_pn0 pe_gp0 pe_hyr0 N' (echo_prog N')
+                (HNc := ukn_const_of_eq N' Q Hpq HQc)
+                (echo_stub_read N') (echo_stub_write N') (echo_stub_open N')
+                (echo_stub_close N') (echo_stub_exit N') γreg [0%nat]
+                (take NSTD sts) rb w0 [0%nat] (wl_line (drop 1 ws)) (fun _ => None)
+                eq_refl eq_refl Hl1
+                with "Hstd [] Hpool [Hb]").
+      - (* THE CONSOLE EXIT WAND, off the round's two wands *)
+        iIntros "[#HT | Hp]".
+        + rewrite Hpq. iApply ("HQt" with "HT").
+        + iDestruct "Hp" as (c) "(%Hc & _ & Hpost)".
+          apply elem_of_list_singleton in Hc as ->.
+          rewrite Hpq. iApply ("HQ" with "Hpost").
+      - iApply (pif_echo_lend g v I ws Hpl Hshort with "Hlk Hpin Hb"). }
+    iApply ("He" $! na alen afun W' with "[%] [%] [%] [%] [%] [%] Hmp [Hpool HPay]");
+      [ exact Hok' | exact Hcw' | exact Hlz | exact Hch | exact Hpid | exact Hargs | ].
+    iFrame "Hpool HPay".
+  Qed.
+
+End UkPipeEntriesCons.

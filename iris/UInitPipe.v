@@ -839,7 +839,7 @@ Section PipeInitBoot.
                 with "[] [] Htg");
         [ iApply UInitSh.sh_pay_state_holds | ].
       iIntros (γp N).
-      iApply (UShPipeRound.sh_round_holds_pipe g Hkill γp N
+      iApply (UShPipeRound.sh_round_holds_pipe g r Hcons Hkill Heq γp N
                 with "Hlks [] Hslot Hcat Hpine Hshdp []").
       - iApply (udep_free).
       - iApply Hchild. }

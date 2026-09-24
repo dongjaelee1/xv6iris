@@ -130,7 +130,17 @@ pay the parent.  `wp_pipes_round`: the forked sh on `echo … | cat | … |
 cat` pays `Qtop` at EVERY n >= 1 under ONE pure premise `Hfire`.  Also
 C5's invariant reads uncommitted writers as SILENT (`runS`), so a silent
 commit is admissible at every state (`silence_okN_tok`, no premise).
-C7b (discharging `Hfire`) in flight.  The pipeline's exclusions are caller premises
+C7b (ffc439760, VM pc7bmerge1, audits 13/13/14/14):
+`Hfire` DISCHARGED -- `PipesFire.v` proves the run model's firing facts
+(`run_real`/`real_run`, `terms_realT`/`realT_terms`, `fire_nt`,
+`fire_t1`, `fire_t2`), `pipes_fire_ok` applies `fire_okN_tok`;
+`cstep_okN_tok`, `silence_okN_tok` need no premise.
+`UShPipesNode.wp_pipes_round` (and `wp_pipes_round_echo` at
+`pipes_lmE`): the forked sh running `echo ws | cat | … | cat` (any
+number of cats) pays its round's payload, with NO firing premise.  The
+caller supplies `Hline : lineN fc adm I = LPipes (PrEcho ws) nc` (the
+model's line is the parsed command) and `pns_short L`, plus the stage
+and ledger facts; C8 wires it into the application.  The pipeline's exclusions are caller premises
 (`fire_okN`/`silence_okN`), discharged in C6/C7 from the flow chain.
 
 # Design: arbitrary pipelines `P0 | cat | … | cat` by induction on the command tree

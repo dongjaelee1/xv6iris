@@ -52,10 +52,12 @@ corner (B), `sfx_run`/`line_run`, `merge_all`, `line_blocks`,
 FAILS at `adm_echo`: corner (B) admits, at `echo fork | cat | cat`, the
 whole line `fork\n` followed by a middle cat's write error, which sits
 under the same wire as the panic line plus any continuation
-(`pipes_lm_fork2_no_laws`); working choice `adm_echo_safe` (the user
-does not type `echo fork | …` with two or more cats), alternative:
-weaken the law in `LineModel` to the actual prologues -- OPEN for the
-owner; (ii) `lm_merge` is line-independent, so D4 ends coverage on more
+(`pipes_lm_fork2_no_laws`); RULED (owner, 2026-09-24): the user MAY
+type `echo fork | cat | cat`; the output spec need not parse
+unambiguously (the UART output need not determine what happened), so
+no input restriction -- the law that forces the panic bytes to be
+unambiguous is weakened or removed in `LineModel` (lane AMBIG), and the
+pipeline model is taken at `adm_echo`; (ii) `lm_merge` is line-independent, so D4 ends coverage on more
 byte patterns at N stages than the landed `pmergeable` (bridge stated at
 `adm1`); (iii) `cat f`'s content is a fixed function `fc` (C9 names it
 in the alternative or moves the state into `lm_ok`).  C5 (569703719..01d22acc6: `PipeBothNPure.v` -- `mergeN`/`pendN`,

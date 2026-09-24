@@ -495,7 +495,16 @@ output only; inputs may still close unread); `Hclose_open`/
 `Hclose_open_w` are the lemmas `pif_close_open`/`pif_close_open_w`;
 `pif_refused` is down to `Hhalt_long /\ Hnil_ro`.  (Was: the pipe
 instance's two close gaps
-(a `drained` premise at `ei_close`).)  NEXT: the two remaining pipe gaps and repointing the assemblies.  The
+(a `drained` premise at `ei_close`).)  PIPE-GAPS LANDED (9fa000559, VM pgmerge1 EXIT=0, audits 13/13/14/14):
+`Hnil_ro` is `pif_nil_ro` (row 16's blanket at count 0, via
+`UkFileDev.file_write_nil_std_ro` at `FdPipe`); `Hhalt_long` could NOT
+be proved -- xv6's `sys_write` reads the count by `argint`, so a count
+that truncates to 0 makes `pipewrite` answer 0 even at a halted pipe --
+so `cf_write_halt`/`cf_write_copy_halt` and the two halt laws take
+`|bs| < 2^31` (echo's halted path carries the line bound; cat never
+writes to a halted copy device).  `pif_refused` and `Href_*` are gone:
+BOTH INSTANCES HAVE NO SECTION HYPOTHESES.  NEXT: the repoint (design
+SS3.4g; the file sites in flight on lane/repoint).  The
 pipeline's CONSOLE device LANDED (lane/pcons 246f51ca4, design SS3.4d:
 `UkConsOut` split into a claim-free core and a `gen_params` instance,
 `UkPipeConsOut.v` with the single-writer and the `popen` devices).

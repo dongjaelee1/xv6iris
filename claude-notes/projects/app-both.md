@@ -378,9 +378,16 @@ payload), and the end-to-end theorems `cat_f_paid`, `cat_f_absent_paid`,
 from the round's resources and the registry's initial pool
 `fif_reg_alloc`).  FOUR SECTION HYPOTHESES remain, each a missing kernel
 leaf (the file's header lists them): `Hclose_std`/`Hclose_shared_std`
-(a close of a standard slot leaves the ledger with a closed slot; the
-open leaf needs `fd_lowest_closed l = None` and no held-read leaf works
-at a standard slot), `Hopen_trunc` (`UkFileOpen`'s miss leaf takes
+CLOSED by lane/leaf-payers 537e129d8 (merge a90a5a867, VM lfsdmerge1
+EXIT=0): the open leaf was ledger-generic all along (`ualloc` lands at
+the lowest closed standard slot or a fresh tail handle) and only
+`UkFileDev.file_open_present` had narrowed it; the held read leaf is now
+handle-generic (`wp_uk_read_deed_learns_held_at`, `file_read_at`,
+`file_read_std`); `FDIn s i γo` records whether the input sits at a
+standard slot; `fif_fds_at` no longer carries `fd_lowest_closed l =
+None` and the `_of_round` forms lost that premise.  A degraded
+taint-only route was REFUTED: `file_taint` is the console ledger's own
+receive step, no instance can raise it.  `Hopen_trunc` (`UkFileOpen`'s miss leaf takes
 `om_trunc = false`: NOT a leaf artefact -- lane/leaf-filedev found the
 plain open surface `SysOpenDefs.open_au_plain_at` owes
 `open_trunc_piece` at `trunc_permit_triv`, i.e. a truncate step at

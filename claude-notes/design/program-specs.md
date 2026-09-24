@@ -444,11 +444,12 @@ claim (M1–M3) do not move; the conversion discipline is theirs.
    file, pipe), the interface reworked after them (descriptors as a
    finite map, close consumes its device, the scope of paths and the
    mode at an open, `safe_fds` and the taint at the held set; §3.3,
-   §3.4).  NEXT: the file application's `ep_iface` INSTANCE
-   (`UkFileIface.v`, lane/fileiface: console + file, `ei_taint_pays`
-   from the free handler once the read bound lands from lane/rdbound),
-   then the pipeline application's (console at `pecl = gcl ∨ popen`,
-   which needs a variant of `UkConsOut`; the pipe).
+   §3.4).  The file application's `ep_iface` INSTANCE is IN
+   (`UkFileIface.v`: console + file, the device registry as ghost
+   tokens, `ei_taint_pays` from the free handler with the read bound
+   bought as a kernel row; four section hypotheses at missing kernel
+   leaves -- the worklist lists them).  NEXT: the leaves; the pipeline
+   application's instance (§3.4d, lane/pcons).
 5. The two entries at a handler parameter; the five landed entries as
    corollaries; then the shape modules (M4) and the union (M5) as planned.
 

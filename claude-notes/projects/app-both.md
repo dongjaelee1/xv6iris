@@ -363,10 +363,30 @@ handler; the read hole's count bound LANDED from lane/rdbound
 983c9475e, merge 6b5271c47, VM build rdbmerge1 EXIT=0: `UsysMemOk.
 usys_read_ret` in the read row, threaded through `SpecSyscall`'s
 contract, `ProofSyscall`'s tails, `wp_uk_ecall_window/_read_win/_read`,
-`UkCat.wp_kcat_read`; `_at`/`_recv` untouched) with
-`cat f`/`echo > f` paid end to end from `tree_pay_of_conforms`; then the
-pipeline's instance (console at `pecl`, a `UkConsOut` variant); then
-cut 5.
+`UkCat.wp_kcat_read`; `_at`/`_recv` untouched).  `UkFileIface.v` LANDED
+(lane/fileiface c599131ed): `file_iface : ep_iface N P` under the file
+application's claim, the device registry as GHOST STATE (`fif_tok d q v`:
+a device number names the console, `f` for writing at a standard slot, or
+an input at a tail handle; `fif_fds` holds the pool of unnamed numbers
+and half the token of each named one, the device the other half; an open
+mints, the last close returns -- `UkFileDev.file_open_present`'s handle
+arm now ends in `|==>`), `fif_read`, the input's close, `fif_cons_nil`,
+`fif_taint_pays` by coinduction over `safe_fds` (the free leaves:
+`wp_uk_ecall_quiet`/`_read`/`_open`/`_close(_std)`, exit from the
+payload), and the end-to-end theorems `cat_f_paid`, `cat_f_absent_paid`,
+`echo_f_paid` (+ `_of_round`/`_of_redirect` forms building `env_res`
+from the round's resources and the registry's initial pool
+`fif_reg_alloc`).  FOUR SECTION HYPOTHESES remain, each a missing kernel
+leaf (the file's header lists them): `Hclose_std`/`Hclose_shared_std`
+(a close of a standard slot leaves the ledger with a closed slot; the
+open leaf needs `fd_lowest_closed l = None` and no held-read leaf works
+at a standard slot), `Hopen_trunc` (`UkFileOpen`'s miss leaf takes
+`om_trunc = false` though the kernel refuses at the lookup), `Hnil_file`
+(no zero-length write leaf at a file, none at the read-only handle).
+Also `echo_prog` names only write/exit stubs, so `file_iface` is built
+at any program with the five stubs, not at echo's own.  NEXT: leaf lanes
+for the three gaps + echo's three missing stub instances; the pipeline's
+instance (lane/pcons, design SS3.4d); then cut 5.
 
 FileOutPure DEAD CODE REMOVED (2026-09-23): 92 of 169 declarations
 (the whole claim-stage layer -- `D_f`, `pending_f`, `pcount_f`, the

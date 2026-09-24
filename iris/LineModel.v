@@ -76,10 +76,32 @@ Record lmodel := MkLM {
   lm_merge : list (bv 8) -> Prop;
 }.
 
+(* WHAT FOLLOWS SH'S PANIC LINE ON THE WIRE: init's next prologue round,
+   settled ([pro_done]) with anything after it, or cut short by the end of
+   the wire ([W = []]).  An output below one wire with the panic line is
+   compared only against THIS -- the continuation [lm_cont_all] actually
+   puts after a panic -- and not against every byte string: the owner's
+   ruling (2026-09-24) lets a line's output look like the panic line
+   followed by anything else (the pipeline's [echo fork | cat | cat] with a
+   middle cat's write error), since the output need not parse unambiguously. *)
+Definition lm_below_panic (u Y : list (bv 8)) (ps : list nat) (W : list (bv 8)) : Prop :=
+  ((W = [] \/ pro_done ps)
+   /\ (u ++ u_prompt ++ Y) `prefix_of` (alt_panic ++ pro_of ps ++ W))
+  \/ (pro_done ps /\ (alt_panic ++ pro_of ps ++ W) `prefix_of` (u ++ u_prompt ++ Y)).
+
+(* ...which is one of the comparisons against an arbitrary continuation *)
+Lemma lm_below_panic_any u Y ps W :
+  lm_below_panic u Y ps W ->
+  ((u ++ u_prompt ++ Y) `prefix_of` (alt_panic ++ (pro_of ps ++ W))
+   \/ (alt_panic ++ (pro_of ps ++ W)) `prefix_of` (u ++ u_prompt ++ Y)).
+Proof using. intros [[_ H] | [_ H]]; [left | right]; exact H. Qed.
+
 (* THE BYTE SHAPE OF A MODEL, which is all the determinacy argument reads
    off it: a panicking alternative prints sh's panic line; every other one
-   prints a '$'-free run then the prompt, and put beside the panic line on
-   one wire IS the panic line; a coverage-ending alternative never panics,
+   prints a '$'-free run then the prompt, and put beside the panic line
+   AND THE PROLOGUE INIT PRINTS AFTER IT on one wire IS the panic line
+   ([lm_below_panic]: beside the panic line followed by anything else it
+   may be anything); a coverage-ending alternative never panics,
    its output is a mergeable one, and the discipline's coverage-ending
    guard refutes a mergeable output at its own side. *)
 Record lm_laws (M : lmodel) : Prop := MkLML {
@@ -96,10 +118,9 @@ Record lm_laws (M : lmodel) : Prop := MkLML {
     lm_panic M a = false -> lm_term M a = false ->
     exists u, lm_cont M s l a = u ++ u_prompt
               /\ Forall nodollar u
-              /\ (forall Y Z,
-                    ((u ++ u_prompt ++ Y) `prefix_of` (alt_panic ++ Z)
-                     \/ (alt_panic ++ Z) `prefix_of` (u ++ u_prompt ++ Y)) ->
-                    u = alt_panic);
+              /\ (forall Y ps W,
+                    Forall (fun x => x < length pro_alts) ps ->
+                    lm_below_panic u Y ps W -> u = alt_panic);
 }.
 Arguments lml_body_line {M} _.
 Arguments lml_st_step {M} _.
@@ -543,8 +564,11 @@ Section line_model.
         rewrite Hu in Hp |- *.
         rewrite -(app_assoc u u_prompt X')
                 -(app_assoc alt_panic (pro_of (pro_from 1 ps)) X) in Hp.
-        assert (Hueq : u = alt_panic)
-          by (apply (Hvp X' (pro_of (pro_from 1 ps) ++ X)); by left).
+        assert (Hueq : u = alt_panic).
+        { apply (Hvp X' (pro_from 1 ps) X (pro_from_Forall _ 1 ps Hps)).
+          left. split; [| exact Hp].
+          destruct (decide (X = [])) as [HX0 | HXne]; [by left | right].
+          apply pro_from_done, Hset; [exact eq_refl | exact HXne]. }
         rewrite Hueq in Hp |- *. apply wl_prefix_app_cancel in Hp.
         assert (HdA : pro_done (pro_from 1 ps)).
         { destruct (decide (X = [])) as [HX0 | HXne];
@@ -572,11 +596,12 @@ Section line_model.
         rewrite Hu in Hp |- *.
         rewrite -(app_assoc alt_panic (pro_of (pro_from 1 ps')) X')
                 -(app_assoc u u_prompt X) in Hp.
-        assert (Hueq : u = alt_panic)
-          by (apply (Hvp X (pro_of (pro_from 1 ps') ++ X')); by right).
-        rewrite Hueq in Hp |- *. apply wl_prefix_app_cancel in Hp.
         assert (Hd' : pro_done (pro_from 1 ps'))
           by (apply pro_from_done, Hset', eq_refl).
+        assert (Hueq : u = alt_panic)
+          by (apply (Hvp X (pro_from 1 ps') X' (pro_from_Forall _ 1 ps' Hps'));
+              right; split; [exact Hd' | exact Hp]).
+        rewrite Hueq in Hp |- *. apply wl_prefix_app_cancel in Hp.
         assert (Heqp : pro_of (pro_from 1 ps') = u_prompt)
           by (apply (lb_prompt_of_dollar_r (pro_from 1 ps') X' X);
               [exact (pro_from_Forall _ 1 ps' Hps') | exact Hd' | exact Hp]).

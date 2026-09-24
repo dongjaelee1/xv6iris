@@ -1885,7 +1885,7 @@ Proof using.
   - intros s l a Hs Hl Ha Hp _.
     destruct (cont_shape s l a Hl Hs Ha Hp) as (u & Hu & Hnd & Hnl).
     exists u. split; [exact Hu |]. split; [exact Hnd |].
-    intros Y Z Hcmp. exact (lb_out_eq_panic u Y Z Hnd Hnl Hcmp).
+    intros Y ps W _ Hcmp. exact (lb_out_eq_panic u Y _ Hnd Hnl (lm_below_panic_any u Y ps W Hcmp)).
 Qed.
 
 Lemma file_lm_byte_laws : lm_byte_laws file_lm.

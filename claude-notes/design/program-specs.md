@@ -463,7 +463,7 @@ the pipe's `pipe_payL`, and a taint arm):
   `UkFreeHandler.v` over an abstract `T` for the pipeline's instance.
 
 Lanes (non-overlapping): A `UkHandler` exit law (+ `fif_exit`'s
-signature); B console readers (`LineModelLinks`, `UkConsOut`,
+signature) -- LANDED 1ae45598e; B console readers (`LineModelLinks`, `UkConsOut`,
 `UkPipeConsOut`); C the entries (`UkEchoTree`, `UkCatTree`,
 `UkTreeEntry.v`); D the file instance's exit (after A, B; echo's
 corollaries need its stub instances); E `UkFileEntries.v`, the three

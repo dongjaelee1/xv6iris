@@ -1517,6 +1517,7 @@ PipeUline.v
 PipeDiscDec.v
 PipesDisc.v
 PipesDiscDec.v
+PipeBothNPure.v
 LogEntryDefs.v
 ConsLog.v
 EchoOutPure.v

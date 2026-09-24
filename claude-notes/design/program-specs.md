@@ -463,8 +463,13 @@ the pipe's `pipe_payL`, and a taint arm):
   `UkFreeHandler.v` over an abstract `T` for the pipeline's instance.
 
 Lanes (non-overlapping): A `UkHandler` exit law (+ `fif_exit`'s
-signature) -- LANDED 1ae45598e; B console readers (`LineModelLinks`, `UkConsOut`,
-`UkPipeConsOut`); C the entries (`UkEchoTree`, `UkCatTree`,
+signature) -- LANDED 1ae45598e; B console readers (`LineModelLinks`,
+`UkConsOut`, `UkPipeConsOut`) -- LANDED a4808dfa6/c5533675b (`lm_body`,
+`cons_dev_at v I` with the filed arm carrying the bound and the
+admissibility, `cons_dev := ∃ v I, cons_dev_at v I`, `cons_dev_at_of_blk0`,
+`cons_dev_at_drained` in ONE arm -- an empty body's unfiled cursor is
+the filed cursor at 0 -- `cons_cur_gwc_post` with no `lm_apr` premise,
+`cons_write_gl_at`, `pcons_dev_drained` at `length L <= c`); C the entries (`UkEchoTree`, `UkCatTree`,
 `UkTreeEntry.v`); D the file instance's exit (after A, B; echo's
 corollaries need its stub instances); E `UkFileEntries.v`, the three
 file corollaries beside the landed entries (`UShRound` is NOT repointed

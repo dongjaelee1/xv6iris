@@ -44,8 +44,6 @@ Require Import RiscvLang.
 Require Import ObsTrace.
 Require Import LineWords.
 Require Import EchoDisc.
-Require Import ConsLog.
-Require Import EchoOutPure.
 Require Import PipeDisc.
 Require Import PipeOutPure.
 (* as in PipeDisc / PipeOutPure: a pure file does not inherit ssreflect's

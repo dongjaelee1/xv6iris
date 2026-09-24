@@ -30,18 +30,14 @@ From iris.base_logic.lib Require Import ghost_map ghost_var invariants.
 From iris.algebra.lib Require Import mono_list.
 Require Import RiscvLang RiscvPtsto.
 Require Import Xv6Cameras Xv6G FdSlots IrefSlots ProcAvail FileInvDefs.
-Require Import UexecSlot UexecRet UexecSG UexecExecInst.
+Require Import UexecSlot UexecRet.
 Require Import ChildTok.
 Require Import FsCfg.
-Require Import FsAbsDefs.
 Require Import AppCfg AppInv.
-Require Import FsCatPin.
-Require Import FileFsPure.
 Require Import EchoOut.
 Require Import AppEcho.
 Require Import AppPipeClaim.
 Require Import AppPipeCons.
-Require Import PipeOut.
 Require Import UShCatPay.
 Require Import CtxIdDefs.
 Local Open Scope Z_scope.

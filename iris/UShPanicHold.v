@@ -47,7 +47,6 @@ Require Import UShKernel.          (* [sh_prompt_law] *)
 Require Import UShOut.             (* the prompt's pure half and its call *)
 Require Import EchoDisc.
 Require Import EchoOut.
-Require Import EchoLinksLine.
 Require Import CtxIdDefs.
 Require User.ShSyms.
 (* as in EchoDisc / UEchoOut / UShOut: the Sail imports leave string_scope

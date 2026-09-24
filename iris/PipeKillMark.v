@@ -49,7 +49,6 @@ Require Import FdSlots.
 Require Import ProcGeom.
 Require Import ChildTok.
 Require Import SlotGen.
-Require Import SchedCtx.
 Require Import ProcInv.
 Require Import Xv6G.
 Local Open Scope Z_scope.

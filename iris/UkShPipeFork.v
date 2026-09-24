@@ -64,20 +64,15 @@ Require Import SailStdpp.Operators_mwords.
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values
         SailStdpp.MachineWord.
 Require Import RiscvLang.
-Require Import ObsTrace.
 Require Import LineWords.
 Require Import EchoDisc.
-Require Import ConsLog.
-Require Import EchoOutPure.
 Require Import PipeDisc.
-Require Import PipeOutPure.
 Require Import PipeBothPure.
 Require Import EchoOut.
 Require Import AppEcho.
 Require Import PipeOut.
 Require Import PipeLinks.
 Require Import PipeLinksLine.
-Require Import PipeHooks.         (* S0 of [PipeLinksLine], moved *)
 Require Import PipeBoth.
 Require Import PipeLinkInst.
 Require Import UShPipeRound2.     (* [blk2N] and its two mask facts *)

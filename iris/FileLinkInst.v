@@ -27,10 +27,7 @@ Require Import LineModelLinks.
 Require Import EchoOut.
 Require Import AppFile.
 Require Import FileOut.
-Require Import FileLinks.
-Require Import FileLinksLine.
 Require Import FileHooks.         (* S0 of [FileLinksLine], moved *)
-Require Import FileLinksAt.
 Require Import LinkRec.
 Require Import StageRec.   (* the cursor / stage record *)
 Require Import GenLinksLine.

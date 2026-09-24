@@ -68,11 +68,8 @@ Require Import AppFileCons.      (* the claim's console readings *)
 Require Import FileOut.
 Require Import FileLinks.
 Require Import FileLinksLine.
-Require Import FileHooks.         (* S0 of [FileLinksLine], moved *)
 Require Import LinkRec.
 Require Import FileLinksAt.        (* the families at a NAMED boot state *)
-Require Import LineModel.
-Require Import LineModelLinks.
 Require Import FileLinkInst.
 Require Import GenLinksLine.
 Require Import FileLinkGen.       (* [file_link_inst] / [file_link_inst_at] *)

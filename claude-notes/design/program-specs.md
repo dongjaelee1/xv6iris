@@ -417,7 +417,7 @@ section variable of the pipeline's instance (today's supply, which
 restricts the instance to programs that read before they write, i.e.
 cat).  The lane takes the second for now.
 
-### 3.4f The copy device (ruled 2026-09-23; the pure lane in flight)
+### 3.4f The copy device (ruled 2026-09-23; pure layer + interface LANDED aedfbf279)
 
 cat at a pipe's end is a FILTER: what it owes on its output is exactly
 what it has read.  One device number is bound to BOTH of cat's
@@ -456,6 +456,17 @@ Interface: `ei_copy d h S pending`, `ei_copy_end d h pending`,
 everywhere), one more `cf_inv_step` case each; an application that
 has no copy device defines `ei_copy … := False` and the laws are
 vacuous (as the file application does for the pipe kinds).
+
+As landed: the pure rules carry `h` as an argument with the halt arm
+an implication premise (`h = true -> conforms … DCopyHalt (k (-1))`),
+so `cat_copy_loop_conforms` is generic in `h`; the interface keeps the
+two-law shape (`ei_write_copy`/`_h`, `ei_write_copy_end`/`_h`,
+`ei_write_copy_halt`, `ei_read_copy`, `ei_read_copy_end`); no read rule
+at `DCopyHalt` (cat never reads after a failed write).
+`cat_copy_conforms h L alts : [] ∈ alts -> (h = true -> cat_dg_write ∈
+alts) -> conforms (copy_env (DCopy h L []) alts files paths) (cat_tree
+[cat])` with fd 0 and fd 1 on device 1 and fd 2 on the console
+device 0 owing `alts` (the instance chooses `alts` per the round).
 
 ### 3.4e Cut 5: the entries at a handler parameter (planned 2026-09-24)
 

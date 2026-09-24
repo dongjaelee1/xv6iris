@@ -405,8 +405,17 @@ lane/leaf-filedev, lane/leaf-pipedev, lane/leaf-payers).  The
 pipeline's CONSOLE device LANDED (lane/pcons 246f51ca4, design SS3.4d:
 `UkConsOut` split into a claim-free core and a `gen_params` instance,
 `UkPipeConsOut.v` with the single-writer and the `popen` devices).
-NEXT: the pipeline's `ep_iface` instance (console + `UkPipeDev`, a ghost
-registry like `UkFileIface`'s); cut 5 (planned).
+OWNER RULING (2026-09-23): cat is the only program at a pipe's end for
+now; `echo | cat | cat` is the target shape.  The COPY DEVICE (design
+SS3.4f) LANDED (lane/copydev aedfbf279, VM cpdmerge1 EXIT=0): one
+device on cat's fd 0 and fd 1, `DCopy h S pending`/`DCopyEnd`/
+`DCopyHalt`, `cat_copy_conforms`, the `ei_copy*` laws and glue cases.
+Cut 5 (design SS3.4e): lanes A (exit law), B (console at the body), C
+(`UkTreeEntry.v`) LANDED.  NEXT: the pipeline's `ep_iface` instance
+(lane/pipeiface, in flight); lane D (the file instance's exit wand and
+pinned indices); E (`UkFileEntries.v`); the copy-device instance for the
+right cat (pipe read end + `popen` console in one `ei_copy`); F
+(`UkPipeEntries.v`).
 
 FileOutPure DEAD CODE REMOVED (2026-09-23): 92 of 169 declarations
 (the whole claim-stage layer -- `D_f`, `pending_f`, `pcount_f`, the

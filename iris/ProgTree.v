@@ -589,7 +589,17 @@ Inductive dspec :=
   | DInE (S : bytes)              (* ...at a device that may END EARLY: a pipe
                                      whose writer may close before the line
                                      is in; a read then answers end of file *)
-  | DInEnd.                       (* ended: every read answers end of file *)
+  | DInEnd                        (* ended: every read answers end of file *)
+  (* THE COPY DEVICE (design SS3.4f): cat at a pipe's end is a FILTER, and
+     ONE device number is bound to both its descriptors -- the pipe's read
+     end on 0 and the sink on 1.  [S] is the input still to come, [pending]
+     the bytes read but not yet written; [h] says whether the sink may halt
+     (a pipe's write end) or not (the console).  A read takes a chunk of
+     [S] into [pending] or ends the input; a write drains a prefix of
+     [pending]; the device is drained when [pending] is empty. *)
+  | DCopy (h : bool) (S : bytes) (pending : bytes)
+  | DCopyEnd (h : bool) (pending : bytes)   (* the writer closed: reads answer end of file *)
+  | DCopyHalt.                    (* the sink's reader went: writes answer -1 *)
 
 Record penv := MkEnv {
   pe_fd : gmap Z nat;             (* descriptor -> device *)
@@ -623,6 +633,8 @@ Definition drained (x : dspec) : Prop :=
   | DOut alts => [] ∈ alts
   | DOutH alts => [] ∈ alts
   | DOutM chunks => chunks = []
+  | DCopy _ _ pending => pending = []
+  | DCopyEnd _ pending => pending = []
   | _ => True
   end.
 
@@ -648,7 +660,14 @@ Definition cf_step (R : penv -> proc -> Prop) (E : penv) (t : proc) : Prop :=
            \/ (bs <> [] /\ exists rest, pe_dev E d = DOutM (bs :: rest)
               /\ R (env_set_dev E d (DOutM rest)) (k (Z.of_nat (length bs)))
               /\ R (env_set_dev E d (DOutM rest)) (k (-1)))
-           \/ (bs <> [] /\ pe_dev E d = DHalt /\ R E (k (-1))))
+           \/ (bs <> [] /\ pe_dev E d = DHalt /\ R E (k (-1)))
+           \/ (bs <> [] /\ exists h S p, pe_dev E d = DCopy h S p /\ bs `prefix_of` p
+              /\ R (env_set_dev E d (DCopy h S (drop (length bs) p))) (k (Z.of_nat (length bs)))
+              /\ (h = true -> R (env_set_dev E d DCopyHalt) (k (-1))))
+           \/ (bs <> [] /\ exists h p, pe_dev E d = DCopyEnd h p /\ bs `prefix_of` p
+              /\ R (env_set_dev E d (DCopyEnd h (drop (length bs) p))) (k (Z.of_nat (length bs)))
+              /\ (h = true -> R (env_set_dev E d DCopyHalt) (k (-1))))
+           \/ (bs <> [] /\ pe_dev E d = DCopyHalt /\ R E (k (-1))))
       | ERead fd n => fun k =>
           exists d, pe_fd E !! fd = Some d /\ (0 < n)%nat /\
           ((exists S, pe_dev E d = DIn S
@@ -656,7 +675,11 @@ Definition cf_step (R : penv -> proc -> Prop) (E : penv) (t : proc) : Prop :=
            \/ (exists S, pe_dev E d = DInE S
               /\ (forall c S', chunk_ok n S c S' -> R (env_set_dev E d (DInE S')) (k (RdBytes c)))
               /\ R (env_set_dev E d DInEnd) (k (RdBytes [])))
-           \/ (pe_dev E d = DInEnd /\ R E (k (RdBytes []))))
+           \/ (pe_dev E d = DInEnd /\ R E (k (RdBytes [])))
+           \/ (exists h S p, pe_dev E d = DCopy h S p
+              /\ (forall c S', chunk_ok n S c S' -> R (env_set_dev E d (DCopy h S' (p ++ c))) (k (RdBytes c)))
+              /\ R (env_set_dev E d (DCopyEnd h p)) (k (RdBytes [])))
+           \/ (exists h p, pe_dev E d = DCopyEnd h p /\ R E (k (RdBytes []))))
       | EOpen p m => fun k =>
           p ∈ pe_paths E /\
           ((m = 0 /\ exists content, pe_files E p = Some content
@@ -709,6 +732,28 @@ CoInductive conforms : penv -> proc -> Prop :=
       pe_fd E !! fd = Some d -> pe_dev E d = DHalt ->
       conforms E (k (-1)) ->
       conforms E (Vis (EWrite fd bs) k)
+  (* at the copy device a write drains a prefix of what was read; when the
+     sink may halt ([h = true]) the tree is also ready for -1, after which
+     the device is halted *)
+  | cf_write_copy E fd d h S p bs k :
+      bs <> [] ->
+      pe_fd E !! fd = Some d -> pe_dev E d = DCopy h S p ->
+      bs `prefix_of` p ->
+      conforms (env_set_dev E d (DCopy h S (drop (length bs) p))) (k (Z.of_nat (length bs))) ->
+      (h = true -> conforms (env_set_dev E d DCopyHalt) (k (-1))) ->
+      conforms E (Vis (EWrite fd bs) k)
+  | cf_write_copy_end E fd d h p bs k :
+      bs <> [] ->
+      pe_fd E !! fd = Some d -> pe_dev E d = DCopyEnd h p ->
+      bs `prefix_of` p ->
+      conforms (env_set_dev E d (DCopyEnd h (drop (length bs) p))) (k (Z.of_nat (length bs))) ->
+      (h = true -> conforms (env_set_dev E d DCopyHalt) (k (-1))) ->
+      conforms E (Vis (EWrite fd bs) k)
+  | cf_write_copy_halt E fd d bs k :
+      bs <> [] ->
+      pe_fd E !! fd = Some d -> pe_dev E d = DCopyHalt ->
+      conforms E (k (-1)) ->
+      conforms E (Vis (EWrite fd bs) k)
   (* a read asks for at least one byte (a zero-length read answers 0
      whatever is owed) *)
   | cf_read E fd d S n k :
@@ -728,6 +773,22 @@ CoInductive conforms : penv -> proc -> Prop :=
   | cf_read_end E fd d n k :
       (0 < n)%nat ->
       pe_fd E !! fd = Some d -> pe_dev E d = DInEnd ->
+      conforms E (k (RdBytes [])) ->
+      conforms E (Vis (ERead fd n) k)
+  (* at the copy device a read moves a chunk of the input into [pending],
+     and (the writer may close first) the tree is ready for end of file;
+     a read at a HALTED copy device is not a conformance event: cat never
+     reads after a failed write (it prints its diagnostic and exits) *)
+  | cf_read_copy E fd d h S p n k :
+      (0 < n)%nat ->
+      pe_fd E !! fd = Some d -> pe_dev E d = DCopy h S p ->
+      (forall c S', chunk_ok n S c S' ->
+         conforms (env_set_dev E d (DCopy h S' (p ++ c))) (k (RdBytes c))) ->
+      conforms (env_set_dev E d (DCopyEnd h p)) (k (RdBytes [])) ->
+      conforms E (Vis (ERead fd n) k)
+  | cf_read_copy_end E fd d h p n k :
+      (0 < n)%nat ->
+      pe_fd E !! fd = Some d -> pe_dev E d = DCopyEnd h p ->
       conforms E (k (RdBytes [])) ->
       conforms E (Vis (ERead fd n) k)
   | cf_open_present E p content k :
@@ -761,10 +822,15 @@ Proof.
   - exists d. split; [assumption |]. right. left. split; [assumption |]. exists alts, a. auto.
   - exists d. split; [assumption |]. right. right. left. split; [assumption |]. exists alts, a. auto.
   - exists d. split; [assumption |]. right. right. right. left. split; [assumption |]. exists rest. auto.
-  - exists d. split; [assumption |]. right. right. right. right. auto.
+  - exists d. split; [assumption |]. do 4 right. left. auto.
+  - exists d. split; [assumption |]. do 5 right. left. split; [assumption |]. exists h, S, p. auto.
+  - exists d. split; [assumption |]. do 6 right. left. split; [assumption |]. exists h, p. auto.
+  - exists d. split; [assumption |]. do 7 right. auto.
   - exists d. split; [assumption |]. split; [assumption |]. left. exists S. auto.
   - exists d. split; [assumption |]. split; [assumption |]. right. left. exists S. auto.
-  - exists d. split; [assumption |]. split; [assumption |]. right. right. auto.
+  - exists d. split; [assumption |]. split; [assumption |]. do 2 right. left. auto.
+  - exists d. split; [assumption |]. split; [assumption |]. do 3 right. left. exists h, S, p. auto.
+  - exists d. split; [assumption |]. split; [assumption |]. do 4 right. exists h, p. auto.
   - split; [assumption |]. left. split; [reflexivity |]. exists content. auto.
   - split; [assumption |]. right. auto.
   - exists d. auto.
@@ -1117,6 +1183,91 @@ Proof.
   intros Hne. unfold echo_tree. apply echo_words_conforms_h; [exact Hne | |].
   - apply pipe_env_exit. by left.
   - apply pipe_env_exit. exact I.
+Qed.
+
+(* ---- cat at the copy device (design SS3.4f) --------------------------- *)
+
+(* descriptors 0 and 1 name the copy device (device 1); descriptor 2 a
+   console (device 0) owing [alts]; every other device owes nothing *)
+Definition copy_env (spec : dspec) (alts : list bytes)
+    (files : bytes -> option bytes) (paths : list bytes) : penv :=
+  MkEnv (<[0 := 1%nat]> (<[1 := 1%nat]> {[2 := 0%nat]}))
+        (fun d => if decide (d = 0%nat) then DOut alts
+                  else if decide (d = 1%nat) then spec else DOut [[]]) files paths.
+
+Lemma copy_env_set (spec spec' : dspec) (alts : list bytes) files paths :
+  env_set_dev (copy_env spec alts files paths) 1 spec' = copy_env spec' alts files paths.
+Proof.
+  unfold env_set_dev, copy_env. f_equal. apply functional_extensionality.
+  intros d. cbn [pe_dev pe_fd]. destruct (decide (d = 1%nat)) as [-> | Hne].
+  - rewrite decide_False; [| lia]. first [ by rewrite decide_True | done ].
+  - destruct (decide (d = 0%nat)); [reflexivity |]. first [ reflexivity | by rewrite decide_False ].
+Qed.
+Lemma copy_env_out (spec : dspec) (alts alts' : list bytes) files paths :
+  env_set_dev (copy_env spec alts files paths) 0 (DOut alts') = copy_env spec alts' files paths.
+Proof.
+  unfold env_set_dev, copy_env. f_equal. apply functional_extensionality.
+  intros d. cbn [pe_dev pe_fd]. destruct (decide (d = 0%nat)); reflexivity.
+Qed.
+Lemma copy_env_exit (spec : dspec) (alts : list bytes) files paths (st : Z) :
+  [] ∈ alts -> drained spec -> conforms (copy_env spec alts files paths) (exit_ st).
+Proof.
+  intros Hin Hdr. apply cf_exit. intros d. cbn [pe_dev copy_env].
+  destruct (decide (d = 0%nat)); [exact Hin |].
+  destruct (decide (d = 1%nat)); [exact Hdr | by left].
+Qed.
+
+(* one call of cat(0) at the copy device: each chunk read is written whole
+   before the next read, so [pending] is empty at every read and at the
+   exit, whether the input ran out or the writer closed first; a halted
+   sink ([h = true]) sends cat to its diagnostic on descriptor 2, which the
+   console must then owe *)
+Lemma cat_copy_loop_conforms (h : bool) (S : bytes) (alts : list bytes) files paths (rest : proc) :
+  [] ∈ alts -> (h = true -> cat_dg_write ∈ alts) ->
+  conforms (copy_env (DCopy h [] []) alts files paths) rest ->
+  conforms (copy_env (DCopyEnd h []) alts files paths) rest ->
+  conforms (copy_env (DCopy h S []) alts files paths) (cat_loop 0 rest).
+Proof.
+  intros Hnil Hdg Hrest Hrest_end. revert S. cofix CIH. intros S.
+  rewrite cat_loop_unfold.
+  eapply cf_read_copy with (d := 1%nat) (h := h) (S := S) (p := []).
+  { unfold cat_bufsz. lia. }
+  { cbv [copy_env pe_fd]. apply lookup_insert. }
+  { cbv [copy_env pe_fd pe_dev]. rewrite decide_False; [| lia]. first [ by rewrite decide_True | done ]. }
+  2: { rewrite copy_env_set. exact Hrest_end. }
+  intros c S' (HS & Hlen & Hnil'). rewrite copy_env_set.
+  destruct c as [| b c'].
+  - assert (S = []) as -> by exact (Hnil' eq_refl).
+    simpl in HS. destruct S'; [| discriminate HS].
+    exact Hrest.
+  - eapply cf_write_copy with (d := 1%nat) (h := h) (S := S') (p := b :: c').
+    { done. }
+    { cbv [copy_env pe_fd]. rewrite lookup_insert_ne; [| lia]. apply lookup_insert. }
+    { cbv [copy_env pe_fd pe_dev]. rewrite decide_False; [| lia]. first [ by rewrite decide_True | done ]. }
+    { by exists []; rewrite app_nil_r. }
+    + rewrite drop_all, copy_env_set. cbv beta.
+      rewrite decide_True; [| reflexivity].
+      apply cf_tau. apply CIH.
+    + intros Hh. rewrite copy_env_set. cbv beta.
+      rewrite decide_False; [| lia].
+      eapply write_bytes_conforms with (d := 0%nat) (S' := []) (alts := alts).
+      { cbv [copy_env pe_fd]. do 2 (rewrite lookup_insert_ne; [| lia]). apply lookup_singleton. }
+      { cbv [copy_env pe_fd pe_dev]. by rewrite decide_True. }
+      { rewrite app_nil_r. exact (Hdg Hh). }
+      intros alts' Hin'. rewrite copy_env_out. apply copy_env_exit; [exact Hin' | exact I].
+Qed.
+
+(* cat with no argument at the copy device: [cat_stdin_conforms] re-proved at
+   [DCopy h L []] (the pipeline's cat: pipe in, pipe or console out); the
+   console on descriptor 2 owes nothing, and, when the sink may halt, the
+   write diagnostic as an alternative *)
+Theorem cat_copy_conforms (h : bool) (L : bytes) (alts : list bytes) files paths :
+  [] ∈ alts -> (h = true -> cat_dg_write ∈ alts) ->
+  conforms (copy_env (DCopy h L []) alts files paths) (cat_tree [sb "cat"]).
+Proof.
+  intros Hnil Hdg. simpl. apply cat_copy_loop_conforms; [exact Hnil | exact Hdg | |].
+  - apply copy_env_exit; [exact Hnil | exact eq_refl].
+  - apply copy_env_exit; [exact Hnil | exact eq_refl].
 Qed.
 
 (* ===================================================================== *)

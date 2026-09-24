@@ -562,6 +562,7 @@ Section UkFileIface.
     match x with
     | DOut alts => fif_out d alts | DOutH _ => False | DOutM cs => fif_outm d cs
     | DHalt => False | DIn Sin => fif_in d Sin | DInE _ => False | DInEnd => False
+    | DCopy _ _ _ => False | DCopyEnd _ _ => False | DCopyHalt => False
     end%I.
 
   (* the deed at `f`, the one path described *)
@@ -1499,7 +1500,7 @@ Section UkFileIface.
      ∧ (∀ y, fif_taint (dom fdm) -∗ K y)) -∗
     wr_obl N P fd [] K.
   Proof using Hsw HPc Hnil_file.
-    intros Hfd. destruct x as [alts | | | | | |];
+    intros Hfd. destruct x as [alts | | | | | | | | |];
       try (apply (Hnil_file fdm fd d _ K Hfd); intros ? ?; discriminate).
     iIntros "Hfds [Htk Hd] HK".
     iDestruct "Hfds" as (l vs w) "(Hstd & Hcwd & Hpay & %Hok & Hpool & Htoks & Hhs & #He)".
@@ -1540,7 +1541,7 @@ Section UkFileIface.
   Proof using Hsc.
     intros Hfd Hns.
     iIntros "Hfds Hfiles Hdev HK".
-    destruct x as [alts | alts | cs | | Sin | Sin |]; simpl;
+    destruct x as [alts | alts | cs | | Sin | Sin | | | |]; simpl;
       try (iDestruct "Hdev" as "[]").
     - (* the console: a standard slot, its row a console row *)
       iDestruct "Hdev" as "[Htk _]".
@@ -1611,9 +1612,19 @@ Section UkFileIface.
   Definition file_iface : ep_iface N P.
   Proof using Hcons Heq HPc HNc Hsr Hsw Hso Hsc Hse Hnil_file Hopen_trunc.
     refine (MkEI N P fif_fds fif_out (fun _ _ => False%I) (fun _ => False%I) fif_outm
-              fif_in (fun _ _ => False%I) (fun _ => False%I) fif_filesr fif_taint fif_taint_pays
-              fif_write _ fif_write_m _ fif_write_nil fif_read _ _ fif_open fif_open_absent
+              fif_in (fun _ _ => False%I) (fun _ => False%I)
+              (fun _ _ _ _ => False%I) (fun _ _ _ => False%I) (fun _ => False%I)
+              fif_filesr fif_taint fif_taint_pays
+              fif_write _ fif_write_m _ fif_write_nil fif_read _ _ _ _ _ _ _ _ _ fif_open fif_open_absent
               fif_close fif_close_shared fif_exit).
+    - intros. iIntros "_ []".
+    - intros. iIntros "_ []".
+    - intros. iIntros "_ []".
+    - intros. iIntros "_ []".
+    (* the copy device (design SS3.4f): no copy device in the file application *)
+    - intros. iIntros "_ []".
+    - intros. iIntros "_ []".
+    - intros. iIntros "_ []".
     - intros. iIntros "_ []".
     - intros. iIntros "_ []".
     - intros. iIntros "_ []".

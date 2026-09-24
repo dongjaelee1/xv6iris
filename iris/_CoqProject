@@ -1732,5 +1732,6 @@ UShPipeAssembly.v
 UShPipeCatRound.v
 UkPipeConsOut.v
 UkPipeIface.v
+UShPipeLawRes.v
 UShPipeLaw.v
 UkPipeEntries.v

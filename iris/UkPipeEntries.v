@@ -29,8 +29,9 @@
 (*     the machine word only); the descriptor rows the copy device is     *)
 (*     built at (fd 0 the read end, fds 1, 2 the console), the pool's two *)
 (*     kinds, the line nonempty and under [2 ^ 31]; the payment is the    *)
-(*     round's [UShPipeLaw.pl_RcR] with the continuation                  *)
-(*     [pl_Cend * side_R -* Q (-1)] ([UShPipeLaw.pl_qc_of_cend]'s shape)  *)
+(*     round's [UShPipeLawRes.pl_RcR] with the continuation               *)
+(*     [pl_Cend * side_R -* Q (-1)]                                       *)
+(*     ([UShPipeLawRes.pl_qc_of_cend]'s shape)                            *)
 (*     and the era pin and the link taint, both persistent;               *)
 (*   - echo: the line [L] is the round's, equal to the words' line, and   *)
 (*     the pool's device 0 is the write end.                              *)
@@ -75,7 +76,7 @@ Require Import UkShMain UkShEcho UShEcho UkShCat.
 Require Import UkTreeEntry.
 Require Import UEchoPipe.
 Require Import UkPipeIface.
-Require Import UShPipeLaw.
+Require Import UShPipeLawRes.   (* the round's lend and conversions -- NOT [UShPipeLaw], which consumes this file *)
 Local Open Scope Z_scope.
 Import Defs.
 
@@ -198,7 +199,7 @@ Section UkPipeEntries.
   Context (Heq : file_app = MkAppcfg echo_names (pipe_pred γ) r).
 
   (* THE ROUND, at the family's facts the round itself uses
-     ([UShPipeLaw.pl_XL] / [pl_YR]) *)
+     ([UShPipeLawRes.pl_XL] / [pl_YR]) *)
   Context (v : era_pins) (I L : list (bv 8)) (gL gR gM : gname).
   Context (Hnd : Forall nodollar L).
   Context (Hwit2 : forall sel : list bool,
@@ -291,7 +292,7 @@ Section UkPipeEntries.
   Qed.
 
   (* ...AND AT THE ROUND'S OWN PAYLOAD: the continuation is
-     [UShPipeLaw.pl_qc_of_cend] *)
+     [UShPipeLawRes.pl_qc_of_cend] *)
   Lemma pe_cat_image_entry_qc (a b : nat) (Mn : gmap Z (bv 8)) (sv t : Z)
       (gn : nat -> bv 8) (sts : list fdstate) (cw : Z) (cs : gset gname)
       (pidv : mword 32) (w : nat -> pdev) (wb rb1 rb2 : bool) :
@@ -374,3 +375,114 @@ Section UkPipeEntries.
   Qed.
 
 End UkPipeEntries.
+
+(* ===================================================================== *)
+(*  3.  THE REGISTRY, ALLOCATED INSIDE THE SLOT (lane REPOINT-PIPE)       *)
+(*                                                                        *)
+(*  SS2's two entries take the registry's whole pool [own greg (pif_pool  *)
+(*  empty w)] in their [Pay], at a name fixed before the entry runs.  No   *)
+(*  caller holds one: the pool is allocated HERE, inside the slot, which  *)
+(*  absorbs the update ([UexecRet.uslot_bupd]) -- [UkFileEntries]'s move   *)
+(*  at the file application's registry.  The name is quantified inside,   *)
+(*  so the statements are SS2's with the pool gone from [Pay] and the     *)
+(*  registry name gone from the binders.                                  *)
+(* ===================================================================== *)
+Section UkPipeEntriesAlloc.
+  Context `{HRg : !riscvGS Σ}.
+  Context `{!xv6G Σ, !bioslotG Σ, !fdslotG Σ, !fileG Σ,
+            !irefslotG Σ, !pavG Σ, !wchG Σ, !ufdG Σ}.
+  Context `{GEN : GenId} `{XI : CurCtx}.
+  Context `{!echoOutG Σ, !inG Σ (mono_listR (leibnizO Z))}.
+  Context `{!pipeOutG Σ, !pipeProtoG Σ, !pifRegG Σ}.
+  Context `{PS : UexecSG.uprogSG Σ}.
+
+  Context (g : pipe_gn).
+  Local Notation γ := (pgn_cl g).
+  Context (Hcons : @riscv_cons_res Σ (@riscv_fixedGS Σ HRg) = pecl g).
+  Context (Hkill : @app_taint Σ (@riscv_fixedGS Σ HRg) = echo_taint γ).
+  Context (r : echo_names).
+  Context (Heq : file_app = MkAppcfg echo_names (pipe_pred γ) r).
+  Context (v : era_pins) (I L : list (bv 8)) (gL gR gM : gname).
+  Context (Hnd : Forall nodollar L).
+  Context (Hwit2 : forall sel : list bool,
+             sel_wf2 dg_execR sel -> pblk2_wit I dg_execR sel).
+  Context (Hwit1 : forall sel : list bool,
+             count_true sel = 0%nat -> (length sel <= length L)%nat ->
+             pblk2_wit I L sel).
+  Context (pn : pnames) (γp : pipe_names).
+
+  (* CAT AT THE PIPE, at the round's own payload and its bare lend *)
+  Lemma pe_cat_image_entry_qc_alloc (a b : nat) (Mn : gmap Z (bv 8))
+      (sv t : Z) (gn : nat -> bv 8) (sts : list fdstate) (cw : Z)
+      (cs : gset gname) (pidv : mword 32) (w : nat -> pdev)
+      (wb rb1 rb2 : bool) :
+    0 < t < 2 ^ 38 ->
+    0 < sv + Z.of_nat a < 2 ^ 38 ->
+    UkShCat.cat_argv_bytes a b gn ->
+    uargv_img Mn (t + 8) (UkShMain.ush_args sv gn (UkShCat.cat_toks a b)) ->
+    length sts = NOFILE ->
+    take NSTD sts !! 0%nat = Some (FdOpen true wb (FdPipe γp)) ->
+    take NSTD sts !! 1%nat = Some (FdOpen rb1 true (FdDevice CONSOLE)) ->
+    take NSTD sts !! 2%nat = Some (FdOpen rb2 true (FdDevice CONSOLE)) ->
+    w 0%nat = PDMute -> w 1%nat = PDCopy ->
+    L <> [] -> Z.of_nat (length L) < 2 ^ 31 ->
+    era_pin γ (S gen_id) v -∗ pipe_link_taint g -∗
+    UkRun.urun_nopipe sts -∗ udep -∗
+    image_entry ElfUser.cat_elf Mn (mword_of_int (t + 8) : mword 64) sts
+      cw cs pidv (fun _ : Z => UShPipeAssembly.pipe_Qc_at g pn L gL gR gM)
+      (pl_RcR g v I L pn gL gR gM γp) uslot.
+  Proof using Hcons Hkill Heq Hnd Hwit1 Hwit2 ufdG0 pifRegG0.
+    intros Ht Hs Hbytes Himg Hfdl Hl0 Hl1 Hl2 Hw0 Hw1 HLne HL.
+    iIntros "#Hpin #Hlt #Hnpw #Hdep".
+    rewrite /image_entry.
+    iIntros "!>" (na alen afun W') "%Hok %Hcw %Hlz %Hch %Hpid %Hargs Hmp HPay".
+    iApply uslot_bupd.
+    iMod (pif_reg_alloc w) as (γreg) "Hpool". iModIntro.
+    iPoseProof (pe_cat_image_entry_qc g Hcons Hkill r Heq v I L gL gR gM
+                  Hnd Hwit2 Hwit1 pn γp γreg a b Mn sv t gn sts cw cs pidv
+                  w wb rb1 rb2 Ht Hs Hbytes Himg Hfdl Hl0 Hl1 Hl2 Hw0 Hw1
+                  HLne HL with "Hpin Hlt Hnpw Hdep") as "#He".
+    rewrite /image_entry.
+    iApply ("He" $! na alen afun W'
+             with "[%] [%] [%] [%] [%] [%] Hmp [HPay Hpool]");
+      [ exact Hok | exact Hcw | exact Hlz | exact Hch | exact Hpid
+      | exact Hargs | iFrame "HPay Hpool" ].
+  Qed.
+
+  (* ECHO AT THE PIPE, at echo's own lend *)
+  Lemma pe_echo_image_entry_alloc (Wq : iProp Σ) (ws : list (list (bv 8)))
+      (M : gmap Z (bv 8)) (s0 t : Z) (gb : nat -> bv 8) (sts : list fdstate)
+      (cw : Z) (cs : gset gname) (pidv : mword 32) (rb : bool)
+      (Q : Z -> iProp Σ) (w : nat -> pdev) :
+    (forall x y : Z, Q x = Q y) ->
+    EchoDisc.line_ok ws ->
+    UShEcho.echo_node_img ws M s0 t gb ->
+    UkShEcho.echo_argv_bytes ws gb ->
+    length sts = NOFILE ->
+    take NSTD sts !! 1%nat = Some (FdOpen rb true (FdPipe γp)) ->
+    L = wl_line (drop 1 ws) ->
+    w 0%nat = PDWr ->
+    □ (ep_exit Wq pn (wl_line (drop 1 ws)) -∗ Q (-1)) -∗
+    UkRun.urun_nopipe sts -∗
+    udep -∗
+    image_entry ElfUser.echo_elf M (mword_of_int (t + 8) : mword 64) sts
+      cw cs pidv Q (ep_pay Wq pn γp (wl_line (drop 1 ws))) uslot.
+  Proof using Hcons Hkill Heq Hnd Hwit1 Hwit2 ufdG0 pifRegG0 v gL gR gM.
+    intros HQc Hok Hnode Hab Hfdl Hl1 HLw Hw0.
+    iIntros "#Hq #Hnpw #Hdep".
+    rewrite /image_entry.
+    iIntros "!>" (na alen afun W') "%Hokk %Hcw %Hlz %Hch %Hpid %Hargs Hmp HPay".
+    iApply uslot_bupd.
+    iMod (pif_reg_alloc w) as (γreg) "Hpool". iModIntro.
+    iPoseProof (pe_echo_image_entry g Hcons Hkill r Heq v I L gL gR gM
+                  Hnd Hwit2 Hwit1 pn γp γreg Wq ws M s0 t gb sts cw cs pidv
+                  rb Q w HQc Hok Hnode Hab Hfdl Hl1 HLw Hw0
+                  with "Hq Hnpw Hdep") as "#He".
+    rewrite /image_entry.
+    iApply ("He" $! na alen afun W'
+             with "[%] [%] [%] [%] [%] [%] Hmp [HPay Hpool]");
+      [ exact Hokk | exact Hcw | exact Hlz | exact Hch | exact Hpid
+      | exact Hargs | iFrame "HPay Hpool" ].
+  Qed.
+
+End UkPipeEntriesAlloc.

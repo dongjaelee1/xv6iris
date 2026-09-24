@@ -76,6 +76,7 @@ Require Import PipeOut.            (* [pipeOutG] / [pipeOutSigma] -- NOT dead:
                                       an unbound variable, not an error *)
 Require Import PipeProto.          (* [pipeProtoSigma]: the protocol's functors *)
 Require Import AppPipe.            (* [app_pipe] and its ten discharged laws *)
+Require UkPipeIface.               (* [pifRegSig]: the tree route's device registry *)
 
 Local Open Scope Z_scope.
 
@@ -195,6 +196,7 @@ Definition pipeΣ : gFunctors :=
    ; PipeProto.pipeProtoΣ (* the pipe PROTOCOL's cameras: cursors, the shots,
                             the side tokens -- every round mints one pipe's
                             (lane SH-PIPE-ROUND-14 found them missing)     *)
+   ; UkPipeIface.pifRegΣ (* the tree route's device registry (REPOINT-PIPE) *)
    ].
 
 Corollary pipe_adequacy_pipeΣ

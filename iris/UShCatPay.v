@@ -604,4 +604,149 @@ Section UShCatPay.
     iIntros "!> Hc". iApply ("Hcd" with "Hc").
   Qed.
 
+  (* =================================================================== *)
+  (*  7.  THE SUPPLY AT A CALLER'S ENTRY (lane REPOINT-PIPE; design       *)
+  (*      program-specs SS3.4g)                                           *)
+  (*                                                                     *)
+  (*  SS5's supply with the ENTRY abstracted: where [sh_exec_sup_cat_     *)
+  (*  wq_holds_at] builds cat's entry itself ([cat_image_entry_1w] out of *)
+  (*  a round), this one takes it from the caller, at every image the     *)
+  (*  exec can produce -- which is how the pipeline's round hands over    *)
+  (*  the TREE-ROUTE entry ([UkPipeEntries.pe_cat_image_entry_qc_alloc])  *)
+  (*  without this file naming the pipeline's instance.  What the         *)
+  (*  supply reads off sh's node and ledger is exactly what that entry    *)
+  (*  asks for: the node's two addresses under [2 ^ 38]                   *)
+  (*  ([UkShCat.cat_cmd_addr], [UkShCat.cat_cmd_str]), the argv reading,  *)
+  (*  the image, the table's length and the caller's rows [Fd0] at the    *)
+  (*  table's standard slots.  The entry's [Pay] is the lend alone: the   *)
+  (*  ledger fragment is spent at the exec (the new image has its own     *)
+  (*  table), as at [UShEchoPipePay.sh_exec_sup_echo_pipe_at].  No        *)
+  (*  [udep]: only the landed entry read it.                              *)
+  (* =================================================================== *)
+  Lemma sh_exec_sup_cat_of_entry
+      (Fd0 : list fdstate -> Prop) (a b : nat)
+      (T : iProp Σ) `{!Persistent T} `{!Timeless T}
+      (Qc Cr : iProp Σ) :
+    ⊢ □ (app_taint -∗ Qc) -∗
+      □ (∀ (M : gmap Z (bv 8)) (s0 t : Z) (g : nat -> bv 8)
+           (sts : list fdstate) (cs : gset gname) (pidv : mword 32),
+           ⌜0 < t < 2 ^ 38⌝ -∗ ⌜0 < s0 + Z.of_nat a < 2 ^ 38⌝ -∗
+           ⌜UkShCat.cat_argv_bytes a b g⌝ -∗
+           ⌜uargv_img M (t + 8)
+              (UkShMain.ush_args s0 g (UkShCat.cat_toks a b))⌝ -∗
+           ⌜length sts = NOFILE⌝ -∗ ⌜Fd0 (take NSTD sts)⌝ -∗
+           UkRun.urun_nopipe sts -∗
+           image_entry ElfUser.cat_elf M (mword_of_int (t + 8) : mword 64)
+             sts FsImg.ROOTINO cs pidv (fun _ : Z => Qc) Cr uslot) -∗
+      sh_cat_slot T -∗
+      UkShCat.sh_exec_sup_cat_at Fd0 a b (fun _ : Z => Qc) Cr.
+  Proof using xv6G0 ghost_varG0 ghost_varG1 ufdG0 uartGhostG0.
+    iIntros "#Hqt #Hent (#Hinv & #Hcl & #Hgen)".
+    rewrite /UkShCat.sh_exec_sup_cat_at.
+    iIntros "!>" (N' m pc s0 t g ld)
+      "%Hpeq %Ha0 %Ha1 %Hbytes %Hfd0 Hstd #Hcmd Hcr".
+    (* ---- THE TAINT ARM: the generic slot at the chosen payload ---- *)
+    iAssert (image_entry_taint T (fun _ : Z => Qc) uslot)%I as "#Hgen'".
+    { rewrite /image_entry_taint. iModIntro. iIntros (W') "#HT #Hmp".
+      iApply ("Hgen" $! Qc W' with "HT Hmp Hqt"). }
+    (* ---- ...AND THE REST IS THE U-TIER RULE. ---- *)
+    iApply (udepw_at_refR_of_sup N' m pc
+              (mword_of_int (s0 + Z.of_nat a)) (mword_of_int (t + 8))
+              FsImg.ROOTINO T cat_pl ElfUser.cat_elf 1%nat
+              (UserFd.ustd (ukn_fd N') ld ∗ Cr)%I
+              _ UShCat.cat_elf_loadable Ha0 Ha1 with "[] [] [Hstd Hcr]").
+    (* THE REFUND IS THE LEDGER AND THE LEND, WHOLE *)
+    { iIntros "!> $". }
+    { rewrite Hpeq. iExact "Hgen'". }
+    rewrite /uexec_sup_run.
+    iIntros (M pm sz fdv cs pidv) "#Hnpw Hheap Hufd".
+    iDestruct (UkRun.urun_rows_nopipe _ _ with "Hnpw") as "#Hnp0".
+    iDestruct (cat_cmd_str a b (ukn_d N') t s0 g
+                 (UkShCat.cat_argv_bytes_end a b g Hbytes) with "Hcmd")
+      as "[%Hsa _]".
+    iDestruct (cat_cmd_addr a b (ukn_d N') t s0 g with "Hcmd")
+      as %[Hta _].
+    iDestruct (cat_uargv_exec_of_cmd a b (ukn_d N') t s0 g
+                 ltac:(lia) Hbytes with "Hcmd") as "#Hvec".
+    iDestruct (uargv_img_of_uargv (ukn_t N') (ukn_d N') (ukn_s N') M pm sz
+                 (t + 8) _ with "Hheap Hvec") as %Himg.
+    iDestruct (ufd_auth_len with "Hufd") as %Hlen.
+    iDestruct (ustd_agree (ukn_fd N') fdv ld with "Hufd Hstd") as %Hl.
+    iFrame "Hheap Hufd".
+    iSplitR "Hstd Hcr".
+    { iPureIntro.
+      exact (cat_path_of_holds a b M s0 t g ltac:(lia) Hbytes Himg). }
+    iSplitR "Hstd Hcr".
+    { iApply (exec_walk_of_pin FsCatPin.era0_cat_pins T FsImg.ROOTINO
+                cat_pl [FsImg.ROOTINO; FsCatPin.CAT_INO]
+                FsCatPin.CAT_INO
+                (MkAnode (AFile ElfUser.cat_elf) 1%nat) sh_cat_pin_resolves
+                with "Hcl Hinv"). }
+    iSplitR "Hstd Hcr".
+    { rewrite Hpeq.
+      iPoseProof ("Hent" $! M s0 t g fdv cs pidv
+                    with "[%] [%] [%] [%] [%] [%] Hnp0") as "#He";
+        [ exact Hta | exact Hsa | exact Hbytes | exact Himg | exact Hlen
+        | rewrite Hl; exact Hfd0 | ].
+      (* the ledger fragment is SPENT at the entry; the lend is the pay *)
+      rewrite /image_entry.
+      iIntros "!>" (na alen afun W')
+        "%Hok %Hcw %Hlz %Hch %Hpid %Hargs Hmp [_ Hc]".
+      iApply ("He" $! na alen afun W'
+               with "[%] [%] [%] [%] [%] [%] Hmp Hc");
+        [ exact Hok | exact Hcw | exact Hlz | exact Hch | exact Hpid
+        | exact Hargs ]. }
+    iFrame "Hstd Hcr".
+  Qed.
+
+  (* ...AND SS6'S CONSUMER TEST AT IT: [wp_kshr_exec_cat_paid] with the
+     round's payment replaced by the caller's entry *)
+  Lemma wp_kshr_exec_cat_paid_of_entry (Fd0 : list fdstate -> Prop)
+      (a b : nat) (T : iProp Σ) `{!Persistent T} `{!Timeless T}
+      (Qc Cr Cd : iProp Σ)
+      (N : uk_names Σ) (Hc : ukn_const N) (h : CpuId) (m : regfile)
+      (t szv s0 : Z) (g : nat -> bv 8) (ld : list fdstate) (n : nat) :
+    ukn_pay N = (fun _ : Z => Qc) ->
+    m !!! Regidx a0_idx = (mword_of_int t : mword 64) ->
+    UkShCat.cat_argv_bytes a b g ->
+    Fd0 ld ->
+    UkSh.ush_fd2p ld ->
+    ⊢ □ (app_taint -∗ Qc) -∗
+      □ (∀ (M : gmap Z (bv 8)) (s0 t : Z) (g : nat -> bv 8)
+           (sts : list fdstate) (cs : gset gname) (pidv : mword 32),
+           ⌜0 < t < 2 ^ 38⌝ -∗ ⌜0 < s0 + Z.of_nat a < 2 ^ 38⌝ -∗
+           ⌜UkShCat.cat_argv_bytes a b g⌝ -∗
+           ⌜uargv_img M (t + 8)
+              (UkShMain.ush_args s0 g (UkShCat.cat_toks a b))⌝ -∗
+           ⌜length sts = NOFILE⌝ -∗ ⌜Fd0 (take NSTD sts)⌝ -∗
+           UkRun.urun_nopipe sts -∗
+           image_entry ElfUser.cat_elf M (mword_of_int (t + 8) : mword 64)
+             sts FsImg.ROOTINO cs pidv (fun _ : Z => Qc) Cr uslot) -∗
+      sh_cat_slot T -∗
+      shk_code (ukn_t N) -∗
+      UkShDiag.ush_execfail_law_at PipeDisc.alt_execR 16%nat Cr Cd -∗
+      □ (Cd -∗ Qc) -∗
+      ush_jtab (ukn_t N) -∗
+      ush_cmd (ukn_d N) t (UkShCat.cat_cmd a b s0 g) -∗
+      usz (ukn_s N) szv -∗
+      UserFd.ustd (ukn_fd N) ld -∗
+      UserCwd.ucwd (ukn_cwd N) FsImg.ROOTINO -∗
+      UserChildren.uch_any (ukn_ch N) -∗
+      Cr -∗
+      urun N h m (mword_of_int ShSyms.runcmd)
+        (6 + (2 + (UkShDiag.ush_Dg + n))) -∗
+      mWP (Loop : expr riscv_lang).
+  Proof using xv6G0 ghost_varG0 ghost_varG1 ufdG0 uartGhostG0.
+    intros Hpeq Ha0 Hbytes Hfd0 Hfd2.
+    iIntros "#Hqt #Hent #Hslot #Hcode #Hxl #Hcd #Hjt #Htree
+             Hsz Hstd Hcwd Hch Hcr Hrun".
+    iPoseProof (sh_exec_sup_cat_of_entry Fd0 a b T Qc Cr
+                  with "Hqt Hent Hslot") as "#Hsup".
+    iApply (UkShCat.wp_kshr_exec_cat_at_holds Fd0 a b (fun _ : Z => Qc)
+              Cr Cd N Hc h m t szv s0 g ld n
+              Hpeq Ha0 Hbytes Hfd0 Hfd2
+              with "Hcode Hsup Hxl [] Hjt Htree Hsz Hstd Hcwd Hch Hcr Hrun").
+    iIntros "!> Hc". iApply ("Hcd" with "Hc").
+  Qed.
+
 End UShCatPay.

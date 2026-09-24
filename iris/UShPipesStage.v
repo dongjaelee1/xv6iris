@@ -60,7 +60,7 @@ Require Import UShEcho UShEchoPipePay UShCatPay.
 Require Import UShPipeAssembly.   (* [ksh_w1_of_step], [alt_execfail_app] *)
 Require Import UkConsOut.   (* [cons_short] *)
 Require Import UkPipesIface UkPipesEntries.
-Require Import UShPipesDefs.
+Require Import PipesFire UShPipesDefs.
 Require User.ShSyms.
 Local Open Scope Z_scope.
 
@@ -275,7 +275,8 @@ Section UShPipesStage.
       - iApply (pexcl_left fc adm I L P gF gG 0 dg_execL Hn (dg_st_ne 0) HLne).
         rewrite /pinv. iExists γp. cbn [prevP flow_U]. iExact "Hpi".
       - iIntros "!> (Hw & HsL & Hcw & Hmw)". iFrame "HsL Hcw Hmw".
-        rewrite (pdep_unfold fc adm I L P gF gG (WLeft 0) dg_execL (dg_st_ne 0)) /pdep_ne.
+        rewrite (pdep_unfold fc adm I L P gF gG (WLeft 0) dg_execL (dg_st_ne 0)
+                   (or_introl eq_refl)) /pdep_ne.
         rewrite bool_decide_true; [| reflexivity].
         iFrame "Hw HGs". rewrite /shotsF. done.
       - iIntros "!> HsL Hcw Hmw _". rewrite /Cd. iFrame "HsL".
@@ -300,11 +301,11 @@ Section UShPipesStage.
   Proof using . rewrite /cons_short. repeat constructor; vm_compute; reflexivity. Qed.
 
   Lemma pdep_left_write (k : nat) :
-    shotsF gF k -∗ osS (gG k) -∗ pdepR (WLeft k) cat_dg_write.
+    k <> 0%nat -> shotsF gF k -∗ osS (gG k) -∗ pdepR (WLeft k) cat_dg_write.
   Proof using .
-    iIntros "#Hs #HG".
+    intros Hk. iIntros "#Hs #HG".
     rewrite (pdep_unfold fc adm I L P gF gG (WLeft k) cat_dg_write
-               ltac:(vm_compute; discriminate)) /pdep_ne.
+               ltac:(vm_compute; discriminate) (or_intror (conj Hk eq_refl))) /pdep_ne.
     rewrite bool_decide_false; [| intros Hq; exact (dg_st_ne_write k (eq_sym Hq))].
     iFrame "Hs HG".
   Qed.
@@ -394,7 +395,7 @@ Section UShPipesStage.
         iSplitR; [iExact "Hinv" |]. iFrame "Hcw Hmw".
         iSplitR.
         { rewrite /A2. iSplitR; [by iLeft |]. iSplitR; [| done]. iRight.
-          iFrame "Hkw". iApply (pdep_left_write with "Hsk HGs"). }
+          iFrame "Hkw". iApply (pdep_left_write (S k') ltac:(lia) with "Hsk HGs"). }
         rewrite /pns_xkQ. iIntros "[#HT | (Hf0 & Hf1 & _)]"; [by iLeft |].
         cbn [pns_final snd].
         iDestruct "Hf0" as (o) "[_ Ho]".
@@ -434,7 +435,8 @@ Section UShPipesStage.
       + iApply (pexcl_left fc adm I L P gF gG (S k') dg_execR Hk (dg_st_ne (S k')) HLne
                   with "Hpk").
       + iIntros "!> (_ & Hw & HsL & Hcw & Hmw)". iFrame "HsL Hcw Hmw".
-        rewrite (pdep_unfold fc adm I L P gF gG (WLeft (S k')) dg_execR (dg_st_ne (S k')))
+        rewrite (pdep_unfold fc adm I L P gF gG (WLeft (S k')) dg_execR (dg_st_ne (S k'))
+                   (or_introl eq_refl))
           /pdep_ne.
         rewrite bool_decide_true; [| reflexivity].
         iFrame "Hw HGs Hsk".
@@ -563,7 +565,8 @@ Section UShPipesStage.
                 with "Hinv [] [] []").
       + iApply (pexcl_last fc adm I L P gF gG dg_execR (dg_st_ne 1) HLne with "Hinvs").
       + iIntros "!> (_ & HsR & Hcw & Hmw)". iFrame "HsR Hcw Hmw".
-        rewrite (pdep_unfold fc adm I L P gF gG WLast dg_execR (dg_st_ne 1)) /pdep_ne.
+        rewrite (pdep_unfold fc adm I L P gF gG WLast dg_execR (dg_st_ne 1)
+                   (or_intror eq_refl)) /pdep_ne.
         iFrame "Hsn". case_bool_decide as Hq; [| done]. iRight. by iPureIntro.
       + iIntros "!> HsR Hcw Hmw _". rewrite /Cd. iFrame "HsR".
         cbn [pns_wfin]. rewrite dg_execR_len. iFrame "Hcw Hmw".

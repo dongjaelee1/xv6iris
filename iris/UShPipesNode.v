@@ -57,7 +57,7 @@ Require Import UShEcho UShEchoPipePay UShCatPay UShPipeCall.
 Require Import UShPipeAssembly.
 Require Import UkConsOut.
 Require Import UkPipesIface UkPipesEntries.
-Require Import UShPipesDefs UShPipesStage.
+Require Import PipesFire UShPipesDefs UShPipesStage.
 Require User.ShSyms.
 Local Open Scope Z_scope.
 
@@ -111,9 +111,27 @@ Section UShPipesNode.
   (* THE ROUND'S PURE PREMISE ON THE MODEL: every commit its processes make
      is admitted, or refuted by a deposit ([UShPipesStage.Hfire]).  A silent
      commit is always admitted ([PipeOutN.silence_okN_tok]). *)
-  Hypothesis Hfire : forall w s, w ∈ wsN -> fire_src L w s ->
+  (* THE LINE the model reads: echo's words, then [cat] [nc] times *)
+  Context (ws : list (list (bv 8))).
+  Hypothesis Hline : lineN fc adm I = LPipes (PrEcho ws) nc.
+  Hypothesis HLw : L = wl_line (drop 1 ws).
+
+  (* the line has a cat: the model's line is well formed *)
+  Lemma nc_pos : (1 <= nc)%nat.
+  Proof using Hline Hplok.
+    pose proof Hplok as Hok. rewrite Hline in Hok. rewrite Hline. exact (proj1 (proj2 Hok)).
+  Qed.
+
+  Lemma Hfire : forall w s, w ∈ wsN -> fire_src L w s ->
     fire_okN wsN RUNN WITN termw TOKN w s (EXf nc L w s).
-  Hypothesis HLne : L <> [].
+  Proof using HLw Hadmit Hline Hplok.
+    intros w s. rewrite HLw. exact (pipes_fire_ok fc adm I Hadmit ws nc nc_pos Hline w s).
+  Qed.
+
+  Lemma HLne : L <> [].
+  Proof using HLw.
+    rewrite HLw /wl_line. intros Hq. apply app_eq_nil in Hq as [_ Hq]. discriminate Hq.
+  Qed.
 
   #[local] Instance rd_final_pers0 pn ro : Persistent (rd_final pn ro).
   Proof using . destruct ro; apply _. Qed.
@@ -185,7 +203,7 @@ Section UShPipesNode.
   Lemma chain_up (wo : wr_out) (ro' ro : rd_out) (oc : option nat) :
     pipe_pair wo ro' -> chain L ro' oc -> (forall c, oc = Some c -> (0 < c)%nat) ->
     copier ro wo -> chain L ro oc.
-  Proof using GEN HL31 HLne Hfire P gF gG.
+  Proof using GEN gF gG Hadmit HL31 Hline HLw Hplok P.
     intros Hpair Hch Hpos Hcop c Hc. pose proof (Hch c Hc) as Hro'. subst ro'.
     pose proof (Hpos c Hc) as Hc0.
     destruct wo as [D | D |]; cbn [pipe_pair] in Hpair.
@@ -205,7 +223,7 @@ Section UShPipesNode.
     lrepR k -∗ rrepR (S k) ={⊤}=∗
     ∃ ro, (match k with O => ⌜ro = RdEof L \/ ro = RdGone⌝ | S k' => rd_final (P k') ro end)
           ∗ sufR k ro.
-  Proof using HL31 HLne Hadmit Hcons Hfc Hfire Hplok.
+  Proof using Hadmit Hcons Hfc HL31 Hline HLw Hplok.
     intros Hk. iIntros "#Hfam #Hinv Hc Hm Hl Hr".
     assert (HwS : WSh k ∈ wsN) by (apply wids_elem; exact Hk).
     assert (HwL : WLeft k ∈ wsN) by (apply wids_elem; exact Hk).
@@ -237,7 +255,8 @@ Section UShPipesNode.
                   ltac:(pose proof (dg_st_ne k) as Hne; destruct (dg_st k); [done | cbn; lia])
                   with "Hfam Hcw Hmw [Hrd]") as "(_ & _ & [])".
           iIntros "Hd".
-          rewrite (pdep_unfold fc adm I L P gF gG (WLeft k) (dg_st k) (dg_st_ne k)) /pdep_ne.
+          rewrite (pdep_unfold fc adm I L P gF gG (WLeft k) (dg_st k) (dg_st_ne k)
+                     (or_introl eq_refl)) /pdep_ne.
           rewrite bool_decide_true; [| done]. iDestruct "Hd" as "(_ & _ & Hw)".
           iInv "Hinv" as ">Hb" "Hclose".
           iDestruct (pipe_body_execLU with "Hb Hw Hrd") as %Hnil.
@@ -571,7 +590,7 @@ Section UShPipesNode.
     urun (SG := uexecSG_xv6) (PS := uprogSG_free) N h' m' (mword_of_int ShSyms.panic)
       (UkShDiag.ush_Dg + (2 + av)) -∗
     mWP (Loop : expr riscv_lang).
-  Proof using Hadmit Hcons Hfc Hfire Hplok.
+  Proof using Hadmit Hcons Hfc Hline HLw Hplok.
     intros Hk Hpeq Hfd2 Ha0.
     iIntros "#Hfam #Hcode #Hjt Hstd (HSh & [HLc HLm] & HF & HG & Hbel & #Hkn & Hinp) Hrun".
     iDestruct "Hkn" as "[#Hsk _]".
@@ -601,7 +620,7 @@ Section UShPipesNode.
       + iApply (pexcl_sh fc adm I L P gF gG k dg_pipe_b Hk (or_introl eq_refl)).
       + iIntros "!> (Hc & Hm & HF & HG)". iFrame "Hc Hm".
         rewrite (pdep_unfold fc adm I L P gF gG (WSh k) dg_pipe_b
-                   (panic_src_ne dg_pipe_b (or_introl eq_refl))) /pdep_ne.
+                   (panic_src_ne dg_pipe_b (or_introl eq_refl)) (or_introl eq_refl)) /pdep_ne.
         rewrite bool_decide_true; [| done]. iFrame "Hsk HF HG".
       + iIntros "!> _ Hc Hm _". iFrame "Hc Hm".
     - iFrame "Hc Hm HF HG".
@@ -645,7 +664,7 @@ Section UShPipesNode.
     urun (SG := uexecSG_xv6) (PS := uprogSG_free) N h' m' (mword_of_int ShSyms.panic)
       (UkShDiag.ush_Dg + av) -∗
     mWP (Loop : expr riscv_lang).
-  Proof using Hadmit Hcons Hfc Hfire Hplok.
+  Proof using Hadmit Hcons Hfc Hline HLw Hplok.
     intros Hk Hpeq Hfd2 Ha0.
     iIntros "#Hfam #Hcode #Hjt Hstd HRc [HSh Hsr] Hrun".
     iDestruct (rcr_fork with "HRc") as "[HF #Hsk]".
@@ -672,7 +691,7 @@ Section UShPipesNode.
       + iApply (pexcl_sh fc adm I L P gF gG k alt_forkc Hk (or_intror eq_refl)).
       + iIntros "!> (Hc & Hm & HF)". iFrame "Hc Hm".
         rewrite (pdep_unfold fc adm I L P gF gG (WSh k) alt_forkc
-                   (panic_src_ne alt_forkc (or_intror eq_refl))) /pdep_ne.
+                   (panic_src_ne alt_forkc (or_intror eq_refl)) (or_intror eq_refl)) /pdep_ne.
         rewrite bool_decide_false; [| intros Hq; exact (dg_pipe_ne_fork (eq_sym Hq))].
         rewrite bool_decide_true; [| done]. iFrame "Hsk HF".
       + iIntros "!> _ Hc Hm HT". iFrame "Hc Hm".
@@ -701,7 +720,7 @@ Section UShPipesNode.
     Rkf k γp -∗ Cxf k γp -∗
     urun (SG := uexecSG_xv6) (PS := uprogSG_free) N h' m' (mword_of_int 0xea) avail -∗
     mWP (Loop : expr riscv_lang).
-  Proof using HL31 HLne Hadmit Hcons Hfc Hfire Hplok.
+  Proof using Hadmit Hcons Hfc HL31 Hline HLw Hplok.
     intros Hk Hpeq Hn1 Hn2.
     iIntros "#Hfam #Hcode Hf1 Hf2 Hw1 Hw2 #HRk [HSh Hsr] Hrun".
     iAssert (⌜S1 <> S2⌝ ∧ ush_fork_ans S1 S2 (RcRf k st0 γp) (Qcf k st0) r2)%I
@@ -750,7 +769,7 @@ Section UShPipesNode.
     shk_code (ukn_t N) -∗ ush_jtab (ukn_t N) -∗
     ush_node_obl (SG := uexecSG_xv6) (PS := uprogSG_free) N ld szv cwdv ∅ av
       (Qcf k st0) (RcLf k st0) (RcRf k st0).
-  Proof using HL31 HLne Hadmit Hcons Hfc Hfire Hkill Hplok.
+  Proof using Hadmit Hcons Hfc Hkill HL31 Hline HLw Hplok.
     intros Hk Hpeq Hnone Hfd2.
     iIntros "#Hfam Hcr Hpb Hpid #Hcode #Hjt".
     rewrite /ush_node_obl.
@@ -792,7 +811,7 @@ Section UShPipesNode.
   (* ================================================================= *)
 
   (* the stages as the parse cut them: echo's words, then [cat] n times *)
-  Context (ws : list (list (bv 8))) (s0 : Z) (gs : nat -> bv 8) (stgs : list (list uarg)).
+  Context (s0 : Z) (gs : nat -> bv 8) (stgs : list (list uarg)).
   Hypothesis Hlen : length stgs = S nc.
   Hypothesis Hst0 : stgs !! 0%nat = Some (UkShMain.ush_args s0 gs (echo_toks ws)).
   Hypothesis Hstc : forall k, (1 <= k <= nc)%nat ->
@@ -800,8 +819,6 @@ Section UShPipesNode.
                 /\ UkShCat.cat_argv_bytes a b gs.
   Hypothesis Hok : line_ok ws.
   Hypothesis Hbytes : echo_argv_bytes ws gs.
-  Hypothesis HLw : L = wl_line (drop 1 ws).
-  Hypothesis Hn : (1 <= nc)%nat.
   (* sh's ledger at the top node: fds 1 and 2 the console, nothing shut *)
   Context (ld0 : list fdstate) (rb1 rb2 : bool).
   Hypothesis Hld1 : ld0 !! 1%nat = Some (FdOpen rb1 true (FdDevice ConsoleInv.CONSOLE)).
@@ -819,7 +836,8 @@ Section UShPipesNode.
     FAM -∗ UShEcho.sh_echo_slot T -∗ UShCatPay.sh_cat_slot T -∗
     ush_left_law (SG := uexecSG_xv6) (PS := uprogSG_free) stgs ld0 szv FsImg.ROOTINO 6
       Qcf RcLf.
-  Proof using HL31 HLne HLw Hadmit Hbytes Hcons Heq Hfc Hfire Hkill Hld2 Hlen Hn Hok Hplok Hst0 Hstc pnsRegG0 uartGhostG0.
+  Proof using Hadmit Hbytes Hcons Heq Hfc Hkill HL31 Hld2 Hlen Hline HLw Hok Hplok Hst0 Hstc pnsRegG0 uartGhostG0.
+    pose proof nc_pos as Hn.
     iIntros "#Hfam #Hes #Hcs". rewrite /ush_left_law.
     iIntros (k st0 args N' h' m' γ' γp q av)
       "%Hk %Hlt %Hav %Hpeq %Ha0 _ #Hck #Hjt #Hcmd Hsz Hstd Hcwd Hch _ _ HRc Hrun".
@@ -857,7 +875,8 @@ Section UShPipesNode.
     FAM -∗ UShCatPay.sh_cat_slot T -∗
     ush_last_law (SG := uexecSG_xv6) (PS := uprogSG_free) stgs ld0 szv FsImg.ROOTINO 6
       Qcf RcRf.
-  Proof using HL31 HLne Hadmit Hcons Heq Hfc Hfire Hkill Hld1 Hld2 Hlen Hn Hplok Hstc pnsRegG0 uartGhostG0.
+  Proof using Hadmit Hcons Heq Hfc Hkill HL31 Hld1 Hld2 Hlen Hline HLw Hplok Hstc pnsRegG0 uartGhostG0.
+    pose proof nc_pos as Hn.
     iIntros "#Hfam #Hcs". rewrite /ush_last_law.
     iIntros (k st0 args N' h' m' γ' γp q av)
       "%Hk %Hlen' %Hav %Hpeq %Ha0 _ #Hck #Hjt #Hcmd Hsz Hstd Hcwd Hch _ _ HRc Hrun".
@@ -887,7 +906,8 @@ Section UShPipesNode.
     FAM -∗
     ush_entry_law_g (SG := uexecSG_xv6) (PS := uprogSG_free) stgs ld0 szv FsImg.ROOTINO 6
       Qcf RcLf RcRf.
-  Proof using HL31 HLne Hadmit Hcons Hfc Hfire Hkill Hld2 Hlen Hn Hnone Hplok.
+  Proof using Hadmit Hcons Hfc Hkill HL31 Hld2 Hlen Hline HLw Hnone Hplok.
+    pose proof nc_pos as Hn.
     iIntros "#Hfam". rewrite /ush_entry_law_g.
     iIntros (k st0 N' γ' γp av) "%Hlt %Hav %Hpeq _ HRc Hpid #Hck #Hjt".
     pose proof ld0_len as Hl.
@@ -928,7 +948,8 @@ Section UShPipesNode.
     urun (SG := uexecSG_xv6) (PS := uprogSG_free) N h m (mword_of_int ShSyms.runcmd)
       (6 + (2 + (UkShDiag.ush_Dg + (6 * length rest + 6)))) -∗
     mWP (Loop : expr riscv_lang).
-  Proof using HL31 HLne HLw Hadmit Hbytes Hcons Heq Hfc Hfire Hkill Hld1 Hld2 Hlen Hn Hnone Hok Hplok Hst0 Hstc pnsRegG0 uartGhostG0.
+  Proof using Hadmit Hbytes Hcons Heq Hfc Hkill HL31 Hld1 Hld2 Hlen Hline HLw Hnone Hok Hplok Hst0 Hstc pnsRegG0 uartGhostG0.
+    pose proof nc_pos as Hn.
     intros Hstg Hpeq Ha0 Hl0 Hne0.
     iIntros "#Hfam #Hes #Hcs Hcr Hpb Hpid #Hcode #Hjt #Hcmd Hsz Hstd #Hcd0 Hcwd Hch Hrun".
     pose proof ld0_len as Hl.
@@ -950,3 +971,20 @@ Section UShPipesNode.
                 with "Hfam Hcr Hpb Hpid Hcode Hjt").
   Qed.
 End UShPipesNode.
+
+(* AT THE DEFAULT MODEL [PipesDisc.pipes_lmE] (owner ruling): the round's
+   law with the model, its laws and [fc_ok] fixed -- every other premise
+   of [wp_pipes_round] stays the caller's *)
+Section UShPipesEcho.
+  Context `{HRg : !riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, !fileG Σ,
+            !irefslotG Σ, !pavG Σ, !wchG Σ, !ufdG Σ}.
+  Context `{GEN : GenId} `{XI : CurCtx}.
+  Context `{!ghost_varG Σ Z}.
+  Context `{!uartGhostG Σ}.
+  Context `{!echoOutG Σ, !inG Σ (mono_listR (leibnizO Z))}.
+  Context `{!pipeOutG Σ, !pipeProtoG Σ, !pnsRegG Σ, !pipesNG Σ}.
+
+  Definition wp_pipes_round_echo (g : pipe_gn) :=
+    fun Hcons Hkill rn Heq =>
+      wp_pipes_round g (fun _ => None) adm_echo pipes_lm_echo_laws Hcons Hkill rn Heq fc_none_ok.
+End UShPipesEcho.

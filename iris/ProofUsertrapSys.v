@@ -810,7 +810,7 @@ Section UtSysBlock.
          read -- like [Hmemg], they are the CALLER's to consume, and the trap
          loop's own invariant is indifferent to all four. *)
       iIntros (CID2 Hk2 mg U2 stsR csR)
-        "%Hcsg %Hmemg %Hfdrow %Hpiperow %Hchrow %Hmemne2 %Hmema0 %Hmemupt %Hmemsz %Hmemlz %Htfg %Hfgg %Hchgg %Hgengg %Hcwig %Hsbrg %Hfkg %Hpidg Hcg Hcpu Hbs Hip Hfd Hir Hsy Hpv Hufr Hch Hpc Hxo Hso Hfo Hwo".
+        "%Hcsg %Hmemg %Hfdrow %Hpiperow %Hchrow %Hmemne2 %Hmema0 %Hmemupt %Hmemsz %Hmemlz %Htfg %Hfgg %Hchgg %Hgengg %Hcwig %Hsbrg %Hfkg %Hrdg %Hpidg Hcg Hcpu Hbs Hip Hfd Hir Hsy Hpv Hufr Hch Hpc Hxo Hso Hfo Hwo".
       destruct U2 as [V2 M2].
       assert (Hreta6 : ret_pc (S4 !!! Regidx Rra) = mword_of_int (UT + 0xa6))
         by (rewrite HS4ra; pcw).
@@ -891,7 +891,7 @@ Section UtSysBlock.
       { rewrite (list_lookup_total_correct _ _ _ Hepc) HS3a5 HS2a5.
         apply addv_sext4. }
       cbn [us_V us_M] in Hmemg, Hmemne2, Hmema0, Hmemupt, Hmemsz, Hmemlz, Hcwig, Hsbrg, Hfkg,
-        Hpidg.
+        Hrdg, Hpidg.
       (* the dispatcher's record is the entry one but for the epc word, so
          its cwd inum is the entry's *)
       assert (HV1cwi : pv_cwi V1 = pv_cwi (us_V U))
@@ -980,6 +980,15 @@ Section UtSysBlock.
             - exfalso. exact (Hne1 Hfk).
             - left. rewrite Ha0w in Hm1. exact Hm1.
             - right. rewrite Ha0w in Hpb. exact Hpb. }
+          (* READ'S ANSWER, off the dispatcher's clause: -1 or a count no
+             larger than the one asked for, at the stored word [w].  The
+             clause is already in the U tier's reading, at the dispatcher's
+             record, whose count is the entry's. *)
+          assert (Hrdret : sysc_num V1 = USYS_read -> usys_read_ret (pv_tf V1) w).
+          { intro Hrd.
+            destruct Hrdg as [Hne5 | Hrr].
+            - exfalso. exact (Hne5 Hrd).
+            - rewrite Ha0w in Hrr. exact Hrr. }
           (* THE CWD ROW, off the dispatcher's clause: a chdir that returned
              nonzero moved nothing, and every other entry moved nothing.
              The clause reads the stored a0 word, which is [w]. *)
@@ -1044,7 +1053,7 @@ Section UtSysBlock.
                 rewrite Hlz. exact HV1lz. }
               exact (sysc_mem_ok_usys V1 V2 (us_M U) M2 w _ _ _ _ _ _
                        Hnex Hnsb eq_refl (f_equal uint Hszq) Hlzq Hfkret
-                       Hmemg). }
+                       Hrdret Hmemg). }
       (* THE DESCRIPTOR ROW, CARRIED OUT OF THE DISPATCH.  [Hfdrow] reads the
          syscall table at the record syscall() was CALLED with; what usertrap
          owes is the same table at the record it was ENTERED with, and the

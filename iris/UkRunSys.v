@@ -2688,6 +2688,9 @@ Section UkRunSys.
     (∀ (h' : CpuId) (r : mword 64) (d : nat) (g : nat -> bv 8),
        ⌜ (d <= cap)%nat ⌝ -∗
        ⌜ forall j : nat, (d <= j < k)%nat -> g j = f j ⌝ -∗
+       (* ...and, at read, WHAT IT ANSWERED ([UsysMemOk.usys_read_ret]):
+          -1, or a count no larger than the one asked for *)
+       ⌜ n = USYS_read -> usys_read_ret (tf_of m pc) r ⌝ -∗
        urun N h' (<[Regidx (mword_of_int 10) := r]> m)
          (add_vec_int pc 4) avail -∗
        ubytes (ukn_d N) (uint dst) k g -∗
@@ -2772,6 +2775,9 @@ Section UkRunSys.
     assert (Hgn : gn' = gn) by exact (usys_gen_ok_quiet _ _ _ Hgnrow).
     assert (Hch : cs' = cs) by exact (usys_ch_ok_quiet _ _ _ _ Hchrow).
     subst gn' cs'.
+    (* read's answer, off the same row, before the destruct spends it *)
+    assert (Hrdret : n = USYS_read -> usys_read_ret (tf_of m pc) r)
+      by (intros Hrd; exact (usys_mem_ok_read_ret n _ r _ _ _ _ _ _ _ _ Hrd Hok)).
     destruct (usys_mem_ok_window n _ r _ _ _ _ _ _ _ _ dst cap Hw Hok)
       as ((d & bs & Hdcap & HM') & -> & ->).
     cbn [uvis_M uvis_perm uvis_sz uvis_of_run] in HM' |- *.
@@ -2818,8 +2824,8 @@ Section UkRunSys.
                  ltac:(unfold unot_sp; vm_compute; discriminate)
                  with "Hheap Hstk Hufd Hcwda Hcha Hmy Hdep Hnpx [Hcont Hbuf]") as "Hkc";
       [ iIntros (h'') "Hrun";
-        iApply ("Hcont" $! h'' r d g with "[%] [%] Hrun Hbuf");
-        [ exact Hdcap | intros j Hj; apply Hgf; lia ] | ].
+        iApply ("Hcont" $! h'' r d g with "[%] [%] [%] Hrun Hbuf");
+        [ exact Hdcap | intros j Hj; apply Hgf; lia | exact Hrdret ] | ].
     iDestruct (ukcq_ukc with "Hkc") as "Hkc".
     iApply ("Hkc" $! h' xi' C' pt' Rfd' Rut' with "[%] [%] [%] Hb'");
       [ exact Hlo' | exact Hpm' | exact Hlzf' ].
@@ -3303,6 +3309,9 @@ Section UkRunSys.
     (∀ (h' : CpuId) (r : mword 64) (d : nat) (g : nat -> bv 8),
        ⌜ (d <= Z.to_nat cnt)%nat ⌝ -∗
        ⌜ forall j : nat, (d <= j < k)%nat -> g j = f j ⌝ -∗
+       (* ...and WHAT IT ANSWERED: -1, or a count no larger than the one
+          asked for ([UsysMemOk.usys_read_ret] at a2's count) *)
+       ⌜ bv_signed r = -1 \/ (0 <= bv_signed r <= Z.max 0 cnt)%Z ⌝ -∗
        urun N h' (<[Regidx (mword_of_int 10) := r]> m)
          (add_vec_int pc 4) avail -∗
        ubytes (ukn_d N) (uint (m !!! Regidx (mword_of_int 11))) k g -∗
@@ -3328,9 +3337,11 @@ Section UkRunSys.
                  opened at is the one it re-closes at *)
               ltac:(vm_compute; discriminate)
               Hal4 with "Hi Hrun Hsb Hbuf").
-    iIntros (h' r d g) "%Hd %Hgf Hrun Hbuf".
-    iApply ("Hcont" $! h' r d g with "[%] [%] Hrun Hbuf");
-      [ exact Hd | exact Hgf ].
+    iIntros (h' r d g) "%Hd %Hgf %Hrr Hrun Hbuf".
+    iApply ("Hcont" $! h' r d g with "[%] [%] [%] Hrun Hbuf");
+      [ exact Hd | exact Hgf | ].
+    (* the row reads a2's count off the register file's own trapframe *)
+    rewrite <- Hcnt. exact (Hrr eq_refl).
   Qed.
 
   (* ------------------------------------------------------------------- *)
@@ -3387,6 +3398,9 @@ Section UkRunSys.
     urun N h m pc avail -∗
     udepw N m pc USYS_read -∗
     (∀ (h' : CpuId) (r : mword 64) (g : nat -> bv 8),
+       (* WHAT IT ANSWERED (program-specs SS3.4c): the call failed, or it
+          reports a count no larger than the one asked for *)
+       ⌜ bv_signed r = -1 \/ (0 <= bv_signed r <= Z.of_nat cnt)%Z ⌝ -∗
        ubytes (ukn_d N) a cnt g -∗
        urun N h' (<[Regidx (mword_of_int 10) := r]> m)
          (add_vec_int pc 4) avail -∗
@@ -3405,8 +3419,9 @@ Section UkRunSys.
       iApply (wp_uk_ecall_read_win N h m pc (Z.of_nat 0%nat) 0%nat f avail
                 Hn Hcnt Hk Hal4 with "Hi Hrun Hsb [Hbs]").
       { rewrite /ubytes /ubytesq /=. done. }
-      iIntros (h' r d g) "_ _ Hrun Hbuf".
-      iApply ("Hcont" $! h' r g with "[Hbuf] Hrun").
+      iIntros (h' r d g) "_ _ %Hrr Hrun Hbuf".
+      iApply ("Hcont" $! h' r g with "[%] [Hbuf] Hrun");
+        [ rewrite Z.max_r in Hrr; [ exact Hrr | lia ] | ].
       rewrite /ubytes /ubytesq /=. done.
     - (* THE NONEMPTY RUN: the first owned byte is what identifies them *)
       assert (Hd : uint (m !!! Regidx (mword_of_int 11) : mword 64) = a).
@@ -3415,8 +3430,9 @@ Section UkRunSys.
       iApply (wp_uk_ecall_read_win N h m pc (Z.of_nat (S c)) (S c) f avail
                 Hn Hcnt Hk Hal4 with "Hi Hrun Hsb [Hbs]").
       { rewrite Hd. iExact "Hbs". }
-      iIntros (h' r d g) "_ _ Hrun Hbuf".
-      iApply ("Hcont" $! h' r g with "[Hbuf] Hrun").
+      iIntros (h' r d g) "_ _ %Hrr Hrun Hbuf".
+      iApply ("Hcont" $! h' r g with "[%] [Hbuf] Hrun");
+        [ rewrite Z.max_r in Hrr; [ exact Hrr | lia ] | ].
       rewrite -Hd. iExact "Hbuf".
   Qed.
 

@@ -62,10 +62,15 @@ Lemma sysc_mem_ok_usys (V V' : pprivate) (M M' : gmap Z (bv 8)) (r : mword 64)
      which is the whole of the trap loop's fork arm. *)
   (sysc_num V = USYS_fork ->
      r = (mword_of_int (-1) : mword 64) \/ (1 <= sint r <= PIDMAX)%Z) ->
+  (* ...and what read ANSWERED, a premise for fork's reason: -1 or a count
+     no larger than the one asked for, which is [SpecSyscall]'s read clause
+     ([SpecFileread.fileread_ret] relayed by the read arm) at the stored
+     word. *)
+  (sysc_num V = USYS_read -> usys_read_ret (pv_tf V) r) ->
   sysc_mem_ok V V' M M' ->
   usys_mem_ok (sysc_num V) (pv_tf V) r M π szv lz M' π' szv' lz'.
 Proof.
-  intros Hne Hns Hp Hs Hlz Hfk H. unfold sysc_mem_ok in H.
+  intros Hne Hns Hp Hs Hlz Hfk Hrd H. unfold sysc_mem_ok in H.
   unfold usys_mem_ok, USYS_exec, USYS_sbrk, USYS_wait, USYS_pipe,
          USYS_read, USYS_fstat, usys_rdcount.
   destruct (decide (sysc_num V = 7)); [ contradiction | ].
@@ -79,7 +84,8 @@ Proof.
     intros Hu. apply Hz.
     rewrite zero_reg_moi. rewrite <- Hu. symmetry. apply moi_of_uint. }
   destruct (decide (sysc_num V = 4)); [ exact (conj H (conj Hp (conj Hs Hlz))) | ].
-  destruct (decide (sysc_num V = 5)); [ exact (conj H (conj Hp (conj Hs Hlz))) | ].
+  destruct (decide (sysc_num V = 5)) as [H5 | H5];
+    [ exact (conj H (conj Hp (conj Hs (conj Hlz (Hrd H5))))) | ].
   destruct (decide (sysc_num V = 8)); [ exact (conj H (conj Hp (conj Hs Hlz))) | ].
   destruct (decide (sysc_num V = USYS_fork)) as [Hf | _];
     [ exact (conj (Hfk Hf) (conj H (conj Hp (conj Hs Hlz)))) | ].

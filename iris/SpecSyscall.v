@@ -1015,6 +1015,16 @@ Definition wp_syscall_sconf_body
       ⌜ sysc_num (us_V U) <> UsysMemOk.USYS_fork
         \/ pv_tf (us_V U') !!! tf_arg_idx 0 = (mword_of_int (-1) : mword 64)
         \/ (1 <= sint (pv_tf (us_V U') !!! tf_arg_idx 0) <= PIDMAX)%Z ⌝ -∗
+      (* ...and READ'S ANSWER, beside fork's and for its reason: a fact
+         about the return value that the image row cannot carry.  read (5)
+         returns -1, or a count no larger than the one it was asked for --
+         [SpecSysRead.sys_read_ret]'s two arms, argfd's -1 and fileread's
+         [SpecFileread.fileread_ret], which every descriptor arm states.
+         [UsysMemOk.usys_read_ret] is the U tier's reading and this clause
+         is stated in it, at the ENTRY record's count.  Every other entry
+         escapes by its number. *)
+      ⌜ sysc_num (us_V U) <> UsysMemOk.USYS_read
+        \/ usys_read_ret (pv_tf (us_V U)) (pv_tf (us_V U') !!! tf_arg_idx 0) ⌝ -∗
       (* ...AND GETPID'S ANSWER, beside fork's and sbrk's and for their
          reason: it is a fact about the RETURN VALUE that no table of state
          moves can carry.  getpid (11) returns [p->pid] sign-extended, and

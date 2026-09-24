@@ -276,7 +276,7 @@ Lemma usys_mem_ok_args (n : Z) (tf tf' : list (mword 64)) (r : mword 64)
   usys_mem_ok n tf r M pi szv lz M' pi' szv' lz'
   -> usys_mem_ok n tf' r M pi szv lz M' pi' szv' lz'.
 Proof.
-  intros H0 H1 H2 H. unfold usys_mem_ok, usys_rdcount in H |- *.
+  intros H0 H1 H2 H. unfold usys_mem_ok, usys_read_ret, usys_rdcount in H |- *.
   destruct (decide (n = USYS_exec)); [ exact H | ].
   destruct (decide (n = USYS_sbrk));
     [ unfold usys_sbrk_ret, usys_sbrk_arg, usys_sbrk_lazy, usys_sbrk_eager

@@ -1812,6 +1812,10 @@ Section SyscallVocab.
         ⌜ sysc_num (us_V U) <> UsysMemOk.USYS_fork
           \/ pv_tf (us_V U') !!! tf_arg_idx 0 = (mword_of_int (-1) : mword 64)
           \/ (1 <= sint (pv_tf (us_V U') !!! tf_arg_idx 0) <= PIDMAX)%Z ⌝ -∗
+        (* ...and READ'S ANSWER -- [SpecSyscall]'s own clause beside fork's:
+           -1, or a count no larger than the one asked for *)
+        ⌜ sysc_num (us_V U) <> UsysMemOk.USYS_read
+          \/ usys_read_ret (pv_tf (us_V U)) (pv_tf (us_V U') !!! tf_arg_idx 0) ⌝ -∗
         (* ...AND GETPID'S ANSWER, beside fork's and for its reason: a fact
            about the RETURN VALUE that no table of state moves can carry.
            [SpecSyscall.sysc_ret_pid], at the stored a0 word and at this
@@ -2062,6 +2066,9 @@ Section SyscallVocab.
     (sysc_num (us_V U) <> UsysMemOk.USYS_fork
      \/ pv_tf (us_V U') !!! tf_arg_idx 0 = (mword_of_int (-1) : mword 64)
      \/ (1 <= sint (pv_tf (us_V U') !!! tf_arg_idx 0) <= PIDMAX)%Z) ->
+    (* ...and READ'S ANSWER, read at the stored a0 word beside fork's *)
+    (sysc_num (us_V U) <> UsysMemOk.USYS_read
+     \/ usys_read_ret (pv_tf (us_V U)) (pv_tf (us_V U') !!! tf_arg_idx 0)) ->
     (* ...AND WHICH ENTRIES MOVED THE CHILDREN SET: fork alone, and its
        move is the resource below, not this row
        ([SpecSyscall.sysc_ch_ok]).  Free at every other arm by
@@ -2117,7 +2124,7 @@ Section SyscallVocab.
       (us_M U') sts' (pv_cwi (us_V U')) cs' -∗
     mWP (Loop : expr riscv_lang).
   Proof using .
-    intros HEsp Hrest Hav4 Hmem Hfdrow Hpiperow Ha0 Hupte Hszv Hlzv Hud Hfg Hcwi Hsbr Hfk Hchrow Hne2 Hchg Hgeng Hpidrow.
+    intros HEsp Hrest Hav4 Hmem Hfdrow Hpiperow Ha0 Hupte Hszv Hlzv Hud Hfg Hcwi Hsbr Hfk Hrd Hchrow Hne2 Hchg Hgeng Hpidrow.
     set (sp0 := m !!! Regidx csp_rs1).
     iIntros "Hcg Hcpu #Htext Hra Hs0 Hs1 Hs2 Hbs Hip Hfd Hir HR Hpriv Hufrag Hrow Hpc Hcont Hfo Hwo Hxo Hso".
     assert (Hb1 : pa_stk sp0 1 = add_vec (pa_stk sp0 4) (zero_extend' 64 (concat_vec (mword_of_int 3 : mword 6) ('b"000"))))
@@ -2264,7 +2271,7 @@ Section SyscallVocab.
               (Hst3 (or_intror Hgood)) (Hst2 (or_intror Hgood)) (Hst1 (or_intror Hgood)).
       reflexivity. }
     iApply ("Hcont" $! T5 U' sts' cs'
-              with "[%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] Hcg Hcpu Hbs Hip Hfd Hir HR Hpriv Hufrag Hrow Hpc Hxo Hso Hfo Hwo").
+              with "[%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] [%] Hcg Hcpu Hbs Hip Hfd Hir HR Hpriv Hufrag Hrow Hpc Hxo Hso Hfo Hwo").
     { unfold callee_saved.
       split_and!.
       - exact HT5sp.
@@ -2300,6 +2307,7 @@ Section SyscallVocab.
     { exact Hcwi. }
     { exact Hsbr. }
     { exact Hfk. }
+    { exact Hrd. }
     exact Hpidrow.
   Qed.
 
@@ -2840,6 +2848,11 @@ Section SyscallRet.
     (sysc_num (us_V U) <> UsysMemOk.USYS_fork
      \/ E !!! Regidx (mword_of_int 10 : mword 5) = (mword_of_int (-1) : mword 64)
      \/ (1 <= sint (E !!! Regidx (mword_of_int 10 : mword 5)) <= PIDMAX)%Z) ->
+    (* ...and READ'S ANSWER, at the return register beside fork's: -1, or
+       a count no larger than the one asked for ([SpecFileread.fileread_ret]
+       through [SpecSysRead.sys_read_ret]).  Free at every other arm. *)
+    (sysc_num (us_V U) <> UsysMemOk.USYS_read
+     \/ usys_read_ret (pv_tf (us_V U)) (E !!! Regidx (mword_of_int 10 : mword 5))) ->
     (* ...AND WHICH ENTRIES MOVED THE CHILDREN SET: fork alone, and its
        move is the resource below, not this row
        ([SpecSyscall.sysc_ch_ok]).  Free at every other arm by
@@ -2905,7 +2918,7 @@ Section SyscallRet.
       (pv_cwi (us_V U')) cs' -∗
     mWP (Loop : expr riscv_lang).
   Proof using .
-    intros HEsp HEs2 Hrest Hav4 Hmem Hfdrow Hpiperow Ha0 Hupte Hszv Hlzv Hud Hfg Hcwi Hsbr Hfk Hchrow Hne2 Hchg Hgeng Hpidrow.
+    intros HEsp HEs2 Hrest Hav4 Hmem Hfdrow Hpiperow Ha0 Hupte Hszv Hlzv Hud Hfg Hcwi Hsbr Hfk Hrd Hchrow Hne2 Hchg Hgeng Hpidrow.
     iIntros "Hcg Hcpu #Htext Hra Hs0 Hs1 Hs2 Hbs Hip Hfd Hir HR Hpriv Hufrag Hrow Hpc Hcont Hfo Hwo Hxo Hso".
     (* the stored word, as the store lemma spells it *)
     assert (Hrg : rget E Ra0 = E !!! Regidx Ra0) by (rgne; reflexivity).
@@ -2979,6 +2992,12 @@ Section SyscallRet.
                         !!! tf_arg_idx 0) <= PIDMAX)%Z).
     { rewrite list_lookup_total_insert; [| exact Hi14].
       rgne. exact Hfk. }
+    (* ...and read's answer makes the same move, off the same word *)
+    assert (Hrdstored : sysc_num (us_V U) <> UsysMemOk.USYS_read
+      \/ usys_read_ret (pv_tf (us_V U))
+            (<[tf_arg_idx 0 := rget E Ra0]> (pv_tf (us_V U')) !!! tf_arg_idx 0)).
+    { rewrite list_lookup_total_insert; [| exact Hi14].
+      rgne. exact Hrd. }
     (* ...and getpid's answer makes the same move, off the same word *)
     assert (Hpidstored : sysc_ret_pid (us_V U)
               (<[tf_arg_idx 0 := rget E Ra0]> (pv_tf (us_V U')) !!! tf_arg_idx 0)
@@ -3040,6 +3059,7 @@ Section SyscallRet.
               ltac:(cbn [us_V us_tf upd_usV upd_tf pv_cwi pv_tf pv_gen pv_chg]; exact Hcwstored)
               ltac:(cbn [us_V us_tf upd_usV upd_tf pv_sz pv_tf]; exact Hsbstored)
               ltac:(cbn [us_V us_tf upd_usV upd_tf pv_tf]; exact Hfkstored)
+              ltac:(cbn [us_V us_tf upd_usV upd_tf pv_tf]; exact Hrdstored)
               (* the children row transports on the nose: [sysc_ch_ok] reads
                  the ENTRY record, which the a0 store does not touch *)
               Hchrow
@@ -3128,6 +3148,17 @@ Section SyscallArms.
   Proof using .
     intros Hk Hne Hc. rewrite Hk in Hc. unfold UsysMemOk.USYS_fork in Hc.
     change 1%Z with (Z.of_nat 1) in Hc.
+    apply Nat2Z.inj in Hc. rewrite Hc in Hne. discriminate Hne.
+  Qed.
+
+  (* ...AND AT [read] (5), on the same footing: read's answer is owed by the
+     read arm alone. *)
+  Lemma sysc_num_ne5 (V : pprivate) (k : nat) :
+    sysc_num V = Z.of_nat k -> Nat.eqb k 5 = false ->
+    sysc_num V <> UsysMemOk.USYS_read.
+  Proof using .
+    intros Hk Hne Hc. rewrite Hk in Hc. unfold UsysMemOk.USYS_read in Hc.
+    change 5%Z with (Z.of_nat 5) in Hc.
     apply Nat2Z.inj in Hc. rewrite Hc in Hne. discriminate Hne.
   Qed.
 
@@ -3910,6 +3941,8 @@ Section SyscallArms.
               (or_introl (sysc_num_ne12 _ _ Hnum eq_refl))
               (* ...and fork's answer: not this entry's number *)
               (or_introl (sysc_num_ne1 _ _ Hnum eq_refl))
+              (* ...and read's answer: not this entry's number *)
+              (or_introl (sysc_num_ne5 _ _ Hnum eq_refl))
               (* ...and the children set's row: not fork's number *)
               (sysc_ch_ok_refl _ _)
               (sysc_num_ne2 _ _ Hnum eq_refl)
@@ -4253,6 +4286,8 @@ Section SyscallArms.
                             (list_lookup_total_correct _ _ _ Hv0) Hok))
               (* ...and fork's answer: not this entry's number *)
               (or_introl (sysc_num_ne1 _ _ Hnum eq_refl))
+              (* ...and read's answer: not this entry's number *)
+              (or_introl (sysc_num_ne5 _ _ Hnum eq_refl))
               (* ...and the children set's row: not fork's number *)
               (sysc_ch_ok_refl _ _)
               (sysc_num_ne2 _ _ Hnum eq_refl)
@@ -4373,6 +4408,8 @@ Section SyscallArms.
               (or_introl (sysc_num_ne12 _ _ Hnum eq_refl))
               (* ...and fork's answer: not this entry's number *)
               (or_introl (sysc_num_ne1 _ _ Hnum eq_refl))
+              (* ...and read's answer: not this entry's number *)
+              (or_introl (sysc_num_ne5 _ _ Hnum eq_refl))
               (* ...and the children set's row: wait is one of the two
                  numbers it exempts, because the reap MOVES the set *)
               ltac:(intros _ Hw; exfalso; apply Hw;
@@ -4503,6 +4540,8 @@ Section SyscallArms.
               (or_introl (sysc_num_ne12 _ _ Hnum eq_refl))
               (* ...and fork's answer: not this entry's number *)
               (or_introl (sysc_num_ne1 _ _ Hnum eq_refl))
+              (* ...and read's answer: not this entry's number *)
+              (or_introl (sysc_num_ne5 _ _ Hnum eq_refl))
               (* ...and the children set's row: not fork's number *)
               (sysc_ch_ok_refl _ _)
               (sysc_num_ne2 _ _ Hnum eq_refl)
@@ -4604,6 +4643,8 @@ Section SyscallArms.
               (or_introl (sysc_num_ne12 _ _ Hnum eq_refl))
               (* ...and fork's answer: not this entry's number *)
               (or_introl (sysc_num_ne1 _ _ Hnum eq_refl))
+              (* ...and read's answer: not this entry's number *)
+              (or_introl (sysc_num_ne5 _ _ Hnum eq_refl))
               (* ...and the children set's row: not fork's number *)
               (sysc_ch_ok_refl _ _)
               (sysc_num_ne2 _ _ Hnum eq_refl)
@@ -4701,6 +4742,8 @@ Section SyscallArms.
               (or_introl (sysc_num_ne12 _ _ Hnum eq_refl))
               (* ...and fork's answer: not this entry's number *)
               (or_introl (sysc_num_ne1 _ _ Hnum eq_refl))
+              (* ...and read's answer: not this entry's number *)
+              (or_introl (sysc_num_ne5 _ _ Hnum eq_refl))
               (* ...and the children set's row: not fork's number *)
               (sysc_ch_ok_refl _ _)
               (sysc_num_ne2 _ _ Hnum eq_refl)
@@ -4974,6 +5017,8 @@ Section SyscallArms.
               (or_introl (sysc_num_ne12 _ _ Hnum eq_refl))
               (* ...and fork's answer: not this entry's number *)
               (or_introl (sysc_num_ne1 _ _ Hnum eq_refl))
+              (* ...and read's answer: not this entry's number *)
+              (or_introl (sysc_num_ne5 _ _ Hnum eq_refl))
               (* ...and the children set's row: not fork's number *)
               (sysc_ch_ok_refl _ _)
               (sysc_num_ne2 _ _ Hnum eq_refl)
@@ -5170,6 +5215,8 @@ Section SyscallArms.
               ltac:(right; destruct Hrv as [Hm1 | (pidv & Hpv & Hpb)];
                     [ left; exact Hm1
                     | right; rewrite Hpv; exact (sysc_sext_pid pidv Hpb) ])
+              (* ...and read's answer: not this entry's number *)
+              (or_introl (sysc_num_ne5 _ _ Hnum eq_refl))
               (* ...and the children set's row, VACUOUS at this arm: the
                  guard is "not fork" and this entry IS fork. *)
               ltac:(intro Hne; exfalso; apply Hne;
@@ -5450,6 +5497,8 @@ Section SyscallArms.
               (or_introl (sysc_num_ne12 _ _ Hnum eq_refl))
               (* ...and fork's answer: not this entry's number *)
               (or_introl (sysc_num_ne1 _ _ Hnum eq_refl))
+              (* ...and read's answer: not this entry's number *)
+              (or_introl (sysc_num_ne5 _ _ Hnum eq_refl))
               (* ...and the children set's row: not fork's number *)
               (sysc_ch_ok_refl _ _)
               (sysc_num_ne2 _ _ Hnum eq_refl)
@@ -5686,6 +5735,8 @@ Section SyscallArms.
               (or_introl (sysc_num_ne12 _ _ Hnum eq_refl))
               (* ...and fork's answer: not this entry's number *)
               (or_introl (sysc_num_ne1 _ _ Hnum eq_refl))
+              (* ...and read's answer: not this entry's number *)
+              (or_introl (sysc_num_ne5 _ _ Hnum eq_refl))
               (* ...and the children set's row: not fork's number *)
               (sysc_ch_ok_refl _ _)
               (sysc_num_ne2 _ _ Hnum eq_refl)
@@ -5885,6 +5936,8 @@ Section SyscallArms.
               (or_introl (sysc_num_ne12 _ _ Hnum eq_refl))
               (* ...and fork's answer: not this entry's number *)
               (or_introl (sysc_num_ne1 _ _ Hnum eq_refl))
+              (* ...and read's answer: not this entry's number *)
+              (or_introl (sysc_num_ne5 _ _ Hnum eq_refl))
               (* ...and the children set's row: not fork's number *)
               (sysc_ch_ok_refl _ _)
               (sysc_num_ne2 _ _ Hnum eq_refl)
@@ -6060,6 +6113,15 @@ Section SyscallArms.
               (or_introl (sysc_num_ne12 _ _ Hnum eq_refl))
               (* ...and fork's answer: not this entry's number *)
               (or_introl (sysc_num_ne1 _ _ Hnum eq_refl))
+              (* ...AND READ'S ANSWER, which this arm alone owes: the blanket's
+                 range ([Hfrret], fileread's own clause or argfd's -1), at the
+                 register the callee left and the count the C read *)
+              ltac:(right; rewrite Hmfa0; apply usys_read_ret_of_rw;
+                    assert (Hv2r : pv_tf (us_V U) !!! tf_arg_idx 2 = v2)
+                      by (apply list_lookup_total_correct, Hv2);
+                    unfold usys_rdcount; rewrite Hv2r;
+                    unfold fileread_ret, PipeInvDefs.pipe_rw_ret, sys_rw_count, trunc32 in Hfrret;
+                    exact Hfrret)
               (* ...and the children set's row: not fork's number *)
               (sysc_ch_ok_refl _ _)
               (sysc_num_ne2 _ _ Hnum eq_refl)
@@ -6177,6 +6239,8 @@ Section SyscallArms.
               (or_introl (sysc_num_ne12 _ _ Hnum eq_refl))
               (* ...and fork's answer: not this entry's number *)
               (or_introl (sysc_num_ne1 _ _ Hnum eq_refl))
+              (* ...and read's answer: not this entry's number *)
+              (or_introl (sysc_num_ne5 _ _ Hnum eq_refl))
               (* ...and the children set's row: not fork's number *)
               (sysc_ch_ok_refl _ _)
               (sysc_num_ne2 _ _ Hnum eq_refl)
@@ -6351,6 +6415,8 @@ Section SyscallArms.
               (or_introl (sysc_num_ne12 _ _ Hnum eq_refl))
               (* ...and fork's answer: not this entry's number *)
               (or_introl (sysc_num_ne1 _ _ Hnum eq_refl))
+              (* ...and read's answer: not this entry's number *)
+              (or_introl (sysc_num_ne5 _ _ Hnum eq_refl))
               (* ...and the children set's row: not fork's number *)
               (sysc_ch_ok_refl _ _)
               (sysc_num_ne2 _ _ Hnum eq_refl)
@@ -6487,6 +6553,8 @@ Section SyscallArms.
               (or_introl (sysc_num_ne12 _ _ Hnum eq_refl))
               (* ...and fork's answer: not this entry's number *)
               (or_introl (sysc_num_ne1 _ _ Hnum eq_refl))
+              (* ...and read's answer: not this entry's number *)
+              (or_introl (sysc_num_ne5 _ _ Hnum eq_refl))
               (* ...and the children set's row: not fork's number *)
               (sysc_ch_ok_refl _ _)
               (sysc_num_ne2 _ _ Hnum eq_refl)
@@ -6612,6 +6680,8 @@ Section SyscallArms.
               (or_introl (sysc_num_ne12 _ _ Hnum eq_refl))
               (* ...and fork's answer: not this entry's number *)
               (or_introl (sysc_num_ne1 _ _ Hnum eq_refl))
+              (* ...and read's answer: not this entry's number *)
+              (or_introl (sysc_num_ne5 _ _ Hnum eq_refl))
               (* ...and the children set's row: not fork's number *)
               (sysc_ch_ok_refl _ _)
               (sysc_num_ne2 _ _ Hnum eq_refl)
@@ -6808,6 +6878,8 @@ Section SyscallArms.
               (or_introl (sysc_num_ne12 _ _ Hnum eq_refl))
               (* ...and fork's answer: not this entry's number *)
               (or_introl (sysc_num_ne1 _ _ Hnum eq_refl))
+              (* ...and read's answer: not this entry's number *)
+              (or_introl (sysc_num_ne5 _ _ Hnum eq_refl))
               (* ...and the children set's row: not fork's number *)
               (sysc_ch_ok_refl _ _)
               (sysc_num_ne2 _ _ Hnum eq_refl)
@@ -7146,6 +7218,8 @@ Section SyscallArms.
               (or_introl (sysc_num_ne12 _ _ Hnum eq_refl))
               (* ...and fork's answer: not this entry's number *)
               (or_introl (sysc_num_ne1 _ _ Hnum eq_refl))
+              (* ...and read's answer: not this entry's number *)
+              (or_introl (sysc_num_ne5 _ _ Hnum eq_refl))
               (* ...and the children set's row: not fork's number *)
               (sysc_ch_ok_refl _ _)
               (sysc_num_ne2 _ _ Hnum eq_refl)
@@ -7311,6 +7385,8 @@ Section SyscallArms.
               (or_introl (sysc_num_ne12 _ _ Hnum eq_refl))
               (* ...and fork's answer: not this entry's number *)
               (or_introl (sysc_num_ne1 _ _ Hnum eq_refl))
+              (* ...and read's answer: not this entry's number *)
+              (or_introl (sysc_num_ne5 _ _ Hnum eq_refl))
               (* ...and the children set's row: not fork's number *)
               (sysc_ch_ok_refl _ _)
               (sysc_num_ne2 _ _ Hnum eq_refl)
@@ -7448,6 +7524,8 @@ Section SyscallArms.
               (or_introl (sysc_num_ne12 _ _ Hnum eq_refl))
               (* ...and fork's answer: not this entry's number *)
               (or_introl (sysc_num_ne1 _ _ Hnum eq_refl))
+              (* ...and read's answer: not this entry's number *)
+              (or_introl (sysc_num_ne5 _ _ Hnum eq_refl))
               (* ...and the children set's row: not fork's number *)
               (sysc_ch_ok_refl _ _)
               (sysc_num_ne2 _ _ Hnum eq_refl)
@@ -7745,6 +7823,8 @@ Section SyscallArms.
               (or_introl (sysc_num_ne12 _ _ Hnum eq_refl))
               (* ...and fork's answer: not this entry's number *)
               (or_introl (sysc_num_ne1 _ _ Hnum eq_refl))
+              (* ...and read's answer: not this entry's number *)
+              (or_introl (sysc_num_ne5 _ _ Hnum eq_refl))
               (* ...and the children set's row: not fork's number *)
               (sysc_ch_ok_refl _ _)
               (sysc_num_ne2 _ _ Hnum eq_refl)
@@ -8175,6 +8255,8 @@ Section SyscallArms.
               ltac:(left; unfold UsysMemOk.USYS_sbrk in *; lia)
               (* ...nor fork's *)
               ltac:(left; unfold UsysMemOk.USYS_fork in *; lia)
+              (* ...nor read's *)
+              ltac:(left; unfold UsysMemOk.USYS_read in *; lia)
               (* the fallback runs no entry, so the children set is kept *)
               (sysc_ch_ok_refl _ _)
               (sysc_num_ne2_range _ Hrange)

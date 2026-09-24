@@ -129,6 +129,49 @@ Definition USYS_getpid : Z := 11.
 Definition usys_rdcount (tf : list (mword 64)) : Z :=
   bv_signed (subrange_vec_dec (tf !!! tf_arg_idx 2) 31 0 : mword 32).
 
+(* WHAT read ANSWERED, and it is the row a program on the free path needs:
+   the call failed ([-1]) or it delivered a count no larger than the one it
+   was asked for.  The image row below bounds the bytes WRITTEN; this bounds
+   the number REPORTED, which is what a caller's loop tests.  Every arm of
+   fileread states it ([SpecFileread.fileread_ret] -- pipe, device and inode
+   alike -- and argfd's own failure is its [-1]); the dispatcher relays it
+   ([SpecSyscall]'s read clause) and [UsysMemOkSpec.sysc_mem_ok_usys]
+   brings it here, on sbrk's and fork's footing.  Read on the SIGNED 64-bit
+   reading, at the count as the C reads it ([usys_rdcount]); a negative
+   count licenses only [0]. *)
+Definition usys_read_ret (tf : list (mword 64)) (r : mword 64) : Prop :=
+  bv_signed r = -1 \/ (0 <= bv_signed r <= Z.max 0 (usys_rdcount tf))%Z.
+
+(* ...and the kernel's spelling of it ([PipeInvDefs.pipe_rw_ret], which is
+   [SpecFileread.fileread_ret]) at the same count, unfolded so this file
+   need not import either: the word is [-1], or it is a small non-negative
+   integer.  A count read out of a 32-bit [int] is below [2^31], so the
+   integer IS the word's signed reading. *)
+Lemma usys_read_ret_of_rw (tf : list (mword 64)) (r : mword 64) :
+  (r = (mword_of_int (-1) : mword 64)
+   \/ exists i : Z, r = (mword_of_int i : mword 64)
+                    /\ (0 <= i <= Z.max 0 (usys_rdcount tf))%Z) ->
+  usys_read_ret tf r.
+Proof.
+  intros [-> | (i & -> & Hi)]; [ left; vm_compute; reflexivity | right ].
+  assert (Hc : (usys_rdcount tf < 2 ^ 31)%Z).
+  { unfold usys_rdcount.
+    pose proof (bv_signed_in_range _
+                  (subrange_vec_dec (tf !!! tf_arg_idx 2) 31 0 : mword 32)
+                  ltac:(discriminate)) as [_ Hh].
+    exact Hh. }
+  assert (Hs : bv_signed (mword_of_int i : mword 64) = i).
+  { unfold bv_signed, bv_swrap. rewrite moi64_unsigned. unfold bv_wrap.
+    assert (Eh : bv_half_modulus (MachineWord.Z_idx 64) = (2 ^ 63)%Z)
+      by (vm_compute; reflexivity).
+    assert (Em : bv_modulus (MachineWord.Z_idx 64) = (2 ^ 64)%Z)
+      by (vm_compute; reflexivity).
+    rewrite Eh Em.
+    rewrite (Z.mod_small i (2 ^ 64)); [ | lia ].
+    rewrite (Z.mod_small (i + 2 ^ 63) (2 ^ 64)); lia. }
+  rewrite Hs. exact Hi.
+Qed.
+
 (* sbrk's ARGUMENT, as the kernel reads it back: [argint] stores the low
    32 bits of a0 into the caller's [int] cell and the [lw] that reloads it
    sign-extends, so the value that reaches growproc -- and the value the
@@ -324,6 +367,10 @@ Definition usys_mem_ok (n : Z) (tf : list (mword 64)) (r : mword 64)
        (Z.of_nat d <= Z.max 0 (usys_rdcount tf))%Z /\
        M' = umem_wr M (tf !!! tf_arg_idx 1) d bs)
     /\ π' = π /\ szv' = szv /\ lz' = lz
+    (* ...AND WHAT IT ANSWERED: -1, or a count no larger than the one asked
+       for ([usys_read_ret]).  Last, so every reader of the four rows before
+       it is unmoved. *)
+    /\ usys_read_ret tf r
   else if decide (n = USYS_fstat) then
     (* one [struct stat]: dev@0 ino@4 type@8 nlink@10 size@16, so 24 *)
     (exists (d : nat) (bs : nat -> bv 8),
@@ -1057,7 +1104,7 @@ Proof.
   destruct (decide (n = USYS_sbrk)); [contradiction |].
   destruct (decide (n = USYS_wait)); [exact (proj2 (proj2 (proj2 H))) |].
   destruct (decide (n = USYS_pipe)); [exact (proj2 (proj2 (proj2 H))) |].
-  destruct (decide (n = USYS_read)); [exact (proj2 (proj2 (proj2 H))) |].
+  destruct (decide (n = USYS_read)); [exact (proj1 (proj2 (proj2 (proj2 H)))) |].
   destruct (decide (n = USYS_fstat)); [exact (proj2 (proj2 (proj2 H))) |].
   destruct (decide (n = USYS_fork));
     [exact (proj2 (proj2 (proj2 (proj2 H)))) |].
@@ -1166,6 +1213,25 @@ Proof.
   exact (proj1 (proj2 H)).
 Qed.
 
+(* READ'S ROW, READ: what a program calling read LEARNS about the answer,
+   beside what the window reader ([UkRunSys.usys_mem_ok_window]) says about
+   the bytes. *)
+Lemma usys_mem_ok_read_ret (n : Z) (tf : list (mword 64)) (r : mword 64)
+    (M M' : gmap Z (bv 8)) (π π' : gmap (mword 27) uperm) (szv szv' : Z)
+    (lz lz' : bool) :
+  n = USYS_read ->
+  usys_mem_ok n tf r M π szv lz M' π' szv' lz' ->
+  usys_read_ret tf r.
+Proof.
+  intros -> H. unfold usys_mem_ok in H.
+  destruct (decide (USYS_read = USYS_exec)) as [Hc | _]; [ discriminate Hc | ].
+  destruct (decide (USYS_read = USYS_sbrk)) as [Hc | _]; [ discriminate Hc | ].
+  destruct (decide (USYS_read = USYS_wait)) as [Hc | _]; [ discriminate Hc | ].
+  destruct (decide (USYS_read = USYS_pipe)) as [Hc | _]; [ discriminate Hc | ].
+  destruct (decide (USYS_read = USYS_read)) as [_ | Hc];
+    [ exact (proj2 (proj2 (proj2 (proj2 H)))) | exfalso; exact (Hc eq_refl) ].
+Qed.
+
 (* ===================================================================== *)
 (* SS3 THE RESUME TRAPFRAME after a returning syscall: epc advanced past   *)
 (* the ecall, a0 := the return value.  This is what the kernel's trap loop *)
@@ -1263,7 +1329,7 @@ Proof.
     by (destruct Hu as [_ Hg]; apply Hg; unfold tf_arg_idx; lia).
   assert (H2 : tf !!! tf_arg_idx 2 = tf' !!! tf_arg_idx 2)
     by (destruct Hu as [_ Hg]; apply Hg; unfold tf_arg_idx; lia).
-  unfold usys_mem_ok, usys_rdcount in H |- *.
+  unfold usys_mem_ok, usys_read_ret, usys_rdcount in H |- *.
   destruct (decide (n = USYS_exec)); [ exact H | ].
   (* sbrk's row now reads argument 0 too -- its ANSWER is stated at the
      step the break moved by, which the C reads out of a0 *)
@@ -1297,7 +1363,7 @@ Proof.
     by (apply list_lookup_total_insert_ne; unfold tf_arg_idx, tf_epc_idx; lia).
   assert (E2 : (<[tf_epc_idx := v]> tf) !!! tf_arg_idx 2 = tf !!! tf_arg_idx 2)
     by (apply list_lookup_total_insert_ne; unfold tf_arg_idx, tf_epc_idx; lia).
-  unfold usys_mem_ok, usys_rdcount, usys_sbrk_ret, usys_sbrk_arg,
+  unfold usys_mem_ok, usys_read_ret, usys_rdcount, usys_sbrk_ret, usys_sbrk_arg,
          usys_sbrk_lazy, usys_sbrk_eager.
   rewrite E0; rewrite E1; rewrite E2.
   intros H; exact H.

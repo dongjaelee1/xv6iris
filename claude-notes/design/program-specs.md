@@ -569,6 +569,31 @@ instance (`UkPipeIface.v`) -- LANDED d1cd17ca5 with `UkFreeHandler.v`
 then entry 4 (the copy instance: `pipe_in` + `pcons_dev` in one
 `ei_copy`, the exit wand).
 
+### 3.4g The repoint (planned 2026-09-24)
+
+FILE application (lane REPOINT-FILE, now): `UShRound`'s three sites move
+to the tree corollaries -- the redirect to `efile_image_entry_of_tree`
+(drop-in; new holes `□ (file_taint -∗ app_taint)` by `Hkill`, the taint
+exit by `Wcf_taint`), `cat f` to `cat_child_of_entry_of_tree` (`wr_tail_f`
+is `proj2` of the round's `wr_blk_t_f`; the content `< 2^31` from the
+claim's `f_typed` via `f_bytes_typed_short`, not the ledger), echo at
+the console to `echo_cons_image_entry_of_tree` through a new
+file-specific supply `echo_exec_sup_file` (the round instantiates the
+generic link record at the file's own, `lk_lpr … 3 = gwc_blk … 0 0`),
+with `∃ jo, file_cons_cred` threaded into `Hchild_echo`.  `fifRegG`
+threads to `fileΣ`.  Then the SWEEP deletes `UCatKernel` (after moving
+`catq_cat`/`cat_lend` and three helpers), `UkCatDeed`, `UShRedirPay`,
+and trims `UEchoFile`.  PIPELINE (after the pipe gaps close): split
+`UShPipeLaw`'s resource layer into `UShPipeLawRes` (the import cycle),
+allocate the registry inside the slot, a heap lemma for cat's node
+bounds, `r`/`Heq`/`pifRegG` in `UShPipeLaw`'s section; then its sweep.
+NOT dead after both: `UShEchoPay` (the pipeline's echo at the console,
+`UShPipeRound` 419/545, and the echo application's `UShRest`), so
+`UEchoOut`/`UkEcho`'s landed walks stay until a console exit wand at
+`PDCons` in the pipe instance and M5.  Audits expected unchanged: the
+new cones use only `functional_extensionality`, derived from the
+already-counted `functional_extensionality_dep`.
+
 ### 3.5 The line model's continuation becomes a theorem
 
 `lmodel`'s `lm_cont s l a` is hand-written bytes per alternative.  With

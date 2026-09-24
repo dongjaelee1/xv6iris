@@ -56,8 +56,14 @@ under the same wire as the panic line plus any continuation
 type `echo fork | cat | cat`; the output spec need not parse
 unambiguously (the UART output need not determine what happened), so
 no input restriction -- the law that forces the panic bytes to be
-unambiguous is weakened or removed in `LineModel` (lane AMBIG), and the
-pipeline model is taken at `adm_echo`; (ii) `lm_merge` is line-independent, so D4 ends coverage on more
+unambiguous is weakened in `LineModel` -- LANDED (AMBIG 5726757b1): the
+third part of `lml_cont_shape` compares a block only against the panic
+line followed by init's NEXT prologue round (`lm_below_panic`), which
+is all `lm_cont_pair_det` ever compares against; the determinacy lemmas
+already concluded only 'same bytes on the wire', never which session,
+so no consumer and no top-level statement changed; `pipes_lm_laws_fc`
+needs no admission premise and `pipes_lmE := pipes_lm _ adm_echo` is
+the default pipeline model (`pipes_lm_echo_laws`); (ii) `lm_merge` is line-independent, so D4 ends coverage on more
 byte patterns at N stages than the landed `pmergeable` (bridge stated at
 `adm1`); (iii) `cat f`'s content is a fixed function `fc` (C9 names it
 in the alternative or moves the state into `lm_ok`).  C5 (569703719..01d22acc6: `PipeBothNPure.v` -- `mergeN`/`pendN`,

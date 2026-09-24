@@ -1701,6 +1701,7 @@ UInitFileCons.v
 
 UEchoFile.v
 UkFileDev.v
+UkFreeHandler.v
 UkFileIface.v
 UShRedirPay.v
 UShRound.v
@@ -1731,4 +1732,5 @@ UkShPipeForkTwin.v
 UShPipeAssembly.v
 UShPipeCatRound.v
 UkPipeConsOut.v
+UkPipeIface.v
 UShPipeLaw.v

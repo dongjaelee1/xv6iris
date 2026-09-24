@@ -576,7 +576,7 @@ Section UkPipeIface.
       assert (Hc : c = length L).
       { pose proof (prefix_length _ _ Hpre) as Hpl.
         pose proof (pif_drop_nil_le L c (eq_sym HS)) as Hcl. lia. }
-      subst c. iLeft. iFrame "Hw Hlb".
+      iLeft. rewrite -Hc. iFrame "Hw Hlb".
     - iDestruct "Hd" as (c) "(Hw & #Hsh)".
       iInv "Hinv" as (s0) ">(Hf & Hh & Hbw & Hbr & %Hpre & %Hrle & Heof & Hro)" "Hclose".
       iDestruct (wcur_agree with "Hbw Hw") as %Hlen.

@@ -1485,6 +1485,7 @@ PinnedObs.v
 PinnedExec.v
 PinnedOpen.v
 PipeReg.v
+PipesPair.v
 PipeProto.v
 UexecExecInst.v
 ExecRun.v

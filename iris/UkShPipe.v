@@ -1043,10 +1043,12 @@ Section UkShPipe.
   (*    [γ'] with [γ' ∈ cs \/ pidv = 1]; the pid-indexed form                *)
   (*    ([UkShRun.wp_kshr_wait_pid], the only one that refutes the [pidv =   *)
   (*    1] disjunct) needs the caller's own [UserChildren.upid] fragment,    *)
-  (*    and [wp_kshr_fork1] DROPS the one [UkFork.wp_uk_ecall_fork]'s child  *)
-  (*    arm hands out.  So this arm relays the two answers and the two       *)
-  (*    tokens unredeemed, and design §4.2's lend/payload split has to be    *)
-  (*    SYMMETRIC in the two children.  See the lane report, item R-2.      *)
+  (*    which the process that runs the arm holds only if its own fork     *)
+  (*    relayed it: [UkShRun.wp_kshr_fork1] does, and [wp_kshr_pipe_arm_g3] *)
+  (*    below hands it on to both children (lane PID-CHILD).  The ARM       *)
+  (*    still relays the two answers and the two tokens unredeemed: which  *)
+  (*    wait reading it takes is its caller's [ush_wait0_law], and design  *)
+  (*    §4.2's lend/payload split stays SYMMETRIC in the two children.    *)
   (*                                                                        *)
   (* WHAT THE REGISTRATION IS SPLIT INTO cannot be three premises of their   *)
   (* own, because [γp] is not known until the call has returned: it is one   *)
@@ -1075,7 +1077,7 @@ Section UkShPipe.
   (*             [panic("fork")] tail is paid from.  It reaches the parent   *)
   (*             unspent.                                                    *)
   (* ===================================================================== *)
-  Lemma wp_kshr_pipe_arm_g2 (N : uk_names Σ) `{!ukn_const N}
+  Lemma wp_kshr_pipe_arm_g3 (N : uk_names Σ) `{!ukn_const N}
       (cl cr : ushcmd) (h : CpuId) (m : regfile) (t szv cwdv : Z)
       (ld : list fdstate) (st0 st1 : fdstate) (Sc : gset gname) (av : nat)
       (R RcL RcR Rk Cx : pipe_names -> iProp Σ) (Qc : Z -> iProp Σ)
@@ -1195,6 +1197,11 @@ Section UkShPipe.
          (<[1%nat := FdOpen false true (FdPipe γp)]> ld) -∗
        UserCwd.ucwd (ukn_cwd N') cwdv -∗
        UserChildren.uch (ukn_ch N') (∅ : gset gname) -∗
+       (* ...AND ITS OWN PID (lane PID-CHILD): [UkShRun.wp_kshr_fork1]'s
+          child row, relayed in the shape [UkSh.ush_pid] names it, so a
+          child that re-enters [runcmd] on a pipe can take the paid,
+          pid-naming wait reading at its own node *)
+       UkSh.ush_pid N' -∗
        ush_cldep (FdOpen true false (FdPipe γp)) -∗
        ush_cldep (FdOpen false true (FdPipe γp)) -∗
        RcL γp -∗
@@ -1215,6 +1222,11 @@ Section UkShPipe.
          (<[0%nat := FdOpen true false (FdPipe γp)]> ld) -∗
        UserCwd.ucwd (ukn_cwd N') cwdv -∗
        UserChildren.uch (ukn_ch N') (∅ : gset gname) -∗
+       (* ...AND ITS OWN PID (lane PID-CHILD): [UkShRun.wp_kshr_fork1]'s
+          child row, relayed in the shape [UkSh.ush_pid] names it, so a
+          child that re-enters [runcmd] on a pipe can take the paid,
+          pid-naming wait reading at its own node *)
+       UkSh.ush_pid N' -∗
        ush_cldep (FdOpen true false (FdPipe γp)) -∗
        ush_cldep (FdOpen false true (FdPipe γp)) -∗
        RcR γp -∗
@@ -1742,6 +1754,8 @@ Section UkShPipe.
           "%Hpeq %HcsD %Ha0_D Hmy HRcR #Hck (#Hjt3 & #Ht3 & Hb0 & Hb1)
            Hsz Hstd Hcwd Hch Hpid' HD Hrun".
         pose proof (ukn_const_of_eq N' Qc Hpeq HQc) as Hcst'.
+        iAssert (UkSh.ush_pid N') with "[Hpid']" as "Hpid'".
+        { rewrite /UkSh.ush_pid. iExact "Hpid'". }
         pose proof (UkShRun.ush_st_cs f2 mD sp0 t Hst_f2 HcsD) as Hst_mD.
         iDestruct (ushpi_hs_out (ukn_fd N') a b _ _ Hab with "HD")
           as "[Hha Hhb]".
@@ -1995,7 +2009,7 @@ Section UkShPipe.
         { iApply (uis_shk_1a2 with "Hck"). }
         iIntros (hO) "Hrun".
         iApply ("HcR" $! N' hO _ γ' γp qr3
-                  with "[%] [%] Hmy Hck Hjt3 Hqrc3 Hsz Hstd Hcwd Hch
+                  with "[%] [%] Hmy Hck Hjt3 Hqrc3 Hsz Hstd Hcwd Hch Hpid'
                         HdR HdW HRcR Hrun");
           [ exact Hpeq | ].
         rewrite (upd_ne y4 (Regidx ra_idx) (Regidx a0_idx) _
@@ -2006,6 +2020,8 @@ Section UkShPipe.
         "%Hpeq %Hcs7 %Ha0_7 Hmy HRcL #Hck (#Hjt2 & #Ht2 & Hb0 & Hb1)
          Hsz Hstd Hcwd Hch Hpid' HD Hrun".
       pose proof (ukn_const_of_eq N' Qc Hpeq HQc) as Hcst'.
+      iAssert (UkSh.ush_pid N') with "[Hpid']" as "Hpid'".
+      { rewrite /UkSh.ush_pid. iExact "Hpid'". }
       pose proof (UkShRun.ush_st_cs f1 m7 sp0 t Hst_f1 Hcs7) as Hst_m7.
       iDestruct (ushpi_hs_out (ukn_fd N') a b _ _ Hab with "HD")
         as "[Hha Hhb]".
@@ -2280,12 +2296,209 @@ Section UkShPipe.
       { iApply (uis_shk_16e with "Hck"). }
       iIntros (hI) "Hrun".
       iApply ("HcL" $! N' hI _ γ' γp ql2
-                with "[%] [%] Hmy Hck Hjt2 Hqlc2 Hsz Hstd Hcwd Hch
+                with "[%] [%] Hmy Hck Hjt2 Hqlc2 Hsz Hstd Hcwd Hch Hpid'
                       HdR HdW HRcL Hrun");
         [ exact Hpeq | ].
       rewrite (upd_ne q5 (Regidx ra_idx) (Regidx a0_idx) _
                  ltac:(vm_compute; discriminate)).
       exact (upd_eq mG (Regidx a0_idx) (mword_of_int ql2 : mword 64)).
+  Qed.
+
+  (* ...AND THE LANDED FORM (lane PID-CHILD): the two children drop the
+     pid fragment [wp_kshr_pipe_arm_g3] hands them. *)
+  Lemma wp_kshr_pipe_arm_g2 (N : uk_names Σ) `{!ukn_const N}
+      (cl cr : ushcmd) (h : CpuId) (m : regfile) (t szv cwdv : Z)
+      (ld : list fdstate) (st0 st1 : fdstate) (Sc : gset gname) (av : nat)
+      (R RcL RcR Rk Cx : pipe_names -> iProp Σ) (Qc : Z -> iProp Σ)
+      (Cr : iProp Σ)
+      (* ...AND THE TWO [wait(0)]s AS A CALL LAW (design app-pipe SS4.3w,
+         purchase 3): [Wr] is what the call spends and hands back, [Pw]
+         what a reap answers.  The FREE arm below is this at
+         [emp / UexecRet.uwait_ans] -- the landed reading -- and the
+         PAID one a round takes is [UkSh.ush_pid N / ush_wait_pid_ans],
+         where the answer NAMES the reaped generation.  A parameter and
+         not two lemmas, because the two readings differ in two of this
+         walk's six hundred instructions. *)
+      (Wr : iProp Σ)
+      (Pw : mword 64 -> gset gname -> gset gname -> iProp Σ) :
+    (forall x y : Z, Qc x = Qc y) ->
+    m !!! Regidx a0_idx = (mword_of_int t : mword 64) ->
+    (* the two standard streams the two children shut before their dup:
+       sh's own and open; fd 1 is not a pipe (the spine is right-nested, so
+       fd 1 is the console at EVERY node), and fd 0's close is paid by the
+       deposit below -- which is free when it is not a pipe *)
+    ld !! 0%nat = Some st0 -> ld !! 1%nat = Some st1 ->
+    st0 <> FdClosed -> st1 <> FdClosed ->
+    (forall (rb wb : bool) (gp : pipe_names),
+       st1 <> FdOpen rb wb (FdPipe gp)) ->
+    shk_code (ukn_t N) -∗
+    ush_jtab (ukn_t N) -∗
+    ush_cmd (ukn_d N) t (UPipe cl cr) -∗
+    usz (ukn_s N) szv -∗
+    UserFd.ustd (ukn_fd N) ld -∗
+    (* ...AND fd 0'S CLOSE DEPOSIT (lane PIPES-C3): at an inner node of a
+       right-nested pipeline fd 0 is the previous pipe's READ end, and the
+       right child's [close(0)] is paid from this; [ush_cldep_nonpipe]
+       mints it for free at a stream that is not a pipe *)
+    ush_cldep st0 -∗
+    UserCwd.ucwd (ukn_cwd N) cwdv -∗
+    UserChildren.uch (ukn_ch N) Sc -∗
+    □ (app_taint -∗ Qc (-1)) -∗
+    Cr -∗
+    (∀ γp : pipe_names, Cr -∗ R γp -∗ RcL γp ∗ (RcR γp ∗ (Rk γp ∗ Cx γp))) -∗
+    ush_pipe_call N ld R -∗
+    (* the wait credential and the law that spends it, twice *)
+    Wr -∗
+    ush_wait0_law N Wr Pw -∗
+    (* ---- THE THREE PANIC TAILS, as continuations.  Each is at [panic]'s
+       own entry with the message's address in a0 -- 0x12c8 for the pipe
+       panic and 0x1298 for the fork one -- and holds the ledger and the
+       credential that pays it. ---- *)
+    □ (∀ (h' : CpuId) (m' : regfile),
+         ⌜ uint (m' !!! Regidx a0_idx) = 0x12c8 ⌝ -∗
+         UserFd.ustd (ukn_fd N) ld -∗
+         Cr -∗
+         urun N h' m' (mword_of_int ShSyms.panic)
+           (UkShDiag.ush_Dg + (2 + av)) -∗
+         mWP (Loop : expr riscv_lang)) -∗
+    (* ...AND IT ALSO CARRIES [RcR γp] (design SS4.3u, lane
+       SH-PIPE-ROUND-9).  ADDITIVE: the walk holds the RIGHT child's lend
+       unspent at the FIRST [fork1] -- it is only handed over at the
+       SECOND one -- and used to drop it here.  It is the round's only
+       console credential for the family's RIGHT chain
+       ([PipeBoth.rsrc L 3 = alt_forkc], mode 3), which is what a
+       [panic("fork")] tail has to write on; the second tail already
+       received it, inside its own fork answer's [-1] arm.  The walk
+       below hands it over by BORROWING it through [wp_kshr_fork1]'s
+       [Pex] slot, so the returning arm gets it back unchanged and the
+       second [fork1] is entered exactly as before. *)
+    □ (∀ (h' : CpuId) (m' : regfile) (r : mword 64) (γp : pipe_names),
+         ⌜ uint (m' !!! Regidx a0_idx) = 0x1298 ⌝ -∗
+         ⌜ r = (mword_of_int (-1) : mword 64) ⌝ -∗
+         ((⌜r = (mword_of_int (-1) : mword 64)⌝
+             ∗ UserChildren.uch (ukn_ch N) Sc ∗ RcL γp)
+          ∨ ∃ (γ : gname) (pidv : mword 32),
+              ⌜r = (sign_extend' 64 pidv : mword 64)⌝
+              ∗ ⌜(1 <= bv_unsigned pidv <= PIDMAX)%Z⌝
+              (* ...and the generation is fresh (design app-pipe SS4.3y):
+                 [UkShRun.wp_kshr_fork1]'s panic arm, relayed.  This arm
+                 is at [r = -1], so its consumer refutes the disjunct
+                 rather than reading the row. *)
+              ∗ ⌜γ ∉ Sc⌝
+              ∗ child_tok γ pidv Qc
+              ∗ UserChildren.uch (ukn_ch N) (Sc ∪ {[γ]})) -∗
+         UserFd.ustd (ukn_fd N) ld -∗
+         RcR γp -∗
+         Cx γp -∗
+         urun N h' m' (mword_of_int ShSyms.panic) (UkShDiag.ush_Dg + av) -∗
+         mWP (Loop : expr riscv_lang)) -∗
+    □ (∀ (h' : CpuId) (m' : regfile) (r : mword 64) (γp : pipe_names)
+         (S1 : gset gname),
+         ⌜ uint (m' !!! Regidx a0_idx) = 0x1298 ⌝ -∗
+         ⌜ r = (mword_of_int (-1) : mword 64) ⌝ -∗
+         ((⌜r = (mword_of_int (-1) : mword 64)⌝
+             ∗ UserChildren.uch (ukn_ch N) S1 ∗ RcR γp)
+          ∨ ∃ (γ : gname) (pidv : mword 32),
+              ⌜r = (sign_extend' 64 pidv : mword 64)⌝
+              ∗ ⌜(1 <= bv_unsigned pidv <= PIDMAX)%Z⌝
+              (* ...and the generation is fresh -- see the first tail *)
+              ∗ ⌜γ ∉ S1⌝
+              ∗ child_tok γ pidv Qc
+              ∗ UserChildren.uch (ukn_ch N) (S1 ∪ {[γ]})) -∗
+         UserFd.ustd (ukn_fd N) ld -∗
+         Cx γp -∗
+         urun N h' m' (mword_of_int ShSyms.panic) (UkShDiag.ush_Dg + av) -∗
+         mWP (Loop : expr riscv_lang)) -∗
+    urun N h m (mword_of_int ShSyms.runcmd)
+      (6 + (2 + (UkShDiag.ush_Dg + av))) -∗
+    (* ---- THE LEFT CHILD, at runcmd's own entry: fd 1 is the pipe's
+       WRITE end and the two tail slots the call came back on are shut ---- *)
+    (∀ (N' : uk_names Σ) (h' : CpuId) (m' : regfile) (γ' : gname)
+       (γp : pipe_names) (q : Z),
+       ⌜ ukn_pay N' = Qc ⌝ -∗
+       ⌜ m' !!! Regidx a0_idx = (mword_of_int q : mword 64) ⌝ -∗
+       my_pay γ' Qc -∗
+       shk_code (ukn_t N') -∗
+       ush_jtab (ukn_t N') -∗
+       ush_cmd (ukn_d N') q cl -∗
+       usz (ukn_s N') szv -∗
+       UserFd.ustd (ukn_fd N')
+         (<[1%nat := FdOpen false true (FdPipe γp)]> ld) -∗
+       UserCwd.ucwd (ukn_cwd N') cwdv -∗
+       UserChildren.uch (ukn_ch N') (∅ : gset gname) -∗
+       ush_cldep (FdOpen true false (FdPipe γp)) -∗
+       ush_cldep (FdOpen false true (FdPipe γp)) -∗
+       RcL γp -∗
+       urun N' h' m' (mword_of_int ShSyms.runcmd)
+         (2 + (UkShDiag.ush_Dg + av)) -∗
+       mWP (Loop : expr riscv_lang)) -∗
+    (* ---- THE RIGHT CHILD: fd 0 is the pipe's READ end ---- *)
+    (∀ (N' : uk_names Σ) (h' : CpuId) (m' : regfile) (γ' : gname)
+       (γp : pipe_names) (q : Z),
+       ⌜ ukn_pay N' = Qc ⌝ -∗
+       ⌜ m' !!! Regidx a0_idx = (mword_of_int q : mword 64) ⌝ -∗
+       my_pay γ' Qc -∗
+       shk_code (ukn_t N') -∗
+       ush_jtab (ukn_t N') -∗
+       ush_cmd (ukn_d N') q cr -∗
+       usz (ukn_s N') szv -∗
+       UserFd.ustd (ukn_fd N')
+         (<[0%nat := FdOpen true false (FdPipe γp)]> ld) -∗
+       UserCwd.ucwd (ukn_cwd N') cwdv -∗
+       UserChildren.uch (ukn_ch N') (∅ : gset gname) -∗
+       ush_cldep (FdOpen true false (FdPipe γp)) -∗
+       ush_cldep (FdOpen false true (FdPipe γp)) -∗
+       RcR γp -∗
+       urun N' h' m' (mword_of_int ShSyms.runcmd)
+         (2 + (UkShDiag.ush_Dg + av)) -∗
+       mWP (Loop : expr riscv_lang)) -∗
+    (* ---- THE PARENT, at 0xea -- the [break]'s target, which is the
+       common [exit(0)] every runcmd arm ends at ---- *)
+    (∀ (h' : CpuId) (m' : regfile) (γp : pipe_names)
+       (r1 r2 rw1 rw2 : mword 64) (S1 S2 S3 S4 : gset gname),
+       (* THE TWO FORKS RETURNED A PID (design app-pipe SS4.3w, purchase
+          3): a [fork1] that answered -1 PANICS, and the panic tail is
+          one of the two continuations above -- so a run that reaches
+          0xea has two LIVE children, and [ush_fork_ans]'s failing
+          disjunct is refuted at both.  Pure, off
+          [UkShRun.wp_kshr_fork1]'s returning arm. *)
+       ⌜ r1 <> (mword_of_int (-1) : mword 64) ⌝ -∗
+       ⌜ r2 <> (mword_of_int (-1) : mword 64) ⌝ -∗
+       ush_fork_ans Sc S1 (RcL γp) Qc r1 -∗
+       ush_fork_ans S1 S2 (RcR γp) Qc r2 -∗
+       (* ...and the two reaps, at whatever the caller's wait law
+          answers -- [UexecRet.uwait_ans] at the free reading, the
+          pid-carrying [ush_wait_pid_ans] at a round's *)
+       Pw rw1 S2 S3 -∗
+       Pw rw2 S3 S4 -∗
+       UserChildren.uch (ukn_ch N) S4 -∗
+       ush_jtab (ukn_t N) -∗
+       usz (ukn_s N) szv -∗
+       UserFd.ustd (ukn_fd N) ld -∗
+       UserCwd.ucwd (ukn_cwd N) cwdv -∗
+       Rk γp -∗
+       Cx γp -∗
+       (* ...and the wait credential, unspent: a pid never moves *)
+       Wr -∗
+       urun N h' m' (mword_of_int 0xea) (2 + (UkShDiag.ush_Dg + av)) -∗
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
+  Proof using Hpsok_free.
+    intros HQc Ha0 Hl0 Hl1 Hne0 Hne1 Hnp1.
+    iIntros "Hcode Hjt Htree Hsz Hstd Hcd0 Hcwd Hch Hkw Hcr Hsplit Hpipe
+             HWr Hwl Hpanp Hpanf1 Hpanf2 Hrun HcL HcR Hpar".
+    iApply (wp_kshr_pipe_arm_g3 N cl cr h m t szv cwdv ld st0 st1 Sc av
+              R RcL RcR Rk Cx Qc Cr Wr Pw HQc Ha0 Hl0 Hl1 Hne0 Hne1 Hnp1
+              with "Hcode Hjt Htree Hsz Hstd Hcd0 Hcwd Hch Hkw Hcr Hsplit
+                    Hpipe HWr Hwl Hpanp Hpanf1 Hpanf2 Hrun [HcL] [HcR] Hpar").
+    - iIntros (N' h' m' γ' γp q) "%Hpeq %Ha0' Hmy Hck Hjt2 Hqc Hsz Hstd
+                                Hcwd Hch _ Hcd1 Hcd2 HRc Hrun".
+      iApply ("HcL" $! N' h' m' γ' γp q with "[%] [%] Hmy Hck Hjt2 Hqc Hsz
+                Hstd Hcwd Hch Hcd1 Hcd2 HRc Hrun"); [ exact Hpeq | exact Ha0' ].
+    - iIntros (N' h' m' γ' γp q) "%Hpeq %Ha0' Hmy Hck Hjt2 Hqc Hsz Hstd
+                                Hcwd Hch _ Hcd1 Hcd2 HRc Hrun".
+      iApply ("HcR" $! N' h' m' γ' γp q with "[%] [%] Hmy Hck Hjt2 Hqc Hsz
+                Hstd Hcwd Hch Hcd1 Hcd2 HRc Hrun"); [ exact Hpeq | exact Ha0' ].
   Qed.
 
   (* ...AND THE LANDED ARM, fd 0 NOT A PIPE: the deposit is minted free. *)

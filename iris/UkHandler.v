@@ -66,6 +66,67 @@ Definition fd_shared (fdm : fdmap) (fd : Z) (d : nat) : Prop :=
 Global Instance fd_shared_dec (fdm : fdmap) (fd : Z) (d : nat) : Decision (fd_shared fdm fd d).
 Proof. apply _. Defined.
 
+(* THE PROTECTED DEVICES (design SS3.4e, lane D).  An instance whose exit
+   payload is a wand over its final state (the file application's) cannot
+   pay the exit after a close CONSUMED one of the devices it was entered
+   with -- the console cursor the round is owed would be gone -- so the
+   record carries a list [Dp] of device numbers whose last descriptor's
+   close is a SHARED close (the device stays, its descriptor goes; the
+   tree's exit rule asks every device drained, closed or not), which an
+   open never mints again and which the exit finds among the drained
+   devices.  The three premises below are Fixpoints on [Dp] so that at
+   [Dp = []] each is DEFINITIONALLY the premise the landed instances were
+   proved at; [ep_iface]/[MkEI] are the record at [[]]. *)
+Fixpoint fd_shared_p (Dp : list nat) (fdm : fdmap) (fd : Z) (d : nat) : Prop :=
+  match Dp with
+  | [] => fd_shared fdm fd d
+  | x :: r => d = x \/ fd_shared_p r fdm fd d
+  end.
+
+Fixpoint dev_fresh_p (Dp : list nat) (fdm : fdmap) (d : nat) : Prop :=
+  match Dp with
+  | [] => forall fd', fdm !! fd' <> Some d
+  | x :: r => d <> x /\ dev_fresh_p r fdm d
+  end.
+
+Fixpoint dom_ok_p (Dp : list nat) (fdm : fdmap) (ds : gset nat) : Prop :=
+  match Dp with
+  | [] => forall fd d, fdm !! fd = Some d -> d ∈ ds
+  | x :: r => x ∈ ds /\ dom_ok_p r fdm ds
+  end.
+
+Definition dp_in (Dp : list nat) (ds : gset nat) : Prop := forall d, d ∈ Dp -> d ∈ ds.
+
+Lemma fd_shared_p_iff (Dp : list nat) (fdm : fdmap) (fd : Z) (d : nat) :
+  fd_shared_p Dp fdm fd d <-> d ∈ Dp \/ fd_shared fdm fd d.
+Proof.
+  induction Dp as [| x r IH]; simpl.
+  - split; [by right | intros [H | H]; [by apply elem_of_nil in H | exact H]].
+  - rewrite IH elem_of_cons. tauto.
+Qed.
+
+Lemma dev_fresh_p_iff (Dp : list nat) (fdm : fdmap) (d : nat) :
+  dev_fresh_p Dp fdm d <-> d ∉ Dp /\ forall fd', fdm !! fd' <> Some d.
+Proof.
+  induction Dp as [| x r IH]; simpl.
+  - split; [intros H; split; [apply not_elem_of_nil | exact H] | tauto].
+  - rewrite IH not_elem_of_cons. tauto.
+Qed.
+
+Lemma dom_ok_p_iff (Dp : list nat) (fdm : fdmap) (ds : gset nat) :
+  dom_ok_p Dp fdm ds <-> dp_in Dp ds /\ forall fd d, fdm !! fd = Some d -> d ∈ ds.
+Proof.
+  unfold dp_in. induction Dp as [| x r IH]; simpl.
+  - split; [intros H; split; [intros d Hd; by apply elem_of_nil in Hd | exact H] | tauto].
+  - rewrite IH. split.
+    + intros (Hx & Hr & H). split; [| exact H]. intros d Hd. apply elem_of_cons in Hd as [-> | Hd]; [exact Hx | by apply Hr].
+    + intros (Hr & H). split; [apply Hr; by left |]. split; [| exact H]. intros d Hd. apply Hr. by right.
+Qed.
+
+Global Instance fd_shared_p_dec (Dp : list nat) (fdm : fdmap) (fd : Z) (d : nat) :
+  Decision (fd_shared_p Dp fdm fd d).
+Proof. induction Dp as [| x r IH]; simpl; apply _. Defined.
+
 Section UkHandler.
   Context `{!riscvGS Σ}.
   Context `{!ufdG Σ}.
@@ -75,6 +136,9 @@ Section UkHandler.
   Context `{!ctokG Σ}.
   Context {SG : uexecSG Σ}.
   Context `{PS : uprogSG Σ}.
+  (* the protected devices (above); implicit, so that every constant of
+     this section reads it off its record argument *)
+  Context {Dp : list nat}.
   Context (N : uk_names Σ).
   Context (P : uprog Σ).
 
@@ -86,7 +150,7 @@ Section UkHandler.
   Definition open_held (fdm : fdmap) (x : Z) : gset Z :=
     if decide (0 <= x) then {[x]} ∪ dom fdm else dom fdm.
 
-  Record ep_iface := MkEI {
+  Record ep_ifaceP := MkEIP {
     ei_fds : fdmap -> iProp Σ;
     ei_out : nat -> list bytes -> iProp Σ;
     ei_outh : nat -> list bytes -> iProp Σ;    (* an output that may halt *)
@@ -257,7 +321,7 @@ Section UkHandler.
         path ∈ paths -> files path = Some content ->
         ei_fds fdm -∗ ei_files files paths -∗
         ((∀ fd : Z, ⌜0 <= fd⌝ -∗ ⌜fdm !! fd = None⌝ -∗
-            (∀ d : nat, ⌜forall fd', fdm !! fd' <> Some d⌝ -∗
+            (∀ d : nat, ⌜dev_fresh_p Dp fdm d⌝ -∗
                ei_fds (<[fd := d]> fdm) ∗ ei_in d content) -∗
             ei_files files paths -∗ K fd)
          ∧ (ei_fds fdm -∗ ei_files files paths -∗ K (-1))
@@ -275,7 +339,7 @@ Section UkHandler.
        keep what it gives back, a deed's fraction) *)
     ei_close : forall (fdm : fdmap) (fd : Z) (d : nat) (x : dspec)
                  (files : bytes -> option bytes) (paths : list bytes) (K : Z -> iProp Σ),
-        fdm !! fd = Some d -> ~ fd_shared fdm fd d ->
+        fdm !! fd = Some d -> ~ fd_shared_p Dp fdm fd d ->
         ei_fds fdm -∗ ei_files files paths -∗
         (match x with
          | DOut alts => ei_out d alts | DOutH alts => ei_outh d alts
@@ -289,7 +353,7 @@ Section UkHandler.
         cl_obl N P fd K;
     (* ...of a shared one (a dup) keeps it *)
     ei_close_shared : forall (fdm : fdmap) (fd : Z) (d : nat) (K : Z -> iProp Σ),
-        fdm !! fd = Some d -> fd_shared fdm fd d ->
+        fdm !! fd = Some d -> fd_shared_p Dp fdm fd d ->
         ei_fds fdm -∗
         ((ei_fds (delete fd fdm) -∗ K 0) ∧ (∀ y, ei_taint (dom fdm ∖ {[fd]}) -∗ K y)) -∗
         cl_obl N P fd K;
@@ -300,7 +364,7 @@ Section UkHandler.
     ei_exit : forall (s : Z) (fdm : fdmap) (files : list (bv 8) -> option (list (bv 8)))
                      (paths : list (list (bv 8))) (dv : nat -> dspec) (ds : gset nat),
         (forall d, d ∈ ds -> drained (dv d)) ->
-        (forall fd d, fdm !! fd = Some d -> d ∈ ds) ->
+        dom_ok_p Dp fdm ds ->
         ei_fds fdm -∗ ei_files files paths -∗
         ([∗ set] d ∈ ds, match dv d with
                          | DOut alts => ei_out d alts | DOutH alts => ei_outh d alts
@@ -316,7 +380,7 @@ Section UkHandler.
   (*  2.  THE ENVIRONMENT'S RESOURCES                                     *)
   (* ------------------------------------------------------------------- *)
 
-  Definition dev_of (I : ep_iface) (d : nat) (x : dspec) : iProp Σ :=
+  Definition dev_of (I : ep_ifaceP) (d : nat) (x : dspec) : iProp Σ :=
     match x with
     | DOut alts => ei_out I d alts | DOutH alts => ei_outh I d alts
     | DOutM cs => ei_outm I d cs | DHalt => ei_halt I d
@@ -325,21 +389,21 @@ Section UkHandler.
     | DCopyHalt => ei_copy_halt I d
     end.
 
-  Definition dev_res (I : ep_iface) (dv : nat -> dspec) (ds : gset nat) : iProp Σ :=
+  Definition dev_res (I : ep_ifaceP) (dv : nat -> dspec) (ds : gset nat) : iProp Σ :=
     ([∗ set] d ∈ ds, dev_of I d (dv d))%I.
 
-  Definition env_res (I : ep_iface) (E : penv) (ds : gset nat) : iProp Σ :=
+  Definition env_res (I : ep_ifaceP) (E : penv) (ds : gset nat) : iProp Σ :=
     (⌜forall fd d, pe_fd E !! fd = Some d -> d ∈ ds⌝
      ∗ ei_fds I (pe_fd E) ∗ ei_files I (pe_files E) (pe_paths E)
      ∗ dev_res I (pe_dev E) ds)%I.
 
-  Lemma dev_res_take (I : ep_iface) (dv : nat -> dspec) (ds : gset nat) (d : nat) :
+  Lemma dev_res_take (I : ep_ifaceP) (dv : nat -> dspec) (ds : gset nat) (d : nat) :
     d ∈ ds ->
     dev_res I dv ds ⊣⊢ dev_of I d (dv d) ∗ dev_res I dv (ds ∖ {[d]}).
   Proof using . intros Hd. unfold dev_res. by apply (big_sepS_delete (fun d => dev_of I d (dv d)) ds d Hd). Qed.
 
   (* changing one device's spec changes nothing outside it *)
-  Lemma dev_res_set (I : ep_iface) (dv : nat -> dspec) (ds : gset nat) (d : nat)
+  Lemma dev_res_set (I : ep_ifaceP) (dv : nat -> dspec) (ds : gset nat) (d : nat)
       (x : dspec) :
     d ∉ ds ->
     dev_res I (fun d' => if decide (d' = d) then x else dv d') ds ⊣⊢ dev_res I dv ds.
@@ -367,28 +431,28 @@ Section UkHandler.
 
   (* the invariant: a conforming tree with the discipline at its
      environment, or a tree already paid *)
-  Definition cf_inv (I : ep_iface) (t : proc) : iProp Σ :=
+  Definition cf_inv (I : ep_ifaceP) (t : proc) : iProp Σ :=
     ((∃ (E : penv) (ds : gset nat),
-        ⌜conforms E t⌝ ∗ ⌜safe_fds (dom (pe_fd E)) t⌝ ∗ env_res I E ds)
+        ⌜conforms E t⌝ ∗ ⌜safe_fds (dom (pe_fd E)) t⌝ ∗ ⌜dp_in Dp ds⌝ ∗ env_res I E ds)
      ∨ tree_pay N P t)%I.
 
-  Lemma cf_inv_taint (I : ep_iface) (held : gset Z) (t : proc) :
+  Lemma cf_inv_taint (I : ep_ifaceP) (held : gset Z) (t : proc) :
     safe_fds held t -> ei_taint I held -∗ cf_inv I t.
   Proof using . intros Hs. iIntros "Ht". iRight. iApply (ei_taint_pays I held t Hs with "Ht"). Qed.
 
   (* the invariant rebuilt after one device moved to a new spec, the rest
      of the environment unchanged *)
-  Lemma cf_inv_move (I : ep_iface) (E : penv) (ds : gset nat) (d : nat) (x : dspec) (t : proc) :
+  Lemma cf_inv_move (I : ep_ifaceP) (E : penv) (ds : gset nat) (d : nat) (x : dspec) (t : proc) :
     d ∈ ds ->
-    conforms (env_set_dev E d x) t -> safe_fds (dom (pe_fd E)) t ->
+    conforms (env_set_dev E d x) t -> safe_fds (dom (pe_fd E)) t -> dp_in Dp ds ->
     (forall fd d', pe_fd E !! fd = Some d' -> d' ∈ ds) ->
     ei_fds I (pe_fd E) -∗ ei_files I (pe_files E) (pe_paths E) -∗
     dev_of I d x -∗ dev_res I (pe_dev E) (ds ∖ {[d]}) -∗
     cf_inv I t.
   Proof using .
-    intros Hin Hc Hs Hdom. iIntros "Hfds Hfiles Hx Hrest".
+    intros Hin Hc Hs Hdp Hdom. iIntros "Hfds Hfiles Hx Hrest".
     iLeft. iExists (env_set_dev E d x), ds.
-    iSplit; [done |]. iSplit; [done |]. iSplit; [done |].
+    iSplit; [done |]. iSplit; [done |]. iSplit; [done |]. iSplit; [done |].
     iFrame "Hfds Hfiles".
     rewrite (dev_res_take I _ ds d Hin). iSplitL "Hx".
     { rewrite env_set_dev_pe_dev decide_True; [| reflexivity]. iExact "Hx". }
@@ -398,20 +462,20 @@ Section UkHandler.
   Qed.
 
   (* ...and with nothing moved *)
-  Lemma cf_inv_same (I : ep_iface) (E : penv) (ds : gset nat) (t : proc) :
-    conforms E t -> safe_fds (dom (pe_fd E)) t ->
+  Lemma cf_inv_same (I : ep_ifaceP) (E : penv) (ds : gset nat) (t : proc) :
+    conforms E t -> safe_fds (dom (pe_fd E)) t -> dp_in Dp ds ->
     (forall fd d', pe_fd E !! fd = Some d' -> d' ∈ ds) ->
     ei_fds I (pe_fd E) -∗ ei_files I (pe_files E) (pe_paths E) -∗
     dev_res I (pe_dev E) ds -∗ cf_inv I t.
   Proof using .
-    intros Hc Hs Hdom. iIntros "Hfds Hfiles Hdev".
+    intros Hc Hs Hdp Hdom. iIntros "Hfds Hfiles Hdev".
     iLeft. iExists E, ds. iFrame. done.
   Qed.
 
-  Lemma cf_inv_step (I : ep_iface) :
+  Lemma cf_inv_step (I : ep_ifaceP) :
     ⊢ □ (∀ t, cf_inv I t -∗ tree_F N P (cf_inv I) t).
   Proof using .
-    iIntros "!>" (t) "[(%E & %ds & %Hc & %Hs & %Hdom & Hfds & Hfiles & Hdev) | Hpay]"; last first.
+    iIntros "!>" (t) "[(%E & %ds & %Hc & %Hs & %Hdp & %Hdom & Hfds & Hfiles & Hdev) | Hpay]"; last first.
     { (* already paid: unfold, and every subtree is paid *)
       rewrite tree_pay_unfold.
       iApply (tree_F_mono_law N P (tree_pay N P) (cf_inv I) with "[] Hpay").
@@ -438,13 +502,17 @@ Section UkHandler.
             set (d := fresh ds).
             assert (Hfr : forall fd', pe_fd E !! fd' <> Some d).
             { intros fd' Heq. apply Hdom in Heq. apply (is_fresh ds Heq). }
-            iDestruct ("Hbind" $! d with "[%]") as "[Hfds Hin]"; [exact Hfr |].
+            iDestruct ("Hbind" $! d with "[%]") as "[Hfds Hin]".
+            { apply dev_fresh_p_iff. split; [| exact Hfr].
+              intros Hd. apply (is_fresh ds). apply Hdp. exact Hd. }
             iLeft. iExists (env_set_dev (env_bind E fd d) d (DIn content)), ({[d]} ∪ ds).
             iSplit.
             { iPureIntro. apply Hk; [lia | exact Hnone | exact Hfr]. }
             iSplit.
             { iPureIntro. cbv [env_set_dev env_bind pe_fd]. rewrite dom_insert_L.
               apply Hs_fd. lia. }
+            iSplit.
+            { iPureIntro. intros d' Hd'. apply elem_of_union. right. by apply Hdp. }
             iSplit.
             { iPureIntro. intros fd' d'. cbv [env_set_dev env_bind pe_fd].
               destruct (decide (fd' = fd)) as [-> | Hne].
@@ -475,14 +543,17 @@ Section UkHandler.
           rewrite lookup_delete_ne; [| done]. apply Hdom. }
         assert (Hsafe' : safe_fds (dom (pe_fd (env_unbind E fd))) (k 0)).
         { cbv [env_unbind pe_fd]. rewrite dom_delete_L. apply Hs. }
-        destruct (decide (fd_shared (pe_fd E) fd d)) as [Hsh | Hsh].
-        * (* a dup: the device stays *)
+        destruct (decide (fd_shared_p Dp (pe_fd E) fd d)) as [Hsh | Hsh].
+        * (* a dup, or a protected device: the device stays *)
           iApply (ei_close_shared I (pe_fd E) fd d with "Hfds"); [exact Hfd | exact Hsh |].
           iSplit.
           { iIntros "Hfds".
             iApply (cf_inv_same I (env_unbind E fd) ds with "Hfds Hfiles Hdev"); done. }
           { iIntros (y) "Ht". iApply (cf_inv_taint I _ with "Ht"). apply Hs. }
-        * (* the last descriptor: the device goes *)
+        * (* the last descriptor of an unprotected device: the device goes *)
+          assert (Hnp : d ∉ Dp /\ ~ fd_shared (pe_fd E) fd d).
+          { split; intros H; apply Hsh; apply fd_shared_p_iff; [by left | by right]. }
+          destruct Hnp as [Hnp Hsh'].
           iDestruct (dev_res_take I _ ds d Hin with "Hdev") as "[Hdr Hrest]".
           iApply (ei_close I (pe_fd E) fd d (pe_dev E d) (pe_files E) (pe_paths E)
                     with "Hfds Hfiles Hdr"); [exact Hfd | exact Hsh |].
@@ -491,11 +562,14 @@ Section UkHandler.
             iLeft. iExists (env_unbind E fd), (ds ∖ {[d]}).
             iSplit; [done |]. iSplit; [done |].
             iSplit.
+            { iPureIntro. intros d' Hd'. apply elem_of_difference.
+              split; [by apply Hdp |]. apply not_elem_of_singleton. intros ->. done. }
+            iSplit.
             { iPureIntro. intros fd' d' Hfd'. pose proof (Hdom' fd' d' Hfd') as Hin'.
               cbv [env_unbind pe_fd] in Hfd'.
               destruct (decide (fd' = fd)) as [-> | Hne]; [by rewrite lookup_delete in Hfd' |].
               assert (d' <> d) as Hne'.
-              { intros ->. apply Hsh. exists fd'. split.
+              { intros ->. apply Hsh'. exists fd'. split.
                 - rewrite dom_delete_L. rewrite lookup_delete_ne in Hfd'; [| done].
                   apply elem_of_difference. split; [by apply elem_of_dom | set_solver].
                 - rewrite lookup_delete_ne in Hfd'; [exact Hfd' | done]. }
@@ -512,36 +586,36 @@ Section UkHandler.
           iSplit; [| iIntros (x) "Ht"; iApply (cf_inv_taint I _ with "Ht"); apply Hs].
           iIntros (c S') "%Hchunk Hfds Hin'".
           iApply (cf_inv_move I E ds d (DIn S') with "Hfds Hfiles Hin' Hrest");
-            [exact Hin | by apply Hk | apply Hs | exact Hdom].
+            [exact Hin | by apply Hk | apply Hs | exact Hdp | exact Hdom].
         * iApply (ei_read_e I (pe_fd E) fd d Sin n with "Hfds Hdr"); [exact Hn | exact Hfd |].
           iSplit; [| iSplit; [| iIntros (x) "Ht"; iApply (cf_inv_taint I _ with "Ht"); apply Hs]].
           { iIntros (c S') "%Hchunk Hfds Hin'".
             iApply (cf_inv_move I E ds d (DInE S') with "Hfds Hfiles Hin' Hrest");
-              [exact Hin | by apply Hk | apply Hs | exact Hdom]. }
+              [exact Hin | by apply Hk | apply Hs | exact Hdp | exact Hdom]. }
           { iIntros "Hfds Hend".
             iApply (cf_inv_move I E ds d DInEnd with "Hfds Hfiles Hend Hrest");
-              [exact Hin | exact Hke | apply Hs | exact Hdom]. }
+              [exact Hin | exact Hke | apply Hs | exact Hdp | exact Hdom]. }
         * iApply (ei_read_end I (pe_fd E) fd d n with "Hfds Hdr"); [exact Hn | exact Hfd |].
           iSplit; [| iIntros (x) "Ht"; iApply (cf_inv_taint I _ with "Ht"); apply Hs].
           iIntros "Hfds Hend".
           iApply (cf_inv_move I E ds d DInEnd with "Hfds Hfiles Hend Hrest");
-            [exact Hin | by rewrite (env_set_dev_id E d _ Hd) | apply Hs | exact Hdom].
+            [exact Hin | by rewrite (env_set_dev_id E d _ Hd) | apply Hs | exact Hdp | exact Hdom].
         * (* the copy device: a chunk joins the pending bytes, or the writer closed *)
           iApply (ei_read_copy I (pe_fd E) fd d h Sin p n with "Hfds Hdr");
             [exact Hn | exact Hfd | exact Hfd0 |].
           iSplit; [| iSplit; [| iIntros (x) "Ht"; iApply (cf_inv_taint I _ with "Ht"); apply Hs]].
           { iIntros (c S') "%Hchunk %Hne Hfds Hc".
             iApply (cf_inv_move I E ds d (DCopy h S' (p ++ c)) with "Hfds Hfiles Hc Hrest");
-              [exact Hin | by apply Hk | apply Hs | exact Hdom]. }
+              [exact Hin | by apply Hk | apply Hs | exact Hdp | exact Hdom]. }
           { iIntros "Hfds Hend".
             iApply (cf_inv_move I E ds d (DCopyEnd h p) with "Hfds Hfiles Hend Hrest");
-              [exact Hin | exact Hke | apply Hs | exact Hdom]. }
+              [exact Hin | exact Hke | apply Hs | exact Hdp | exact Hdom]. }
         * iApply (ei_read_copy_end I (pe_fd E) fd d h p n with "Hfds Hdr");
             [exact Hn | exact Hfd | exact Hfd0 |].
           iSplit; [| iIntros (x) "Ht"; iApply (cf_inv_taint I _ with "Ht"); apply Hs].
           iIntros "Hfds Hend".
           iApply (cf_inv_move I E ds d (DCopyEnd h p) with "Hfds Hfiles Hend Hrest");
-            [exact Hin | by rewrite (env_set_dev_id E d _ Hd) | apply Hs | exact Hdom].
+            [exact Hin | by rewrite (env_set_dev_id E d _ Hd) | apply Hs | exact Hdp | exact Hdom].
       + (* EWrite *)
         destruct Hc as (d & Hfd & Hc).
         assert (Hin : d ∈ ds) by (apply (Hdom fd); exact Hfd).
@@ -558,43 +632,43 @@ Section UkHandler.
           iSplit; [| iSplit; [| iIntros (y) "Ht"; iApply (cf_inv_taint I _ with "Ht"); apply Hs]].
           { iIntros "Hfds Hdr".
             iApply (cf_inv_move I E ds d (pe_dev E d) with "Hfds Hfiles Hdr Hrest");
-              [exact Hin | by rewrite (env_set_dev_id E d _ eq_refl) | apply Hs | exact Hdom]. }
+              [exact Hin | by rewrite (env_set_dev_id E d _ eq_refl) | apply Hs | exact Hdp | exact Hdom]. }
           { iIntros "Hfds Hdr".
             iApply (cf_inv_move I E ds d (pe_dev E d) with "Hfds Hfiles Hdr Hrest");
-              [exact Hin | by rewrite (env_set_dev_id E d _ eq_refl) | apply Hs | exact Hdom]. }
+              [exact Hin | by rewrite (env_set_dev_id E d _ eq_refl) | apply Hs | exact Hdp | exact Hdom]. }
         * rewrite Hd.
           iApply (ei_write I (pe_fd E) fd d alts a bs with "Hfds Hdr");
             [exact Hne | exact Hfd | exact Ha | exact Hpre |].
           iSplit; [| iIntros (x) "Ht"; iApply (cf_inv_taint I _ with "Ht"); apply Hs].
           iIntros "Hfds Hout".
           iApply (cf_inv_move I E ds d (DOut [drop (length bs) a]) with "Hfds Hfiles Hout Hrest");
-            [exact Hin | exact Hk | apply Hs | exact Hdom].
+            [exact Hin | exact Hk | apply Hs | exact Hdp | exact Hdom].
         * rewrite Hd.
           iApply (ei_write_h I (pe_fd E) fd d alts a bs with "Hfds Hdr");
             [exact Hne | exact Hfd | exact Ha | exact Hpre |].
           iSplit; [| iSplit; [| iIntros (x) "Ht"; iApply (cf_inv_taint I _ with "Ht"); apply Hs]].
           { iIntros "Hfds Hout".
             iApply (cf_inv_move I E ds d (DOutH [drop (length bs) a]) with "Hfds Hfiles Hout Hrest");
-              [exact Hin | exact Hk | apply Hs | exact Hdom]. }
+              [exact Hin | exact Hk | apply Hs | exact Hdp | exact Hdom]. }
           { iIntros "Hfds Hh".
             iApply (cf_inv_move I E ds d DHalt with "Hfds Hfiles Hh Hrest");
-              [exact Hin | exact Hkh | apply Hs | exact Hdom]. }
+              [exact Hin | exact Hkh | apply Hs | exact Hdp | exact Hdom]. }
         * rewrite Hd.
           iApply (ei_write_m I (pe_fd E) fd d rest bs with "Hfds Hdr");
             [exact Hne | exact Hfd |].
           iSplit; [| iSplit; [| iIntros (x) "Ht"; iApply (cf_inv_taint I _ with "Ht"); apply Hs]].
           { iIntros "Hfds Hout".
             iApply (cf_inv_move I E ds d (DOutM rest) with "Hfds Hfiles Hout Hrest");
-              [exact Hin | exact Hk | apply Hs | exact Hdom]. }
+              [exact Hin | exact Hk | apply Hs | exact Hdp | exact Hdom]. }
           { iIntros "Hfds Hout".
             iApply (cf_inv_move I E ds d (DOutM rest) with "Hfds Hfiles Hout Hrest");
-              [exact Hin | exact Hkm | apply Hs | exact Hdom]. }
+              [exact Hin | exact Hkm | apply Hs | exact Hdp | exact Hdom]. }
         * rewrite Hd.
           iApply (ei_write_halt I (pe_fd E) fd d bs with "Hfds Hdr"); [exact Hne | exact Hfd |].
           iSplit; [| iIntros (x) "Ht"; iApply (cf_inv_taint I _ with "Ht"); apply Hs].
           iIntros "Hfds Hh".
           iApply (cf_inv_move I E ds d DHalt with "Hfds Hfiles Hh Hrest");
-            [exact Hin | by rewrite (env_set_dev_id E d _ Hd) | apply Hs | exact Hdom].
+            [exact Hin | by rewrite (env_set_dev_id E d _ Hd) | apply Hs | exact Hdp | exact Hdom].
         * (* the copy device: the count, and at a sink that may halt, -1 *)
           rewrite Hd. destruct h.
           { iApply (ei_write_copy_h I (pe_fd E) fd d Sin p bs with "Hfds Hdr");
@@ -602,53 +676,81 @@ Section UkHandler.
             iSplit; [| iSplit; [| iIntros (x) "Ht"; iApply (cf_inv_taint I _ with "Ht"); apply Hs]].
             { iIntros "Hfds Hc".
               iApply (cf_inv_move I E ds d (DCopy true Sin (drop (length bs) p)) with "Hfds Hfiles Hc Hrest");
-                [exact Hin | exact Hk | apply Hs | exact Hdom]. }
+                [exact Hin | exact Hk | apply Hs | exact Hdp | exact Hdom]. }
             { iIntros "Hfds Hh".
               iApply (cf_inv_move I E ds d DCopyHalt with "Hfds Hfiles Hh Hrest");
-                [exact Hin | exact (Hkh eq_refl) | apply Hs | exact Hdom]. } }
+                [exact Hin | exact (Hkh eq_refl) | apply Hs | exact Hdp | exact Hdom]. } }
           { iApply (ei_write_copy I (pe_fd E) fd d Sin p bs with "Hfds Hdr");
               [exact Hne | exact Hfd | exact Hfd1 | exact Hpre |].
             iSplit; [| iIntros (x) "Ht"; iApply (cf_inv_taint I _ with "Ht"); apply Hs].
             iIntros "Hfds Hc".
             iApply (cf_inv_move I E ds d (DCopy false Sin (drop (length bs) p)) with "Hfds Hfiles Hc Hrest");
-              [exact Hin | exact Hk | apply Hs | exact Hdom]. }
+              [exact Hin | exact Hk | apply Hs | exact Hdp | exact Hdom]. }
         * rewrite Hd. destruct h.
           { iApply (ei_write_copy_end_h I (pe_fd E) fd d p bs with "Hfds Hdr");
               [exact Hne | exact Hfd | exact Hfd1 | exact Hpre |].
             iSplit; [| iSplit; [| iIntros (x) "Ht"; iApply (cf_inv_taint I _ with "Ht"); apply Hs]].
             { iIntros "Hfds Hc".
               iApply (cf_inv_move I E ds d (DCopyEnd true (drop (length bs) p)) with "Hfds Hfiles Hc Hrest");
-                [exact Hin | exact Hk | apply Hs | exact Hdom]. }
+                [exact Hin | exact Hk | apply Hs | exact Hdp | exact Hdom]. }
             { iIntros "Hfds Hh".
               iApply (cf_inv_move I E ds d DCopyHalt with "Hfds Hfiles Hh Hrest");
-                [exact Hin | exact (Hkh eq_refl) | apply Hs | exact Hdom]. } }
+                [exact Hin | exact (Hkh eq_refl) | apply Hs | exact Hdp | exact Hdom]. } }
           { iApply (ei_write_copy_end I (pe_fd E) fd d p bs with "Hfds Hdr");
               [exact Hne | exact Hfd | exact Hfd1 | exact Hpre |].
             iSplit; [| iIntros (x) "Ht"; iApply (cf_inv_taint I _ with "Ht"); apply Hs].
             iIntros "Hfds Hc".
             iApply (cf_inv_move I E ds d (DCopyEnd false (drop (length bs) p)) with "Hfds Hfiles Hc Hrest");
-              [exact Hin | exact Hk | apply Hs | exact Hdom]. }
+              [exact Hin | exact Hk | apply Hs | exact Hdp | exact Hdom]. }
         * rewrite Hd.
           iApply (ei_write_copy_halt I (pe_fd E) fd d bs with "Hfds Hdr");
             [exact Hne | exact Hfd | exact Hfd1 |].
           iSplit; [| iIntros (x) "Ht"; iApply (cf_inv_taint I _ with "Ht"); apply Hs].
           iIntros "Hfds Hh".
           iApply (cf_inv_move I E ds d DCopyHalt with "Hfds Hfiles Hh Hrest");
-            [exact Hin | by rewrite (env_set_dev_id E d _ Hd) | apply Hs | exact Hdom].
+            [exact Hin | by rewrite (env_set_dev_id E d _ Hd) | apply Hs | exact Hdp | exact Hdom].
       + (* EExit *)
         iApply (ei_exit I s (pe_fd E) (pe_files E) (pe_paths E) (pe_dev E) ds
-                  with "Hfds Hfiles Hdev"); [| exact Hdom].
+                  with "Hfds Hfiles Hdev"); [| by apply dom_ok_p_iff].
         intros d _. exact (Hc d).
   Qed.
 
-  Theorem tree_pay_of_conforms (I : ep_iface) (E : penv) (ds : gset nat) (t : proc) :
-    conforms E t -> safe_fds (dom (pe_fd E)) t ->
+  (* the glue at the protected devices: every one of them is among the
+     devices the environment holds *)
+  Theorem tree_pay_of_conforms_p (I : ep_ifaceP) (E : penv) (ds : gset nat) (t : proc) :
+    conforms E t -> safe_fds (dom (pe_fd E)) t -> dp_in Dp ds ->
     env_res I E ds -∗ tree_pay N P t.
   Proof using .
-    intros Hc Hs. iIntros "Hres".
+    intros Hc Hs Hdp. iIntros "Hres".
     iApply (tree_pay_coind N P (cf_inv I) with "[]").
     { iApply cf_inv_step. }
     iLeft. iExists E, ds. by iFrame.
   Qed.
 
 End UkHandler.
+
+(* THE RECORD AT NO PROTECTED DEVICE: the shape every landed instance and
+   entry is stated at ([UkPipeIface], [UkTreeEntry]) *)
+Notation ep_iface := (ep_ifaceP (Dp := [])).
+Notation MkEI := (MkEIP (Dp := [])).
+
+Section UkHandlerNil.
+  Context `{!riscvGS Σ}.
+  Context `{!ufdG Σ}.
+  Context `{GEN : GenId} `{XI : CurCtx}.
+  Context `{!ghost_varG Σ Z}.
+  Context `{!ghost_varG Σ (gset gname)}.
+  Context `{!ctokG Σ}.
+  Context {SG : uexecSG Σ}.
+  Context `{PS : uprogSG Σ}.
+  Context (N : uk_names Σ).
+  Context (P : uprog Σ).
+
+  Theorem tree_pay_of_conforms (I : ep_iface N P) (E : penv) (ds : gset nat) (t : proc) :
+    conforms E t -> safe_fds (dom (pe_fd E)) t ->
+    env_res N P I E ds -∗ tree_pay N P t.
+  Proof using .
+    intros Hc Hs. iApply (tree_pay_of_conforms_p N P I E ds t Hc Hs).
+    intros d Hd. by apply elem_of_nil in Hd.
+  Qed.
+End UkHandlerNil.

@@ -597,6 +597,108 @@ Section UkConsOutGen.
   Definition cons_dev (alts : list (list (bv 8))) : iProp Σ :=
     (∃ (v : era_pins) (I : list (bv 8)), cons_dev_at v I alts)%I.
 
+  (* THE DEVICE REMEMBERING THE CODES IT WAS LENT (program-specs SS3.4e,
+     lane D): [cons_dev_at] with the unfiled codes drawn from [C] and the
+     filed one in [C].  A drained device then names a code of [C] -- which
+     is what an exit payload stated at the round's two or three codes
+     ([UCatKernel.catq_cat]) needs and the code-free reader cannot give.
+     [cons_dev_at] is this at some [C], and its step law is proved here. *)
+  Definition cons_dev_atc (C : list nat) (v : era_pins) (I : list (bv 8))
+      (alts : list (list (bv 8))) : iProp Σ :=
+    (LINKS ∗ ⌜cons_short alts⌝
+     ∗ ((∃ (ps cs : list nat) (s0 : lm_st M) (pos : nat),
+           ⌜lm_wr_blk_t M ps cs s0 I pos⌝ ∗ PIN ke v
+           ∗ ((∃ codes : list nat,
+                 ⌜codes ⊆ C⌝
+                 ∗ ⌜alts = lm_body M s0 cs I <$> codes⌝
+                 ∗ ⌜Forall (cons_adm M I) codes⌝
+                 ∗ cons_cur v ps cs s0 I pos 0 0)
+              ∨ (∃ c i : nat,
+                   ⌜c ∈ C⌝ ∗ ⌜(0 < i)%nat⌝ ∗ ⌜(i <= length (lm_body M s0 cs I c))%nat⌝
+                   ∗ ⌜cons_adm M I c⌝
+                   ∗ ⌜alts = [drop i (lm_body M s0 cs I c)]⌝
+                   ∗ cons_cur v ps cs s0 I pos c i)))
+        ∨ T))%I.
+
+  Lemma cons_dev_atc_at (C : list nat) (v : era_pins) (I : list (bv 8))
+      (alts : list (list (bv 8))) :
+    cons_dev_atc C v I alts -∗ cons_dev_at v I alts.
+  Proof using .
+    iIntros "(Hlk & %Hs & Hd)". iSplitL "Hlk"; [iExact "Hlk" |]. iSplit; [done |].
+    iDestruct "Hd" as "[Hd | HT]"; [| by iRight]. iLeft.
+    iDestruct "Hd" as (ps cs s0 pos) "(%Hw & Hpin & Hd)". iExists ps, cs, s0, pos.
+    iSplit; [done |]. iSplitL "Hpin"; [iExact "Hpin" |].
+    iDestruct "Hd" as "[(%codes & %Hsub & %Hal & %Hadm & Hc)
+                      | (%c & %i & %Hc & %Hi & %Hil & %Hadm & %Hal & Hc)]".
+    - iLeft. iExists codes. iSplit; [done |]. iSplit; [done |]. iExact "Hc".
+    - iRight. iExists c, i. iSplit; [done |]. iSplit; [done |]. iSplit; [done |].
+      iSplit; [done |]. iExact "Hc".
+  Qed.
+
+  Lemma cons_dev_at_atc (v : era_pins) (I : list (bv 8)) (alts : list (list (bv 8))) :
+    cons_dev_at v I alts -∗ ∃ C : list nat, cons_dev_atc C v I alts.
+  Proof using .
+    iIntros "(Hlk & %Hs & Hd)".
+    iDestruct "Hd" as "[Hd | HT]".
+    - iDestruct "Hd" as (ps cs s0 pos) "(%Hw & Hpin & Hd)".
+      iDestruct "Hd" as "[(%codes & %Hal & %Hadm & Hc)
+                        | (%c & %i & %Hi & %Hil & %Hadm & %Hal & Hc)]".
+      + iExists codes. iSplitL "Hlk"; [iExact "Hlk" |]. iSplit; [done |]. iLeft.
+        iExists ps, cs, s0, pos. iSplit; [done |]. iSplitL "Hpin"; [iExact "Hpin" |].
+        iLeft. iExists codes. iSplit; [done |]. iSplit; [done |]. iSplit; [done |].
+        iExact "Hc".
+      + iExists [c]. iSplitL "Hlk"; [iExact "Hlk" |]. iSplit; [done |]. iLeft.
+        iExists ps, cs, s0, pos. iSplit; [done |]. iSplitL "Hpin"; [iExact "Hpin" |].
+        iRight. iExists c, i. iSplit; [iPureIntro; by apply elem_of_list_singleton |].
+        iSplit; [done |]. iSplit; [done |]. iSplit; [done |]. iSplit; [done |].
+        iExact "Hc".
+    - iExists []. iSplitL "Hlk"; [iExact "Hlk" |]. iSplit; [done |]. by iRight.
+  Qed.
+
+  Lemma cons_dev_atc_short (C : list nat) (v : era_pins) (I : list (bv 8))
+      (alts : list (list (bv 8))) :
+    cons_dev_atc C v I alts -∗ ⌜cons_short alts⌝.
+  Proof using . iIntros "(_ & $ & _)". Qed.
+
+  Lemma cons_dev_atc_taint (C : list nat) (v : era_pins) (I : list (bv 8))
+      (alts : list (list (bv 8))) :
+    cons_short alts -> LINKS -∗ T -∗ cons_dev_atc C v I alts.
+  Proof using .
+    iIntros (Hs) "Hlk HT". iSplitL "Hlk"; [iExact "Hlk" |].
+    iSplit; [done |]. by iRight.
+  Qed.
+
+  Lemma cons_dev_atc_sub (C : list nat) (v : era_pins) (I : list (bv 8))
+      (alts : list (list (bv 8))) (a : list (bv 8)) :
+    a ∈ alts -> cons_dev_atc C v I alts -∗ cons_dev_atc C v I [a].
+  Proof using .
+    intros Ha. iIntros "(Hlk & %Hs & Hd)". iSplitL "Hlk"; [iExact "Hlk" |].
+    iSplit.
+    { iPureIntro. unfold cons_short in *. apply Forall_singleton.
+      exact (proj1 (Forall_forall _ _) Hs a (proj1 (elem_of_list_In _ _) Ha)). }
+    iDestruct "Hd" as "[Hd | HT]"; [| by iRight]. iLeft.
+    iDestruct "Hd" as (ps cs s0 pos) "(%Hw & Hpin & Hd)".
+    iExists ps, cs, s0, pos.
+    iSplit; [iPureIntro; exact Hw |]. iSplitL "Hpin"; [iExact "Hpin" |].
+    iDestruct "Hd" as "[(%codes & %Hsub & %Hal & %Hadm & Hc)
+                      | (%c & %i & %Hc & %Hi & %Hil & %Hadm & %Hal & Hc)]".
+    - iLeft. subst alts. apply elem_of_list_fmap in Ha as (c & -> & Hc).
+      iExists [c].
+      iSplit; [iPureIntro; intros x Hx; apply elem_of_list_singleton in Hx as ->; by apply Hsub |].
+      iSplit; [iPureIntro; reflexivity |].
+      iSplit; [iPureIntro; apply Forall_singleton;
+               exact (proj1 (Forall_forall _ _) Hadm c (proj1 (elem_of_list_In _ _) Hc)) |].
+      iExact "Hc".
+    - iRight. subst alts. apply elem_of_list_singleton in Ha as ->.
+      iExists c, i.
+      iSplit; [iPureIntro; exact Hc |].
+      iSplit; [iPureIntro; exact Hi |].
+      iSplit; [iPureIntro; exact Hil |].
+      iSplit; [iPureIntro; exact Hadm |].
+      iSplit; [iPureIntro; reflexivity |].
+      iExact "Hc".
+  Qed.
+
   (* ---- the three laws, at a round ---- *)
   Lemma cons_dev_at_short (v : era_pins) (I : list (bv 8)) (alts : list (list (bv 8))) :
     cons_dev_at v I alts -∗ ⌜cons_short alts⌝.
@@ -644,9 +746,10 @@ Section UkConsOutGen.
      filed one; the taint through [gl_taint]).  A byte of the body is the
      alternative's byte ([lm_body_lookup_Some]), so the leaves apply as
      they would at the whole alternative. *)
-  Lemma cons_dev_at_step (v : era_pins) (I : list (bv 8)) (x : list (bv 8)) (b : bv 8) :
+  Lemma cons_dev_atc_step (C : list nat) (v : era_pins) (I : list (bv 8))
+      (x : list (bv 8)) (b : bv 8) :
     x !! 0%nat = Some b ->
-    cons_dev_at v I [x] -∗ out_link Uart0 ke b (cons_dev_at v I [drop 1 x]).
+    cons_dev_atc C v I [x] -∗ out_link Uart0 ke b (cons_dev_atc C v I [drop 1 x]).
   Proof using LINKS_blk LINKS_pers LINKS_taint LINKS_w.
     intros Hb. iIntros "(#Hlk & %Hs & Hd)".
     iDestruct (LINKS_w with "Hlk") as "#Hw".
@@ -658,15 +761,16 @@ Section UkConsOutGen.
       apply Nat2Z.inj_le. rewrite length_drop. lia. }
     iDestruct "Hd" as "[Hd | #HT]"; last first.
     { iApply ("Htaint" $! ke b with "HT").
-      iIntros "#HT'". iApply (cons_dev_at_taint v I _ Hs' with "Hlk HT'"). }
+      iIntros "#HT'". iApply (cons_dev_atc_taint C v I _ Hs' with "Hlk HT'"). }
     iDestruct "Hd" as (ps cs s0 pos) "(%Hw & #Hpin & Hd)".
     pose proof Hw as [Hwb Htl].
     pose proof Hwb as (Hpin0 & Hr & Hn & HP).
-    iDestruct "Hd" as "[(%codes & %Hal & %Hadm & Hc)
-                      | (%c & %i & %Hi & %Hil & %Hadmc & %Hal & Hc)]".
+    iDestruct "Hd" as "[(%codes & %Hsub & %Hal & %Hadm & Hc)
+                      | (%c & %i & %HcC & %Hi & %Hil & %Hadmc & %Hal & Hc)]".
     - (* UNFILED: the block's first byte files the code *)
       destruct codes as [| c [| c' codes]]; cbn [fmap list_fmap] in Hal;
         try discriminate.
+      assert (HcC : c ∈ C) by (apply Hsub; by apply elem_of_list_singleton).
       injection Hal as Hx. subst x.
       rewrite Forall_singleton in Hadm. destruct Hadm as [Hok Hterm].
       pose proof (lookup_lt_Some _ _ _ Hb) as Hlen.
@@ -679,11 +783,12 @@ Section UkConsOutGen.
       { exact Hr. } { lia. } { exact Hpin0. } { exact HP. }
       { exact Hok. } { exact Hterm. } { exact Hb'. }
       iIntros "[(Ht & _ & #Hcs' & _) | #HT]";
-        last by iApply (cons_dev_at_taint v I _ Hs' with "Hlk HT").
+        last by iApply (cons_dev_atc_taint C v I _ Hs' with "Hlk HT").
       iSplitR; [iExact "Hlk" |].
       iSplit; [iPureIntro; exact Hs' |]. iLeft. iExists ps, cs, s0, pos.
       iSplit; [iPureIntro; exact Hw |]. iSplit; [iExact "Hpin" |].
       iRight. iExists c, 1%nat.
+      iSplit; [iPureIntro; exact HcC |].
       iSplit; [iPureIntro; lia |].
       iSplit; [iPureIntro; lia |].
       iSplit; [iPureIntro; split; [exact Hok | exact Hterm] |].
@@ -704,11 +809,12 @@ Section UkConsOutGen.
       { exact (lm_wr_blk_pin_snoc M ps cs s0 I pos c Hwb). }
       { exact (cons_blk_byte M ps cs s0 I pos c (S i') b Hwb Hb'). }
       iIntros "[(Ht & _ & _ & _) | #HT]";
-        last by iApply (cons_dev_at_taint v I _ Hs' with "Hlk HT").
+        last by iApply (cons_dev_atc_taint C v I _ Hs' with "Hlk HT").
       iSplitR; [iExact "Hlk" |].
       iSplit; [iPureIntro; exact Hs' |]. iLeft. iExists ps, cs, s0, pos.
       iSplit; [iPureIntro; exact Hw |]. iSplit; [iExact "Hpin" |].
       iRight. iExists c, (S (S i')).
+      iSplit; [iPureIntro; exact HcC |].
       iSplit; [iPureIntro; lia |].
       iSplit; [iPureIntro; lia |].
       iSplit; [iPureIntro; exact Hadmc |].
@@ -717,6 +823,18 @@ Section UkConsOutGen.
       rewrite /cons_cur. cbn [lm_blkcs].
       replace (pos + S (S i'))%nat with (S (pos + S i')) by lia.
       iFrame "Ht Hps Hcs Hin HW".
+  Qed.
+
+  (* ...and the code-free device's step, off it *)
+  Lemma cons_dev_at_step (v : era_pins) (I : list (bv 8)) (x : list (bv 8)) (b : bv 8) :
+    x !! 0%nat = Some b ->
+    cons_dev_at v I [x] -∗ out_link Uart0 ke b (cons_dev_at v I [drop 1 x]).
+  Proof using LINKS_blk LINKS_pers LINKS_taint LINKS_w.
+    intros Hb. iIntros "Hd".
+    iDestruct (cons_dev_at_atc with "Hd") as (C) "Hd".
+    iApply (out_link_mono Uart0 ke b (cons_dev_atc C v I [drop 1 x]) with "[] [Hd]").
+    { iIntros "Hd". iApply (cons_dev_atc_at with "Hd"). }
+    iApply (cons_dev_atc_step C v I x b Hb with "Hd").
   Qed.
 
   (* ---- the three laws at the round-free device ---- *)
@@ -806,6 +924,58 @@ Section UkConsOutGen.
       iExact "Hc".
   Qed.
 
+  (* THE SAME TWO READERS AT THE CODES: the lend at codes drawn from [C],
+     and the drained device naming the code of [C] it filed *)
+  Lemma cons_dev_atc_of_blk0 (C : list nat) (v : era_pins) (I : list (bv 8))
+      (ps cs : list nat) (s0 : lm_st M) (pos : nat) (codes : list nat) :
+    lm_wr_blk_t M ps cs s0 I pos ->
+    codes ⊆ C ->
+    Forall (cons_adm M I) codes ->
+    cons_short (lm_body M s0 cs I <$> codes) ->
+    LINKS -∗ PIN ke v -∗ cons_cur v ps cs s0 I pos 0 0 -∗
+    cons_dev_atc C v I (lm_body M s0 cs I <$> codes).
+  Proof using .
+    intros Hw Hsub Hadm Hs. iIntros "Hlk Hpin Hc".
+    iSplitL "Hlk"; [iExact "Hlk" |]. iSplit; [iPureIntro; exact Hs |].
+    iLeft. iExists ps, cs, s0, pos. iSplit; [iPureIntro; exact Hw |].
+    iSplitL "Hpin"; [iExact "Hpin" |]. iLeft. iExists codes.
+    iSplit; [iPureIntro; exact Hsub |].
+    iSplit; [iPureIntro; reflexivity |]. iSplit; [iPureIntro; exact Hadm |].
+    iExact "Hc".
+  Qed.
+
+  Lemma cons_dev_atc_drained (C : list nat) (v : era_pins) (I : list (bv 8)) :
+    cons_dev_atc C v I [[]] -∗
+    LINKS
+    ∗ (T ∨ ∃ (ps cs : list nat) (s0 : lm_st M) (pos c : nat),
+             ⌜lm_wr_blk_t M ps cs s0 I pos⌝ ∗ ⌜c ∈ C⌝ ∗ ⌜cons_adm M I c⌝ ∗ PIN ke v
+             ∗ cons_cur v ps cs s0 I pos c (length (lm_body M s0 cs I c))).
+  Proof using .
+    iIntros "(Hlk & _ & Hd)". iSplitL "Hlk"; [iExact "Hlk" |].
+    iDestruct "Hd" as "[Hd | HT]"; [| by iLeft]. iRight.
+    iDestruct "Hd" as (ps cs s0 pos) "(%Hw & Hpin & Hd)".
+    iDestruct "Hd" as "[(%codes & %Hsub & %Hal & %Hadm & Hc)
+                      | (%c & %i & %HcC & %Hi & %Hil & %Hadm & %Hal & Hc)]".
+    - destruct codes as [| c [| c' codes]]; cbn [fmap list_fmap] in Hal;
+        try discriminate.
+      injection Hal as Hx.
+      rewrite Forall_singleton in Hadm.
+      iExists ps, cs, s0, pos, c.
+      iSplit; [iPureIntro; exact Hw |].
+      iSplit; [iPureIntro; apply Hsub; by apply elem_of_list_singleton |].
+      iSplit; [iPureIntro; exact Hadm |].
+      iSplitL "Hpin"; [iExact "Hpin" |].
+      rewrite -Hx. cbn [length]. rewrite /cons_cur. cbn [lm_blkcs]. iExact "Hc".
+    - injection Hal as Hx.
+      apply (f_equal length) in Hx. rewrite length_drop in Hx. cbn [length] in Hx.
+      iExists ps, cs, s0, pos, c.
+      iSplit; [iPureIntro; exact Hw |]. iSplit; [iPureIntro; exact HcC |].
+      iSplit; [iPureIntro; exact Hadm |].
+      iSplitL "Hpin"; [iExact "Hpin" |].
+      replace (length (lm_body M s0 cs I c)) with i by lia.
+      iExact "Hc".
+  Qed.
+
   (* the cursor at the body's end IS [gwc_post]: the block written up to
      its prompt, at the round's own state *)
   Lemma cons_cur_gwc_post (v : era_pins) (ps cs : list nat) (s0 : lm_st M)
@@ -838,6 +1008,20 @@ Section UkConsOutGen.
     Proof using HPc Hstub LINKS_blk LINKS_pers LINKS_taint LINKS_w.
       exact (cons_write N P Hstub (cons_dev_at v I) (cons_dev_at_short v I)
                (cons_dev_at_sub v I) (cons_dev_at_step v I) l fd rb alts a bs K).
+    Qed.
+
+    Lemma cons_write_gl_atc (C : list nat) (v : era_pins) (I : list (bv 8))
+        (l : list fdstate) (fd : nat) (rb : bool)
+        (alts : list (list (bv 8))) (a bs : list (bv 8)) (K : Z -> iProp Σ) :
+      (fd < NSTD)%nat -> l !! fd = Some (FdOpen rb true (FdDevice CONSOLE)) ->
+      a ∈ alts -> bs `prefix_of` a ->
+      UserFd.ustd (ukn_fd N) l -∗ cons_dev_atc C v I alts -∗
+      (UserFd.ustd (ukn_fd N) l -∗ cons_dev_atc C v I [drop (length bs) a]
+       -∗ K (Z.of_nat (length bs))) -∗
+      wr_obl N P (Z.of_nat fd) bs K.
+    Proof using HPc Hstub LINKS_blk LINKS_pers LINKS_taint LINKS_w.
+      exact (cons_write N P Hstub (cons_dev_atc C v I) (cons_dev_atc_short C v I)
+               (cons_dev_atc_sub C v I) (cons_dev_atc_step C v I) l fd rb alts a bs K).
     Qed.
 
     Lemma cons_write_gl (l : list fdstate) (fd : nat) (rb : bool)

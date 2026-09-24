@@ -243,7 +243,7 @@ Section UkTreeEntry.
       (s0 t : Z) (g : nat -> bv 8) (sts : list fdstate)
       (cw : Z) (cs : gset gname) (pidv : mword 32)
       (Q : Z -> iProp Σ) (Pay : iProp Σ)
-      (I : forall N' : uk_names Σ, ep_iface N' (echo_prog N'))
+      {Dp : list nat} (I : forall N' : uk_names Σ, ep_ifaceP (Dp := Dp) N' (echo_prog N'))
       (E : penv) (ds : gset nat) :
     EchoDisc.line_ok ws ->
     UShEcho.echo_node_img ws M s0 t g ->
@@ -251,6 +251,7 @@ Section UkTreeEntry.
     length sts = NOFILE ->
     conforms E (echo_tree ws) ->
     safe_fds (dom (pe_fd E)) (echo_tree ws) ->
+    dp_in Dp ds ->
     □ (∀ N' : uk_names Σ,
          ⌜ukn_pay N' = Q⌝ -∗
          UserFd.ustd (ukn_fd N') (take NSTD sts) -∗
@@ -262,7 +263,7 @@ Section UkTreeEntry.
     image_entry ElfUser.echo_elf M (mword_of_int (t + 8) : mword 64) sts
       cw cs pidv Q Pay uslot.
   Proof using .
-    intros Hline Himg Hbytes Hfdl Hc Hs.
+    intros Hline Himg Hbytes Hfdl Hc Hs Hdp.
     iIntros "#Henv #Hnpw #Hdep".
     iApply image_entry_of_at. iIntros "!>" (na alen afun) "%Hargs".
     destruct (UShEcho.echo_args_det_holds ws Hline M s0 t g na alen afun
@@ -321,7 +322,7 @@ Section UkTreeEntry.
     iApply (wp_kecho_start_env N' (I N') E ds h (tf_resume_gpr0 (uvis_tf W'))
               (uvis_av W')
               (echo_args (uvis_M W') (uvis_av W') (Z.to_nat (uvis_argc W')))
-              0 Hc' Hs' Ha0 Ha1
+              0 Hc' Hs' Hdp Ha0 Ha1
               with "[Hstd Hcwf HPay] [] [] [] Hrun").
     { iApply ("Henv" $! N' with "[%] [Hstd] [Hcwf] HPay");
         [ exact Hpayeq | rewrite <- Hfd; iExact "Hstd" | rewrite <- Hcwv; iExact "Hcwf" ]. }
@@ -346,7 +347,7 @@ Section UkTreeEntry.
       (sv t : Z) (gn : nat -> bv 8)
       (sts : list fdstate) (cw : Z) (cs : gset gname) (pidv : mword 32)
       (Q : Z -> iProp Σ) (Pay : iProp Σ)
-      (I : forall N' : uk_names Σ, ep_iface N' (cat_prog N'))
+      {Dp : list nat} (I : forall N' : uk_names Σ, ep_ifaceP (Dp := Dp) N' (cat_prog N'))
       (E : penv) (ds : gset nat) :
     exec_ok ws ->
     UShEcho.echo_node_img ws Mn sv t gn ->
@@ -354,6 +355,7 @@ Section UkTreeEntry.
     length sts = NOFILE ->
     conforms E (cat_tree ws) ->
     safe_fds (dom (pe_fd E)) (cat_tree ws) ->
+    dp_in Dp ds ->
     □ (∀ N' : uk_names Σ,
          ⌜ukn_pay N' = Q⌝ -∗
          UserFd.ustd (ukn_fd N') (take NSTD sts) -∗
@@ -365,7 +367,7 @@ Section UkTreeEntry.
     image_entry ElfUser.cat_elf Mn (mword_of_int (t + 8) : mword 64) sts
       cw cs pidv Q Pay uslot.
   Proof using .
-    intros Hok Himg Hbytes Hfdl Hc Hs.
+    intros Hok Himg Hbytes Hfdl Hc Hs Hdp.
     iIntros "#Henv #Hnpw #Hdep".
     iApply image_entry_of_at. iIntros "!>" (na alen afun) "%Hargs".
     destruct (UShCat.cat_args_det_holds ws Hok Mn sv t gn na alen afun
@@ -442,7 +444,7 @@ Section UkTreeEntry.
     { unfold uvis_av. symmetry. apply moi_of_uint. }
     iApply (wp_kcat_start_env N' (I N') E ds h (tf_resume_gpr0 (uvis_tf W'))
               (uvis_av W') (UShCat.cat_args W') (fun _ : nat => ubyte0) 0%nat
-              Hc' Hs' Hptr Ha0 Ha1
+              Hc' Hs' Hdp Hptr Ha0 Ha1
               with "[Hstd Hcwf HPay] Hcode Hro Hargv Hbuf' Hrun").
     iApply ("Henv" $! N' with "[%] [Hstd] [Hcwf] HPay");
       [ exact Hpayeq | rewrite <- Hfd; iExact "Hstd" | rewrite <- Hcwv; iExact "Hcwf" ].
@@ -454,7 +456,7 @@ Section UkTreeEntry.
       (sv t : Z) (gn : nat -> bv 8)
       (sts : list fdstate) (cw : Z) (cs : gset gname) (pidv : mword 32)
       (Q : Z -> iProp Σ) (Pay : iProp Σ)
-      (I : forall N' : uk_names Σ, ep_iface N' (cat_prog N'))
+      {Dp : list nat} (I : forall N' : uk_names Σ, ep_ifaceP (Dp := Dp) N' (cat_prog N'))
       (E : penv) (ds : gset nat) :
     exec_ok ws ->
     UShEcho.echo_node_img ws Mn sv t gn ->
@@ -467,6 +469,7 @@ Section UkTreeEntry.
        = FsImgCheck.fname_f !!! j) ->
     conforms E (cat_tree [sb "cat"; FsImgCheck.fname_f]) ->
     safe_fds (dom (pe_fd E)) (cat_tree [sb "cat"; FsImgCheck.fname_f]) ->
+    dp_in Dp ds ->
     □ (∀ N' : uk_names Σ,
          ⌜ukn_pay N' = Q⌝ -∗
          UserFd.ustd (ukn_fd N') (take NSTD sts) -∗
@@ -478,13 +481,13 @@ Section UkTreeEntry.
     image_entry ElfUser.cat_elf Mn (mword_of_int (t + 8) : mword 64) sts
       cw cs pidv Q Pay uslot.
   Proof using .
-    intros Hok Himg Hbytes Hfdl Hws2 Halen1 Hfname Hc Hs.
+    intros Hok Himg Hbytes Hfdl Hws2 Halen1 Hfname Hc Hs Hdp.
     assert (Htail : cat_tree ws = cat_tree [sb "cat"; FsImgCheck.fname_f]).
     { apply cat_tree_tail. rewrite (cat_f_tail ws Hws2 Halen1 Hfname). reflexivity. }
     rewrite <- Htail in Hc, Hs.
     iIntros "#Henv #Hnpw #Hdep".
     iApply (cat_image_entry_env ws Mn sv t gn sts cw cs pidv Q Pay I E ds
-              Hok Himg Hbytes Hfdl Hc Hs with "Henv Hnpw Hdep").
+              Hok Himg Hbytes Hfdl Hc Hs Hdp with "Henv Hnpw Hdep").
   Qed.
 
 End UkTreeEntry.

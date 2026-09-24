@@ -526,11 +526,13 @@ Section UkCatTree.
   (* [wp_kcat_start_tree] with the tree paid by an ENVIRONMENT
      ([UkHandler.tree_pay_of_conforms]); [UkEchoTree.wp_kecho_start_env]'s
      twin. *)
-  Lemma wp_kcat_start_env (I : ep_iface N cat_prog) (E : penv) (ds : gset nat)
+  Lemma wp_kcat_start_env {Dp : list nat} (I : ep_ifaceP (Dp := Dp) N cat_prog)
+      (E : penv) (ds : gset nat)
       (h : CpuId) (m : regfile) (av : Z) (args : list uarg)
       (f : nat -> bv 8) (n : nat) :
     conforms E (cat_tree (map uarg_bytes args)) ->
     safe_fds (dom (pe_fd E)) (cat_tree (map uarg_bytes args)) ->
+    dp_in Dp ds ->
     (forall (j : nat) (g : uarg), args !! j = Some g -> ua_ptr g <> 0) ->
     m !!! Regidx (mword_of_int 10 : mword 5)
       = mword_of_int (Z.of_nat (length args)) ->
@@ -544,10 +546,10 @@ Section UkCatTree.
       (2 + (6 + (8 + (10 + (12 + (4 + n)))))) -∗
     mWP (Loop : expr riscv_lang).
   Proof using .
-    intros Hc Hs Hptr Ha0 Ha1. iIntros "Henv #Hcode #Hro #Hargv Hbuf Hrun".
+    intros Hc Hs Hdp Hptr Ha0 Ha1. iIntros "Henv #Hcode #Hro #Hargv Hbuf Hrun".
     iApply (wp_kcat_start_tree h m av args f n Hptr Ha0 Ha1
               with "[Henv] Hcode Hro Hargv Hbuf Hrun").
-    iApply (tree_pay_of_conforms N cat_prog I E ds _ Hc Hs with "Henv").
+    iApply (tree_pay_of_conforms_p N cat_prog I E ds _ Hc Hs Hdp with "Henv").
   Qed.
 
 End UkCatTree.

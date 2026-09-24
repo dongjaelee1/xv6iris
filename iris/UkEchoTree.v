@@ -269,10 +269,12 @@ Section UkEchoTree.
      interface [I] at echo's instance, its resources at [E] over the
      devices [ds], and the pure half -- the tree conforms to [E] and keeps
      the descriptor discipline ([UkHandler.tree_pay_of_conforms]). *)
-  Lemma wp_kecho_start_env (I : ep_iface N echo_prog) (E : penv) (ds : gset nat)
+  Lemma wp_kecho_start_env {Dp : list nat} (I : ep_ifaceP (Dp := Dp) N echo_prog)
+      (E : penv) (ds : gset nat)
       (h : CpuId) (m : regfile) (av : Z) (args : list uarg) (n : nat) :
     conforms E (echo_tree (map uarg_bytes args)) ->
     safe_fds (dom (pe_fd E)) (echo_tree (map uarg_bytes args)) ->
+    dp_in Dp ds ->
     m !!! Regidx (mword_of_int 10 : mword 5) = mword_of_int (Z.of_nat (length args)) ->
     m !!! Regidx (mword_of_int 11 : mword 5) = mword_of_int av ->
     env_res N echo_prog I E ds -∗
@@ -282,10 +284,10 @@ Section UkEchoTree.
     urun N h m (mword_of_int EchoSyms.start) (2 + (8 + (2 + n))) -∗
     mWP (Loop : expr riscv_lang).
   Proof using .
-    intros Hc Hs Ha0 Ha1. iIntros "Henv #Hcode #Hro #Hargv Hrun".
+    intros Hc Hs Hdp Ha0 Ha1. iIntros "Henv #Hcode #Hro #Hargv Hrun".
     iApply (wp_kecho_start_tree h m av args n Ha0 Ha1
               with "[Henv] Hcode Hro Hargv Hrun").
-    iApply (tree_pay_of_conforms N echo_prog I E ds _ Hc Hs with "Henv").
+    iApply (tree_pay_of_conforms_p N echo_prog I E ds _ Hc Hs Hdp with "Henv").
   Qed.
 
 End UkEchoTree.

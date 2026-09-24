@@ -624,10 +624,12 @@ claim (M1–M3) do not move; the conversion discipline is theirs.
    the landed statement plus three premises), echo at the console (at
    the file application's link record, not the era-generic one), cat at
    the pipe (`UkPipeEntries.pe_cat_image_entry`, nearest statement) and
-   echo at the pipe (`pe_echo_image_entry`).  OPEN: `echo > f` waits on
-   DEED-SPLIT (the file instance's core must not hold the deed while a
-   write device holds the child's share).  NEXT, in order: DEED-SPLIT;
-   the close gaps (`Hclose_open`/`Hclose_open_w`: a `drained` premise at
+   echo at the pipe (`pe_echo_image_entry`), and `echo > f`
+   (`UkFileEntries.efile_image_entry_of_tree`, after DEED-SPLIT dff5b0ac3:
+   the core's deed is `fif_dq := if fif_wr D0 w0 then emp else fdq r qf
+   sf`, write mode read off the pinned entry devices since an open only
+   mints inputs; in write mode the scope is empty and the console
+   credential is `True`).  NEXT, in order: the close gaps (`Hclose_open`/`Hclose_open_w`: a `drained` premise at
    the copy and write-end kinds of `ei_close`/`cf_close`); then REPOINT
    the assemblies (`UShRound`, `UShCatPay`, `UShEchoPipePay`) at the
    corollaries, discharging the added premises from the round, and

@@ -482,7 +482,13 @@ write cursor (`ef_pay` -> `efq` -> `file_wq`) and the claim holds the
 other half, so only a tainted round could supply the core's fraction
 (`echo_f_paid_of_redirect` has the same vacuity).  FIX (lane
 DEED-SPLIT): the core holds the deed only while no registered device
-holds it.  NEXT: DEED-SPLIT; then the pipe instance's two close gaps
+holds it.  DEED-SPLIT LANDED (dff5b0ac3, VM dspmerge1 EXIT=0, audits
+13/13/14/14): `fif_dq` as above (design SS4 step 5); the redirect
+theorems lost `fdq` and are non-vacuous; `efile_image_entry_of_tree`
+has `efile_image_entry`'s statement plus `cw = ROOTINO`, `□ (file_taint
+c -∗ app_taint)`, `□ (file_taint c -∗ Q (-1))`, `fifRegG`, `g`/`Hcons`
+with `c = fgn_cl g`.  ALL FIVE ENTRIES now have a tree-route corollary.
+NEXT: the pipe instance's two close gaps
 (a `drained` premise at `ei_close`); then repointing the assemblies.  The
 pipeline's CONSOLE device LANDED (lane/pcons 246f51ca4, design SS3.4d:
 `UkConsOut` split into a claim-free core and a `gen_params` instance,

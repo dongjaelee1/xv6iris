@@ -58,6 +58,7 @@ Require Import UkShRedirPr.
 
 Require Import UexecSG.   (* [uexecSG] / [uprogSG]: the ARM deposit class *)
 Require Import UkShPipeLex.
+Require Import UkShPipesLex.  (* [ushq_barw]: a bar read locally (lane PIPES-C3) *)
 Require Import UkShPipeTok.
 Require Import UkShPipeEx.
 Require Import UkShPipePr.
@@ -158,12 +159,17 @@ Section UkShPipeEx2.
   (* the empty list is the exit rather than an impossibility.                *)
   (* ===================================================================== *)
 
-  Lemma wp_kshp_pex_loop_bar (dq dw dv : dfrac)
-      (s0 ps p fp : Z) (len : nat) (f : nat -> bv 8) (gp ge : nat)
+  (* AT A BAR READ LOCALLY (lane PIPES-C3): the loop reads the line at its
+     bar only through [ushq_barw] -- the byte, its place, and that every
+     symbol of the line is one gettoken takes -- so a line with MORE bars
+     after this one is walked by the same proof.  [wp_kshp_pex_loop_bar]
+     below is the one-bar line's instance. *)
+  Lemma wp_kshp_pex_loop_barw (dq dw dv : dfrac)
+      (s0 ps p fp : Z) (len : nat) (f : nat -> bv 8) (gp : nat)
       (nn : nat) :
     forall (rest done : list (nat * nat)) (cur : nat) (h : CpuId)
            (mc : regfile) (wq weq : mword 64),
-    ushq_pipe len f gp ge ->
+    ushq_barw len f gp ->
     0 <= s0 -> s0 + Z.of_nat len < Z64 ->
     0 < ps -> ps mod 8 = 0 -> ps + 8 < Z64 ->
     0 < fp - 128 -> (fp - 128) mod 8 = 0 -> 0 <= fp -> fp < Z64 ->
@@ -224,8 +230,8 @@ Section UkShPipeEx2.
            by exact (ushs_toks_nil_inv len gp cur f Htoks).
          iApply (UkShPipeEx.wp_kshp_pex_bar N dq dw s0 ps len f (8 + nn) cur
                    h mc Hcur
-                   ltac:(rewrite Hgpe; exact (ushq_pipe_lt len f gp ge Hpq))
-                   ltac:(rewrite Hgpe; exact (ushq_pipe_bar len f gp ge Hpq))
+                   ltac:(rewrite Hgpe; exact (ushq_barw_lt len f gp Hpq))
+                   ltac:(rewrite Hgpe; exact (ushq_barw_bar len f gp Hpq))
                    Hs0 Hs64 Hps0 Hps8 Hpssz Hs4v Hs5v Hs6v
                    with "Hcode Hro Hcur Hstr Hws Hrun").
          iIntros "Hcur Hstr Hws" (h' mc') "%Hpres Hrun".
@@ -241,7 +247,7 @@ Section UkShPipeEx2.
            rewrite (Hpres s1_idx ltac:(vm_compute; reflexivity)). exact Hs1v. }
     (* ---- and the round, at the two facts the token list gives ---- *)
     assert (Hsymok : ushq_sym_ok len f)
-      by exact (ushq_sym_ok_pipe len f gp ge Hpq).
+      by exact (ushq_barw_sym_ok len f gp Hpq).
     assert (Hnsk : ((cur + ushp_skipws (len - cur) cur f)%nat < len)%nat ->
               ushp_is_sym (f (cur + ushp_skipws (len - cur) cur f)%nat)
               = false).
@@ -938,7 +944,8 @@ Section UkShPipeEx2.
         - assert (Hgpn : (nxt + ushp_skipws (len - nxt) nxt f)%nat = gp)
             by exact (ushs_toks_nil_inv len gp nxt f Htnxt).
           rewrite Hgpn.
-          exact (UkShPipeEx.ushq_peek_redir_miss_pipe len f gp ge Hpq).
+          exact (UkShPipeEx.ushp_peek_redir_miss_bar len f gp
+                   (ushq_barw_bar len f gp Hpq)).
         - apply (UkShRedirPr.ushs_peek_res_nsym len f
                    (nxt + ushp_skipws (len - nxt) nxt f)%nat 2
                    ushp_T_redir).
@@ -1089,6 +1096,66 @@ Section UkShPipeEx2.
         rewrite (Hpres r Hr Hr1 Hr2 Hr3). exact (Hk21 r Hr Hr1 Hr2 Hr3).
       - iPureIntro. rewrite Hs2f ushp_len_app1. f_equal. cbn [length]. lia.
       - iPureIntro. exact Hs1f.
+  Qed.
+
+  Lemma wp_kshp_pex_loop_bar (dq dw dv : dfrac)
+      (s0 ps p fp : Z) (len : nat) (f : nat -> bv 8) (gp ge : nat)
+      (nn : nat) :
+    forall (rest done : list (nat * nat)) (cur : nat) (h : CpuId)
+           (mc : regfile) (wq weq : mword 64),
+    ushq_pipe len f gp ge ->
+    0 <= s0 -> s0 + Z.of_nat len < Z64 ->
+    0 < ps -> ps mod 8 = 0 -> ps + 8 < Z64 ->
+    0 < fp - 128 -> (fp - 128) mod 8 = 0 -> 0 <= fp -> fp < Z64 ->
+    0 < p -> p mod 8 = 0 -> p + 168 < Z64 ->
+    (cur <= len)%nat ->
+    (length done + length rest < 10)%nat ->
+    ushs_toks len f gp cur rest ->
+    mc !!! Regidx s0_idx = mword_of_int fp ->
+    mc !!! Regidx s1_idx = mword_of_int p ->
+    mc !!! Regidx s2_idx = mword_of_int (Z.of_nat (length done)) ->
+    mc !!! Regidx s3_idx
+      = mword_of_int (p + 8 + 8 * Z.of_nat (length done)) ->
+    mc !!! Regidx s4_idx = mword_of_int ps ->
+    mc !!! Regidx s5_idx = mword_of_int (s0 + Z.of_nat len) ->
+    mc !!! Regidx s6_idx = mword_of_int ushp_T_arg ->
+    mc !!! Regidx s7_idx = mword_of_int (fp - 120) ->
+    mc !!! Regidx s8_idx = mword_of_int (fp - 128) ->
+    mc !!! Regidx s9_idx = mword_of_int 10 ->
+    mc !!! Regidx s10_idx = mword_of_int 97 ->
+    mc !!! Regidx s11_idx = mword_of_int p ->
+    shp_code γt -∗
+    shp_rodata γt -∗
+    ushp_exec_pre s0 p done -∗
+    uword γd ps (mword_of_int (s0 + Z.of_nat cur)) -∗
+    uword γd (fp - 120) wq -∗
+    uword γd (fp - 128) weq -∗
+    ustr γd dq s0 len f -∗
+    ustr γd dw ushp_whitespace 5 ushp_ws_f -∗
+    ustr γd dv ushp_symbols 7 ushp_sym_f -∗
+    urun N h mc (mword_of_int 0x622) (24 + (8 + nn)) -∗
+    (ushp_exec_pre s0 p (done ++ rest) -∗
+     uword γd ps (mword_of_int (s0 + Z.of_nat gp)) -∗
+     (∃ w : mword 64, uword γd (fp - 120) w) -∗
+     (∃ w : mword 64, uword γd (fp - 128) w) -∗
+     ustr γd dq s0 len f -∗
+     ustr γd dw ushp_whitespace 5 ushp_ws_f -∗
+     ustr γd dv ushp_symbols 7 ushp_sym_f -∗
+       ∀ (h' : CpuId) (mc' : regfile),
+         ⌜ forall r : mword 5, ucallee_saved_idx r = true ->
+             Regidx r <> Regidx s1_idx -> Regidx r <> Regidx s2_idx ->
+             Regidx r <> Regidx s3_idx ->
+             mc' !!! Regidx r = mc !!! Regidx r ⌝ -∗
+         ⌜ mc' !!! Regidx s2_idx
+             = mword_of_int (Z.of_nat (length done + length rest)) ⌝ -∗
+         ⌜ mc' !!! Regidx s1_idx = mword_of_int p ⌝ -∗
+         urun N h' mc' (mword_of_int 0x662) (24 + (8 + nn)) -∗
+         mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
+  Proof using .
+    intros rest done cur h mc wq weq Hpq.
+    exact (wp_kshp_pex_loop_barw dq dw dv s0 ps p fp len f gp nn
+             rest done cur h mc wq weq (ushq_barw_of_pipe len f gp ge Hpq)).
   Qed.
 
 End UkShPipeEx2.

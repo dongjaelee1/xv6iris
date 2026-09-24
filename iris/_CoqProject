@@ -1617,6 +1617,7 @@ UkShWords.v
 UkShEcho.v
 UShLexRedir.v
 UkShPipeLex.v
+UkShPipesLex.v
 UkShPipeTok.v
 UkShPipeParse.v
 UkShPipeCmd.v
@@ -1627,6 +1628,8 @@ UkShPipePr.v
 UkShPipeEx2.v
 UkShPipePex.v
 UkShPipeCm.v
+UkShPipesParse.v
+UkShPipesSeam.v
 UkShPipePaid.v
 UkShPipeRound.v
 UShPipeChild.v

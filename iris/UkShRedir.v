@@ -322,13 +322,18 @@ Section UkShRedir.
   (* name.  Same three instructions, [UkRunSys.wp_uk_ecall_close_std] in    *)
   (* the middle.                                                            *)
   (* ===================================================================== *)
-  Lemma wp_kshx_close_std (N : uk_names Σ) `{!ukn_const N} (h : CpuId) (m : regfile)
-      (l : list fdstate) (fdn : nat) (st : fdstate) (avail : nat) :
+  (* THE DEPOSIT AS A PREMISE (lane PIPES-C3).  [wp_kshx_close_std] below
+     is this at a stream that is not a pipe, where the deposit is free
+     ([UkRun.udepw_cl_nonpipe]); a shell whose fd 0 IS a pipe's read end
+     -- an inner node of a right-nested pipeline -- shuts it here with the
+     close deposit the pipe's registration handed out. *)
+  Lemma wp_kshx_close_std_d (N : uk_names Σ) `{!ukn_const N} (h : CpuId)
+      (m : regfile) (l : list fdstate) (fdn : nat) (st : fdstate)
+      (avail : nat) :
     bv_signed (trunc32 (m !!! Regidx a0_idx)) = Z.of_nat fdn ->
     (fdn < NSTD)%nat -> l !! fdn = Some st -> st <> FdClosed ->
-    (forall (rb wb : bool) (gp : PipeNames.pipe_names),
-       st <> FdOpen rb wb (FdPipe gp)) ->
     shk_code (ukn_t N) -∗
+    (∀ (m' : regfile) (pc : mword 64), udepw_cl N m' pc st) -∗
     UserFd.ustd (ukn_fd N) l -∗
     urun N h m (mword_of_int ShSyms.close) avail -∗
     (∀ (h' : CpuId) (r : mword 64),
@@ -340,7 +345,7 @@ Section UkShRedir.
        mWP (Loop : expr riscv_lang)) -∗
     mWP (Loop : expr riscv_lang).
   Proof using .
-    intros Harg Hs Hkl Hne Hnp. iIntros "#Hcode Hstd Hrun Hcont".
+    intros Harg Hs Hkl Hne. iIntros "#Hcode Hdep Hstd Hrun Hcont".
     assert (Hcl : ShSyms.close = 0xcae)
       by (destruct shk_syms_pins as (_&_&_&_&_&_&H&_); exact H).
     rewrite Hcl.
@@ -376,9 +381,9 @@ Section UkShRedir.
               ltac:(rewrite Ha0_1; exact Harg)
               Hs Hkl Hne
               ltac:(rewrite E12; vm_compute; reflexivity)
-              with "[] Hrun [] Hstd").
+              with "[] Hrun [Hdep] Hstd").
     { iApply (uis_shk_cb0 with "Hcode"). }
-    { iApply (udepw_cl_nonpipe N m1 (mword_of_int 0xcb0) st Hnp). }
+    { iApply "Hdep". }
     rewrite E12.
     iIntros (h2 r) "_ Hstd Hrun".
     set (m2 := <[Regidx a0_idx := r]> m1).
@@ -399,6 +404,30 @@ Section UkShRedir.
     { iApply (uis_shk_cb4 with "Hcode"). }
     iIntros (h3) "Hrun".
     iApply ("Hcont" $! h3 r with "Hstd Hrun").
+  Qed.
+
+  Lemma wp_kshx_close_std (N : uk_names Σ) `{!ukn_const N} (h : CpuId) (m : regfile)
+      (l : list fdstate) (fdn : nat) (st : fdstate) (avail : nat) :
+    bv_signed (trunc32 (m !!! Regidx a0_idx)) = Z.of_nat fdn ->
+    (fdn < NSTD)%nat -> l !! fdn = Some st -> st <> FdClosed ->
+    (forall (rb wb : bool) (gp : PipeNames.pipe_names),
+       st <> FdOpen rb wb (FdPipe gp)) ->
+    shk_code (ukn_t N) -∗
+    UserFd.ustd (ukn_fd N) l -∗
+    urun N h m (mword_of_int ShSyms.close) avail -∗
+    (∀ (h' : CpuId) (r : mword 64),
+       UserFd.ustd (ukn_fd N) (<[fdn := FdClosed]> l) -∗
+       urun N h'
+         (<[Regidx a0_idx := r]>
+            (<[Regidx a7_idx := (mword_of_int 21 : mword 64)]> m))
+         (ret_pc (m !!! Regidx ra_idx)) avail -∗
+       mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
+  Proof using .
+    intros Harg Hs Hkl Hne Hnp. iIntros "#Hcode Hstd Hrun Hcont".
+    iApply (wp_kshx_close_std_d N h m l fdn st avail Harg Hs Hkl Hne
+              with "Hcode [] Hstd Hrun Hcont").
+    iIntros (m' pc). iApply (udepw_cl_nonpipe N m' pc st Hnp).
   Qed.
 
   (* ===================================================================== *)

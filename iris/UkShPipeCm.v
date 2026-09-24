@@ -1470,17 +1470,17 @@ Section UkShPipeCm.
   (* node per side) where the redirect line relays two.                     *)
   (* ===================================================================== *)
 
-  Lemma wp_kshp_parseline_bar {Pex : iProp Σ} (h : CpuId) (m : regfile)
-      (dq dw dv : dfrac) (ps s0 : Z) (len gp ge : nat) (f : nat -> bv 8)
-      (args : list (nat * nat)) (nn : nat) :
-    ushp_malloc_ty UM0 UM1 ->
-    ushp_malloc_ty UM2 UM3 ->
+  (* THE WALK WITH ITS [parsepipe] CALL A PREMISE (lane PIPES-C3b): the
+     call's answer is an abstract resource [PT t] at the returned tree
+     pointer, and its allocator links [UA]/[UB] are the caller's.  The
+     landed [wp_kshp_parseline_bar] below is this at the one-bar turn;
+     [UkShPipesCmd] instantiates it at [UkShPipesParse.
+     wp_kshp_parsepipe_bars], any number of bars. *)
+  Lemma wp_kshp_parseline_bar_g {Pex : iProp Σ} (h : CpuId) (m : regfile)
+      (dq dw dv : dfrac) (ps s0 : Z) (len : nat) (f : nat -> bv 8)
+      (UA UB : iProp Σ) (PT : Z -> iProp Σ) (nn : nat) :
     m !!! Regidx a0_idx = mword_of_int ps ->
     m !!! Regidx a1_idx = mword_of_int (s0 + Z.of_nat len) ->
-    ushq_pipe len f gp ge ->
-    ushs_toks len f gp 0%nat args ->
-    (0 < length args)%nat ->
-    (length args < 10)%nat ->
     0 <= s0 -> s0 + Z.of_nat len < Z64 ->
     0 < ps -> ps mod 8 = 0 -> ps + 8 < Z64 ->
     shp_code γt -∗
@@ -1489,17 +1489,39 @@ Section UkShPipeCm.
     ustr γd dq s0 len f -∗
     ustr γd dw ushp_whitespace 5 ushp_ws_f -∗
     ustr γd dv ushp_symbols 7 ushp_sym_f -∗
-    UM0 -∗
-    □ (Pex -∗ ukn_pay N (-1)) -∗
+    UA -∗
     Pex -∗
     urun N h m (mword_of_int ShSyms.parseline)
       (6 + (6 + (16 + (24 + (8 + nn))))) -∗
-    (∀ t pl pr : Z,
-       ⌜ pl + 168 < Z64 ⌝ -∗
-       ⌜ pr + 168 < Z64 ⌝ -∗
-       ushp_pipe_node t pl pr -∗
-       ushp_exec_at s0 pl args -∗
-       ushp_exec_at s0 pr [(S (S gp), ge)] -∗
+    (* the [parsepipe] call *)
+    (∀ (h1 : CpuId) (m1 : regfile),
+       ⌜ m1 !!! Regidx a0_idx = mword_of_int ps ⌝ -∗
+       ⌜ m1 !!! Regidx a1_idx = mword_of_int (s0 + Z.of_nat len) ⌝ -∗
+       uword γd ps (mword_of_int s0) -∗
+       ustr γd dq s0 len f -∗
+       ustr γd dw ushp_whitespace 5 ushp_ws_f -∗
+       ustr γd dv ushp_symbols 7 ushp_sym_f -∗
+       UA -∗
+       Pex -∗
+       urun N h1 m1 (mword_of_int ShSyms.parsepipe)
+         (6 + (16 + (24 + (8 + nn)))) -∗
+       (∀ t : Z,
+          PT t -∗
+          uword γd ps (mword_of_int (s0 + Z.of_nat len)) -∗
+          ustr γd dq s0 len f -∗
+          ustr γd dw ushp_whitespace 5 ushp_ws_f -∗
+          ustr γd dv ushp_symbols 7 ushp_sym_f -∗
+            ∀ (h2 : CpuId) (m2 : regfile),
+              ⌜ ucallee_saved m1 m2 ⌝ -∗
+              ⌜ m2 !!! Regidx a0_idx = mword_of_int t ⌝ -∗
+              UB -∗
+              Pex -∗
+              urun N h2 m2 (ret_pc (m1 !!! Regidx ra_idx))
+                (6 + (16 + (24 + (8 + nn)))) -∗
+              mWP (Loop : expr riscv_lang)) -∗
+       mWP (Loop : expr riscv_lang)) -∗
+    (∀ t : Z,
+       PT t -∗
        uword γd ps (mword_of_int (s0 + Z.of_nat len)) -∗
        ustr γd dq s0 len f -∗
        ustr γd dw ushp_whitespace 5 ushp_ws_f -∗
@@ -1507,17 +1529,17 @@ Section UkShPipeCm.
          ∀ (h' : CpuId) (m' : regfile),
            ⌜ ucallee_saved m m' ⌝ -∗
            ⌜ m' !!! Regidx a0_idx = mword_of_int t ⌝ -∗
-           UM3 -∗
+           UB -∗
            Pex -∗
            urun N h' m' (ret_pc (m !!! Regidx ra_idx))
              (6 + (6 + (16 + (24 + (8 + nn))))) -∗
            mWP (Loop : expr riscv_lang)) -∗
     mWP (Loop : expr riscv_lang).
-  Proof using ushp_malloc_ok12.
-    intros Hmal01 Hmal23 Ha0 Ha1 Hpq Htoks Hpos Htlen Hs0 Hs64 Hps0 Hps8 Hpssz.
+  Proof using .
+    intros Ha0 Ha1 Hs0 Hs64 Hps0 Hps8 Hpssz.
     assert (Hnend : (len < len)%nat -> ushp_is_sym (f len) = false)
       by (intro Hlt; exfalso; lia).
-    iIntros "#Hcode #Hro Hcur Hstr Hws Hsy HM #Hpx Hpay Hrun Hcont".
+    iIntros "#Hcode #Hro Hcur Hstr Hws Hsy HM Hpay Hrun Hpp Hcont".
     rewrite shpp_parseline.
     assert (Elen0 : (len + ushp_skipws (len - len) len f)%nat = len)
       by (rewrite Nat.sub_diag; cbn [ushp_skipws]; lia).
@@ -1650,12 +1672,10 @@ Section UkShPipeCm.
               (HmA a1_idx ltac:(vm_compute; discriminate))
               (Hm1 a1_idx ltac:(vm_compute; discriminate)). exact Ha1. }
     rewrite <- shpp_parsepipe.
-    iApply (wp_kshp_parsepipe_bar_closed h4 m4 dq dw dv ps s0 len gp ge f
-              args nn Hmal01 Hmal23
-              Ha0_4 Ha1_4 Hpq Htoks Hpos Htlen Hs0 Hs64
-              Hps0 Hps8 Hpssz
-              with "Hcode Hro Hcur Hstr Hws Hsy HM Hpx Hpay Hrun").
-    iIntros (t pl pr) "%Hplsz %Hprsz Hpnode Hnodel Hnoder Hcur Hstr Hws Hsy".
+    iApply ("Hpp" $! h4 m4 with "[] [] Hcur Hstr Hws Hsy HM Hpay Hrun").
+    { iPureIntro. exact Ha0_4. }
+    { iPureIntro. exact Ha1_4. }
+    iIntros (t) "HPT Hcur Hstr Hws Hsy".
     iIntros (h5 m5) "%Hcs45 %Ha0_5 HM' Hpay Hrun".
     rewrite Eret4.
     (* ---- 0x6fa  c.mv s1,a0 ---- *)
@@ -2113,10 +2133,8 @@ Section UkShPipeCm.
     { iApply (uis_shp_746 with "Hcode"). }
     { iApply (uis_shp_748 with "Hcode"). }
     iIntros (hf) "Hrun".
-    iApply ("Hcont" $! t pl pr
-              with "[] [] Hpnode Hnodel Hnoder Hcur Hstr Hws Hsy [] [] HM' Hpay Hrun").
-    - iPureIntro. exact Hplsz.
-    - iPureIntro. exact Hprsz.
+    iApply ("Hcont" $! t
+              with "HPT Hcur Hstr Hws Hsy [] [] HM' Hpay Hrun").
     - iPureIntro.
       apply (ushp_frame_cs [(ra_idx, mword_of_int 5 : mword 6);
                (s0_idx, mword_of_int 4 : mword 6);
@@ -2149,6 +2167,90 @@ Section UkShPipeCm.
   Qed.
 
 
+  (* ...AND THE LANDED WALK, BYTE-IDENTICAL: the call is the one-bar turn,
+     its answer the PIPE node and the two EXEC nodes relayed separately. *)
+  Lemma wp_kshp_parseline_bar {Pex : iProp Σ} (h : CpuId) (m : regfile)
+      (dq dw dv : dfrac) (ps s0 : Z) (len gp ge : nat) (f : nat -> bv 8)
+      (args : list (nat * nat)) (nn : nat) :
+    ushp_malloc_ty UM0 UM1 ->
+    ushp_malloc_ty UM2 UM3 ->
+    m !!! Regidx a0_idx = mword_of_int ps ->
+    m !!! Regidx a1_idx = mword_of_int (s0 + Z.of_nat len) ->
+    ushq_pipe len f gp ge ->
+    ushs_toks len f gp 0%nat args ->
+    (0 < length args)%nat ->
+    (length args < 10)%nat ->
+    0 <= s0 -> s0 + Z.of_nat len < Z64 ->
+    0 < ps -> ps mod 8 = 0 -> ps + 8 < Z64 ->
+    shp_code γt -∗
+    shp_rodata γt -∗
+    uword γd ps (mword_of_int s0) -∗
+    ustr γd dq s0 len f -∗
+    ustr γd dw ushp_whitespace 5 ushp_ws_f -∗
+    ustr γd dv ushp_symbols 7 ushp_sym_f -∗
+    UM0 -∗
+    □ (Pex -∗ ukn_pay N (-1)) -∗
+    Pex -∗
+    urun N h m (mword_of_int ShSyms.parseline)
+      (6 + (6 + (16 + (24 + (8 + nn))))) -∗
+    (∀ t pl pr : Z,
+       ⌜ pl + 168 < Z64 ⌝ -∗
+       ⌜ pr + 168 < Z64 ⌝ -∗
+       ushp_pipe_node t pl pr -∗
+       ushp_exec_at s0 pl args -∗
+       ushp_exec_at s0 pr [(S (S gp), ge)] -∗
+       uword γd ps (mword_of_int (s0 + Z.of_nat len)) -∗
+       ustr γd dq s0 len f -∗
+       ustr γd dw ushp_whitespace 5 ushp_ws_f -∗
+       ustr γd dv ushp_symbols 7 ushp_sym_f -∗
+         ∀ (h' : CpuId) (m' : regfile),
+           ⌜ ucallee_saved m m' ⌝ -∗
+           ⌜ m' !!! Regidx a0_idx = mword_of_int t ⌝ -∗
+           UM3 -∗
+           Pex -∗
+           urun N h' m' (ret_pc (m !!! Regidx ra_idx))
+             (6 + (6 + (16 + (24 + (8 + nn))))) -∗
+           mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
+  Proof using ushp_malloc_ok12.
+    intros Hmal01 Hmal23 Ha0 Ha1 Hpq Htoks Hpos Htlen Hs0 Hs64 Hps0 Hps8 Hpssz.
+    iIntros "#Hcode #Hro Hcur Hstr Hws Hsy HM #Hpx Hpay Hrun Hcont".
+    iApply (wp_kshp_parseline_bar_g h m dq dw dv ps s0 len f UM0 UM3
+              (fun t : Z => ∃ pl pr : Z,
+                 ⌜ pl + 168 < Z64 ⌝ ∗ ⌜ pr + 168 < Z64 ⌝ ∗
+                 ushp_pipe_node t pl pr ∗
+                 ushp_exec_at s0 pl args ∗
+                 ushp_exec_at s0 pr [(S (S gp), ge)])%I nn
+              Ha0 Ha1 Hs0 Hs64 Hps0 Hps8 Hpssz
+              with "Hcode Hro Hcur Hstr Hws Hsy HM Hpay Hrun [] [Hcont]").
+    - iIntros (h1 m1) "%Ha0' %Ha1' Hcur Hstr Hws Hsy HM Hpay Hrun Hk".
+      iApply (wp_kshp_parsepipe_bar_closed h1 m1 dq dw dv ps s0 len gp ge f
+                args nn Hmal01 Hmal23
+                Ha0' Ha1' Hpq Htoks Hpos Htlen Hs0 Hs64
+                Hps0 Hps8 Hpssz
+                with "Hcode Hro Hcur Hstr Hws Hsy HM Hpx Hpay Hrun").
+      iIntros (t pl pr) "%Hplsz %Hprsz Hpnode Hnodel Hnoder Hcur Hstr Hws Hsy".
+      iIntros (h2 m2) "%Hcs %Ha0'' HUB Hpay Hrun".
+      iSpecialize ("Hk" $! t with "[Hpnode Hnodel Hnoder] Hcur Hstr Hws Hsy").
+      { iExists pl, pr.
+        iSplitR; [ iPureIntro; exact Hplsz | ].
+        iSplitR; [ iPureIntro; exact Hprsz | ].
+        iFrame "Hpnode Hnodel Hnoder". }
+      iApply ("Hk" $! h2 m2 with "[] [] HUB Hpay Hrun").
+      + iPureIntro. exact Hcs.
+      + iPureIntro. exact Ha0''.
+    - iIntros (t) "HPT Hcur Hstr Hws Hsy".
+      iDestruct "HPT" as (pl pr) "(%Hplsz & %Hprsz & Hpnode & Hnodel & Hnoder)".
+      iIntros (h2 m2) "%Hcs %Ha0'' HUB Hpay Hrun".
+      iApply ("Hcont" $! t pl pr
+                with "[] [] Hpnode Hnodel Hnoder Hcur Hstr Hws Hsy [] [] HUB
+                      Hpay Hrun").
+      + iPureIntro. exact Hplsz.
+      + iPureIntro. exact Hprsz.
+      + iPureIntro. exact Hcs.
+      + iPureIntro. exact Ha0''.
+  Qed.
+
   (* ===================================================================== *)
   (* parsecmd ON THE PIPE LINE                                              *)
   (*                                                                        *)
@@ -2159,49 +2261,84 @@ Section UkShPipeCm.
   (* [ushp_nulfold] of the left command's, on one buffer.                    *)
   (* ===================================================================== *)
 
-  Lemma wp_kshp_parsecmd_bar {Pex : iProp Σ} (h : CpuId) (m : regfile)
-      (dw dv : dfrac)
-      (s0 : Z) (len : nat) (f : nat -> bv 8) (args : list (nat * nat))
-      (gp ge : nat) (nn : nat) :
-    ushp_malloc_ty UM0 UM1 ->
-    ushp_malloc_ty UM2 UM3 ->
+  (* THE WALK WITH ITS TWO CALLS PREMISES (lane PIPES-C3b): [parseline]
+     answers an abstract tree resource [PT t] and [nulterminate] cuts the
+     line to the abstract [gN] under it.  The landed [wp_kshp_parsecmd_bar]
+     below is this at the one-bar calls; [UkShPipesCmd] instantiates it at
+     any number of bars. *)
+  Lemma wp_kshp_parsecmd_bar_g {Pex : iProp Σ} (h : CpuId) (m : regfile)
+      (dw dv : dfrac) (s0 : Z) (len : nat) (f : nat -> bv 8)
+      (UA UB : iProp Σ) (PT : Z -> iProp Σ) (gN : nat -> bv 8) (nn : nat) :
     m !!! Regidx a0_idx = mword_of_int s0 ->
-    ushq_pipe len f gp ge ->
-    ushs_toks len f gp 0%nat args ->
-    (0 < length args)%nat ->
-    (length args < 10)%nat ->
     0 < s0 -> s0 + Z.of_nat len + 1 < Z64 ->
     shp_code γt -∗
     shp_rodata γt -∗
     ustr γd (DfracOwn 1) s0 len f -∗
     ustr γd dw ushp_whitespace 5 ushp_ws_f -∗
     ustr γd dv ushp_symbols 7 ushp_sym_f -∗
-    UM0 -∗
-    □ (Pex -∗ ukn_pay N (-1)) -∗
+    UA -∗
     Pex -∗
     urun N h m (mword_of_int ShSyms.parsecmd)
       (8 + (6 + (6 + (16 + (24 + (8 + nn)))))) -∗
-    (∀ t pl pr : Z,
-       UkShPipeParse.ushp_pipe_node N t pl pr -∗
-       ushp_exec_at s0 pl args -∗
-       ushp_exec_at s0 pr [(S (S gp), ge)] -∗
-       ubytes γd s0 (S len)
-         (UkShParseCmd.ushp_nulfold [(S (S gp), ge)]
-            (UkShParseCmd.ushp_nulfold args (UkShParseCmd.ushp_ext len f))) -∗
+    (* the [parseline] call, at a cursor slot [ps] of the caller's frame *)
+    (∀ (h1 : CpuId) (m1 : regfile) (ps : Z),
+       ⌜ m1 !!! Regidx a0_idx = mword_of_int ps ⌝ -∗
+       ⌜ m1 !!! Regidx a1_idx = mword_of_int (s0 + Z.of_nat len) ⌝ -∗
+       ⌜ 0 < ps ⌝ -∗ ⌜ ps mod 8 = 0 ⌝ -∗ ⌜ ps + 8 < Z64 ⌝ -∗
+       uword γd ps (mword_of_int s0) -∗
+       ustr γd (DfracOwn 1) s0 len f -∗
+       ustr γd dw ushp_whitespace 5 ushp_ws_f -∗
+       ustr γd dv ushp_symbols 7 ushp_sym_f -∗
+       UA -∗
+       Pex -∗
+       urun N h1 m1 (mword_of_int ShSyms.parseline)
+         (6 + (6 + (16 + (24 + (8 + nn))))) -∗
+       (∀ t : Z,
+          PT t -∗
+          uword γd ps (mword_of_int (s0 + Z.of_nat len)) -∗
+          ustr γd (DfracOwn 1) s0 len f -∗
+          ustr γd dw ushp_whitespace 5 ushp_ws_f -∗
+          ustr γd dv ushp_symbols 7 ushp_sym_f -∗
+            ∀ (h2 : CpuId) (m2 : regfile),
+              ⌜ ucallee_saved m1 m2 ⌝ -∗
+              ⌜ m2 !!! Regidx a0_idx = mword_of_int t ⌝ -∗
+              UB -∗
+              Pex -∗
+              urun N h2 m2 (ret_pc (m1 !!! Regidx ra_idx))
+                (6 + (6 + (16 + (24 + (8 + nn))))) -∗
+              mWP (Loop : expr riscv_lang)) -∗
+       mWP (Loop : expr riscv_lang)) -∗
+    (* the [nulterminate] call, at the tree [parseline] answered *)
+    (∀ (h1 : CpuId) (m1 : regfile) (t : Z),
+       ⌜ m1 !!! Regidx a0_idx = mword_of_int t ⌝ -∗
+       PT t -∗
+       ubytes γd s0 (S len) (UkShParseCmd.ushp_ext len f) -∗
+       urun N h1 m1 (mword_of_int ShSyms.nulterminate) (60 + nn) -∗
+       (PT t -∗
+        ubytes γd s0 (S len) gN -∗
+          ∀ (h2 : CpuId) (m2 : regfile),
+            ⌜ ucallee_saved m1 m2 ⌝ -∗
+            ⌜ m2 !!! Regidx a0_idx = mword_of_int t ⌝ -∗
+            urun N h2 m2 (ret_pc (m1 !!! Regidx ra_idx)) (60 + nn) -∗
+            mWP (Loop : expr riscv_lang)) -∗
+       mWP (Loop : expr riscv_lang)) -∗
+    (∀ t : Z,
+       PT t -∗
+       ubytes γd s0 (S len) gN -∗
        ustr γd dw ushp_whitespace 5 ushp_ws_f -∗
        ustr γd dv ushp_symbols 7 ushp_sym_f -∗
          ∀ (h' : CpuId) (m' : regfile),
            ⌜ ucallee_saved m m' ⌝ -∗
            ⌜ m' !!! Regidx a0_idx = mword_of_int t ⌝ -∗
-           UM3 -∗
+           UB -∗
            Pex -∗
            urun N h' m' (ret_pc (m !!! Regidx ra_idx))
              (8 + (6 + (6 + (16 + (24 + (8 + nn)))))) -∗
            mWP (Loop : expr riscv_lang)) -∗
     mWP (Loop : expr riscv_lang).
-  Proof using ushp_malloc_ok12.
-    intros Hmal01 Hmal23 Ha0 Hpq Htoks Hpos Htlen Hs0 Hs64.
-    iIntros "#Hcode #Hro Hstr Hws Hsy HM #Hpx Hpay Hrun Hcont".
+  Proof using .
+    intros Ha0 Hs0 Hs64.
+    iIntros "#Hcode #Hro Hstr Hws Hsy HM Hpay Hrun Hplc Hnc Hcont".
     rewrite shpp_parsecmd.
     iDestruct (ustr_len with "Hstr") as %Hlen31.
     iDestruct (urun_stack with "Hrun") as %[Hal8 Hroom].
@@ -2565,34 +2702,16 @@ Section UkShPipeCm.
                (regval_into_reg
                   (mword_of_int (s0 + Z.of_nat len) : mword 64))). }
     rewrite <- shpp_parseline.
-    iApply (wp_kshp_parseline_bar h14 m12 (DfracOwn 1) dw dv
-              (uint sp0 - 56) s0 len gp ge f args nn Hmal01 Hmal23
-              Ha0_12 Ha1_12
-              Hpq Htoks Hpos Htlen ltac:(lia) ltac:(lia)
-              Hcur0 Hcur8 Hcurz
-              with "Hcode Hro Lcur Hstr Hws Hsy HM Hpx Hpay Hrun").
-    iIntros (p pe prr) "%Hpsz %Hprsz Hrnode Hnode Hnoder Lcur Hstr Hws Hsy".
+    iApply ("Hplc" $! h14 m12 (uint sp0 - 56)
+              with "[] [] [] [] [] Lcur Hstr Hws Hsy HM Hpay Hrun").
+    { iPureIntro. exact Ha0_12. }
+    { iPureIntro. exact Ha1_12. }
+    { iPureIntro. exact Hcur0. }
+    { iPureIntro. exact Hcur8. }
+    { iPureIntro. exact Hcurz. }
+    iIntros (p) "HPT Lcur Hstr Hws Hsy".
     iIntros (h15 m13) "%Hcs1213 %Ha0_13 HM' Hpay Hrun".
     rewrite Eret12.
-    iDestruct (UkShPipeParse.ushp_pipe_node_addr N with "Hrnode") as "[%Hraddr Hrnode]".
-    destruct Hraddr as (Hp0 & Hp8 & Hpz40).
-    iDestruct "Hnode" as "(%Hnl & %Hpe0 & %Hpe8 & Hty & Hav & Hev)".
-    iAssert (ushp_exec_at s0 pe args) with "[Hty Hav Hev]" as "Hnode".
-    { rewrite /ushp_exec_at.
-      iSplitR; [ iPureIntro; exact Hnl | ].
-      iSplitR; [ iPureIntro; exact Hpe0 | ].
-      iSplitR; [ iPureIntro; exact Hpe8 | ].
-      iSplitL "Hty"; [ iExact "Hty" | ].
-      iSplitL "Hav"; [ iExact "Hav" | iExact "Hev" ]. }
-    iDestruct "Hnoder" as "(%Hnlr & %Hpr0 & %Hpr8 & Htyr & Havr & Hevr)".
-    iAssert (ushp_exec_at s0 prr [(S (S gp), ge)])
-      with "[Htyr Havr Hevr]" as "Hnoder".
-    { rewrite /ushp_exec_at.
-      iSplitR; [ iPureIntro; exact Hnlr | ].
-      iSplitR; [ iPureIntro; exact Hpr0 | ].
-      iSplitR; [ iPureIntro; exact Hpr8 | ].
-      iSplitL "Htyr"; [ iExact "Htyr" | ].
-      iSplitL "Havr"; [ iExact "Havr" | iExact "Hevr" ]. }
     (* ---- 0x898  c.mv s3,a0 ---- *)
     iApply (wp_uk_cmv N h15 m13 (mword_of_int 0x898) s3_idx
               a0_idx (mword_of_int p) (60 + nn)
@@ -2859,23 +2978,9 @@ Section UkShPipeCm.
                (regval_into_reg (mword_of_int p : mword 64))). }
     iDestruct (ushp_ustr_bytes s0 len f with "Hstr") as "Hline".
     rewrite <- shpp_nulterminate.
-    iApply (UkShPipeParse.wp_kshp_nulterminate_pipe N h26 m23 s0 p pe prr
-              len (UkShParseCmd.ushp_ext len f) args [(S (S gp), ge)] (52 + nn)
-              Ha0_23 ltac:(lia) ltac:(lia) Hp0 Hp8 Hpz40
-              Hpe0 Hpe8 Hpsz Hpr0 Hpr8 Hprsz
-              Htlen ltac:(cbn [length]; lia)
-              ltac:(intros i tk Hi;
-                    destruct (ushs_toks_in len f gp 0%nat args Htoks
-                                i tk Hi) as [ Hlo0 Hhi0 ];
-                    split; lia)
-              ltac:(intros i tk Hi;
-                    destruct i as [| i ]; cbn in Hi;
-                    [ injection Hi as <-; cbn [fst snd];
-                      destruct Hpq as (_ & _ & _ & _ & Hlo1 & Hhi1 & _);
-                      split; lia
-                    | rewrite lookup_nil in Hi; discriminate ])
-              with "Hcode Hro Hrnode Hnode Hnoder Hline Hrun").
-    iIntros "Hrnode Hnode Hnoder Hline" (h27 m24) "%Hcs2324 %Ha0_24 Hrun".
+    iApply ("Hnc" $! h26 m23 p with "[] HPT Hline Hrun").
+    { iPureIntro. exact Ha0_23. }
+    iIntros "HPT Hline" (h27 m24) "%Hcs2324 %Ha0_24 Hrun".
     rewrite Eret23.
     (* ---- 0x8b8  c.mv a0,s3 ---- *)
     assert (Hs3_24 : m24 !!! Regidx s3_idx = mword_of_int p).
@@ -3001,8 +3106,8 @@ Section UkShPipeCm.
       iSplitL "Lcur"; [ iExact "Lcur" | ].
       iSplitL "L2"; [ iExact "L2" | done ]. }
     iIntros (hf) "Hrun".
-    iApply ("Hcont" $! p pe prr
-              with "Hrnode Hnode Hnoder Hline Hws Hsy [] [] HM' Hpay Hrun").
+    iApply ("Hcont" $! p
+              with "HPT Hline Hws Hsy [] [] HM' Hpay Hrun").
     - iPureIntro.
       apply (ushp_frame_cs [(ra_idx, mword_of_int 7 : mword 6);
                (s0_idx, mword_of_int 6 : mword 6);
@@ -3030,6 +3135,125 @@ Section UkShPipeCm.
         destruct i as [| [| [| [| [| i ]]]]];
           cbn in Hi; try discriminate Hi;
           injection Hi as Hr Hu0; subst; vm_compute in He; discriminate.
+  Qed.
+
+  (* ...AND THE LANDED WALK, BYTE-IDENTICAL: the two calls at the one-bar
+     line -- [wp_kshp_parseline_bar] and part 1's
+     [UkShPipeParse.wp_kshp_nulterminate_pipe]. *)
+  Lemma wp_kshp_parsecmd_bar {Pex : iProp Σ} (h : CpuId) (m : regfile)
+      (dw dv : dfrac)
+      (s0 : Z) (len : nat) (f : nat -> bv 8) (args : list (nat * nat))
+      (gp ge : nat) (nn : nat) :
+    ushp_malloc_ty UM0 UM1 ->
+    ushp_malloc_ty UM2 UM3 ->
+    m !!! Regidx a0_idx = mword_of_int s0 ->
+    ushq_pipe len f gp ge ->
+    ushs_toks len f gp 0%nat args ->
+    (0 < length args)%nat ->
+    (length args < 10)%nat ->
+    0 < s0 -> s0 + Z.of_nat len + 1 < Z64 ->
+    shp_code γt -∗
+    shp_rodata γt -∗
+    ustr γd (DfracOwn 1) s0 len f -∗
+    ustr γd dw ushp_whitespace 5 ushp_ws_f -∗
+    ustr γd dv ushp_symbols 7 ushp_sym_f -∗
+    UM0 -∗
+    □ (Pex -∗ ukn_pay N (-1)) -∗
+    Pex -∗
+    urun N h m (mword_of_int ShSyms.parsecmd)
+      (8 + (6 + (6 + (16 + (24 + (8 + nn)))))) -∗
+    (∀ t pl pr : Z,
+       UkShPipeParse.ushp_pipe_node N t pl pr -∗
+       ushp_exec_at s0 pl args -∗
+       ushp_exec_at s0 pr [(S (S gp), ge)] -∗
+       ubytes γd s0 (S len)
+         (UkShParseCmd.ushp_nulfold [(S (S gp), ge)]
+            (UkShParseCmd.ushp_nulfold args (UkShParseCmd.ushp_ext len f))) -∗
+       ustr γd dw ushp_whitespace 5 ushp_ws_f -∗
+       ustr γd dv ushp_symbols 7 ushp_sym_f -∗
+         ∀ (h' : CpuId) (m' : regfile),
+           ⌜ ucallee_saved m m' ⌝ -∗
+           ⌜ m' !!! Regidx a0_idx = mword_of_int t ⌝ -∗
+           UM3 -∗
+           Pex -∗
+           urun N h' m' (ret_pc (m !!! Regidx ra_idx))
+             (8 + (6 + (6 + (16 + (24 + (8 + nn)))))) -∗
+           mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
+  Proof using ushp_malloc_ok12.
+    intros Hmal01 Hmal23 Ha0 Hpq Htoks Hpos Htlen Hs0 Hs64.
+    iIntros "#Hcode #Hro Hstr Hws Hsy HM #Hpx Hpay Hrun Hcont".
+    iApply (wp_kshp_parsecmd_bar_g h m dw dv s0 len f UM0 UM3
+              (fun t : Z => ∃ pl pr : Z,
+                 ⌜ pl + 168 < Z64 ⌝ ∗ ⌜ pr + 168 < Z64 ⌝ ∗
+                 ushp_pipe_node t pl pr ∗
+                 ushp_exec_at s0 pl args ∗
+                 ushp_exec_at s0 pr [(S (S gp), ge)])%I
+              (UkShParseCmd.ushp_nulfold [(S (S gp), ge)]
+                 (UkShParseCmd.ushp_nulfold args (UkShParseCmd.ushp_ext len f)))
+              nn Ha0 Hs0 Hs64
+              with "Hcode Hro Hstr Hws Hsy HM Hpay Hrun [] [] [Hcont]").
+    - (* parseline, at the one-bar line *)
+      iIntros (h1 m1 ps) "%Ha0' %Ha1' %Hps0 %Hps8 %Hpsz Hcur Hstr Hws Hsy HM
+                          Hpay Hrun Hk".
+      iApply (wp_kshp_parseline_bar h1 m1 (DfracOwn 1) dw dv ps s0 len gp ge f
+                args nn Hmal01 Hmal23 Ha0' Ha1'
+                Hpq Htoks Hpos Htlen ltac:(lia) ltac:(lia) Hps0 Hps8 Hpsz
+                with "Hcode Hro Hcur Hstr Hws Hsy HM Hpx Hpay Hrun").
+      iIntros (t pl pr) "%Hplsz %Hprsz Hpnode Hnodel Hnoder Hcur Hstr Hws Hsy".
+      iIntros (h2 m2) "%Hcs %Ha0'' HUB Hpay Hrun".
+      iSpecialize ("Hk" $! t with "[Hpnode Hnodel Hnoder] Hcur Hstr Hws Hsy").
+      { iExists pl, pr.
+        iSplitR; [ iPureIntro; exact Hplsz | ].
+        iSplitR; [ iPureIntro; exact Hprsz | ].
+        iFrame "Hpnode Hnodel Hnoder". }
+      iApply ("Hk" $! h2 m2 with "[] [] HUB Hpay Hrun").
+      + iPureIntro. exact Hcs.
+      + iPureIntro. exact Ha0''.
+    - (* nulterminate, at the PIPE node over two EXEC nodes *)
+      iIntros (h1 m1 t) "%Ha0' HPT Hline Hrun Hk".
+      iDestruct "HPT" as (pl pr) "(%Hplsz & %Hprsz & Hpnode & Hnodel & Hnoder)".
+      iDestruct (UkShPipeParse.ushp_pipe_node_addr N with "Hpnode")
+        as "[%Hraddr Hpnode]".
+      destruct Hraddr as (Hp0 & Hp8 & Hpz40).
+      iDestruct (UkShPipeParse.ushp_exec_at_facts N with "Hnodel")
+        as "[%Hfl Hnodel]".
+      destruct Hfl as (_ & Hpe0 & Hpe8).
+      iDestruct (UkShPipeParse.ushp_exec_at_facts N with "Hnoder")
+        as "[%Hfr Hnoder]".
+      destruct Hfr as (_ & Hpr0 & Hpr8).
+      iApply (UkShPipeParse.wp_kshp_nulterminate_pipe N h1 m1 s0 t pl pr
+                len (UkShParseCmd.ushp_ext len f) args [(S (S gp), ge)] (52 + nn)
+                Ha0' ltac:(lia) ltac:(lia) Hp0 Hp8 Hpz40
+                Hpe0 Hpe8 Hplsz Hpr0 Hpr8 Hprsz
+                Htlen ltac:(cbn [length]; lia)
+                ltac:(intros i tk Hi;
+                      destruct (ushs_toks_in len f gp 0%nat args Htoks
+                                  i tk Hi) as [ Hlo0 Hhi0 ];
+                      split; lia)
+                ltac:(intros i tk Hi;
+                      destruct i as [| i ]; cbn in Hi;
+                      [ injection Hi as <-; cbn [fst snd];
+                        destruct Hpq as (_ & _ & _ & _ & Hlo1 & Hhi1 & _);
+                        split; lia
+                      | rewrite lookup_nil in Hi; discriminate ])
+                with "Hcode Hro Hpnode Hnodel Hnoder Hline Hrun").
+      iIntros "Hpnode Hnodel Hnoder Hline" (h2 m2) "%Hcs %Ha0'' Hrun".
+      iSpecialize ("Hk" with "[Hpnode Hnodel Hnoder] Hline").
+      { iExists pl, pr.
+        iSplitR; [ iPureIntro; exact Hplsz | ].
+        iSplitR; [ iPureIntro; exact Hprsz | ].
+        iFrame "Hpnode Hnodel Hnoder". }
+      iApply ("Hk" $! h2 m2 with "[] [] Hrun").
+      + iPureIntro. exact Hcs.
+      + iPureIntro. exact Ha0''.
+    - iIntros (t) "HPT Hline Hws Hsy".
+      iDestruct "HPT" as (pl pr) "(_ & _ & Hpnode & Hnodel & Hnoder)".
+      iIntros (h2 m2) "%Hcs %Ha0'' HUB Hpay Hrun".
+      iApply ("Hcont" $! t pl pr
+                with "Hpnode Hnodel Hnoder Hline Hws Hsy [] [] HUB Hpay Hrun").
+      + iPureIntro. exact Hcs.
+      + iPureIntro. exact Ha0''.
   Qed.
 
   (* ===================================================================== *)

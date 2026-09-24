@@ -396,12 +396,23 @@ fix is a kernel purchase TRUNC-PERMIT: a permit tied to the walk's
 terminal as the create surface's `trunc_permit_of`/`trunc_tie_arg`
 already is, paid in `ProofSysOpenWalk`'s three joins and
 `SpecSysOpen.open_post_fail_plain`; deferred, no landed line shape
-opens with O_TRUNC and no O_CREATE), `Hnil_file`
+opens with O_TRUNC and no O_CREATE; now the named Prop
+`fif_open_trunc_law`), `Hnil_file`
 (no zero-length write leaf at a file, none at the read-only handle).
-Also `echo_prog` names only write/exit stubs, so `file_iface` is built
-at any program with the five stubs, not at echo's own.  NEXT: leaf lanes
-for the three gaps + echo's three missing stub instances (in flight:
-lane/leaf-filedev, lane/leaf-pipedev, lane/leaf-payers).  The
+`Hnil_file` CLOSED at the file held for writing by lane/leaf-pipedev
+b6a9dd780 (merge, VM lfnlmerge1 EXIT=0): `UkFileDev.file_write_nil` runs
+the write walk at count 0 (the chain at no chunk is its own stop,
+`awrite_chain_adv_0`; `SpecFilewrite.write_arms_at_ret` gives 0 or -1);
+the READ-ONLY input case remains as the named Prop `fif_nil_in_law`
+(`Hnil_in`): U-tier row 16 carries `filewrite_extra` only, no return
+blanket at a non-writable fdstate (design/user-write.md SS3d), so it is
+a kernel-row purchase NIL-RET (add `filewrite_ret (sys_rw_count …) r`
+to row 16 as row 5 has `fileread_ret`).  echo's stubs: `echo_stub_read/
+close/open` at 0x34a/0x35a/0x372 (`UCodeEcho` regenerated),
+`echo_prog` at all five, `UkFileIface` SS4 `file_iface_echo`,
+`echo_f_paid_echo`, `echo_f_paid_of_redirect_echo` with no stub
+hypotheses.  The file instance's remaining gaps: `Hnil_in` (NIL-RET)
+and `Hopen_trunc` (TRUNC-PERMIT), both kernel rows, both deferred.  The
 pipeline's CONSOLE device LANDED (lane/pcons 246f51ca4, design SS3.4d:
 `UkConsOut` split into a claim-free core and a `gen_params` instance,
 `UkPipeConsOut.v` with the single-writer and the `popen` devices).

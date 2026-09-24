@@ -514,4 +514,360 @@ Section pipes_out_n.
     - iLeft. iExists w, gb2.
       iFrame "Ht Hpera Hcur2 Hrlb Hfz Hpslb Hcslb Hilb".
   Qed.
+
+  (* ---- (W-byteN) A FURTHER BYTE OF AN OPEN ROUND, by ANY of its writers:
+          [PipeOut.pecl_blk2_byte_gen] at the model.  The writer's half of
+          the current-round ghost says its round and ledger ARE the claim's,
+          and the ledger pins the bytes. ---- *)
+  Lemma pecl'_blkN_byte_gen (k : nat) (v : era_pins) (w : pipe_era) (gb : gname)
+      (tmi : bool) (P r a : nat) (b : bv 8) (pre0 : list (bv 8))
+      (ps0 cs0 : list nat) (I0 : list (bv 8)) (ho : list mobs)
+      (H : LogEntryDefs.cons_hist) :
+    I0 <> [] ->
+    rest_of I0 = [] ->
+    r = (nlines I0 - 1)%nat ->
+    length cs0 = r ->
+    lm_pro_pin PM ps0 cs0 I0 ->
+    P = length (lm_proc_before PM ps0 cs0 tt I0) ->
+    lm_ok PM (lm_of PM (bodies_of I0 !!! r)) (lm_dec PM a) ->
+    lm_panic PM (lm_dec PM a) = false ->
+    (pre0 ++ [b]) `prefix_of` lm_cont PM tt (lm_of PM (bodies_of I0 !!! r)) (lm_dec PM a) ->
+    ((lm_term PM (lm_dec PM a) = false /\ Forall nodollar pre0 /\ nodollar b)
+     \/ lm_term PM (lm_dec PM a) = true) ->
+    era_pin γ k v -∗ pera_pin g k w -∗
+    turn v (P + length pre0)%nat -∗ cur_half w (1/2) r gb tmi -∗
+    rblk_lb gb pre0 -∗ ps_lb v ps0 -∗ cs_lb v cs0 -∗ inp_lb v I0 -∗
+    pecl' k ho H ==∗
+      pecl' k ho (ConsLog.cons_step H (ConsLog.EvOut b))
+      ∗ ((turn v (S (P + length pre0))%nat
+          ∗ cur_half w (1/2) r gb (tmi || lm_term PM (lm_dec PM a))
+          ∗ rblk_lb gb (pre0 ++ [b])
+          ∗ (⌜lm_term PM (lm_dec PM a) = false⌝ ∨ cs_frozen_at v r)) ∨ T).
+  Proof using K.
+    intros Hne0 Hr0 Hreq Hcseq Hpin0 HPeq Halt Hpan Hpref Hfarm.
+    pose proof (nlines_pos_of_rest_nil I0 Hne0 Hr0) as Hpos0.
+    iIntros "#Hpin #Hperaw Ht Hcw #Hrlb0 #Hpslb #Hcslb #Hilb Hcl".
+    iDestruct "Hcl" as "[Hcl | Hp]".
+    { (* BETWEEN ROUNDS the claim holds the whole ghost *)
+      iDestruct "Hcl" as "[#HT | Hp]".
+      { iModIntro. iSplitR; [by iApply pecl'_taint | by iRight]. }
+      iDestruct "Hp" as (v2 so) "(_ & _ & Hext & _)".
+      iDestruct "Hext" as (w2 r2 gb2 pre tm) "(#Hpera & _ & Hcur & _)".
+      iDestruct (pera_pin_agree with "Hpera Hperaw") as %->.
+      iDestruct (cur_half_excl with "Hcur Hcw") as %[]. }
+    iDestruct "Hp" as (v2 w2 so r2 gb2 pre tm)
+      "(#Hpin2 & #Hpera & Hblk & Hcur & Hrb & Hta & Hcs & Hps & HE & Hdl & Hdll & %Hopen)".
+    iDestruct (era_pin_agree with "Hpin2 Hpin") as %->.
+    iDestruct (pera_pin_agree with "Hpera Hperaw") as %->.
+    iDestruct (turn_agree with "Ht Hta") as %HP.
+    iDestruct (pcs_lb_prefix with "Hcs Hcslb") as %Hcsp.
+    iDestruct (ps_lb_prefix with "Hps Hpslb") as %Hpsp.
+    iDestruct (inp_lb_le with "Hdll Hilb") as %HI0dl.
+    assert (HI0 : I0 `prefix_of` (snd <$> gs_E PM so)).
+    { etrans; [exact HI0dl | exact (gcl_pure_o_dl_E PM tt _ _ _ _ _ _ Hopen)]. }
+    iDestruct (cur_half_agree with "Hcur Hcw") as %(-> & -> & Htmeq).
+    subst tm.
+    pose proof Hopen as (Hout & Hop & Hpsl & Hin & Hera & HEtie & Hdlok).
+    pose proof Hout as (Hacc & Hidx & Hbyte & Hpsb & Hpin & Hcsb' & Hdsc
+                        & Hpre1 & Hpre2 & Hpre3 & Hnofk & Hf0n & Hfok0).
+    pose proof Hop as (Hreq2 & Hwp' & Hne' & ao & Hb2 & Harm).
+    pose proof Hb2 as (Hnn & Hrr & Hqq & Hokao & Hpanao & Hprefao).
+    iDestruct (rblk_lb_prefix with "Hrb Hrlb0") as %Hprefl.
+    pose proof (prefix_length _ _ Hprefl) as Hpl0.
+    rewrite -Hwp' in Hpl0.
+    rewrite (pipesN_st (gs_state PM tt so)) in HP.
+    assert (Hs2 : lm_proc_before PM ps0 cs0 tt I0
+                  = lm_proc_before PM (gs_ps PM so) (gs_cs PM so) tt I0).
+    { apply (lm_proc_before_cs_prefix PM ps0 (gs_ps PM so) cs0 (gs_cs PM so) tt I0
+               Hpsp Hcsp Hpin0).
+      rewrite (ll_nlines_removelast _ Hr0) Hcseq Hreq. lia. }
+    assert (HIeq : (snd <$> gs_E PM so) = I0).
+    { destruct (decide ((snd <$> gs_E PM so) = I0)) as [? | Hne]; [done |].
+      exfalso.
+      pose proof (lm_proc_stream_before PM (gs_ps PM so) (gs_cs PM so) tt I0
+                    (snd <$> gs_E PM so) HI0
+                    ltac:(intros Hq; apply Hne; symmetry; exact Hq)) as Hp2.
+      apply prefix_length in Hp2.
+      rewrite /lm_proc_stream length_app -Hs2 in Hp2.
+      pose proof (lm_pending_at_nonnil_at PM K (gs_ps PM so) (gs_cs PM so)
+                    tt I0 (snd <$> gs_E PM so) HI0 Hcsb' Hne0 Hr0) as Hne1.
+      assert (Hlen1 : (1 <= length (lm_pending_at PM (gs_ps PM so) (gs_cs PM so)
+                                     tt I0))%nat).
+      { destruct (lm_pending_at PM (gs_ps PM so) (gs_cs PM so) tt I0);
+          [done | cbn; lia]. }
+      rewrite /lm_pcount in HP. lia. }
+    assert (Hlen0 : length pre0 = length (gs_w PM so)).
+    { rewrite /lm_pcount HIeq -Hs2 -HPeq in HP. lia. }
+    assert (Hpre0 : pre0 = gs_w PM so).
+    { rewrite Hwp' in Hlen0 |- *.
+      exact (prefix_length_eq pre0 pre Hprefl ltac:(lia)). }
+    (* THE TERMINAL FIRE: a coverage-ending byte sets the flag and freezes *)
+    iAssert (|==> pcs v (gs_cs PM so) (tmi || lm_term PM (lm_dec PM a))
+                  ∗ cur_half w (1/2) r gb (tmi || lm_term PM (lm_dec PM a))
+                  ∗ cur_half w (1/2) r gb (tmi || lm_term PM (lm_dec PM a))
+                  ∗ (⌜lm_term PM (lm_dec PM a) = false⌝ ∨ cs_frozen_at v r))%I
+      with "[Hcs Hcur Hcw]" as ">(Hcs & Hcur & Hcw & #Hfz)".
+    { destruct (lm_term PM (lm_dec PM a)) eqn:Hfk2.
+      - rewrite (orb_true_r tmi).
+        iMod (pcs_freeze v (gs_cs PM so) tmi with "Hcs") as "[Hcs #Hf]".
+        iMod (cur_half_update w r gb tmi r gb tmi r gb true
+                with "Hcur Hcw") as "[Hcur Hcw]".
+        iModIntro. iFrame "Hcs Hcur Hcw". iRight.
+        iApply (cs_frozen_at_of v (gs_cs PM so) r with "Hf").
+        by rewrite Hqq Hreq2.
+      - rewrite (orb_false_r tmi).
+        iModIntro. iFrame "Hcs Hcur Hcw". iLeft. by iPureIntro. }
+    iMod (rblk_auth_grow gb pre b with "Hrb") as "[Hrb #Hrlb1]".
+    iMod (turn_update v (P + length pre0)%nat _ (S (P + length pre0)) ltac:(lia)
+            with "Ht Hta") as "[Ht Hta]".
+    iMod (blk_auth_grow w (lm_stream PM tt so) b with "Hblk") as "[Hblk _]".
+    assert (Hbod : bodies_of (snd <$> gs_E PM so) !!! r = bodies_of I0 !!! r)
+      by (by rewrite HIeq).
+    assert (Hpc2 : forall s : lm_st PM,
+               lm_pcount PM (gs_ps PM so) (gs_cs PM so) s (gs_E PM so)
+                 (gs_w PM so ++ [b]) = S (P + length pre0)).
+    { intros s. rewrite lm_pcount_write (pipesN_st s) -HP. reflexivity. }
+    iModIntro. iSplitR "Ht Hcw".
+    - rewrite /pecl'. iRight.
+      iExists v, w, (MkGS PM (gs_ps PM so) (gs_cs PM so) (gs_E PM so)
+                       (gs_w PM so ++ [b]) (gs_st PM so)),
+              r, gb, (pre ++ [b]), (tmi || lm_term PM (lm_dec PM a)).
+      rewrite (lm_stream_write PM tt so b).
+      cbn [gs_ps gs_cs gs_E gs_w gs_st]. rewrite Hpc2.
+      rewrite /ConsLog.cons_step. cbn [LogEntryDefs.ch_dl].
+      iFrame "Hpin Hpera Hblk Hcur Hrb Hta Hcs Hps HE Hdl Hdll".
+      iPureIntro.
+      apply (gcl_pure_o_out2 PM tt k ho so
+               (MkGS PM (gs_ps PM so) (gs_cs PM so) (gs_E PM so)
+                  (gs_w PM so ++ [b]) (gs_st PM so))
+               r r pre (pre ++ [b]) H b);
+        [cbn [gs_cs]; lia | reflexivity | | | | | exact Hopen].
+      + rewrite /lm_out_pure_o. cbn [gs_ps gs_cs gs_E gs_w gs_st]. split_and!.
+        * rewrite Hacc app_assoc. reflexivity.
+        * exact Hidx.
+        * exact Hbyte.
+        * exact Hpsb.
+        * exact Hpin.
+        * exact Hcsb'.
+        * exact Hdsc.
+        * exact Hpre1.
+        * exact Hpre2.
+        * exact Hpre3.
+        * exact Hnofk.
+        * split.
+          -- intros Hn. exfalso. destruct (proj1 Hf0n Hn) as [_ Hw0].
+             rewrite Hwp' in Hw0. exact (Hne' Hw0).
+          -- intros [_ Hq2]. exfalso. destruct (app_eq_nil _ _ Hq2) as [_ Hq3].
+             discriminate Hq3.
+        * exact Hfok0.
+      + rewrite /lm_blk_open. cbn [gs_ps gs_cs gs_E gs_w gs_st].
+        split_and!; [exact Hreq2 | by rewrite Hwp' |
+                     intros Hz; destruct (app_eq_nil _ _ Hz) as [_ Hz2]; discriminate Hz2 |].
+        exists a. split.
+        { rewrite /lm_blk_at. rewrite -Hreq2 Hbod.
+          split_and!; [exact Hnn | exact Hrr | by rewrite Hqq Hreq2 | exact Halt
+                      | exact Hpan |].
+          rewrite -Hwp' -Hpre0. exact Hpref. }
+        destruct Hfarm as [(Hfk & Hnd0 & Hnd) | Hfk]; [| by right].
+        left. split; [exact Hfk |].
+        apply Forall_app. split; [| by apply Forall_singleton].
+        rewrite -Hwp' -Hpre0. exact Hnd0.
+      + exact (lm_ps_len_ok_write PM tt so b Hpsl).
+      + apply (lm_dl_ok_out PM so
+                 (MkGS PM (gs_ps PM so) (gs_cs PM so) (gs_E PM so)
+                    (gs_w PM so ++ [b]) (gs_st PM so)));
+          [reflexivity | cbn [gs_w] | left; rewrite Hwp'; exact Hne' | exact Hdlok].
+        intro Hq. by destruct (app_eq_nil _ _ Hq) as [_ Hq2].
+    - iLeft. rewrite Hpre0 -Hwp'. iFrame "Ht Hcw Hrlb1 Hfz".
+  Qed.
+
+  (* ---- (W-fileN) THE FILING, at the prompt's first byte:
+          [PipeOut.pecl_blk2_file] at the model.  The filer presents its
+          half at the flag [false], so the authority is the landed one and
+          never the frozen one; the round's code enters [cs] and the ghost
+          comes home whole. ---- *)
+  Lemma pecl'_blkN_file (k : nat) (v : era_pins) (w : pipe_era) (gb : gname)
+      (P r a : nat) (b : bv 8) (pre0 : list (bv 8))
+      (ps0 cs0 : list nat) (I0 : list (bv 8)) (ho : list mobs)
+      (H : LogEntryDefs.cons_hist) :
+    I0 <> [] ->
+    rest_of I0 = [] ->
+    r = (nlines I0 - 1)%nat ->
+    length cs0 = r ->
+    lm_pro_pin PM ps0 cs0 I0 ->
+    P = length (lm_proc_before PM ps0 cs0 tt I0) ->
+    lm_ok PM (lm_of PM (bodies_of I0 !!! r)) (lm_dec PM a) ->
+    lm_panic PM (lm_dec PM a) = false ->
+    lm_term PM (lm_dec PM a) = false ->
+    lm_cont PM tt (lm_of PM (bodies_of I0 !!! r)) (lm_dec PM a) = pre0 ++ u_prompt ->
+    b = u_prompt !!! 0%nat ->
+    era_pin γ k v -∗ pera_pin g k w -∗
+    turn v (P + length pre0)%nat -∗ cur_half w (1/2) r gb false -∗
+    rblk_lb gb pre0 -∗ ps_lb v ps0 -∗ cs_lb v cs0 -∗ inp_lb v I0 -∗
+    pecl' k ho H ==∗
+      pecl' k ho (ConsLog.cons_step H (ConsLog.EvOut b))
+      ∗ ((turn v (S (P + length pre0))%nat ∗ ps_lb v ps0
+          ∗ cs_lb v (cs0 ++ [a]) ∗ inp_lb v I0) ∨ T).
+  Proof using K.
+    intros Hne0 Hr0 Hreq Hcseq Hpin0 HPeq Halt Hpan Hfk Hcont Hbv.
+    pose proof (nlines_pos_of_rest_nil I0 Hne0 Hr0) as Hpos0.
+    iIntros "#Hpin #Hperaw Ht Hcw #Hrlb0 #Hpslb #Hcslb #Hilb Hcl".
+    iDestruct "Hcl" as "[Hcl | Hp]".
+    { iDestruct "Hcl" as "[#HT | Hp]".
+      { iModIntro. iSplitR; [by iApply pecl'_taint | by iRight]. }
+      iDestruct "Hp" as (v2 so) "(_ & _ & Hext & _)".
+      iDestruct "Hext" as (w2 r2 gb2 pre tm) "(#Hpera & _ & Hcur & _)".
+      iDestruct (pera_pin_agree with "Hpera Hperaw") as %->.
+      iDestruct (cur_half_excl with "Hcur Hcw") as %[]. }
+    iDestruct "Hp" as (v2 w2 so r2 gb2 pre tm)
+      "(#Hpin2 & #Hpera & Hblk & Hcur & Hrb & Hta & Hcs & Hps & HE & Hdl & Hdll & %Hopen)".
+    iDestruct (era_pin_agree with "Hpin2 Hpin") as %->.
+    iDestruct (pera_pin_agree with "Hpera Hperaw") as %->.
+    iDestruct (turn_agree with "Ht Hta") as %HP.
+    iDestruct (pcs_lb_prefix with "Hcs Hcslb") as %Hcsp.
+    iDestruct (ps_lb_prefix with "Hps Hpslb") as %Hpsp.
+    iDestruct (inp_lb_le with "Hdll Hilb") as %HI0dl.
+    assert (HI0 : I0 `prefix_of` (snd <$> gs_E PM so)).
+    { etrans; [exact HI0dl | exact (gcl_pure_o_dl_E PM tt _ _ _ _ _ _ Hopen)]. }
+    iDestruct (cur_half_agree with "Hcur Hcw") as %(-> & -> & Htmeq).
+    subst tm.
+    pose proof Hopen as (Hout & Hop & Hpsl & Hin & Hera & HEtie & Hdlok).
+    pose proof Hout as (Hacc & Hidx & Hbyte & Hpsb & Hpin & Hcsb' & Hdsc
+                        & Hpre1 & Hpre2 & Hpre3 & Hnofk & Hf0n & Hfok0).
+    pose proof Hop as (Hreq2 & Hwp' & Hne' & ao & Hb2 & Harm).
+    pose proof Hb2 as (Hnn & Hrr & Hqq & Hokao & Hpanao & Hprefao).
+    iDestruct (rblk_lb_prefix with "Hrb Hrlb0") as %Hprefl.
+    pose proof (prefix_length _ _ Hprefl) as Hpl0.
+    rewrite -Hwp' in Hpl0.
+    rewrite (pipesN_st (gs_state PM tt so)) in HP.
+    assert (Hs2 : lm_proc_before PM ps0 cs0 tt I0
+                  = lm_proc_before PM (gs_ps PM so) (gs_cs PM so) tt I0).
+    { apply (lm_proc_before_cs_prefix PM ps0 (gs_ps PM so) cs0 (gs_cs PM so) tt I0
+               Hpsp Hcsp Hpin0).
+      rewrite (ll_nlines_removelast _ Hr0) Hcseq Hreq. lia. }
+    assert (HIeq : (snd <$> gs_E PM so) = I0).
+    { destruct (decide ((snd <$> gs_E PM so) = I0)) as [? | Hne]; [done |].
+      exfalso.
+      pose proof (lm_proc_stream_before PM (gs_ps PM so) (gs_cs PM so) tt I0
+                    (snd <$> gs_E PM so) HI0
+                    ltac:(intros Hq; apply Hne; symmetry; exact Hq)) as Hp2.
+      apply prefix_length in Hp2.
+      rewrite /lm_proc_stream length_app -Hs2 in Hp2.
+      pose proof (lm_pending_at_nonnil_at PM K (gs_ps PM so) (gs_cs PM so)
+                    tt I0 (snd <$> gs_E PM so) HI0 Hcsb' Hne0 Hr0) as Hne1.
+      assert (Hlen1 : (1 <= length (lm_pending_at PM (gs_ps PM so) (gs_cs PM so)
+                                     tt I0))%nat).
+      { destruct (lm_pending_at PM (gs_ps PM so) (gs_cs PM so) tt I0);
+          [done | cbn; lia]. }
+      rewrite /lm_pcount in HP. lia. }
+    assert (Hlen0 : length pre0 = length (gs_w PM so)).
+    { rewrite /lm_pcount HIeq -Hs2 -HPeq in HP. lia. }
+    assert (Hpre0 : pre0 = gs_w PM so).
+    { rewrite Hwp' in Hlen0 |- *.
+      exact (prefix_length_eq pre0 pre Hprefl ltac:(lia)). }
+    iMod (turn_update v (P + length pre0)%nat _ (S (P + length pre0)) ltac:(lia)
+            with "Ht Hta") as "[Ht Hta]".
+    iMod (blk_auth_grow w (lm_stream PM tt so) b with "Hblk") as "[Hblk _]".
+    iDestruct (pcs_auth v (gs_cs PM so) false eq_refl with "Hcs") as "Hcs".
+    iMod (cs_auth_grow v (gs_cs PM so) a with "Hcs") as "[Hcs #Hcslb2]".
+    iDestruct (cur_join w r gb false with "Hcur Hcw") as "Hcur".
+    assert (Hbod : bodies_of (snd <$> gs_E PM so) !!! r = bodies_of I0 !!! r)
+      by (by rewrite HIeq).
+    pose proof (nlines_pos_of_rest_nil _ Hnn Hrr) as Hposc.
+    assert (Hcs0 : cs0 = gs_cs PM so).
+    { apply (prefix_length_eq cs0 (gs_cs PM so) Hcsp). rewrite Hcseq Hqq Hreq2. lia. }
+    assert (Hrlbnd : (nlines (removelast (snd <$> gs_E PM so))
+                      <= length (gs_cs PM so))%nat).
+    { rewrite (ll_nlines_removelast _ Hrr) Hqq. lia. }
+    assert (Hpinq : lm_pro_pin PM (gs_ps PM so) (gs_cs PM so ++ [a]) (snd <$> gs_E PM so)).
+    { intros qq Hqq2. rewrite lm_pro_idx_app_le; [by apply Hpin |].
+      rewrite (nstarted_rest_nil _ Hrr) in Hqq2. rewrite Hqq. lia. }
+    assert (HD : forall s : lm_st PM,
+               lm_D PM (gs_ps PM so) (gs_cs PM so ++ [a]) s (gs_E PM so)
+               = lm_D PM (gs_ps PM so) (gs_cs PM so) s (gs_E PM so)).
+    { intros s. symmetry.
+      apply (lm_D_cs_prefix PM (gs_ps PM so) (gs_ps PM so) (gs_cs PM so)
+               (gs_cs PM so ++ [a]) s (gs_E PM so));
+        [reflexivity | by eexists | exact Hpin | exact Hrlbnd]. }
+    assert (Hproc : forall s : lm_st PM,
+               lm_proc_before PM (gs_ps PM so) (gs_cs PM so ++ [a]) s (snd <$> gs_E PM so)
+               = lm_proc_before PM (gs_ps PM so) (gs_cs PM so) s (snd <$> gs_E PM so)).
+    { intros s. symmetry.
+      apply (lm_proc_before_cs_prefix PM (gs_ps PM so) (gs_ps PM so) (gs_cs PM so)
+               (gs_cs PM so ++ [a]) s (snd <$> gs_E PM so));
+        [reflexivity | by eexists | exact Hpin | exact Hrlbnd]. }
+    assert (Hpc2 : forall s : lm_st PM,
+               lm_pcount PM (gs_ps PM so) (gs_cs PM so ++ [a]) s (gs_E PM so)
+                 (gs_w PM so ++ [b]) = S (P + length pre0)).
+    { intros s. rewrite /lm_pcount Hproc -/(lm_pcount PM (gs_ps PM so) (gs_cs PM so) s
+                                              (gs_E PM so) (gs_w PM so ++ [b])).
+      rewrite lm_pcount_write (pipesN_st s) -HP. reflexivity. }
+    assert (Hat : lm_at PM (gs_cs PM so ++ [a]) (nlines (snd <$> gs_E PM so) - 1)
+                  = lm_dec PM a).
+    { rewrite /lm_at list_lookup_total_alt lookup_app_r; [| lia].
+      rewrite Hqq Nat.sub_diag. reflexivity. }
+    assert (HpendA : forall s : lm_st PM,
+               lm_pending PM (gs_ps PM so) (gs_cs PM so ++ [a]) s (gs_E PM so)
+               = pre0 ++ u_prompt).
+    { intros s. rewrite /lm_pending /lm_pending_at decide_False; [| exact Hnn].
+      rewrite decide_True; [| exact Hrr].
+      rewrite lmN_cont_at_nopanic; [| by rewrite Hat].
+      rewrite Hat -Hreq2 Hbod. exact Hcont. }
+    iModIntro. iSplitR "Ht".
+    - rewrite /pecl'. iLeft. rewrite /gcl. iRight.
+      iExists v, (MkGS PM (gs_ps PM so) (gs_cs PM so ++ [a]) (gs_E PM so)
+                    (gs_w PM so ++ [b]) (gs_st PM so)).
+      cbn [gs_ps gs_cs gs_E gs_w gs_st]. rewrite Hpc2.
+      rewrite /ConsLog.cons_step. cbn [LogEntryDefs.ch_dl].
+      iSplitR; [iExact "Hpin" |]. iSplitR; [done |].
+      iSplitL "Hblk Hcur Hrb".
+      { unfold pipesN_wa. cbn [gext]. rewrite /pext.
+        iExists w, r, gb, pre, false. iFrame "Hpera Hcur Hrb".
+        rewrite (_ : lm_stream PM tt (MkGS PM (gs_ps PM so) (gs_cs PM so ++ [a])
+                                        (gs_E PM so) (gs_w PM so ++ [b]) (gs_st PM so))
+                     = lm_stream PM tt so ++ [b]); [iExact "Hblk" |].
+        rewrite /lm_stream. cbn [gs_ps gs_cs gs_E gs_w gs_st].
+        rewrite Hproc app_assoc. reflexivity. }
+      iFrame "Hta Hcs Hps HE Hdl Hdll".
+      iPureIntro.
+      apply (gcl_pure_of_o_out PM tt k ho so
+               (MkGS PM (gs_ps PM so) (gs_cs PM so ++ [a]) (gs_E PM so)
+                  (gs_w PM so ++ [b]) (gs_st PM so))
+               r pre H b);
+        [cbn [gs_cs]; rewrite length_app; cbn [length]; lia
+        | reflexivity | | | | | exact Hopen].
+      + rewrite /lm_out_pure. cbn [gs_ps gs_cs gs_E gs_w gs_st]. split_and!.
+        * rewrite Hacc HD app_assoc. reflexivity.
+        * rewrite HpendA -Hpre0 Hbv. apply prefix_app.
+          exists (drop 1 u_prompt).
+          rewrite -{1}(take_drop 1 u_prompt). f_equal.
+        * exact Hidx.
+        * exact Hbyte.
+        * exact Hpsb.
+        * exact Hpinq.
+        * apply lm_alts_pre_snoc; [exact Hcsb' | rewrite Hqq; lia |].
+          rewrite Hqq -Hreq2 Hbod. exact Halt.
+        * exact Hdsc.
+        * exact Hpre1.
+        * exact Hpre2.
+        * exact Hpre3.
+        * apply Forall_app. split; [exact Hnofk | by apply Forall_singleton].
+        * split.
+          -- intros Hn. exfalso. destruct (proj1 Hf0n Hn) as [_ Hw0].
+             rewrite Hwp' in Hw0. exact (Hne' Hw0).
+          -- intros [_ Hq2]. exfalso. destruct (app_eq_nil _ _ Hq2) as [_ Hq3].
+             discriminate Hq3.
+        * exact Hfok0.
+      + apply lm_cs_len_ok_intro.
+        * intros [Hz _]. exfalso. destruct (app_eq_nil _ _ Hz) as [_ Hz2].
+          discriminate Hz2.
+        * intros _. rewrite length_app Hqq. cbn [length]. lia.
+      + exact (lm_ps_len_ok_blk_w PM tt PB so a (gs_w PM so ++ [b]) Hrr Hnn Hqq Hpsl).
+      + apply (lm_dl_ok_out PM so
+                 (MkGS PM (gs_ps PM so) (gs_cs PM so ++ [a]) (gs_E PM so)
+                    (gs_w PM so ++ [b]) (gs_st PM so)));
+          [reflexivity | cbn [gs_w] | left; rewrite Hwp'; exact Hne' | exact Hdlok].
+        intro Hq. by destruct (app_eq_nil _ _ Hq) as [_ Hq2].
+    - iLeft. rewrite Hcs0. iFrame "Ht Hpslb Hcslb2 Hilb".
+  Qed.
 End pipes_out_n.

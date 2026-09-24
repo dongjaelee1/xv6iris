@@ -1184,11 +1184,14 @@ Section UkFileIface.
       iApply (fdq_join with "Hd' Hd").
   Qed.
 
-  Lemma fif_exit (s : Z) (fdm : fdmap) (dv : nat -> dspec) (ds : gset nat) :
+  Lemma fif_exit (s : Z) (fdm : fdmap) (files : list (bv 8) -> option (list (bv 8)))
+      (paths : list (list (bv 8))) (dv : nat -> dspec) (ds : gset nat) :
     (forall d, d ∈ ds -> drained (dv d)) ->
-    fif_fds fdm -∗ ([∗ set] d ∈ ds, fif_dev d (dv d)) -∗ ex_obl N P s.
+    (forall fd d, fdm !! fd = Some d -> d ∈ ds) ->
+    fif_fds fdm -∗ fif_filesr files paths -∗ ([∗ set] d ∈ ds, fif_dev d (dv d)) -∗
+    ex_obl N P s.
   Proof using HNc Hse.
-    intros _. iIntros "Hfds _".
+    intros _ _. iIntros "Hfds _ _".
     iDestruct "Hfds" as (l vs w) "(_ & _ & Hpay & _)".
     iApply (fif_exit_pay with "Hpay").
   Qed.

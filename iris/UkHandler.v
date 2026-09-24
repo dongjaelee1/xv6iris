@@ -224,10 +224,15 @@ Section UkHandler.
         ei_fds fdm -∗
         ((ei_fds (delete fd fdm) -∗ K 0) ∧ (∀ y, ei_taint (dom fdm ∖ {[fd]}) -∗ K y)) -∗
         cl_obl N P fd K;
-    (* the exit, with every device drained *)
-    ei_exit : forall (s : Z) (fdm : fdmap) (dv : nat -> dspec) (ds : gset nat),
+    (* the exit, with every device drained: the instance receives the
+       descriptors, the files and every device (the exit payload is built
+       from them; design SS3.4e), and the fact that every bound device is
+       among them *)
+    ei_exit : forall (s : Z) (fdm : fdmap) (files : list (bv 8) -> option (list (bv 8)))
+                     (paths : list (list (bv 8))) (dv : nat -> dspec) (ds : gset nat),
         (forall d, d ∈ ds -> drained (dv d)) ->
-        ei_fds fdm -∗
+        (forall fd d, fdm !! fd = Some d -> d ∈ ds) ->
+        ei_fds fdm -∗ ei_files files paths -∗
         ([∗ set] d ∈ ds, match dv d with
                          | DOut alts => ei_out d alts | DOutH alts => ei_outh d alts
                          | DOutM cs => ei_outm d cs | DHalt => ei_halt d
@@ -498,7 +503,8 @@ Section UkHandler.
           iApply (cf_inv_move I E ds d DHalt with "Hfds Hfiles Hh Hrest");
             [exact Hin | by rewrite (env_set_dev_id E d _ Hd) | apply Hs | exact Hdom].
       + (* EExit *)
-        iApply (ei_exit I s (pe_fd E) (pe_dev E) ds with "Hfds Hdev").
+        iApply (ei_exit I s (pe_fd E) (pe_files E) (pe_paths E) (pe_dev E) ds
+                  with "Hfds Hfiles Hdev"); [| exact Hdom].
         intros d _. exact (Hc d).
   Qed.
 

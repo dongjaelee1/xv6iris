@@ -849,6 +849,40 @@ Proof using.
     [exact nohd_execL | exact nohd_execR | exact nohd_execR | exfalso; exact (Hst eq_refl)].
 Qed.
 
+(* NOR DOES ANY START ON 'i', the letter every line of init's opens on:
+   what follows the panic line on the wire is init's next prologue round,
+   and a diagnostic after a whole panic line is never read as one *)
+Definition pan_i : bytes := alt_panic ++ [Z_to_bv 8 105].
+
+Lemma nohd_mono p q s : (forall x, x ∈ p -> x ∈ q) -> nohd q s -> nohd p s.
+Proof using. destruct s as [| y s]; [done |]. cbn. intros Hpq Hq Hy. exact (Hq (Hpq y Hy)). Qed.
+
+Lemma nohd_pan_i s : nohd pan_i s -> nohd alt_panic s.
+Proof using. apply nohd_mono. intros x Hx. unfold pan_i. apply elem_of_app. by left. Qed.
+
+Lemma nohd_i_execL : nohd pan_i dg_execL.
+Proof using. bdec. Qed.
+Lemma nohd_i_execR : nohd pan_i dg_execR.
+Proof using. bdec. Qed.
+Lemma nohd_i_write : nohd pan_i cat_dg_write.
+Proof using. bdec. Qed.
+Lemma nohd_i_pipe : nohd pan_i dg_pipe_b.
+Proof using. bdec. Qed.
+Lemma nohd_i_open f : nohd pan_i (cat_dg_open f).
+Proof using.
+  unfold cat_dg_open. apply nohd_app; [discriminate | bdec].
+Qed.
+
+Lemma stage_out_nohd_i fc L st so :
+  stage_out fc L st so -> st <> SLast -> nohd pan_i (so_cons so).
+Proof using.
+  destruct 1 as [st | st | | | | | f | | |]; intros Hst; cbn [so_cons];
+    try exact I; try exact nohd_i_write; try exact (nohd_i_open f);
+    try (exfalso; exact (Hst eq_refl)).
+  destruct st as [[ws | f] | |]; cbn [st_dg_exec];
+    [exact nohd_i_execL | exact nohd_i_execR | exact nohd_i_execR | exfalso; exact (Hst eq_refl)].
+Qed.
+
 (* ---- the inversions, one per stage kind ---- *)
 
 Lemma stage_out_echo_inv fc L ws so :
@@ -908,21 +942,48 @@ Proof using.
 Qed.
 
 (* EVERY STREAM OF A RUN IS A DIAGNOSTIC (no stream starts inside the
-   panic line) BUT THE LAST CAT'S, which is a prefix of the line *)
+   panic line, nor on init's 'i') BUT THE LAST CAT'S, which is a prefix of
+   the line *)
+Lemma sfx_run_shape_i fc L m w wc ss :
+  sfx_run fc L m w wc ss ->
+  Forall (nohd pan_i) ss
+  \/ exists ds c, ss = ds ++ [c] /\ Forall (nohd pan_i) ds /\ c `prefix_of` L.
+Proof using.
+  induction 1 as [win wc so Hso Hp | m win wc | m win wc so ss Hso Hp Hr IH].
+  - destruct (stage_out_last_inv fc L so Hso) as [-> | [-> | (D & HD & ->)]].
+    + left. constructor; [exact nohd_i_execR | constructor].
+    + left. constructor; [exact I | constructor].
+    + right. exists [], D. split; [reflexivity | split; [constructor | exact HD]].
+  - left. constructor; [exact nohd_i_pipe | constructor].
+  - pose proof (stage_out_nohd_i fc L SMid so Hso ltac:(discriminate)) as Hn.
+    destruct IH as [IH | (ds & c & -> & Hds & Hc)]; [left; constructor; [exact Hn | exact IH] | right].
+    exists (so_cons so :: ds), c. split; [reflexivity | split; [constructor; [exact Hn | exact Hds] | exact Hc]].
+Qed.
+
+Lemma line_run_shape_i fc p n ss :
+  line_run fc (LPipes p n) ss ->
+  Forall (nohd pan_i) ss
+  \/ exists ds c, ss = ds ++ [c] /\ Forall (nohd pan_i) ds /\ c `prefix_of` prod_content fc p.
+Proof using.
+  intros H. remember (LPipes p n) as l eqn:Hl.
+  destruct H as [ws | ws | ws | p' n' Hn | p' n' so ss Hso Hr]; try discriminate Hl.
+  - left. constructor; [exact nohd_i_pipe | constructor].
+  - injection Hl as -> ->.
+    pose proof (stage_out_nohd_i _ _ _ _ Hso ltac:(discriminate)) as Hn.
+    destruct (sfx_run_shape_i _ _ _ _ _ _ Hr) as [Hf | (ds & c & -> & Hds & Hc)];
+      [left; constructor; [exact Hn | exact Hf] | right].
+    exists (so_cons so :: ds), c. split; [reflexivity | split; [constructor; [exact Hn | exact Hds] | exact Hc]].
+Qed.
+
+(* ...and read against the panic line alone *)
 Lemma sfx_run_shape fc L m w wc ss :
   sfx_run fc L m w wc ss ->
   Forall (nohd alt_panic) ss
   \/ exists ds c, ss = ds ++ [c] /\ Forall (nohd alt_panic) ds /\ c `prefix_of` L.
 Proof using.
-  induction 1 as [win wc so Hso Hp | m win wc | m win wc so ss Hso Hp Hr IH].
-  - destruct (stage_out_last_inv fc L so Hso) as [-> | [-> | (D & HD & ->)]].
-    + left. constructor; [exact nohd_execR | constructor].
-    + left. constructor; [exact I | constructor].
-    + right. exists [], D. split; [reflexivity | split; [constructor | exact HD]].
-  - left. constructor; [exact nohd_pipe | constructor].
-  - pose proof (stage_out_nohd fc L SMid so Hso ltac:(discriminate)) as Hn.
-    destruct IH as [IH | (ds & c & -> & Hds & Hc)]; [left; constructor; [exact Hn | exact IH] | right].
-    exists (so_cons so :: ds), c. split; [reflexivity | split; [constructor; [exact Hn | exact Hds] | exact Hc]].
+  intros Hr. destruct (sfx_run_shape_i fc L m w wc ss Hr) as [HF | (ds & c & -> & Hds & Hc)];
+    [left; exact (Forall_impl _ _ _ HF nohd_pan_i) | right].
+  exists ds, c. split; [reflexivity | split; [exact (Forall_impl _ _ _ Hds nohd_pan_i) | exact Hc]].
 Qed.
 
 Lemma line_run_shape fc p n ss :
@@ -930,14 +991,9 @@ Lemma line_run_shape fc p n ss :
   Forall (nohd alt_panic) ss
   \/ exists ds c, ss = ds ++ [c] /\ Forall (nohd alt_panic) ds /\ c `prefix_of` prod_content fc p.
 Proof using.
-  intros H. remember (LPipes p n) as l eqn:Hl.
-  destruct H as [ws | ws | ws | p' n' Hn | p' n' so ss Hso Hr]; try discriminate Hl.
-  - left. constructor; [exact nohd_pipe | constructor].
-  - injection Hl as -> ->.
-    pose proof (stage_out_nohd _ _ _ _ Hso ltac:(discriminate)) as Hn.
-    destruct (sfx_run_shape _ _ _ _ _ _ Hr) as [Hf | (ds & c & -> & Hds & Hc)];
-      [left; constructor; [exact Hn | exact Hf] | right].
-    exists (so_cons so :: ds), c. split; [reflexivity | split; [constructor; [exact Hn | exact Hds] | exact Hc]].
+  intros Hr. destruct (line_run_shape_i fc p n ss Hr) as [HF | (ds & c & -> & Hds & Hc)];
+    [left; exact (Forall_impl _ _ _ HF nohd_pan_i) | right].
+  exists ds, c. split; [reflexivity | split; [exact (Forall_impl _ _ _ Hds nohd_pan_i) | exact Hc]].
 Qed.
 
 (* ...AND AT [echo ws | cat] THE CONTENT COMES ALONE: the last cat printed
@@ -1013,16 +1069,19 @@ Qed.
 (* ===================================================================== *)
 (*  5b.  THE LAWS                                                         *)
 (*                                                                        *)
-(*  Every law but [lml_cont_shape] holds at every content function and    *)
-(*  every admission.  [lml_cont_shape] -- a round that did not panic is   *)
-(*  a '$'-free run then the prompt, and below one wire with sh's panic    *)
-(*  line it IS that line -- holds when the content has a word line's      *)
-(*  shape ([fc_ok]) and the corner cannot put the panic line beside a     *)
-(*  diagnostic ([adm_ok]).  It FAILS at [echo fork | cat | cat]           *)
-(*  ([pipes_lm_fork2_no_laws]): the corner (B) admits the whole line      *)
-(*  [fork] followed by a middle cat's [cat: write error], which is below *)
-(*  one wire with the panic line for SOME continuation of the panic line *)
-(*  -- the law quantifies every one, not only the prologues init prints. *)
+(*  The laws hold at every admission whose content has a word line's      *)
+(*  shape ([fc_ok]): [pipes_lm_laws_fc].  [lml_cont_shape] -- a round     *)
+(*  that did not panic is a '$'-free run then the prompt, and below one   *)
+(*  wire with sh's panic line FOLLOWED BY INIT'S NEXT PROLOGUE ROUND it   *)
+(*  IS that line -- holds at [echo fork | cat | cat] too: the corner (B)  *)
+(*  admits the whole line [fork] followed by a middle cat's               *)
+(*  [cat: write error] ([fork2_corner]), which looks like the panic line  *)
+(*  followed by something, but that something opens on 'c' and init's    *)
+(*  round on '$' or 'i'.  The owner's ruling (2026-09-24) admits every    *)
+(*  echo pipeline whatever its output looks like ([adm_echo]), and the    *)
+(*  law no longer asks the output to be unlike the panic line followed by *)
+(*  ANY bytes.  The stronger reading ([pipes_block_shape], under          *)
+(*  [adm_ok]) is kept for the claim's non-terminal witness.               *)
 (* ===================================================================== *)
 
 (* a content the determinacy argument can read: '$'-free, and its only
@@ -1179,9 +1238,127 @@ Proof using.
   - destruct Hok as (_ & _ & H). exact H.
 Qed.
 
-Theorem pipes_lm_laws fc adm : fc_ok fc -> adm_ok fc adm -> lm_laws (pipes_lm fc adm).
+(* ---- THE BYTES AFTER A PANIC LINE: init's next round ---- *)
+
+(* init's round opens on '$' (the prompt alone) or 'i' (its own lines) *)
+Lemma pro_of_head ps z :
+  Forall (fun a => a < length pro_alts) ps -> pro_of ps !! 0 = Some z ->
+  bv_unsigned z = 36%Z \/ bv_unsigned z = 105%Z.
 Proof using.
-  intros Hfc Hadm. constructor;
+  intros HF Hz. destruct ps as [| a ps]; [discriminate Hz |].
+  apply Forall_cons_1 in HF as [Ha _].
+  assert (Hpos : 0 < length (pro_alts !!! a)).
+  { destruct (pro_alts !!! a) as [| y ys] eqn:Hy;
+      [exfalso; exact (pro_alts_nonnil a Ha Hy) | cbn [length]; lia]. }
+  rewrite pro_of_cons, (lookup_app_l _ _ 0 Hpos) in Hz.
+  rewrite pro_alts_length in Ha.
+  destruct a as [|[|[|[|a]]]]; [| | | | lia]; vm_compute in Hz; injection Hz as Hz; subst z;
+    [left | right | right | right]; by vm_compute.
+Qed.
+
+(* ...so a byte that sits where that round starts is one of the two *)
+Lemma pro_below_head ps W x t :
+  Forall (fun a => a < length pro_alts) ps ->
+  ((W = [] \/ pro_done ps) /\ (x :: t) `prefix_of` (pro_of ps ++ W))
+  \/ (pro_done ps /\ (pro_of ps ++ W) `prefix_of` (x :: t)) ->
+  bv_unsigned x = 36%Z \/ bv_unsigned x = 105%Z.
+Proof using.
+  intros HF Hb.
+  assert (Hne : pro_of ps <> []).
+  { intros He. destruct Hb as [[[-> | Hd] Hp] | [Hd Hp]].
+    - rewrite He in Hp. cbn [app] in Hp. by apply prefix_nil_not in Hp.
+    - assert (Hps : ps <> []) by (intros ->; by apply Exists_nil in Hd).
+      pose proof (pro_of_pos ps HF Hps) as Hpos. rewrite He in Hpos. cbn [length] in Hpos. lia.
+    - assert (Hps : ps <> []) by (intros ->; by apply Exists_nil in Hd).
+      pose proof (pro_of_pos ps HF Hps) as Hpos. rewrite He in Hpos. cbn [length] in Hpos. lia. }
+  assert (Hlen : 0 < length (pro_of ps)).
+  { destruct (decide (length (pro_of ps) = 0)) as [H0 | H0];
+      [exfalso; exact (Hne (nil_length_inv _ H0)) | lia]. }
+  destruct (lookup_lt_is_Some_2 (pro_of ps) 0 Hlen) as [z Hz].
+  assert (Hz' : (pro_of ps ++ W) !! 0 = Some z)
+    by (rewrite lookup_app_l; [exact Hz | exact Hlen]).
+  assert (Hzx : z = x).
+  { destruct Hb as [[_ Hp] | [_ Hp]].
+    - pose proof (prefix_lookup_Some (x :: t) _ 0 x eq_refl Hp) as H.
+      rewrite Hz' in H. injection H as H. exact H.
+    - pose proof (prefix_lookup_Some _ (x :: t) 0 z Hz' Hp) as H.
+      cbn in H. injection H as H. symmetry. exact H. }
+  subst z. exact (pro_of_head ps x HF Hz).
+Qed.
+
+(* an echo line's block is a word line's shape *)
+Lemma echo_block_shape fc ws b :
+  pl_ok (LEcho' ws) -> line_blocks fc (LEcho' ws) b -> lshape b.
+Proof using.
+  intros Hl (ss & Hr & Hm).
+  assert (Hwf : wl_wf ws) by exact (line_ok_wf ws Hl).
+  inversion Hr; subst; apply merge_all_one in Hm; subst b.
+  - exact (pd_wl_line_shape' (drop 1 ws) (lb_Forall_drop _ 1 ws Hwf)).
+  - exact (pd_wl_line_shape' dg_exec ltac:(bdec)).
+  - split; [constructor | left; apply not_elem_of_nil].
+Qed.
+
+Lemma pipes_block_nodollar fc l b :
+  fc_ok fc -> pl_ok l -> line_blocks fc l b -> Forall nodollar b.
+Proof using.
+  intros Hfc Hl Hb. destruct l as [ws | p n].
+  - exact (proj1 (echo_block_shape fc ws b Hl Hb)).
+  - destruct Hb as (ss & Hr & Hm).
+    exact (merge_all_forall _ ss b Hm (line_run_nodollar fc _ ss Hfc Hl Hr)).
+Qed.
+
+(* THE BYTE SHAPE OF A BLOCK BESIDE A PANIC: below one wire with the panic
+   line and init's next round, a block IS the panic line.  No admission
+   premise: the corner's [fork] then [cat: write error] is the panic line
+   followed by a 'c', and init's round opens on '$' or 'i'. *)
+Lemma pipes_block_below_panic fc l b Y ps W :
+  fc_ok fc -> pl_ok l -> line_blocks fc l b ->
+  Forall (fun x => x < length pro_alts) ps ->
+  lm_below_panic b Y ps W -> b = alt_panic.
+Proof using.
+  intros Hfc Hl Hb Hps Hbp.
+  pose proof (lm_below_panic_any b Y ps W Hbp) as Hcmp.
+  destruct l as [ws | p n].
+  - destruct (echo_block_shape fc ws b Hl Hb) as [Hnd Hnl].
+    exact (lb_out_eq_panic b Y _ Hnd Hnl Hcmp).
+  - pose proof (pipes_block_nodollar fc _ b Hfc Hl Hb) as Hnd.
+    destruct Hb as (ss & Hr & Hm).
+    pose proof Hl as (Hp & _ & _).
+    pose proof (prod_content_shape fc p Hfc Hp) as HL.
+    pose proof (cmp_panic_prefix b Y _ Hcmp) as Hpb.
+    destruct (line_run_shape_i fc p n ss Hr) as [HF | (ds & c & -> & Hds & Hc)].
+    + exfalso. exact (nohd_no_panic _ _ Hm (Forall_impl _ _ _ HF nohd_pan_i) Hpb).
+    + destruct Hpb as [r ->].
+      destruct (merge_prefix_from alt_panic (ds ++ [c]) (length ds) c r Hm) as [Hpc Hr'].
+      { apply list_lookup_middle. reflexivity. }
+      { intros i s Hne Hi. apply lookup_app_Some in Hi as [Hi | [Hge Hi]].
+        - exact (nohd_pan_i _ (Forall_lookup_1 _ _ _ _ Hds Hi)).
+        - apply list_lookup_singleton_Some in Hi as [Hi0 _]. lia. }
+      destruct (panic_prefix_shape _ c HL Hc Hpc) as [HLp Hcl].
+      assert (Hc0 : c = alt_panic) by (rewrite Hcl, HLp; reflexivity).
+      destruct r as [| x r]; [by rewrite app_nil_r |]. exfalso.
+      rewrite (insert_app_r_alt ds [c] (length ds) _ (Nat.le_refl _)) in Hr'.
+      rewrite Nat.sub_diag, Hc0, drop_all in Hr'.
+      (* the byte after the panic line is a diagnostic's first *)
+      assert (Hxi : x ∉ pan_i).
+      { apply (merge_all_head_nohd pan_i _ x r Hr').
+        apply Forall_app. split; [exact Hds | constructor; [exact I | constructor]]. }
+      assert (Hxd : nodollar x).
+      { apply Forall_app in Hnd as [_ Hnd]. apply Forall_cons_1 in Hnd as [Hxd _]. exact Hxd. }
+      (* ...and where init's round starts *)
+      assert (Hx : bv_unsigned x = 36%Z \/ bv_unsigned x = 105%Z).
+      { apply (pro_below_head ps W x (r ++ u_prompt ++ Y) Hps).
+        unfold lm_below_panic in Hbp. rewrite <- !app_assoc in Hbp.
+        destruct Hbp as [[HW Hp'] | [Hd Hp']]; apply prefix_app_inv in Hp';
+          [left | right]; split; assumption. }
+      destruct Hx as [Hx | Hx]; [exact (Hxd Hx) |].
+      apply Hxi. unfold pan_i. apply elem_of_app. right. apply elem_of_list_singleton.
+      apply bv_eq. rewrite Hx. by vm_compute.
+Qed.
+
+Theorem pipes_lm_laws_fc fc adm : fc_ok fc -> lm_laws (pipes_lm fc adm).
+Proof using.
+  intros Hfc. constructor;
     cbn [pipes_lm lm_ok lm_cont lm_merge lm_panic lm_term lm_line_ok lm_body_ok lm_of
          lm_st_ok lm_step].
   - intros b Hb. exact (proj1 (proj2 (pl_body_ok_line adm b Hb))).
@@ -1194,9 +1371,12 @@ Proof using.
     split; [exact Ha | split; [exact Hok | etrans; [exact Hp | exact Hu]]].
   - intros s l a _ Hl [Ha Hok] Hp Ht. destruct a as [| b | b];
       [cbn in Hp; discriminate Hp | | cbn in Ht; discriminate Ht].
-    destruct (pipes_block_shape fc adm l b Hfc Hadm Ha Hl Hok) as [Hnd Hcmp].
-    exists b. split; [reflexivity | split; [exact Hnd | exact Hcmp]].
+    exists b. split; [reflexivity | split; [exact (pipes_block_nodollar fc l b Hfc Hl Hok) |]].
+    intros Y ps W Hps Hcmp. exact (pipes_block_below_panic fc l b Y ps W Hfc Hl Hok Hps Hcmp).
 Qed.
+
+Theorem pipes_lm_laws fc adm : fc_ok fc -> adm_ok fc adm -> lm_laws (pipes_lm fc adm).
+Proof using. intros Hfc _. exact (pipes_lm_laws_fc fc adm Hfc). Qed.
 
 Theorem pipes_lm_byte_laws fc adm : lm_byte_laws (pipes_lm fc adm).
 Proof using.
@@ -1221,10 +1401,13 @@ Proof using. intros f c H. discriminate H. Qed.
 (* the landed one-pipe application's lines: [echo ..] and [echo .. | cat] *)
 Definition adm1 (l : pline') : bool :=
   match l with LEcho' _ => true | LPipes (PrEcho _) 1 => true | _ => false end.
-(* every echo pipeline *)
+(* every echo pipeline: THE PIPELINE APPLICATION'S ADMISSION (owner ruling
+   2026-09-24: the user may type [echo fork | cat | cat]; its output need
+   not be distinguishable from a panic) *)
 Definition adm_echo (l : pline') : bool :=
   match l with LEcho' _ => true | LPipes (PrEcho _) _ => true | _ => false end.
-(* every echo pipeline but [echo fork | cat | cat ..] *)
+(* every echo pipeline but [echo fork | cat | cat ..]: what the laws
+   asked before the ruling, kept for the demos *)
 Definition adm_echo_safe (l : pline') : bool :=
   match l with
   | LEcho' _ => true
@@ -1251,12 +1434,22 @@ Proof using. exact (pipes_lm_laws _ _ fc_none_ok (adm1_ok _)). Qed.
 Corollary pipes_lm_echo_safe_laws : lm_laws (pipes_lm (fun _ => None) adm_echo_safe).
 Proof using. exact (pipes_lm_laws _ _ fc_none_ok (adm_echo_safe_ok _)). Qed.
 
+(* THE PIPELINE APPLICATION'S MODEL: every echo pipeline, no [cat f] *)
+Definition pipes_lmE : lmodel := pipes_lm (fun _ => None) adm_echo.
+
+Corollary pipes_lm_echo_laws : lm_laws pipes_lmE.
+Proof using. exact (pipes_lm_laws_fc _ adm_echo fc_none_ok). Qed.
+
 (* DETERMINACY, as the line model's: two witnesses below one wire put the
-   same bytes on it *)
+   same bytes on it (they may still be two different runs: the bytes need
+   not say which) *)
 Definition pipes_sess_prefix_det fc adm (Hfc : fc_ok fc) (Hadm : adm_ok fc adm) :=
   lm_sess_prefix_det (pipes_lm fc adm) (pipes_lm_laws fc adm Hfc Hadm).
 
-(* ---- WHERE [lml_cont_shape] FAILS: [echo fork | cat | cat] ---- *)
+Definition pipes_echo_sess_prefix_det :=
+  lm_sess_prefix_det pipes_lmE pipes_lm_echo_laws.
+
+(* ---- [echo fork | cat | cat]: AN OUTPUT THAT OPENS ON THE PANIC LINE ---- *)
 
 Definition ws_fork : list bytes := [cmd_echo; sb "fork"%string].
 Definition l_fork2 : pline' := LPipes (PrEcho ws_fork) 2.
@@ -1291,21 +1484,18 @@ Proof using.
     constructor. cbn. repeat constructor.
 Qed.
 
-Theorem pipes_lm_fork2_no_laws fc adm : adm l_fork2 = true -> ~ lm_laws (pipes_lm fc adm).
+(* ...admitted at the application's model, and on the wire it is the
+   panic line followed by bytes init never prints after one: the laws
+   hold ([pipes_lm_echo_laws]) because they only compare it with init's
+   next round *)
+Lemma pipes_lmE_fork2 :
+  lm_ok pipes_lmE l_fork2 (PLRun (alt_panic ++ cat_dg_write))
+  /\ lm_cont pipes_lmE tt l_fork2 (PLRun (alt_panic ++ cat_dg_write))
+     = alt_panic ++ cat_dg_write ++ u_prompt.
 Proof using.
-  intros Ha HL.
-  destruct (lml_cont_shape HL tt l_fork2 (PLRun (alt_panic ++ cat_dg_write)) I l_fork2_ok
-              (conj Ha (fork2_corner fc)) eq_refl eq_refl) as (u & Hu & _ & Hcmp).
-  cbn [pipes_lm lm_cont plcont] in Hu. apply app_inv_tail in Hu. subst u.
-  assert (Heq : alt_panic ++ cat_dg_write = alt_panic).
-  { apply (Hcmp [] (cat_dg_write ++ u_prompt)). left.
-    rewrite app_nil_r, <- app_assoc. reflexivity. }
-  apply (f_equal (@length _)) in Heq. rewrite length_app in Heq.
-  assert (Hl : length cat_dg_write = 17) by reflexivity. lia.
+  split; [split; [reflexivity | exact (fork2_corner _)] |].
+  cbn [pipes_lmE pipes_lm lm_cont plcont]. by rewrite <- app_assoc.
 Qed.
-
-Corollary pipes_lm_echo_no_laws fc : ~ lm_laws (pipes_lm fc adm_echo).
-Proof using. exact (pipes_lm_fork2_no_laws fc adm_echo eq_refl). Qed.
 
 (* ===================================================================== *)
 (*  6.  THE OUTCOMES ARE THE TREES' EXITS                                 *)

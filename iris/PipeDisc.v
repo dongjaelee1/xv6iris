@@ -2412,9 +2412,9 @@ Proof using.
   - intros s l a _ Hl Ha Hp Hf.
     destruct (pcont_shape_nl l a Hl Ha Hp Hf) as (u & Hu & Hnd & Hnl).
     exists u. split; [exact Hu |]. split; [exact Hnd |].
-    intros Y Z Hcmp. destruct Hnl as [Hnl | Hhd].
-    + exact (lb_out_eq_panic u Y Z Hnd Hnl Hcmp).
-    + exfalso. exact (lb_head_ne_panic u Y Z Hhd Hcmp).
+    intros Y ps W _ Hcmp. apply lm_below_panic_any in Hcmp. destruct Hnl as [Hnl | Hhd].
+    + exact (lb_out_eq_panic u Y _ Hnd Hnl Hcmp).
+    + exfalso. exact (lb_head_ne_panic u Y _ Hhd Hcmp).
 Qed.
 
 Lemma pipe_lm_byte_laws : lm_byte_laws pipe_lm.

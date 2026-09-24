@@ -182,8 +182,12 @@ step function `cf_step`, which computes -- never by `inversion`, which
 silently drops the continuation's equality.
 
 What a line shape provisions, abstractly, is an ENVIRONMENT
-(`ProgTree.penv`): descriptors bound to devices, each device an endpoint
-spec, and the files.  An output device owes a SET of alternatives
+(`ProgTree.penv`): descriptors bound to devices (`pe_fd`, a finite map
+from descriptor to device number, so a bind is an insert and a close a
+delete), each device an endpoint spec (`pe_dev`), the files (`pe_files`)
+and the SCOPE of paths the program may name (`pe_paths`: an open outside
+it is not a conformance event, since the model has no file there).  An
+output device owes a SET of alternatives
 (`DOut alts`) -- the console, where which one is decided by the first
 byte, exactly as the line model's block-first link files it; a file or a
 pipe owes one.  An input device is a stream (`DIn S`).  `conforms E t`
@@ -197,10 +201,24 @@ pipe owes one.  An input device is a stream (`DIn S`).  `conforms E t`
   (two alternatives may share a prefix);
 - reads ANY chunking of its input (`chunk_ok`: at most the count, empty
   only at end of file);
-- at an open of a present file is ready for BOTH answers -- a descriptor
-  the process did not hold, bound to a fresh device at the content, or
-  the kernel's `-1` -- and at an absent file for `-1`;
-- exits only with every output device's alternatives containing `[]`.
+- at an open of a present file in scope is ready for BOTH answers -- a
+  descriptor the process did not hold, bound to a device no descriptor
+  names, at the content, or the kernel's `-1` -- and at an absent file
+  in scope, opened without `O_CREATE` (`mode_create` reads the mode
+  word), for `-1`;
+- closes a held descriptor (the binding goes; the device stays while a
+  dup names it);
+- exits only with every device DRAINED (`drained`: an output's
+  alternatives contain `[]`, a haltable output is halted or drained, a
+  may-miss output has no chunk left, an input is anything).
+
+Beside conformance there is a second pure predicate, `safe_fds held t`
+(§9 of the file): under ANY answer the tree closes only a descriptor it
+holds and reads with a positive count.  It is the discipline the TAINT
+needs (§3.4c): once the application is tainted the kernel answers
+anything, and the free handler still has to pay every hole -- a close
+of an unheld descriptor has no ledger row to pay it with, so the
+program must never issue one.  `echo_tree_safe`/`cat_tree_safe`.
 
 The alternative set is what makes a BRANCHING program fit one console:
 `cat_file_conforms` puts `cat f` against `DOut [content; diagnostic]`
@@ -234,12 +252,34 @@ nothing has yet:
 - a FREE read leaf with the count bound (§3.2's deferral), if a free
   handler for reads is wanted; the real destinations have the bound.
 
-Then ONE lemma closes every program at every line shape:
+Then ONE lemma closes every program at every line shape
+(`UkHandler.tree_pay_of_conforms`, built):
 
-    conforms E t → env_res E ⊢ tree_pay t
+    conforms E t → safe_fds (dom (pe_fd E)) t → env_res I E ds ⊢ tree_pay t
 
-by `tree_pay_coind` at the invariant `∃ E', env_res E' ∗ ⌜conforms E' t⌝`.
-§5's `Out fd S` is `DOut [S]`; the endpoint laws are its instance.
+by `tree_pay_coind` at the invariant `cf_inv`: either `∃ E' ds',
+⌜conforms E' t⌝ ∗ ⌜safe_fds …⌝ ∗ env_res I E' ds'` or the tree is
+already paid (the taint arm).  `env_res I E ds` is the descriptor
+ledger `ei_fds (pe_fd E)`, the files at the scope `ei_files (pe_files E)
+(pe_paths E)` and one device resource per number in `ds` (every bound
+device is in `ds`; a number outside `ds` is free for an open).  §5's
+`Out fd S` is `DOut [S]`; the endpoint laws are its instance.
+
+The interface (`ep_iface`) as landed, beyond the laws named above:
+
+- `ei_close` CONSUMES the device (the instance takes the `dspec`'s
+  resource back with the files) when the descriptor is the last one
+  naming it (`fd_shared`, decidable over the map); `ei_close_shared`
+  covers a dup.  Without this a device number could be reused by a later
+  open while the old resource was still in the invariant, which is what
+  blocked the first file instance.
+- `ei_taint` is indexed by the HELD set: every law's taint arm is
+  `∀ x, ei_taint (dom fdm) -∗ K x` (an open's at `open_held fdm x`, a
+  close's at `dom fdm ∖ {[fd]}`), and `ei_taint_pays : ∀ held t,
+  safe_fds held t → ei_taint held -∗ tree_pay t` -- the free handler
+  needs the held set to know which closes have a row.
+- `ei_write_nil` lends the device and returns it; the read laws take
+  `0 < n`; `ei_exit` takes `∀ d ∈ ds, drained (dv d)`.
 
 ### 3.4b The instance is ONE, for the union (cut 4(c))
 
@@ -365,11 +405,15 @@ claim (M1–M3) do not move; the conversion discipline is theirs.
    `uinstr_is` facts (`stub_run`), the seven instances; (b) DONE —
    `UkHandler.v`: `ep_iface` (the laws at the holes; the open law's two
    continuations are an additive conjunction), `env_res`,
-   `tree_pay_of_conforms`; (c) NEXT: the console, file and pipe
-   instances from the six destination files, which then reduce to
-   instantiations.  A pipe write end that may lose its reader needs a
-   haltable output spec (`DOutH`: writes answer -1 and stay halted) in
-   `conforms` and the interface; the console and files never halt.
+   `tree_pay_of_conforms`; (c) DONE for the DEVICES (§3.4c: console,
+   file, pipe), the interface reworked after them (descriptors as a
+   finite map, close consumes its device, the scope of paths and the
+   mode at an open, `safe_fds` and the taint at the held set; §3.3,
+   §3.4).  NEXT: the file application's `ep_iface` INSTANCE
+   (`UkFileIface.v`, lane/fileiface: console + file, `ei_taint_pays`
+   from the free handler once the read bound lands from lane/rdbound),
+   then the pipeline application's (console at `pecl = gcl ∨ popen`,
+   which needs a variant of `UkConsOut`; the pipe).
 5. The two entries at a handler parameter; the five landed entries as
    corollaries; then the shape modules (M4) and the union (M5) as planned.
 

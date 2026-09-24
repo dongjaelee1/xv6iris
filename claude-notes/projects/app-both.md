@@ -350,11 +350,20 @@ lane/filedev `UkFileDev.v` (`file_in`/`file_out`, `file_read`,
 `UkPipeDev.v` (`pipe_out`/`pipe_halt`/`pipe_in`/`pipe_in_eof`,
 `pipe_write(_halt/_nil)`, `pipe_read`, `pipe_close(_fd)`); the interface
 moved to their findings (taint, five device kinds, zero-length writes,
-persistent path, chunked file output).  NEXT: the file application's
-`ep_iface` (`UkFileIface.v`: console + file, `ei_taint := file_taint`,
-`ei_taint_pays` from the free handler -- the read hole's count bound is
-the risk) with `cat f`/`echo > f` paid end to end from
-`tree_pay_of_conforms`; then the pipeline's; then cut 5.
+persistent path, chunked file output).  INTERFACE REWORK LANDED
+(fd887b534, after the first `UkFileIface` attempt on lane/fileiface
+260a199be found its five section hypotheses unprovable): descriptors a
+finite map (`env_bind`/`env_unbind`), `ei_close` consumes the device
+unless `fd_shared`, the scope `pe_paths` and `mode_create` at an open,
+`safe_fds` (ProgTree §9) with the taint indexed by the held set
+(`ei_taint held`, `ei_taint_pays` under `safe_fds`), `drained` at the
+exit; design §3.3/§3.4 say why.  NEXT: `UkFileIface.v` rebuilt against
+it (lane/fileiface: console + file, `ei_taint_pays` from the free
+handler, whose read hole needs the count bound lane/rdbound is buying
+as a kernel row: `usys_read_ret`, `wp_uk_ecall_read`'s post) with
+`cat f`/`echo > f` paid end to end from `tree_pay_of_conforms`; then the
+pipeline's instance (console at `pecl`, a `UkConsOut` variant); then
+cut 5.
 
 FileOutPure DEAD CODE REMOVED (2026-09-23): 92 of 169 declarations
 (the whole claim-stage layer -- `D_f`, `pending_f`, `pcount_f`, the

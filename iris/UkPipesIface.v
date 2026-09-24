@@ -58,7 +58,12 @@
 (*                                                                        *)
 (* WHAT IS PROVED: every law of the record at every kind, with no section *)
 (* hypothesis beyond the stubs and the round; [ei_taint_pays] is          *)
-(* [UkFreeHandler.fh_taint_pays].                                         *)
+(* [UkFreeHandler.fh_taint_pays].  The round is generic in the line       *)
+(* model's content function and admission ([fc_ok fc], no [adm_ok]): the  *)
+(* pipeline application's [PipesDisc.pipes_lmE] (lane AMBIG: [adm_echo]    *)
+(* admits [echo fork | cat | cat]) is an instance, its laws                *)
+(* [pipes_lm_echo_laws] the section's [LW]; the family's non-terminal     *)
+(* witness is [pns_HWIT], [PipeOutN.pipesN_HWIT] without [adm_ok].        *)
 (*                                                                        *)
 (* WHAT IS LEFT AS NAMED PREMISES (carried by the devices, supplied by    *)
 (* the round's lend): the family's firing and step premises               *)
@@ -559,6 +564,30 @@ Section PipesDevU.
   Qed.
 End PipesDevU.
 
+(* THE MODEL'S BLOCKS AS THE CLAIM'S NON-TERMINAL WITNESS, at ANY
+   admission: [PipeOutN.pipesN_HWIT] without its [adm_ok] premise, which
+   fed only the blocks' dollar-freedom -- [PipesDisc.pipes_block_nodollar]
+   gives that at every admission since lane AMBIG (the owner's ruling:
+   [PipesDisc.pipes_lmE] admits [echo fork | cat | cat], and [adm_echo] is
+   not [adm_ok]).  Restated here because [PipeOutN] is lane C5b's. *)
+Lemma pns_HWIT (fc : bytes -> option bytes) (adm : pline' -> bool) (I : list (bv 8)) :
+  fc_ok fc -> adm (lineN fc adm I) = true -> pl_ok (lineN fc adm I) ->
+  forall pre bl, blkN (wids (lcats (lineN fc adm I))) (runN fc (lineN fc adm I)) bl ->
+    pre `prefix_of` bl -> pwitN fc adm I false pre.
+Proof.
+  intros Hfc Ha Hl pre bl Hb Hp.
+  exists (plalt_code (PLRun bl)).
+  cbn [pipes_lm lm_ok lm_panic lm_term lm_cont lm_dec]. rewrite plalt_of_code.
+  split_and!.
+  - exact Ha.
+  - exact (blkN_line_blocks fc _ bl Hb).
+  - reflexivity.
+  - reflexivity.
+  - etrans; [exact Hp |]. by eexists.
+  - intros _. exact (prefix_forall _ _ _ Hp
+                       (pipes_block_nodollar fc _ bl Hfc Hl (blkN_line_blocks fc _ bl Hb))).
+Qed.
+
 (* THE ROUND'S TWO PURE FACTS, named: the line fits a write count, and
    the round's line is admitted -- behind definitions so that [lia] in the
    section below does not read them (and drag [L] and the model into every
@@ -595,7 +624,7 @@ Section UkPipesIface.
   Context (Hkill : @app_taint Σ (@riscv_fixedGS Σ HRg) = T).
   Context (rn : echo_names).
   Context (Heq : file_app = MkAppcfg echo_names (pipe_pred γ) rn).
-  Context (Hfc : fc_ok fc) (Hadm : adm_ok fc adm).
+  Context (Hfc : fc_ok fc).
 
   (* THE ROUND: its pins, its input, its line (admitted), the content that
      flows through every pipe, and the N-writer family's parameters *)
@@ -638,11 +667,11 @@ Section UkPipesIface.
     FAM -∗ wcurN γc w (1/2) c -∗ wmodeN γm w (1/2) (Some s) -∗
     (wcurN γc w (1/2) (S c) -∗ wmodeN γm w (1/2) (Some s) -∗ Φ) -∗
     out_link Uart0 (S gen_id) b Φ.
-  Proof using Hadm Hadmit Hcons Hfc Hplok dep_tl.
+  Proof using Hadmit Hcons Hfc Hplok dep_tl.
     intros Hw Hc Hb Hok. iIntros "#Hinv HcW HmW HΦ".
     iApply (blkN_cstep wsN (wids_NoDup _) (pecl' g fc adm LW LH) Hcons RUNN PWN
               (pwc_blkN_timeless g fc adm v I) TKN (ptkN_persistent g v I) WITN
-              (pipesN_HWIT fc adm I Hfc Hadm Hadmit Hplok) TERM TOK dep dep_tl
+              (pns_HWIT fc adm I Hfc Hadmit Hplok) TERM TOK dep dep_tl
               pnsN (S gen_id) γc γm w s c b Φ pnsN_uart Hw Hc Hb Hok
               with "[] Hinv HcW HmW [HΦ]").
     - iApply pblkN_ecl_holds.
@@ -656,11 +685,11 @@ Section UkPipesIface.
     wcurN γc w (1/2) 0 -∗ wmodeN γm w (1/2) None -∗ dep w s -∗
     (wcurN γc w (1/2) 1 -∗ wmodeN γm w (1/2) (Some s) -∗ Φ) -∗
     out_link Uart0 (S gen_id) b Φ.
-  Proof using Hadm Hadmit Hcons Hfc Hplok dep_tl.
+  Proof using Hadmit Hcons Hfc Hplok dep_tl.
     intros Hw Hb. iIntros "[(%EXCL & %Hok & #Hex) _] #Hinv HcW HmW Hdep HΦ".
     iApply (blkN_fire wsN (wids_NoDup _) (pecl' g fc adm LW LH) Hcons RUNN PWN
               (pwc_blkN_timeless g fc adm v I) TKN (ptkN_persistent g v I) WITN
-              (pipesN_HWIT fc adm I Hfc Hadm Hadmit Hplok) TERM TOK dep dep_tl
+              (pns_HWIT fc adm I Hfc Hadmit Hplok) TERM TOK dep dep_tl
               pnsN (↑pipeN) (S gen_id) γc γm w s b EXCL Φ pnsN_uart pnsN_pipeN Hw Hb Hok
               with "Hex [] Hinv HcW HmW Hdep [HΦ]").
     - iApply pblkN_ecl_holds.
@@ -678,6 +707,30 @@ Section UkPipesIface.
     flow_invs L prev (ps ++ [q]) -∗
     □ (wcur qj.1 0%nat -∗ pws_lb q.1 (take 1 L) ={↑pipeN}=∗ False).
   Proof using . intros HL Hin. exact (flow_chain_excl L prev ps q qj HL Hin). Qed.
+
+  (* ...AS THE KIT'S EXCLUSION WAND for the content writer [wc] (the last
+     cat's console sink, source [L]): whenever the round's deposits read
+     as design SS2.2 has them -- an excluded writer's deposit is the
+     untouched write permit of a pipe of the chain ([XL_i]), the content
+     writer's a byte of the LAST pipe ([YR]) -- the exclusion the family
+     spends at the content's first byte is DISCHARGED, not assumed *)
+  Lemma pns_excl_content_wand (prev : option pnames) (ps : list (pnames * pipe_names))
+      (q : pnames * pipe_names) (wc : wid) (EXCL : wid -> list (bv 8) -> Prop)
+      (pipe_of : wid -> list (bv 8) -> pnames * pipe_names) :
+    L <> [] ->
+    (forall w' s', EXCL w' s' -> pipe_of w' s' ∈ ps ++ [q]) ->
+    (forall w' s', EXCL w' s' -> dep w' s' ⊢ wcur (pipe_of w' s').1 0%nat) ->
+    (dep wc L ⊢ pws_lb q.1 (take 1 L)) ->
+    flow_invs L prev (ps ++ [q]) -∗
+    □ (∀ w' s', ⌜EXCL w' s'⌝ -∗ dep w' s' -∗ dep wc L ={↑pipeN}=∗ False).
+  Proof using .
+    intros HL Hin Hd Hc. iIntros "#Hinvs !>" (w' s' Hx) "Hd' Hdc".
+    iDestruct (pns_excl_content prev ps q (pipe_of w' s') HL (Hin w' s' Hx) with "Hinvs")
+      as "#Hex".
+    iApply ("Hex" with "[Hd'] [Hdc]").
+    - iApply (Hd w' s' Hx with "Hd'").
+    - iApply (Hc with "Hdc").
+  Qed.
 
   (* a console byte under the taint: the claim is the taint's *)
   Lemma pns_taint_link (b : bv 8) (Φ : iProp Σ) :
@@ -732,7 +785,7 @@ Section UkPipesIface.
   Lemma pns_con_step (w : wid) (A : list (list (bv 8))) (x : list (bv 8)) (b : bv 8) :
     x !! 0%nat = Some b ->
     pns_con w A [x] -∗ out_link Uart0 (S gen_id) b (pns_con w A [drop 1 x]).
-  Proof using Hadm Hadmit Hcons Hfc Hplok dep_tl.
+  Proof using Hadmit Hcons Hfc Hplok dep_tl.
     intros Hb. iIntros "(%Hs & %Hw & #Hinv & H)".
     iDestruct "H" as "[(Hc & Hm & %HA & Hks) | (%s & %c & %Hpure & %Hst & Hcw & Hmw)]".
     - rewrite big_sepL_singleton.
@@ -834,7 +887,7 @@ Section UkPipesIface.
   Lemma pns_wD_step (pin : pnames) (w : wid) (c : nat) (x : list (bv 8)) (b : bv 8) :
     x !! 0%nat = Some b ->
     pns_wD pin w c [x] -∗ out_link Uart0 (S gen_id) b (pns_wD pin w c [drop 1 x]).
-  Proof using Hadm Hadmit Hcons Hfc Hplok dep_tl.
+  Proof using Hadmit Hcons Hfc Hplok dep_tl.
     intros Hb.
     iIntros "(%HcL & #H0 & %Hw & #Hinv & #Hkit & #Hdw & %wc & [%Hx %Hwc] & Hcw & Hmw)".
     injection Hx as ->.
@@ -1323,7 +1376,7 @@ Section UkPipesIface.
     ((pns_fds fdm -∗ pns_out d [drop (length bs) a] -∗ K (Z.of_nat (length bs)))
      ∧ (∀ x, pns_taint (dom fdm) -∗ K x)) -∗
     wr_obl N P fd bs K.
-  Proof using HPc Hadm Hadmit Hcons Hfc Hplok Hsw dep_tl.
+  Proof using HPc Hadmit Hcons Hfc Hplok Hsw dep_tl.
     intros Hne Hfd Ha' Hpre. iIntros "Hfds Hout HK".
     iDestruct "Hfds" as (l vs wv) "(Hstd & Hxk & %Hok & %Hkd & Hpool & Htoks & #He)".
     destruct (pns_ok_lookup _ _ _ _ _ Hok Hfd) as [kd Hv].
@@ -1703,7 +1756,7 @@ Section UkPipesIface.
     (∀ wc2 : nat, ⌜drop (length bs) p = drop wc2 (take c L) /\ (wc2 <= c)%nat⌝ -∗
        UserFd.ustd γfd l -∗ pns_sink pin (CSCon w) wc2 -∗ K (Z.of_nat (length bs))) -∗
     wr_obl N P copy_out bs K.
-  Proof using HL31 HPc Hadm Hadmit Hcons Hfc Hplok Hsw dep_tl.
+  Proof using HL31 HPc Hadmit Hcons Hfc Hplok Hsw dep_tl.
     intros Hne Hl1 Hwc HcL Hp Hpre.
     iIntros "Hstd #H0 (%Hw & #Hinv & #Hkit & #Hdw & Hcw & Hmw) HK".
     change copy_out with (Z.of_nat 1%nat).
@@ -1730,7 +1783,7 @@ Section UkPipesIface.
     ((pns_fds fdm -∗ pns_copy d false Sin (drop (length bs) p) -∗ K (Z.of_nat (length bs)))
      ∧ (∀ x, pns_taint (dom fdm) -∗ K x)) -∗
     wr_obl N P fd bs K.
-  Proof using HL31 HPc Hadm Hadmit Hcons Hfc Hplok Hsw dep_tl.
+  Proof using HL31 HPc Hadmit Hcons Hfc Hplok Hsw dep_tl.
     intros Hne Hfd Hfd1 Hpre. iIntros "Hfds Hd HK". subst fd.
     iDestruct "Hd" as (pin gin sk) "(%Hh & Htk & %c & %wc & [%HS %Hp] & [%Hwc %HcL] & Hr & #H0 & Hsk)".
     destruct sk as [w | pn gp]; [| discriminate Hh].
@@ -1758,7 +1811,7 @@ Section UkPipesIface.
     ((pns_fds fdm -∗ pns_copy_end d false (drop (length bs) p) -∗ K (Z.of_nat (length bs)))
      ∧ (∀ x, pns_taint (dom fdm) -∗ K x)) -∗
     wr_obl N P fd bs K.
-  Proof using HL31 HPc Hadm Hadmit Hcons Hfc Hplok Hsw dep_tl.
+  Proof using HL31 HPc Hadmit Hcons Hfc Hplok Hsw dep_tl.
     intros Hne Hfd Hfd1 Hpre. iIntros "Hfds Hd HK". subst fd.
     iDestruct "Hd" as (pin gin sk) "(%Hh & Htk & %c & %wc & %Hp & ([%Hwc %HcL] & Hr & #H0 & Hsk) & #Heof)".
     destruct sk as [w | pn gp]; [| discriminate Hh].
@@ -2163,7 +2216,7 @@ Section UkPipesIface.
   (* ------------------------------------------------------------------- *)
 
   Definition pipes_iface : ep_ifaceP (Dp := kds.*1) N P.
-  Proof using Hcons Hkill HPc HNc Hsr Hsw Hso Hsc Hse Hfc Hadm Hadmit Hplok dep_tl HL31
+  Proof using Hcons Hkill HPc HNc Hsr Hsw Hso Hsc Hse Hfc Hadmit Hplok dep_tl HL31
               Hkds v TERM TOK γc γm γreg pnsRegG0 pipesNG0 pipeProtoG0 L.
     refine (MkEIP (Dp := kds.*1) N P pns_fds pns_out pns_outh pns_halt (fun _ _ => False%I)
               (fun _ _ => False%I) pns_in pns_in_end
@@ -2354,7 +2407,7 @@ Section UkPipesIface.
     [] ∈ alts2 -> (h = true -> cat_dg_write ∈ alts2) -> dp_in (kds.*1) {[0%nat; 1%nat]} ->
     env_res N P pipes_iface (copy_env (DCopy h L []) alts2 files []) {[0%nat; 1%nat]} -∗
     tree_pay N P (cat_tree [sb "cat"]).
-  Proof using Hcons Hkill HPc HNc Hsr Hsw Hso Hsc Hse Hfc Hadm Hadmit Hplok dep_tl HL31
+  Proof using Hcons Hkill HPc HNc Hsr Hsw Hso Hsc Hse Hfc Hadmit Hplok dep_tl HL31
               Hkds v TERM TOK γc γm γreg pnsRegG0 pipesNG0 pipeProtoG0.
     intros Hnil Hdg Hdp. iIntros "H".
     iApply (tree_pay_of_conforms_p N P pipes_iface _ _ _
@@ -2366,7 +2419,7 @@ Section UkPipesIface.
     drop 1 argv <> [] -> L = wl_line (drop 1 argv) -> dp_in (kds.*1) {[0%nat]} ->
     env_res N P pipes_iface (pipe_env (DOutH [L]) files) {[0%nat]} -∗
     tree_pay N P (echo_tree argv).
-  Proof using Hcons Hkill HPc HNc Hsr Hsw Hso Hsc Hse Hfc Hadm Hadmit Hplok dep_tl HL31
+  Proof using Hcons Hkill HPc HNc Hsr Hsw Hso Hsc Hse Hfc Hadmit Hplok dep_tl HL31
               Hkds v TERM TOK γc γm γreg pnsRegG0 pipesNG0 pipeProtoG0.
     intros Hne HL Hdp. iIntros "H".
     pose proof HL31 as HL'. rewrite /pns_short HL in HL'. rewrite HL.

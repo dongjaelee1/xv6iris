@@ -1634,6 +1634,8 @@ UkShPipePex.v
 UkShPipeCm.v
 UkShPipesParse.v
 UkShPipesSeam.v
+UkShPipesCmd.v
+UkShPipesRound.v
 UkShPipePaid.v
 UkShPipeRound.v
 UShPipeChild.v

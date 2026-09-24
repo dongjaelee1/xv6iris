@@ -163,6 +163,21 @@ Section UkShPipeParse.
     iSplitR; [ iPureIntro; exact H3 | ]. iExact "Hr".
   Qed.
 
+  (* ...and an EXEC node's own three pure facts, handed back with it
+     (lane PIPES-C3b: what a caller of the arm's EXEC call reads) *)
+  Lemma ushp_exec_at_facts (s0 p : Z) (toks : list (nat * nat)) :
+    ushp_exec_at s0 p toks -∗
+    ⌜ (length toks < 10)%nat /\ 0 < p /\ p mod 8 = 0 ⌝ ∗ ushp_exec_at s0 p toks.
+  Proof using .
+    iIntros "Hn". rewrite {1}/UkShParse.ushp_exec_at.
+    iDestruct "Hn" as "(%H1 & %H2 & %H3 & Hr)".
+    iSplitR; [ iPureIntro; exact (conj H1 (conj H2 H3)) | ].
+    rewrite /UkShParse.ushp_exec_at.
+    iSplitR; [ iPureIntro; exact H1 | ].
+    iSplitR; [ iPureIntro; exact H2 | ].
+    iSplitR; [ iPureIntro; exact H3 | ]. iExact "Hr".
+  Qed.
+
   Lemma ushp_pipe_close (s0 t pl pr : Z) (l r : ushp_cmd) :
     ushp_pipe_node t pl pr -∗
     ushp_tree s0 pl l -∗ ushp_tree s0 pr r -∗
@@ -212,31 +227,51 @@ Section UkShPipeParse.
   (* §2 nulterminate AT A PIPE NODE OVER TWO EXEC NODES                     *)
   (* ===================================================================== *)
 
-  Lemma wp_kshp_nulterminate_pipe (h : CpuId) (m : regfile) (s0 p pl pr : Z)
-      (len : nat) (g : nat -> bv 8) (toksl toksr : list (nat * nat))
+  (* THE ARM WITH ITS RIGHT RECURSION A PREMISE (lane PIPES-C3b).  The
+     left child of a pipe node is always an EXEC node (sh's parse is
+     right-recursive), so the left call stays the landed EXEC walk; the
+     right child is whatever the rest of the spine is, so its call is a
+     premise at the child's own resource [RR] and cut [gR] -- which at
+     the one-bar line is the landed EXEC walk again
+     ([wp_kshp_nulterminate_pipe] below) and at a longer line is the
+     induction hypothesis ([UkShPipesCmd.wp_kshp_nulterminate_pipes]).
+     Both calls run at the same stack depth, [4 + nn]. *)
+  Lemma wp_kshp_nulterminate_pipe_g (h : CpuId) (m : regfile) (s0 p pl pr : Z)
+      (len : nat) (g : nat -> bv 8) (toksl : list (nat * nat))
+      (RR : iProp Σ) (gR : (nat -> bv 8) -> nat -> bv 8)
       (nn : nat) :
     m !!! Regidx a0_idx = mword_of_int p ->
     0 < s0 -> s0 + Z.of_nat len < Z64 ->
     0 < p -> p mod 8 = 0 -> p + 40 < Z64 ->
     0 < pl -> pl mod 8 = 0 -> pl + 168 < Z64 ->
-    0 < pr -> pr mod 8 = 0 -> pr + 168 < Z64 ->
     (length toksl < 10)%nat ->
-    (length toksr < 10)%nat ->
     (forall (i : nat) (tk : nat * nat), toksl !! i = Some tk ->
-       (fst tk <= len)%nat /\ (snd tk <= len)%nat) ->
-    (forall (i : nat) (tk : nat * nat), toksr !! i = Some tk ->
        (fst tk <= len)%nat /\ (snd tk <= len)%nat) ->
     shp_code γt -∗
     shp_rodata γt -∗
     ushp_pipe_node p pl pr -∗
     ushp_exec_at s0 pl toksl -∗
-    ushp_exec_at s0 pr toksr -∗
+    RR -∗
     ubytes γd s0 (S len) g -∗
     urun N h m (mword_of_int ShSyms.nulterminate) (4 + (4 + nn)) -∗
+    (* the RIGHT child's call *)
+    (∀ (h1 : CpuId) (m1 : regfile) (g1 : nat -> bv 8),
+       ⌜ m1 !!! Regidx a0_idx = mword_of_int pr ⌝ -∗
+       RR -∗
+       ubytes γd s0 (S len) g1 -∗
+       urun N h1 m1 (mword_of_int ShSyms.nulterminate) (4 + nn) -∗
+       (RR -∗
+        ubytes γd s0 (S len) (gR g1) -∗
+          ∀ (h2 : CpuId) (m2 : regfile),
+            ⌜ ucallee_saved m1 m2 ⌝ -∗
+            ⌜ m2 !!! Regidx a0_idx = mword_of_int pr ⌝ -∗
+            urun N h2 m2 (ret_pc (m1 !!! Regidx ra_idx)) (4 + nn) -∗
+            mWP (Loop : expr riscv_lang)) -∗
+       mWP (Loop : expr riscv_lang)) -∗
     (ushp_pipe_node p pl pr -∗
      ushp_exec_at s0 pl toksl -∗
-     ushp_exec_at s0 pr toksr -∗
-     ubytes γd s0 (S len) (ushp_nulfold toksr (ushp_nulfold toksl g)) -∗
+     RR -∗
+     ubytes γd s0 (S len) (gR (ushp_nulfold toksl g)) -∗
        ∀ (h' : CpuId) (m' : regfile),
          ⌜ ucallee_saved m m' ⌝ -∗
          ⌜ m' !!! Regidx a0_idx = mword_of_int p ⌝ -∗
@@ -244,9 +279,8 @@ Section UkShPipeParse.
          mWP (Loop : expr riscv_lang)) -∗
     mWP (Loop : expr riscv_lang).
   Proof using .
-    intros Ha0 Hs0 Hs64 Hp0 Hp8 Hpsz Hpl0 Hpl8 Hplsz Hpr0 Hpr8 Hprsz
-      Htlenl Htlenr Hsndl Hsndr.
-    iIntros "#Hcode #Hro Hn Hsubl Hsubr Hline Hrun Hcont".
+    intros Ha0 Hs0 Hs64 Hp0 Hp8 Hpsz Hpl0 Hpl8 Hplsz Htlenl Hsndl.
+    iIntros "#Hcode #Hro Hn Hsubl Hsubr Hline Hrun Hrcall Hcont".
     rewrite shpp_nulterminate.
     iDestruct (urun_stack with "Hrun") as %[Hal8 Hroom].
     set (sp0 := m !!! Regidx csp_rs1) in *.
@@ -722,10 +756,9 @@ Section UkShPipeParse.
                    (regval_into_reg (mword_of_int 0x856 : mword 64)));
         apply bv_eq; vm_compute; reflexivity | ].
     rewrite <- shpp_nulterminate.
-    iApply (wp_kshp_nulterminate h21 n4 s0 pr len
-              (ushp_nulfold toksl g) toksr nn
-              Ha0_n4 Hs0 Hs64 Hpr0 Hpr8 Hprsz Htlenr Hsndr
-              with "Hcode Hro Hsubr Hline Hrun").
+    iApply ("Hrcall" $! h21 n4 (ushp_nulfold toksl g)
+              with "[] Hsubr Hline Hrun").
+    { iPureIntro. exact Ha0_n4. }
     iIntros "Hsubr Hline" (h22 mr2) "%Hcsr2 %Ha0_r2 Hrun".
     rewrite Eret4.
     (* ---- 0x856  c.j 83e -- into the common tail ---- *)
@@ -805,6 +838,53 @@ Section UkShPipeParse.
         destruct i as [| [| [| i ]]];
           cbn in Hi; try discriminate Hi;
           injection Hi as Hr Hu0; subst; vm_compute in He; discriminate.
+  Qed.
+
+  (* ...AND THE LANDED ARM, BYTE-IDENTICAL: the right child an EXEC node,
+     its call the landed EXEC walk. *)
+  Lemma wp_kshp_nulterminate_pipe (h : CpuId) (m : regfile) (s0 p pl pr : Z)
+      (len : nat) (g : nat -> bv 8) (toksl toksr : list (nat * nat))
+      (nn : nat) :
+    m !!! Regidx a0_idx = mword_of_int p ->
+    0 < s0 -> s0 + Z.of_nat len < Z64 ->
+    0 < p -> p mod 8 = 0 -> p + 40 < Z64 ->
+    0 < pl -> pl mod 8 = 0 -> pl + 168 < Z64 ->
+    0 < pr -> pr mod 8 = 0 -> pr + 168 < Z64 ->
+    (length toksl < 10)%nat ->
+    (length toksr < 10)%nat ->
+    (forall (i : nat) (tk : nat * nat), toksl !! i = Some tk ->
+       (fst tk <= len)%nat /\ (snd tk <= len)%nat) ->
+    (forall (i : nat) (tk : nat * nat), toksr !! i = Some tk ->
+       (fst tk <= len)%nat /\ (snd tk <= len)%nat) ->
+    shp_code γt -∗
+    shp_rodata γt -∗
+    ushp_pipe_node p pl pr -∗
+    ushp_exec_at s0 pl toksl -∗
+    ushp_exec_at s0 pr toksr -∗
+    ubytes γd s0 (S len) g -∗
+    urun N h m (mword_of_int ShSyms.nulterminate) (4 + (4 + nn)) -∗
+    (ushp_pipe_node p pl pr -∗
+     ushp_exec_at s0 pl toksl -∗
+     ushp_exec_at s0 pr toksr -∗
+     ubytes γd s0 (S len) (ushp_nulfold toksr (ushp_nulfold toksl g)) -∗
+       ∀ (h' : CpuId) (m' : regfile),
+         ⌜ ucallee_saved m m' ⌝ -∗
+         ⌜ m' !!! Regidx a0_idx = mword_of_int p ⌝ -∗
+         urun N h' m' (ret_pc (m !!! Regidx ra_idx)) (4 + (4 + nn)) -∗
+         mWP (Loop : expr riscv_lang)) -∗
+    mWP (Loop : expr riscv_lang).
+  Proof using .
+    intros Ha0 Hs0 Hs64 Hp0 Hp8 Hpsz Hpl0 Hpl8 Hplsz Hpr0 Hpr8 Hprsz
+      Htlenl Htlenr Hsndl Hsndr.
+    iIntros "#Hcode #Hro Hn Hsubl Hsubr Hline Hrun Hcont".
+    iApply (wp_kshp_nulterminate_pipe_g h m s0 p pl pr len g toksl
+              (ushp_exec_at s0 pr toksr) (ushp_nulfold toksr) nn
+              Ha0 Hs0 Hs64 Hp0 Hp8 Hpsz Hpl0 Hpl8 Hplsz Htlenl Hsndl
+              with "Hcode Hro Hn Hsubl Hsubr Hline Hrun [] Hcont").
+    iIntros (h1 m1 g1) "%Ha0' Hsubr Hline Hrun Hk".
+    iApply (wp_kshp_nulterminate h1 m1 s0 pr len g1 toksr nn
+              Ha0' Hs0 Hs64 Hpr0 Hpr8 Hprsz Htlenr Hsndr
+              with "Hcode Hro Hsubr Hline Hrun Hk").
   Qed.
 
 End UkShPipeParse.

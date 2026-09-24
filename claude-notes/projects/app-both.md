@@ -527,9 +527,18 @@ pull the pipe instance into the file cone); the resource layer split to
 `pipeΣ`.  ECHO AND CAT ARE NOW PROVED ONCE, BY THEIR TREES, IN BOTH
 APPLICATIONS' FIVE CHILD SITES.  Still on the old walks: the pipeline's
 echo at the console (`UShPipeRound` 419/545) and the echo application
-(`UShRest`), both via `UShEchoPay`.  NEXT: SWEEP-PIPE (the old pipe
-entries now without consumers), then the pipe instance's console exit
-wand (to move `UShPipeRound`'s echo), then M4/M5.  The
+(`UShRest`), both via `UShEchoPay`.  SWEEP-PIPE LANDED (b281a945c, VM swpmerge1 EXIT=0, audits
+13/13/14/14): `UCatPipe.v` (1341 lines) deleted; `UEchoPipe` -908,
+`UShCatPay` -313, `UShPipeCatRound` -276, `UShPipeLaw` -156,
+`UShPipeAssembly` -97 and smaller trims (40 declarations; the two
+sweeps together removed about 7,000 lines of per-application payers).
+Left: a few now-unused general lemmas (`UkCat.wp_kcat_write_chain`,
+`kcat_w_frame`, `kcat_wpost_of_eq`, `udepwf_std_write_file_held`,
+`ubytesq_frac`, `ubytes_halve`, `cons_out_chain_0`, `pipe_rQe_eof`) and
+four unused pipe helpers from before the repoint.  NEXT: the pipe
+instance's console exit wand at `PDCons` + `pe_echo_cons_image_entry`,
+moving `UShPipeRound`'s echo at the console (419/545) off `UShEchoPay`;
+then M4/M5 (which retire `UShRest`'s use and `UShEchoPay`).  The
 pipeline's CONSOLE device LANDED (lane/pcons 246f51ca4, design SS3.4d:
 `UkConsOut` split into a claim-free core and a `gen_params` instance,
 `UkPipeConsOut.v` with the single-writer and the `popen` devices).

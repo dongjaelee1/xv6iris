@@ -411,8 +411,23 @@ SS3.4f) LANDED (lane/copydev aedfbf279, VM cpdmerge1 EXIT=0): one
 device on cat's fd 0 and fd 1, `DCopy h S pending`/`DCopyEnd`/
 `DCopyHalt`, `cat_copy_conforms`, the `ei_copy*` laws and glue cases.
 Cut 5 (design SS3.4e): lanes A (exit law), B (console at the body), C
-(`UkTreeEntry.v`) LANDED.  NEXT: the pipeline's `ep_iface` instance
-(lane/pipeiface, in flight); lane D (the file instance's exit wand and
+(`UkTreeEntry.v`) LANDED.  The pipeline's `ep_iface` instance LANDED
+(lane/pipeiface d1cd17ca5, VM pifmerge1 EXIT=0): `UkFreeHandler.v` (the
+free handler `fh_taint_pays` over an abstract persistent taint `T`;
+its section must bind the two `ghost_varG` classes as `UkHandler` does
+or its `tree_pay` bakes in the bundle's instances) and `UkPipeIface.v`
+(registry kinds `PDPCons` = the `popen` console, `PDCons` = the
+single-writer console at `cons_dev_at`, `PDWr`/`PDRd` = the pipe's two
+ends; `pif_filesr := ⌜paths = []⌝`, opens vacuous; the copy fields
+vacuous; `cat_pipe_paid` at `DIn L`, `echo_pipe_paid` at `DOutH [L]`,
+`_of_round` forms from `pl_RcR`/`ep_pay`; witnesses at `cat_prog`).
+Three hypotheses, each answered by the copy device or a leaf:
+`Heof_short` (EOF while `S <> []`: the tree cannot continue -- the copy
+device's job), `Hhalt_long` (`pipe_write_halt` reads the count as a C
+int; a write of 2^31 bytes), `Hnil_ro` (`pipe_write_nil` needs a
+writable row).  Its exit payload is held up front (`pif_pay`) and `YR`
+is a premise of the of_round form -- both go with the copy instance.
+NEXT: the copy-device instance for the right cat (lane/copyinst); lane D (the file instance's exit wand and
 pinned indices); E (`UkFileEntries.v`); the copy-device instance for the
 right cat (pipe read end + `popen` console in one `ei_copy`); F
 (`UkPipeEntries.v`).

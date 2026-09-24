@@ -536,8 +536,10 @@ tree's exit is paid by `ei_exit`); D the file instance's exit (after A, B; echo'
 corollaries need its stub instances); E `UkFileEntries.v`, the three
 file corollaries beside the landed entries (`UShRound` is NOT repointed
 while the four leaf hypotheses stand; audits unmoved); F the pipeline
-instance (`UkPipeIface.v`, in flight) + `UkPipeEntries.v` for echo at
-the pipe; G the ruling, then entry 4.
+instance (`UkPipeIface.v`) -- LANDED d1cd17ca5 with `UkFreeHandler.v`
+-- + `UkPipeEntries.v` for echo at the pipe; G the ruling (§3.4f, done),
+then entry 4 (the copy instance: `pipe_in` + `pcons_dev` in one
+`ei_copy`, the exit wand).
 
 ### 3.5 The line model's continuation becomes a theorem
 

@@ -1700,6 +1700,7 @@ UInitFileCons.v
 
 UEchoFile.v
 UkFileDev.v
+UkFileIface.v
 UShRedirPay.v
 UShRound.v
 UInitFileCC.v

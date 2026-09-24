@@ -37,7 +37,6 @@ Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values
 Require Import RiscvLang.
 Require Import LineWords.
 Require Import EchoDisc.
-Require Import EchoOutPure.
 Require Import FileState.
 Require Import FileDisc.
 Require Import FileOutPure.
@@ -48,9 +47,6 @@ Require Import FileHooks.       (* S0: the hooks, moved below [FileOut] *)
 Require Import EchoOut.
 Require Import AppFile.
 Require Import FileOut.
-Require Import FileLinks.
-Require Import EchoLinks.        (* the SHARED prologue/prompt lemmas *)
-Require Import EchoLinksLine.    (* ...and the SHARED alternative lengths *)
 Require Import RiscvPtsto.
 Require Import WpUart.
 Local Open Scope list_scope.

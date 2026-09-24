@@ -22,7 +22,6 @@ Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values
 Require Import RiscvLang.
 Require Import ObsTrace.
 Require Import LineWords.
-Require Import EchoDisc.
 Require Import ConsLog.
 Require Import EchoOutPure.
 Require Import FileDisc.
@@ -30,13 +29,7 @@ Require Import FileOutPure.
 Require Import EchoOut.
 Require Import AppFile.
 Require Import FileOut.
-Require Import LineModel.
-Require Import LineModelLinks.
 Require Import LineModelInst.
-Require Import FileHooks.
-Require Import GenOutPure.
-Require Import GenOutHist.
-Require Import GenOut.
 Require Import GenLinks.
 Require Import RiscvPtsto.
 Require Import WpUart.

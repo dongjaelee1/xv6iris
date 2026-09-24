@@ -42,10 +42,8 @@ From iris.program_logic Require Import language lifting.
 Require Import SailStdpp.ConcurrencyInterface SailStdpp.ConcurrencyInterfaceBuiltins SailStdpp.ConcurrencyInterfaceTypes SailStdpp.Operators_mwords.
 Require Import Riscv.rv64d_types Riscv.rv64d Riscv.riscv_extras.
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.MachineWord.
-Require Import RiscvLang RiscvPtsto RiscvExtras RiscvModelBytes.
-Require Import RegFile.
+Require Import RiscvLang RiscvPtsto RiscvModelBytes.
 Require Import ObsTrace.
-Require Import ConsLog.
 Require Import ConsoleInv.
 Require Import LineWords.
 Require Import EchoDisc.
@@ -60,39 +58,22 @@ Require Import ProcAvail.
 Require Import FileInvDefs.
 Require Import UserFd.
 Require Import UserPerm.
-Require Import UserCwd.
-Require Import UserChildren.
-Require Import UserConsole.
-Require Import UmodeArith UmodeAbi.
-Require Import ProcGeom.
-Require Import ChildTok.
-Require Import UexecSlot UexecRet UexecSG.
-Require Import ExecEntry.
-Require Import UkRun UkRunSys.
+Require Import UkRun.
 Require Import UexecExecInst.            (* THE INSTANCES *)
 Require Import WpUart.
 Require Import EchoOut.
-Require Import EchoOutPure.
 Require Import AppEcho.
-Require Import PipeOutPure.
 Require Import PipeOut.
 Require Import PipeLinks.
 Require Import PipeLinksLine.
-Require Import PipeHooks.         (* S0 of [PipeLinksLine], moved *)
 Require Import LinkRec.
 Require Import StageRec.
 Require Import PipeLinkInst.
 Require Import GenLinksLine.
 Require Import PipeStageInst.
 Require Import ElfUser.
-Require Import UserHeap.
 Require Import UkSh.
 Require Import UkShDiag.
-Require Import UkShLoop.
-Require Import UkShMalloc.
-Require Import UkShParse.
-Require Import UCodeShP.
-Require Import UCodeShK.
 Require Import UkShEcho.
 Require Import UkShFork.
 Require Import UShLine.

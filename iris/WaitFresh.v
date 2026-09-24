@@ -43,7 +43,7 @@ From iris.base_logic.lib Require Import own.
 Require Import SailStdpp.Base SailStdpp.Operators_mwords SailStdpp.Values.
 Require Import Riscv.rv64d_types Riscv.rv64d.
 Require Import RiscvPtsto.
-Require Import TsoCtx.
+Require Import CtxIdDefs.
 Require Import ProcGeom.   (* [proc_addr] / [proc_addr_inj] *)
 Require Import ChildTok.   (* [gen_slot] *)
 Require Import Xv6Cameras. (* [wchG] -- the children map's camera *)

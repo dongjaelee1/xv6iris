@@ -17,13 +17,11 @@ Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values
 Require Import RiscvLang.
 Require Import LineWords.
 Require Import EchoDisc.
-Require Import EchoOutPure.
 Require Import FileState.
 Require Import FileDisc.
 Require Import FileOutPure.
 Require Import LineModel.
 Require Import LineModelLinks.
-Require Import LineModelInst.
 From stdpp Require Import ssreflect.
 Local Open Scope list_scope.
 

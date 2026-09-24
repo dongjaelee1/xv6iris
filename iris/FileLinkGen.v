@@ -22,11 +22,9 @@ Require Import SailStdpp.Operators_mwords.
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values
         SailStdpp.MachineWord.
 Require Import RiscvLang.
-Require Import LineWords.
 Require Import EchoDisc.
 Require Import FileState.
 Require Import FileDisc.
-Require Import FileOutPure.
 Require Import LineModel.
 Require Import LineModelLinks.
 Require Import LineModelInst.
@@ -37,7 +35,6 @@ Require Import FileLinks.
 Require Import FileLinksLine.
 Require Import FileHooks.         (* S0 of [FileLinksLine], moved *)
 Require Import FileLinksAt.
-Require Import GenOut.
 Require Import GenLinksGl.      (* [fhead_at], [f0pre_at], the indexed residue *)
 Require Import LinkRec.
 Require Import GenLinksLine.

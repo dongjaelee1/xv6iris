@@ -70,14 +70,11 @@ Require Import SailStdpp.Operators_mwords.
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values
         SailStdpp.MachineWord.
 Require Import RiscvLang.
-Require Import ObsTrace.
 Require Import LineWords.
 Require Import EchoDisc.
 Require Import ConsLog.
 Require Import EchoOutPure.
 Require Import PipeDisc.
-Require Import PipeDiscDec.
-Require Import PipeOutPure.
 Require Import PipeBothPure.
 Require Import EchoOut.
 Require Import AppEcho.
@@ -85,11 +82,9 @@ Require Import PipeOut.
 Require Import PipeLinks.
 Require Import PipeLinksLine.
 Require Import PipeHooks.         (* S0 of [PipeLinksLine], moved *)
-Require Import LinkRec.
 Require Import GenLinksLine.
 Require Import RiscvPtsto.
 Require Import WpUart.
-Require Import CtxIdDefs.
 (* as in PipeOut / PipeLinksLine: the Sail imports leave string_scope on
    top and [++] would elaborate as String.append. *)
 Local Open Scope list_scope.

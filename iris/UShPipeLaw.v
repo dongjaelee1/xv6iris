@@ -47,7 +47,7 @@ From iris.program_logic Require Import language lifting.
 Require Import SailStdpp.ConcurrencyInterface SailStdpp.ConcurrencyInterfaceBuiltins SailStdpp.ConcurrencyInterfaceTypes SailStdpp.Operators_mwords.
 Require Import Riscv.rv64d_types Riscv.rv64d Riscv.riscv_extras.
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.MachineWord.
-Require Import RiscvLang RiscvPtsto RiscvExtras RiscvModelBytes.
+Require Import RiscvLang RiscvPtsto RiscvModelBytes.
 Require Import RegFile.
 Require Import Xv6Cameras.
 Require Import Xv6G.
@@ -57,17 +57,12 @@ Require Import ProcAvail.
 Require Import FileInvDefs.
 Require Import UserFd.
 Require Import UserHeap.
-Require Import UserPerm.
-Require Import UserPtTree.
 Require Import UserCwd.
 Require Import UserChildren.
-Require Import UmodeArith UmodeAbi.
-Require Import ProcGeom.
-Require Import ChildTok.
 Require Import FsImg.
-Require Import UexecSlot UexecRet UexecSG.
+Require Import UexecSG.
 Require Import UexecExecInst.
-Require Import UkRun UkRunLeaf UkRunSys.
+Require Import UkRun.
 Require Import WpUart.
 Require Import LineWords.
 Require Import EchoDisc.
@@ -75,14 +70,9 @@ Require Import FileDisc.
 Require Import PipeDisc.
 Require Import PipeUline.
 Require Import PipeNames.
-Require Import PipeQueue.
-Require Import PipeReg.
 Require Import PipeProto.
 Require Import EchoOut.
 Require Import AppEcho.
-Require Import AppInv.
-Require Import EchoOutPure.
-Require Import PipeOutPure.
 Require Import PipeOut.
 Require Import PipeBothPure.
 Require Import PipeBoth.
@@ -91,7 +81,6 @@ Require Import PipeLinksLine.
 Require Import PipeHooks.         (* S0 of [PipeLinksLine], moved *)
 Require Import PipeLinkInst.
 Require Import GenLinksLine.
-Require Import PipeStageInst.
 Require Import UCodeShK.
 Require Import UkSh.
 Require Import UkShDiag.
@@ -104,14 +93,11 @@ Require Import UkShCat.
 Require Import UkShFork.
 Require Import UkShRun.
 Require Import UkShPipe.
-Require Import UkShPipeSeam.
 Require Import UkShPipeLex.
 Require Import UkShPipeRound.
-Require Import UkShPipePaid.
 Require Import UkShPipeFork.
 Require Import UEchoPipe.
 Require Import UShEcho.
-Require Import UShPanic.
 Require Import UShCatPay.
 Require Import UShEchoPipePay.
 Require Import UShPipeChild.

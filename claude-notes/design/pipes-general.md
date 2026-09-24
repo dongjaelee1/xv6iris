@@ -58,7 +58,23 @@ weaken the law in `LineModel` to the actual prologues -- OPEN for the
 owner; (ii) `lm_merge` is line-independent, so D4 ends coverage on more
 byte patterns at N stages than the landed `pmergeable` (bridge stated at
 `adm1`); (iii) `cat f`'s content is a fixed function `fc` (C9 names it
-in the alternative or moves the state into `lm_ok`).  C5 next.
+in the alternative or moves the state into `lm_ok`).  C5 (569703719..01d22acc6: `PipeBothNPure.v` -- `mergeN`/`pendN`,
+`compatN`, `pendN_complete`/`pendN_file`, `pipesN_complete` against C2's
+runs, `wid := WSh k | WLeft k | WLast`; `PipeBothN.v` -- the family
+`blkN_inv` over an abstract claim credential `PW k pre tm` with ONE
+byte obligation `eclN` (the landed four collapse), exclusions spent at
+COMMIT (first byte `blkN_fire`, or the new `blkN_silence` for a writer
+that never writes), `blkN_cstep`, `blkN_file`, terminal steps;
+`PipeOutN.v` -- the open reading over any line model, `popenN`,
+`pecl' := gcl pipes_lm ∨ popenN`, `pecl'_blkN_open_gen/_byte_gen/_file`,
+`pblkN_ecl_holds`; N = 2 check: `pend2_pendN`, `pend2_true_N`/
+`_false_N`, `pblk2_wit_both_N` statement for statement).  LEFT (C5b):
+the `lm_hooks` instance for `pipes_lm` (needs a decider for `PLTerm`
+admissibility), the other claim events at `popenN` (close, open, arm,
+read, echo, byte, drain), a per-writer terminal model (terminal
+witnesses and `TOK` are caller premises now), filing an empty block via
+`gcl_step_write_blk`.  The pipeline's exclusions are caller premises
+(`fire_okN`/`silence_okN`), discharged in C6/C7 from the flow chain.
 
 # Design: arbitrary pipelines `P0 | cat | … | cat` by induction on the command tree
 

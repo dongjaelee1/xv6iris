@@ -12,9 +12,7 @@
 (* payload equation [ukn_pay N' = Q] (the [_c] entries): the equation at *)
 (* a constant [Q] is the [ukn_const N'] the instance's free handler needs *)
 (* ([UkRun.ukn_const_of_eq]).  The five stubs are [UkStub]'s at cat's and *)
-(* echo's code; the two fields the kernel refuses                         *)
-(* ([UkPipeIface.pif_refused]) are this section's two hypotheses, one per *)
-(* program, quantified over the minted record.                            *)
+(* echo's code; the instance has no other hypothesis.                     *)
 (*                                                                        *)
 (* WHAT THE STATEMENTS ADD TO THE LANDED ONES:                            *)
 (*   - the REGISTRY: [ei_fds] holds the registry's pool                   *)
@@ -217,12 +215,6 @@ Section UkPipeEntries.
   Lemma pe_yr : pws_lb pn (take 1%nat L) ⊢ YR.
   Proof using . rewrite /pl_YR. reflexivity. Qed.
 
-  (* THE REFUSED FIELDS at every minted record, one per program *)
-  Hypothesis Href_cat : forall N' : uk_names Σ,
-    pif_refused g v I L gL gR gM XL YR pn γp N' (cat_prog N') γreg.
-  Hypothesis Href_echo : forall N' : uk_names Σ,
-    pif_refused g v I L gL gR gM XL YR pn γp N' (echo_prog N') γreg.
-
   Local Instance pe_cat_code_persistent (N' : uk_names Σ) :
     Persistent (up_code (cat_prog N')).
   Proof using . simpl. apply _. Qed.
@@ -235,16 +227,14 @@ Section UkPipeEntries.
     pipe_iface g Hcons Hkill v I L gL gR gM XL YR Hnd Hwit2 Hwit1 pn γp pe_yr
       N' (cat_prog N') (HNc := HNc)
       (cat_stub_read N') (cat_stub_write N') (cat_stub_open N')
-      (cat_stub_close N') (cat_stub_exit N') γreg
-      (proj1 (Href_cat N')) (proj2 (Href_cat N')).
+      (cat_stub_close N') (cat_stub_exit N') γreg.
 
   Definition pe_iface_echo (N' : uk_names Σ) (HNc : ukn_const N') :
       ep_iface N' (echo_prog N') :=
     pipe_iface g Hcons Hkill v I L gL gR gM XL YR Hnd Hwit2 Hwit1 pn γp pe_yr
       N' (echo_prog N') (HNc := HNc)
       (echo_stub_read N') (echo_stub_write N') (echo_stub_open N')
-      (echo_stub_close N') (echo_stub_exit N') γreg
-      (proj1 (Href_echo N')) (proj2 (Href_echo N')).
+      (echo_stub_close N') (echo_stub_exit N') γreg.
 
   (* ------------------------------------------------------------------- *)
   (*  2a. CAT AT THE PIPE: [UShCatPay.cat_image_entry_1w]'s statement,    *)
@@ -270,7 +260,7 @@ Section UkPipeEntries.
     UkRun.urun_nopipe sts -∗ udep -∗
     image_entry ElfUser.cat_elf Mn (mword_of_int (t + 8) : mword 64) sts
       cw cs pidv Q (pl_RcR g v I L pn gL gR gM γp ∗ own γreg (pif_pool ∅ w)) uslot.
-  Proof using Hcons Hkill Heq Hnd Hwit1 Hwit2 Href_cat.
+  Proof using Hcons Hkill Heq Hnd Hwit1 Hwit2 ufdG0.
     intros HQc Ht Hs Hbytes Himg Hfdl Hl0 Hl1 Hl2 Hw0 Hw1 HLne HL.
     destruct (pe_cat_1w_args a b Mn sv t gn Ht Hs Hbytes Himg)
       as (Hok & Hnode & Hab).
@@ -294,7 +284,6 @@ Section UkPipeEntries.
               pn γp pe_yr N' (cat_prog N') (HNc := ukn_const_of_eq N' Q Hpq HQc)
               (cat_stub_read N') (cat_stub_write N') (cat_stub_open N')
               (cat_stub_close N') (cat_stub_exit N') γreg
-              (proj1 (Href_cat N')) (proj2 (Href_cat N'))
               (take NSTD sts) wb rb1 rb2 w (fun _ => None)
               Hw0 Hw1 Hl0 Hl1 Hl2 HL
               with "Hstd Hpool [HsR] Hpi Hrt Hpin Hlt Hblk Hex HgR HgM").
@@ -321,7 +310,7 @@ Section UkPipeEntries.
     image_entry ElfUser.cat_elf Mn (mword_of_int (t + 8) : mword 64) sts
       cw cs pidv (fun _ : Z => UShPipeAssembly.pipe_Qc_at g pn L gL gR gM)
       (pl_RcR g v I L pn gL gR gM γp ∗ own γreg (pif_pool ∅ w)) uslot.
-  Proof using Hcons Hkill Heq Hnd Hwit1 Hwit2 Href_cat.
+  Proof using Hcons Hkill Heq Hnd Hwit1 Hwit2 ufdG0.
     intros Ht Hs Hbytes Himg Hfdl Hl0 Hl1 Hl2 Hw0 Hw1 HLne HL.
     iIntros "#Hpin #Hlt #Hnpw #Hdep".
     iApply (pe_cat_image_entry a b Mn sv t gn sts cw cs pidv
@@ -354,12 +343,12 @@ Section UkPipeEntries.
     image_entry ElfUser.echo_elf M (mword_of_int (t + 8) : mword 64) sts
       cw cs pidv Q
       (ep_pay Wq pn γp (wl_line (drop 1 ws)) ∗ own γreg (pif_pool ∅ w)) uslot.
-  Proof using Hcons Hkill Heq Hnd Hwit1 Hwit2 Href_echo.
+  Proof using Hcons Hkill Heq Hnd Hwit1 Hwit2 ufdG0 v gL gR gM.
     intros HQc Hok Hnode Hab Hfdl Hl1 HLw Hw0.
     assert (HL : Z.of_nat (length L) < 2 ^ 31)
       by (rewrite HLw; exact (pe_line_len ws Hok)).
     assert (Hc : conforms (pipe_env (DOutH [L]) (fun _ => None)) (echo_tree ws)).
-    { rewrite HLw. exact (echo_pipe_conforms ws _ (pe_drop1_ne ws Hok)). }
+    { rewrite HLw. rewrite HLw in HL. exact (echo_pipe_conforms ws _ (pe_drop1_ne ws Hok) HL). }
     rewrite -HLw.
     iIntros "#Hq #Hnpw #Hdep".
     iApply (echo_image_entry_env_c ws M s0 t gb sts cw cs pidv Q
@@ -375,7 +364,6 @@ Section UkPipeEntries.
               pn γp pe_yr N' (echo_prog N') (HNc := ukn_const_of_eq N' Q Hpq HQc)
               (echo_stub_read N') (echo_stub_write N') (echo_stub_open N')
               (echo_stub_close N') (echo_stub_exit N') γreg
-              (proj1 (Href_echo N')) (proj2 (Href_echo N'))
               (take NSTD sts) rb w (fun _ => None) Hw0 Hl1 HL
               with "Hstd [Hfr] Hpool Hpi Hw Hlb").
     iApply (pif_kpay_left g L gR gM pn N' _ 0%nat (lookup_singleton _ _)).

@@ -411,8 +411,23 @@ to row 16 as row 5 has `fileread_ret`).  echo's stubs: `echo_stub_read/
 close/open` at 0x34a/0x35a/0x372 (`UCodeEcho` regenerated),
 `echo_prog` at all five, `UkFileIface` SS4 `file_iface_echo`,
 `echo_f_paid_echo`, `echo_f_paid_of_redirect_echo` with no stub
-hypotheses.  The file instance's remaining gaps: `Hnil_in` (NIL-RET)
-and `Hopen_trunc` (TRUNC-PERMIT), both kernel rows, both deferred.  The
+hypotheses.  TRUNC-PERMIT LANDED (lane/krow-filedev f23a85c44, merge da730bfe8, VM
+krtrmerge1 EXIT=0): the plain open surface's truncate piece is at a
+permit tied to the walk's terminal (`SysOpenDefs.trunc_term_at pl P i`
+/ `trunc_term_arg`), paid at `ProofSysOpenWalk`'s three joins by
+`SpecSysOpen.plain_trunc_key` (piece + cursor to `cur_kept ∗
+plain_trunc_kept`, the create mould); the create shim's residue `R`
+moved off the cursor into the continuation's closure (`socr_P` pure);
+the dead pin pays the piece from `□ (T -∗ app_sup)` at a trivial family
+(`PinnedOpen.pobs_dead_trunc_piece`), so `pinned_open_bundle_dead_lin`,
+`FileOpen.file_open_miss_au`, `UkFileOpen`'s miss leaves and
+`UkFileDev.file_open_absent` lost `om_trunc = false`, and
+`fif_open_trunc_law` is GONE.  Cost: the receipt readers generic in
+`Ft` (`pinned_open_dev/_dead`, `init_cons_recv`, `cons_open_dead_recv`,
+`tree_open_recv_file/_dev`, `file_open_recv_file`) now state `om_trunc
+= false` (a truncating open spends the cursor; every consumer had the
+fact).  The file instance's remaining gap: `Hnil_in` (NIL-RET, in
+flight on lane/krow-pipedev).  The
 pipeline's CONSOLE device LANDED (lane/pcons 246f51ca4, design SS3.4d:
 `UkConsOut` split into a claim-free core and a `gen_params` instance,
 `UkPipeConsOut.v` with the single-writer and the `popen` devices).

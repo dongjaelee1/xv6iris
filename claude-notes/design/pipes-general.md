@@ -10,7 +10,16 @@ the content; only at three or more stages); PSilent (argv[0] empty)
 stays a stage outcome; M5's pipe shape IS this N-stage module (M5 had
 not started, so the general route goes first: N stages in the pipeline
 application with echo as producer, then the union adds `cat f`).
-Cuts C1 (pure trees), C3 (sh claim-free), C4 (protocol) in flight.
+LANDED: C1 (aad106f7b: `ProgTreePipes.v` -- `line_pipes` with demos
+`echo foo | cat | cat | cat`, `cat f | cat | cat`, a 700-byte two-read
+chain, `cat nope | cat`; `cat_file_pipe_conforms` at `DOutH [c; []]` --
+the pipe also owes nothing, since a present file's open may answer -1;
+inductive `reach_exit` and `cat_copy_exits`/`echo_pipe_exits`/
+`cat_file_pipe_exits`), C4 (5baca7af9: `pipe_invU … U` with the flow
+clause, landed `pipe_inv := pipe_invU … True`, 29 lemmas generalised,
+`pipe_payLD`, `wr_final`/`rd_final`, `node_reading(_T)`, `flow_chain`,
+`flow_chain_excl`; minimal outcomes in `PipesPair.v` for C2 to adopt).
+C3 in flight; C2 next.
 
 # Design: arbitrary pipelines `P0 | cat | … | cat` by induction on the command tree
 

@@ -15,11 +15,17 @@
 (* the pay fact, and the record's constancy is [ukn_const_of_eq] off it   *)
 (* and the constancy of [Q] every landed entry states.                    *)
 (*                                                                        *)
-(* THE REGISTRY IS BORN AT THE ENTRY (SS3).  [file_iface] is indexed by   *)
-(* its registry's name, and nothing the round lends carries one, so the  *)
+(* THE REGISTRY IS BORN AT THE ENTRY.  [file_iface] is indexed by its    *)
+(* registry's name, and nothing the round lends carries one, so each      *)
 (* corollary allocates it inside the slot ([UexecRet.uslot_bupd]) and     *)
 (* hands its whole pool to the environment beside the landed payment.    *)
-(* That is the one CLASS the statement gains ([fifRegG]).                  *)
+(* That is the one CLASS the statements gain ([fifRegG]).                 *)
+(*                                                                        *)
+(* WHAT IS HERE: cat f at the landed statement plus two pure facts      *)
+(* (section 2); echo at the console at the file application's record     *)
+(* (section 3: the landed entry is generic in the era's link record, and *)
+(* the exit glue has to hand the round's deed back); and NOT echo > f    *)
+(* (section 4).                                                           *)
 (* ===================================================================== *)
 From Stdlib Require Import ZArith Bool Lia List.
 From stdpp Require Import gmap list bitvector.definitions.
@@ -66,6 +72,7 @@ Require Import EchoOut.               (* [ps_lb] / [cs_lb] and their comparisons
 Require Import FileState FileDisc FileOut.
 Require Import LineModel LineModelInst LineModelLinks.
 Require Import FileLinks FileLinksLine FileLinkGen FileHooks.
+Require Import GenLinksLine.          (* [gwc_blk] / [gwc_post] *)
 Require Import ConsoleInv.             (* [CONSOLE] *)
 Require Import UkConsOut ProgTreeFile.
 Require Import UCatOut UCatKernel.    (* [cch], [catq_cat], [cat_lend], [cat_child_of_entry] *)
@@ -348,9 +355,8 @@ Section UkFileEntriesCat.
   Qed.
 
   (* THE COROLLARY: [UCatKernel.cat_child_of_entry]'s statement, with the
-     two facts the tree route needs that the landed entry never asks for
-     (see the report in the lane's commit): the round's block cursor's
-     TAIL ([wr_tail_f], which the round holds as the second half of its
+     two facts the tree route needs that the landed entry never asks for:
+     the round's block cursor's TAIL ([wr_tail_f], which the round holds as the second half of its
      [wr_blk_t_f]) and the content's C-int bound ([UkConsOut.cons_short]:
      the kernel reads a console write's count as an int) *)
   Lemma cat_child_of_entry_of_tree (ws : list (list (bv 8))) (Mn : gmap Z (bv 8))
@@ -426,3 +432,218 @@ Section UkFileEntriesCat.
   Qed.
 
 End UkFileEntriesCat.
+
+(* ===================================================================== *)
+(*  3.  echo AT THE CONSOLE FROM THE TREE, at the file application        *)
+(*                                                                       *)
+(*  The landed entry the round runs echo at the console on is            *)
+(*  [UShEchoPay.echo_slot_of_kexec_at_at] (through                        *)
+(*  [sh_exec_sup_echo_wq_holds_at_D], which [UShRound.Hchild_echo] is    *)
+(*  one application of), and it is GENERIC in the era's link record: no  *)
+(*  application's instance can reproduce it.  What the tree route gives  *)
+(*  is its image slot at the FILE application's record                   *)
+(*  ([FileLinkInst.file_link_inst_at]: the lend is [gwc_blk] at the      *)
+(*  state-pinned parameters, the block's end [gwc_post] there), with the *)
+(*  resource that rides beside the cursor -- sh's deed fraction, the     *)
+(*  round's [Hold] -- handed in and handed BACK at the exit.             *)
+(*                                                                       *)
+(*  The handing back is what [UkFileIface.fif_exit_k_echo_cons] cannot   *)
+(*  do: it drops the core's deed, which at this round is sh's own and    *)
+(*  must come back for the round's next prompt credential.  So the glue  *)
+(*  here is that lemma with the deed passed to the round's wand.          *)
+(* ===================================================================== *)
+
+Section UkFileEntriesEcho.
+  Context `{HRg : !riscvGS Σ}.
+  Context `{!xv6G Σ, !bioslotG Σ, !fdslotG Σ, !fileG Σ,
+            !irefslotG Σ, !pavG Σ, !wchG Σ, !ufdG Σ}.
+  Context `{GEN : GenId} `{XI : CurCtx}.
+  Context `{PS : UexecSG.uprogSG Σ}.
+  Context `{!echoOutG Σ, !inG Σ (mono_listR (leibnizO Z)), !fileAppG Σ,
+            !fileOutG Σ}.
+  Context `{!fifRegG Σ}.
+  Context (g : file_gn).
+  Context (Hcons : @riscv_cons_res Σ (@riscv_fixedGS Σ HRg) = fecl g).
+
+  (* THE GLUE, THREE, RETURNING THE DEED: [fif_exit_k_echo_cons] with the
+     core's deed handed to the round's wand beside the post *)
+  Lemma fif_exit_k_echo_cons_d (r : file_names) (N : uk_names Σ) (γreg : gname)
+      (D0 : list nat) (w0 : nat -> fdev) (qf : Qp) (sf : dst)
+      (v : era_pins) (vf : file_era) (I0 : list (bv 8)) (s0 : fstate)
+      (C : list nat) (F : iProp Σ) :
+    D0 = [0%nat] -> w0 0%nat = FDCons v I0 C ->
+    file_era_pin g (S gen_id) vf -∗ f0_lb vf s0 -∗
+    □ (∀ a : nat, ⌜a ∈ C⌝ -∗ ⌜cons_adm file_lm I0 a⌝ -∗
+         gwc_post file_lm (file_params_at g s0) (S gen_id) v I0 a -∗
+         fdq r qf sf -∗ F -∗ ukn_pay N (-1)) -∗
+    F -∗ fif_exit_k g r N γreg D0 w0 qf sf.
+  Proof using .
+    intros HD0 Hw. iIntros "#Hvf #Hf0 #HQ HF".
+    iIntros (fdm l vs w files paths dv ds) "%Hdr %Hdom Hcore _ Hdev".
+    iDestruct "Hcore" as "(_ & _ & %Hok & _ & Htoks & _ & Hdq & #(_ & _ & Hpay & _))".
+    iDestruct (fif_exit_dev0 g r γreg D0 w0 sf fdm l vs dv ds HD0 Hdr Hdom Hok
+                 with "Hdev") as "(%Hd0 & %Hv0 & Hd0)".
+    rewrite Hw in Hv0.
+    destruct (dv 0%nat) as [alts | | cs' | | S' | | | | |]; simpl in Hd0; simpl;
+      try (iDestruct "Hd0" as "[]").
+    - iDestruct "Hd0" as (v' I' C') "[Htk Hd]".
+      iDestruct (fif_toks_agree γreg vs 0%nat _ _ _ Hv0 with "Htoks Htk") as "(%Heqv & _ & _)".
+      injection Heqv as <- <- <-.
+      iDestruct (fif_cons_drained_post g C v vf I0 s0 alts Hd0 with "Hvf Hf0 Hd")
+        as "[#HT | Hd]".
+      { iApply ("Hpay" with "HT"). }
+      iDestruct "Hd" as (a) "(%HaC & %Hadm & Hpost)".
+      iApply ("HQ" $! a with "[%] [%] [Hpost] Hdq HF"); [exact HaC | exact Hadm |].
+      iApply (gwc_post_file_at g s0 vf v I0 a with "Hvf Hf0 Hpost").
+    - iDestruct "Hd0" as (i γo ws) "[Htk _]".
+      iDestruct (fif_toks_agree γreg vs 0%nat _ _ _ Hv0 with "Htoks Htk") as "(%Heqv & _ & _)".
+      discriminate Heqv.
+    - iDestruct "Hd0" as (s i γo p) "(Htk & _)".
+      iDestruct (fif_toks_agree γreg vs 0%nat _ _ _ Hv0 with "Htoks Htk") as "(%Heqv & _ & _)".
+      discriminate Heqv.
+  Qed.
+
+  (* the lend at the state-pinned parameters is the lend at the era's *)
+  Lemma gwc_blk_forget_at (sb : fstate) (k : nat) (v : era_pins) (I : list (bv 8))
+      (a i : nat) :
+    gwc_blk file_lm (file_params_at g sb) k v I a i -∗
+    gwc_blk file_lm (file_params g) k v I a i.
+  Proof using .
+    rewrite /gwc_blk fif_gT fif_gW fif_gT_at fif_gW_at.
+    iIntros "[Hb | HT]"; [iLeft | by iRight].
+    iDestruct "Hb" as (ps cs s1 pos) "(%Hw & Ht & Hps & Hcs & HI & [HW _])".
+    iExists ps, cs, s1, pos. by iFrame "Ht Hps Hcs HI HW".
+  Qed.
+
+  (* ...and its boot-state witness, at the round's own state *)
+  Lemma gwc_blk_f0 (sb : fstate) (k : nat) (v : era_pins) (I : list (bv 8))
+      (a i : nat) :
+    gwc_blk file_lm (file_params_at g sb) k v I a i -∗
+    file_taint (fgn_cl g) ∨ ∃ vf : file_era, file_era_pin g k vf ∗ f0_lb vf sb.
+  Proof using .
+    rewrite /gwc_blk fif_gT_at fif_gW_at.
+    iIntros "[Hb | #HT]"; [iRight | by iLeft].
+    iDestruct "Hb" as (ps cs s1 pos) "(_ & _ & _ & _ & _ & [HW %Hs])". subst s1.
+    rewrite /f0w. iDestruct "HW" as "[_ HW]". iExact "HW".
+  Qed.
+
+  Local Instance fe_echo_code_persistent (N : uk_names Σ) :
+    Persistent (up_code (echo_prog N)).
+  Proof using . simpl. apply _. Qed.
+
+  (* THE ENTRY: echo at the console, at the file application, from the
+     tree.  The lend is the round's block credential at the block's first
+     byte and sh's deed fraction beside it; what echo hands back is the
+     block written up to its prompt, the deed, and the frame *)
+  Lemma echo_cons_image_entry_of_tree (ws : list (list (bv 8))) (M : gmap Z (bv 8))
+      (s0 t : Z) (gb : nat -> bv 8) (sts : list fdstate)
+      (cw : Z) (cs : gset gname) (pidv : mword 32)
+      (v : era_pins) (sb : fstate) (I0 : list (bv 8))
+      (c : file_fixed) (r : file_names) (q : Qp) (s : dst)
+      (rb : bool) (jo : option Z) (Q : Z -> iProp Σ) (F : iProp Σ) :
+    (forall x y : Z, Q x = Q y) ->
+    file_app = MkAppcfg file_names (file_pred c) r ->
+    c = fgn_cl g ->
+    EchoDisc.line_ok ws ->
+    UShEcho.echo_node_img ws M s0 t gb ->
+    UkShEcho.echo_argv_bytes ws gb ->
+    length sts = NOFILE ->
+    cw = FsImg.ROOTINO ->
+    take NSTD sts !! 1%nat = Some (FdOpen rb true (FdDevice CONSOLE)) ->
+    fline I0 = LEcho ws ->
+    (Z.of_nat (length (wl_line (drop 1 ws))) < 2 ^ 31)%Z ->
+    □ (app_taint -∗ file_taint c) -∗ □ (file_taint c -∗ app_taint) -∗
+    □ (gwc_post file_lm (file_params_at g sb) (S gen_id) v I0 0%nat -∗
+       fdq r q s -∗ F -∗ Q (-1)) -∗
+    □ (file_taint c -∗ Q (-1)) -∗
+    file_cons_cred c r jo -∗
+    app_inv fsc_fs -∗
+    era_pin (fgn_echo g) (S gen_id) v -∗
+    UkRun.urun_nopipe sts -∗ udep -∗
+    image_entry ElfUser.echo_elf M (mword_of_int (t + 8) : mword 64) sts
+      cw cs pidv Q
+      (gwc_blk file_lm (file_params_at g sb) (S gen_id) v I0 0%nat 0%nat
+       ∗ fdq r q s ∗ F) uslot.
+  Proof using Hcons fifRegG0 ufdG0.
+    intros HQc Heq Hgc Hline Himg Hbytes Hfdl Hcw Hl1 Hfl Hshort.
+    subst c.
+    iIntros "#Hbr #Hkc #HQ #HQt #Hmade #Hinv #Hpin #Hnpw #Hdep".
+    iPoseProof (file_links_holds g Hcons) as "#Hlk".
+    assert (Hne : drop 1 ws <> []).
+    { pose proof (line_ok_ge2 ws Hline) as H2. intros Hd.
+      apply (f_equal length) in Hd. rewrite length_drop in Hd. simpl in Hd. lia. }
+    set (w0 := fun _ : nat => FDCons v I0 [0%nat]).
+    assert (Hw0 : forall d, d ∈ [0%nat] -> forall i γo, w0 d <> FDIn false i γo)
+      by (intros; discriminate).
+    set (E := cons_env (wl_line (drop 1 ws)) (fif_files (snd <$> s))).
+    rewrite /image_entry.
+    iIntros "!>" (na alen afun W') "%Hok' %Hcw' %Hlz %Hch %Hpid %Hargs Hmp HPay".
+    iApply uslot_bupd.
+    iMod (fif_reg_alloc w0) as (γreg) "Hpool". iModIntro.
+    set (I := fun (N' : uk_names Σ) (Hpq : ukn_pay N' = Q) =>
+                file_iface g r Heq Hcons N' (echo_prog N') (HNc := ukn_const_of_eq N' Q Hpq HQc)
+                  (echo_stub_read N') (echo_stub_write N') (echo_stub_open N')
+                  (echo_stub_close N') (echo_stub_exit N') γreg [0%nat] w0 q s Hw0).
+    iPoseProof (echo_image_entry_env_c ws M s0 t gb sts cw cs pidv Q
+                  (own γreg (fif_pool ∅ w0)
+                   ∗ (gwc_blk file_lm (file_params_at g sb) (S gen_id) v I0 0%nat 0%nat
+                      ∗ fdq r q s ∗ F))%I
+                  I E {[0%nat]}
+                  Hline Himg Hbytes Hfdl (echo_conforms ws _ Hne)
+                  (echo_tree_safe _ _) (fif_dp0 [0%nat] eq_refl)
+                  with "[] Hnpw Hdep") as "#He".
+    { iIntros "!>" (N' Hpq) "Hstd Hcwd (Hpool & Hb & Hdq & HF)".
+      iDestruct (gwc_blk_f0 with "Hb") as "#Hf0".
+      iDestruct (gwc_blk_forget_at with "Hb") as "Hb".
+      (* the exit wand, off the lend's boot-state witness or the taint *)
+      iAssert (fif_exit_k g r N' γreg [0%nat] w0 q s)%I with "[HF]" as "Hk".
+      { iDestruct "Hf0" as "[#HT | (%vf & #Hvf & #Hf0)]".
+        { iApply (fif_exit_k_taint with "HT"). }
+        iApply (fif_exit_k_echo_cons_d r N' γreg [0%nat] w0 q s v vf I0 sb [0%nat] F
+                  eq_refl eq_refl with "Hvf Hf0 [] HF").
+        iIntros "!>" (a) "%Ha _ Hpost Hdq HF".
+        apply elem_of_list_singleton in Ha as ->.
+        rewrite Hpq. iApply ("HQ" with "Hpost Hdq HF"). }
+      iApply (fif_env_res g r Heq Hcons N' (echo_prog N') (HNc := ukn_const_of_eq N' Q Hpq HQc)
+                (echo_stub_read N') (echo_stub_write N') (echo_stub_open N')
+                (echo_stub_close N') (echo_stub_exit N') γreg [0%nat] w0 q s Hw0
+                E (take NSTD sts) eq_refl
+                ltac:(cbn [E cons_env pe_fd]; intros fd d; rewrite lookup_singleton_Some;
+                      intros [_ <-]; reflexivity)
+                ltac:(cbn [E cons_env pe_fd]; intros fd d; rewrite lookup_singleton_Some;
+                      intros [<- _]; split; [unfold NSTD; lia | by exists rb])
+                ltac:(cbn [E cons_env pe_fd]; intros fd d; rewrite lookup_singleton_Some;
+                      unfold NOFILE; intros [<- _]; lia)
+                ltac:(discriminate)
+                ltac:(intros; reflexivity)
+                ltac:(cbn [E cons_env pe_paths]; intros p Hp; by apply elem_of_nil in Hp)
+                ltac:(cbn [E cons_env pe_files]; apply fif_files_f)
+                with "Hstd [Hcwd] Hk [] Hdq Hpool [Hb]").
+      - by rewrite Hcw.
+      - rewrite /fif_env. iFrame "Hbr Hkc Hinv". iSplitR; [| by iExists jo].
+        iIntros "!> HT". rewrite Hpq. iApply ("HQt" with "HT").
+      - iIntros "Htk". cbn [E cons_env pe_dev]. case_decide as Hc0; [| done]. simpl.
+        iExists v, I0, [0%nat]. iFrame "Htk".
+        iApply (fif_echo_lend g v I0 ws Hfl Hshort with "Hlk Hpin Hb"). }
+    iApply ("He" $! na alen afun W' with "[%] [%] [%] [%] [%] [%] Hmp [Hpool HPay]");
+      [ exact Hok' | exact Hcw' | exact Hlz | exact Hch | exact Hpid | exact Hargs | ].
+    iFrame "Hpool HPay".
+  Qed.
+
+End UkFileEntriesEcho.
+
+(* ===================================================================== *)
+(*  4.  echo > f: NOT FROM THE TREE, as the instance stands               *)
+(*                                                                       *)
+(*  [UEchoFile.efile_image_entry] has no corollary here.  The instance's *)
+(*  core holds a fraction of the deed at a pinned value throughout        *)
+(*  ([UkFileIface.fif_core]'s [fdq r qf sf]), and the redirect child has  *)
+(*  none to give it: its whole share -- the holder's half,                *)
+(*  [AppFile.fown] -- rides in the write cursor ([UEchoFile.ef_pay]'s     *)
+(*  [efq], [FileWrite.file_wq]), and the claim holds the other half       *)
+(*  ([AppFile.file_pred_exact]).  A premise supplying the core's fraction *)
+(*  could only be met by a tainted round, so the corollary would be       *)
+(*  vacuous; [UkFileIface.echo_f_paid_of_redirect] asks for the same two  *)
+(*  resources side by side.  The fix is the instance's: a core that       *)
+(*  holds the deed only while no registered device holds it.              *)
+(* ===================================================================== *)

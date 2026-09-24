@@ -469,8 +469,14 @@ signature) -- LANDED 1ae45598e; B console readers (`LineModelLinks`,
 admissibility, `cons_dev := ∃ v I, cons_dev_at v I`, `cons_dev_at_of_blk0`,
 `cons_dev_at_drained` in ONE arm -- an empty body's unfiled cursor is
 the filed cursor at 0 -- `cons_cur_gwc_post` with no `lm_apr` premise,
-`cons_write_gl_at`, `pcons_dev_drained` at `length L <= c`); C the entries (`UkEchoTree`, `UkCatTree`,
-`UkTreeEntry.v`); D the file instance's exit (after A, B; echo's
+`cons_write_gl_at`, `pcons_dev_drained` at `length L <= c`); C the entries
+(`UkEchoTree`, `UkCatTree`, `UkTreeEntry.v`) -- LANDED a5a31d581
+(`wp_kecho_start_env`/`wp_kcat_start_env` at `env_res`; the argv
+bridges `echo_argv_tail`, `cat_argv_words`; `echo_image_entry_env` and
+`cat_image_entry_env` at `*_tree ws` -- the keys pin every argv word --
+with `cat_image_entry_env_f` at `[cat; fname_f]`; the interface is
+quantified over the minted `uk_names`; no `Q`-constancy premise, the
+tree's exit is paid by `ei_exit`); D the file instance's exit (after A, B; echo's
 corollaries need its stub instances); E `UkFileEntries.v`, the three
 file corollaries beside the landed entries (`UShRound` is NOT repointed
 while the four leaf hypotheses stand; audits unmoved); F the pipeline

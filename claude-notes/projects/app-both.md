@@ -438,7 +438,11 @@ device's job), `Hhalt_long` (`pipe_write_halt` reads the count as a C
 int; a write of 2^31 bytes), `Hnil_ro` (`pipe_write_nil` needs a
 writable row).  Its exit payload is held up front (`pif_pay`) and `YR`
 is a premise of the of_round form -- both go with the copy instance.
-NEXT: the copy-device instance for the right cat (lane/copyinst); lane D (the file instance's exit wand and
+The copy-device instance for the right cat LANDED (lane/copyinst
+c49e7335c, VM cpimerge1 EXIT=0; design SS3.4f as built: `PDCopy`, the
+exit wand `pif_exit_k`, `cat_copy_paid_of_round` at `pl_RcR`'s entry
+state; `Heof_short` gone; new `Hclose_open`).  NEXT: lane F
+(`UkPipeEntries.v`); lane D (the file instance's exit wand and
 pinned indices); E (`UkFileEntries.v`); the copy-device instance for the
 right cat (pipe read end + `popen` console in one `ei_copy`); F
 (`UkPipeEntries.v`).

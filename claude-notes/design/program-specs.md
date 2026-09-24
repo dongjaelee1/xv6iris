@@ -402,7 +402,12 @@ conjunct of the device, since every byte consumes it).  The old generic
 statement over `gcl` alone could not be kept: a `gen_params` is not
 constructible from a `gen_cparams` (no source for `gWb_agree`/`gH`).
 
-OPEN (owner ruling): the mode fire at the right writer's FIRST byte needs
+RULED (owner, 2026-09-23): cat is the only program at the end of a
+pipe for now, and `echo | cat | cat` is the target shape.  So the
+coupling is one concrete kind, the COPY DEVICE (§3.4f), not a general
+one; the paragraph below is the record of the question.
+
+OPEN-then-ruled: the mode fire at the right writer's FIRST byte needs
 `YR`, a fact about the READ side (a byte reached the reader, from
 `rcur`), which `ei_write` cannot supply -- a tree at `DOut [L]` may
 write before it reads.  Either a coupled device kind (`DOutOf din alts`:
@@ -411,6 +416,46 @@ the console owes at least what the input still has to deliver; a law
 section variable of the pipeline's instance (today's supply, which
 restricts the instance to programs that read before they write, i.e.
 cat).  The lane takes the second for now.
+
+### 3.4f The copy device (ruled 2026-09-23; the pure lane in flight)
+
+cat at a pipe's end is a FILTER: what it owes on its output is exactly
+what it has read.  One device number is bound to BOTH of cat's
+descriptors -- the pipe's read end on fd 0 and the sink on fd 1 -- and
+its spec is
+
+    DCopy (h : bool) (S : bytes) (pending : bytes)    the input still to
+        come, and the bytes read but not yet written; h says the sink may
+        halt (a pipe's write end) or not (the console);
+    DCopyEnd (h : bool) (pending : bytes)             the writer closed;
+    DCopyHalt                                          the sink's reader went.
+
+Rules: a read on the device takes a `chunk_ok` piece of `S` into
+`pending` (or ends: `DCopyEnd h pending`; at `DCopyEnd`, reads answer
+0); a write of `bs` needs `bs prefix_of pending` and drains it (`h =
+true` also admits `-1` to `DCopyHalt`); at `DCopyHalt` writes answer
+-1; `drained` is `pending = []` (or halted).  Close of either descriptor
+is a shared close until the last (`fd_shared`).  `cat_stdin_conforms`
+is re-proved at `DCopy h L []`: cat writes each chunk whole before the
+next read, so `pending` is empty at every exit, including an early
+EOF.  `safe_fds` is unchanged.
+
+What it buys: (1) entry 4 (cat at the pipeline) has a tree statement,
+including the short round; (2) the assembly's ONE cursor (`pipe_PR`)
+is the pure invariant written = read - |pending|, and at exit pending
+is empty; (3) the pipeline console device's first-byte fact `YR` (a
+byte reached the reader) is derived inside the write law from the
+read cursor the same resource holds, so §3.4d's section variable goes;
+(4) `echo | cat | cat` is the middle cat at `DCopy true` (pipe in, pipe
+out) and the last at `DCopy false` (pipe in, console) -- the same cat
+theorem twice; the three-process shell line is a separate application
+effort.
+
+Interface: `ei_copy d h S pending`, `ei_copy_end d h pending`,
+`ei_copy_halt d`, the read/write/close laws at them (the taint arm as
+everywhere), one more `cf_inv_step` case each; an application that
+has no copy device defines `ei_copy … := False` and the laws are
+vacuous (as the file application does for the pipe kinds).
 
 ### 3.4e Cut 5: the entries at a handler parameter (planned 2026-09-24)
 

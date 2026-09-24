@@ -11,8 +11,9 @@
 (*                                                                       *)
 (*  1. The open reading, pure and over ANY line model ([lm_blk_open],    *)
 (*     [gcl_pure_o]), with the three out-steps of the pure part.         *)
-(*  2. The claim at [pipes_lm]: its parameters (the laws and the hooks   *)
-(*     are the caller's), [popenN], [pecl'], and the three claim steps   *)
+(*  2. The claim at [pipes_lm]: its parameters (the laws are the        *)
+(*     caller's, the hooks the model's own [PipesDiscDec.pipes_hooks]),  *)
+(*     [popenN], [pecl'], and the three claim steps                      *)
 (*     [pecl'_blkN_open_gen] / [_byte_gen] / [_file], the twins of the   *)
 (*     landed [PipeOut.pecl_blk2_*].                                     *)
 (*  3. The family's credential [pwc_blkN] and the ONE obligation         *)
@@ -52,6 +53,7 @@ Require Import PipeOut.
 Require Import ProgTree.
 Require Import PipesPair.
 Require Import PipesDisc.
+Require Import PipesDiscDec.      (* [pipes_hooks] *)
 Require Import PipeBothNPure.
 Require Import PipeBothN.
 Require Import PipeHooks.         (* [pline_at] *)
@@ -276,11 +278,13 @@ Section pipes_out_n.
   Local Notation γ := (pgn_cl g).
   Notation T := (echo_taint γ).
   (* THE MODEL: the content function, the admitted lines, and the laws
-     and hooks of [pipes_lm fc adm], which are the caller's (the laws at
-     [PipesDisc.pipes_lm_laws], the hooks a later cut's) *)
+     of [pipes_lm fc adm], which are the caller's (at
+     [PipesDisc.pipes_lm_laws]) *)
   Context (fc : bytes -> option bytes) (adm : pline' -> bool).
-  Context (Lw : lm_laws (pipes_lm fc adm)) (K : lm_hooks (pipes_lm fc adm)).
+  Context (Lw : lm_laws (pipes_lm fc adm)).
   Local Notation PM := (pipes_lm fc adm).
+  (* THE HOOKS are the model's own ([PipesDiscDec.pipes_hooks]) *)
+  Local Notation K := (pipes_hooks fc adm).
   Local Notation PB := (pipes_lm_byte_laws fc adm).
 
   (* the model's state is [unit]: nothing survives a round *)
@@ -371,7 +375,7 @@ Section pipes_out_n.
             ∗ (⌜lm_term PM (lm_dec PM a) = false⌝
                ∨ cs_frozen_at v (nlines I0 - 1)%nat)
             ∗ ps_lb v ps0 ∗ cs_lb v cs0 ∗ inp_lb v I0) ∨ T).
-  Proof using K.
+  Proof using .
     intros Hne0 Hr0 Hdiv Hpin0 HPeq Halt Hpan Hhead Hfarm.
     pose proof (nlines_pos_of_rest_nil I0 Hne0 Hr0) as Hpos0.
     pose proof (ll_nlines_removelast I0 Hr0) as Hrl0.
@@ -546,7 +550,7 @@ Section pipes_out_n.
           ∗ cur_half w (1/2) r gb (tmi || lm_term PM (lm_dec PM a))
           ∗ rblk_lb gb (pre0 ++ [b])
           ∗ (⌜lm_term PM (lm_dec PM a) = false⌝ ∨ cs_frozen_at v r)) ∨ T).
-  Proof using K.
+  Proof using .
     intros Hne0 Hr0 Hreq Hcseq Hpin0 HPeq Halt Hpan Hpref Hfarm.
     pose proof (nlines_pos_of_rest_nil I0 Hne0 Hr0) as Hpos0.
     iIntros "#Hpin #Hperaw Ht Hcw #Hrlb0 #Hpslb #Hcslb #Hilb Hcl".
@@ -711,7 +715,7 @@ Section pipes_out_n.
       pecl' k ho (ConsLog.cons_step H (ConsLog.EvOut b))
       ∗ ((turn v (S (P + length pre0))%nat ∗ ps_lb v ps0
           ∗ cs_lb v (cs0 ++ [a]) ∗ inp_lb v I0) ∨ T).
-  Proof using K.
+  Proof using .
     intros Hne0 Hr0 Hreq Hcseq Hpin0 HPeq Halt Hpan Hfk Hcont Hbv.
     pose proof (nlines_pos_of_rest_nil I0 Hne0 Hr0) as Hpos0.
     iIntros "#Hpin #Hperaw Ht Hcw #Hrlb0 #Hpslb #Hcslb #Hilb Hcl".
@@ -940,7 +944,7 @@ Section pipes_out_n.
      round, every further byte (any writer's) appends to its ledger *)
   Theorem pblkN_ecl_holds (v : era_pins) (I : list (bv 8)) :
     ⊢ eclN pecl' (pwc_blkN v I) (ptkN v I) (pwitN I).
-  Proof using K.
+  Proof using .
     rewrite /eclN. iModIntro.
     iIntros (k ho H pre b tm tm' Htmt Hwit) "Hpw Hcl".
     destruct Hwit as (a & Hok & Hpan & Hterm & Hpref & Hnd).
@@ -1002,20 +1006,19 @@ Section pipes_out_n.
   (* THE MODEL'S BLOCKS ARE THE CLAIM'S NON-TERMINAL WITNESS: the family's
      [HWIT] at the pipeline, for a well-formed admitted line *)
   Lemma pipesN_HWIT (I : list (bv 8)) :
-    fc_ok fc -> adm_ok fc adm -> adm (lineN I) = true -> pl_ok (lineN I) ->
+    fc_ok fc -> adm (lineN I) = true -> pl_ok (lineN I) ->
     forall pre bl, blkN (wids (lcats (lineN I))) (runN fc (lineN I)) bl ->
       pre `prefix_of` bl -> pwitN I false pre.
   Proof using .
-    intros Hfc Hadm Ha Hl pre bl Hb Hp.
+    intros Hfc Ha Hl pre bl Hb Hp.
     exists (plalt_code (PLRun bl)).
     cbn [pipes_lm lm_ok lm_panic lm_term lm_cont lm_dec]. rewrite plalt_of_code.
     split_and!.
-    - exact Ha.
-    - exact (blkN_line_blocks fc _ bl Hb).
+    - right. split; [exact Ha | exact (blkN_line_blocks fc _ bl Hb)].
     - reflexivity.
     - reflexivity.
     - etrans; [exact Hp |]. by eexists.
-    - intros _. exact (prefix_forall _ _ _ Hp (pipesN_blk_nodollar fc adm _ bl Hfc Hadm Ha Hl Hb)).
+    - intros _. exact (prefix_forall _ _ _ Hp (pipesN_blk_nodollar fc _ bl Hfc Hl Hb)).
   Qed.
 
   (* THE FILING, at the credential: once the family has handed the block
@@ -1030,7 +1033,7 @@ Section pipes_out_n.
       ∗ ((∃ (ps cs : list nat) (P : nat),
             ⌜wr_blkN ps cs I P⌝ ∗ turn v (S (P + length pre))%nat
             ∗ ps_lb v ps ∗ cs_lb v (cs ++ [plalt_code (PLRun pre)]) ∗ inp_lb v I) ∨ T).
-  Proof using K.
+  Proof using .
     intros Ha Hbl Hne Hbv. iIntros "Hpw Hcl".
     iDestruct "Hpw" as "[Hx | #HT]"; last first.
     { iModIntro. iSplitR; [by iApply pecl'_taint | by iRight]. }
@@ -1041,7 +1044,7 @@ Section pipes_out_n.
     iDestruct "Hled" as (w gb) "(#Hpera & Hcur & #Hrlb)".
     assert (Hok : lm_ok PM (lm_of PM (bodies_of I !!! (nlines I - 1)%nat))
                     (lm_dec PM (plalt_code (PLRun pre)))).
-    { cbn [pipes_lm lm_ok lm_dec]. rewrite plalt_of_code. split; [exact Ha | exact Hbl]. }
+    { cbn [pipes_lm lm_ok lm_dec]. rewrite plalt_of_code. right. split; [exact Ha | exact Hbl]. }
     assert (Hpan : lm_panic PM (lm_dec PM (plalt_code (PLRun pre))) = false).
     { cbn [pipes_lm lm_panic lm_dec]. by rewrite plalt_of_code. }
     assert (Hterm : lm_term PM (lm_dec PM (plalt_code (PLRun pre))) = false).
@@ -1110,9 +1113,9 @@ Section pipes_family.
   Context `{HRg : !riscvGS Σ}.
   Context `{!ghost_varG Σ (option (list (bv 8)))}.
   Context (g : pipe_gn) (fc : bytes -> option bytes) (adm : pline' -> bool).
-  Context (Lw : lm_laws (pipes_lm fc adm)) (K : lm_hooks (pipes_lm fc adm)).
-  Context (Hcons : @riscv_cons_res Σ (@riscv_fixedGS Σ HRg) = pecl' g fc adm Lw K).
-  Context (Hfc : fc_ok fc) (Hadm : adm_ok fc adm).
+  Context (Lw : lm_laws (pipes_lm fc adm)).
+  Context (Hcons : @riscv_cons_res Σ (@riscv_fixedGS Σ HRg) = pecl' g fc adm Lw).
+  Context (Hfc : fc_ok fc).
   Context (v : era_pins) (I : list (bv 8)).
   Context (Ha : adm (lineN fc adm I) = true) (Hl : pl_ok (lineN fc adm I)).
 
@@ -1152,11 +1155,11 @@ Section pipes_family.
     (wcurN γc w (1/2) (S c) -∗ wmodeN γm w (1/2) (Some s)
      -∗ (⌜TERM w s = false⌝ ∨ TKN k) -∗ Φ) -∗
     out_link Uart0 k b Φ.
-  Proof using Hcons Hfc Hadm Ha Hl.
+  Proof using Hcons Hfc Ha Hl.
     intros Hns Hw Hc Hb Hok. iIntros "#Hinv HcW HmW HΦ".
-    iApply (blkN_cstep wsN (wids_NoDup _) (pecl' g fc adm Lw K) Hcons RUNN PWN
+    iApply (blkN_cstep wsN (wids_NoDup _) (pecl' g fc adm Lw) Hcons RUNN PWN
               (pwc_blkN_timeless g fc adm v I) TKN (ptkN_persistent g v I) WITN
-              (pipesN_HWIT fc adm I Hfc Hadm Ha Hl) TERM TOK dep dep_tl
+              (pipesN_HWIT fc adm I Hfc Ha Hl) TERM TOK dep dep_tl
               N k γc γm w s c b Φ Hns Hw Hc Hb Hok
               with "[] Hinv HcW HmW HΦ").
     iApply pblkN_ecl_holds.
@@ -1179,11 +1182,11 @@ Section pipes_family.
     (wcurN γc w (1/2) 1 -∗ wmodeN γm w (1/2) (Some s)
      -∗ (⌜TERM w s = false⌝ ∨ TKN k) -∗ Φ) -∗
     out_link Uart0 k b Φ.
-  Proof using Hcons Hfc Hadm Ha Hl.
+  Proof using Hcons Hfc Ha Hl.
     intros Hns HEx Hw Hb Hok. iIntros "#Hex #Hinv HcW HmW Hdep HΦ".
-    iApply (blkN_fire wsN (wids_NoDup _) (pecl' g fc adm Lw K) Hcons RUNN PWN
+    iApply (blkN_fire wsN (wids_NoDup _) (pecl' g fc adm Lw) Hcons RUNN PWN
               (pwc_blkN_timeless g fc adm v I) TKN (ptkN_persistent g v I) WITN
-              (pipesN_HWIT fc adm I Hfc Hadm Ha Hl) TERM TOK dep dep_tl
+              (pipesN_HWIT fc adm I Hfc Ha Hl) TERM TOK dep dep_tl
               N Eex k γc γm w s b EXCL Φ Hns HEx Hw Hb Hok
               with "Hex [] Hinv HcW HmW Hdep HΦ").
     iApply pblkN_ecl_holds.
@@ -1204,13 +1207,209 @@ Section pipes_family.
     ([∗ list] w ∈ wsN, wcurN γc w (1/2) (length (sw w))
                         ∗ wmodeN γm w (1/2) (Some (sw w))) ={E}=∗
     ∃ pre : list (bv 8), PWN k pre false ∗ ⌜line_blocks fc lN pre⌝.
-  Proof using Hfc Hadm Ha Hl.
+  Proof using Hfc Ha Hl.
     intros HN HT. iIntros "#Hinv Hall".
     iMod (blkN_file wsN (wids_NoDup _) RUNN PWN (pwc_blkN_timeless g fc adm v I)
-            WITN (pipesN_HWIT fc adm I Hfc Hadm Ha Hl) TERM TOK dep dep_tl
+            WITN (pipesN_HWIT fc adm I Hfc Ha Hl) TERM TOK dep dep_tl
             E N k γc γm sw HN ltac:(rewrite /wids; destruct (lcats _); discriminate) HT
             with "Hinv Hall") as (pre) "[HPW %Hb]".
     iModIntro. iExists pre. iFrame "HPW". iPureIntro. exact (blkN_line_blocks fc lN pre Hb).
+  Qed.
+  (* ================================================================= *)
+  (*  4b.  THE TERMINAL ROUND AT THE PIPELINE (cut C5b)                  *)
+  (*                                                                     *)
+  (*  [TERM] is [PipeBothNPure.termw] (sh node k's [fork] line and the   *)
+  (*  prompt), [TOK] is [PipeBothNPure.tokN] (the committed sources      *)
+  (*  extend to a terminal vector, the prompt follows the waited         *)
+  (*  stages), and the claim's terminal witness is DERIVED from it       *)
+  (*  ([tokN_wit]).  What the round's walk still supplies is what it     *)
+  (*  alone knows: at a commit, that the committed sources extend to a   *)
+  (*  run (resp. a terminal vector) or that a deposit refutes the pair;  *)
+  (*  at the prompt, the waited stages' halves.                          *)
+  (* ================================================================= *)
+  Local Notation TOKN := (tokN fc (lineN fc adm I)).
+
+  (* THE CLAIM'S TERMINAL WITNESS: a prefix of a terminal block *)
+  Lemma pwitN_true (pre : list (bv 8)) :
+    pre <> [] -> (exists b', line_term_blocks fc lN b' /\ pre `prefix_of` b') ->
+    WITN true pre.
+  Proof using Ha.
+    intros Hne Hex. exists (plalt_code (PLTerm pre)).
+    cbn [pipes_lm lm_ok lm_panic lm_term lm_cont lm_dec]. rewrite plalt_of_code.
+    split_and!; [right; split; [exact Ha | split; [exact Hne | exact Hex]]
+                | reflexivity | reflexivity | reflexivity | intros Hq; discriminate Hq].
+  Qed.
+
+  (* ...READ OFF THE INVARIANT at any family state *)
+  Lemma tokN_wit (md : wid -> option (list (bv 8))) (sel : list wid) :
+    TOKN md sel -> sel_firedN md sel -> sel_wfN (srcN md) sel -> sel <> [] ->
+    WITN true (pendN md sel).
+  Proof using Ha.
+    intros Htok Hfd Hwf Hne. apply pwitN_true; [| exact (tokN_blocks fc lN md sel Htok Hfd Hwf)].
+    intros Hq. apply (f_equal length) in Hq. rewrite /pendN (mergeN_length _ _ Hwf) in Hq.
+    apply Hne. by apply nil_length_inv.
+  Qed.
+
+  (* the committed sources, read as the family reads them *)
+  Lemma rmd_committed (md : wid -> option (list (bv 8))) (sel : list wid) w s :
+    (w ∈ sel \/ md w = Some []) -> md w = Some s -> rmd md sel w = Some s.
+  Proof using. intros Hc Hs. rewrite /rmd /cmtN bool_decide_true; [exact Hs | exact Hc]. Qed.
+
+  Lemma tokN_compat (md : wid -> option (list (bv 8))) (sel : list wid) :
+    compatN (termsN fc lN) (rmd md sel) ->
+    exists src, termsN fc lN src
+      /\ forall w s, (w ∈ sel \/ md w = Some []) -> md w = Some s -> src w = s.
+  Proof using.
+    intros (src & Hr & Hag). exists src. split; [exact Hr |].
+    intros w s Hc Hs. exact (Hag w s (rmd_committed md sel w s Hc Hs)).
+  Qed.
+
+  (* before the terminal byte no sigma has its fork source on the wire *)
+  Lemma prompt_okN_nt (md : wid -> option (list (bv 8))) (sel : list wid) :
+    tmN termw md sel = false -> prompt_okN md sel.
+  Proof using.
+    intros Htm s1 s2 k Hsel HmT. exfalso.
+    assert (Hin : WSh k ∈ sel) by (rewrite Hsel; apply elem_of_app; right; apply elem_of_list_here).
+    revert Htm. apply not_false_iff_true. rewrite /tmN existsb_exists. exists (WSh k).
+    split; [by apply elem_of_list_In |]. rewrite /srcN HmT.
+    exact (bool_decide_eq_true_2 _ eq_refl).
+  Qed.
+
+  (* ---- the steps' premises ---- *)
+
+  (* A BYTE THAT IS NOT A PROMPT BYTE, by any writer *)
+  Lemma cstep_okN_tok (w : wid) (s : list (bv 8)) (c : nat) :
+    (0 < c)%nat -> (c < length s)%nat ->
+    (forall k, w = WSh k -> s = alt_forkc -> (c < length dg_fork_b)%nat) ->
+    cstep_okN wsN RUNN WITN termw TOKN w s c.
+  Proof using Ha.
+    intros Hc Hlt Hnp md sel Hfam Hmw Hcw Htm.
+    destruct Hfam as (Hin & Hmin & Hfd & Hwf & Hinvn).
+    destruct (proj2 Hinvn Htm) as [Hcp Hpo].
+    assert (Hws : w ∈ sel) by (apply cntN_elem; lia).
+    assert (Htok : TOKN md (sel ++ [w])).
+    { split.
+      - destruct Hcp as (src & Hr & Hag). exists src. split; [exact Hr |].
+        intros x sx [Hx | Hx] Hs; apply (Hag x sx); [| exact Hs | right; exact Hx | exact Hs].
+        left. apply elem_of_app in Hx as [Hx | Hx]; [exact Hx |].
+        apply elem_of_list_singleton in Hx as ->. exact Hws.
+      - apply prompt_okN_snoc; [exact Hpo |]. intros k -> HmT.
+        rewrite Hmw in HmT. injection HmT as HmT. rewrite Hcw. exact (Hnp k eq_refl HmT). }
+    split; [exact Htok |].
+    apply tokN_wit; [exact Htok | | | intros Hq; apply app_eq_nil in Hq as [_ Hq]; discriminate Hq].
+    - apply sel_firedN_snoc; [exact Hfd | rewrite Hmw; by eexists].
+    - apply (sel_wfN_fired_snoc md sel w s Hwf Hmw). lia.
+  Qed.
+
+  (* the waited stages' halves at their whole sources, above node [k] *)
+  Definition heldN (k : nat) (sw : nat -> list (bv 8)) : list (wid * list (bv 8) * nat) :=
+    (fun j => (WLeft j, sw j, length (sw j))) <$> seq 0 k.
+
+  (* THE PROMPT BYTE of sh node k's terminal source, with the waited
+     stages' halves in hand *)
+  Lemma cstep_okNh_prompt (k : nat) (sw : nat -> list (bv 8)) (c : nat) :
+    (0 < c)%nat -> (c < length alt_forkc)%nat ->
+    cstep_okNh wsN RUNN WITN termw TOKN (WSh k) alt_forkc c (heldN k sw).
+  Proof using Ha.
+    intros Hc Hlt md sel Hfam Hmw Hcw Hheld Htm.
+    destruct Hfam as (Hin & Hmin & Hfd & Hwf & Hinvn).
+    destruct (proj2 Hinvn Htm) as [Hcp Hpo].
+    assert (Hws : WSh k ∈ sel) by (apply cntN_elem; lia).
+    assert (Htok : TOKN md (sel ++ [WSh k])).
+    { split.
+      - destruct Hcp as (src & Hr & Hag). exists src. split; [exact Hr |].
+        intros x sx [Hx | Hx] Hs; apply (Hag x sx); [| exact Hs | right; exact Hx | exact Hs].
+        left. apply elem_of_app in Hx as [Hx | Hx]; [exact Hx |].
+        apply elem_of_list_singleton in Hx as ->. exact Hws.
+      - apply prompt_okN_prompt; [exact Hpo |]. intros j Hj.
+        destruct (Hheld (WLeft j, sw j, length (sw j))) as [Hm Hcn].
+        { rewrite /heldN elem_of_list_fmap. exists j. split; [reflexivity |].
+          apply elem_of_seq. lia. }
+        exists (sw j). split; [exact Hm | exact Hcn]. }
+    split; [exact Htok |].
+    apply tokN_wit; [exact Htok | | | intros Hq; apply app_eq_nil in Hq as [_ Hq]; discriminate Hq].
+    - apply sel_firedN_snoc; [exact Hfd | rewrite Hmw; by eexists].
+    - apply (sel_wfN_fired_snoc md sel (WSh k) alt_forkc Hwf Hmw). lia.
+  Qed.
+
+  (* A COMMIT (first byte) BY ANY WRITER: the walk names the run (or the
+     terminal vector) the committed sources extend to, or the deposit that
+     refutes the pair; the family's terminal invariant and witness follow *)
+  Lemma fire_okN_tok (w : wid) (s : list (bv 8)) (EXCL : wid -> list (bv 8) -> Prop) :
+    s <> [] ->
+    (forall md sel, famN wsN RUNN termw TOKN md sel -> md w = None -> w ∉ sel ->
+       tmN termw (mdupd md w s) (sel ++ [w]) = false ->
+       compatN RUNN (rmd (mdupd md w s) (sel ++ [w]))
+       \/ exists w' s', cmtN md sel w' = true /\ md w' = Some s' /\ EXCL w' s') ->
+    (forall md sel, famN wsN RUNN termw TOKN md sel -> md w = None -> w ∉ sel ->
+       tmN termw (mdupd md w s) (sel ++ [w]) = true ->
+       compatN (termsN fc lN) (rmd (mdupd md w s) (sel ++ [w]))
+       \/ exists w' s', cmtN md sel w' = true /\ md w' = Some s' /\ EXCL w' s') ->
+    fire_okN wsN RUNN WITN termw TOKN w s EXCL.
+  Proof using Ha.
+    intros Hs Hnt Ht md sel Hfam Hmw Hws. split; [exact (Hnt md sel Hfam Hmw Hws) |].
+    intros Htm'. destruct (Ht md sel Hfam Hmw Hws Htm') as [Hc | Hx]; [left | right; exact Hx].
+    pose proof Hfam as (Hin & Hmin & Hfd & Hwf & Hinvn).
+    assert (Hpo : prompt_okN md sel).
+    { destruct (tmN termw md sel) eqn:Htm.
+      - exact (proj2 (proj2 Hinvn Htm)).
+      - exact (prompt_okN_nt md sel Htm). }
+    assert (Hmw' : mdupd md w s w = Some s) by (rewrite /mdupd decide_True; done).
+    assert (Htok : TOKN (mdupd md w s) (sel ++ [w])).
+    { split; [exact (tokN_compat _ _ Hc) |].
+      apply prompt_okN_snoc; [exact (prompt_okN_mdupd md sel w s Hmw Hws Hpo) |].
+      intros k -> _. rewrite (cntN_nil_notin sel _ Hws). rewrite dg_fork_b_len. lia. }
+    split; [exact Htok |].
+    apply tokN_wit; [exact Htok | | | intros Hq; apply app_eq_nil in Hq as [_ Hq]; discriminate Hq].
+    - apply sel_firedN_snoc; [exact (sel_firedN_mdupd md sel w s Hfd) | rewrite Hmw'; by eexists].
+    - apply (sel_wfN_fired_snoc (mdupd md w s) sel w s (sel_wfN_mdupd md sel w s Hws Hwf) Hmw').
+      rewrite (cntN_nil_notin sel _ Hws).
+      destruct s as [| s0 s']; [exfalso; exact (Hs eq_refl) | cbn [length]; lia].
+  Qed.
+
+  (* A SILENT EXIT, the same way *)
+  Lemma silence_okN_tok (w : wid) (EXCL : wid -> list (bv 8) -> Prop) :
+    (forall md sel, famN wsN RUNN termw TOKN md sel -> md w = None -> w ∉ sel ->
+       tmN termw md sel = false ->
+       compatN RUNN (rmd (mdupd md w []) sel)
+       \/ exists w' s', cmtN md sel w' = true /\ md w' = Some s' /\ EXCL w' s') ->
+    (forall md sel, famN wsN RUNN termw TOKN md sel -> md w = None -> w ∉ sel ->
+       tmN termw md sel = true ->
+       compatN (termsN fc lN) (rmd (mdupd md w []) sel)
+       \/ exists w' s', cmtN md sel w' = true /\ md w' = Some s' /\ EXCL w' s') ->
+    silence_okN wsN RUNN termw TOKN w EXCL.
+  Proof using.
+    intros Hnt Ht md sel Hfam Hmw Hws. split; [exact (Hnt md sel Hfam Hmw Hws) |].
+    intros Htm. destruct (Ht md sel Hfam Hmw Hws Htm) as [Hc | Hx]; [left | right; exact Hx].
+    pose proof Hfam as (_ & _ & _ & _ & Hinvn).
+    split; [exact (tokN_compat _ _ Hc) |].
+    exact (prompt_okN_mdupd md sel w [] Hmw Hws (proj2 (proj2 Hinvn Htm))).
+  Qed.
+
+  (* THE PROMPT at the pipeline: the main loop, after its waits, with the
+     waited stages' halves at their whole sources *)
+  Lemma pipesN_prompt (N : namespace) (k : nat) (γc γm : wid -> gname)
+      (dep : wid -> list (bv 8) -> iProp Σ) (dep_tl : forall w s, Timeless (dep w s))
+      (sw : nat -> list (bv 8)) (c : nat) (b : bv 8) (Φ : iProp Σ) :
+    (↑N : coPset) ## (↑uartN Uart0 : coPset) ->
+    WSh k ∈ wsN -> (0 < c)%nat -> alt_forkc !! c = Some b ->
+    (forall x, x ∈ heldN k sw -> x.1.1 ∈ wsN) ->
+    pwc_fork_exitN wsN RUNN PWN TKN termw TOKN dep N k γc γm (WSh k) alt_forkc c -∗
+    ([∗ list] x ∈ heldN k sw, wcurN γc x.1.1 (1/2) x.2 ∗ wmodeN γm x.1.1 (1/2) (Some x.1.2)) -∗
+    (pwc_fork_exitN wsN RUNN PWN TKN termw TOKN dep N k γc γm (WSh k) alt_forkc (S c)
+     -∗ ([∗ list] x ∈ heldN k sw,
+           wcurN γc x.1.1 (1/2) x.2 ∗ wmodeN γm x.1.1 (1/2) (Some x.1.2))
+     -∗ Φ) -∗
+    out_link Uart0 k b Φ.
+  Proof using Hcons Hfc Ha Hl.
+    intros Hns Hw Hc Hb Hhin. iIntros "Hex Hh HΦ".
+    iApply (pprompt_forkN_h wsN (wids_NoDup _) (pecl' g fc adm Lw) Hcons RUNN PWN
+              (pwc_blkN_timeless g fc adm v I) TKN (ptkN_persistent g v I) WITN
+              (pipesN_HWIT fc adm I Hfc Ha Hl) termw TOKN dep dep_tl
+              N k γc γm (WSh k) alt_forkc c b (heldN k sw) Φ Hns Hw Hc Hb Hhin
+              (cstep_okNh_prompt k sw c Hc (lookup_lt_Some _ _ _ Hb))
+              with "[] Hex Hh HΦ").
+    iApply pblkN_ecl_holds.
   Qed.
 End pipes_family.
 

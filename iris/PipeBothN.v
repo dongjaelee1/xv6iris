@@ -29,9 +29,12 @@
 (*  [□ (X -∗ Y ={Eex}=∗ False)]: the committer's premise names, for every *)
 (*  family state its commit would make incompatible, a committed writer  *)
 (*  whose deposit refutes its own.  A terminal round (a fork failure:     *)
-(*  a writer whose source [TERM] flags has written) keeps the caller's    *)
-(*  invariant [TOK] instead, and its bytes' witnesses are premises, as    *)
-(*  the landed terminal steps' are.                                       *)
+(*  a writer whose source [TERM] flags has written) keeps the invariant   *)
+(*  [TOK] instead (a commit there may be refuted the same way), and a     *)
+(*  byte may read the halves of other writers its writer holds            *)
+(*  ([blkN_cstep_h]: the prompt after the waited stages).  At the         *)
+(*  pipeline [TOK] and the terminal witness are [PipeBothNPure.tokN] and  *)
+(*  [tokN_blocks], discharged in [PipeOutN].                              *)
 (* ===================================================================== *)
 From Stdlib Require Import ZArith Lia List.
 From stdpp Require Import gmap list bitvector.definitions.
@@ -386,8 +389,9 @@ Section blkN.
          compatN RUN (rmd (mdupd md w s) (sel ++ [w]))
          \/ exists w' s', cmtN md sel w' = true /\ md w' = Some s' /\ EXCL w' s')
       /\ (tmN (mdupd md w s) (sel ++ [w]) = true ->
-            TOK (mdupd md w s) (sel ++ [w])
-            /\ WIT true (pendN (mdupd md w s) (sel ++ [w]))).
+            (TOK (mdupd md w s) (sel ++ [w])
+             /\ WIT true (pendN (mdupd md w s) (sel ++ [w])))
+            \/ exists w' s', cmtN md sel w' = true /\ md w' = Some s' /\ EXCL w' s').
 
   Lemma blkN_fire (N : namespace) (Eex : coPset) (k : nat) (γc γm : W -> gname)
       (w : W) (s : list (bv 8)) (b : bv 8)
@@ -436,8 +440,13 @@ Section blkN.
       by rewrite /md' pendN_mdupd. }
     (* WHICH CASE: compatible, excluded, or terminal *)
     destruct (tmN md' sel') eqn:Htm'.
-    - (* THE TERMINAL BYTE *)
-      destruct (Ht Htm') as [Htok Hwit].
+    - (* THE TERMINAL BYTE: at the invariant, or refuted *)
+      destruct (Ht Htm') as [[Htok Hwit] | (w' & s' & Hcw' & Hmw' & Hx)]; last first.
+      { (* AN EXCLUDED PAIR, as at a non-terminal byte *)
+        assert (Hw' : w' ∈ ws) by (apply Hmin; rewrite Hmw'; discriminate).
+        iDestruct (big_wstN_dep γc γm md sel w' s' Hw' Hcw' Hmw' with "Hb") as "Hd'".
+        iMod (fupd_mask_subseteq Eex) as "_"; [exact HEx |].
+        iMod ("Hex" $! w' s' with "[%] Hd' Hdep") as "[]". exact Hx. }
       iMod ("Hecl" $! k (default [] o) H (pendN md sel) b (tmN md sel) true
               with "[%] [%] HPW Hres") as "(Hres & HPW & #HTK)".
       { by intros _. }
@@ -600,6 +609,127 @@ Section blkN.
     iDestruct "HTK" as "[%Hf | $]". exfalso. rewrite (HTw eq_refl) in Hf. discriminate.
   Qed.
 
+  (* ---- A BYTE WITH OTHER WRITERS' HALVES IN HAND.  What a writer knows
+       of the others is exactly the halves it holds: each one's cursor and
+       mode, agreed with the family.  The terminal round's PROMPT is such a
+       byte -- the main loop writes it after its waits, holding the waited
+       stages' halves, which is what orders it after them. ---- *)
+
+  (* the halves [hs] (writer, source, cursor) agree with the family *)
+  Lemma big_wstN_held γc γm md sel (hs : list (W * list (bv 8) * nat)) :
+    (forall x, x ∈ hs -> x.1.1 ∈ ws) ->
+    ([∗ list] w ∈ ws, wstN γc γm md sel w) -∗
+    ([∗ list] x ∈ hs, wcurN γc x.1.1 (1/2) x.2 ∗ wmodeN γm x.1.1 (1/2) (Some x.1.2)) -∗
+    ⌜forall x, x ∈ hs -> md x.1.1 = Some x.1.2 /\ cntN sel x.1.1 = x.2⌝.
+  Proof using.
+    induction hs as [| x hs IH]; intros Hin.
+    - iIntros "_ _". iPureIntro. intros x Hx. by apply elem_of_nil in Hx.
+    - iIntros "Hb [[Hc Hm] Hh]".
+      destruct (elem_of_list_lookup_1 ws x.1.1 (Hin x (elem_of_list_here x hs))) as (i & Hi).
+      iAssert (⌜md x.1.1 = Some x.1.2 /\ cntN sel x.1.1 = x.2⌝)%I as %Hx.
+      { iDestruct (big_sepL_lookup _ _ i _ Hi with "Hb") as "(Hc' & Hm' & _)".
+        rewrite /wcurN /wmodeN.
+        iDestruct (ghost_var_agree with "Hc Hc'") as %Hc.
+        iDestruct (ghost_var_agree with "Hm Hm'") as %Hm. by iPureIntro. }
+      iDestruct (IH (fun y Hy => Hin y (elem_of_list_further _ _ _ Hy)) with "Hb Hh") as %Hr.
+      iPureIntro. intros y Hy. apply elem_of_cons in Hy as [-> | Hy]; [exact Hx | exact (Hr y Hy)].
+  Qed.
+
+  Definition cstep_okNh (w : W) (s : list (bv 8)) (c : nat)
+      (hs : list (W * list (bv 8) * nat)) : Prop :=
+    forall md sel, famN md sel -> md w = Some s -> cntN sel w = c ->
+      (forall x, x ∈ hs -> md x.1.1 = Some x.1.2 /\ cntN sel x.1.1 = x.2) ->
+      tmN md sel = true ->
+      TOK md (sel ++ [w]) /\ WIT true (pendN md (sel ++ [w])).
+
+  (* [blkN_cstep] with the halves [hs] in hand: the step's premise may
+     read their cursors and modes, and the halves come back untouched *)
+  Lemma blkN_cstep_h (N : namespace) (k : nat) (γc γm : W -> gname)
+      (w : W) (s : list (bv 8)) (c : nat) (b : bv 8)
+      (hs : list (W * list (bv 8) * nat)) (Φ : iProp Σ) :
+    (↑N : coPset) ## (↑uartN Uart0 : coPset) ->
+    w ∈ ws -> (0 < c)%nat -> s !! c = Some b ->
+    (forall x, x ∈ hs -> x.1.1 ∈ ws) ->
+    cstep_okNh w s c hs ->
+    eclN -∗ blkN_inv N k γc γm -∗
+    wcurN γc w (1/2) c -∗ wmodeN γm w (1/2) (Some s) -∗
+    ([∗ list] x ∈ hs, wcurN γc x.1.1 (1/2) x.2 ∗ wmodeN γm x.1.1 (1/2) (Some x.1.2)) -∗
+    (wcurN γc w (1/2) (S c) -∗ wmodeN γm w (1/2) (Some s)
+     -∗ ([∗ list] x ∈ hs, wcurN γc x.1.1 (1/2) x.2 ∗ wmodeN γm x.1.1 (1/2) (Some x.1.2))
+     -∗ (⌜TERM w s = false⌝ ∨ TK k) -∗ Φ) -∗
+    out_link Uart0 k b Φ.
+  Proof using Hcons Hnd HWIT PW_tl dep_tl TK_pers.
+    intros Hns Hw Hc Hb Hhin Hok.
+    iIntros "#Hecl #Hinv HcW HmW Hh HΦ".
+    rewrite /out_link. iIntros (o H) "#Hlb Hres". rewrite !chist_at0_N.
+    assert (Hsub : (↑N : coPset) ⊆ (⊤ ∖ ↑uartN Uart0 : coPset)).
+    { apply subseteq_difference_r; [exact Hns | apply top_subseteq]. }
+    iMod (inv_acc _ N _ Hsub with "Hinv") as "[Hin Hclose]".
+    iDestruct "Hin" as ">Hin". rewrite {1}/blkN_body.
+    iDestruct "Hin" as "[Hfam | Hdone]"; last first.
+    { iDestruct (blkN_done_not γc w with "HcW Hdone") as %[]. exact Hw. }
+    iDestruct "Hfam" as (md sel) "(HPW & Hb & %Hfam)".
+    pose proof Hfam as (Hin & Hmin & Hfd & Hwf & Hinvn).
+    destruct (elem_of_list_lookup_1 ws w Hw) as (i & Hi).
+    iAssert (⌜cntN sel w = c /\ md w = Some s⌝)%I as %[Hcw Hmw].
+    { iDestruct (big_sepL_lookup _ _ i w Hi with "Hb") as "(Hc & Hm & _)".
+      rewrite /wcurN /wmodeN.
+      iDestruct (ghost_var_agree with "HcW Hc") as %Hc'.
+      iDestruct (ghost_var_agree with "HmW Hm") as %Hm. by iPureIntro. }
+    iAssert (⌜forall x, x ∈ hs -> md x.1.1 = Some x.1.2 /\ cntN sel x.1.1 = x.2⌝)%I
+      as %Hheld.
+    { iApply (big_wstN_held γc γm md sel hs Hhin with "Hb Hh"). }
+    assert (Hwsel : w ∈ sel) by (apply cntN_elem; lia).
+    set (sel' := sel ++ [w]).
+    assert (Htm : tmN md sel' = tmN md sel) by exact (tmN_snoc_in md sel w Hwsel).
+    assert (Hpend : pendN md sel' = pendN md sel ++ [b]).
+    { apply (pendN_snoc md sel w s b Hwf Hmw). by rewrite Hcw. }
+    assert (Hwf' : sel_wfN (srcN md) sel').
+    { apply (sel_wfN_fired_snoc md sel w s Hwf Hmw). rewrite Hcw.
+      apply lookup_lt_Some in Hb. exact Hb. }
+    assert (Hcmt : forall x, cmtN md sel' x = cmtN md sel x)
+      by (intros x; exact (cmtN_step md sel w x Hwsel)).
+    assert (Hrmd : forall x, rmd md sel' x = rmd md sel x)
+      by (intros x; by rewrite /rmd Hcmt).
+    assert (Hfam' : famN md sel').
+    { split_and!.
+      - intros x Hx. apply elem_of_app in Hx as [Hx | Hx]; [exact (Hin x Hx) |].
+        apply elem_of_list_singleton in Hx as ->. exact Hw.
+      - exact Hmin.
+      - apply sel_firedN_snoc; [exact Hfd | rewrite Hmw; by eexists].
+      - exact Hwf'.
+      - split.
+        + intros Hf. rewrite Htm in Hf. apply (compatN_ext (rmd md sel)); [exact Hrmd |].
+          exact (proj1 Hinvn Hf).
+        + intros Ht. rewrite Htm in Ht. exact (proj1 (Hok md sel Hfam Hmw Hcw Hheld Ht)). }
+    assert (Hwit : WIT (tmN md sel) (pendN md sel ++ [b])).
+    { rewrite -Hpend. destruct (tmN md sel) eqn:Ht.
+      - exact (proj2 (Hok md sel Hfam Hmw Hcw Hheld Ht)).
+      - apply (witN_nt md sel' Hfam'). apply (compatN_ext (rmd md sel)); [exact Hrmd |].
+        exact (proj1 Hinvn Ht). }
+    assert (HTw : TERM w s = true -> tmN md sel = true).
+    { intros HT. rewrite /tmN existsb_exists. exists w.
+      split; [by apply elem_of_list_In | by rewrite /srcN Hmw]. }
+    iMod ("Hecl" $! k (default [] o) H (pendN md sel) b (tmN md sel) (tmN md sel)
+            with "[%] [%] HPW Hres") as "(Hres & HPW & #HTK)".
+    { done. }
+    { exact Hwit. }
+    iDestruct (big_wstN_step γc γm md sel md sel' w Hw with "Hb") as "[Hw Hcl]".
+    { intros x Hne. split; [rewrite /sel' cntN_other_snoc; [done | exact Hne] |].
+      split; [done | exact (Hcmt x)]. }
+    iDestruct "Hw" as "(Hc & Hm & Hd)". rewrite /wcurN.
+    iMod (ghost_var_update_halves (S c) with "HcW Hc") as "[HcW Hc]".
+    iMod ("Hclose" with "[HPW Hc Hm Hd Hcl]") as "_".
+    { iNext. rewrite /blkN_body. iLeft. iExists md, sel'. rewrite Htm Hpend.
+      iFrame "HPW". iSplitL "Hc Hm Hd Hcl"; [| by iPureIntro].
+      iApply "Hcl". rewrite /wstN /wcurN /sel' cntN_self_snoc Hcw (Hcmt w).
+      iFrame. }
+    iModIntro. iExists o. rewrite chist_at0_N. iFrame "Hlb Hres".
+    iApply ("HΦ" with "HcW HmW Hh").
+    destruct (TERM w s) eqn:HT; [| by iLeft].
+    iDestruct "HTK" as "[%Hf | $]". exfalso. rewrite (HTw eq_refl) in Hf. discriminate.
+  Qed.
+
   (* ================================================================= *)
   (*  6.  A SILENT EXIT: the writer fixes the empty source and commits   *)
   (* ================================================================= *)
@@ -609,7 +739,9 @@ Section blkN.
       (tmN md sel = false ->
          compatN RUN (rmd (mdupd md w []) sel)
          \/ exists w' s', cmtN md sel w' = true /\ md w' = Some s' /\ EXCL w' s')
-      /\ (tmN md sel = true -> TOK (mdupd md w []) sel).
+      /\ (tmN md sel = true ->
+            TOK (mdupd md w []) sel
+            \/ exists w' s', cmtN md sel w' = true /\ md w' = Some s' /\ EXCL w' s').
 
   Lemma blkN_silence (E : coPset) (N : namespace) (Eex : coPset) (k : nat)
       (γc γm : W -> gname) (w : W) (EXCL : W -> list (bv 8) -> Prop) :
@@ -645,9 +777,9 @@ Section blkN.
     assert (Hcase : invN md' sel
                     \/ exists w' s', cmtN md sel w' = true /\ md w' = Some s' /\ EXCL w' s').
     { destruct (tmN md sel) eqn:Htm0.
-      - left. split.
+      - destruct (Ht eq_refl) as [Htok | Hx]; [left | right; exact Hx]. split.
         + intros Hq. rewrite Htm in Hq. discriminate Hq.
-        + intros _. exact (Ht eq_refl).
+        + intros _. exact Htok.
       - destruct (Hnt eq_refl) as [Hcomp | Hx]; [left | right; exact Hx].
         split; [intros _; exact Hcomp |].
         intros Hq. rewrite Htm in Hq. discriminate Hq. }
@@ -791,6 +923,30 @@ Section blkN.
     iIntros "#Hecl (#Hinv & HcW & HmW & #HTK) HΦ".
     iApply (blkN_cstep N k γc γm w s c b Φ Hns Hw Hc Hb Hok with "Hecl Hinv HcW HmW").
     iIntros "HcW HmW _". iApply "HΦ". rewrite /pwc_fork_exitN. iFrame "Hinv HcW HmW HTK".
+  Qed.
+
+  (* ...AND THE MAIN LOOP'S PROMPT with the waited stages' halves in hand
+     (their exit payloads): what orders the prompt after them *)
+  Lemma pprompt_forkN_h (N : namespace) (k : nat) (γc γm : W -> gname)
+      (w : W) (s : list (bv 8)) (c : nat) (b : bv 8)
+      (hs : list (W * list (bv 8) * nat)) (Φ : iProp Σ) :
+    (↑N : coPset) ## (↑uartN Uart0 : coPset) ->
+    w ∈ ws -> (0 < c)%nat -> s !! c = Some b ->
+    (forall x, x ∈ hs -> x.1.1 ∈ ws) ->
+    cstep_okNh w s c hs ->
+    eclN -∗ pwc_fork_exitN N k γc γm w s c -∗
+    ([∗ list] x ∈ hs, wcurN γc x.1.1 (1/2) x.2 ∗ wmodeN γm x.1.1 (1/2) (Some x.1.2)) -∗
+    (pwc_fork_exitN N k γc γm w s (S c)
+     -∗ ([∗ list] x ∈ hs, wcurN γc x.1.1 (1/2) x.2 ∗ wmodeN γm x.1.1 (1/2) (Some x.1.2))
+     -∗ Φ) -∗
+    out_link Uart0 k b Φ.
+  Proof using Hcons Hnd HWIT PW_tl dep_tl TK_pers.
+    intros Hns Hw Hc Hb Hhin Hok.
+    iIntros "#Hecl (#Hinv & HcW & HmW & #HTK) Hh HΦ".
+    iApply (blkN_cstep_h N k γc γm w s c b hs Φ Hns Hw Hc Hb Hhin Hok
+              with "Hecl Hinv HcW HmW Hh").
+    iIntros "HcW HmW Hh _". iApply ("HΦ" with "[HcW HmW] Hh").
+    rewrite /pwc_fork_exitN. iFrame "Hinv HcW HmW HTK".
   Qed.
 
   (* a STRAY's byte in a terminal round, and every other writer's, is

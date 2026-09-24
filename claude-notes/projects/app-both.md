@@ -381,7 +381,15 @@ leaf (the file's header lists them): `Hclose_std`/`Hclose_shared_std`
 (a close of a standard slot leaves the ledger with a closed slot; the
 open leaf needs `fd_lowest_closed l = None` and no held-read leaf works
 at a standard slot), `Hopen_trunc` (`UkFileOpen`'s miss leaf takes
-`om_trunc = false` though the kernel refuses at the lookup), `Hnil_file`
+`om_trunc = false`: NOT a leaf artefact -- lane/leaf-filedev found the
+plain open surface `SysOpenDefs.open_au_plain_at` owes
+`open_trunc_piece` at `trunc_permit_triv`, i.e. a truncate step at
+EVERY file row, which the file claim's pinned rows cannot supply; the
+fix is a kernel purchase TRUNC-PERMIT: a permit tied to the walk's
+terminal as the create surface's `trunc_permit_of`/`trunc_tie_arg`
+already is, paid in `ProofSysOpenWalk`'s three joins and
+`SpecSysOpen.open_post_fail_plain`; deferred, no landed line shape
+opens with O_TRUNC and no O_CREATE), `Hnil_file`
 (no zero-length write leaf at a file, none at the read-only handle).
 Also `echo_prog` names only write/exit stubs, so `file_iface` is built
 at any program with the five stubs, not at echo's own.  NEXT: leaf lanes

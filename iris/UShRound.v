@@ -63,6 +63,7 @@ Require Import FileInvDefs.
 Require Import UserFd.
 Require Import UserChildren.
 Require Import UmodeAbi.
+Require Import ProcGeom.
 Require Import UexecRet.
 Require Import ExecEntry.
 Require Import UkRun UkRunSys.

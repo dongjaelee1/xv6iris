@@ -54,6 +54,10 @@ Require Import ProcAvail.
 Require Import FileInvDefs.
 Require Import UserFd.
 Require Import UserHeap.
+Require Import UserPerm.
+Require Import ProcPtOwn.
+Require Import UserPtTree.
+Require Import UmodeArith.
 Require Import ProcGeom.
 Require Import UexecSlot UexecRet UexecSG.
 Require Import UkRun UkRunLeaf UkRunSys.
@@ -73,15 +77,20 @@ Require Import PipeNames.
 Require Import PipeQueue.
 Require Import PipeReg.
 Require Import PipeProto.
+Require Import ObsTrace.
+Require Import ConsLog.
 Require Import LineWords.
 Require Import EchoDisc.
 Require Import PipeDisc.
+Require Import EchoOutPure.
 Require Import EchoOut.
 Require Import AppEcho.
+Require Import PipeOutPure.
 Require Import PipeOut.
 Require Import PipeBothPure.
 Require Import PipeBoth.
 Require Import PipeLinks.
+Require Import PipeLinksLine.
 Require Import PipeHooks.         (* S0 of [PipeLinksLine], moved *)
 Require Import PipeLinkInst.
 Require Import GenLinksLine.

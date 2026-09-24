@@ -549,7 +549,11 @@ signature) -- LANDED 1ae45598e; B console readers (`LineModelLinks`,
 admissibility, `cons_dev := ∃ v I, cons_dev_at v I`, `cons_dev_at_of_blk0`,
 `cons_dev_at_drained` in ONE arm -- an empty body's unfiled cursor is
 the filed cursor at 0 -- `cons_cur_gwc_post` with no `lm_apr` premise,
-`cons_write_gl_at`, `pcons_dev_drained` at `length L <= c`); C the entries
+`cons_write_gl_at`, `pcons_dev_drained` at `length L <= c`); D the file
+instance's exit -- LANDED b49fd3aa6 (the exit wand `fif_exit_k`, pinned
+indices, three glue lemmas; the interface gained the protected-device
+list `Dp` of `ep_ifaceP`, whose last close is a shared close, because a
+close of an entry device would drop the cursor the wand needs); C the entries
 (`UkEchoTree`, `UkCatTree`, `UkTreeEntry.v`) -- LANDED a5a31d581
 (`wp_kecho_start_env`/`wp_kcat_start_env` at `env_res`; the argv
 bridges `echo_argv_tail`, `cat_argv_words`; `echo_image_entry_env` and

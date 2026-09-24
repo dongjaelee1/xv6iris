@@ -54,6 +54,7 @@ Require Import PipeOut.
 Require Import AppPipe.
 Require Import UPipeBootAdequacy.   (* [pipe_prog_law] / [pipeSigma] *)
 Require Import UInitPipe.           (* [pipe_Hinit_boot] / the premise *)
+Require PipeProto UkPipeIface.      (* the two binders below: the echo child at the console runs the tree route *)
 
 Local Open Scope Z_scope.
 
@@ -64,6 +65,10 @@ Section PipeProgLaw.
   Context `{HU : !ufdG Σ}.
   Context `{!echoOutG Σ, !inG Σ (mono_listR (leibnizO Z))}.
   Context `{!pipeOutG Σ}.
+  (* the protocol's class and the device registry: [pipe_Hinit_boot]'s
+     round runs the echo child at the console on the tree route (lane
+     PIPECONS-EXIT) *)
+  Context `{HpP : !PipeProto.pipeProtoG Σ, HpifR : !UkPipeIface.pifRegG Σ}.
 
   Theorem pipe_prog_law_of_child :
     sh_pipe_child_law_all -> pipe_prog_law (Σ := Σ).
@@ -71,7 +76,7 @@ Section PipeProgLaw.
      unification does not delta-unfold a record literal for them, and an
      [exact] of the whole term asks for one conversion of two [box]-heavy
      bundles at once. *)
-  Proof using HU.
+  Proof using HU HpP HpifR.
     intros Hchild HR GEN HBs HFd HIr HPav HWc HF c r Heq Hiface Hgen.
     cbn [app_pipe app_names app_pred app_ifc] in Heq, Hiface.
     iIntros "#Hinv Hb Hturn".

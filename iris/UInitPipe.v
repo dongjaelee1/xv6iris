@@ -692,7 +692,7 @@ Section PipeInitBoot.
     ⊢ app_inv fsc_fs -∗ pipe_boot (pgn_cl g) (S gen_id) r -∗
       pturn g (S gen_id) -∗
       |==> init_boot_bundle (bv_unsigned InodeInv.ROOTINO) fdt0.
-  Proof using HU.
+  Proof using HU pipeProtoG0 HpifR.
     intros Hchild Heq Hiface.
     (* the three projections, off the one equation *)
     assert (Htag : @riscv_rx_tag Σ (@riscv_fixedGS Σ HR) = ptag g)

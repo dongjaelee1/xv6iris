@@ -96,6 +96,9 @@ Require PipeProto.                    (* [pipeProtoG]: the binder below needs it
 Require UkPipeIface.                  (* [pifRegG]: likewise *)
 Require UkPipeEntries.                (* echo at the console from the tree route *)
 Require ExecRun.                      (* [udepw_at_refR_of_sup]: the U-tier exec rule *)
+Require Import ExecEntry.             (* [image_entry] / [image_entry_taint] *)
+Require Import UexecRet.              (* [uslot], [uslot_bupd] *)
+Require UexecExecMint.                (* [udep_free] *)
 Require LineModelLinks.               (* [lm_abs_ab]: the post at a state-free alternative *)
 Require FsImg FsEchoPin FsAbsDefs.    (* the /echo pin the supply's walk resolves *)
 Local Open Scope Z_scope.

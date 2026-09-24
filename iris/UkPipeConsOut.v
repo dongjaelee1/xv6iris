@@ -201,6 +201,26 @@ Section UkPipeConsOut.
       iExists c. iSplit; [done |]. iExact "Hc".
     Qed.
 
+    (* THE DRAINED DEVICE (program-specs SS3.4e): nothing left of the line
+       means the cursor is at or past its end -- the device does not bound
+       the cursor by the line ([pcat_ch]'s [wcur] half does not either), so
+       the end is read as a lower bound *)
+    Lemma pcons_dev_drained :
+      pcons_dev [[]] -∗
+      era_pin γ (S gen_id) v
+      ∗ pipe_link_taint g
+      ∗ blk2_inv g blk2N (S gen_id) v I L gL gR gM XL YR
+      ∗ □ (XL -∗ YR ={↑pipeN}=∗ False)
+      ∗ YR
+      ∗ ∃ c : nat, ⌜(length L <= c)%nat⌝ ∗ pcat_ch g gR gM c.
+    Proof using YR_pers.
+      iIntros "(_ & #Hpin & #Ht & #Hinv & #Hex & #HYR & %c & %Hal & Hc)".
+      injection Hal as Hx.
+      apply (f_equal length) in Hx. rewrite length_drop in Hx. cbn [length] in Hx.
+      iFrame "Hpin Ht Hinv HYR". iSplitR; [iExact "Hex" |].
+      iExists c. iSplit; [iPureIntro; lia |]. iExact "Hc".
+    Qed.
+
     Lemma pcons_dev_short (alts : list (list (bv 8))) :
       pcons_dev alts -∗ ⌜cons_short alts⌝.
     Proof using . iIntros "($ & _)". Qed.

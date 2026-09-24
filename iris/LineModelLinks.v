@@ -719,6 +719,46 @@ Section line_model_links.
     exact (proj2 (proj2 (ll_prompt_tail_facts _ u Hu))).
   Qed.
 
+  (* THE PROMPT-FREE BODY of a block alternative (program-specs SS3.4e):
+     what the round's CHILD writes.  The alternative ends with the shell's
+     prompt ([lm_abs_prompt]), which the shell writes after the child has
+     exited, so a device owing the whole alternative can never be drained
+     by the child; one owing the body can. *)
+  Definition lm_body (s0 : lm_st M) (cs : list nat) (I : list (bv 8)) (a : nat)
+    : list (bv 8) :=
+    take (length (lm_abs s0 cs I a) - 2) (lm_abs s0 cs I a).
+
+  Lemma lm_body_length (s0 : lm_st M) (cs : list nat) (I : list (bv 8)) (a : nat) :
+    length (lm_body s0 cs I a) = length (lm_abs s0 cs I a) - 2.
+  Proof using. rewrite /lm_body length_take. lia. Qed.
+
+  (* a byte of the body is the alternative's byte *)
+  Lemma lm_body_lookup (s0 : lm_st M) (cs : list nat) (I : list (bv 8)) (a j : nat) :
+    j < length (lm_body s0 cs I a) ->
+    lm_body s0 cs I a !! j = lm_abs s0 cs I a !! j.
+  Proof using.
+    intros Hj. rewrite lm_body_length in Hj. rewrite /lm_body.
+    apply lookup_take. lia.
+  Qed.
+
+  Lemma lm_body_lookup_Some (s0 : lm_st M) (cs : list nat) (I : list (bv 8))
+      (a j : nat) (b : bv 8) :
+    lm_body s0 cs I a !! j = Some b -> lm_abs s0 cs I a !! j = Some b.
+  Proof using.
+    intros Hb. rewrite -(lm_body_lookup s0 cs I a j); [exact Hb |].
+    exact (lookup_lt_Some _ _ _ Hb).
+  Qed.
+
+  (* the alternative is its body and the prompt *)
+  Lemma lm_abs_body (s0 : lm_st M) (cs : list nat) (I : list (bv 8)) (a : nat) :
+    lm_aprs I a -> lm_abs s0 cs I a = lm_body s0 cs I a ++ u_prompt.
+  Proof using K.
+    intros Hpr. destruct (lm_abs_prompt s0 cs I a Hpr) as [u Hu].
+    rewrite /lm_body Hu length_app ll_prompt_len.
+    replace (length u + 2 - 2) with (length u) by lia.
+    rewrite take_app_length. reflexivity.
+  Qed.
+
   Lemma lm_ab_len_ge2 (I : list (bv 8)) (a : nat) :
     lm_apr I a -> 2 <= length (lm_ab I a).
   Proof using K.

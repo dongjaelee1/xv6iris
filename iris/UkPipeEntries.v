@@ -12,7 +12,7 @@
 (* payload equation [ukn_pay N' = Q] (the [_c] entries): the equation at *)
 (* a constant [Q] is the [ukn_const N'] the instance's free handler needs *)
 (* ([UkRun.ukn_const_of_eq]).  The five stubs are [UkStub]'s at cat's and *)
-(* echo's code; the four fields the kernel refuses                        *)
+(* echo's code; the two fields the kernel refuses                         *)
 (* ([UkPipeIface.pif_refused]) are this section's two hypotheses, one per *)
 (* program, quantified over the minted record.                            *)
 (*                                                                        *)
@@ -236,8 +236,7 @@ Section UkPipeEntries.
       N' (cat_prog N') (HNc := HNc)
       (cat_stub_read N') (cat_stub_write N') (cat_stub_open N')
       (cat_stub_close N') (cat_stub_exit N') γreg
-      (proj1 (Href_cat N')) (proj1 (proj2 (Href_cat N')))
-      (proj1 (proj2 (proj2 (Href_cat N')))) (proj2 (proj2 (proj2 (Href_cat N')))).
+      (proj1 (Href_cat N')) (proj2 (Href_cat N')).
 
   Definition pe_iface_echo (N' : uk_names Σ) (HNc : ukn_const N') :
       ep_iface N' (echo_prog N') :=
@@ -245,8 +244,7 @@ Section UkPipeEntries.
       N' (echo_prog N') (HNc := HNc)
       (echo_stub_read N') (echo_stub_write N') (echo_stub_open N')
       (echo_stub_close N') (echo_stub_exit N') γreg
-      (proj1 (Href_echo N')) (proj1 (proj2 (Href_echo N')))
-      (proj1 (proj2 (proj2 (Href_echo N')))) (proj2 (proj2 (proj2 (Href_echo N')))).
+      (proj1 (Href_echo N')) (proj2 (Href_echo N')).
 
   (* ------------------------------------------------------------------- *)
   (*  2a. CAT AT THE PIPE: [UShCatPay.cat_image_entry_1w]'s statement,    *)
@@ -296,8 +294,7 @@ Section UkPipeEntries.
               pn γp pe_yr N' (cat_prog N') (HNc := ukn_const_of_eq N' Q Hpq HQc)
               (cat_stub_read N') (cat_stub_write N') (cat_stub_open N')
               (cat_stub_close N') (cat_stub_exit N') γreg
-              (proj1 (Href_cat N')) (proj1 (proj2 (Href_cat N')))
-              (proj1 (proj2 (proj2 (Href_cat N')))) (proj2 (proj2 (proj2 (Href_cat N'))))
+              (proj1 (Href_cat N')) (proj2 (Href_cat N'))
               (take NSTD sts) wb rb1 rb2 w (fun _ => None)
               Hw0 Hw1 Hl0 Hl1 Hl2 HL
               with "Hstd Hpool [HsR] Hpi Hrt Hpin Hlt Hblk Hex HgR HgM").
@@ -378,8 +375,7 @@ Section UkPipeEntries.
               pn γp pe_yr N' (echo_prog N') (HNc := ukn_const_of_eq N' Q Hpq HQc)
               (echo_stub_read N') (echo_stub_write N') (echo_stub_open N')
               (echo_stub_close N') (echo_stub_exit N') γreg
-              (proj1 (Href_echo N')) (proj1 (proj2 (Href_echo N')))
-              (proj1 (proj2 (proj2 (Href_echo N')))) (proj2 (proj2 (proj2 (Href_echo N'))))
+              (proj1 (Href_echo N')) (proj2 (Href_echo N'))
               (take NSTD sts) rb w (fun _ => None) Hw0 Hl1 HL
               with "Hstd [Hfr] Hpool Hpi Hw Hlb").
     iApply (pif_kpay_left g L gR gM pn N' _ 0%nat (lookup_singleton _ _)).

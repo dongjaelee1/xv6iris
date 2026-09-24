@@ -649,6 +649,24 @@ Definition drained (x : dspec) : Prop :=
   | _ => True
   end.
 
+(* THE LAST CLOSE OF A DEVICE (the close gap, lane closegap): a descriptor
+   is the last one naming its device when no other descriptor does, and
+   the last close of a COPY device or of a HALTABLE output (a pipe's write
+   end) asks the device DRAINED.  The pipeline's instance pays the reader's
+   or the writer's exit payoff at that close (the end-of-file shot and
+   equal cursors at a copy device, the line's end or the reader's shot at
+   a write end), which an undrained device does not hold; cat and echo
+   never close such a device early.  The other kinds are free: the file
+   application closes an INPUT before it is read to its end. *)
+Definition fd_last (fdm : gmap Z nat) (fd : Z) (d : nat) : Prop :=
+  forall fd', fd' <> fd -> fdm !! fd' <> Some d.
+
+Definition drained_at_close (x : dspec) : Prop :=
+  match x with
+  | DOutH _ | DHalt | DCopy _ _ _ | DCopyEnd _ _ | DCopyHalt => drained x
+  | _ => True
+  end.
+
 (* ONE step of conformance, as a function of the relation: the greatest
    fixpoint below needs no injectivity of [Vis] to be unfolded, so a payer
    reads a node by [destruct t; simpl]. *)
@@ -701,7 +719,9 @@ Definition cf_step (R : penv -> proc -> Prop) (E : penv) (t : proc) : Prop :=
              /\ R E (k (-1)))
           \/ (~ mode_create m /\ pe_files E p = None /\ R E (k (-1))))
       | EClose fd => fun k =>
-          exists d, pe_fd E !! fd = Some d /\ R (env_unbind E fd) (k 0)
+          exists d, pe_fd E !! fd = Some d
+          /\ (fd_last (pe_fd E) fd d -> drained_at_close (pe_dev E d))
+          /\ R (env_unbind E fd) (k 0)
       | EExit s => fun _ => forall d, drained (pe_dev E d)
       end k
   end.
@@ -816,8 +836,11 @@ CoInductive conforms : penv -> proc -> Prop :=
       pe_files E p = None ->
       conforms E (k (-1)) ->
       conforms E (Vis (EOpen p m) k)
+  (* ...the last descriptor of a copy device or a haltable output only
+     once the device is drained *)
   | cf_close E fd d k :
       pe_fd E !! fd = Some d ->
+      (fd_last (pe_fd E) fd d -> drained_at_close (pe_dev E d)) ->
       conforms (env_unbind E fd) (k 0) ->
       conforms E (Vis (EClose fd) k)
   | cf_exit E s k :
@@ -1085,6 +1108,8 @@ Proof.
     eapply cf_close with (d := d).
     { cbv [cat_env pe_fd]. rewrite lookup_insert_ne; [| lia].
       rewrite lookup_insert_ne; [| lia]. apply lookup_singleton. }
+    { (* an input: the close owes nothing *)
+      intros _. cbv [cat_env pe_dev]. repeat case_decide; exact I. }
     simpl. apply cf_exit. intros d'. unfold drained. cbv [env_unbind cat_env pe_dev].
     destruct (decide (d' = 0%nat)); [exact Hin |].
     destruct (decide (d' = d)); [exact I | by left].

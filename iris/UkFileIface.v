@@ -1507,17 +1507,19 @@ Section UkFileIface.
     exact (fif_open_absent_nt fdm files paths path m K).
   Qed.
 
-  (* [ei_close]: the last descriptor of an UNPROTECTED device *)
+  (* [ei_close]: the last descriptor of an UNPROTECTED device (the file
+     application has no copy device and no haltable output, so the close's
+     [drained_at_close] fact is not needed) *)
   Lemma fif_close (fdm : fdmap) (fd : Z) (d : nat) (x : dspec)
       (files : list (bv 8) -> option (list (bv 8))) (paths : list (list (bv 8)))
       (K : Z -> iProp Σ) :
-    fdm !! fd = Some d -> ~ fd_shared_p D0 fdm fd d ->
+    fdm !! fd = Some d -> ~ fd_shared_p D0 fdm fd d -> drained_at_close x ->
     fif_fds fdm -∗ fif_filesr files paths -∗ fif_dev d x -∗
     ((fif_fds (delete fd fdm) -∗ fif_filesr files paths -∗ K 0)
      ∧ (∀ y, fif_taint (dom fdm ∖ {[fd]}) -∗ K y)) -∗
     cl_obl N P fd K.
   Proof using Hsc.
-    intros Hfd Hnsp.
+    intros Hfd Hnsp _.
     assert (HD : d ∉ D0) by (intros H; apply Hnsp; apply fd_shared_p_iff; by left).
     assert (Hns : ~ fd_shared fdm fd d) by (intros H; apply Hnsp; apply fd_shared_p_iff; by right).
     iIntros "Hfds #Hfiles Hdev HK".

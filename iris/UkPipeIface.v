@@ -100,18 +100,13 @@
 (*             (a PDRd row, or the copy device on [copy_in]):             *)
 (*             [UkPipeDev.pipe_write_nil] needs a writable row; the      *)
 (*             kernel answers -1 there and no leaf says so.              *)
-(*   [Hclose_open]  the LAST close of a copy device BEFORE ITS END while  *)
-(*             the exit wand is still held: the wand wants the EOF shot  *)
-(*             and the two cursors equal, which an open device does not  *)
-(*             have.  cat never closes its ends; the interface's          *)
-(*             [ei_close] admits the close at any state, so the honest   *)
-(*             fix is a premise [drained x] at the copy kinds of          *)
-(*             [ei_close] / [ProgTree.cf_close] -- a shared-file change  *)
-(*             the file lane builds against, left for a coordinated cut. *)
-(*   [Hclose_open_w]  the same at the WRITE END while the left wand is   *)
-(*             held (lane F): the wand wants the cursor at the line's    *)
-(*             end or the reader's shot; echo never closes its end.  The *)
-(*             same [drained] premise is the fix.                        *)
+(*                                                                        *)
+(* CLOSED (lane closegap): the LAST close of a copy device before its end *)
+(* ([pif_close_open]) or of the write end before it is drained            *)
+(* ([pif_close_open_w]) while an exit wand is held -- the wand wants the  *)
+(* EOF shot and equal cursors, or the line's end or the reader's shot.    *)
+(* [ProgTree.cf_close] asks such a device [drained_at_close] and          *)
+(* [ei_close] receives the fact, so both cases are refuted.               *)
 (*                                                                        *)
 (* WHAT THE INSTANCE FORCED ON THE PURE LAYER (ProgTree, UkHandler; the   *)
 (* file application fills the copy laws with [_]):                        *)
@@ -862,7 +857,7 @@ Section UkPipeIface.
 
   (* ...packaged as ONE proposition first (lane F), so that a file above
      this section can assume them at any minted record and any registry
-     name in one binder: [pif_refused_holds] below is the tie to the four
+     name in one binder: [pif_refused_holds] below is the tie to the two
      hypotheses the laws are stated at. *)
   Definition pif_refused : Prop :=
     (forall (fdm : fdmap) (fd : Z) (d : nat) (bs : list (bv 8)) (K : Z -> iProp Σ),
@@ -877,31 +872,7 @@ Section UkPipeIface.
           pif_fds_at fdm l vs w -∗ pif_dev d x -∗
           ((pif_fds fdm -∗ pif_dev d x -∗ K 0) ∧ (pif_fds fdm -∗ pif_dev d x -∗ K (-1))
            ∧ (∀ y, pif_taint (dom fdm) -∗ K y)) -∗
-          wr_obl N P (Z.of_nat fd) [] K)
-    /\ (forall (fdm : fdmap) (l : list fdstate) (vs : gmap nat pdev)
-          (w : nat -> pdev) (fd : Z) (d : nat) (x : dspec)
-          (files : list (bv 8) -> option (list (bv 8))) (paths : list (list (bv 8)))
-          (K : Z -> iProp Σ),
-          fdm !! fd = Some d -> ~ fd_shared fdm fd d -> vs !! d = Some PDCopy -> ~ drained x ->
-          pif_ok fdm l vs ->
-          UserFd.ustd γfd l -∗ pif_exit_k -∗ own γreg (pif_pool (dom vs) w) -∗
-          ([∗ map] d ↦ x ∈ vs, pif_tok d (1/2) x) -∗ pif_env -∗
-          pif_filesr files paths -∗ pif_dev d x -∗
-          ((pif_fds (delete fd fdm) -∗ pif_filesr files paths -∗ K 0)
-           ∧ (∀ y, pif_taint (dom fdm ∖ {[fd]}) -∗ K y)) -∗
-          cl_obl N P fd K)
-    /\ (forall (fdm : fdmap) (l : list fdstate) (vs : gmap nat pdev)
-          (w : nat -> pdev) (fd : Z) (d : nat) (x : dspec)
-          (files : list (bv 8) -> option (list (bv 8))) (paths : list (list (bv 8)))
-          (K : Z -> iProp Σ),
-          fdm !! fd = Some d -> ~ fd_shared fdm fd d -> vs !! d = Some PDWr -> ~ drained x ->
-          pif_ok fdm l vs ->
-          UserFd.ustd γfd l -∗ pif_exit_k_left -∗ own γreg (pif_pool (dom vs) w) -∗
-          ([∗ map] d ↦ x ∈ vs, pif_tok d (1/2) x) -∗ pif_env -∗
-          pif_filesr files paths -∗ pif_dev d x -∗
-          ((pif_fds (delete fd fdm) -∗ pif_filesr files paths -∗ K 0)
-           ∧ (∀ y, pif_taint (dom fdm ∖ {[fd]}) -∗ K y)) -∗
-          cl_obl N P fd K).
+          wr_obl N P (Z.of_nat fd) [] K).
 
   Hypothesis Hhalt_long : forall (fdm : fdmap) (fd : Z) (d : nat) (bs : list (bv 8))
       (K : Z -> iProp Σ),
@@ -919,11 +890,23 @@ Section UkPipeIface.
      ∧ (∀ y, pif_taint (dom fdm) -∗ K y)) -∗
     wr_obl N P (Z.of_nat fd) [] K.
 
-  Hypothesis Hclose_open : forall (fdm : fdmap) (l : list fdstate) (vs : gmap nat pdev)
+  Lemma pif_refused_holds : pif_refused.
+  Proof using Hhalt_long Hnil_ro.
+    exact (conj Hhalt_long Hnil_ro).
+  Qed.
+
+  (* THE CLOSE GAP, CLOSED (lane closegap): the LAST close of a copy device
+     BEFORE its end while the exit wand is held -- the wand wants the EOF
+     shot and the two cursors equal, which an open device does not have --
+     is refuted by the close rule's [drained_at_close] fact: at a copy
+     device it is [drained], and the registry's kind pins the device to a
+     copy kind. *)
+  Lemma pif_close_open (fdm : fdmap) (l : list fdstate) (vs : gmap nat pdev)
       (w : nat -> pdev) (fd : Z) (d : nat) (x : dspec)
       (files : list (bv 8) -> option (list (bv 8))) (paths : list (list (bv 8)))
-      (K : Z -> iProp Σ),
+      (K : Z -> iProp Σ) :
     fdm !! fd = Some d -> ~ fd_shared fdm fd d -> vs !! d = Some PDCopy -> ~ drained x ->
+    drained_at_close x ->
     pif_ok fdm l vs ->
     UserFd.ustd γfd l -∗ pif_exit_k -∗ own γreg (pif_pool (dom vs) w) -∗
     ([∗ map] d ↦ x ∈ vs, pif_tok d (1/2) x) -∗ pif_env -∗
@@ -931,18 +914,26 @@ Section UkPipeIface.
     ((pif_fds (delete fd fdm) -∗ pif_filesr files paths -∗ K 0)
      ∧ (∀ y, pif_taint (dom fdm ∖ {[fd]}) -∗ K y)) -∗
     cl_obl N P fd K.
+  Proof using .
+    intros _ _ Hv Hndr Hdc _. iIntros "_ _ _ Htoks _ _ Hd _".
+    iDestruct (pif_dev_tok with "Hd") as (kd) "(%Hkd & Htk & _)".
+    iDestruct (pif_toks_agree vs d PDCopy kd with "Htoks Htk") as "(%Hvv & _ & _)"; [exact Hv |].
+    subst kd. exfalso.
+    destruct x as [alts | alts | cs | | Sin | Sin | | h Sc p | h p |]; simpl in Hkd;
+      try (destruct Hkd as [Hkd | [Hkd | Hkd]]; discriminate Hkd);
+      try discriminate Hkd; try exact Hkd; exact (Hndr Hdc).
+  Qed.
 
-  (* [Hclose_open]'s twin at the WRITE END (lane F): the last close of the
-     pipe's write end BEFORE it is drained while the left wand is held --
-     the wand wants the cursor at the line's end or the reader's shot,
-     which an open end owing bytes has neither of.  echo never closes its
-     end (exit tears it down); the honest fix is the same [drained]
-     premise at [ei_close] / [ProgTree.cf_close]. *)
-  Hypothesis Hclose_open_w : forall (fdm : fdmap) (l : list fdstate) (vs : gmap nat pdev)
+  (* ...its twin at the WRITE END (lane F): the last close of the pipe's
+     write end BEFORE it is drained while the left wand is held -- the
+     wand wants the cursor at the line's end or the reader's shot, which
+     an open end owing bytes has neither of *)
+  Lemma pif_close_open_w (fdm : fdmap) (l : list fdstate) (vs : gmap nat pdev)
       (w : nat -> pdev) (fd : Z) (d : nat) (x : dspec)
       (files : list (bv 8) -> option (list (bv 8))) (paths : list (list (bv 8)))
-      (K : Z -> iProp Σ),
+      (K : Z -> iProp Σ) :
     fdm !! fd = Some d -> ~ fd_shared fdm fd d -> vs !! d = Some PDWr -> ~ drained x ->
+    drained_at_close x ->
     pif_ok fdm l vs ->
     UserFd.ustd γfd l -∗ pif_exit_k_left -∗ own γreg (pif_pool (dom vs) w) -∗
     ([∗ map] d ↦ x ∈ vs, pif_tok d (1/2) x) -∗ pif_env -∗
@@ -950,10 +941,14 @@ Section UkPipeIface.
     ((pif_fds (delete fd fdm) -∗ pif_filesr files paths -∗ K 0)
      ∧ (∀ y, pif_taint (dom fdm ∖ {[fd]}) -∗ K y)) -∗
     cl_obl N P fd K.
-
-  Lemma pif_refused_holds : pif_refused.
-  Proof using Hhalt_long Hnil_ro Hclose_open Hclose_open_w.
-    exact (conj Hhalt_long (conj Hnil_ro (conj Hclose_open Hclose_open_w))).
+  Proof using .
+    intros _ _ Hv Hndr Hdc _. iIntros "_ _ _ Htoks _ _ Hd _".
+    iDestruct (pif_dev_tok with "Hd") as (kd) "(%Hkd & Htk & _)".
+    iDestruct (pif_toks_agree vs d PDWr kd with "Htoks Htk") as "(%Hvv & _ & _)"; [exact Hv |].
+    subst kd. exfalso.
+    destruct x as [alts | alts | cs | | Sin | Sin | | h Sc p | h p |]; simpl in Hkd;
+      try (destruct Hkd as [Hkd | [Hkd | Hkd]]; discriminate Hkd);
+      try discriminate Hkd; try exact Hkd; exact (Hndr Hdc).
   Qed.
 
   (* ------------------------------------------------------------------- *)
@@ -1568,18 +1563,19 @@ Section UkPipeIface.
      registration ([UkPipeDev.pipe_close]), a console slot by
      [UkFileDev.file_close_std], the token home to the pool, the device
      dropped -- a copy device at its END pays the exit wand first, and open
-     it is [Hclose_open]; the write end at its end (drained, or halted)
-     pays the LEFT wand first, and open it is [Hclose_open_w] *)
+     it is refuted ([pif_close_open]); the write end at its end (drained,
+     or halted) pays the LEFT wand first, and open it is refuted
+     ([pif_close_open_w]): the close rule's [drained_at_close] fact *)
   Lemma pif_close (fdm : fdmap) (fd : Z) (d : nat) (x : dspec)
       (files : list (bv 8) -> option (list (bv 8))) (paths : list (list (bv 8)))
       (K : Z -> iProp Σ) :
-    fdm !! fd = Some d -> ~ fd_shared fdm fd d ->
+    fdm !! fd = Some d -> ~ fd_shared fdm fd d -> drained_at_close x ->
     pif_fds fdm -∗ pif_filesr files paths -∗ pif_dev d x -∗
     ((pif_fds (delete fd fdm) -∗ pif_filesr files paths -∗ K 0)
      ∧ (∀ y, pif_taint (dom fdm ∖ {[fd]}) -∗ K y)) -∗
     cl_obl N P fd K.
-  Proof using Hsc Hclose_open Hclose_open_w.
-    intros Hfd Hns. iIntros "Hfds Hfiles Hd HK".
+  Proof using Hsc.
+    intros Hfd Hns Hdc. iIntros "Hfds Hfiles Hd HK".
     iDestruct (pif_dev_tok with "Hd") as (kd) "(%Hkd & Htk & Hback)".
     iDestruct "Hfds" as (l vs w) "(Hstd & Hkp & %Hok & Hpool & Htoks & #He)".
     destruct (pif_ok_lookup _ _ _ _ _ Hok Hfd) as [kd' Hv].
@@ -1611,7 +1607,7 @@ Section UkPipeIface.
                 with "Hstd [Hkp] Hpool Htoks Htk He").
       iApply (pif_kpay_delete vs d PDMute Hv ltac:(discriminate) ltac:(discriminate) with "Hkp").
     - (* the write end: the copy wand or the payload stay; the LEFT wand is
-         paid at a drained or halted end, and open it is [Hclose_open_w] *)
+         paid at a drained or halted end, and open it is refuted *)
       destruct Hrow as (_ & rb & Hrow). rewrite Nat2Z.id in Hrow.
       iDestruct "Hkp" as "[Hcp | [[%Hreg Hkl] | Hpay]]".
       + iApply (pipe_close N P Hsc γp l k rb true K Hlt Hrow with "Hreg Hstd").
@@ -1629,11 +1625,11 @@ Section UkPipeIface.
         * (* owing [S]: drained at [S = []], open otherwise *)
           iDestruct "Hd" as "[Htk Hpo]". iDestruct "Hpo" as (S) "[%Halts Hpo]". subst alts.
           destruct (decide (S = [])) as [-> | HS]; last first.
-          { iApply (Hclose_open_w fdm l vs w (Z.of_nat k) d (DOutH [S]) files paths K
+          { iApply (pif_close_open_w fdm l vs w (Z.of_nat k) d (DOutH [S]) files paths K
                       Hfd Hns Hv
                       ltac:(simpl; intros Hin; apply elem_of_list_singleton in Hin;
                             exact (HS (eq_sym Hin)))
-                      Hok with "Hstd Hkl Hpool Htoks He Hfiles [Htk Hpo] HK").
+                      Hdc Hok with "Hstd Hkl Hpool Htoks He Hfiles [Htk Hpo] HK").
             simpl. iFrame "Htk". iExists S. iFrame "Hpo". by iPureIntro. }
           iApply (pif_close_wr_paid fdm l vs w k d rb files paths K Hok Hfd Hns Hv Hlt Hrow
                     with "Hstd Hkl Hpool Htoks Htk He Hfiles [Hpo] HK").
@@ -1677,12 +1673,12 @@ Section UkPipeIface.
         | exfalso; discriminate Hkd | exfalso; exact Hkd | exfalso; discriminate Hkd
         | exfalso; exact Hkd | exfalso; discriminate Hkd | exfalso; discriminate Hkd
         | | | exfalso; exact Hkd].
-      + (* open: [Hclose_open] *)
-        iApply (Hclose_open fdm l vs w (Z.of_nat k) d (DCopy h Sc p) files paths K Hfd Hns Hv
-                  ltac:(simpl; tauto) Hok with "Hstd Hk Hpool Htoks He Hfiles Hd HK").
+      + (* open: refuted, [pif_close_open] *)
+        iApply (pif_close_open fdm l vs w (Z.of_nat k) d (DCopy h Sc p) files paths K Hfd Hns Hv
+                  ltac:(simpl; tauto) Hdc Hok with "Hstd Hk Hpool Htoks He Hfiles Hd HK").
       + destruct (decide (p = [])) as [-> | Hp]; last first.
-        { iApply (Hclose_open fdm l vs w (Z.of_nat k) d (DCopyEnd h p) files paths K Hfd Hns Hv
-                    ltac:(simpl; exact Hp) Hok with "Hstd Hk Hpool Htoks He Hfiles Hd HK"). }
+        { iApply (pif_close_open fdm l vs w (Z.of_nat k) d (DCopyEnd h p) files paths K Hfd Hns Hv
+                    ltac:(simpl; exact Hp) Hdc Hok with "Hstd Hk Hpool Htoks He Hfiles Hd HK"). }
         (* the END: the wand is paid at the close *)
         iDestruct (pif_copy_end_cend with "Hd") as "[Htk Hce]".
         iDestruct ("Hk" with "[Hce]") as "Hpay"; [by iRight |].
@@ -1794,7 +1790,7 @@ Section UkPipeIface.
 
   Definition pipe_iface : ep_iface N P.
   Proof using Hcons Hkill HPc HNc Hsr Hsw Hso Hsc Hse Hnd Hwit1 Hwit2 XL_tl YR_tl YR_pers Hyr
-              Hhalt_long Hnil_ro Hclose_open Hclose_open_w.
+              Hhalt_long Hnil_ro.
     refine (MkEI N P pif_fds pif_out pif_outh pif_halt (fun _ _ => False%I)
               (fun _ _ => False%I) pif_in pif_in_end
               pif_copy pif_copy_end (fun _ => False%I)
@@ -1831,7 +1827,7 @@ Section UkPipeIface.
     env_res N P pipe_iface (copy_env (DCopy false L []) [[]] files []) {[0%nat; 1%nat]} -∗
     tree_pay N P (cat_tree [sb "cat"]).
   Proof using Hcons Hkill HPc HNc Hsr Hsw Hso Hsc Hse Hnd Hwit1 Hwit2 XL_tl YR_tl YR_pers Hyr
-              Hhalt_long Hnil_ro Hclose_open Hclose_open_w.
+              Hhalt_long Hnil_ro.
     iIntros "H".
     iApply (tree_pay_of_conforms N P pipe_iface _ _ _
               (cat_copy_conforms false L [[]] files []
@@ -1846,7 +1842,7 @@ Section UkPipeIface.
     env_res N P pipe_iface (pipe_env (DOutH [L]) files) {[0%nat]} -∗
     tree_pay N P (echo_tree argv).
   Proof using Hcons Hkill HPc HNc Hsr Hsw Hso Hsc Hse Hnd Hwit1 Hwit2 XL_tl YR_tl YR_pers Hyr
-              Hhalt_long Hnil_ro Hclose_open Hclose_open_w.
+              Hhalt_long Hnil_ro.
     intros Hne HL. iIntros "H". rewrite HL.
     iApply (tree_pay_of_conforms N P pipe_iface _ _ _
               (echo_pipe_conforms argv files Hne) (echo_tree_safe _ _) with "H").
@@ -1952,7 +1948,7 @@ Section UkPipeIface.
     PipeBoth.wcur gR (1/2) 0%nat -∗ PipeBoth.wcur gM (1/2) 0%nat -∗
     tree_pay N P (cat_tree [sb "cat"]).
   Proof using Hcons Heq Hkill HPc HNc Hsr Hsw Hso Hsc Hse Hnd Hwit1 Hwit2 XL_tl YR_tl YR_pers
-              Hyr Hhalt_long Hnil_ro Hclose_open Hclose_open_w.
+              Hyr Hhalt_long Hnil_ro.
     intros Hw0 Hw1 Hl0 Hl1 Hl2 HL.
     iIntros "Hstd Hpool Hk Hinv Hrt Hpin Hlt Hblk Hex HgR HgM".
     iApply (cat_copy_paid (fun _ => None)).
@@ -2033,7 +2029,7 @@ Section UkPipeIface.
     pipe_inv pn γp L -∗ wcur pn 0%nat -∗ pws_lb pn [] -∗
     tree_pay N P (echo_tree argv).
   Proof using Hcons Heq Hkill HPc HNc Hsr Hsw Hso Hsc Hse Hnd Hwit1 Hwit2 XL_tl YR_tl YR_pers
-              Hyr Hhalt_long Hnil_ro Hclose_open Hclose_open_w.
+              Hyr Hhalt_long Hnil_ro.
     intros Hw0 Hl1 Hne HLw HL. iIntros "Hstd Hpay Hpool Hinv Hw Hlb".
     iApply (echo_pipe_paid argv (fun _ => None) Hne HLw).
     iApply (echo_env_res l rb w (fun _ => None) Hw0 Hl1 HL with "Hstd Hpay Hpool Hinv Hw Hlb").
@@ -2057,7 +2053,7 @@ Section UkPipeIface.
     pipe_inv pn γp L -∗ wcur pn 0%nat -∗ pws_lb pn [] -∗
     tree_pay N P (echo_tree argv).
   Proof using Hcons Heq Hkill HPc HNc Hsr Hsw Hso Hsc Hse Hnd Hwit1 Hwit2 XL_tl YR_tl YR_pers
-              Hyr Hhalt_long Hnil_ro Hclose_open Hclose_open_w.
+              Hyr Hhalt_long Hnil_ro.
     intros Hw0 Hl1 Hne HLw HL. iIntros "#Hq Hfr Hstd Hpool Hinv Hw Hlb".
     iApply (echo_pipe_paid argv (fun _ => None) Hne HLw).
     iApply (echo_env_res_k l rb w (fun _ => None) Hw0 Hl1 HL

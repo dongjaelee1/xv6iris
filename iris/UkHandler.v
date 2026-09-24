@@ -66,6 +66,14 @@ Definition fd_shared (fdm : fdmap) (fd : Z) (d : nat) : Prop :=
 Global Instance fd_shared_dec (fdm : fdmap) (fd : Z) (d : nat) : Decision (fd_shared fdm fd d).
 Proof. apply _. Defined.
 
+(* no other descriptor names it: the descriptor is the device's last *)
+Lemma fd_last_of_not_shared (fdm : fdmap) (fd : Z) (d : nat) :
+  ~ fd_shared fdm fd d -> fd_last fdm fd d.
+Proof.
+  intros Hns fd' Hne Hfd'. apply Hns. exists fd'. split; [| exact Hfd'].
+  apply elem_of_dom. rewrite lookup_delete_ne; [| congruence]. by eexists.
+Qed.
+
 (* THE PROTECTED DEVICES (design SS3.4e, lane D).  An instance whose exit
    payload is a wand over its final state (the file application's) cannot
    pay the exit after a close CONSUMED one of the devices it was entered
@@ -336,10 +344,11 @@ Section UkHandler.
          ∧ (∀ x, ⌜x = -1 \/ 0 <= x⌝ -∗ ei_taint (open_held fdm x) -∗ K x)) -∗
         op_obl N P path m K;
     (* a close of a device's last descriptor consumes the device (the files
-       keep what it gives back, a deed's fraction) *)
+       keep what it gives back, a deed's fraction); a copy device or a
+       haltable output is drained there ([ProgTree.cf_close]) *)
     ei_close : forall (fdm : fdmap) (fd : Z) (d : nat) (x : dspec)
                  (files : bytes -> option bytes) (paths : list bytes) (K : Z -> iProp Σ),
-        fdm !! fd = Some d -> ~ fd_shared_p Dp fdm fd d ->
+        fdm !! fd = Some d -> ~ fd_shared_p Dp fdm fd d -> drained_at_close x ->
         ei_fds fdm -∗ ei_files files paths -∗
         (match x with
          | DOut alts => ei_out d alts | DOutH alts => ei_outh d alts
@@ -535,7 +544,7 @@ Section UkHandler.
           { iIntros "Hfds Hfiles". iApply (cf_inv_same with "Hfds Hfiles Hdev"); done. }
           { iIntros (x) "%Hx Ht". iApply (cf_inv_taint I _ with "Ht"). by apply Htaint. }
       + (* EClose *)
-        destruct Hc as (d & Hfd & Hk). destruct Hs as [Hheld_fd Hs].
+        destruct Hc as (d & Hfd & Hlast & Hk). destruct Hs as [Hheld_fd Hs].
         assert (Hin : d ∈ ds) by (apply (Hdom fd); exact Hfd).
         assert (Hdom' : forall fd' d', pe_fd (env_unbind E fd) !! fd' = Some d' -> d' ∈ ds).
         { intros fd' d'. cbv [env_unbind pe_fd].
@@ -556,7 +565,8 @@ Section UkHandler.
           destruct Hnp as [Hnp Hsh'].
           iDestruct (dev_res_take I _ ds d Hin with "Hdev") as "[Hdr Hrest]".
           iApply (ei_close I (pe_fd E) fd d (pe_dev E d) (pe_files E) (pe_paths E)
-                    with "Hfds Hfiles Hdr"); [exact Hfd | exact Hsh |].
+                    with "Hfds Hfiles Hdr");
+            [exact Hfd | exact Hsh | exact (Hlast (fd_last_of_not_shared _ _ _ Hsh')) |].
           iSplit.
           { iIntros "Hfds Hfiles".
             iLeft. iExists (env_unbind E fd), (ds ∖ {[d]}).

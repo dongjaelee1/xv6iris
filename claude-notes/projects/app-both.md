@@ -535,10 +535,19 @@ sweeps together removed about 7,000 lines of per-application payers).
 Left: a few now-unused general lemmas (`UkCat.wp_kcat_write_chain`,
 `kcat_w_frame`, `kcat_wpost_of_eq`, `udepwf_std_write_file_held`,
 `ubytesq_frac`, `ubytes_halve`, `cons_out_chain_0`, `pipe_rQe_eof`) and
-four unused pipe helpers from before the repoint.  NEXT: the pipe
-instance's console exit wand at `PDCons` + `pe_echo_cons_image_entry`,
-moving `UShPipeRound`'s echo at the console (419/545) off `UShEchoPay`;
-then M4/M5 (which retire `UShRest`'s use and `UShEchoPay`).  The
+four unused pipe helpers from before the repoint.  PIPECONS-EXIT LANDED (05e3b40df/99799afb2, merge ba34ac7f2, VM
+pcemerge1 EXIT=0, audits 13/13/14/14; pushed): the pipe instance's
+console exit wand `pif_exit_k_cons` at `PDCons C` (the codes lent, as
+`FDCons`), the protected-device list `Dp` in `pipe_iface` (as lane D),
+the protocol invariant conditional (`pif_env vs`: no pipe at a console
+round), the round facts as the Prop `pif_rf`;
+`UkPipeEntries.pe_echo_cons_image_entry_alloc`; `UShPipeRound`'s
+`pipe_Hchild_echo(_t)` over a new `echo_exec_sup_pipe` (statements
+unchanged).  EVERY CHILD SITE OF BOTH APPLICATIONS IS NOW ON THE TREE
+ROUTE; `UShEchoPay` is used only by `UShRest` (the echo application).
+NEXT (owner, 2026-09-24): pipelines of ARBITRARY length (`echo | cat |
+cat | cat`, `cat f | cat`) by induction on sh's command tree -- design
+pass in flight; it subsumes M4/M5's shape.  The
 pipeline's CONSOLE device LANDED (lane/pcons 246f51ca4, design SS3.4d:
 `UkConsOut` split into a claim-free core and a `gen_params` instance,
 `UkPipeConsOut.v` with the single-writer and the `popen` devices).

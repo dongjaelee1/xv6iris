@@ -36,8 +36,24 @@
 (*             an open into a standard slot, and a held read there, have  *)
 (*             no leaf.                                                   *)
 (*   [Hopen_trunc]  the open of an absent `f` at a truncating mode that    *)
-(*             does not create: [UkFileOpen]'s miss leaf takes            *)
-(*             [om_trunc = false].                                        *)
+(*             does not create.  NOT a leaf artefact (lane leaf-filedev,  *)
+(*             2026-09-23): the kernel's plain open surface                *)
+(*             ([SysOpenDefs.open_au_plain_at]) owes the truncate piece   *)
+(*             at the TRIVIAL permit ([SysOpenDefs.trunc_permit_triv]) -- *)
+(*             an [AppInv.app_step] at EVERY file row, handed in before   *)
+(*             the walk and untied to its terminal -- and the file claim  *)
+(*             cannot pay that at the four pinned binaries                *)
+(*             ([FileFsPure.file_fs_pure]); only the taint's [app_sup]     *)
+(*             can ([FsAbsInvFire]).  [UkFileOpen]'s miss leaf takes      *)
+(*             [om_trunc = false] because [PinnedOpen]'s dead bundle       *)
+(*             supplies the piece by [open_trunc_piece_none], which is the *)
+(*             only supplier outside the taint.  Closing it is kernel     *)
+(*             work: a plain-surface permit tied to the walk's terminal   *)
+(*             cursor, as the create surface's [trunc_permit_of] is, paid *)
+(*             where [ProofSysOpenWalk] keys the piece at the inode namei *)
+(*             reached ([open_trunc_at_of_triv]), with the file arms of   *)
+(*             [SpecSysOpen.open_post_ok_plain] returning what the permit *)
+(*             took through [Ft].                                         *)
 (*   [Hnil_file]  the zero-length write at a FILE device: [file_write]     *)
 (*             needs [0 < |bs|] (the chain of no chunk has no leaf), and  *)
 (*             a write to the read-only input handle has none either.     *)
@@ -1201,6 +1217,10 @@ Section UkFileIface.
     ((fif_fds (delete fd fdm) -∗ K 0) ∧ (∀ y, fif_taint (dom fdm ∖ {[fd]}) -∗ K y)) -∗
     cl_obl N P fd K.
 
+  (* NOT PROVABLE AT THE LEAF (header, WHAT IS NOT): the plain open
+     surface owes its truncate piece at the trivial permit, an application
+     step at every file row, and the file claim has no such step outside
+     the taint.  A kernel-side permit tied to the walk's terminal closes it. *)
   Hypothesis Hopen_trunc : forall (fdm : fdmap) (files : list (bv 8) -> option (list (bv 8)))
       (paths : list (list (bv 8))) (path : list (bv 8)) (m : Z) (K : Z -> iProp Σ),
     path ∈ paths -> ~ mode_create m -> files path = None ->

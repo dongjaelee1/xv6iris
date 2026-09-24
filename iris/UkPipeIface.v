@@ -2,9 +2,11 @@
 (* UkPipeIface.v -- THE PIPELINE APPLICATION'S ENDPOINT INTERFACE: one     *)
 (* [UkHandler.ep_iface] from the pipeline's console ([UkPipeConsOut]: the *)
 (* popen device of the two-writer round, and the generic device at the   *)
-(* single-writer rounds) and a pipe's two ends ([UkPipeDev]), for the two *)
-(* processes of `echo ... | cat`, paid end to end through the once-glue   *)
-(* [UkHandler.tree_pay_of_conforms] (program-specs SS3.4b-SS3.4e).        *)
+(* single-writer rounds), a pipe's two ends ([UkPipeDev]) and THE COPY    *)
+(* DEVICE (design SS3.4f: cat at a pipe's end, the read end and the       *)
+(* console under ONE number), for the two processes of `echo ... | cat`, *)
+(* paid end to end through the once-glue [UkHandler.tree_pay_of_conforms] *)
+(* (program-specs SS3.4b-SS3.4f).                                          *)
 (*                                                                        *)
 (* THE REGISTRY IS GHOST STATE, as [UkFileIface]'s: a device number's     *)
 (* kind is a token [pif_tok d q v] in one camera; [ei_fds] holds the POOL *)
@@ -17,11 +19,31 @@
 (*   [PDCons]   the console at a single-writer round,                    *)
 (*              [UkConsOut.cons_dev_at v I] at the pipeline's link        *)
 (*              parameters, indexed by the section's round;               *)
+(*   [PDMute]   a console slot the process writes NOTHING on ([DOut       *)
+(*              [[]]]: cat's descriptor 2 at the pipeline, whose          *)
+(*              diagnostics the round pays under the taint);             *)
 (*   [PDWr]     the pipe's WRITE end at a standard slot ([FdPipe gp]),    *)
 (*              [UkPipeDev.pipe_out] / [pipe_halt] (DOutH / DHalt);        *)
 (*   [PDRd]     the pipe's READ end at a standard slot,                   *)
-(*              [UkPipeDev.pipe_in] (DIn and DInE) and [pipe_in_eof] at   *)
-(*              the line's end (DInEnd).                                  *)
+(*              [UkPipeDev.pipe_in] (DInE) and the end of file at ANY     *)
+(*              point of the line (DInEnd);                              *)
+(*   [PDCopy]   THE COPY DEVICE: the pipe's read end on descriptor        *)
+(*              [copy_in] (0) and the popen console on [copy_out] (1),   *)
+(*              [pif_copy]: the read cursor [c] and the console's cursor  *)
+(*              [w] of the two-writer family, tied by the pure facts      *)
+(*              [S = drop c L], [pending = drop w (take c L)], [w <= c],  *)
+(*              [c <= length L]; [pif_copy_end] adds the EOF shot at      *)
+(*              [take c L].  The console's first-byte fact [YR] (a byte   *)
+(*              reached the reader) is DERIVED inside the write law from  *)
+(*              the read cursor the same resource holds                   *)
+(*              ([PipeProto.pws_lb_of_rcur] under the byte link's fancy   *)
+(*              update, [pif_wD_step]) -- design SS3.4d's section          *)
+(*              variable is gone as an INPUT; [YR] stays a section        *)
+(*              variable of the family with [Hyr : pws_lb (take 1 L) ⊢    *)
+(*              YR] saying what it is.  [h = true] (the sink a pipe's     *)
+(*              write end, the middle cat of `echo | cat | cat`) is        *)
+(*              [False] with vacuous laws: a later lane, once a           *)
+(*              three-process line exists.                                *)
 (*                                                                        *)
 (* The section is at ONE round of ONE pipe: the two-writer round's        *)
 (* context (v, I, L, the family's three ghosts, the two sides' facts, the *)
@@ -32,48 +54,58 @@
 (* file, so [ei_open] / [ei_open_absent] are vacuous, and no tail         *)
 (* descriptor is ever bound (every row is a standard slot).             *)
 (*                                                                        *)
-(* WHAT IS PROVED: the console write at both console kinds, the pipe     *)
-(* write (count, halt, taint), the halted write, every zero-length write *)
-(* but one, the pipe read at DIn / DInE / DInEnd but for the early end   *)
-(* of file, the close of any descriptor (a pipe end by the protocol's    *)
-(* registration, a console slot by [UkFileDev.file_close_std]; last      *)
-(* descriptor or shared), the exit, the open laws (vacuous), and         *)
-(* [ei_taint_pays] from the generic free handler [UkFreeHandler] at      *)
-(* [echo_taint].                                                          *)
+(* THE EXIT WAND (design SS3.4e).  [ei_fds] carries [pif_kpay vs]: either *)
+(* the payload [pif_pay = ukn_pay N (-1)] up front (echo's route, from    *)
+(* [UEchoPipe.ep_pay] at the round), or -- while a copy device is         *)
+(* registered -- the WAND [pif_exit_k : (T ∨ pif_cend) -∗ ukn_pay N (-1)] *)
+(* from the copy device's END ([pif_cend]: the EOF shot, the read cursor  *)
+(* and the console cursor at ONE index, textually [UShPipeLaw.pl_Cend])  *)
+(* or the taint.  Every law frames it; [ei_exit] applies it to the        *)
+(* drained copy device ([pif_copy_end d false []]: [pending = []] makes   *)
+(* the two cursors equal), and the last close of an ENDED copy device     *)
+(* applies it at the close.  [pif_exit_k_cat] is the glue from the        *)
+(* round's continuation [pif_cend -∗ ukn_pay N (-1)], so                  *)
+(* [cat_copy_paid_of_round] takes what [UShPipeLaw.pl_RcR] holds at the   *)
+(* entry (no [YR], no payload) and that continuation.                     *)
+(*                                                                        *)
+(* WHAT IS PROVED: the console write at all three console kinds, the     *)
+(* pipe write (count, halt, taint), the halted write, every zero-length  *)
+(* write but one, the pipe read at DInE / DInEnd INCLUDING the early end  *)
+(* of file (the end at any point of the line, and the read after the     *)
+(* end: [UkPipeDev.pipe_read_eof]), the copy device's read (chunk, end),  *)
+(* the read after its end, its write (per byte through the console core  *)
+(* [UkConsOut.cons_write] at [pif_wD], the family's step                  *)
+(* [UShPipeCatRound.pcat_step_at]), the close of any descriptor (last or *)
+(* shared; a copy device's last close at its end pays the exit), the     *)
+(* exit, the open laws (vacuous), and [ei_taint_pays] from the generic    *)
+(* free handler [UkFreeHandler] at [echo_taint].                          *)
 (*                                                                        *)
 (* WHAT IS NOT, as section hypotheses at the narrowest refused case:      *)
 (*                                                                        *)
-(*   [Heof_short]   an end of file at the read end while the line still  *)
-(*             owes bytes.  [UkPipeDev.pipe_read] (line 861) hands       *)
-(*             [pipe_in_eof pn L S] at ANY [S] (its finding 2); the      *)
-(*             tree layer can continue only at the taint, and the short  *)
-(*             round is refuted at sh, from the writer's payload          *)
-(*             ([PipeProto.pipe_round_reading]), never at the reader.    *)
-(*             Design SS3.4e: cat at the pipeline is BLOCKED at the pure  *)
-(*             layer until the coupled device kind is ruled; the right   *)
-(*             process's theorem is therefore stated at [DIn L].          *)
 (*   [Hhalt_long]   a write of 2^31 bytes or more at a halted write end:  *)
-(*             [UkPipeDev.pipe_write_halt] (line 672) takes the count as  *)
-(*             a C int.                                                  *)
-(*   [Hnil_ro]  a zero-length write at the read end open read-only:      *)
-(*             [UkPipeDev.pipe_write_nil] (line 717) needs a writable    *)
-(*             row; the kernel answers -1 there and no leaf says so.     *)
+(*             [UkPipeDev.pipe_write_halt] takes the count as a C int.    *)
+(*   [Hnil_ro]  a zero-length write at a pipe's read end open read-only  *)
+(*             (a PDRd row, or the copy device on [copy_in]):             *)
+(*             [UkPipeDev.pipe_write_nil] needs a writable row; the      *)
+(*             kernel answers -1 there and no leaf says so.              *)
+(*   [Hclose_open]  the LAST close of a copy device BEFORE ITS END while  *)
+(*             the exit wand is still held: the wand wants the EOF shot  *)
+(*             and the two cursors equal, which an open device does not  *)
+(*             have.  cat never closes its ends; the interface's          *)
+(*             [ei_close] admits the close at any state, so the honest   *)
+(*             fix is a premise [drained x] at the copy kinds of          *)
+(*             [ei_close] / [ProgTree.cf_close] -- a shared-file change  *)
+(*             the file lane builds against, left for a coordinated cut. *)
 (*                                                                        *)
-(* THE EXIT PAYLOAD is [pif_pay], held up front in [ei_fds] exactly as     *)
-(* [UkFileIface] holds [ukn_pay N (-1)] (design SS3.4e, lane A landed the *)
-(* exit law's shape, the wand form is not yet in); it is ONE named place. *)
-(* At the round the payload is assembled at the END from the reader's    *)
-(* EOF shot and both cursors at one index ([UShPipeLaw.pl_Cend]) or the  *)
-(* writer's [pipe_payL] with its side token -- a tie between two devices *)
-(* the interface's exit cannot express yet.  The [_of_round] forms take  *)
-(* [pif_pay] and [YR] as inputs beside what [pl_RcR] / [ep_frame] hold.   *)
-(*                                                                        *)
-(* THE COPY DEVICE (design SS3.4f, landed in [UkHandler] after this file  *)
-(* was cut) is the follow-up: one number on both of cat's descriptors,   *)
-(* binding [PDRd]'s read end and [PDPCons]'s console into one [ei_copy]   *)
-(* resource, which is where [YR] at the first byte and the early end of  *)
-(* file are resolved.  Here its three fields are [False] with vacuous    *)
-(* laws, as [UkFileIface] has them.                                       *)
+(* WHAT THE INSTANCE FORCED ON THE PURE LAYER (ProgTree, UkHandler; the   *)
+(* file application fills the copy laws with [_]):                        *)
+(*   - [drained (DCopy _ _ _) = False]: the reader's exit payoff is the   *)
+(*     EOF shot, which an open device does not hold; cat exits only at   *)
+(*     0, and a pipe answers 0 only at its end, so [cf_read_copy]'s chunk *)
+(*     is NONEMPTY (the tree at [DCopy h [] []] no longer needs to exit); *)
+(*   - the copy device is a FILTER's: reads at [copy_in], writes at       *)
+(*     [copy_out] ([ProgTree]); the two descriptors are two kernel        *)
+(*     objects, and a read at the sink is not a pipe read.               *)
 (* ===================================================================== *)
 From Stdlib Require Import ZArith Bool Lia List.
 From stdpp Require Import gmap list bitvector.definitions.
@@ -132,7 +164,7 @@ Import Defs.
 (* ===================================================================== *)
 
 (* what a device is (the file header) *)
-Inductive pdev := PDPCons | PDCons | PDWr | PDRd.
+Inductive pdev := PDPCons | PDCons | PDMute | PDWr | PDRd | PDCopy.
 
 Definition pifRegR := discrete_funUR (fun _ : nat => optionUR (dfrac_agreeR (leibnizO pdev))).
 Class pifRegG (Σ : gFunctors) := PifRegG { pif_reg_inG :: inG Σ pifRegR }.
@@ -198,6 +230,32 @@ Proof.
   intros Hd. apply (f_equal length) in Hd. rewrite length_drop in Hd. simpl in Hd. lia.
 Qed.
 
+(* the protocol's namespace misses the console port's: where a byte link's
+   fancy update runs, the protocol's invariant can be opened *)
+Lemma pif_pipeN_uart : (↑pipeN : coPset) ⊆ (⊤ ∖ ↑uartN Uart0 : coPset).
+Proof.
+  intros x Hx. pose proof (blk2N_pipeN x Hx) as Hy. set_solver.
+Qed.
+
+(* the pending bytes after a chunk joined them: the read-but-unwritten
+   segment of the line grows by the chunk *)
+Lemma pif_pending_grow (L : list (bv 8)) (c w : nat) (cb S' : list (bv 8)) :
+  (w <= c)%nat -> (c <= length L)%nat -> drop c L = cb ++ S' ->
+  drop w (take c L) ++ cb = drop w (take (c + length cb) L).
+Proof.
+  intros Hwc HcL Heq.
+  rewrite -take_take_drop Heq take_app_length.
+  rewrite drop_app_le; [reflexivity |]. rewrite length_take Nat.min_l; [lia | exact HcL].
+Qed.
+
+(* a drained copy device has its two cursors equal *)
+Lemma pif_drained_eq (L : list (bv 8)) (c w : nat) :
+  (w <= c)%nat -> (c <= length L)%nat -> [] = drop w (take c L) -> w = c.
+Proof.
+  intros Hwc HcL Hp. apply (f_equal length) in Hp.
+  rewrite length_drop length_take Nat.min_l in Hp; [| exact HcL]. cbn [length] in Hp. lia.
+Qed.
+
 (* ===================================================================== *)
 (*  1.  THE INSTANCE                                                      *)
 (* ===================================================================== *)
@@ -242,6 +300,10 @@ Section UkPipeIface.
              pblk2_wit I L sel).
   (* THE PIPE: the protocol's names and the queue's *)
   Context (pn : pnames) (γp : pipe_names).
+  (* the reader's fact of the family IS the protocol's lower bound at the
+     line's first byte ([UShPipeLaw.pl_YR]): what the copy device's write
+     derives from its read cursor *)
+  Context (Hyr : pws_lb pn (take 1%nat L) ⊢ YR).
 
   (* the process, and ANY program instance with its five stubs *)
   Context (N : uk_names Σ) (P : uprog Σ).
@@ -330,10 +392,10 @@ Section UkPipeIface.
   (* ------------------------------------------------------------------- *)
 
   (* the row a descriptor's device demands of it: every kind at a standard
-     slot *)
+     slot; the copy device's two descriptors are the filter's *)
   Definition pif_row (ov : option pdev) (fd : Z) (l : list fdstate) : Prop :=
     match ov with
-    | Some PDPCons | Some PDCons =>
+    | Some PDPCons | Some PDCons | Some PDMute =>
         fd < Z.of_nat NSTD
         /\ exists rb, l !! Z.to_nat fd = Some (FdOpen rb true (FdDevice CONSOLE))
     | Some PDWr =>
@@ -342,6 +404,9 @@ Section UkPipeIface.
     | Some PDRd =>
         fd < Z.of_nat NSTD
         /\ exists wb, l !! Z.to_nat fd = Some (FdOpen true wb (FdPipe γp))
+    | Some PDCopy =>
+        (fd = copy_in /\ exists wb, l !! 0%nat = Some (FdOpen true wb (FdPipe γp)))
+        \/ (fd = copy_out /\ exists rb, l !! 1%nat = Some (FdOpen rb true (FdDevice CONSOLE)))
     | None => False
     end.
 
@@ -361,18 +426,26 @@ Section UkPipeIface.
     pif_row ov fd l ->
     fd < Z.of_nat NSTD /\ exists st, l !! Z.to_nat fd = Some st /\ st <> FdClosed.
   Proof.
-    destruct ov as [[| | |] |]; simpl; intros H; [| | | | destruct H];
-      destruct H as (Hlt & b & Hl); (split; [exact Hlt |]);
-      eexists; (split; [exact Hl | discriminate]).
+    destruct ov as [[| | | | |] |]; simpl; intros H; [| | | | | | destruct H].
+    1-5: destruct H as (Hlt & b & Hl); (split; [exact Hlt |]);
+         eexists; (split; [exact Hl | discriminate]).
+    destruct H as [[-> (wb & Hl)] | [-> (rb & Hl)]].
+    - split; [unfold copy_in, NSTD; lia |]. eexists. split; [exact Hl | discriminate].
+    - split; [unfold copy_out, NSTD; lia |]. eexists. split; [exact Hl | discriminate].
   Qed.
 
   (* a row survives a change of another slot *)
   Lemma pif_row_ne (ov : option pdev) (fd : Z) (l : list fdstate) (k : nat) (st : fdstate) :
     Z.to_nat fd <> k -> pif_row ov fd l -> pif_row ov fd (<[k := st]> l).
   Proof.
-    intros Hne. destruct ov as [[| | |] |]; simpl; intros H; [| | | | destruct H];
-      destruct H as (Hlt & b & Hl); (split; [exact Hlt |]); exists b;
-      (rewrite list_lookup_insert_ne; [exact Hl | exact (not_eq_sym Hne)]).
+    intros Hne. destruct ov as [[| | | | |] |]; simpl; intros H; [| | | | | | destruct H].
+    1-5: destruct H as (Hlt & b & Hl); (split; [exact Hlt |]); exists b;
+         (rewrite list_lookup_insert_ne; [exact Hl | exact (not_eq_sym Hne)]).
+    destruct H as [[Hfd (wb & Hl)] | [Hfd (rb & Hl)]]; subst fd.
+    - left. split; [reflexivity |]. exists wb.
+      rewrite list_lookup_insert_ne; [exact Hl | exact (not_eq_sym Hne)].
+    - right. split; [reflexivity |]. exists rb.
+      rewrite list_lookup_insert_ne; [exact Hl | exact (not_eq_sym Hne)].
   Qed.
 
   Lemma pif_ok_close fdm l vs (k : nat) d :
@@ -421,6 +494,60 @@ Section UkPipeIface.
   (* THE EXIT PAYLOAD, in one place (the file header) *)
   Definition pif_pay : iProp Σ := ukn_pay N (-1).
 
+  (* THE COPY DEVICE'S END, as the round reads it ([UShPipeLaw.pl_Cend],
+     textually): the EOF shot, the read cursor and the console cursor at
+     ONE index, each under the taint *)
+  Definition pif_cend : iProp Σ :=
+    (∃ c : nat, (eof_shot pn (take c L) ∨ T) ∗ (rcur pn c ∨ T) ∗ pcat_ch g gR gM c)%I.
+
+  Lemma pif_cend_of_taint : T -∗ pif_cend.
+  Proof using .
+    iIntros "#HT". iExists 0%nat. iSplitR; [by iRight |]. iSplitR; [by iRight |].
+    iApply (pcat_ch_taint g gR gM with "HT").
+  Qed.
+
+  (* THE EXIT WAND (design SS3.4e): the payload from the copy device's end,
+     or from the taint *)
+  Definition pif_exit_k : iProp Σ := ((T ∨ pif_cend) -∗ ukn_pay N (-1))%I.
+
+  (* the glue from the round's continuation *)
+  Lemma pif_exit_k_cat : (pif_cend -∗ ukn_pay N (-1)) -∗ pif_exit_k.
+  Proof using .
+    iIntros "Hk [#HT | Hce]".
+    - iApply "Hk". iApply (pif_cend_of_taint with "HT").
+    - iApply ("Hk" with "Hce").
+  Qed.
+
+  (* what [ei_fds] holds towards the exit: the wand while a copy device is
+     registered (its end is the payoff), or the payload itself *)
+  Definition pif_kpay (vs : gmap nat pdev) : iProp Σ :=
+    ((⌜exists d, vs !! d = Some PDCopy⌝ ∗ pif_exit_k) ∨ pif_pay)%I.
+
+  Lemma pif_kpay_of_pay (vs : gmap nat pdev) : pif_pay -∗ pif_kpay vs.
+  Proof using . iIntros "H". by iRight. Qed.
+
+  Lemma pif_kpay_cat (vs : gmap nat pdev) (d : nat) :
+    vs !! d = Some PDCopy -> (pif_cend -∗ ukn_pay N (-1)) -∗ pif_kpay vs.
+  Proof using .
+    intros Hv. iIntros "Hk". iLeft. iSplitR; [iPureIntro; by exists d |].
+    iApply (pif_exit_k_cat with "Hk").
+  Qed.
+
+  Lemma pif_kpay_taint (vs : gmap nat pdev) : T -∗ pif_kpay vs -∗ pif_pay.
+  Proof using .
+    iIntros "#HT [[_ Hk] | $]". iApply "Hk". by iLeft.
+  Qed.
+
+  (* a device of another kind leaves the registry: the wand's witness stays *)
+  Lemma pif_kpay_delete (vs : gmap nat pdev) (d : nat) (kd : pdev) :
+    vs !! d = Some kd -> kd <> PDCopy -> pif_kpay vs -∗ pif_kpay (delete d vs).
+  Proof using .
+    intros Hv Hne. iIntros "[[%Hreg Hk] | Hpay]"; [iLeft | by iRight].
+    iFrame "Hk". iPureIntro. destruct Hreg as [d' Hd']. exists d'.
+    rewrite lookup_delete_ne; [exact Hd' |]. intros ->. rewrite Hv in Hd'.
+    injection Hd' as Hd'. exact (Hne Hd').
+  Qed.
+
   (* the application's persistent facts the laws read: the taint's two
      readings, the protocol *)
   Definition pif_env : iProp Σ :=
@@ -443,7 +570,7 @@ Section UkPipeIface.
   (* [ei_fds], at its ledger, its registry's values and its pool *)
   Definition pif_fds_at (fdm : fdmap) (l : list fdstate) (vs : gmap nat pdev)
       (w : nat -> pdev) : iProp Σ :=
-    (UserFd.ustd γfd l ∗ pif_pay ∗ ⌜pif_ok fdm l vs⌝
+    (UserFd.ustd γfd l ∗ pif_kpay vs ∗ ⌜pif_ok fdm l vs⌝
      ∗ own γreg (pif_pool (dom vs) w)
      ∗ ([∗ map] d ↦ x ∈ vs, pif_tok d (1/2) x)
      ∗ pif_env)%I.
@@ -451,9 +578,12 @@ Section UkPipeIface.
   Definition pif_fds (fdm : fdmap) : iProp Σ :=
     (∃ (l : list fdstate) (vs : gmap nat pdev) (w : nat -> pdev), pif_fds_at fdm l vs w)%I.
 
-  (* the console: the popen device of the open round, or the generic one *)
+  (* the console: the popen device of the open round, the generic one, or
+     a slot nothing is written on *)
   Definition pif_out (d : nat) (alts : list (list (bv 8))) : iProp Σ :=
-    ((pif_tok d (1/2) PDPCons ∗ pcons2 alts) ∨ (pif_tok d (1/2) PDCons ∗ pcons1 alts))%I.
+    ((pif_tok d (1/2) PDPCons ∗ pcons2 alts)
+     ∨ (pif_tok d (1/2) PDCons ∗ pcons1 alts)
+     ∨ (pif_tok d (1/2) PDMute ∗ ⌜alts = [[]]⌝))%I.
 
   (* the pipe's write end owing one alternative, and halted *)
   Definition pif_outh (d : nat) (alts : list (list (bv 8))) : iProp Σ :=
@@ -461,19 +591,55 @@ Section UkPipeIface.
   Definition pif_halt (d : nat) : iProp Σ :=
     (pif_tok d (1/2) PDWr ∗ pipe_halt pn)%I.
 
-  (* the pipe's read end: DIn and DInE are the same resource, DInEnd is the
-     end of file at the line's end *)
+  (* the pipe's read end (DInE), and its end of file at ANY point of the
+     line (DInEnd: an ended device owes nothing more) *)
   Definition pif_in (d : nat) (S : list (bv 8)) : iProp Σ :=
     (pif_tok d (1/2) PDRd ∗ pipe_in pn L S)%I.
   Definition pif_in_end (d : nat) : iProp Σ :=
-    (pif_tok d (1/2) PDRd ∗ pipe_in_eof pn L [])%I.
+    (pif_tok d (1/2) PDRd ∗ ∃ S : list (bv 8), pipe_in_eof pn L S)%I.
+
+  (* THE COPY DEVICE.  The console's persistent context at the two-writer
+     round, WITHOUT the reader's fact [YR] *)
+  Definition pif_cctx : iProp Σ :=
+    (⌜Z.of_nat (length L) < 2 ^ 31⌝
+     ∗ era_pin γ (S gen_id) v
+     ∗ pipe_link_taint g
+     ∗ blk2_inv g blk2N (S gen_id) v I L gL gR gM XL YR
+     ∗ □ (XL -∗ YR ={↑pipeN}=∗ False))%I.
+
+  Global Instance pif_cctx_persistent : Persistent pif_cctx.
+  Proof using . rewrite /pif_cctx. apply _. Qed.
+
+  (* the two cursors: the pipe's read cursor at [c] and the family's
+     console cursor at [w] (cat's half, [UShPipeCatRound.pcat_ch]) *)
+  Definition pif_copy_core (c w : nat) : iProp Σ :=
+    (⌜(w <= c)%nat /\ (c <= length L)%nat⌝ ∗ rcur pn c ∗ pcat_ch g gR gM w)%I.
+
+  Definition pif_copy (d : nat) (h : bool) (Sc pending : list (bv 8)) : iProp Σ :=
+    (⌜h = false⌝ ∗ pif_tok d (1/2) PDCopy ∗ pif_cctx
+     ∗ ∃ c w : nat, ⌜Sc = drop c L /\ pending = drop w (take c L)⌝ ∗ pif_copy_core c w)%I.
+
+  Definition pif_copy_end (d : nat) (h : bool) (pending : list (bv 8)) : iProp Σ :=
+    (⌜h = false⌝ ∗ pif_tok d (1/2) PDCopy ∗ pif_cctx
+     ∗ ∃ c w : nat, ⌜pending = drop w (take c L)⌝ ∗ pif_copy_core c w
+                    ∗ eof_shot pn (take c L))%I.
+
+  (* the drained end IS the round's reading of cat's exit *)
+  Lemma pif_copy_end_cend (d : nat) (h : bool) :
+    pif_copy_end d h [] -∗ pif_tok d (1/2) PDCopy ∗ pif_cend.
+  Proof using .
+    iIntros "(_ & Htk & _ & %c & %w & %Hp & ([%Hwc %HcL] & Hr & Hc) & #Heof)".
+    rewrite (pif_drained_eq L c w Hwc HcL Hp).
+    iFrame "Htk". iExists c. iFrame "Hc". iSplitR; [by iLeft |]. by iLeft.
+  Qed.
 
   Definition pif_dev (d : nat) (x : dspec) : iProp Σ :=
     match x with
     | DOut alts => pif_out d alts | DOutH alts => pif_outh d alts | DOutM _ => False
-    | DHalt => pif_halt d | DIn Sin => pif_in d Sin | DInE Sin => pif_in d Sin
+    | DHalt => pif_halt d | DIn _ => False | DInE Sin => pif_in d Sin
     | DInEnd => pif_in_end d
-    | DCopy _ _ _ => False | DCopyEnd _ _ => False | DCopyHalt => False
+    | DCopy h Sc p => pif_copy d h Sc p | DCopyEnd h p => pif_copy_end d h p
+    | DCopyHalt => False
     end%I.
 
   (* the scope of paths is empty *)
@@ -496,11 +662,12 @@ Section UkPipeIface.
   (* the taint, out of what a law holds at a taint arm: no tail handle *)
   Lemma pif_taint_of_fds (fdm : fdmap) (l : list fdstate) (vs : gmap nat pdev) :
     pif_ok fdm l vs ->
-    app_taint -∗ UserFd.ustd γfd l -∗ pif_pay -∗ pif_env -∗ pif_taint (dom fdm).
+    app_taint -∗ UserFd.ustd γfd l -∗ pif_kpay vs -∗ pif_env -∗ pif_taint (dom fdm).
   Proof using Hkill.
-    intros Hok. iIntros "#Ht Hstd Hpay #He". rewrite /pif_env.
+    intros Hok. iIntros "#Ht Hstd Hkp #He". rewrite /pif_env.
     iDestruct "He" as "(#Hk & #Hs & _)".
     iEval (rewrite Hkill) in "Ht".
+    iDestruct (pif_kpay_taint with "Ht Hkp") as "Hpay".
     rewrite /pif_taint /fh_taint /pif_pay. iFrame "Ht Hk Hs Hpay".
     iExists l, ∅. iFrame "Hstd". iSplit; [| by rewrite big_sepM_empty].
     iPureIntro. intros fd Hfd. apply elem_of_dom in Hfd as [d Hd].
@@ -510,21 +677,38 @@ Section UkPipeIface.
     exists st. split; [exact Hl | exact Hne].
   Qed.
 
+  (* the kind a device's state admits *)
+  Definition pif_kind (x : dspec) (kd : pdev) : Prop :=
+    match x with
+    | DOut _ => kd = PDPCons \/ kd = PDCons \/ kd = PDMute
+    | DOutH _ | DHalt => kd = PDWr
+    | DInE _ | DInEnd => kd = PDRd
+    | DCopy _ _ _ | DCopyEnd _ _ => kd = PDCopy
+    | DOutM _ | DIn _ | DCopyHalt => False
+    end.
+
   (* the token of a device, whatever its state *)
   Lemma pif_dev_tok (d : nat) (x : dspec) :
-    pif_dev d x -∗ ∃ kd : pdev, pif_tok d (1/2) kd ∗ (pif_tok d (1/2) kd -∗ pif_dev d x).
+    pif_dev d x -∗
+    ∃ kd : pdev, ⌜pif_kind x kd⌝ ∗ pif_tok d (1/2) kd ∗ (pif_tok d (1/2) kd -∗ pif_dev d x).
   Proof using .
-    destruct x as [alts | alts | cs | | Sin | Sin | | h S p | h p |]; simpl;
-      [| | | | | | | iIntros "[]" | iIntros "[]" | iIntros "[]"].
-    - iIntros "[[Htk Hd] | [Htk Hd]]".
-      + iExists PDPCons. iFrame "Htk". iIntros "Htk". iLeft. iFrame.
-      + iExists PDCons. iFrame "Htk". iIntros "Htk". iRight. iFrame.
-    - iIntros "[Htk Hd]". iExists PDWr. iFrame "Htk". iIntros "Htk". iFrame.
-    - iIntros "[]".
-    - iIntros "[Htk Hd]". iExists PDWr. iFrame "Htk". iIntros "Htk". iFrame.
-    - iIntros "[Htk Hd]". iExists PDRd. iFrame "Htk". iIntros "Htk". iFrame.
-    - iIntros "[Htk Hd]". iExists PDRd. iFrame "Htk". iIntros "Htk". iFrame.
-    - iIntros "[Htk Hd]". iExists PDRd. iFrame "Htk". iIntros "Htk". iFrame.
+    destruct x as [alts | alts | cs | | Sin | Sin | | h Sc p | h p |]; simpl;
+      [| | iIntros "[]" | | iIntros "[]" | | | | | iIntros "[]"].
+    - iIntros "[[Htk Hd] | [[Htk Hd] | [Htk %Hm]]]".
+      + iExists PDPCons. iFrame "Htk". iSplit; [iPureIntro; by left |].
+        iIntros "Htk". iLeft. iFrame.
+      + iExists PDCons. iFrame "Htk". iSplit; [iPureIntro; by right; left |].
+        iIntros "Htk". iRight. iLeft. iFrame.
+      + iExists PDMute. iFrame "Htk". iSplit; [iPureIntro; by right; right |].
+        iIntros "Htk". iRight. iRight. iFrame "Htk". by iPureIntro.
+    - iIntros "[Htk Hd]". iExists PDWr. iFrame "Htk". iSplit; [done |]. iIntros "Htk". iFrame.
+    - iIntros "[Htk Hd]". iExists PDWr. iFrame "Htk". iSplit; [done |]. iIntros "Htk". iFrame.
+    - iIntros "[Htk Hd]". iExists PDRd. iFrame "Htk". iSplit; [done |]. iIntros "Htk". iFrame.
+    - iIntros "[Htk Hd]". iExists PDRd. iFrame "Htk". iSplit; [done |]. iIntros "Htk". iFrame.
+    - iIntros "(%Hh & Htk & Hd)". iExists PDCopy. iFrame "Htk". iSplit; [done |].
+      iIntros "Htk". iSplitR; [by iPureIntro |]. iFrame "Htk Hd".
+    - iIntros "(%Hh & Htk & Hd)". iExists PDCopy. iFrame "Htk". iSplit; [done |].
+      iIntros "Htk". iSplitR; [by iPureIntro |]. iFrame "Htk Hd".
   Qed.
 
   (* the descriptor is a standard slot of the kind the registry says *)
@@ -539,15 +723,26 @@ Section UkPipeIface.
     split; [| exact Hrow]. destruct (pif_row_open _ _ _ Hrow) as [Hlt _]. lia.
   Qed.
 
+  (* the copy device's rows, by the filter's descriptor *)
+  Lemma pif_copy_row_in (l : list fdstate) (k : nat) :
+    pif_row (Some PDCopy) (Z.of_nat k) l -> Z.of_nat k = copy_in ->
+    k = 0%nat /\ exists wb, l !! 0%nat = Some (FdOpen true wb (FdPipe γp)).
+  Proof.
+    intros [[Hk Hl] | [Hk _]] Hfd; [| unfold copy_in, copy_out in *; lia].
+    split; [unfold copy_in in Hk; lia | exact Hl].
+  Qed.
+
+  Lemma pif_copy_row_out (l : list fdstate) (k : nat) :
+    pif_row (Some PDCopy) (Z.of_nat k) l -> Z.of_nat k = copy_out ->
+    k = 1%nat /\ exists rb, l !! 1%nat = Some (FdOpen rb true (FdDevice CONSOLE)).
+  Proof.
+    intros [[Hk _] | [Hk Hl]] Hfd; [unfold copy_in, copy_out in *; lia |].
+    split; [unfold copy_out in Hk; lia | exact Hl].
+  Qed.
+
   (* ------------------------------------------------------------------- *)
   (*  THE FIELDS THE KERNEL REFUSES (the header's list)                   *)
   (* ------------------------------------------------------------------- *)
-
-  Hypothesis Heof_short : forall (fdm : fdmap) (l : list fdstate) (vs : gmap nat pdev)
-      (w : nat -> pdev) (d : nat) (fd : nat) (S : list (bv 8)) (K : rd_ans -> iProp Σ),
-    fdm !! Z.of_nat fd = Some d -> vs !! d = Some PDRd -> S <> [] ->
-    pif_fds_at fdm l vs w -∗ pif_tok d (1/2) PDRd -∗ pipe_in_eof pn L S -∗
-    (∀ x, pif_taint (dom fdm) -∗ K x) -∗ K (RdBytes []).
 
   Hypothesis Hhalt_long : forall (fdm : fdmap) (fd : Z) (d : nat) (bs : list (bv 8))
       (K : Z -> iProp Σ),
@@ -558,18 +753,35 @@ Section UkPipeIface.
 
   Hypothesis Hnil_ro : forall (fdm : fdmap) (l : list fdstate) (vs : gmap nat pdev)
       (w : nat -> pdev) (fd : nat) (d : nat) (x : dspec) (K : Z -> iProp Σ),
-    fdm !! Z.of_nat fd = Some d -> vs !! d = Some PDRd ->
+    fdm !! Z.of_nat fd = Some d -> (vs !! d = Some PDRd \/ vs !! d = Some PDCopy) ->
     l !! fd = Some (FdOpen true false (FdPipe γp)) ->
     pif_fds_at fdm l vs w -∗ pif_dev d x -∗
     ((pif_fds fdm -∗ pif_dev d x -∗ K 0) ∧ (pif_fds fdm -∗ pif_dev d x -∗ K (-1))
      ∧ (∀ y, pif_taint (dom fdm) -∗ K y)) -∗
     wr_obl N P (Z.of_nat fd) [] K.
 
+  Hypothesis Hclose_open : forall (fdm : fdmap) (l : list fdstate) (vs : gmap nat pdev)
+      (w : nat -> pdev) (fd : Z) (d : nat) (x : dspec)
+      (files : list (bv 8) -> option (list (bv 8))) (paths : list (list (bv 8)))
+      (K : Z -> iProp Σ),
+    fdm !! fd = Some d -> ~ fd_shared fdm fd d -> vs !! d = Some PDCopy -> ~ drained x ->
+    pif_ok fdm l vs ->
+    UserFd.ustd γfd l -∗ pif_exit_k -∗ own γreg (pif_pool (dom vs) w) -∗
+    ([∗ map] d ↦ x ∈ vs, pif_tok d (1/2) x) -∗ pif_env -∗
+    pif_filesr files paths -∗ pif_dev d x -∗
+    ((pif_fds (delete fd fdm) -∗ pif_filesr files paths -∗ K 0)
+     ∧ (∀ y, pif_taint (dom fdm ∖ {[fd]}) -∗ K y)) -∗
+    cl_obl N P fd K.
+
   (* ------------------------------------------------------------------- *)
   (*  THE LAWS                                                            *)
   (* ------------------------------------------------------------------- *)
 
-  (* [ei_write] at the console, either kind *)
+  (* the descriptors re-packed after a law that moved nothing in them *)
+  Local Ltac pif_repack :=
+    iExists _, _, _; iFrame "Hstd Hkp Hpool Htoks He"; by iPureIntro.
+
+  (* [ei_write] at the console, any kind *)
   Lemma pif_write (fdm : fdmap) (fd : Z) (d : nat) (alts : list (list (bv 8)))
       (a bs : list (bv 8)) (K : Z -> iProp Σ) :
     bs <> [] -> fdm !! fd = Some d -> a ∈ alts -> bs `prefix_of` a ->
@@ -578,10 +790,10 @@ Section UkPipeIface.
      ∧ (∀ x, pif_taint (dom fdm) -∗ K x)) -∗
     wr_obl N P fd bs K.
   Proof using Hcons Hsw HPc Hnd Hwit1 Hwit2 XL_tl YR_tl YR_pers.
-    intros _ Hfd Ha Hpre. iIntros "Hfds Hout HK".
-    iDestruct "Hfds" as (l vs w) "(Hstd & Hpay & %Hok & Hpool & Htoks & #He)".
+    intros Hne Hfd Ha Hpre. iIntros "Hfds Hout HK".
+    iDestruct "Hfds" as (l vs w) "(Hstd & Hkp & %Hok & Hpool & Htoks & #He)".
     destruct (pif_ok_lookup _ _ _ _ _ Hok Hfd) as [kd Hv].
-    iDestruct "Hout" as "[[Htk Hd] | [Htk Hd]]".
+    iDestruct "Hout" as "[[Htk Hd] | [[Htk Hd] | [Htk %Hm]]]".
     - (* the popen device *)
       iDestruct (pif_toks_agree vs d kd with "Htoks Htk") as "(%Hvv & Htoks & Htk)"; [exact Hv |].
       subst kd.
@@ -591,9 +803,8 @@ Section UkPipeIface.
                 (YR_pers := YR_pers) Hnd Hwit2 Hwit1 N P (HPc := HPc) Hsw l k rb alts a bs K
                 Hlt Hrow Ha Hpre with "Hstd Hd").
       iIntros "Hstd Hd". iDestruct "HK" as "[HK _]".
-      iApply ("HK" with "[-Hd Htk] [Htk Hd]").
-      + iExists l, vs, w. iFrame "Hstd Hpay Hpool Htoks He". by iPureIntro.
-      + iLeft. iFrame "Htk Hd".
+      iApply ("HK" with "[-Hd Htk] [Htk Hd]"); [pif_repack |].
+      iLeft. iFrame "Htk Hd".
     - (* the generic device *)
       iDestruct (pif_toks_agree vs d kd with "Htoks Htk") as "(%Hvv & Htoks & Htk)"; [exact Hv |].
       subst kd.
@@ -604,9 +815,12 @@ Section UkPipeIface.
                 (pipe_links_gl_w g) (pipe_links_gl_blk g) (pipe_links_gl_taint g)
                 N P (HPc := HPc) Hsw v I l k rb alts a bs K Hlt Hrow Ha Hpre with "Hstd Hd").
       iIntros "Hstd Hd". iDestruct "HK" as "[HK _]".
-      iApply ("HK" with "[-Hd Htk] [Htk Hd]").
-      + iExists l, vs, w. iFrame "Hstd Hpay Hpool Htoks He". by iPureIntro.
-      + iRight. iFrame "Htk Hd".
+      iApply ("HK" with "[-Hd Htk] [Htk Hd]"); [pif_repack |].
+      iRight. iLeft. iFrame "Htk Hd".
+    - (* the mute slot: nothing nonempty is a prefix of what it owes *)
+      exfalso. subst alts. apply elem_of_list_singleton in Ha. subst a.
+      destruct Hpre as [k Hk]. symmetry in Hk. apply app_eq_nil in Hk as [Hbs _].
+      exact (Hne Hbs).
   Qed.
 
   (* [ei_write_h] at the pipe's write end *)
@@ -621,7 +835,7 @@ Section UkPipeIface.
   Proof using Hkill Hsw.
     intros Hne Hfd Ha Hpre. iIntros "Hfds [Htk Hd] HK".
     iDestruct "Hd" as (S) "[-> Hd]".
-    iDestruct "Hfds" as (l vs w) "(Hstd & Hpay & %Hok & Hpool & Htoks & #He)".
+    iDestruct "Hfds" as (l vs w) "(Hstd & Hkp & %Hok & Hpool & Htoks & #He)".
     destruct (pif_ok_lookup _ _ _ _ _ Hok Hfd) as [kd Hv].
     iDestruct (pif_toks_agree vs d kd with "Htoks Htk") as "(%Hvv & Htoks & Htk)"; [exact Hv |].
     subst kd.
@@ -631,15 +845,13 @@ Section UkPipeIface.
     iApply (pipe_write N P Hsw pn γp L S l k rb a bs K Hlt Hrow Ha Hpre Hne with "Hinv Hstd Hd").
     iSplit; [| iSplit].
     - iIntros "Hstd Hd". iDestruct "HK" as "[HK _]".
-      iApply ("HK" with "[-Hd Htk] [Htk Hd]").
-      + iExists l, vs, w. iFrame "Hstd Hpay Hpool Htoks He". by iPureIntro.
-      + iFrame "Htk". iExists (drop (length bs) a). iFrame "Hd". by iPureIntro.
+      iApply ("HK" with "[-Hd Htk] [Htk Hd]"); [pif_repack |].
+      iFrame "Htk". iExists (drop (length bs) a). iFrame "Hd". by iPureIntro.
     - iIntros "Hstd Hh". iDestruct "HK" as "[_ [HK _]]".
-      iApply ("HK" with "[-Hh Htk] [Htk Hh]").
-      + iExists l, vs, w. iFrame "Hstd Hpay Hpool Htoks He". by iPureIntro.
-      + iFrame "Htk Hh".
+      iApply ("HK" with "[-Hh Htk] [Htk Hh]"); [pif_repack |].
+      iFrame "Htk Hh".
     - iIntros "Hstd #Ht" (z). iDestruct "HK" as "[_ [_ HK]]". iApply "HK".
-      iApply (pif_taint_of_fds fdm l vs Hok with "Ht Hstd Hpay He").
+      iApply (pif_taint_of_fds fdm l vs Hok with "Ht Hstd Hkp He").
   Qed.
 
   (* [ei_write_halt]: -1 at the halted write end, at a count the kernel
@@ -656,7 +868,7 @@ Section UkPipeIface.
         by (change (2 ^ 31) with 2147483648 in Hbnd |- *; lia).
       exact (Hhalt_long fdm fd d bs K Hne Hfd Hge). }
     iIntros "Hfds [Htk Hh] HK".
-    iDestruct "Hfds" as (l vs w) "(Hstd & Hpay & %Hok & Hpool & Htoks & #He)".
+    iDestruct "Hfds" as (l vs w) "(Hstd & Hkp & %Hok & Hpool & Htoks & #He)".
     destruct (pif_ok_lookup _ _ _ _ _ Hok Hfd) as [kd Hv].
     iDestruct (pif_toks_agree vs d kd with "Htoks Htk") as "(%Hvv & Htoks & Htk)"; [exact Hv |].
     subst kd.
@@ -666,11 +878,10 @@ Section UkPipeIface.
     iApply (pipe_write_halt N P Hsw pn γp L l k rb bs K Hlt Hrow Hne Hbnd with "Hinv Hstd Hh").
     iSplit.
     - iIntros "Hstd Hh". iDestruct "HK" as "[HK _]".
-      iApply ("HK" with "[-Hh Htk] [Htk Hh]").
-      + iExists l, vs, w. iFrame "Hstd Hpay Hpool Htoks He". by iPureIntro.
-      + iFrame "Htk Hh".
+      iApply ("HK" with "[-Hh Htk] [Htk Hh]"); [pif_repack |].
+      iFrame "Htk Hh".
     - iIntros "Hstd #Ht" (z). iDestruct "HK" as "[_ HK]". iApply "HK".
-      iApply (pif_taint_of_fds fdm l vs Hok with "Ht Hstd Hpay He").
+      iApply (pif_taint_of_fds fdm l vs Hok with "Ht Hstd Hkp He").
   Qed.
 
   (* a ZERO-LENGTH write at a console row, at ANY device resource [R]:
@@ -740,6 +951,14 @@ Section UkPipeIface.
       iExact "Hs1".
   Qed.
 
+  (* a zero-length write at a pipe row, writable or [Hnil_ro] *)
+  Local Ltac pif_pipe_nil_arms :=
+    iSplit; [| iSplit];
+    [ iIntros "Hstd Hd"; iDestruct "HK" as "[HK _]"; iApply ("HK" with "[-Hd] Hd"); pif_repack
+    | iIntros "Hstd Hd"; iDestruct "HK" as "[_ [HK _]]"; iApply ("HK" with "[-Hd] Hd"); pif_repack
+    | iIntros "Hstd #Ht" (z); iDestruct "HK" as "[_ [_ HK]]"; iApply "HK";
+      iApply (pif_taint_of_fds with "Ht Hstd Hkp He"); assumption ].
+
   (* [ei_write_nil]: by the descriptor's kind *)
   Lemma pif_write_nil (fdm : fdmap) (fd : Z) (d : nat) (x : dspec) (K : Z -> iProp Σ) :
     fdm !! fd = Some d ->
@@ -749,97 +968,61 @@ Section UkPipeIface.
     wr_obl N P fd [] K.
   Proof using Hkill Hsw HPc Hnil_ro.
     intros Hfd. iIntros "Hfds Hd HK".
-    iDestruct (pif_dev_tok with "Hd") as (kd) "[Htk Hback]".
-    iDestruct "Hfds" as (l vs w) "(Hstd & Hpay & %Hok & Hpool & Htoks & #He)".
+    iDestruct (pif_dev_tok with "Hd") as (kd) "(%Hkd & Htk & Hback)".
+    iDestruct "Hfds" as (l vs w) "(Hstd & Hkp & %Hok & Hpool & Htoks & #He)".
     destruct (pif_ok_lookup _ _ _ _ _ Hok Hfd) as [kd' Hv].
     iDestruct (pif_toks_agree vs d kd' with "Htoks Htk") as "(%Hvv & Htoks & Htk)"; [exact Hv |].
     subst kd'.
     destruct (pif_fds_row _ _ _ _ _ _ Hok Hfd Hv) as (k & -> & Hlt & Hrow).
     iDestruct ("Hback" with "Htk") as "Hd".
     destruct kd.
-    - (* the console *)
+    - (* the console, three kinds *)
       destruct Hrow as (_ & rb & Hrow). rewrite Nat2Z.id in Hrow.
       iApply (pif_cons_nil l k rb (pif_dev d x) K Hlt Hrow with "Hstd Hd").
       iIntros "Hstd Hd". iDestruct "HK" as "[HK _]".
-      iApply ("HK" with "[-Hd] Hd").
-      iExists l, vs, w. iFrame "Hstd Hpay Hpool Htoks He". by iPureIntro.
+      iApply ("HK" with "[-Hd] Hd"). pif_repack.
     - destruct Hrow as (_ & rb & Hrow). rewrite Nat2Z.id in Hrow.
       iApply (pif_cons_nil l k rb (pif_dev d x) K Hlt Hrow with "Hstd Hd").
       iIntros "Hstd Hd". iDestruct "HK" as "[HK _]".
-      iApply ("HK" with "[-Hd] Hd").
-      iExists l, vs, w. iFrame "Hstd Hpay Hpool Htoks He". by iPureIntro.
+      iApply ("HK" with "[-Hd] Hd"). pif_repack.
+    - destruct Hrow as (_ & rb & Hrow). rewrite Nat2Z.id in Hrow.
+      iApply (pif_cons_nil l k rb (pif_dev d x) K Hlt Hrow with "Hstd Hd").
+      iIntros "Hstd Hd". iDestruct "HK" as "[HK _]".
+      iApply ("HK" with "[-Hd] Hd"). pif_repack.
     - (* the write end *)
       destruct Hrow as (_ & rb & Hrow). rewrite Nat2Z.id in Hrow.
       iApply (pipe_write_nil N P Hsw γp l k rb (pif_dev d x) K Hlt Hrow with "Hstd Hd").
-      iSplit; [| iSplit].
-      + iIntros "Hstd Hd". iDestruct "HK" as "[HK _]". iApply ("HK" with "[-Hd] Hd").
-        iExists l, vs, w. iFrame "Hstd Hpay Hpool Htoks He". by iPureIntro.
-      + iIntros "Hstd Hd". iDestruct "HK" as "[_ [HK _]]". iApply ("HK" with "[-Hd] Hd").
-        iExists l, vs, w. iFrame "Hstd Hpay Hpool Htoks He". by iPureIntro.
-      + iIntros "Hstd #Ht" (z). iDestruct "HK" as "[_ [_ HK]]". iApply "HK".
-        iApply (pif_taint_of_fds fdm l vs Hok with "Ht Hstd Hpay He").
+      pif_pipe_nil_arms.
     - (* the read end: writable, or [Hnil_ro] *)
       destruct Hrow as (_ & wb & Hrow). rewrite Nat2Z.id in Hrow.
       destruct wb.
       + iApply (pipe_write_nil N P Hsw γp l k true (pif_dev d x) K Hlt Hrow with "Hstd Hd").
-        iSplit; [| iSplit].
-        * iIntros "Hstd Hd". iDestruct "HK" as "[HK _]". iApply ("HK" with "[-Hd] Hd").
-          iExists l, vs, w. iFrame "Hstd Hpay Hpool Htoks He". by iPureIntro.
-        * iIntros "Hstd Hd". iDestruct "HK" as "[_ [HK _]]". iApply ("HK" with "[-Hd] Hd").
-          iExists l, vs, w. iFrame "Hstd Hpay Hpool Htoks He". by iPureIntro.
-        * iIntros "Hstd #Ht" (z). iDestruct "HK" as "[_ [_ HK]]". iApply "HK".
-          iApply (pif_taint_of_fds fdm l vs Hok with "Ht Hstd Hpay He").
-      + iApply (Hnil_ro fdm l vs w k d x K Hfd Hv Hrow with "[Hstd Hpay Hpool Htoks] Hd HK").
-        iFrame "Hstd Hpay Hpool Htoks He". by iPureIntro.
+        pif_pipe_nil_arms.
+      + iApply (Hnil_ro fdm l vs w k d x K Hfd (or_introl Hv) Hrow
+                  with "[Hstd Hkp Hpool Htoks] Hd HK").
+        iFrame "Hstd Hkp Hpool Htoks He". by iPureIntro.
+    - (* the copy device: its read end, or its console *)
+      destruct Hrow as [[Hk (wb & Hrow)] | [Hk (rb & Hrow)]].
+      + assert (k = 0%nat) as -> by (unfold copy_in in Hk; lia).
+        destruct wb.
+        * iApply (pipe_write_nil N P Hsw γp l 0 true (pif_dev d x) K Hlt Hrow with "Hstd Hd").
+          pif_pipe_nil_arms.
+        * iApply (Hnil_ro fdm l vs w 0 d x K Hfd (or_intror Hv) Hrow
+                    with "[Hstd Hkp Hpool Htoks] Hd HK").
+          iFrame "Hstd Hkp Hpool Htoks He". by iPureIntro.
+      + assert (k = 1%nat) as -> by (unfold copy_out in Hk; lia).
+        iApply (pif_cons_nil l 1 rb (pif_dev d x) K Hlt Hrow with "Hstd Hd").
+        iIntros "Hstd Hd". iDestruct "HK" as "[HK _]".
+        iApply ("HK" with "[-Hd] Hd"). pif_repack.
   Qed.
 
-  (* the read end's law at a chunk, shared by DIn and DInE: the descriptor's
-     row, and [UkPipeDev.pipe_read] *)
+  (* the read end's row: the descriptor's slot, and [UkPipeDev.pipe_read] *)
   Local Ltac pif_read_row Hok Hfd Hv :=
     destruct (pif_fds_row _ _ _ _ _ _ Hok Hfd Hv) as (k & -> & Hlt & Hrow);
     destruct Hrow as (_ & wb & Hrow); rewrite Nat2Z.id in Hrow.
 
-  (* [ei_read] at DIn: the chunk, or the end of file at the line's end
-     (which is the empty chunk at nothing owed); the early end is
-     [Heof_short] *)
-  Lemma pif_read (fdm : fdmap) (fd : Z) (d : nat) (Sin : list (bv 8)) (n : nat)
-      (K : rd_ans -> iProp Σ) :
-    (0 < n)%nat -> fdm !! fd = Some d ->
-    pif_fds fdm -∗ pif_in d Sin -∗
-    ((∀ (cb S' : list (bv 8)), ⌜chunk_ok n Sin cb S'⌝ -∗
-        pif_fds fdm -∗ pif_in d S' -∗ K (RdBytes cb))
-     ∧ (∀ x, pif_taint (dom fdm) -∗ K x)) -∗
-    rd_obl N P fd n K.
-  Proof using Hkill Hsr Heof_short.
-    intros Hn Hfd. iIntros "Hfds [Htk Hd] HK".
-    iDestruct "Hfds" as (l vs w) "(Hstd & Hpay & %Hok & Hpool & Htoks & #He)".
-    destruct (pif_ok_lookup _ _ _ _ _ Hok Hfd) as [kd Hv].
-    iDestruct (pif_toks_agree vs d kd with "Htoks Htk") as "(%Hvv & Htoks & Htk)"; [exact Hv |].
-    subst kd. pif_read_row Hok Hfd Hv.
-    iPoseProof (pif_env_inv with "He") as "#Hinv".
-    iApply (pipe_read N P Hsr pn γp L Sin l k wb n K Hlt Hrow Hn with "Hinv Hstd Hd").
-    iSplit; [| iSplit].
-    - iIntros (cb S') "%Hc Hstd Hd". iDestruct "HK" as "[HK _]".
-      iApply ("HK" $! cb S' with "[%] [-Hd Htk] [Htk Hd]"); [exact Hc | |].
-      + iExists l, vs, w. iFrame "Hstd Hpay Hpool Htoks He". by iPureIntro.
-      + iFrame "Htk Hd".
-    - iIntros "Hstd Hd".
-      destruct (decide (Sin = [])) as [-> | Hne].
-      + iDestruct "HK" as "[HK _]".
-        iApply ("HK" $! [] [] with "[%] [-Hd Htk] [Htk Hd]").
-        { split; [reflexivity |]. split; [simpl; lia | intros _; reflexivity]. }
-        { iExists l, vs, w. iFrame "Hstd Hpay Hpool Htoks He". by iPureIntro. }
-        { iFrame "Htk". iDestruct "Hd" as (c) "(%Hc & Hr & _)". iExists c. iFrame "Hr".
-          by iPureIntro. }
-      + iDestruct "HK" as "[_ HK]".
-        iApply (Heof_short fdm l vs w d k Sin K Hfd Hv Hne with "[-Hd Htk HK] Htk Hd HK").
-        iFrame "Hstd Hpay Hpool Htoks He". by iPureIntro.
-    - iIntros "Hstd #Ht" (x). iDestruct "HK" as "[_ HK]". iApply "HK".
-      iApply (pif_taint_of_fds fdm l vs Hok with "Ht Hstd Hpay He").
-  Qed.
-
-  (* [ei_read_e] at DInE: the chunk, the end of file at the line's end, or
-     [Heof_short] *)
+  (* [ei_read_e] at DInE: the chunk, or the end of file wherever the line
+     stands *)
   Lemma pif_read_e (fdm : fdmap) (fd : Z) (d : nat) (Sin : list (bv 8)) (n : nat)
       (K : rd_ans -> iProp Σ) :
     (0 < n)%nat -> fdm !! fd = Some d ->
@@ -849,9 +1032,9 @@ Section UkPipeIface.
      ∧ (pif_fds fdm -∗ pif_in_end d -∗ K (RdBytes []))
      ∧ (∀ x, pif_taint (dom fdm) -∗ K x)) -∗
     rd_obl N P fd n K.
-  Proof using Hkill Hsr Heof_short.
+  Proof using Hkill Hsr.
     intros Hn Hfd. iIntros "Hfds [Htk Hd] HK".
-    iDestruct "Hfds" as (l vs w) "(Hstd & Hpay & %Hok & Hpool & Htoks & #He)".
+    iDestruct "Hfds" as (l vs w) "(Hstd & Hkp & %Hok & Hpool & Htoks & #He)".
     destruct (pif_ok_lookup _ _ _ _ _ Hok Hfd) as [kd Hv].
     iDestruct (pif_toks_agree vs d kd with "Htoks Htk") as "(%Hvv & Htoks & Htk)"; [exact Hv |].
     subst kd. pif_read_row Hok Hfd Hv.
@@ -859,24 +1042,16 @@ Section UkPipeIface.
     iApply (pipe_read N P Hsr pn γp L Sin l k wb n K Hlt Hrow Hn with "Hinv Hstd Hd").
     iSplit; [| iSplit].
     - iIntros (cb S') "%Hc Hstd Hd". iDestruct "HK" as "[HK _]".
-      iApply ("HK" $! cb S' with "[%] [-Hd Htk] [Htk Hd]"); [exact Hc | |].
-      + iExists l, vs, w. iFrame "Hstd Hpay Hpool Htoks He". by iPureIntro.
-      + iFrame "Htk Hd".
-    - iIntros "Hstd Hd".
-      destruct (decide (Sin = [])) as [-> | Hne].
-      + iDestruct "HK" as "[_ [HK _]]".
-        iApply ("HK" with "[-Hd Htk] [Htk Hd]").
-        { iExists l, vs, w. iFrame "Hstd Hpay Hpool Htoks He". by iPureIntro. }
-        { iFrame "Htk Hd". }
-      + iDestruct "HK" as "[_ [_ HK]]".
-        iApply (Heof_short fdm l vs w d k Sin K Hfd Hv Hne with "[-Hd Htk HK] Htk Hd HK").
-        iFrame "Hstd Hpay Hpool Htoks He". by iPureIntro.
+      iApply ("HK" $! cb S' with "[%] [-Hd Htk] [Htk Hd]"); [exact Hc | pif_repack |].
+      iFrame "Htk Hd".
+    - iIntros "Hstd Hd". iDestruct "HK" as "[_ [HK _]]".
+      iApply ("HK" with "[-Hd Htk] [Htk Hd]"); [pif_repack |].
+      iFrame "Htk". iExists Sin. iFrame "Hd".
     - iIntros "Hstd #Ht" (x). iDestruct "HK" as "[_ [_ HK]]". iApply "HK".
-      iApply (pif_taint_of_fds fdm l vs Hok with "Ht Hstd Hpay He").
+      iApply (pif_taint_of_fds fdm l vs Hok with "Ht Hstd Hkp He").
   Qed.
 
-  (* [ei_read_end] at DInEnd: the empty chunk again; a nonempty chunk
-     after the end is refuted by the count, the end's shot is kept *)
+  (* [ei_read_end] at DInEnd: the empty chunk again ([UkPipeDev.pipe_read_eof]) *)
   Lemma pif_read_end (fdm : fdmap) (fd : Z) (d : nat) (n : nat) (K : rd_ans -> iProp Σ) :
     (0 < n)%nat -> fdm !! fd = Some d ->
     pif_fds fdm -∗ pif_in_end d -∗
@@ -885,42 +1060,230 @@ Section UkPipeIface.
     rd_obl N P fd n K.
   Proof using Hkill Hsr.
     intros Hn Hfd. iIntros "Hfds [Htk Hd] HK".
-    iDestruct "Hd" as (c) "(%Hc & Hr & #Heof)".
-    assert (HcL : (length L <= c)%nat) by (apply pif_drop_nil_le; by symmetry).
-    iDestruct "Hfds" as (l vs w) "(Hstd & Hpay & %Hok & Hpool & Htoks & #He)".
+    iDestruct "Hd" as (S c) "(%Hc & Hr & #Heof)".
+    iDestruct "Hfds" as (l vs w) "(Hstd & Hkp & %Hok & Hpool & Htoks & #He)".
     destruct (pif_ok_lookup _ _ _ _ _ Hok Hfd) as [kd Hv].
     iDestruct (pif_toks_agree vs d kd with "Htoks Htk") as "(%Hvv & Htoks & Htk)"; [exact Hv |].
     subst kd. pif_read_row Hok Hfd Hv.
     iPoseProof (pif_env_inv with "He") as "#Hinv".
-    iApply (pipe_read N P Hsr pn γp L [] l k wb n K Hlt Hrow Hn with "Hinv Hstd [Hr]").
-    { rewrite /pipe_in. iExists c. by iFrame "Hr". }
-    iSplit; [| iSplit].
-    - iIntros (cb S') "%Hchk Hstd Hd".
-      destruct Hchk as (Happ & _ & _). symmetry in Happ. apply app_eq_nil in Happ as [-> ->].
-      iDestruct "HK" as "[HK _]".
-      iApply ("HK" with "[-Hd Htk] [Htk Hd]").
-      + iExists l, vs, w. iFrame "Hstd Hpay Hpool Htoks He". by iPureIntro.
-      + iFrame "Htk". iDestruct "Hd" as (c') "[%Hc' Hr]".
-        assert (Hc'L : (length L <= c')%nat) by (apply pif_drop_nil_le; by symmetry).
-        rewrite /pipe_in_eof. iExists c'. iFrame "Hr". iSplit; [done |].
-        rewrite (take_ge L c'); [| exact Hc'L]. iEval (rewrite (take_ge L c HcL)) in "Heof".
-        iExact "Heof".
-    - iIntros "Hstd Hd". iDestruct "HK" as "[HK _]".
-      iApply ("HK" with "[-Hd Htk] [Htk Hd]").
-      + iExists l, vs, w. iFrame "Hstd Hpay Hpool Htoks He". by iPureIntro.
-      + iFrame "Htk Hd".
+    iApply (pipe_read_eof N P Hsr pn γp L c l k wb n K Hlt Hrow Hn with "Hinv Hstd Hr Heof").
+    iSplit.
+    - iIntros "Hstd Hr". iDestruct "HK" as "[HK _]".
+      iApply ("HK" with "[-Hr Htk] [Htk Hr]"); [pif_repack |].
+      iFrame "Htk". iExists S, c. iFrame "Hr Heof". by iPureIntro.
     - iIntros "Hstd #Ht" (x). iDestruct "HK" as "[_ HK]". iApply "HK".
-      iApply (pif_taint_of_fds fdm l vs Hok with "Ht Hstd Hpay He").
+      iApply (pif_taint_of_fds fdm l vs Hok with "Ht Hstd Hkp He").
   Qed.
 
-  (* the open laws: the scope is empty *)
+  (* ------------------------------------------------------------------- *)
+  (*  THE COPY DEVICE'S LAWS                                              *)
+  (* ------------------------------------------------------------------- *)
+
+  (* [ei_read_copy]: the read end at the copy device's cursor, through
+     [UkPipeDev.pipe_read_at]; a chunk joins the pending bytes *)
+  Lemma pif_read_copy (fdm : fdmap) (fd : Z) (d : nat) (h : bool) (Sin p : list (bv 8))
+      (n : nat) (K : rd_ans -> iProp Σ) :
+    (0 < n)%nat -> fdm !! fd = Some d -> fd = copy_in ->
+    pif_fds fdm -∗ pif_copy d h Sin p -∗
+    ((∀ (cb S' : list (bv 8)), ⌜chunk_ok n Sin cb S'⌝ -∗ ⌜cb <> []⌝ -∗
+        pif_fds fdm -∗ pif_copy d h S' (p ++ cb) -∗ K (RdBytes cb))
+     ∧ (pif_fds fdm -∗ pif_copy_end d h p -∗ K (RdBytes []))
+     ∧ (∀ x, pif_taint (dom fdm) -∗ K x)) -∗
+    rd_obl N P fd n K.
+  Proof using Hkill Hsr.
+    intros Hn Hfd Hfd0. iIntros "Hfds Hd HK".
+    iDestruct "Hd" as "(%Hh & Htk & #Hctx & %c & %w & [%HS %Hp] & [%Hwc %HcL] & Hr & Hc)".
+    subst h.
+    iDestruct "Hfds" as (l vs w') "(Hstd & Hkp & %Hok & Hpool & Htoks & #He)".
+    destruct (pif_ok_lookup _ _ _ _ _ Hok Hfd) as [kd Hv].
+    iDestruct (pif_toks_agree vs d kd with "Htoks Htk") as "(%Hvv & Htoks & Htk)"; [exact Hv |].
+    subst kd.
+    destruct (pif_fds_row _ _ _ _ _ _ Hok Hfd Hv) as (k & Hk & Hlt & Hrow).
+    rewrite Hk in Hfd0. subst fd. destruct (pif_copy_row_in l k Hrow Hfd0) as [-> (wb & Hl0)].
+    iPoseProof (pif_env_inv with "He") as "#Hinv".
+    iApply (pipe_read_at N P Hsr pn γp L c l 0 wb n K Hlt Hl0 Hn with "Hinv Hstd Hr").
+    iSplit; [| iSplit].
+    - iIntros (cb) "[%Hne %Hchk] Hstd Hr". iModIntro. iDestruct "HK" as "[HK _]".
+      assert (HcbL : (c + length cb <= length L)%nat).
+      { destruct Hchk as (Hdc & _ & _). apply (f_equal length) in Hdc.
+        rewrite length_drop length_app in Hdc. lia. }
+      iApply ("HK" $! cb (drop (c + length cb) L) with "[%] [%] [-Htk Hr Hc] [Htk Hr Hc]");
+        [rewrite HS; exact Hchk | exact Hne | pif_repack |].
+      iSplitR; [done |]. iFrame "Htk Hctx". iExists (c + length cb)%nat, w.
+      iSplitR.
+      { iPureIntro. split; [reflexivity |]. rewrite Hp.
+        destruct Hchk as (Hdc & _ & _). exact (pif_pending_grow L c w cb _ Hwc HcL Hdc). }
+      iFrame "Hr Hc". iPureIntro. split; lia.
+    - iIntros "Hstd Hr #Heof". iModIntro. iDestruct "HK" as "[_ [HK _]]".
+      iApply ("HK" with "[-Htk Hr Hc] [Htk Hr Hc]"); [pif_repack |].
+      iSplitR; [done |]. iFrame "Htk Hctx". iExists c, w. iFrame "Hr Hc Heof".
+      iPureIntro. split; [exact Hp | split; [exact Hwc | exact HcL]].
+    - iIntros "Hstd #Ht" (x). iDestruct "HK" as "[_ [_ HK]]". iApply "HK".
+      iApply (pif_taint_of_fds fdm l vs Hok with "Ht Hstd Hkp He").
+  Qed.
+
+  (* [ei_read_copy_end]: the read after the end answers 0
+     ([UkPipeDev.pipe_read_eof]) *)
+  Lemma pif_read_copy_end (fdm : fdmap) (fd : Z) (d : nat) (h : bool) (p : list (bv 8))
+      (n : nat) (K : rd_ans -> iProp Σ) :
+    (0 < n)%nat -> fdm !! fd = Some d -> fd = copy_in ->
+    pif_fds fdm -∗ pif_copy_end d h p -∗
+    ((pif_fds fdm -∗ pif_copy_end d h p -∗ K (RdBytes []))
+     ∧ (∀ x, pif_taint (dom fdm) -∗ K x)) -∗
+    rd_obl N P fd n K.
+  Proof using Hkill Hsr.
+    intros Hn Hfd Hfd0. iIntros "Hfds Hd HK".
+    iDestruct "Hd" as "(%Hh & Htk & #Hctx & %c & %w & %Hp & ([%Hwc %HcL] & Hr & Hc) & #Heof)".
+    subst h.
+    iDestruct "Hfds" as (l vs w') "(Hstd & Hkp & %Hok & Hpool & Htoks & #He)".
+    destruct (pif_ok_lookup _ _ _ _ _ Hok Hfd) as [kd Hv].
+    iDestruct (pif_toks_agree vs d kd with "Htoks Htk") as "(%Hvv & Htoks & Htk)"; [exact Hv |].
+    subst kd.
+    destruct (pif_fds_row _ _ _ _ _ _ Hok Hfd Hv) as (k & Hk & Hlt & Hrow).
+    rewrite Hk in Hfd0. subst fd. destruct (pif_copy_row_in l k Hrow Hfd0) as [-> (wb & Hl0)].
+    iPoseProof (pif_env_inv with "He") as "#Hinv".
+    iApply (pipe_read_eof N P Hsr pn γp L c l 0 wb n K Hlt Hl0 Hn with "Hinv Hstd Hr Heof").
+    iSplit.
+    - iIntros "Hstd Hr". iDestruct "HK" as "[HK _]".
+      iApply ("HK" with "[-Htk Hr Hc] [Htk Hr Hc]"); [pif_repack |].
+      iSplitR; [done |]. iFrame "Htk Hctx". iExists c, w. iFrame "Hr Hc Heof".
+      iPureIntro. split; [exact Hp | split; [exact Hwc | exact HcL]].
+    - iIntros "Hstd #Ht" (x). iDestruct "HK" as "[_ HK]". iApply "HK".
+      iApply (pif_taint_of_fds fdm l vs Hok with "Ht Hstd Hkp He").
+  Qed.
+
+  (* THE CONSOLE CORE'S DEVICE FOR THE COPY DEVICE'S WRITE: at the read
+     cursor [c] (fixed during a write), the console cursor [w] owing the
+     read-but-unwritten segment [drop w (take c L)]; the read cursor and
+     the protocol ride along, so that the FIRST byte's reader fact is
+     derived at the byte ([pif_wD_step]) *)
+  Definition pif_wD (c : nat) (alts : list (list (bv 8))) : iProp Σ :=
+    (pif_cctx ∗ pipe_inv pn γp L ∗ ⌜(c <= length L)%nat⌝ ∗ rcur pn c
+     ∗ ∃ w : nat, ⌜alts = [drop w (take c L)] /\ (w <= c)%nat⌝ ∗ pcat_ch g gR gM w)%I.
+
+  Lemma pif_wD_short (c : nat) (alts : list (list (bv 8))) :
+    pif_wD c alts -∗ ⌜cons_short alts⌝.
+  Proof using .
+    iIntros "((%HL & _) & _ & %HcL & _ & %w & [-> _] & _)". iPureIntro.
+    apply Forall_singleton. rewrite length_drop length_take Nat.min_l; [| exact HcL]. lia.
+  Qed.
+
+  Lemma pif_wD_sub (c : nat) (alts : list (list (bv 8))) (a : list (bv 8)) :
+    a ∈ alts -> pif_wD c alts -∗ pif_wD c [a].
+  Proof using .
+    intros Ha. iIntros "(#Hctx & #Hinv & %HcL & Hr & %w & [-> %Hwc] & Hc)".
+    apply elem_of_list_singleton in Ha. subst a.
+    iFrame "Hctx Hinv Hr". iSplitR; [by iPureIntro |]. iExists w. iFrame "Hc". by iPureIntro.
+  Qed.
+
+  (* ONE BYTE: the reader's fact off the read cursor ([PipeProto.
+     pws_lb_of_rcur] under the link's fancy update, weakened to the line's
+     first byte, read as [YR] by [Hyr]), then the family's step *)
+  Lemma pif_wD_step (c : nat) (x : list (bv 8)) (b : bv 8) :
+    x !! 0%nat = Some b ->
+    pif_wD c [x] -∗ out_link Uart0 (S gen_id) b (pif_wD c [drop 1 x]).
+  Proof using Hcons Hnd Hwit1 Hwit2 XL_tl YR_tl YR_pers Hyr.
+    intros Hb. iIntros "(#Hctx & #Hinv & %HcL & Hr & %w & [%Hx %Hwc] & Hc)".
+    injection Hx as ->.
+    rewrite lookup_drop Nat.add_0_r in Hb. apply lookup_take_Some in Hb as [HbL Hwlt].
+    iDestruct "Hctx" as "(%HL & #Hpin & #Ht & #Hblk & #Hex)".
+    iApply fupd_out_link.
+    iMod (pws_lb_of_rcur (⊤ ∖ ↑uartN Uart0) pn γp L c pif_pipeN_uart with "Hinv Hr")
+      as "[Hr #Hlb]".
+    iAssert YR as "#HYR".
+    { iApply Hyr. iApply (pws_lb_weaken pn (take c L) (take 1%nat L) with "Hlb").
+      exists (drop 1 (take c L)).
+      rewrite -{1}(take_drop 1 (take c L)) take_take Nat.min_l; [reflexivity | lia]. }
+    iModIntro.
+    iApply (pcat_step_at g Hcons v I L gL gR gM XL YR w b _ HbL Hnd Hwit2 Hwit1
+              with "Hex Ht Hpin Hblk HYR Hc").
+    iIntros "Hc". iFrame "Hinv Hr".
+    iSplitR. { iSplitR; [by iPureIntro |]. iFrame "Hpin Ht Hblk". iExact "Hex". }
+    iSplitR; [by iPureIntro |]. iExists (S w). iFrame "Hc". iPureIntro. split; [| lia].
+    rewrite drop_drop. do 2 f_equal. lia.
+  Qed.
+
+  (* the copy device's console write: [UkConsOut.cons_write] at [pif_wD]
+     from the descriptor's console row ([copy_out]) *)
+  Lemma pif_copy_write (fdm : fdmap) (l : list fdstate) (vs : gmap nat pdev) (w' : nat -> pdev)
+      (d : nat) (c w : nat) (p bs : list (bv 8)) (K : Z -> iProp Σ) :
+    bs <> [] -> fdm !! copy_out = Some d -> vs !! d = Some PDCopy ->
+    pif_ok fdm l vs -> (w <= c)%nat -> (c <= length L)%nat ->
+    p = drop w (take c L) -> bs `prefix_of` p ->
+    UserFd.ustd γfd l -∗ pif_env -∗ rcur pn c -∗ pcat_ch g gR gM w -∗ pif_cctx -∗
+    (∀ w2 : nat, ⌜drop (length bs) p = drop w2 (take c L) /\ (w2 <= c)%nat⌝ -∗
+       UserFd.ustd γfd l -∗ rcur pn c -∗ pcat_ch g gR gM w2 -∗ K (Z.of_nat (length bs))) -∗
+    wr_obl N P copy_out bs K.
+  Proof using Hcons Hsw HPc Hnd Hwit1 Hwit2 XL_tl YR_tl YR_pers Hyr.
+    intros Hne Hfd Hv Hok Hwc HcL Hp Hpre. iIntros "Hstd #He Hr Hc #Hctx HK".
+    destruct (pif_fds_row _ _ _ _ _ _ Hok Hfd Hv) as (k & Hk & Hlt & Hrow).
+    destruct (pif_copy_row_out l k Hrow (eq_sym Hk)) as [-> (rb & Hl1)].
+    iPoseProof (pif_env_inv with "He") as "#Hinv".
+    change copy_out with (Z.of_nat 1%nat).
+    iApply (cons_write N P (HPc := HPc) Hsw (pif_wD c) (pif_wD_short c) (pif_wD_sub c)
+              (pif_wD_step c) l 1 rb [p] p bs K Hlt Hl1
+              ltac:(apply elem_of_list_singleton; reflexivity) Hpre with "Hstd [Hr Hc]").
+    { iFrame "Hctx Hinv Hr". iSplitR; [by iPureIntro |]. iExists w. iFrame "Hc".
+      iPureIntro. split; [by rewrite Hp | exact Hwc]. }
+    iIntros "Hstd HD". iDestruct "HD" as "(_ & _ & _ & Hr & %w2 & [%Hw2 %Hw2c] & Hc)".
+    injection Hw2 as Hw2.
+    iApply ("HK" $! w2 with "[%] Hstd Hr Hc"). split; [exact Hw2 | exact Hw2c].
+  Qed.
+
+  (* [ei_write_copy] *)
+  Lemma pif_write_copy (fdm : fdmap) (fd : Z) (d : nat) (Sin p bs : list (bv 8))
+      (K : Z -> iProp Σ) :
+    bs <> [] -> fdm !! fd = Some d -> fd = copy_out -> bs `prefix_of` p ->
+    pif_fds fdm -∗ pif_copy d false Sin p -∗
+    ((pif_fds fdm -∗ pif_copy d false Sin (drop (length bs) p) -∗ K (Z.of_nat (length bs)))
+     ∧ (∀ x, pif_taint (dom fdm) -∗ K x)) -∗
+    wr_obl N P fd bs K.
+  Proof using Hcons Hsw HPc Hnd Hwit1 Hwit2 XL_tl YR_tl YR_pers Hyr.
+    intros Hne Hfd Hfd1 Hpre. iIntros "Hfds Hd HK". subst fd.
+    iDestruct "Hd" as "(_ & Htk & #Hctx & %c & %w & [%HS %Hp] & [%Hwc %HcL] & Hr & Hc)".
+    iDestruct "Hfds" as (l vs w') "(Hstd & Hkp & %Hok & Hpool & Htoks & #He)".
+    destruct (pif_ok_lookup _ _ _ _ _ Hok Hfd) as [kd Hv].
+    iDestruct (pif_toks_agree vs d kd with "Htoks Htk") as "(%Hvv & Htoks & Htk)"; [exact Hv |].
+    subst kd. iDestruct "HK" as "[HK _]".
+    iApply (pif_copy_write fdm l vs w' d c w p bs K Hne Hfd Hv Hok Hwc HcL Hp Hpre
+              with "Hstd He Hr Hc Hctx").
+    iIntros (w2) "[%Hw2 %Hw2c] Hstd Hr Hc".
+    iApply ("HK" with "[-Htk Hr Hc] [Htk Hr Hc]"); [pif_repack |].
+    iSplitR; [done |]. iFrame "Htk Hctx". iExists c, w2. iFrame "Hr Hc". iPureIntro.
+    split; [split; [exact HS | exact Hw2] | split; [exact Hw2c | exact HcL]].
+  Qed.
+
+  (* [ei_write_copy_end]: the same write, the end's shot kept *)
+  Lemma pif_write_copy_end (fdm : fdmap) (fd : Z) (d : nat) (p bs : list (bv 8))
+      (K : Z -> iProp Σ) :
+    bs <> [] -> fdm !! fd = Some d -> fd = copy_out -> bs `prefix_of` p ->
+    pif_fds fdm -∗ pif_copy_end d false p -∗
+    ((pif_fds fdm -∗ pif_copy_end d false (drop (length bs) p) -∗ K (Z.of_nat (length bs)))
+     ∧ (∀ x, pif_taint (dom fdm) -∗ K x)) -∗
+    wr_obl N P fd bs K.
+  Proof using Hcons Hsw HPc Hnd Hwit1 Hwit2 XL_tl YR_tl YR_pers Hyr.
+    intros Hne Hfd Hfd1 Hpre. iIntros "Hfds Hd HK". subst fd.
+    iDestruct "Hd" as "(_ & Htk & #Hctx & %c & %w & %Hp & ([%Hwc %HcL] & Hr & Hc) & #Heof)".
+    iDestruct "Hfds" as (l vs w') "(Hstd & Hkp & %Hok & Hpool & Htoks & #He)".
+    destruct (pif_ok_lookup _ _ _ _ _ Hok Hfd) as [kd Hv].
+    iDestruct (pif_toks_agree vs d kd with "Htoks Htk") as "(%Hvv & Htoks & Htk)"; [exact Hv |].
+    subst kd. iDestruct "HK" as "[HK _]".
+    iApply (pif_copy_write fdm l vs w' d c w p bs K Hne Hfd Hv Hok Hwc HcL Hp Hpre
+              with "Hstd He Hr Hc Hctx").
+    iIntros (w2) "[%Hw2 %Hw2c] Hstd Hr Hc".
+    iApply ("HK" with "[-Htk Hr Hc] [Htk Hr Hc]"); [pif_repack |].
+    iSplitR; [done |]. iFrame "Htk Hctx". iExists c, w2. iFrame "Hr Hc Heof". iPureIntro.
+    split; [exact Hw2 | split; [exact Hw2c | exact HcL]].
+  Qed.
+
+  (* the open laws: the scope is empty (and no device is a DIn) *)
   Lemma pif_open (fdm : fdmap) (files : list (bv 8) -> option (list (bv 8)))
       (paths : list (list (bv 8))) (path content : list (bv 8)) (K : Z -> iProp Σ) :
     path ∈ paths -> files path = Some content ->
     pif_fds fdm -∗ pif_filesr files paths -∗
     ((∀ fd : Z, ⌜0 <= fd⌝ -∗ ⌜fdm !! fd = None⌝ -∗
         (∀ d : nat, ⌜forall fd', fdm !! fd' <> Some d⌝ -∗
-           pif_fds (<[fd := d]> fdm) ∗ pif_in d content) -∗
+           pif_fds (<[fd := d]> fdm) ∗ False) -∗
         pif_filesr files paths -∗ K fd)
      ∧ (pif_fds fdm -∗ pif_filesr files paths -∗ K (-1))
      ∧ (∀ x, ⌜x = -1 \/ 0 <= x⌝ -∗ pif_taint (open_held fdm x) -∗ K x)) -∗
@@ -942,30 +1305,52 @@ Section UkPipeIface.
     by apply elem_of_nil in Hp.
   Qed.
 
-  (* the descriptors after a pipe end's last descriptor closed: the slot
-     shut, the token home to the pool *)
+  (* the descriptors after a device's last descriptor closed: the slot
+     shut, the token home to the pool, the exit payoff as the caller
+     re-establishes it at the smaller registry *)
   Lemma pif_fds_after_close (fdm : fdmap) (l : list fdstate) (vs : gmap nat pdev)
       (w : nat -> pdev) (k : nat) (d : nat) (kd : pdev) :
     pif_ok fdm l vs -> fdm !! Z.of_nat k = Some d -> ~ fd_shared fdm (Z.of_nat k) d ->
     vs !! d = Some kd ->
-    UserFd.ustd γfd (<[k := FdClosed]> l) -∗ pif_pay -∗ own γreg (pif_pool (dom vs) w) -∗
+    UserFd.ustd γfd (<[k := FdClosed]> l) -∗ pif_kpay (delete d vs) -∗
+    own γreg (pif_pool (dom vs) w) -∗
     ([∗ map] d ↦ x ∈ vs, pif_tok d (1/2) x) -∗ pif_tok d (1/2) kd -∗ pif_env -∗
     pif_fds (delete (Z.of_nat k) fdm).
   Proof using .
-    intros Hok Hfd Hns Hv. iIntros "Hstd Hpay Hpool Htoks Htk #He".
+    intros Hok Hfd Hns Hv. iIntros "Hstd Hkp Hpool Htoks Htk #He".
     iDestruct (big_sepM_delete _ _ _ _ Hv with "Htoks") as "[Htk' Htoks]".
     iAssert (pif_tok d 1 kd) with "[Htk Htk']" as "Htk".
     { rewrite pif_tok_halves. iFrame "Htk Htk'". }
     assert (Hdd : d ∈ dom vs) by (apply elem_of_dom; by eexists).
     iDestruct (pif_pool_give vs w d kd Hdd with "Hpool Htk") as "Hpool".
     iExists (<[k := FdClosed]> l), (delete d vs), _.
-    iFrame "Hstd Hpay Hpool Htoks He". iPureIntro.
+    iFrame "Hstd Hkp Hpool Htoks He". iPureIntro.
     apply pif_ok_close; [exact Hok | exact Hfd | exact Hns].
   Qed.
 
-  (* [ei_close] of a pipe end's last descriptor: [UkPipeDev.pipe_close] at
-     the protocol's registration, the token home to the pool, the end's
-     resource dropped; a console slot by [UkFileDev.file_close_std] *)
+  (* the close of one of the copy device's two slots, by its row *)
+  Lemma pif_close_copy_slot (l : list fdstate) (k : nat) (K : Z -> iProp Σ) :
+    pif_row (Some PDCopy) (Z.of_nat k) l ->
+    pipe_reg γp -∗ UserFd.ustd γfd l -∗
+    (UserFd.ustd γfd (<[k := FdClosed]> l) -∗ K 0) -∗
+    cl_obl N P (Z.of_nat k) K.
+  Proof using Hsc.
+    intros Hrow. iIntros "#Hreg Hstd HK".
+    destruct Hrow as [[Hk (wb & Hl)] | [Hk (rb & Hl)]].
+    - assert (k = 0%nat) as -> by (unfold copy_in in Hk; lia).
+      iApply (pipe_close N P Hsc γp l 0 true wb K ltac:(unfold NSTD; lia) Hl with "Hreg Hstd").
+      iExact "HK".
+    - assert (k = 1%nat) as -> by (unfold copy_out in Hk; lia).
+      iApply (file_close_std N P Hsc 1 l _ K ltac:(unfold NSTD; lia) Hl ltac:(discriminate)
+                Logic.I with "Hstd").
+      iExact "HK".
+  Qed.
+
+  (* [ei_close] of a device's last descriptor: a pipe end by the protocol's
+     registration ([UkPipeDev.pipe_close]), a console slot by
+     [UkFileDev.file_close_std], the token home to the pool, the device
+     dropped -- a copy device at its END pays the exit wand first, and open
+     it is [Hclose_open] *)
   Lemma pif_close (fdm : fdmap) (fd : Z) (d : nat) (x : dspec)
       (files : list (bv 8) -> option (list (bv 8))) (paths : list (list (bv 8)))
       (K : Z -> iProp Σ) :
@@ -974,10 +1359,10 @@ Section UkPipeIface.
     ((pif_fds (delete fd fdm) -∗ pif_filesr files paths -∗ K 0)
      ∧ (∀ y, pif_taint (dom fdm ∖ {[fd]}) -∗ K y)) -∗
     cl_obl N P fd K.
-  Proof using Hsc.
+  Proof using Hsc Hclose_open.
     intros Hfd Hns. iIntros "Hfds Hfiles Hd HK".
-    iDestruct (pif_dev_tok with "Hd") as (kd) "[Htk Hback]".
-    iDestruct "Hfds" as (l vs w) "(Hstd & Hpay & %Hok & Hpool & Htoks & #He)".
+    iDestruct (pif_dev_tok with "Hd") as (kd) "(%Hkd & Htk & Hback)".
+    iDestruct "Hfds" as (l vs w) "(Hstd & Hkp & %Hok & Hpool & Htoks & #He)".
     destruct (pif_ok_lookup _ _ _ _ _ Hok Hfd) as [kd' Hv].
     iDestruct (pif_toks_agree vs d kd' with "Htoks Htk") as "(%Hvv & Htoks & Htk)"; [exact Hv |].
     subst kd'.
@@ -990,25 +1375,72 @@ Section UkPipeIface.
       iIntros "Hstd". iDestruct "HK" as "[HK _]".
       iApply ("HK" with "[-Hfiles] Hfiles").
       iApply (pif_fds_after_close fdm l vs w k d PDPCons Hok Hfd Hns Hv
-                with "Hstd Hpay Hpool Htoks Htk He").
+                with "Hstd [Hkp] Hpool Htoks Htk He").
+      iApply (pif_kpay_delete vs d PDPCons Hv ltac:(discriminate) with "Hkp").
     - destruct Hrow as (_ & rb & Hrow). rewrite Nat2Z.id in Hrow.
       iApply (file_close_std N P Hsc k l _ K Hlt Hrow ltac:(discriminate) Logic.I with "Hstd").
       iIntros "Hstd". iDestruct "HK" as "[HK _]".
       iApply ("HK" with "[-Hfiles] Hfiles").
       iApply (pif_fds_after_close fdm l vs w k d PDCons Hok Hfd Hns Hv
-                with "Hstd Hpay Hpool Htoks Htk He").
+                with "Hstd [Hkp] Hpool Htoks Htk He").
+      iApply (pif_kpay_delete vs d PDCons Hv ltac:(discriminate) with "Hkp").
+    - destruct Hrow as (_ & rb & Hrow). rewrite Nat2Z.id in Hrow.
+      iApply (file_close_std N P Hsc k l _ K Hlt Hrow ltac:(discriminate) Logic.I with "Hstd").
+      iIntros "Hstd". iDestruct "HK" as "[HK _]".
+      iApply ("HK" with "[-Hfiles] Hfiles").
+      iApply (pif_fds_after_close fdm l vs w k d PDMute Hok Hfd Hns Hv
+                with "Hstd [Hkp] Hpool Htoks Htk He").
+      iApply (pif_kpay_delete vs d PDMute Hv ltac:(discriminate) with "Hkp").
     - destruct Hrow as (_ & rb & Hrow). rewrite Nat2Z.id in Hrow.
       iApply (pipe_close N P Hsc γp l k rb true K Hlt Hrow with "Hreg Hstd").
       iIntros "Hstd". iDestruct "HK" as "[HK _]".
       iApply ("HK" with "[-Hfiles] Hfiles").
       iApply (pif_fds_after_close fdm l vs w k d PDWr Hok Hfd Hns Hv
-                with "Hstd Hpay Hpool Htoks Htk He").
+                with "Hstd [Hkp] Hpool Htoks Htk He").
+      iApply (pif_kpay_delete vs d PDWr Hv ltac:(discriminate) with "Hkp").
     - destruct Hrow as (_ & wb & Hrow). rewrite Nat2Z.id in Hrow.
       iApply (pipe_close N P Hsc γp l k true wb K Hlt Hrow with "Hreg Hstd").
       iIntros "Hstd". iDestruct "HK" as "[HK _]".
       iApply ("HK" with "[-Hfiles] Hfiles").
       iApply (pif_fds_after_close fdm l vs w k d PDRd Hok Hfd Hns Hv
-                with "Hstd Hpay Hpool Htoks Htk He").
+                with "Hstd [Hkp] Hpool Htoks Htk He").
+      iApply (pif_kpay_delete vs d PDRd Hv ltac:(discriminate) with "Hkp").
+    - (* the copy device *)
+      iDestruct ("Hback" with "Htk") as "Hd".
+      iDestruct "Hkp" as "[[%Hreg Hk] | Hpay]"; last first.
+      { (* the exit already paid: the device goes *)
+        iDestruct (pif_dev_tok with "Hd") as (kd') "(%Hkd' & Htk & _)".
+        destruct x as [alts | alts | cs | | Sin | Sin | | h Sc p | h p |]; simpl in Hkd, Hkd';
+          [exfalso; destruct Hkd as [Hkd | [Hkd | Hkd]]; discriminate
+          | exfalso; discriminate Hkd | exfalso; exact Hkd | exfalso; discriminate Hkd
+          | exfalso; exact Hkd | exfalso; discriminate Hkd | exfalso; discriminate Hkd
+          | | | exfalso; exact Hkd]; subst kd';
+          (iApply (pif_close_copy_slot l k K Hrow with "Hreg Hstd");
+           iIntros "Hstd"; iDestruct "HK" as "[HK _]";
+           iApply ("HK" with "[-Hfiles] Hfiles");
+           iApply (pif_fds_after_close fdm l vs w k d PDCopy Hok Hfd Hns Hv
+                     with "Hstd [Hpay] Hpool Htoks Htk He");
+           iApply (pif_kpay_of_pay with "Hpay")). }
+      destruct x as [alts | alts | cs | | Sin | Sin | | h Sc p | h p |]; simpl in Hkd;
+        [exfalso; destruct Hkd as [Hkd | [Hkd | Hkd]]; discriminate
+        | exfalso; discriminate Hkd | exfalso; exact Hkd | exfalso; discriminate Hkd
+        | exfalso; exact Hkd | exfalso; discriminate Hkd | exfalso; discriminate Hkd
+        | | | exfalso; exact Hkd].
+      + (* open: [Hclose_open] *)
+        iApply (Hclose_open fdm l vs w (Z.of_nat k) d (DCopy h Sc p) files paths K Hfd Hns Hv
+                  ltac:(simpl; tauto) Hok with "Hstd Hk Hpool Htoks He Hfiles Hd HK").
+      + destruct (decide (p = [])) as [-> | Hp]; last first.
+        { iApply (Hclose_open fdm l vs w (Z.of_nat k) d (DCopyEnd h p) files paths K Hfd Hns Hv
+                    ltac:(simpl; exact Hp) Hok with "Hstd Hk Hpool Htoks He Hfiles Hd HK"). }
+        (* the END: the wand is paid at the close *)
+        iDestruct (pif_copy_end_cend with "Hd") as "[Htk Hce]".
+        iDestruct ("Hk" with "[Hce]") as "Hpay"; [by iRight |].
+        iApply (pif_close_copy_slot l k K Hrow with "Hreg Hstd").
+        iIntros "Hstd". iDestruct "HK" as "[HK _]".
+        iApply ("HK" with "[-Hfiles] Hfiles").
+        iApply (pif_fds_after_close fdm l vs w k d PDCopy Hok Hfd Hns Hv
+                  with "Hstd [Hpay] Hpool Htoks Htk He").
+        iApply (pif_kpay_of_pay with "Hpay").
   Qed.
 
   (* ...of a shared one: the device stays *)
@@ -1019,35 +1451,32 @@ Section UkPipeIface.
     cl_obl N P fd K.
   Proof using Hsc.
     intros Hfd Hsh. iIntros "Hfds HK".
-    iDestruct "Hfds" as (l vs w) "(Hstd & Hpay & %Hok & Hpool & Htoks & #He)".
+    iDestruct "Hfds" as (l vs w) "(Hstd & Hkp & %Hok & Hpool & Htoks & #He)".
     destruct (pif_ok_lookup _ _ _ _ _ Hok Hfd) as [kd Hv].
     destruct (pif_fds_row _ _ _ _ _ _ Hok Hfd Hv) as (k & -> & Hlt & Hrow).
     iPoseProof (pif_env_inv with "He") as "#Hinv".
     iPoseProof (pipe_reg_of_inv pn γp L with "Hinv") as "#Hreg".
+    iAssert (UserFd.ustd γfd (<[k := FdClosed]> l) -∗ K 0)%I with "[-Hstd]" as "HK".
+    { iIntros "Hstd". iDestruct "HK" as "[HK _]". iApply "HK".
+      iExists (<[k := FdClosed]> l), vs, w. iFrame "Hstd Hkp Hpool Htoks He".
+      iPureIntro. exact (pif_ok_close_shared fdm l vs k d Hok Hfd Hsh). }
     destruct kd.
     - destruct Hrow as (_ & rb & Hrow). rewrite Nat2Z.id in Hrow.
-      iApply (file_close_std N P Hsc k l _ K Hlt Hrow ltac:(discriminate) Logic.I with "Hstd").
-      iIntros "Hstd". iDestruct "HK" as "[HK _]". iApply "HK".
-      iExists (<[k := FdClosed]> l), vs, w. iFrame "Hstd Hpay Hpool Htoks He".
-      iPureIntro. exact (pif_ok_close_shared fdm l vs k d Hok Hfd Hsh).
+      iApply (file_close_std N P Hsc k l _ K Hlt Hrow ltac:(discriminate) Logic.I with "Hstd HK").
     - destruct Hrow as (_ & rb & Hrow). rewrite Nat2Z.id in Hrow.
-      iApply (file_close_std N P Hsc k l _ K Hlt Hrow ltac:(discriminate) Logic.I with "Hstd").
-      iIntros "Hstd". iDestruct "HK" as "[HK _]". iApply "HK".
-      iExists (<[k := FdClosed]> l), vs, w. iFrame "Hstd Hpay Hpool Htoks He".
-      iPureIntro. exact (pif_ok_close_shared fdm l vs k d Hok Hfd Hsh).
+      iApply (file_close_std N P Hsc k l _ K Hlt Hrow ltac:(discriminate) Logic.I with "Hstd HK").
     - destruct Hrow as (_ & rb & Hrow). rewrite Nat2Z.id in Hrow.
-      iApply (pipe_close N P Hsc γp l k rb true K Hlt Hrow with "Hreg Hstd").
-      iIntros "Hstd". iDestruct "HK" as "[HK _]". iApply "HK".
-      iExists (<[k := FdClosed]> l), vs, w. iFrame "Hstd Hpay Hpool Htoks He".
-      iPureIntro. exact (pif_ok_close_shared fdm l vs k d Hok Hfd Hsh).
+      iApply (file_close_std N P Hsc k l _ K Hlt Hrow ltac:(discriminate) Logic.I with "Hstd HK").
+    - destruct Hrow as (_ & rb & Hrow). rewrite Nat2Z.id in Hrow.
+      iApply (pipe_close N P Hsc γp l k rb true K Hlt Hrow with "Hreg Hstd HK").
     - destruct Hrow as (_ & wb & Hrow). rewrite Nat2Z.id in Hrow.
-      iApply (pipe_close N P Hsc γp l k true wb K Hlt Hrow with "Hreg Hstd").
-      iIntros "Hstd". iDestruct "HK" as "[HK _]". iApply "HK".
-      iExists (<[k := FdClosed]> l), vs, w. iFrame "Hstd Hpay Hpool Htoks He".
-      iPureIntro. exact (pif_ok_close_shared fdm l vs k d Hok Hfd Hsh).
+      iApply (pipe_close N P Hsc γp l k true wb K Hlt Hrow with "Hreg Hstd HK").
+    - iApply (pif_close_copy_slot l k K Hrow with "Hreg Hstd HK").
   Qed.
 
-  (* [ei_exit]: the payload, held up front (the file header) *)
+  (* [ei_exit]: the payload, or the wand at the drained copy device -- the
+     registered copy device is bound (the registry's third clause), its
+     resource among the drained devices, and drained it is its END *)
   Lemma pif_exit (s : Z) (fdm : fdmap) (files : list (bv 8) -> option (list (bv 8)))
       (paths : list (list (bv 8))) (dv : nat -> dspec) (ds : gset nat) :
     (forall d, d ∈ ds -> drained (dv d)) ->
@@ -1055,9 +1484,28 @@ Section UkPipeIface.
     pif_fds fdm -∗ pif_filesr files paths -∗ ([∗ set] d ∈ ds, pif_dev d (dv d)) -∗
     ex_obl N P s.
   Proof using HNc Hse.
-    intros _ _. iIntros "Hfds _ _".
-    iDestruct "Hfds" as (l vs w) "(_ & Hpay & _)". rewrite /pif_pay.
-    iApply (fh_exit_pay N P Hse with "Hpay").
+    intros Hdr Hds. iIntros "Hfds _ Hdev".
+    iDestruct "Hfds" as (l vs w) "(_ & Hkp & %Hok & _ & Htoks & _)".
+    iDestruct "Hkp" as "[[%Hreg Hk] | Hpay]"; last first.
+    { iApply (fh_exit_pay N P Hse with "Hpay"). }
+    destruct Hreg as [d Hv].
+    destruct Hok as (_ & _ & H3).
+    destruct (proj1 (H3 d) (elem_of_dom_2 _ _ _ Hv)) as [fd Hfd].
+    pose proof (Hds fd d Hfd) as Hin. pose proof (Hdr d Hin) as Hdrd.
+    iDestruct (big_sepS_elem_of _ _ _ Hin with "Hdev") as "Hd".
+    iDestruct (pif_dev_tok with "Hd") as (kd) "(%Hkd & Htk & Hback)".
+    iDestruct (pif_toks_agree vs d PDCopy with "Htoks Htk") as "(%Hvv & Htoks & Htk)"; [exact Hv |].
+    subst kd. iDestruct ("Hback" with "Htk") as "Hd".
+    remember (dv d) as x eqn:Hx.
+    destruct x as [alts | alts | cs | | Sin | Sin | | h Sc p | h p |]; simpl in Hkd;
+      [exfalso; destruct Hkd as [Hkd | [Hkd | Hkd]]; discriminate
+      | exfalso; discriminate Hkd | exfalso; exact Hkd | exfalso; discriminate Hkd
+      | exfalso; exact Hkd | exfalso; discriminate Hkd | exfalso; discriminate Hkd
+      | | | exfalso; exact Hkd].
+    - simpl in Hdrd. destruct Hdrd.
+    - simpl in Hdrd. subst p.
+      iDestruct (pif_copy_end_cend with "Hd") as "[_ Hce]".
+      iApply (fh_exit_pay N P Hse). iApply "Hk". by iRight.
   Qed.
 
   (* ------------------------------------------------------------------- *)
@@ -1065,23 +1513,23 @@ Section UkPipeIface.
   (* ------------------------------------------------------------------- *)
 
   Definition pipe_iface : ep_iface N P.
-  Proof using Hcons Hkill HPc HNc Hsr Hsw Hso Hsc Hse Hnd Hwit1 Hwit2 XL_tl YR_tl YR_pers
-              Heof_short Hhalt_long Hnil_ro.
+  Proof using Hcons Hkill HPc HNc Hsr Hsw Hso Hsc Hse Hnd Hwit1 Hwit2 XL_tl YR_tl YR_pers Hyr
+              Hhalt_long Hnil_ro Hclose_open.
     refine (MkEI N P pif_fds pif_out pif_outh pif_halt (fun _ _ => False%I)
-              pif_in pif_in pif_in_end
-              (fun _ _ _ _ => False%I) (fun _ _ _ => False%I) (fun _ => False%I)
+              (fun _ _ => False%I) pif_in pif_in_end
+              pif_copy pif_copy_end (fun _ => False%I)
               pif_filesr pif_taint pif_taint_pays
               pif_write pif_write_h _ pif_write_halt pif_write_nil
-              pif_read pif_read_e pif_read_end _ _ _ _ _ _ _ pif_open pif_open_absent
+              _ pif_read_e pif_read_end pif_read_copy pif_read_copy_end
+              pif_write_copy _ pif_write_copy_end _ _ pif_open pif_open_absent
               pif_close pif_close_shared pif_exit).
-    - intros. iIntros "_ []".
-    (* the copy device (design SS3.4f): the follow-up lane's; nothing here *)
-    - intros. iIntros "_ []".
-    - intros. iIntros "_ []".
-    - intros. iIntros "_ []".
-    - intros. iIntros "_ []".
-    - intros. iIntros "_ []".
-    - intros. iIntros "_ []".
+    - (* [ei_write_m]: no file *)
+      intros. iIntros "_ []".
+    - (* [ei_read] at DIn: a pipe's read end may end early *)
+      intros. iIntros "_ []".
+    (* the copy device at a sink that may halt ([h = true]): a later lane *)
+    - intros. iIntros "_ (%Hh & _)". discriminate Hh.
+    - intros. iIntros "_ (%Hh & _)". discriminate Hh.
     - intros. iIntros "_ []".
   Defined.
 
@@ -1096,16 +1544,20 @@ Section UkPipeIface.
   (*  2.  END TO END: the two processes of `echo ... | cat`                *)
   (* =================================================================== *)
 
-  (* THE RIGHT PROCESS, at [DIn L] (the file header): fd 0 the read end,
-     fds 1 and 2 the console owing the line *)
-  Theorem cat_pipe_paid (files : list (bv 8) -> option (list (bv 8))) :
-    env_res N P pipe_iface (cat_env 0 1 L [L] files []) {[0%nat; 1%nat]} -∗
+  (* THE RIGHT PROCESS, at the copy device: fds 0 and 1 the copy device
+     (the pipe's read end and the popen console) owing the line, fd 2 a
+     console slot nothing is written on *)
+  Theorem cat_copy_paid (files : list (bv 8) -> option (list (bv 8))) :
+    env_res N P pipe_iface (copy_env (DCopy false L []) [[]] files []) {[0%nat; 1%nat]} -∗
     tree_pay N P (cat_tree [sb "cat"]).
-  Proof using Hcons Hkill HPc HNc Hsr Hsw Hso Hsc Hse Hnd Hwit1 Hwit2 XL_tl YR_tl YR_pers
-              Heof_short Hhalt_long Hnil_ro.
+  Proof using Hcons Hkill HPc HNc Hsr Hsw Hso Hsc Hse Hnd Hwit1 Hwit2 XL_tl YR_tl YR_pers Hyr
+              Hhalt_long Hnil_ro Hclose_open.
     iIntros "H".
     iApply (tree_pay_of_conforms N P pipe_iface _ _ _
-              (cat_stdin_conforms L files []) (cat_tree_safe _ _) with "H").
+              (cat_copy_conforms false L [[]] files []
+                 ltac:(apply elem_of_list_singleton; reflexivity)
+                 ltac:(intros Hf; discriminate Hf))
+              (cat_tree_safe _ _) with "H").
   Qed.
 
   (* THE LEFT PROCESS: fd 1 the write end owing the line, which may halt *)
@@ -1113,8 +1565,8 @@ Section UkPipeIface.
     drop 1 argv <> [] -> L = wl_line (drop 1 argv) ->
     env_res N P pipe_iface (pipe_env (DOutH [L]) files) {[0%nat]} -∗
     tree_pay N P (echo_tree argv).
-  Proof using Hcons Hkill HPc HNc Hsr Hsw Hso Hsc Hse Hnd Hwit1 Hwit2 XL_tl YR_tl YR_pers
-              Heof_short Hhalt_long Hnil_ro.
+  Proof using Hcons Hkill HPc HNc Hsr Hsw Hso Hsc Hse Hnd Hwit1 Hwit2 XL_tl YR_tl YR_pers Hyr
+              Hhalt_long Hnil_ro Hclose_open.
     intros Hne HL. iIntros "H". rewrite HL.
     iApply (tree_pay_of_conforms N P pipe_iface _ _ _
               (echo_pipe_conforms argv files Hne) (echo_tree_safe _ _) with "H").
@@ -1122,46 +1574,50 @@ Section UkPipeIface.
 
   (* ---- what the round lends cat ([UShPipeLaw.pl_RcR] and [pl_cat_fd0]):
           the ledger with fd 0 the pipe's read end and fds 1, 2 the console,
-          the payload, the registry's pool with device 0 the popen console
-          and device 1 the read end, the protocol, the reader's permit at
-          0, the round's context with [YR], and the family's two halves at
-          0 ---- *)
-  Lemma cat_env_res (l : list fdstate) (wb rb1 rb2 : bool) (w : nat -> pdev)
+          the registry's pool with device 0 the mute console and device 1
+          the copy device, the exit continuation, the protocol, the reader's
+          permit at 0, the round's context WITHOUT [YR], and the family's
+          two halves at 0 ---- *)
+  Lemma copy_env_res (l : list fdstate) (wb rb1 rb2 : bool) (w : nat -> pdev)
       (files : list (bv 8) -> option (list (bv 8))) :
-    w 0%nat = PDPCons -> w 1%nat = PDRd ->
+    w 0%nat = PDMute -> w 1%nat = PDCopy ->
     l !! 0%nat = Some (FdOpen true wb (FdPipe γp)) ->
     l !! 1%nat = Some (FdOpen rb1 true (FdDevice CONSOLE)) ->
     l !! 2%nat = Some (FdOpen rb2 true (FdDevice CONSOLE)) ->
     Z.of_nat (length L) < 2 ^ 31 ->
-    UserFd.ustd γfd l -∗ pif_pay -∗ own γreg (pif_pool ∅ w) -∗
+    UserFd.ustd γfd l -∗ own γreg (pif_pool ∅ w) -∗
+    (pif_cend -∗ ukn_pay N (-1)) -∗
     pipe_inv pn γp L -∗ rtok pn -∗
     era_pin γ (S gen_id) v -∗ pipe_link_taint g -∗
     blk2_inv g blk2N (S gen_id) v I L gL gR gM XL YR -∗
-    □ (XL -∗ YR ={↑pipeN}=∗ False) -∗ YR -∗
+    □ (XL -∗ YR ={↑pipeN}=∗ False) -∗
     PipeBoth.wcur gR (1/2) 0%nat -∗ PipeBoth.wcur gM (1/2) 0%nat -∗
-    env_res N P pipe_iface (cat_env 0 1 L [L] files []) {[0%nat; 1%nat]}.
-  Proof using Heq Hkill YR_pers.
+    env_res N P pipe_iface (copy_env (DCopy false L []) [[]] files []) {[0%nat; 1%nat]}.
+  Proof using Heq Hkill.
     intros Hw0 Hw1 Hl0 Hl1 Hl2 HL.
-    set (fdm := (<[1 := 0%nat]> (<[2 := 0%nat]> {[0 := 1%nat]}) : fdmap)).
-    set (vs := (<[0%nat := PDPCons]> {[1%nat := PDRd]} : gmap nat pdev)).
+    set (fdm := (<[0 := 1%nat]> (<[1 := 1%nat]> {[2 := 0%nat]}) : fdmap)).
+    set (vs := (<[0%nat := PDMute]> {[1%nat := PDCopy]} : gmap nat pdev)).
+    assert (Hv1 : vs !! 1%nat = Some PDCopy).
+    { rewrite /vs lookup_insert_ne; [| done]. apply lookup_singleton. }
     assert (Hok : pif_ok fdm l vs).
     { split; [| split].
       - intros fd d. rewrite /fdm lookup_insert_Some lookup_insert_Some lookup_singleton_Some.
         intros [[<- _] | (_ & [[<- _] | (_ & <- & _)])]; lia.
       - intros fd d. rewrite /fdm lookup_insert_Some lookup_insert_Some lookup_singleton_Some.
         intros [[<- <-] | (_ & [[<- <-] | (_ & <- & <-)])].
-        + rewrite /vs lookup_insert. simpl. split; [unfold NSTD; lia | by exists rb1].
+        + rewrite Hv1. simpl. left. split; [reflexivity | by exists wb].
+        + rewrite Hv1. simpl. right. split; [reflexivity | by exists rb1].
         + rewrite /vs lookup_insert. simpl. split; [unfold NSTD; lia | by exists rb2].
-        + rewrite /vs lookup_insert_ne; [| done]. rewrite lookup_singleton. simpl.
-          split; [unfold NSTD; lia | by exists wb].
       - intros d. rewrite /vs dom_insert_L dom_singleton_L elem_of_union !elem_of_singleton.
         split.
-        + intros [-> | ->]; [exists 1; apply lookup_insert |].
-          exists 0. rewrite /fdm lookup_insert_ne; [| lia]. rewrite lookup_insert_ne; [| lia].
-          apply lookup_singleton.
-        + intros (fd & Hfd). revert Hfd. rewrite /fdm lookup_insert_Some lookup_insert_Some lookup_singleton_Some.
-          intros [[_ <-] | (_ & [[_ <-] | (_ & _ & <-)])]; [by left | by left | by right]. }
-    iIntros "Hstd Hpay Hpool #Hinv Hrt #Hpin #Hlt #Hblk #Hex #HYR HgR HgM".
+        + intros [-> | ->]; [exists 2 |  exists 0].
+          * rewrite /fdm lookup_insert_ne; [| lia]. rewrite lookup_insert_ne; [| lia].
+            apply lookup_singleton.
+          * apply lookup_insert.
+        + intros (fd & Hfd). revert Hfd.
+          rewrite /fdm lookup_insert_Some lookup_insert_Some lookup_singleton_Some.
+          intros [[_ <-] | (_ & [[_ <-] | (_ & _ & <-)])]; [by right | by right | by left]. }
+    iIntros "Hstd Hpool Hk #Hinv Hrt #Hpin #Hlt #Hblk #Hex HgR HgM".
     rewrite /env_res.
     iDestruct (pif_pool_own_take ∅ w 0%nat with "Hpool") as "[Hpool Htk0]"; [set_solver |].
     iDestruct (pif_pool_own_take ({[0%nat]} ∪ ∅) w 1%nat with "Hpool") as "[Hpool Htk1]";
@@ -1171,12 +1627,13 @@ Section UkPipeIface.
     iDestruct (pif_tok_halves with "Htk1") as "[Htk1a Htk1b]".
     iPoseProof (pif_env_of_inv with "Hinv") as "#He".
     iSplit.
-    { iPureIntro. intros fd d. cbn [cat_env pe_fd].
+    { iPureIntro. intros fd d. cbn [copy_env pe_fd].
       rewrite lookup_insert_Some lookup_insert_Some lookup_singleton_Some.
       intros [[_ <-] | (_ & [[_ <-] | (_ & _ & <-)])]; set_solver. }
-    iSplitL "Hstd Hpay Hpool Htk0a Htk1a".
-    { rewrite pif_ei_fds. iExists l, vs, w. cbn [cat_env pe_fd].
-      iFrame "Hstd Hpay He". iSplit; [by iPureIntro |].
+    iSplitL "Hstd Hk Hpool Htk0a Htk1a".
+    { rewrite pif_ei_fds. iExists l, vs, w. cbn [copy_env pe_fd].
+      iFrame "Hstd He". iSplitL "Hk"; [iApply (pif_kpay_cat vs 1%nat Hv1 with "Hk") |].
+      iSplit; [by iPureIntro |].
       iSplitL "Hpool".
       { rewrite (pif_pool_ext (dom vs) ({[1%nat]} ∪ ({[0%nat]} ∪ ∅)) w w);
           [iExact "Hpool" | | intros; reflexivity].
@@ -1184,46 +1641,50 @@ Section UkPipeIface.
       rewrite /vs big_sepM_insert; [| by rewrite lookup_singleton_ne].
       rewrite big_sepM_singleton. iFrame "Htk0a Htk1a". }
     iSplitR.
-    { rewrite pif_ei_files /pif_filesr. cbn [cat_env pe_paths]. by iPureIntro. }
+    { rewrite pif_ei_files /pif_filesr. cbn [copy_env pe_paths]. by iPureIntro. }
     rewrite /dev_res big_sepS_union; [| set_solver]. rewrite !big_sepS_singleton !pif_dev_of.
-    assert (E0 : pe_dev (cat_env 0 1 L [L] files []) 0%nat = DOut [L]) by reflexivity.
-    assert (E1 : pe_dev (cat_env 0 1 L [L] files []) 1%nat = DIn L) by reflexivity.
-    rewrite E0 E1. cbn [pif_dev]. iSplitL "Htk0b HgR HgM".
-    - iLeft. iFrame "Htk0b".
-      iDestruct (pcons_dev_of_ch g v I L gL gR gM XL YR (YR_pers := YR_pers) 0 HL
-                   with "Hpin Hlt Hblk Hex HYR [HgR HgM]") as "Hd".
-      { rewrite /UShPipeCatRound.pcat_ch. simpl. iLeft. iFrame "HgR HgM". }
-      rewrite drop_0. iExact "Hd".
-    - iFrame "Htk1b". rewrite /pipe_in. iExists 0%nat. iEval (rewrite /rtok) in "Hrt".
-      iFrame "Hrt". by iPureIntro.
+    assert (E0 : pe_dev (copy_env (DCopy false L []) [[]] files []) 0%nat = DOut [[]])
+      by reflexivity.
+    assert (E1 : pe_dev (copy_env (DCopy false L []) [[]] files []) 1%nat = DCopy false L [])
+      by reflexivity.
+    rewrite E0 E1. cbn [pif_dev]. iSplitL "Htk0b".
+    - iRight. iRight. iFrame "Htk0b". by iPureIntro.
+    - iSplitR; [done |]. iFrame "Htk1b".
+      iSplitR. { iSplitR; [by iPureIntro |]. iFrame "Hpin Hlt Hblk". iExact "Hex". }
+      iExists 0%nat, 0%nat. iSplitR; [iPureIntro; split; reflexivity |].
+      iSplitR; [iPureIntro; split; lia |].
+      iEval (rewrite /rtok) in "Hrt". iFrame "Hrt".
+      rewrite /UShPipeCatRound.pcat_ch. simpl. iLeft. iFrame "HgR HgM".
   Qed.
 
-  Theorem cat_pipe_paid_of_round (l : list fdstate) (wb rb1 rb2 : bool) (w : nat -> pdev) :
-    w 0%nat = PDPCons -> w 1%nat = PDRd ->
+  Theorem cat_copy_paid_of_round (l : list fdstate) (wb rb1 rb2 : bool) (w : nat -> pdev) :
+    w 0%nat = PDMute -> w 1%nat = PDCopy ->
     l !! 0%nat = Some (FdOpen true wb (FdPipe γp)) ->
     l !! 1%nat = Some (FdOpen rb1 true (FdDevice CONSOLE)) ->
     l !! 2%nat = Some (FdOpen rb2 true (FdDevice CONSOLE)) ->
     Z.of_nat (length L) < 2 ^ 31 ->
-    UserFd.ustd γfd l -∗ pif_pay -∗ own γreg (pif_pool ∅ w) -∗
+    UserFd.ustd γfd l -∗ own γreg (pif_pool ∅ w) -∗
+    (pif_cend -∗ ukn_pay N (-1)) -∗
     pipe_inv pn γp L -∗ rtok pn -∗
     era_pin γ (S gen_id) v -∗ pipe_link_taint g -∗
     blk2_inv g blk2N (S gen_id) v I L gL gR gM XL YR -∗
-    □ (XL -∗ YR ={↑pipeN}=∗ False) -∗ YR -∗
+    □ (XL -∗ YR ={↑pipeN}=∗ False) -∗
     PipeBoth.wcur gR (1/2) 0%nat -∗ PipeBoth.wcur gM (1/2) 0%nat -∗
     tree_pay N P (cat_tree [sb "cat"]).
   Proof using Hcons Heq Hkill HPc HNc Hsr Hsw Hso Hsc Hse Hnd Hwit1 Hwit2 XL_tl YR_tl YR_pers
-              Heof_short Hhalt_long Hnil_ro.
+              Hyr Hhalt_long Hnil_ro Hclose_open.
     intros Hw0 Hw1 Hl0 Hl1 Hl2 HL.
-    iIntros "Hstd Hpay Hpool Hinv Hrt Hpin Hlt Hblk Hex HYR HgR HgM".
-    iApply (cat_pipe_paid (fun _ => None)).
-    iApply (cat_env_res l wb rb1 rb2 w (fun _ => None) Hw0 Hw1 Hl0 Hl1 Hl2 HL
-              with "Hstd Hpay Hpool Hinv Hrt Hpin Hlt Hblk Hex HYR HgR HgM").
+    iIntros "Hstd Hpool Hk Hinv Hrt Hpin Hlt Hblk Hex HgR HgM".
+    iApply (cat_copy_paid (fun _ => None)).
+    iApply (copy_env_res l wb rb1 rb2 w (fun _ => None) Hw0 Hw1 Hl0 Hl1 Hl2 HL
+              with "Hstd Hpool Hk Hinv Hrt Hpin Hlt Hblk Hex HgR HgM").
   Qed.
 
   (* ---- what the round lends echo ([UEchoPipe.ep_pay] at [pl_RcL]): fd 1
-          the pipe's write end, the payload, the pool with device 0 the
-          write end, the protocol, the write permit at 0 with the empty
-          lower bound ---- *)
+          the pipe's write end, the payload up front (echo's exit is paid by
+          the round, not from a device: [pif_pay] stays for the left
+          process), the pool with device 0 the write end, the protocol, the
+          write permit at 0 with the empty lower bound ---- *)
   Lemma echo_env_res (l : list fdstate) (rb : bool) (w : nat -> pdev)
       (files : list (bv 8) -> option (list (bv 8))) :
     w 0%nat = PDWr ->
@@ -1253,7 +1714,8 @@ Section UkPipeIface.
       rewrite lookup_singleton_Some. intros [_ <-]. set_solver. }
     iSplitL "Hstd Hpay Hpool Htk1".
     { rewrite pif_ei_fds. iExists l, vs, w. cbn [pipe_env pe_fd].
-      iFrame "Hstd Hpay He". iSplit; [by iPureIntro |].
+      iFrame "Hstd He". iSplitL "Hpay"; [iApply (pif_kpay_of_pay with "Hpay") |].
+      iSplit; [by iPureIntro |].
       iSplitL "Hpool"; [by rewrite /vs dom_singleton_L right_id_L |].
       by rewrite /vs big_sepM_singleton. }
     iSplitR.
@@ -1276,7 +1738,7 @@ Section UkPipeIface.
     pipe_inv pn γp L -∗ wcur pn 0%nat -∗ pws_lb pn [] -∗
     tree_pay N P (echo_tree argv).
   Proof using Hcons Heq Hkill HPc HNc Hsr Hsw Hso Hsc Hse Hnd Hwit1 Hwit2 XL_tl YR_tl YR_pers
-              Heof_short Hhalt_long Hnil_ro.
+              Hyr Hhalt_long Hnil_ro Hclose_open.
     intros Hw0 Hl1 Hne HLw HL. iIntros "Hstd Hpay Hpool Hinv Hw Hlb".
     iApply (echo_pipe_paid argv (fun _ => None) Hne HLw).
     iApply (echo_env_res l rb w (fun _ => None) Hw0 Hl1 HL with "Hstd Hpay Hpool Hinv Hw Hlb").
@@ -1285,8 +1747,8 @@ Section UkPipeIface.
 End UkPipeIface.
 
 (* ===================================================================== *)
-(*  3.  THE VACUITY WITNESSES: every hypothesis-free law at cat's         *)
-(*      instance, through [UkStub]'s stub laws                            *)
+(*  3.  THE VACUITY WITNESSES: every hypothesis-free law at cat's and at  *)
+(*      echo's instance, through [UkStub]'s stub laws                     *)
 (* ===================================================================== *)
 
 Section UkPipeIfaceCat.
@@ -1310,26 +1772,55 @@ Section UkPipeIfaceCat.
              count_true sel = 0%nat -> (length sel <= length L)%nat ->
              pblk2_wit I L sel).
   Context (pn : pnames) (γp : pipe_names).
+  Context (Hyr : pws_lb pn (take 1%nat L) ⊢ YR).
   Context (N : uk_names Σ) `{!ukn_const N}.
   Context (γreg : gname).
 
   Local Instance pif_cat_code_persistent : Persistent (up_code (cat_prog N)).
+  Proof using . simpl. apply _. Qed.
+  Local Instance pif_echo_code_persistent : Persistent (up_code (echo_prog N)).
   Proof using . simpl. apply _. Qed.
 
   Definition pif_write_cat :=
     pif_write g Hcons v I L gL gR gM XL YR (XL_tl := XL_tl) (YR_tl := YR_tl)
       (YR_pers := YR_pers) Hnd Hwit2 Hwit1 pn γp N (cat_prog N) (cat_stub_write N) γreg.
   Definition pif_write_h_cat :=
-    pif_write_h g Hkill L pn γp N (cat_prog N) (cat_stub_write N) γreg.
+    pif_write_h g Hkill L gR gM pn γp N (cat_prog N) (cat_stub_write N) γreg.
+  Definition pif_read_e_cat :=
+    pif_read_e g Hkill L gR gM pn γp N (cat_prog N) (cat_stub_read N) γreg.
   Definition pif_read_end_cat :=
-    pif_read_end g Hkill L pn γp N (cat_prog N) (cat_stub_read N) γreg.
-  Definition pif_close_cat :=
-    pif_close g v I L gL gR gM XL YR pn γp N (cat_prog N) (cat_stub_close N) γreg.
+    pif_read_end g Hkill L gR gM pn γp N (cat_prog N) (cat_stub_read N) γreg.
+  Definition pif_read_copy_cat :=
+    pif_read_copy g Hkill v I L gL gR gM XL YR pn γp N (cat_prog N) (cat_stub_read N) γreg.
+  Definition pif_read_copy_end_cat :=
+    pif_read_copy_end g Hkill v I L gL gR gM XL YR pn γp N (cat_prog N) (cat_stub_read N) γreg.
+  Definition pif_write_copy_cat :=
+    pif_write_copy g Hcons v I L gL gR gM XL YR (XL_tl := XL_tl) (YR_tl := YR_tl)
+      (YR_pers := YR_pers) Hnd Hwit2 Hwit1 pn γp Hyr N (cat_prog N) (cat_stub_write N) γreg.
+  Definition pif_write_copy_end_cat :=
+    pif_write_copy_end g Hcons v I L gL gR gM XL YR (XL_tl := XL_tl) (YR_tl := YR_tl)
+      (YR_pers := YR_pers) Hnd Hwit2 Hwit1 pn γp Hyr N (cat_prog N) (cat_stub_write N) γreg.
   Definition pif_close_shared_cat :=
-    pif_close_shared g L pn γp N (cat_prog N) (cat_stub_close N) γreg.
+    pif_close_shared g L gR gM pn γp N (cat_prog N) (cat_stub_close N) γreg.
   Definition pif_exit_cat :=
     pif_exit g v I L gL gR gM XL YR pn γp N (cat_prog N) (cat_stub_exit N) γreg.
   Definition pif_taint_pays_cat :=
     pif_taint_pays g N (cat_prog N) (cat_stub_read N) (cat_stub_write N) (cat_stub_open N)
       (cat_stub_close N) (cat_stub_exit N).
+
+  (* ...and at echo's, whose five stubs are real since lane leaf-pipedev *)
+  Definition pif_write_echo :=
+    pif_write g Hcons v I L gL gR gM XL YR (XL_tl := XL_tl) (YR_tl := YR_tl)
+      (YR_pers := YR_pers) Hnd Hwit2 Hwit1 pn γp N (echo_prog N) (echo_stub_write N) γreg.
+  Definition pif_write_h_echo :=
+    pif_write_h g Hkill L gR gM pn γp N (echo_prog N) (echo_stub_write N) γreg.
+  Definition pif_read_e_echo :=
+    pif_read_e g Hkill L gR gM pn γp N (echo_prog N) (echo_stub_read N) γreg.
+  Definition pif_close_shared_echo :=
+    pif_close_shared g L gR gM pn γp N (echo_prog N) (echo_stub_close N) γreg.
+  Definition pif_exit_echo :=
+    pif_exit g v I L gL gR gM XL YR pn γp N (echo_prog N) (echo_stub_exit N) γreg.
+  Definition pif_taint_pays_echo :=
+    pif_taint_pays g N (echo_prog N) (echo_stub_read N) (echo_stub_write N) (echo_stub_open N)
+      (echo_stub_close N) (echo_stub_exit N).
 End UkPipeIfaceCat.

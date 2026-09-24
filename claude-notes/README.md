@@ -279,6 +279,13 @@ in `durable-notes.md` for what belongs where and what gets deleted.
   as its stream handler, and the pure half `iris/ProgTree.v` with every
   line shape computed.
 
+- **[`pipes-general.md`](design/pipes-general.md)** — PIPELINES OF
+  ARBITRARY LENGTH (proposal, 2026-09-24): sh's right-nested parse, the
+  shell law by induction on the command tree, the per-process handler
+  instance, the N-writer console family replacing `blk2_inv`, the
+  per-stage outcome model `PipesDisc`, and the cut plan C1-C9 with
+  `echo | cat` as the n = 1 corollary.
+
 - **[`contexts.md`](design/contexts.md)** — CONTEXTS (`TsoCtx.v`): the three
   tokens (running, stamped, parked under a context), the one domination
   relation and its four mints, `CtxMorph` as the only transport class with

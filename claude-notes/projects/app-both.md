@@ -546,8 +546,9 @@ round), the round facts as the Prop `pif_rf`;
 unchanged).  EVERY CHILD SITE OF BOTH APPLICATIONS IS NOW ON THE TREE
 ROUTE; `UShEchoPay` is used only by `UShRest` (the echo application).
 NEXT (owner, 2026-09-24): pipelines of ARBITRARY length (`echo | cat |
-cat | cat`, `cat f | cat`) by induction on sh's command tree -- design
-pass in flight; it subsumes M4/M5's shape.  The
+cat | cat`, `cat f | cat`) by induction on sh's command tree -- design of
+record design/pipes-general.md (cuts C1-C9; M5's pipe shape becomes the
+N-stage module; three owner rulings open).  The
 pipeline's CONSOLE device LANDED (lane/pcons 246f51ca4, design SS3.4d:
 `UkConsOut` split into a claim-free core and a `gen_params` instance,
 `UkPipeConsOut.v` with the single-writer and the `popen` devices).

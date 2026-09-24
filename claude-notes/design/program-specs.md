@@ -412,6 +412,66 @@ section variable of the pipeline's instance (today's supply, which
 restricts the instance to programs that read before they write, i.e.
 cat).  The lane takes the second for now.
 
+### 3.4e Cut 5: the entries at a handler parameter (planned 2026-09-24)
+
+The entries compose: `wp_k*_start_env I E ds := tree_pay_of_conforms ∘
+wp_k*_start_tree` (echo/cat read only `drop 1 argv`, so a pure
+`*_tree_tail` bridges the key's argv reading), lifted to `image_entry …
+uslot` in `UkTreeEntry.v` with the interface quantified over the minted
+`uk_names` (`I : ∀ N', ep_iface N' (prog N')`).  What the plan FOUND
+about the exit, which every landed entry needs (the assembly wants the
+console cursor at the block's END, the deed at whatever chunks landed,
+the pipe's `pipe_payL`, and a taint arm):
+
+- **The exit returns the devices.** `ex_obl` is the whole rest of the
+  process; `ei_exit` takes `ei_fds` and the drained devices and today's
+  instance DROPS them, spending an exit payload the caller had to hold
+  before the child ran -- which no round can supply.  So `ei_exit` also
+  takes `ei_files` and the dom fact (`cf_inv_step`'s exit arm has
+  both), and the instance carries the exit payload as a WAND
+  (`fif_exit_k : ∀ final env, core -∗ files -∗ drained devices -∗
+  ukn_pay N (-1)`), linear in `ei_fds`, framed by every law; the taint
+  arm becomes the persistent `□ (T -∗ ukn_pay N (-1))` the landed
+  entries already take.
+- **The console device at the prompt-free BODY.** `cons_dev`'s
+  alternatives are `lm_abs`, which ends with the shell's prompt
+  (`lm_abs_prompt`), so no child can drain it and the landed premise
+  `cons_dev … [content; diagnostic]` was satisfiable only through the
+  taint arm.  `lm_body := take (|lm_abs| - 2) lm_abs`; `cons_dev` at
+  `lm_body`; `cons_dev_at v I alts` indexed by the round; the readers
+  `cons_dev_at_of_blk0` (lend from `gwc_blk … 0`) and
+  `cons_dev_at_drained` (the cursor at the body's end, or unfiled at
+  an empty body) and `cons_cur_gwc_post` (to `lk_post`).
+- **The instance pins the round's indices.** The interface has no slot
+  for `(v, I)`, `(i, γo)` or the deed fraction, and the exit wand is
+  universal over the final environment, so the registry pins them:
+  `FDCons v I`, entry devices `D0`/`w0` as a `fif_ok` clause, the deed
+  at a fixed `qf`/`sf` (an existential fraction can never meet
+  `catq_cat`'s).
+- **Drained readers per device kind**: pipe (landed: `pipe_out_payL`,
+  `pipe_halt_payL`, `pipe_in_eof_payR`), file (`efany` at `DOutM []`
+  is `ef_exit` minus the framed `Wq`), console (above).
+- **cat at the pipeline is BLOCKED at the pure layer**: `cf_read` at
+  `DInE` makes the early-EOF arm mandatory, after which cat exits with
+  `DOut [drop c L]`, not drained -- the same OPEN ruling as §3.4d (a
+  coupled kind, e.g. exit at `[] ∈ alts ∨ pe_dev E din = DInEnd`); and
+  the assembly's `pipe_PR` needs ONE `c` shared by the read cursor, the
+  EOF shot and the console cursor, a tie between two devices.  Entry 4
+  stays on `pcat_round_at_g` until the ruling.
+- The free handler (`fif_taint_pays`, ~330 lines over `□ (T -∗
+  app_taint)`, `T -∗ app_sup`, the ledger and the handles) is lifted to
+  `UkFreeHandler.v` over an abstract `T` for the pipeline's instance.
+
+Lanes (non-overlapping): A `UkHandler` exit law (+ `fif_exit`'s
+signature); B console readers (`LineModelLinks`, `UkConsOut`,
+`UkPipeConsOut`); C the entries (`UkEchoTree`, `UkCatTree`,
+`UkTreeEntry.v`); D the file instance's exit (after A, B; echo's
+corollaries need its stub instances); E `UkFileEntries.v`, the three
+file corollaries beside the landed entries (`UShRound` is NOT repointed
+while the four leaf hypotheses stand; audits unmoved); F the pipeline
+instance (`UkPipeIface.v`, in flight) + `UkPipeEntries.v` for echo at
+the pipe; G the ruling, then entry 4.
+
 ### 3.5 The line model's continuation becomes a theorem
 
 `lmodel`'s `lm_cont s l a` is hand-written bytes per alternative.  With

@@ -22,9 +22,11 @@
 (*                                                                        *)
 (* [stub_run] proves it from the three instruction facts at any address   *)
 (* and number, with the successor pcs and the a7 value as EQUATIONS the   *)
-(* instance discharges by computation; the seven instances at the end    *)
-(* (echo's two stubs, cat's five) are one line each.  The exit stub has   *)
-(* no return.                                                             *)
+(* instance discharges by computation; the ten instances at the end      *)
+(* (echo's five stubs, cat's five) are one line each.  The exit stub has  *)
+(* no return.  echo calls only write and exit; its read, close and open   *)
+(* stubs are instantiated so that [UkEchoTree.echo_prog] names all five  *)
+(* addresses a handler record is stated at.                              *)
 (* ===================================================================== *)
 From Stdlib Require Import ZArith Bool Lia List.
 From stdpp Require Import gmap bitvector.definitions.
@@ -188,8 +190,27 @@ Section UkStub.
 
   Lemma echo_stub_write : ⊢ stub_law (echo_code γt) 16 EchoSyms.write.
   Proof using .
-    destruct echo_syms_pins as (_ & _ & _ & _ & ->).
+    destruct echo_syms_pins as (_ & _ & _ & _ & -> & _).
     stub_inst (echo_code γt) 16 0x352 uis_echo_352 uis_echo_354 uis_echo_358.
+  Qed.
+
+  (* the three stubs echo never calls, at echo's own addresses *)
+  Lemma echo_stub_read : ⊢ stub_law (echo_code γt) 5 EchoSyms.read.
+  Proof using .
+    destruct echo_syms_pins as (_ & _ & _ & _ & _ & -> & _).
+    stub_inst (echo_code γt) 5 0x34a uis_echo_34a uis_echo_34c uis_echo_350.
+  Qed.
+
+  Lemma echo_stub_close : ⊢ stub_law (echo_code γt) 21 EchoSyms.close.
+  Proof using .
+    destruct echo_syms_pins as (_ & _ & _ & _ & _ & _ & -> & _).
+    stub_inst (echo_code γt) 21 0x35a uis_echo_35a uis_echo_35c uis_echo_360.
+  Qed.
+
+  Lemma echo_stub_open : ⊢ stub_law (echo_code γt) 15 EchoSyms.open.
+  Proof using .
+    destruct echo_syms_pins as (_ & _ & _ & _ & _ & _ & _ & ->).
+    stub_inst (echo_code γt) 15 0x372 uis_echo_372 uis_echo_374 uis_echo_378.
   Qed.
 
   Lemma echo_stub_exit : ⊢ exit_stub_law (echo_code γt) EchoSyms.exit.

@@ -1008,7 +1008,7 @@ Section UkEcho.
     mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros "#Hwr #Hcode Hrun Hcont".
-    destruct echo_syms_pins as (_ & _ & _ & _ & Hwrite). rewrite Hwrite.
+    destruct echo_syms_pins as (_ & _ & _ & _ & Hwrite & _). rewrite Hwrite.
     (* ---- 0x352  c.li a7,16 ---- *)
     iApply (wp_uk_cli N h m (mword_of_int 0x352)
               (mword_of_int 16 : mword 6) a7_idx avail
@@ -1130,7 +1130,7 @@ Section UkEcho.
     mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros "#Hcode Hrun Hsb Hstd Hbuf Hcont".
-    destruct echo_syms_pins as (_ & _ & _ & _ & Hwrite). rewrite Hwrite.
+    destruct echo_syms_pins as (_ & _ & _ & _ & Hwrite & _). rewrite Hwrite.
     (* ---- 0x352  c.li a7,16 ---- *)
     iApply (wp_uk_cli N h m (mword_of_int 0x352)
               (mword_of_int 16 : mword 6) a7_idx avail
@@ -1247,7 +1247,7 @@ Section UkEcho.
     mWP (Loop : expr riscv_lang).
   Proof using .
     iIntros "#Hcode Hrun Hsb Hstd #Hbs Hcont".
-    destruct echo_syms_pins as (_ & _ & _ & _ & Hwrite). rewrite Hwrite.
+    destruct echo_syms_pins as (_ & _ & _ & _ & Hwrite & _). rewrite Hwrite.
     (* ---- 0x352  c.li a7,16 ---- *)
     iApply (wp_uk_cli N h m (mword_of_int 0x352)
               (mword_of_int 16 : mword 6) a7_idx avail
@@ -1544,7 +1544,7 @@ Section UkEcho.
   Proof using .
     intros Hi Hav0 Hav38 Hs1 Hs3 Hs5 Htgt.
     iIntros "Hw #Hcode Hargv HCi Hrun Hcont".
-    destruct echo_syms_pins as (_ & _ & Hstrlen & _ & Hwrite).
+    destruct echo_syms_pins as (_ & _ & Hstrlen & _ & Hwrite & _).
     iDestruct (uargv_align with "Hargv") as %[Hal Hargc31].
     change (2 ^ 38) with 274877906944 in Hav38.
     change (2 ^ 31) with 2147483648 in Hargc31.
@@ -1828,7 +1828,7 @@ Section UkEcho.
   Proof using .
     intros Hav0 Hav38 Hi1 Hs1 Hs3 Hs4 Hs6.
     iIntros "Hw #Hcode HCi Hrun Hcont".
-    destruct echo_syms_pins as (_ & _ & _ & _ & Hwrite).
+    destruct echo_syms_pins as (_ & _ & _ & _ & Hwrite & _).
     change (2 ^ 38) with 274877906944 in Hav38.
     assert (Eret48 : ret_pc (mword_of_int 0x48 : mword 64) = mword_of_int 0x48)
       by (apply bv_eq; vm_compute; reflexivity).
@@ -2033,7 +2033,7 @@ Section UkEcho.
       intros i h mc n Ci Hlen Hav0 Hav38 Hs1 Hs3 Hs4 Hs5 Hs6;
       iIntros "Hpay Hend #Hcode Hargv HCi Hrun";
       destruct (lookup_lt_is_Some_2 args i ltac:(lia)) as [g Hg];
-      destruct echo_syms_pins as (_ & _ & _ & _ & Hwrite);
+      destruct echo_syms_pins as (_ & _ & _ & _ & Hwrite & _);
       iSpecialize ("Hpay" $! g with "[%]"); [ exact Hg | | exact Hg | ].
     - (* the LAST element: print it, then the newline, then exit *)
       iDestruct "Hpay" as (Cm) "[Hw Hnl]".

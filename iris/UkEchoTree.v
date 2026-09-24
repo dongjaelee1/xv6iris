@@ -5,8 +5,9 @@
 (*                                                                        *)
 (* Design: claude-notes/design/program-specs.md SS3.2, cut 2.  [UkTree]    *)
 (* states the hole one event costs at a program instance; this file       *)
-(* names echo's instance ([echo_prog]: its code, its write and exit        *)
-(* stubs) and shows that a payer of [tree_pay (echo_tree bs)] has paid     *)
+(* names echo's instance ([echo_prog]: its code and its five stubs, of    *)
+(* which it calls write and exit) and shows that a payer of [tree_pay     *)
+(* (echo_tree bs)] has paid                                                *)
 (* the whole chain echo's walk spends -- so a walk stated at the chain     *)
 (* is a walk stated at the tree, and every landed destination that builds *)
 (* the chain is a HANDLER of the tree.                                     *)
@@ -65,9 +66,15 @@ Section UkEchoTree.
   Local Notation γt := (ukn_t N).
   Local Notation γd := (ukn_d N).
 
-  (* echo's instance: its code and its two stubs *)
+  (* echo's instance: its code and its five stubs.  echo calls only write
+     and exit; read, open and close are named at echo's own addresses
+     ([UkStub.echo_stub_read] and its two siblings) so that a handler
+     record stated at any program with the five stubs -- [UkHandler.
+     ep_iface] asks for every law whatever tree it pays -- has an instance
+     at echo's. *)
   Definition echo_prog : uprog Σ :=
-    MkUprog Σ (echo_code γt) EchoSyms.write 0 0 0 EchoSyms.exit.
+    MkUprog Σ (echo_code γt) EchoSyms.write EchoSyms.read EchoSyms.open EchoSyms.close
+      EchoSyms.exit.
 
   Global Instance echo_prog_code_persistent : Persistent (up_code echo_prog).
   Proof using . simpl. apply _. Qed.

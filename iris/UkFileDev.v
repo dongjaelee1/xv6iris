@@ -20,6 +20,9 @@
 (*                decided, [file_owed ws b] still owed.                   *)
 (*   [file_write] [ei_write] at a held ledger slot, for a write of ONE of *)
 (*                the line's chunks (see the note there).                  *)
+(*   [file_write_nil]  [ei_write_nil] at the same slot: a ZERO-LENGTH     *)
+(*                write answers 0 or -1 and lends nothing -- the chain at *)
+(*                no chunk is its own stop, the cursor is not looked at.  *)
 (*   [file_open_present] / [file_open_absent]  [ei_open] / [ei_open_absent]*)
 (*                for `f` from the deed's two open leaves.                 *)
 (*   [file_close] [ei_close] at a tail handle; [file_close_in] drops the  *)
@@ -811,6 +814,101 @@ Section UkFileDev.
               Hi1 Hi2 Hi3 Hi4 with "Hbr Hinv Hq").
   Qed.
 
+  (* A ZERO-LENGTH WRITE at the held row (cut 4(c)'s [ei_write_nil] at a
+     file).  filewrite's inode loop is never entered, so the kernel
+     answers the count, 0, or -1 -- [SpecFilewrite.write_arms_at] at
+     count 0, its return read off by [write_arms_at_ret] -- and NOTHING
+     IS LENT: the deposit's chain at no chunk is its own stop
+     ([FsAbsWriteFire.awrite_chain_adv_0] at [wchunks 0 = 0]), so the
+     cursor is not even looked at, and the empty source has no row to
+     discharge.  What the ledger says is all the leaf reads. *)
+  Lemma file_write_nil (fd : nat) (l : list fdstate) (rb : bool) (i : Z)
+      (γo : gname) (K : Z -> iProp Σ) :
+    (fd < NSTD)%nat ->
+    l !! fd = Some (FdOpen rb true (FdInode i γo OffHeld)) ->
+    UserFd.ustd γfd l -∗
+    ((UserFd.ustd γfd l -∗ K 0) ∧ (UserFd.ustd γfd l -∗ K (-1))) -∗
+    wr_obl N P (Z.of_nat fd) [] K.
+  Proof using Hsw.
+    intros Hfd Hl.
+    iIntros "Hstd HK".
+    iIntros (h m avail ua tx dq f) "%Hf %Ha0 %Ha1 %Ha2 Hcode Hsrc Hrun Hcont".
+    cbn [length] in *.
+    set (m1 := <[Regidx a7_idx := (mword_of_int 16 : mword 64)]> m).
+    assert (Hi0 : bv_signed (trunc32 (m1 !!! Regidx a0_idx)) = Z.of_nat fd).
+    { unfold m1. rewrite (upd_ne m (Regidx a7_idx) (Regidx a0_idx) _
+                            ltac:(vm_compute; discriminate)).
+      exact Ha0. }
+    assert (Hcz : sys_rw_count (mword_of_int (Z.of_nat 0) : mword 64) = Z.of_nat 0)
+      by (apply UEchoOut.echo_count_is; vm_compute; reflexivity).
+    assert (Hcnt : sys_rw_count (m1 !!! Regidx a2_idx) = 0).
+    { unfold m1. rewrite (upd_ne m (Regidx a7_idx) (Regidx a2_idx) _
+                            ltac:(vm_compute; discriminate)) Ha2 Hcz.
+      reflexivity. }
+    assert (Hnum : usysno m1 = 16).
+    { unfold m1, usysno.
+      rewrite (upd_eq m (Regidx a7_idx) (mword_of_int 16 : mword 64)).
+      vm_compute; reflexivity. }
+    (* the empty source: both rows are vacuous *)
+    assert (Hsrc0 : forall (M : gmap Z (bv 8)) (pmv : gmap (mword 27) uperm) (sz : Z),
+              uheap (ukn_t N) (ukn_d N) (ukn_s N) M pmv sz -∗
+              usrc_at N tx dq ua 0 f -∗
+              ⌜usrc_ok M pmv sz (m1 !!! Regidx a1_idx) 0 f⌝).
+    { intros M pmv sz. iIntros "_ _". iPureIntro. split.
+      - intros j Hj. lia.
+      - intros Pt j _ _ _ Hj. lia. }
+    iPoseProof Hsw as "#Hs".
+    iApply ("Hs" $! h m avail with "Hcode Hrun").
+    iIntros (h1) "%E6 %Al6 #Hi Hrun Hret".
+    assert (Hal4 : is_aligned_vaddr
+                     (Virtaddr (add_vec_int (mword_of_int (up_write P + 2) : mword 64) 4))
+                     2 = true)
+      by (rewrite E6; exact Al6).
+    iPoseProof (wp_uk_ecall_write_at N h1 m1 (mword_of_int (up_write P + 2))
+                  avail
+                  (write_file_fam (fun _ : nat => emp%I) (ukn_pay N))
+                  (UserFd.ustd γfd l) (usrc_at N tx dq ua 0 f)
+                  (fun fdv => take NSTD fdv = l) 0 f Hnum Hal4
+                  (fun fdv => ustd_agree γfd fdv l) Hsrc0)
+      as "Hleaf".
+    iApply ("Hleaf" with "Hi Hrun [] Hstd Hsrc"); last first.
+    { (* ---- THE POST: the arm's return is 0 or -1 ---- *)
+      iIntros (h2 ret W cw' cs')
+        "%Hka0 %Hka1 %Hka2 %Htk %Hlz %Hnf Hstd Hs1 Hpost Hrun".
+      iDestruct (spost_at_write_elim_at uslot
+                   (write_file_fam (fun _ : nat => emp%I) (ukn_pay N)) W
+                   (m1 !!! Regidx a0_idx) (m1 !!! Regidx a1_idx)
+                   (m1 !!! Regidx a2_idx)
+                   (uvis_fd W) (uvis_M W) ret (uvis_M W) (uvis_fd W) cw' cs'
+                   Hka0 Hka1 Hka2 eq_refl eq_refl with "Hpost")
+        as (Pt) "(_ & _ & _ & Hp)".
+      assert (Hkey : fd_st_of_key (m1 !!! Regidx a0_idx) (uvis_fd W)
+                     = FdOpen rb true (FdInode i γo OffHeld))
+        by exact (uwr_fd_st_std _ (uvis_fd W) l fd
+                    (FdOpen rb true (FdInode i γo OffHeld))
+                    Hi0 Hfd Htk Hl).
+      iEval (rewrite Hkey Hcnt; rewrite /filewrite_extra /=) in "Hp".
+      iDestruct (write_arms_at_ret with "Hp") as %Hret.
+      iEval (rewrite E6) in "Hrun".
+      iApply ("Hret" $! h2 ret with "Hrun").
+      iIntros (h3) "Hrun".
+      iApply ("Hcont" $! h3 ret with "[HK Hstd] Hs1 Hrun").
+      destruct Hret as [-> | (x & -> & Hx)].
+      - rewrite fdev_m1. iDestruct "HK" as "[_ HK]". iApply ("HK" with "Hstd").
+      - rewrite Z.max_id in Hx. assert (Hx0 : x = 0) by lia. subst x.
+        change (bv_signed (mword_of_int 0 : mword 64)) with 0.
+        iDestruct "HK" as "[HK _]". iApply ("HK" with "Hstd"). }
+    (* ---- THE DEPOSIT: the chain at no chunk is its own stop ---- *)
+    iApply (udepwf_K_std N m1 (mword_of_int (up_write P + 2)) 16
+              (write_file_fam (fun _ : nat => emp%I) (ukn_pay N)) l).
+    iApply (fdev_udepwf_std_write_held m1 (mword_of_int (up_write P + 2)) l fd rb i γo
+              (fun _ : nat => emp%I) 0 Hfd Hl Hi0 Hcnt).
+    iIntros (M pm sz) "Hheap". iFrame "Hheap".
+    iIntros (Pt) "_".
+    assert (Hw0 : wchunks 0 = 0%nat) by (vm_compute; reflexivity).
+    rewrite Hw0 awrite_chain_adv_0. done.
+  Qed.
+
   (* =================================================================== *)
   (*  5.  THE CLOSE                                                       *)
   (* =================================================================== *)
@@ -1165,6 +1263,8 @@ Section UkFileDevCat.
     file_read c r Heq N (cat_prog N) (cat_stub_read N).
   Definition file_write_cat :=
     file_write c r Heq N (cat_prog N) (cat_stub_write N).
+  Definition file_write_nil_cat :=
+    file_write_nil N (cat_prog N) (cat_stub_write N).
   Definition file_close_cat :=
     file_close N (cat_prog N) (cat_stub_close N).
   Definition file_close_in_cat :=

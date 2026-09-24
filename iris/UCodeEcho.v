@@ -18,7 +18,7 @@
    one step from one [uinstr] fact (UmodeMem.v): the pure statement that at
    a given user pc the program's bytes sit in the process image [M], the
    pc's page is mapped fetch-executable, and the fetched word decodes to a
-   named AST on any U-mode machine. This file proves those facts for the 73
+   named AST on any U-mode machine. This file proves those facts for the 82
    instruction(s) of this catalog, from the dumped image
    [User.EchoInstrs.echo_bytes].
 
@@ -48,7 +48,7 @@
      data  0x92c .. 0xdcc   (1184 bytes)
      entry 0x7c, MemBase 0x0, MemEnd 0x1020
 
-   Catalogued: 73 instruction(s), 65 distinct word(s), in 5 function(s):
+   Catalogued: 82 instruction(s), 68 distinct word(s), in 8 function(s):
 
      <main> @ 0x0
            0:  7139      c.addi16sp
@@ -133,16 +133,35 @@
          354:  00000073  ecall
          358:  8082      c.jr
 
+     <read> @ 0x34a
+         34a:  4895      c.li
+         34c:  00000073  ecall
+         350:  8082      c.jr
+
+     <close> @ 0x35a
+         35a:  48d5      c.li
+         35c:  00000073  ecall
+         360:  8082      c.jr
+
+     <open> @ 0x372
+         372:  48bd      c.li
+         374:  00000073  ecall
+         378:  8082      c.jr
+
    NOT catalogued, because no proof ever fetches it:
        0x338 -- exit's [c.jr ra] -- the ecall at 0x334 never returns
-       atoi, chdir, close, dup, exec, fork, fprintf, free, fstat, getpid, gets,
-       kill, link, malloc, memcmp, memcpy, memmove, memset, mkdir, mknod, open,
-       pause, pipe, printf, printint, putc, read, sbrk, sbrklazy, stat, strchr,
-       strcmp, strcpy, sync, sys_sbrk, unlink, uptime, vprintf, wait -- library
-       or syscall stub that echo never calls
+       atoi, chdir, dup, exec, fork, fprintf, free, fstat, getpid, gets, kill,
+       link, malloc, memcmp, memcpy, memmove, memset, mkdir, mknod, pause,
+       pipe, printf, printint, putc, sbrk, sbrklazy, stat, strchr, strcmp,
+       strcpy, sync, sys_sbrk, unlink, uptime, vprintf, wait -- library
+       function or other syscall stub that echo never calls
 
    echo's five reachable functions. main and start diverge; strlen and the
-   two syscall stubs return.
+   two syscall stubs return. The three stubs after them (read, close, open)
+   echo never calls: they are here so that echo's program instance
+   ([UkEchoTree.echo_prog]) names all five stub addresses the tree's holes
+   are stated at, and a handler record built at any program with the five
+   stubs has an instance at echo's.
 
    Every AST below was READ OFF the model -- [vm_compute] of the decoder at
    the U-mode reference state [dstateU] (base) / [decode_c_pure] under the
@@ -356,13 +375,19 @@ Lemma echo_syms_pins :
   EchoSyms.start = 0x7c /\
   EchoSyms.strlen = 0xdc /\
   EchoSyms.exit = 0x332 /\
-  EchoSyms.write = 0x352.
+  EchoSyms.write = 0x352 /\
+  EchoSyms.read = 0x34a /\
+  EchoSyms.close = 0x35a /\
+  EchoSyms.open = 0x372.
 Proof using .
   unfold EchoSyms.main,
          EchoSyms.start,
          EchoSyms.strlen,
          EchoSyms.exit,
-         EchoSyms.write.
+         EchoSyms.write,
+         EchoSyms.read,
+         EchoSyms.close,
+         EchoSyms.open.
   split_and!; reflexivity.
 Qed.
 
@@ -370,7 +395,7 @@ Qed.
 (* §1 Per-WORD decode facts.                                              *)
 (* ===================================================================== *)
 
-(* One lemma per DISTINCT word (65 of them for 73 instructions), reused at
+(* One lemma per DISTINCT word (68 of them for 82 instructions), reused at
    every pc where that word occurs.
 
    Base words: the concrete-state bridge at [dstateU] (WpDecodeBridge),
@@ -494,9 +519,24 @@ Lemma udec_4889 :
   udecode_rvc (mword_of_int 0x4889) (C_LI (mword_of_int 2 : mword 6, Regidx (mword_of_int 17))).
 Proof using . udec_rvc_oneshot. Qed.
 
+(* 4895  c.li *)
+Lemma udec_4895 :
+  udecode_rvc (mword_of_int 0x4895) (C_LI (mword_of_int 5 : mword 6, Regidx (mword_of_int 17))).
+Proof using . udec_rvc_oneshot. Qed.
+
+(* 48bd  c.li *)
+Lemma udec_48bd :
+  udecode_rvc (mword_of_int 0x48bd) (C_LI (mword_of_int 15 : mword 6, Regidx (mword_of_int 17))).
+Proof using . udec_rvc_oneshot. Qed.
+
 (* 48c1  c.li *)
 Lemma udec_48c1 :
   udecode_rvc (mword_of_int 0x48c1) (C_LI (mword_of_int 16 : mword 6, Regidx (mword_of_int 17))).
+Proof using . udec_rvc_oneshot. Qed.
+
+(* 48d5  c.li *)
+Lemma udec_48d5 :
+  udecode_rvc (mword_of_int 0x48d5) (C_LI (mword_of_int 21 : mword 6, Regidx (mword_of_int 17))).
 Proof using . udec_rvc_oneshot. Qed.
 
 (* 4985  c.li s3,1 *)
@@ -1610,6 +1650,105 @@ Section UCodeEcho.
       (mword_of_int 0x48d58082 : mword 32).
   Qed.
 
+  (* ---------------- <read> @ 0x34a ---------------- *)
+
+  (* 0x34a  c.li  (RVC, 2 mod 4) *)
+  Lemma uis_echo_34a (g : gname) :
+    echo_code g -∗
+    uinstr_is g (mword_of_int 0x34a) true
+      (C_LI (mword_of_int 5 : mword 6, Regidx (mword_of_int 17))).
+  Proof using .
+    iIntros "#Ht".
+    uis_rvc2 g 0x34a (mword_of_int 0x4895 : mword 16) udec_4895.
+  Qed.
+
+  (* 0x34c  ecall  (base, 4-aligned) *)
+  Lemma uis_echo_34c (g : gname) :
+    echo_code g -∗
+    uinstr_is g (mword_of_int 0x34c) false
+      (ECALL tt).
+  Proof using .
+    iIntros "#Ht".
+    uis_base g 0x34c (mword_of_int 0x00000073 : mword 32) udec_00000073.
+  Qed.
+
+  (* 0x350  c.jr  (RVC, 4-aligned) *)
+  Lemma uis_echo_350 (g : gname) :
+    echo_code g -∗
+    uinstr_is g (mword_of_int 0x350) true
+      (C_JR (Regidx (mword_of_int 1))).
+  Proof using .
+    iIntros "#Ht".
+    uis_rvc4 g 0x350 (mword_of_int 0x8082 : mword 16) udec_8082
+      (mword_of_int 0x48c18082 : mword 32).
+  Qed.
+
+  (* ---------------- <close> @ 0x35a ---------------- *)
+
+  (* 0x35a  c.li  (RVC, 2 mod 4) *)
+  Lemma uis_echo_35a (g : gname) :
+    echo_code g -∗
+    uinstr_is g (mword_of_int 0x35a) true
+      (C_LI (mword_of_int 21 : mword 6, Regidx (mword_of_int 17))).
+  Proof using .
+    iIntros "#Ht".
+    uis_rvc2 g 0x35a (mword_of_int 0x48d5 : mword 16) udec_48d5.
+  Qed.
+
+  (* 0x35c  ecall  (base, 4-aligned) *)
+  Lemma uis_echo_35c (g : gname) :
+    echo_code g -∗
+    uinstr_is g (mword_of_int 0x35c) false
+      (ECALL tt).
+  Proof using .
+    iIntros "#Ht".
+    uis_base g 0x35c (mword_of_int 0x00000073 : mword 32) udec_00000073.
+  Qed.
+
+  (* 0x360  c.jr  (RVC, 4-aligned) *)
+  Lemma uis_echo_360 (g : gname) :
+    echo_code g -∗
+    uinstr_is g (mword_of_int 0x360) true
+      (C_JR (Regidx (mword_of_int 1))).
+  Proof using .
+    iIntros "#Ht".
+    uis_rvc4 g 0x360 (mword_of_int 0x8082 : mword 16) udec_8082
+      (mword_of_int 0x48998082 : mword 32).
+  Qed.
+
+  (* ---------------- <open> @ 0x372 ---------------- *)
+
+  (* 0x372  c.li  (RVC, 2 mod 4) *)
+  Lemma uis_echo_372 (g : gname) :
+    echo_code g -∗
+    uinstr_is g (mword_of_int 0x372) true
+      (C_LI (mword_of_int 15 : mword 6, Regidx (mword_of_int 17))).
+  Proof using .
+    iIntros "#Ht".
+    uis_rvc2 g 0x372 (mword_of_int 0x48bd : mword 16) udec_48bd.
+  Qed.
+
+  (* 0x374  ecall  (base, 4-aligned) *)
+  Lemma uis_echo_374 (g : gname) :
+    echo_code g -∗
+    uinstr_is g (mword_of_int 0x374) false
+      (ECALL tt).
+  Proof using .
+    iIntros "#Ht".
+    uis_base g 0x374 (mword_of_int 0x00000073 : mword 32) udec_00000073.
+  Qed.
+
+  (* 0x378  c.jr  (RVC, 4-aligned) *)
+  Lemma uis_echo_378 (g : gname) :
+    echo_code g -∗
+    uinstr_is g (mword_of_int 0x378) true
+      (C_JR (Regidx (mword_of_int 1))).
+  Proof using .
+    iIntros "#Ht".
+    uis_rvc4 g 0x378 (mword_of_int 0x8082 : mword 16) udec_8082
+      (mword_of_int 0x48c58082 : mword 32).
+  Qed.
+
   (* =================================================================== *)
   (* §3 Where the catalog comes from.                                      *)
   (* =================================================================== *)
@@ -1622,7 +1761,7 @@ Section UCodeEcho.
      hypotheses say that image contains the dump ([echo_text_sub]) and that
      the executable segment is X-and-not-W ([Hx]), which is what puts those
      bytes in the TEXT half rather than the data one. Both are discharged
-     HERE, once, instead of in each of the 73 per-pc lemmas. *)
+     HERE, once, instead of in each of the 82 per-pc lemmas. *)
 
   (* AND THE READ-ONLY IMAGE BESIDE IT. A program's string LITERALS are not
      in [EchoInstrs.echo_bytes] and they are not in the data half either:

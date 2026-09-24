@@ -37,7 +37,7 @@
        contract -- the success one and the -1 fold's (a) -- REFUNDS both
        the observation and the trunc commit ([delta_trunc_nil]: the child
        is [AFile []]).  So NOTHING fires: the two commits ride inside the
-       shim residue and the plain tail runs at a PURE row receipt.
+       shim's closure and the plain tail runs at a PURE row receipt.
 
    ITEM 7 (the F-OK bridge) is the shim's refutation premise: a found
    [ADir] is ARM F-BAD and never reaches here, so [di_type dn] is T_FILE
@@ -740,18 +740,19 @@ Section ProofSysOpenEntryC.
                                   (fn_nlink (era_node dn bm data))))
                       (bv_unsigned inum) (era_node dn bm data)) as "Hobs".
       { rewrite -Harow. iApply socr_obs_pure. }
+      (* the tail states its trunc slot at the PLAIN surface's kept family
+         (lane TRUNC-PERMIT); the tag permit is paid for nothing *)
+      iDestruct (socr_key_plain vom (bview plen bp) (bv_unsigned inum) _
+                   with "Htc") as "Htc".
+      (* THE RESIDUE RIDES THE CONTINUATION, not the cursor *)
       iAssert (wp_next true (proc_addr jx)
                  (so_cont_au omo gf ns1 dqb dqs (proc_addr jx) pidv Mim pvv vom U sts
-                    (socr_P (socr_fresh vom P Phiarm Phiun Phiok Phiex Phio
-                               (bview plen bp) (bv_unsigned inum))
-                            (bv_unsigned inum))
-                    (socr_Pm (socr_fresh vom P Phiarm Phiun Phiok Phiex Phio
-                                (bview plen bp) (bv_unsigned inum)))
+                    (socr_P (bv_unsigned inum)) socr_Pm
                     (socr_Phio_pure (bv_unsigned inum)
                        (MkAnode (AFile [])
                                 (fn_nlink (era_node dn bm data))))
                     (socr_ft (bview plen bp) P Phiarm Phiok Phiex (bv_unsigned inum) Phit) m K eb b lks))
-        with "[Hcont Hsbn Hsbs]" as "Hcontj".
+        with "[Hcont Hsbn Hsbs HR]" as "Hcontj".
       { iEval (rewrite /wp_next). iIntros (CIDz) "%Hqz".
         iEval (rewrite /so_cont_au). iIntros (mf ns2) "%Hcsf %Hns2".
         iIntros "Hcg Hown Htce Hcce Hpc Hsbb Hsbi Hbsl Hisl Hpost".
@@ -759,7 +760,7 @@ Section ProofSysOpenEntryC.
         iApply fupd_wp.
         iMod (socr_arms_fresh omo gf (proc_addr jx) pidv Mim pvv vom P Pmiss
                 Phiarm Phiun Phiok Phiex Phio Phit U sts _ (bview plen bp) (bv_unsigned inum)
-                (fn_nlink (era_node dn bm data)) Hpof with "Hpost") as "Hpost".
+                (fn_nlink (era_node dn bm data)) Hpof with "HR Hpost") as "Hpost".
         iModIntro.
         iApply ("Hcont" $! mf ns2 with "[%] [%] Hcg Hown Htce Hcce Hpc
                   Hsbn Hsbi Hsbs Hsbb Hbsl Hisl Hpost").
@@ -769,11 +770,7 @@ Section ProofSysOpenEntryC.
                 gil gisl kk qi ss gy loy tly inum dn bm om lo ns1 u1 pidv dqb dqs
                 U sts m P1 sp0 K eb b lks w4 w5 w6 w24 bp1
                 data Mim pvv vom (bview plen bp)
-                (socr_P (socr_fresh vom P Phiarm Phiun Phiok Phiex Phio
-                           (bview plen bp) (bv_unsigned inum))
-                        (bv_unsigned inum))
-                (socr_Pm (socr_fresh vom P Phiarm Phiun Phiok Phiex Phio
-                            (bview plen bp) (bv_unsigned inum)))
+                (socr_P (bv_unsigned inum)) socr_Pm
                 (socr_Phio_pure (bv_unsigned inum)
                    (MkAnode (AFile [])
                             (fn_nlink (era_node dn bm data))))
@@ -788,13 +785,13 @@ Section ProofSysOpenEntryC.
                       [//] Hfly Hclaimsy Hdep Hoffr Hidev Hiinum Hivalid Hflat Hshot Hfrz Href Hru Hpriv Hprocs
                       Hdev Hgeo Hdlk Hop Hsbb Hsbi Hbmres Hbsl Hisl Hfds Hfrag Hf1
                       Hf2 Hf3 Hf4 Hf5 Hf6 HbP H23lo H23hi H24
-                      [HR] Hobs Htc Hcontj").
+                      [] Hobs Htc Hcontj").
       (* THE CALLER'S OWN TRUNC PIECE goes straight through now ([Htc] in
          the list above): the tail fires it over the [itrunc] and its
          receipt comes back at [[]] (B-trunc).  Nothing is conjured. *)
       { rewrite Heb /trap_csrs_ext. done. }
       { rewrite Heb /cpu_claim_ext. done. }
-      { rewrite /socr_P. iSplitR; [by iPureIntro |]. iExact "HR". }
+      { iApply socr_cur. }
     - (* ============ ARM F-OK: the name was there =====================
          The contract wants the terminal observation FIRED at the found
          node, so it fires here, off the payload's own [top_frag]. *)
@@ -838,16 +835,15 @@ Section ProofSysOpenEntryC.
         iApply (socr_exists_key vom (npar_nm Mim pvv) P Phiarm Phiun Phiok Phiex Phit
                   (bview plen bp) (bv_unsigned inum) d nm av ents nl
                   Hl Hrow Hent with "HP HPhi Hac Hcl Htc"). }
+      iDestruct (socr_key_plain vom (bview plen bp) (bv_unsigned inum) _
+                   with "Htc") as "Htc".
       iAssert (wp_next true (proc_addr jx)
                  (so_cont_au omo gf ns1 dqb dqs (proc_addr jx) pidv Mim pvv vom U sts
-                    (socr_P (socr_exists vom (npar_nm Mim pvv) P Phiarm Phiun Phiok Phiex (bview plen bp)
-                               (bv_unsigned inum)) (bv_unsigned inum))
-                    (socr_Pm (socr_exists vom (npar_nm Mim pvv) P Phiarm Phiun Phiok Phiex (bview plen bp)
-                                (bv_unsigned inum)))
+                    (socr_P (bv_unsigned inum)) socr_Pm
                     (socr_Phio_tag (bv_unsigned inum)
                        (abs_row (era_node dn bm data)) Phio)
                     (socr_ft_ex (bview plen bp) P Phiarm Phiex (bv_unsigned inum) Phit) m K eb b lks))
-        with "[Hcont Hsbn Hsbs]" as "Hcontj".
+        with "[Hcont Hsbn Hsbs HR]" as "Hcontj".
       { iEval (rewrite /wp_next). iIntros (CIDz) "%Hqz".
         iEval (rewrite /so_cont_au). iIntros (mf ns2) "%Hcsf %Hns2".
         iIntros "Hcg Hown Htce Hcce Hpc Hsbb Hsbi Hbsl Hisl Hpost".
@@ -855,7 +851,7 @@ Section ProofSysOpenEntryC.
         iApply fupd_wp.
         iMod (socr_arms_exists omo gf (proc_addr jx) pidv Mim pvv vom P Pmiss
                 Phiarm Phiun Phiok Phiex Phio Phit U sts _ (bview plen bp) (bv_unsigned inum)
-                (abs_row (era_node dn bm data)) Hpof Hnd with "Hpost") as "Hpost".
+                (abs_row (era_node dn bm data)) Hpof Hnd with "HR Hpost") as "Hpost".
         iModIntro.
         iApply ("Hcont" $! mf ns2 with "[%] [%] Hcg Hown Htce Hcce Hpc
                   Hsbn Hsbi Hsbs Hsbb Hbsl Hisl Hpost").
@@ -865,10 +861,7 @@ Section ProofSysOpenEntryC.
                 gil gisl kk qi ss gy loy tly inum dn bm om lo ns1 u1 pidv dqb dqs
                 U sts m P1 sp0 K eb b lks w4 w5 w6 w24 bp1
                 data Mim pvv vom (bview plen bp)
-                (socr_P (socr_exists vom (npar_nm Mim pvv) P Phiarm Phiun Phiok Phiex (bview plen bp)
-                           (bv_unsigned inum)) (bv_unsigned inum))
-                (socr_Pm (socr_exists vom (npar_nm Mim pvv) P Phiarm Phiun Phiok Phiex (bview plen bp)
-                            (bv_unsigned inum)))
+                (socr_P (bv_unsigned inum)) socr_Pm
                 (socr_Phio_tag (bv_unsigned inum)
                    (abs_row (era_node dn bm data)) Phio)
                 (socr_ft_ex (bview plen bp) P Phiarm Phiex (bv_unsigned inum) Phit)
@@ -882,10 +875,10 @@ Section ProofSysOpenEntryC.
                       [//] Hfly Hclaimsy Hdep Hoffr Hidev Hiinum Hivalid Hflat Hshot Hfrz Href Hru Hpriv Hprocs
                       Hdev Hgeo Hdlk Hop Hsbb Hsbi Hbmres Hbsl Hisl Hfds Hfrag Hf1
                       Hf2 Hf3 Hf4 Hf5 Hf6 HbP H23lo H23hi H24
-                      [HR] Hobs Htc Hcontj").
+                      [] Hobs Htc Hcontj").
       { rewrite Heb /trap_csrs_ext. done. }
       { rewrite Heb /cpu_claim_ext. done. }
-      { rewrite /socr_P. iSplitR; [by iPureIntro |]. iExact "HR". }
+      { iApply socr_cur. }
   Qed.
 
 End ProofSysOpenEntryC.

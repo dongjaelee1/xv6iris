@@ -2100,6 +2100,9 @@ Section FileOpen.
     arg_path_of M pv pl ->
     path_elems pl = [fname_f] ->
     um_start_of cw pl = ROOTINO ->
+    (* no O_TRUNC: the fraction rides the terminal cursor, which a
+       truncating open spends into its permit ([SpecSysOpen.cur_kept]) *)
+    om_trunc vom = false ->
     open_receipt_plain omo (fs_gamma_L γfs) γfs cw M pv vom
       (pobs_P_lin (file_taint c) [ROOTINO; i] (fdq r q1 (Some (i, bs))))
       (pobs_Pmiss (file_taint c))
@@ -2122,7 +2125,7 @@ Section FileOpen.
             ∗ fdq r q1 (Some (i, bs)) ∗ fdq r q2 (Some (i, bs)))
        ∨ file_taint c).
   Proof using .
-    intros Hpath Hel Hst. iIntros "Hrc".
+    intros Hpath Hel Hst Htr. iIntros "Hrc".
     pose proof (f_pin_resolves i bs cw pl Hel Hst) as Hres.
     pose proof Hres as [(_ & Hfin & _) Hpinr].
     rewrite /open_receipt_plain.
@@ -2158,6 +2161,7 @@ Section FileOpen.
           + (* the inode was reached: the terminal cursor and the piece's
                RECEIPT *)
             iDestruct "Hpost" as (i0) "(HP & Hrv & _)".
+            iEval (rewrite /cur_kept Htr) in "HP".
             rewrite /pobs_P_lin.
             iDestruct "HP" as "[[_ Hd1] | #HT]"; [ | by iRight ].
             iDestruct "Hrv" as (av a) "[_ Hrecv]".
@@ -2170,6 +2174,7 @@ Section FileOpen.
     rewrite (arg_path_of_uniq M pv pl' pl Hpath' Hpath).
     (* the terminal cursor names the deed's inum and hands the walk's
        fraction back *)
+    iEval (rewrite /cur_kept Htr) in "HP".
     rewrite /pobs_P_lin Hel. cbn [length].
     iDestruct "HP" as "[[%Hj Hd1] | #HT]"; last first.
     { iRight. iRight. iExact "HT". }
@@ -2375,6 +2380,17 @@ Section FileOpenMiss.
     intros v s Hp Hs. rewrite Hel in Hs. cbn in Hs.
     injection Hs as <-. exact Hp.
   Qed.
+  (* the taint answers for every view: [AppFile.file_sup_of_taint] at the
+     application the instance names *)
+  Lemma file_taint_sup (c : file_fixed) (r : file_names) :
+    file_app = MkAppcfg file_names (file_pred c) r ->
+    ⊢ □ (file_taint c -∗ app_sup).
+  Proof using .
+    intros Heq. rewrite /app_sup Heq.
+    cbn [AppCfg.app_pred AppCfg.app_run AppCfg.app_names].
+    iIntros "!> #Ht". iApply (file_sup_of_taint c r with "Ht").
+  Qed.
+
   (* ---- THE BUNDLE, AND IT REFUNDS THE FRACTION ----
 
      [PinnedOpen.pinned_open_bundle_dead_lin] at the ABSENT pin: the walk
@@ -2382,11 +2398,16 @@ Section FileOpenMiss.
      the deed fraction the hop was paid with rides the CURSOR and comes
      home through whichever arm of the failure fold the receipt hands
      back ([PinnedObs] section 8a).  That is the whole of what lane
-     F-OPEN's STOP item (b) was waiting on. *)
+     F-OPEN's STOP item (b) was waiting on.
+
+     AT ANY MODE THAT DOES NOT CREATE (lane TRUNC-PERMIT): the truncate's
+     permit is the walk's terminal cursor, which at this dead pin is the
+     taint, and the taint pays the step out of the supply -- so the piece
+     is owed at the family whose receipt is the taint, and the miss
+     receipt below collects it there. *)
   Lemma file_open_miss_au (γfs : fs_names) (c : file_fixed) (r : file_names)
       (q : Qp) (cw : Z) (M : gmap Z (bv 8)) (pv vom : mword 64)
       (pl : list (bv 8))
-      (Ft : pfam Σ (aview -> Z -> list (bv 8) -> iProp Σ))
       (Farm Fun : pfam Σ (aview -> Z -> iProp Σ))
       (Fok Fex : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ)) :
     file_app = MkAppcfg file_names (file_pred c) r ->
@@ -2394,26 +2415,28 @@ Section FileOpenMiss.
     path_elems pl = [fname_f] ->
     um_start_of cw pl = ROOTINO ->
     om_create vom = false ->
-    om_trunc vom = false ->
     app_inv γfs -∗
     fdq r q None -∗
     open_in (fs_gamma_L γfs) γfs cw M pv vom
       (pobs_P_dead_lin (file_taint c) (fdq r q None) ROOTINO)
       (pobs_Pmiss_ref (file_taint c) (fdq r q None))
       Farm Fun Fok Fex
-      (pfam_triv (fun (_ : aview) (_ : Z) (_ : anode) => True%I)) Ft.
+      (pfam_triv (fun (_ : aview) (_ : Z) (_ : anode) => True%I))
+      (pfam_triv (fun (_ : aview) (_ : Z) (_ : list (bv 8)) => file_taint c)).
   Proof using .
-    intros Heq Hpath Hel Hst Hcr Htr. iIntros "#Hinv Hd".
+    intros Heq Hpath Hel Hst Hcr. iIntros "#Hinv Hd".
     iApply (pinned_open_bundle_dead_lin γfs
               (fun v : aview => f_ok v None) (file_taint c)
               (fdq r q None)
               (pobs_Pmiss_ref (file_taint c) (fdq r q None))
-              cw pl ROOTINO M pv vom Ft Farm Fun Fok Fex
-              Hcr Htr (f_pin_misses cw pl Hel Hst) Hpath
-              with "[] [] [] Hinv Hd").
+              cw pl ROOTINO M pv vom Farm Fun Fok Fex
+              Hcr (f_pin_misses cw pl Hel Hst) Hpath
+              ltac:(rewrite Hel; discriminate)
+              with "[] [] [] Hinv [] Hd").
     - iApply (file_pin_law_q c r q None Heq).
     - iApply pobs_miss_taint_ref.
     - iApply pobs_miss_hold_ref.
+    - iApply (file_taint_sup c r Heq).
   Qed.
 
   (* ...AND THE RECEIPT: the open failed and the table did not move AND
@@ -2425,21 +2448,26 @@ Section FileOpenMiss.
       (q : Qp) (cw : Z) (M : gmap Z (bv 8)) (pv vom : mword 64)
       (pl : list (bv 8))
       (Fo : pfam Σ (aview -> Z -> anode -> iProp Σ))
-      (Ft : pfam Σ (aview -> Z -> list (bv 8) -> iProp Σ))
       (sts : list fdstate) (rv : mword 64) (fdv' : list fdstate) :
     arg_path_of M pv pl ->
     path_elems pl = [fname_f] ->
     open_receipt_plain omo (fs_gamma_L γfs) γfs cw M pv vom
       (pobs_P_dead_lin (file_taint c) (fdq r q None) ROOTINO)
-      (pobs_Pmiss_ref (file_taint c) (fdq r q None)) Fo Ft sts rv fdv'
+      (pobs_Pmiss_ref (file_taint c) (fdq r q None)) Fo
+      (pfam_triv (fun (_ : aview) (_ : Z) (_ : list (bv 8)) => file_taint c))
+      sts rv fdv'
     ={⊤}=∗ ((⌜rv = (mword_of_int (-1) : mword 64)⌝ ∗ ⌜fdv' = sts⌝
              ∗ fdq r q None)
             ∨ file_taint c).
   Proof using .
     intros Hpath Hel. iIntros "Hrc".
     iApply (pinned_open_dead_lin γfs (file_taint c) (fdq r q None) omo
-              cw pl ROOTINO M pv vom Fo Ft sts rv fdv' Hpath
-              ltac:(rewrite Hel; discriminate) with "Hrc").
+              cw pl ROOTINO M pv vom Fo
+              (pfam_triv (fun (_ : aview) (_ : Z) (_ : list (bv 8)) => file_taint c))
+              sts rv fdv' Hpath
+              ltac:(rewrite Hel; discriminate)
+              ltac:(intros _ av i bs; cbn [pfam_triv pf_recv]; reflexivity)
+              with "Hrc").
   Qed.
 
 End FileOpenMiss.

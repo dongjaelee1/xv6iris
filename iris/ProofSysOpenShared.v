@@ -376,9 +376,9 @@ Section ProofSysOpenShared.
     proc_priv gf pj pidv U -∗
     fd_frags (pv_fdg (us_V U)) sts -∗
     fd_slot -∗
-    P (length (path_elems pl)) i -∗
+    cur_kept vom P (length (path_elems pl)) i -∗
     so_obs Fo i n -∗
-    open_trunc_at (fs_gamma_L fsc_fs) vom i Ft -∗
+    plain_trunc_kept (fs_gamma_L fsc_fs) vom pl P i Ft -∗
     open_arms_plain omo (fs_gamma_L fsc_fs) fsc_fs (pv_cwi (us_V U)) gf pj pidv
            Mim pvv vom
       P Pmiss Fo Ft sts U r.
@@ -410,7 +410,7 @@ Section ProofSysOpenShared.
     fd_slot -∗
     namei_walk_dead_era fsc_fs P Pmiss pl -∗
     pf_at (aopen_commit_at (fs_gamma_L fsc_fs) appE) Fo -∗
-    open_trunc_piece (fs_gamma_L fsc_fs) vom trunc_permit_triv Ft -∗
+    open_trunc_piece (fs_gamma_L fsc_fs) vom (trunc_term_at pl P) Ft -∗
     open_arms_plain omo (fs_gamma_L fsc_fs) fsc_fs (pv_cwi (us_V U)) gf pj pidv
            Mim pvv vom
       P Pmiss Fo Ft sts U r.
@@ -467,10 +467,10 @@ Section ProofSysOpenShared.
       (pl : list (bv 8)) (i ma mi : Z) (nl : nat) :
     arg_path_of Mim pvv pl ->
     0 <= ma <= NDEV_max ->
-    P (length (path_elems pl)) i -∗
+    cur_kept vom P (length (path_elems pl)) i -∗
     (∃ av : aview, ⌜arow_at av i (MkAnode (ADev ma mi) nl)⌝
                    ∗ Fo.(pf_recv) av i (MkAnode (ADev ma mi) nl)) -∗
-    open_trunc_at (fs_gamma_L fsc_fs) vom i Ft -∗
+    plain_trunc_kept (fs_gamma_L fsc_fs) vom pl P i Ft -∗
     (∀ r : mword 64,
        open_fd_ok gf pj pidv U (om_readable vom) (om_writable vom)
          (FdDevice ma) sts r -∗
@@ -496,7 +496,7 @@ Section ProofSysOpenShared.
       (pl : list (bv 8)) (i : Z) (bs0 : list (bv 8)) (nl : nat) (γo : gname) :
     arg_path_of Mim pvv pl ->
     om_trunc vom = false ->
-    P (length (path_elems pl)) i -∗
+    cur_kept vom P (length (path_elems pl)) i -∗
     (∃ av : aview, ⌜arow_at av i (MkAnode (AFile bs0) nl)⌝
                    ∗ Fo.(pf_recv) av i (MkAnode (AFile bs0) nl)) -∗
     (* NO TRUNC PIECE.  At [om_trunc vom = false] the caller owed none
@@ -528,7 +528,10 @@ Section ProofSysOpenShared.
       (pl : list (bv 8)) (i : Z) (bs0 : list (bv 8)) (nl : nat) (γo : gname) :
     arg_path_of Mim pvv pl ->
     om_trunc vom = true ->
-    P (length (path_elems pl)) i -∗
+    (* the cursor went into the permit ([SpecSysOpen.cur_kept] is [emp]
+       here): what the application parked in it came back through its own
+       receipt below *)
+    cur_kept vom P (length (path_elems pl)) i -∗
     (∃ av : aview, ⌜arow_at av i (MkAnode (AFile bs0) nl)⌝
                    ∗ Fo.(pf_recv) av i (MkAnode (AFile bs0) nl)) -∗
     (∃ av' : aview, ⌜arow_at av' i (MkAnode (AFile bs0) nl)⌝
@@ -560,10 +563,10 @@ Section ProofSysOpenShared.
       (pl : list (bv 8)) (i : Z) (ents : gmap fname Z) (nl : nat) (γo : gname) :
     arg_path_of Mim pvv pl ->
     om_arg vom = 0 ->
-    P (length (path_elems pl)) i -∗
+    cur_kept vom P (length (path_elems pl)) i -∗
     (∃ av : aview, ⌜arow_at av i (MkAnode (ADir ents) nl)⌝
                    ∗ Fo.(pf_recv) av i (MkAnode (ADir ents) nl)) -∗
-    open_trunc_at (fs_gamma_L fsc_fs) vom i Ft -∗
+    plain_trunc_kept (fs_gamma_L fsc_fs) vom pl P i Ft -∗
     (∀ r : mword 64,
        open_fd_ok gf pj pidv U (om_readable vom) (om_writable vom)
          (FdInode i γo omo) sts r -∗
@@ -604,9 +607,9 @@ Section ProofSysOpenShared.
     (bv_unsigned (di_type dn) = T_DIR_z
      \/ bv_unsigned (di_type dn) = FsImg.T_FILE_z
      \/ bv_unsigned (di_type dn) = FsImg.T_DEVICE_z) ->
-    P (length (path_elems pl)) i -∗
+    cur_kept vom P (length (path_elems pl)) i -∗
     so_obs Fo i (era_node dn bm data) -∗
-    open_trunc_at (fs_gamma_L fsc_fs) vom i Ft -∗
+    plain_trunc_kept (fs_gamma_L fsc_fs) vom pl P i Ft -∗
     (∀ r : mword 64,
        open_fd_ok gf pj pidv U (om_readable vom) (om_writable vom) t sts r -∗
        (* the publish's handed half rides through (lane OFF-LINK-6's L4),

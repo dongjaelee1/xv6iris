@@ -170,7 +170,8 @@ Section UkFileOpen.
     xfam_open omo
       (pobs_P_lin (file_taint c) [ROOTINO; i] (fdq r q1 (Some (i, bs))))
       (pobs_Pmiss (file_taint c))
-      (file_open_recv c r q2 (Some (i, bs))) Q.
+      (file_open_recv c r q2 (Some (i, bs)))
+      (pfam_triv (fun (_ : aview) (_ : Z) (_ : list (bv 8)) => True%I)) Q.
 
   Lemma file_open_sup (N : uk_names Σ) (omo : offmode) (c : file_fixed) (r : file_names)
       (q1 q2 : Qp) (i : Z) (bs : list (bv 8))
@@ -278,7 +279,7 @@ Section UkFileOpen.
     iApply fupd_wp.
     iMod (file_open_recv_file fsc_fs c r omo q1 q2 i bs cw (uvis_M W) pv
             (m !!! Regidx a1_idx) pl _ (uvis_fd W) rv fdv'
-            (Hpath (uvis_M W) Himg) Hel Hst with "Hrc") as "Hans".
+            (Hpath (uvis_M W) Himg) Hel Hst Htr with "Hrc") as "Hans".
     iModIntro.
     iApply ("Hcont" $! h' rv with "[Hfd Hans] Hcwd Hrun").
     iDestruct "Hans" as "[(%Hr & %Hfdv & Hd1 & Hd2) | [Hok | #HT]]"; last first.
@@ -321,7 +322,11 @@ Section UkFileOpen.
     xfam_open OffParked
       (pobs_P_dead_lin (file_taint c) (fdq r q None) ROOTINO)
       (pobs_Pmiss_ref (file_taint c) (fdq r q None))
-      (pfam_triv (fun (_ : aview) (_ : Z) (_ : anode) => True%I)) Q.
+      (pfam_triv (fun (_ : aview) (_ : Z) (_ : anode) => True%I))
+      (* the truncate's receipt at an ABSENT deed is the TAINT: the
+         terminal permit is paid out of it ([PinnedOpen.pobs_dead_trunc_piece],
+         lane TRUNC-PERMIT), so the miss leaves take any mode *)
+      (pfam_triv (fun (_ : aview) (_ : Z) (_ : list (bv 8)) => file_taint c)) Q.
 
   Lemma file_miss_sup (N : uk_names Σ) (c : file_fixed) (r : file_names)
       (q : Qp) (Img : gmap Z (bv 8)) (pv : mword 64) (m : regfile)
@@ -330,14 +335,13 @@ Section UkFileOpen.
     (forall M : gmap Z (bv 8), uimg_sub Img M -> arg_path_of M pv pl) ->
     m !!! Regidx a0_idx = pv ->
     om_create (m !!! Regidx a1_idx) = false ->
-    om_trunc (m !!! Regidx a1_idx) = false ->
     path_elems pl = [fname_f] ->
     um_start_of cw pl = ROOTINO ->
     app_inv fsc_fs -∗ utext_img (ukn_t N) Img -∗
     fdq r q None -∗
     udepwf_at N m pc USYS_open (file_miss_fam c r q (ukn_pay N)) cw.
   Proof using .
-    intros Heq Hpath Ha0 Hcr Htr Hel Hst. iIntros "#Hinv #Hro Hd".
+    intros Heq Hpath Ha0 Hcr Hel Hst. iIntros "#Hinv #Hro Hd".
     rewrite /udepwf_at. iSplitR; [ iPureIntro; reflexivity | ].
     iIntros (M pm sz fdv gn cs pidv) "#Hmpay Hheap Hufd".
     iDestruct (cons_ro_sub N Img M pm sz with "Hheap Hro") as %Hsro.
@@ -351,7 +355,7 @@ Section UkFileOpen.
     cbn [file_miss_fam xfam_open of_P of_Pmiss of_Farm of_Fun
          of_Fok of_Fex of_Fo of_Ft].
     iApply (file_open_miss_au fsc_fs c r q cw M pv (m !!! Regidx a1_idx) pl
-              _ _ _ _ _ Heq (Hpath M Hsro) Hel Hst Hcr Htr with "Hinv Hd").
+              _ _ _ _ Heq (Hpath M Hsro) Hel Hst Hcr with "Hinv Hd").
   Qed.
 
   Lemma wp_uk_ecall_open_miss_deed (N : uk_names Σ) (h : CpuId) (m : regfile)
@@ -364,7 +368,6 @@ Section UkFileOpen.
     (forall M : gmap Z (bv 8), uimg_sub Img M -> arg_path_of M pv pl) ->
     m !!! Regidx a0_idx = pv ->
     om_create (m !!! Regidx a1_idx) = false ->
-    om_trunc (m !!! Regidx a1_idx) = false ->
     path_elems pl = [fname_f] ->
     um_start_of cw pl = ROOTINO ->
     uinstr_is (ukn_t N) pc false (ECALL tt) -∗
@@ -383,10 +386,10 @@ Section UkFileOpen.
        mWP (Loop : expr riscv_lang)) -∗
     mWP (Loop : expr riscv_lang).
   Proof using .
-    intros Heq Hn Hal4 Hpath Ha0 Hcr Htr Hel Hst.
+    intros Heq Hn Hal4 Hpath Ha0 Hcr Hel Hst.
     iIntros "#Hi #Hro Hrun Hcwd Hstd #Hinv Hd Hcont".
     iDestruct (file_miss_sup N c r q Img pv m pc pl cw Heq Hpath
-                 Ha0 Hcr Htr Hel Hst with "Hinv Hro Hd") as "Hsb".
+                 Ha0 Hcr Hel Hst with "Hinv Hro Hd") as "Hsb".
     iApply (wp_uk_ecall_open_recv_img N h m pc l avail
               (file_miss_fam c r q (ukn_pay N))
               cw Img Hn Hal4 with "Hi Hro Hrun Hcwd Hsb Hstd").
@@ -404,7 +407,7 @@ Section UkFileOpen.
                 of_Fok of_Fex of_Fo of_Ft]) in "Hrc".
     iApply fupd_wp.
     iMod (file_open_miss_recv fsc_fs c r OffParked q cw (uvis_M W) pv
-            (m !!! Regidx a1_idx) pl _ _ (uvis_fd W) rv fdv'
+            (m !!! Regidx a1_idx) pl _ (uvis_fd W) rv fdv'
             (Hpath (uvis_M W) Himg) Hel with "Hrc") as "Hans".
     iModIntro.
     iApply ("Hcont" $! h' rv with "[Hfd Hans] Hcwd Hrun").
@@ -1087,14 +1090,13 @@ Section UkFileOpen.
     (forall M : gmap Z (bv 8), uimg_sub Img M -> arg_path_of M pv pl) ->
     m !!! Regidx a0_idx = pv ->
     om_create (m !!! Regidx a1_idx) = false ->
-    om_trunc (m !!! Regidx a1_idx) = false ->
     path_elems pl = [fname_f] ->
     um_start_of cw pl = ROOTINO ->
     app_inv fsc_fs -∗ uimg_view N Img -∗
     fdq r q None -∗
     udepwf_at N m pc USYS_open (file_miss_fam c r q (ukn_pay N)) cw.
   Proof using .
-    intros Heq Hpath Ha0 Hcr Htr Hel Hst. iIntros "#Hinv #Hro Hd".
+    intros Heq Hpath Ha0 Hcr Hel Hst. iIntros "#Hinv #Hro Hd".
     rewrite /udepwf_at. iSplitR; [ iPureIntro; reflexivity | ].
     iIntros (M pm sz fdv gn cs pidv) "#Hmpay Hheap Hufd".
     iDestruct (uimg_view_sub N Img M pm sz with "Hheap Hro") as %Hsro.
@@ -1108,7 +1110,7 @@ Section UkFileOpen.
     cbn [file_miss_fam xfam_open of_P of_Pmiss of_Farm of_Fun
          of_Fok of_Fex of_Fo of_Ft].
     iApply (file_open_miss_au fsc_fs c r q cw M pv (m !!! Regidx a1_idx) pl
-              _ _ _ _ _ Heq (Hpath M Hsro) Hel Hst Hcr Htr with "Hinv Hd").
+              _ _ _ _ Heq (Hpath M Hsro) Hel Hst Hcr with "Hinv Hd").
   Qed.
 
   Lemma file_create_sup_v (N : uk_names Σ) (omo : offmode) (c : file_fixed) (r : file_names)
@@ -1218,7 +1220,7 @@ Section UkFileOpen.
     iApply fupd_wp.
     iMod (file_open_recv_file fsc_fs c r omo q1 q2 i bs cw (uvis_M W) pv
             (m !!! Regidx a1_idx) pl _ (uvis_fd W) rv fdv'
-            (Hpath (uvis_M W) Himg) Hel Hst with "Hrc") as "Hans".
+            (Hpath (uvis_M W) Himg) Hel Hst Htr with "Hrc") as "Hans".
     iModIntro.
     iApply ("Hcont" $! h' rv with "[Hfd Hans] Hcwd Hrun").
     iDestruct "Hans" as "[(%Hr & %Hfdv & Hd1 & Hd2) | [Hok | #HT]]"; last first.
@@ -1257,7 +1259,6 @@ Section UkFileOpen.
     (forall M : gmap Z (bv 8), uimg_sub Img M -> arg_path_of M pv pl) ->
     m !!! Regidx a0_idx = pv ->
     om_create (m !!! Regidx a1_idx) = false ->
-    om_trunc (m !!! Regidx a1_idx) = false ->
     path_elems pl = [fname_f] ->
     um_start_of cw pl = ROOTINO ->
     uinstr_is (ukn_t N) pc false (ECALL tt) -∗
@@ -1276,10 +1277,10 @@ Section UkFileOpen.
        mWP (Loop : expr riscv_lang)) -∗
     mWP (Loop : expr riscv_lang).
   Proof using .
-    intros Heq Hn Hal4 Hpath Ha0 Hcr Htr Hel Hst.
+    intros Heq Hn Hal4 Hpath Ha0 Hcr Hel Hst.
     iIntros "#Hi #Hro Hrun Hcwd Hstd #Hinv Hd Hcont".
     iDestruct (file_miss_sup_v N c r q Img pv m pc pl cw Heq Hpath
-                 Ha0 Hcr Htr Hel Hst with "Hinv Hro Hd") as "Hsb".
+                 Ha0 Hcr Hel Hst with "Hinv Hro Hd") as "Hsb".
     iApply (wp_uk_ecall_open_recv_gimg N h m pc l avail
               (file_miss_fam c r q (ukn_pay N))
               cw Img Hn Hal4 with "Hi Hro Hrun Hcwd Hsb Hstd").
@@ -1297,7 +1298,7 @@ Section UkFileOpen.
                 of_Fok of_Fex of_Fo of_Ft]) in "Hrc".
     iApply fupd_wp.
     iMod (file_open_miss_recv fsc_fs c r OffParked q cw (uvis_M W) pv
-            (m !!! Regidx a1_idx) pl _ _ (uvis_fd W) rv fdv'
+            (m !!! Regidx a1_idx) pl _ (uvis_fd W) rv fdv'
             (Hpath (uvis_M W) Himg) Hel with "Hrc") as "Hans".
     iModIntro.
     iApply ("Hcont" $! h' rv with "[Hfd Hans] Hcwd Hrun").
@@ -1496,7 +1497,6 @@ Section UkFileOpen.
     (forall M : gmap Z (bv 8), uimg_sub Img M -> arg_path_of M pv pl) ->
     m !!! Regidx a0_idx = pv ->
     om_create (m !!! Regidx a1_idx) = false ->
-    om_trunc (m !!! Regidx a1_idx) = false ->
     path_elems pl = [fname_f] ->
     um_start_of cw pl = ROOTINO ->
     uinstr_is (ukn_t N) pc false (ECALL tt) -∗
@@ -1515,10 +1515,10 @@ Section UkFileOpen.
        mWP (Loop : expr riscv_lang)) -∗
     mWP (Loop : expr riscv_lang).
   Proof using .
-    intros Heq Hn Hal4 Hpath Ha0 Hcr Htr Hel Hst.
+    intros Heq Hn Hal4 Hpath Ha0 Hcr Hel Hst.
     iIntros "#Hi #Hdi Hrun Hcwd Hstd #Hinv Hd Hcont".
     iApply (wp_uk_ecall_open_miss_deed_v N h m pc l avail c r q cw Img pv pl
-              Heq Hn Hal4 Hpath Ha0 Hcr Htr Hel Hst
+              Heq Hn Hal4 Hpath Ha0 Hcr Hel Hst
               with "Hi [] Hrun Hcwd Hstd Hinv Hd Hcont").
     iApply (uimg_view_data N Img with "Hdi").
   Qed.

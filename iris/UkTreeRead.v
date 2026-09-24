@@ -154,6 +154,7 @@ Section UkTreeRead.
       (sts : list fdstate) (r : mword 64) (fdv' : list fdstate) :
     pin_resolves_abs Pin cw pl hops ino (AFile bs) ->
     arg_path_of M pv pl ->
+    om_trunc vom = false ->
     open_receipt_plain OffParked (fs_gamma_L γfs) γfs cw M pv vom
       (pobs_P T hops) (pobs_Pmiss T) (pobs_Fo Pin T) Ft sts r fdv' -∗
       (* the walk missed, or the call failed after it: nothing moved *)
@@ -165,11 +166,13 @@ Section UkTreeRead.
        (* ...or the application is tainted *)
        ∨ T).
   Proof using .
-    intros Hres Hpath. iIntros "Hrc". rewrite /open_receipt_plain.
+    intros Hres Hpath Htr. iIntros "Hrc". rewrite /open_receipt_plain.
     iDestruct "Hrc" as "[(%Hr & %Hfd & _) | Hok]".
     { iLeft. iPureIntro. exact (conj Hr Hfd). }
     iDestruct "Hok" as (pl' av i) "(%Hpath' & HP & Harm)".
     rewrite (arg_path_of_uniq M pv pl' pl Hpath' Hpath).
+    (* no O_TRUNC, so the cursor is whole ([SpecSysOpen.cur_kept]) *)
+    iEval (rewrite /cur_kept Htr) in "HP".
     iDestruct "Harm" as "[Hdev | [Hfile | Hdir]]".
     - (* DEVICE: refuted at a file pin *)
       iDestruct "Hdev" as (ma mi nl) "(%Hrow & _ & Hrecv & _ & _)".
@@ -207,7 +210,8 @@ Section UkTreeRead.
      from the caller's persistent view of its own rodata. *)
   Definition tree_open_fam (T : iProp Σ) (Pin : aview -> Prop)
       (hops : list Z) (Q : Z -> iProp Σ) : sfam :=
-    xfam_open OffParked (pobs_P T hops) (pobs_Pmiss T) (pobs_Fo Pin T) Q.
+    xfam_open OffParked (pobs_P T hops) (pobs_Pmiss T) (pobs_Fo Pin T)
+      (pfam_triv (fun (_ : aview) (_ : Z) (_ : list (bv 8)) => True%I)) Q.
 
   Lemma tree_open_sup (N : uk_names Σ) (c : tree_fixed) (r : tree_names)
       (g : gname) (root d i : Z) (t : ttree) (bs : list (bv 8))
@@ -360,7 +364,7 @@ Section UkTreeRead.
                  (tree_taint c) cw pl (resolve_hops t d pl) i bs
                  (uvis_M W) pv (m !!! Regidx a1_idx) _ (uvis_fd W) rv fdv'
                  (tree_pin_resolves_file root d i t bs cw pl Hp Hstart Hd Hres)
-                 (Hpath (uvis_M W) Himg) with "Hrc") as "Hans".
+                 (Hpath (uvis_M W) Himg) Htr with "Hrc") as "Hans".
     iApply ("Hcont" $! h' rv with "[Hfd Hans] Hcwd Hrun").
     iDestruct "Hans" as "[[%Hr %Hfdv] | [Hok | #HT]]"; last first.
     { (* the taint: whatever the ledger arm is, SOME ledger comes back *)

@@ -828,8 +828,6 @@ Section UkCatDeed.
                ltac:(vm_compute; discriminate)). }
     assert (Hcr : om_create (m1 !!! Regidx a1_idx) = false)
       by (rewrite Ha1r; vm_compute; reflexivity).
-    assert (Htr : om_trunc (m1 !!! Regidx a1_idx) = false)
-      by (rewrite Ha1r; vm_compute; reflexivity).
     assert (Hnum : usysno m1 = USYS_open).
     { unfold m1, usysno.
       rewrite (upd_eq m (Regidx a7_idx) (mword_of_int 15 : mword 64)).
@@ -841,7 +839,7 @@ Section UkCatDeed.
     iDestruct (uis_cat_3ee with "Hcode") as "#Hi3ee".
     iPoseProof (wp_uk_ecall_open_miss_deed_d N h1 m1 (mword_of_int 0x3ee) l
                   avail c r q cw Img pv pl Heq Hnum Hal4 Hpath
-                  Ha0r Hcr Htr Hel Hst)
+                  Ha0r Hcr Hel Hst)
       as "Hleaf".
     iApply ("Hleaf" with "Hi3ee Hdi Hrun Hcwd Hstd Hinv Hd").
     assert (E1open : add_vec_int (mword_of_int 0x3ee : mword 64) 4

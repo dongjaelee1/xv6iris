@@ -404,29 +404,47 @@ Section UkFileDev.
   (*  3.  THE READ                                                        *)
   (* =================================================================== *)
 
-  (* [ei_read] at a HELD tail handle on the deed's inum.  The hole hands
-     the buffer; the deed leaf answers [ard_count n p |content|] bytes,
-     exactly the content's from [p]: that chunk is [chunk_ok], and the
-     device is at [p + count].  The leaf has no [-1] arm at a buffer the
-     caller owns; its TAINT arm (header, item 1) is the second
-     continuation. *)
-  Lemma file_read (fd : nat) (wb : bool) (i : Z) (γo : gname) (q : Qp)
+  (* the ledger's agreement with the key's table at a standard slot -- the
+     read walk's premise, as [UkReadRows.ufd_key_agree] is it at a tail
+     handle *)
+  Lemma fdev_ustd_key_agree (l : list fdstate) (fd : nat) (st : fdstate)
+      (v0 : mword 64) (fdv : list fdstate) :
+    bv_signed (trunc32 v0) = Z.of_nat fd -> (fd < NSTD)%nat -> l !! fd = Some st ->
+    ufd_auth γfd fdv -∗ UserFd.ustd γfd l -∗ ⌜fd_st_of_key v0 fdv = st⌝.
+  Proof using .
+    intros H0 Hs Hl. iIntros "Ha Hstd".
+    iDestruct (UserFd.ustd_agree with "Ha Hstd") as %Hst. iPureIntro.
+    apply (uk_fd_st_of_key v0 fdv fd st H0 ltac:(unfold NSTD, NOFILE in *; lia)).
+    rewrite <- (lookup_take fdv NSTD fd Hs). by rewrite Hst.
+  Qed.
+
+  (* [ei_read] at a HELD descriptor on the deed's inum, at ANY handle [D]
+     that names its state against the key's table: the tail handle
+     ([file_read]) or the ledger at a standard slot ([file_read_std]).
+     The hole hands the buffer; the deed leaf answers
+     [ard_count n p |content|] bytes, exactly the content's from [p]: that
+     chunk is [chunk_ok], and the device is at [p + count].  The leaf has
+     no [-1] arm at a buffer the caller owns; its TAINT arm (header,
+     item 1) is the second continuation. *)
+  Lemma file_read_at (D : iProp Σ) (fd : nat) (wb : bool) (i : Z) (γo : gname) (q : Qp)
       (jo : option Z) (content S : list (bv 8)) (n : nat)
       (K : rd_ans -> iProp Σ) :
     (fd < NOFILE)%nat -> (0 < n)%nat ->
+    (forall (v0 : mword 64) (fdv : list fdstate),
+       bv_signed (trunc32 v0) = Z.of_nat fd ->
+       ufd_auth γfd fdv -∗ D -∗
+       ⌜fd_st_of_key v0 fdv = FdOpen true wb (FdInode i γo OffHeld)⌝) ->
     □ (app_taint -∗ file_taint c) -∗ □ (file_taint c -∗ app_taint) -∗
     file_cons_cred c r jo -∗ app_inv fsc_fs -∗
-    UserFd.ufd γfd fd (FdOpen true wb (FdInode i γo OffHeld)) -∗
+    D -∗
     file_in i γo q content S -∗
     ((∀ cb S' : list (bv 8), ⌜chunk_ok n S cb S'⌝ -∗
-        UserFd.ufd γfd fd (FdOpen true wb (FdInode i γo OffHeld)) -∗
-        file_in i γo q content S' -∗ K (RdBytes cb))
+        D -∗ file_in i γo q content S' -∗ K (RdBytes cb))
      ∧ (∀ x : rd_ans, file_taint c -∗
-        UserFd.ufd γfd fd (FdOpen true wb (FdInode i γo OffHeld)) -∗
-        file_in i γo q content S -∗ K x)) -∗
+        D -∗ file_in i γo q content S -∗ K x)) -∗
     rd_obl N P (Z.of_nat fd) n K.
   Proof using Heq Hsr.
-    intros Hfdlt Hn0.
+    intros Hfdlt Hn0 Hag.
     iIntros "#Hbr #Hrb #Hm #Hinv Hh Hin HK".
     iIntros (h m avail a f) "%Ha0 %Ha1 %Ha2 Hcode Hbuf Hrun Hcont".
     iDestruct "Hin" as (p) "(%HS & Hu & Hd)".
@@ -462,10 +480,10 @@ Section UkFileDev.
                      2 = true)
       by (rewrite E6; exact Al6).
     iEval (rewrite <- Hua) in "Hbuf".
-    iPoseProof (wp_uk_read_deed_learns_held N h1 m1
+    iPoseProof (wp_uk_read_deed_learns_held_at N h1 m1
                   (mword_of_int (up_read P + 2)) (Z.of_nat n) n f avail
-                  fd wb i γo c r q jo content p Heq Hnum Hcnt Hcnt0 Hcapk
-                  Ha0r Hfdlt Hal4) as "Hleaf".
+                  fd wb i γo c r q jo content p D Heq Hnum Hcnt Hcnt0 Hcapk
+                  Hal4 (fun fdv => Hag (m1 !!! Regidx a0_idx) fdv Ha0r)) as "Hleaf".
     iApply ("Hleaf" with "Hbr Hrb Hi Hrun Hh Hm Hinv Hd Hu Hbuf").
     iIntros (h2 rv gb) "Hh %Hbnd Hans Hrun Hbuf".
     rewrite Nat2Z.id in Hbnd.
@@ -497,6 +515,52 @@ Section UkFileDev.
     iApply ("HK" $! _ (drop (p + k) content) with "[%] Hh [Hu Hd]").
     { rewrite HS Hk. apply fdev_chunk_ok. exact Hn0. }
     iExists (p + k)%nat. iFrame "Hu Hd". done.
+  Qed.
+
+  (* ...at the tail handle *)
+  Lemma file_read (fd : nat) (wb : bool) (i : Z) (γo : gname) (q : Qp)
+      (jo : option Z) (content S : list (bv 8)) (n : nat)
+      (K : rd_ans -> iProp Σ) :
+    (fd < NOFILE)%nat -> (0 < n)%nat ->
+    □ (app_taint -∗ file_taint c) -∗ □ (file_taint c -∗ app_taint) -∗
+    file_cons_cred c r jo -∗ app_inv fsc_fs -∗
+    UserFd.ufd γfd fd (FdOpen true wb (FdInode i γo OffHeld)) -∗
+    file_in i γo q content S -∗
+    ((∀ cb S' : list (bv 8), ⌜chunk_ok n S cb S'⌝ -∗
+        UserFd.ufd γfd fd (FdOpen true wb (FdInode i γo OffHeld)) -∗
+        file_in i γo q content S' -∗ K (RdBytes cb))
+     ∧ (∀ x : rd_ans, file_taint c -∗
+        UserFd.ufd γfd fd (FdOpen true wb (FdInode i γo OffHeld)) -∗
+        file_in i γo q content S -∗ K x)) -∗
+    rd_obl N P (Z.of_nat fd) n K.
+  Proof using Heq Hsr.
+    intros Hfdlt Hn0.
+    apply (file_read_at (UserFd.ufd γfd fd (FdOpen true wb (FdInode i γo OffHeld)))
+             fd wb i γo q jo content S n K Hfdlt Hn0).
+    intros v0 fdv H0. exact (UkReadRows.ufd_key_agree N fd _ v0 H0 Hfdlt fdv).
+  Qed.
+
+  (* ...and at a STANDARD slot the ledger names: an input whose open
+     landed in a closed standard slot (lane leaf-payers) *)
+  Lemma file_read_std (fd : nat) (l : list fdstate) (wb : bool) (i : Z) (γo : gname)
+      (q : Qp) (jo : option Z) (content S : list (bv 8)) (n : nat)
+      (K : rd_ans -> iProp Σ) :
+    (fd < NSTD)%nat -> l !! fd = Some (FdOpen true wb (FdInode i γo OffHeld)) ->
+    (0 < n)%nat ->
+    □ (app_taint -∗ file_taint c) -∗ □ (file_taint c -∗ app_taint) -∗
+    file_cons_cred c r jo -∗ app_inv fsc_fs -∗
+    UserFd.ustd γfd l -∗
+    file_in i γo q content S -∗
+    ((∀ cb S' : list (bv 8), ⌜chunk_ok n S cb S'⌝ -∗
+        UserFd.ustd γfd l -∗ file_in i γo q content S' -∗ K (RdBytes cb))
+     ∧ (∀ x : rd_ans, file_taint c -∗
+        UserFd.ustd γfd l -∗ file_in i γo q content S -∗ K x)) -∗
+    rd_obl N P (Z.of_nat fd) n K.
+  Proof using Heq Hsr.
+    intros Hs Hl Hn0.
+    apply (file_read_at (UserFd.ustd γfd l) fd wb i γo q jo content S n K
+             ltac:(unfold NSTD, NOFILE in *; lia) Hn0).
+    intros v0 fdv H0. exact (fdev_ustd_key_agree l fd _ v0 fdv H0 Hs Hl).
   Qed.
 
   (* =================================================================== *)
@@ -804,6 +868,59 @@ Section UkFileDev.
     iApply ("HK" with "Hd").
   Qed.
 
+  (* ...AND THE STANDARD-SLOT TWINS (lane leaf-payers): the ledger is the
+     handle ([UkRunSys.wp_uk_ecall_close_std]), the slot goes to
+     [FdClosed] and the ledger comes back with it.  A program at the file
+     interface may close a standard stream, and a later open of `f` then
+     lands in that slot ([file_open_present]'s [ualloc] arm). *)
+  Lemma file_close_std (fd : nat) (l : list fdstate) (st : fdstate) (K : Z -> iProp Σ) :
+    (fd < NSTD)%nat -> l !! fd = Some st -> st <> FdClosed -> fdst_nopipe st ->
+    UserFd.ustd γfd l -∗ (UserFd.ustd γfd (<[fd := FdClosed]> l) -∗ K 0) -∗
+    cl_obl N P (Z.of_nat fd) K.
+  Proof using Hsc.
+    intros Hs Hl Hne Hnp. iIntros "Hstd HK" (h m avail) "%Ha0 Hcode Hrun Hcont".
+    set (m1 := <[Regidx a7_idx := (mword_of_int 21 : mword 64)]> m).
+    assert (Ha0r : bv_signed (trunc32 (m1 !!! Regidx a0_idx)) = Z.of_nat fd).
+    { unfold m1. rewrite (upd_ne m (Regidx a7_idx) (Regidx a0_idx) _
+                            ltac:(vm_compute; discriminate)).
+      exact Ha0. }
+    assert (Hnum : usysno m1 = USYS_close).
+    { unfold m1, usysno.
+      rewrite (upd_eq m (Regidx a7_idx) (mword_of_int 21 : mword 64)).
+      vm_compute; reflexivity. }
+    iPoseProof Hsc as "#Hs".
+    iApply ("Hs" $! h m avail with "Hcode Hrun").
+    iIntros (h1) "%E6 %Al6 #Hi Hrun Hret".
+    assert (Hal4 : is_aligned_vaddr
+                     (Virtaddr (add_vec_int (mword_of_int (up_close P + 2) : mword 64) 4))
+                     2 = true)
+      by (rewrite E6; exact Al6).
+    iApply (wp_uk_ecall_close_std N h1 m1 (mword_of_int (up_close P + 2)) l fd st avail
+              Hnum Ha0r Hs Hl Hne Hal4 with "Hi Hrun [] Hstd").
+    { iApply (udepw_cl_nopipe N m1 _ st Hnp). }
+    iIntros (h2 ret) "%Hr0 Hstd Hrun".
+    iEval (rewrite E6) in "Hrun".
+    iApply ("Hret" $! h2 ret with "Hrun").
+    iIntros (h3) "Hrun".
+    assert (Hs0 : bv_signed ret = 0).
+    { rewrite uint_unsigned in Hr0. rewrite fdev_signed_small; [ exact Hr0 | ].
+      rewrite Hr0. split; [ lia | vm_compute; reflexivity ]. }
+    iApply ("Hcont" $! h3 ret with "[HK Hstd] Hrun"). rewrite Hs0.
+    iApply ("HK" with "Hstd").
+  Qed.
+
+  Lemma file_close_in_std (fd : nat) (l : list fdstate) (wb : bool) (i : Z) (γo : gname)
+      (q : Qp) (content S : list (bv 8)) (K : Z -> iProp Σ) :
+    (fd < NSTD)%nat -> l !! fd = Some (FdOpen true wb (FdInode i γo OffHeld)) ->
+    UserFd.ustd γfd l -∗ file_in i γo q content S -∗
+    (UserFd.ustd γfd (<[fd := FdClosed]> l) -∗ fdq r q (Some (i, content)) -∗ K 0) -∗
+    cl_obl N P (Z.of_nat fd) K.
+  Proof using Hsc.
+    intros Hs Hl. iIntros "Hstd Hin HK". iDestruct "Hin" as (p) "(_ & _ & Hd)".
+    iApply (file_close_std fd l _ K Hs Hl ltac:(discriminate) I with "Hstd [HK Hd]").
+    iIntros "Hstd". iApply ("HK" with "Hstd Hd").
+  Qed.
+
   (* =================================================================== *)
   (*  6.  THE OPEN OF `f`                                                 *)
   (* =================================================================== *)
@@ -834,9 +951,10 @@ Section UkFileDev.
       change (Z.of_nat 1) with 1. iFrame "Hn".
   Qed.
 
-  (* [ei_open] for `f` at a PRESENT deed, read-only (mode 0): a descriptor
-     ABOVE the standard streams ([fd_lowest_closed l = None], as cat
-     carries it) as a fresh held tail handle with the input device at the
+  (* [ei_open] for `f` at a PRESENT deed, read-only (mode 0): the
+     descriptor the kernel's allocation names ([UserFd.ualloc], read by the
+     caller's own ledger: the lowest closed standard slot, or a fresh held
+     tail handle when all three are open) with the input device at the
      whole content (offset 0) -- or the kernel's -1 with everything back
      -- or, tainted (header, item 1), the ledger's arm and nothing about
      the deed.  The three continuations are ADDITIVE: the kernel picks.
@@ -844,14 +962,13 @@ Section UkFileDev.
      in ghost state only once the kernel has named the descriptor. *)
   Lemma file_open_present (l : list fdstate) (cw : Z) (q1 q2 : Qp) (i : Z)
       (content : list (bv 8)) (K : Z -> iProp Σ) :
-    fd_lowest_closed l = None ->
     cw = FsImg.ROOTINO ->
     app_inv fsc_fs -∗
     UserFd.ustd γfd l -∗ UserCwd.ucwd (ukn_cwd N) cw -∗
     fdq r q1 (Some (i, content)) -∗ fdq r q2 (Some (i, content)) -∗
-    ((∀ (fd : nat) (γo : gname), ⌜(NSTD <= fd < NOFILE)%nat⌝ -∗
-        UserFd.ustd γfd l -∗ UserCwd.ucwd (ukn_cwd N) cw -∗
-        UserFd.ufd γfd fd (FdOpen true false (FdInode i γo OffHeld)) -∗
+    ((∀ (fd : nat) (γo : gname), ⌜(fd < NOFILE)%nat⌝ -∗
+        UserFd.ualloc γfd l fd (FdOpen true false (FdInode i γo OffHeld)) -∗
+        UserCwd.ucwd (ukn_cwd N) cw -∗
         file_in i γo q2 content content -∗ fdq r q1 (Some (i, content)) -∗
         |==> K (Z.of_nat fd))
      ∧ (UserFd.ustd γfd l -∗ UserCwd.ucwd (ukn_cwd N) cw -∗
@@ -862,7 +979,7 @@ Section UkFileDev.
         K (bv_signed ret))) -∗
     op_obl N P fname_f 0 K.
   Proof using Heq Hso.
-    intros Hnone Hcw.
+    intros Hcw.
     iIntros "#Hinv Hstd Hcwd Hd1 Hd2 HK".
     iIntros (h m avail pv tx f) "%Hf %Ha0 %Ha1 Hcode Hp Hrun Hcont".
     change (length fname_f) with 1%nat.
@@ -915,16 +1032,15 @@ Section UkFileDev.
       { left. rewrite Hr. exact fdev_m1. }
       rewrite Hr fdev_m1. iDestruct "HK" as "[_ [HK _]]".
       iApply ("HK" with "Hstd Hcwd Hd1 Hd2").
-    - (* a descriptor, above the standard streams, on the deed's inum *)
+    - (* a descriptor, wherever the ledger says it landed, on the deed's inum *)
       iDestruct "Hok" as (fd γo) "(%Hr & Hal & Hpub & Hd1 & Hd2)".
       destruct Hr as [Hr Hfdlt].
-      iDestruct (ualloc_hi γfd l fd _ Hnone with "Hal") as "(%Hhi & Hstd & Hh)".
       assert (Hsig : bv_signed rv = Z.of_nat fd).
       { rewrite Hr. apply bvs_moi_small. unfold NOFILE in Hfdlt.
         assert (E : (2 ^ 63 = 9223372036854775808)%Z) by (vm_compute; reflexivity).
         lia. }
       iDestruct "HK" as "[HK _]".
-      iMod ("HK" $! fd γo with "[%] Hstd Hcwd Hh [Hpub Hd2] Hd1") as "HK"; [ lia | | ].
+      iMod ("HK" $! fd γo with "[%] Hal Hcwd [Hpub Hd2] Hd1") as "HK"; [ exact Hfdlt | | ].
       { iExists 0%nat. rewrite drop_0 /foff_pub. iFrame "Hpub Hd2". done. }
       iApply ("Hcont" $! h3 rv with "[%] [HK] Hp Hrun").
       { right. rewrite Hsig. split; [ lia | exact Hr ]. }

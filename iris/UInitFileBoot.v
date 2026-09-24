@@ -115,6 +115,7 @@ Require Import UInitFileCons.      (* the claim's readings, the boot filing *)
 Require Import UInitConsFile.      (* the console dance's file leaves *)
 Require Import UShRound.           (* the round *)
 Require Import UInitFileCC.        (* [file_cc], its laws, the supply *)
+Require UkFileIface.               (* [fifRegG]: the binder below needs it in scope *)
 Require FsImg.
 Require InodeInv.
 
@@ -126,6 +127,7 @@ Section FileInitBoot.
   Context `{!inG Σ (mono_listR (leibnizO Z))}.
   Context `{!echoOutG Σ}.
   Context `{!fileAppG Σ, !fileOutG Σ}.
+  Context `{HfifR : !UkFileIface.fifRegG Σ}.
 
   (* SEALED, as [UInitFileCC.v] / [UInitPipe.v]: a [Persistent]/[IntoWand]
      search on [sh_pay_at] descends into [ush_rest_l_at]'s wand tower. *)
@@ -159,7 +161,7 @@ Section FileInitBoot.
     ⊢ app_inv fsc_fs -∗ file_boot (fgn_cl g) (S gen_id) r -∗
       fturn g (S gen_id) -∗
       |==> init_boot_bundle (bv_unsigned InodeInv.ROOTINO) fdt0.
-  Proof using HU.
+  Proof using HU HfifR.
     intros Heq Hiface.
     (* the three projections, off the one equation *)
     assert (Htag : @riscv_rx_tag Σ (@riscv_fixedGS Σ HR) = ftag g)

@@ -87,6 +87,7 @@ Require Import App.                      (* [app_names] / [app_pred] / [app_boot
 Require Import UFileBootAdequacy.        (* [file_prog_law], [fileΣ] *)
 Require Import AppFileRec.               (* [app_file]'s projections *)
 Require Import UInitFileBoot.            (* [file_Hinit_boot_at]: the assembly *)
+Require UkFileIface.                     (* [fifRegG]: the binder below needs it in scope *)
 Local Open Scope Z_scope.
 
 Section UInitFile.
@@ -96,6 +97,7 @@ Section UInitFile.
   Context `{HU : !ufdG Σ}.
   Context `{!echoOutG Σ, !inG Σ (mono_listR (leibnizO Z)), !fileAppG Σ,
             !fileOutG Σ}.
+  Context `{HfifR : !UkFileIface.fifRegG Σ}.
 
   (* THE LAW, BY ITS NAME AND NOT BY A COPY OF ITS TEXT.  A restatement
      would be a second thing to keep in step with [App.xv6_app_laws]'s
@@ -103,7 +105,7 @@ Section UInitFile.
      corollary below a one-liner.  The body is [UInitFileBoot.
      file_Hinit_boot_at] at the record's own two equations. *)
   Theorem file_Hinit_boot : file_prog_law (Σ := Σ).
-  Proof using HU.
+  Proof using HU HfifR.
     intros HR GEN HBs HFd HIr HPav HWc HF c r Heq Hiface Hgen.
     cbn [app_file app_names app_pred app_ifc] in Heq, Hiface.
     iIntros "#Hinv Hb Hturn".

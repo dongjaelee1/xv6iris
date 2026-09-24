@@ -96,6 +96,7 @@ Require Import AppFile.            (* [fileAppG] / [fileAppSig] *)
 Require Import EchoOut.            (* [echoOutG] / [echoOutSig] *)
 Require Import FileOut.            (* [fileOutG] / [fileOutSig] *)
 Require Import AppFileRec.         (* [app_file] and its ten discharged laws *)
+Require UkFileIface.               (* [fifRegSig]: the tree route's device registry *)
 
 Local Open Scope Z_scope.
 
@@ -238,6 +239,7 @@ Definition fileΣ : gFunctors :=
    ; fileLineΣ           (* the shell's line-choice list                   *)
    ; fileAppΣ            (* the deed and the typed-line list               *)
    ; fileOutΣ            (* the per-era boot-state map and its bound       *)
+   ; UkFileIface.fifRegΣ (* the tree route's device registry              *)
    ].
 
 Corollary file_adequacy_fileΣ

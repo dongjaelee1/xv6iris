@@ -503,8 +503,17 @@ that truncates to 0 makes `pipewrite` answer 0 even at a halted pipe --
 so `cf_write_halt`/`cf_write_copy_halt` and the two halt laws take
 `|bs| < 2^31` (echo's halted path carries the line bound; cat never
 writes to a halted copy device).  `pif_refused` and `Href_*` are gone:
-BOTH INSTANCES HAVE NO SECTION HYPOTHESES.  NEXT: the repoint (design
-SS3.4g; the file sites in flight on lane/repoint).  The
+BOTH INSTANCES HAVE NO SECTION HYPOTHESES.  REPOINT-FILE LANDED (050dd10a8, VM rpfmerge1 EXIT=0, audits
+13/13/14/14; `file_adequacy_closed` now rests on the tree route with the
+same 14 axioms): `UShRound`'s redirect (`efile_image_entry_of_tree`),
+`cat f` (`cat_child_of_entry_of_tree`, content bound from `f_typed`)
+and echo at the console (new `echo_exec_sup_file` over
+`echo_cons_image_entry_of_tree`, bridge `fpost_of_gwc`: `lk_post` uses
+`lm_ab`, `gwc_post` `lm_abs`) call the corollaries; `Hchild_echo`/
+`sh_child_law_file` gained `∃ jo, file_cons_cred`; `fifRegG` threaded
+to `fileΣ`.  THE FILE APPLICATION'S ECHO AND CAT ARE NOW PROVED ONCE,
+by their trees.  NEXT: the pipeline's sites (lane/repoint-pipe, in
+flight), then the sweeps.  The
 pipeline's CONSOLE device LANDED (lane/pcons 246f51ca4, design SS3.4d:
 `UkConsOut` split into a claim-free core and a `gen_params` instance,
 `UkPipeConsOut.v` with the single-writer and the `popen` devices).

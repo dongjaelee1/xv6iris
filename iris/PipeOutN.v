@@ -870,4 +870,187 @@ Section pipes_out_n.
         intro Hq. by destruct (app_eq_nil _ _ Hq) as [_ Hq2].
     - iLeft. rewrite Hcs0. iFrame "Ht Hpslb Hcslb2 Hilb".
   Qed.
+
+  (* ================================================================= *)
+  (*  3.  THE FAMILY'S CREDENTIAL, AND THE ONE OBLIGATION               *)
+  (* ================================================================= *)
+
+  (* the round's line *)
+  Definition lineN (I : list (bv 8)) : pline' :=
+    lm_of PM (bodies_of I !!! (nlines I - 1)%nat).
+
+  (* the writer's stage at a block: [LineModel.lm_wr_blk] *)
+  Definition wr_blkN (ps cs : list nat) (I : list (bv 8)) (P : nat) : Prop :=
+    lm_wr_blk PM ps cs tt I P.
+
+  (* THE ROUND'S LEDGER, as the family holds it: nothing before the first
+     byte, the writer's half and the ledger's bound after *)
+  Definition pledN (k : nat) (I pre : list (bv 8)) (tm : bool) : iProp Σ :=
+    (⌜pre = []⌝ ∨ ∃ (w : pipe_era) (gb : gname),
+        pera_pin g k w ∗ cur_half w (1/2) (nlines I - 1)%nat gb tm ∗ rblk_lb gb pre)%I.
+
+  (* THE CREDENTIAL [PipeBothN]'s family is parameterised by: the landed
+     [PipeBoth.pwc_blk2] read at the MERGED BYTES, whoever wrote them *)
+  Definition pwc_blkN (v : era_pins) (I : list (bv 8)) (k : nat)
+      (pre : list (bv 8)) (tm : bool) : iProp Σ :=
+    ((∃ (ps cs : list nat) (P : nat),
+        ⌜wr_blkN ps cs I P⌝ ∗ era_pin γ k v ∗ turn v (P + length pre)%nat
+        ∗ ps_lb v ps ∗ cs_lb v cs ∗ pledN k I pre tm ∗ inp_lb v I) ∨ T)%I.
+
+  Global Instance pwc_blkN_timeless v I k pre tm : Timeless (pwc_blkN v I k pre tm).
+  Proof using . rewrite /pwc_blkN /pledN. apply _. Qed.
+
+  (* what a terminal byte hands its writer *)
+  Definition ptkN (v : era_pins) (I : list (bv 8)) (k : nat) : iProp Σ :=
+    (cs_frozen_at v (nlines I - 1)%nat ∨ T)%I.
+
+  Global Instance ptkN_persistent v I k : Persistent (ptkN v I k).
+  Proof using . rewrite /ptkN. apply _. Qed.
+
+  (* WHAT THE CLAIM ASKS OF A BLOCK at the flag [tm]: an admitted,
+     non-panicking alternative of the round's line, coverage-ending
+     exactly at [tm], whose continuation the block is a prefix of, and
+     '$'-free unless the round is terminal *)
+  Definition pwitN (I : list (bv 8)) (tm : bool) (pre : list (bv 8)) : Prop :=
+    exists a : nat,
+      lm_ok PM (lineN I) (lm_dec PM a)
+      /\ lm_panic PM (lm_dec PM a) = false
+      /\ lm_term PM (lm_dec PM a) = tm
+      /\ pre `prefix_of` lm_cont PM tt (lineN I) (lm_dec PM a)
+      /\ (tm = false -> Forall nodollar pre).
+
+  (* THE ENTRY: the lend a round's writer holds before the block's first
+     byte is the credential at the empty block *)
+  Lemma pwc_blkN_entry (v : era_pins) (I : list (bv 8)) (k : nat)
+      (ps cs : list nat) (P : nat) :
+    wr_blkN ps cs I P ->
+    era_pin γ k v -∗ turn v P -∗ ps_lb v ps -∗ cs_lb v cs -∗ inp_lb v I -∗
+    pwc_blkN v I k [] false.
+  Proof using .
+    intros Hw. iIntros "#Hpin Ht #Hps #Hcs #HE". rewrite /pwc_blkN. iLeft.
+    iExists ps, cs, P. iFrame "Hpin Hps Hcs HE".
+    iSplitR; [by iPureIntro |]. cbn [length]. rewrite Nat.add_0_r. iFrame "Ht".
+    rewrite /pledN. by iLeft.
+  Qed.
+
+  (* THE CLAIM PAYS THE FAMILY'S ONE OBLIGATION: the first byte opens the
+     round, every further byte (any writer's) appends to its ledger *)
+  Theorem pblkN_ecl_holds (v : era_pins) (I : list (bv 8)) :
+    ⊢ eclN pecl' (pwc_blkN v I) (ptkN v I) (pwitN I).
+  Proof using K.
+    rewrite /eclN. iModIntro.
+    iIntros (k ho H pre b tm tm' Htmt Hwit) "Hpw Hcl".
+    destruct Hwit as (a & Hok & Hpan & Hterm & Hpref & Hnd).
+    iDestruct "Hpw" as "[Hx | #HT]"; last first.
+    { iModIntro. iSplitR; [by iApply pecl'_taint |].
+      iSplitR; [rewrite /pwc_blkN; by iRight | iRight; rewrite /ptkN; by iRight]. }
+    iDestruct "Hx" as (ps cs P) "(%Hw & #Hpin & Htn & #Hps & #Hcs & Hled & #HE)".
+    pose proof Hw as (Hpp & Hr & Hn & HP).
+    assert (Hne : I <> []) by (intros ->; rewrite nlines_nil in Hn; lia).
+    iDestruct "Hled" as "[%Hnil | Hled]".
+    - (* THE BLOCK'S FIRST BYTE: the round opens *)
+      subst pre. cbn [app] in Hpref, Hnd |- *.
+      assert (Hb0 : lm_cont PM tt (lineN I) (lm_dec PM a) !! 0%nat = Some b).
+      { destruct Hpref as [z Hz]. rewrite Hz. reflexivity. }
+      assert (Hfarm : (lm_term PM (lm_dec PM a) = false /\ nodollar b)
+                      \/ lm_term PM (lm_dec PM a) = true).
+      { destruct tm'; [by right |]. left. split; [exact Hterm |].
+        exact (proj1 (Forall_singleton _ _) (Hnd eq_refl)). }
+      iMod (pecl'_blkN_open_gen k v P a b ps cs I ho H Hne Hr ltac:(lia) Hpp HP
+              Hok Hpan Hb0 Hfarm with "Hpin [Htn] Hps Hcs HE Hcl") as "(Hcl & Hret)".
+      { cbn [length] in *. rewrite Nat.add_0_r. iExact "Htn". }
+      iModIntro. iFrame "Hcl".
+      iDestruct "Hret" as "[Hx | #HT]"; last first.
+      { iSplitR; [rewrite /pwc_blkN; by iRight | iRight; rewrite /ptkN; by iRight]. }
+      iDestruct "Hx" as (w gb) "(Htn & #Hpera & Hcur & #Hrlb & #Hfz & _ & _ & _)".
+      rewrite Hterm.
+      iSplitL "Htn Hcur".
+      + rewrite /pwc_blkN. iLeft. iExists ps, cs, P. iFrame "Hpin Hps Hcs HE".
+        iSplitR; [by iPureIntro |].
+        rewrite (_ : (P + length [b])%nat = S P); [| cbn [length]; lia]. iFrame "Htn".
+        rewrite /pledN. iRight. iExists w, gb. iFrame "Hpera Hcur Hrlb".
+      + iDestruct "Hfz" as "[%Hf | #Hf]"; [by iLeft | iRight; rewrite /ptkN; by iLeft].
+    - (* A FURTHER BYTE, by any writer *)
+      iDestruct "Hled" as (w gb) "(#Hpera & Hcur & #Hrlb)".
+      assert (Hfarm : (lm_term PM (lm_dec PM a) = false /\ Forall nodollar pre
+                       /\ nodollar b) \/ lm_term PM (lm_dec PM a) = true).
+      { destruct tm'; [by right |]. left.
+        pose proof (Hnd eq_refl) as Hall. apply Forall_app in Hall as [H1 H2].
+        split; [exact Hterm | split; [exact H1 |]].
+        exact (proj1 (Forall_singleton _ _) H2). }
+      iMod (pecl'_blkN_byte_gen k v w gb tm P (nlines I - 1)%nat a b pre ps cs I ho H
+              Hne Hr eq_refl ltac:(lia) Hpp HP Hok Hpan Hpref Hfarm
+              with "Hpin Hpera Htn Hcur Hrlb Hps Hcs HE Hcl") as "(Hcl & Hret)".
+      iModIntro. iFrame "Hcl".
+      iDestruct "Hret" as "[(Htn & Hcur & #Hrlb' & #Hfz) | #HT]"; last first.
+      { iSplitR; [rewrite /pwc_blkN; by iRight | iRight; rewrite /ptkN; by iRight]. }
+      assert (Hor : (tm || lm_term PM (lm_dec PM a)) = tm').
+      { rewrite Hterm. destruct tm, tm'; try reflexivity. discriminate (Htmt eq_refl). }
+      rewrite Hor Hterm.
+      iSplitL "Htn Hcur".
+      + rewrite /pwc_blkN. iLeft. iExists ps, cs, P. iFrame "Hpin Hps Hcs HE".
+        iSplitR; [by iPureIntro |].
+        rewrite (_ : (P + length (pre ++ [b]))%nat = S (P + length pre));
+          [| rewrite length_app; cbn [length]; lia].
+        iFrame "Htn". rewrite /pledN. iRight. iExists w, gb. iFrame "Hpera Hcur Hrlb'".
+      + iDestruct "Hfz" as "[%Hf | #Hf]"; [by iLeft | iRight; rewrite /ptkN; by iLeft].
+  Qed.
+
+  (* THE MODEL'S BLOCKS ARE THE CLAIM'S NON-TERMINAL WITNESS: the family's
+     [HWIT] at the pipeline, for a well-formed admitted line *)
+  Lemma pipesN_HWIT (I : list (bv 8)) :
+    fc_ok fc -> adm_ok fc adm -> adm (lineN I) = true -> pl_ok (lineN I) ->
+    forall pre bl, blkN (wids (lcats (lineN I))) (runN fc (lineN I)) bl ->
+      pre `prefix_of` bl -> pwitN I false pre.
+  Proof using .
+    intros Hfc Hadm Ha Hl pre bl Hb Hp.
+    exists (plalt_code (PLRun bl)).
+    cbn [pipes_lm lm_ok lm_panic lm_term lm_cont lm_dec]. rewrite plalt_of_code.
+    split_and!.
+    - exact Ha.
+    - exact (blkN_line_blocks fc _ bl Hb).
+    - reflexivity.
+    - reflexivity.
+    - etrans; [exact Hp |]. by eexists.
+    - intros _. exact (prefix_forall _ _ _ Hp (pipesN_blk_nodollar fc adm _ bl Hfc Hadm Ha Hl Hb)).
+  Qed.
+
+  (* THE FILING, at the credential: once the family has handed the block
+     back ([PipeBothN.blkN_file]), the prompt's first byte files it as the
+     alternative [PLRun pre] -- the landed [pblk2_ecl_file]'s twin *)
+  Lemma pwc_blkN_file (v : era_pins) (I : list (bv 8)) (k : nat) (ho : list mobs)
+      (H : LogEntryDefs.cons_hist) (pre : list (bv 8)) (b : bv 8) :
+    adm (lineN I) = true -> line_blocks fc (lineN I) pre -> pre <> [] ->
+    b = u_prompt !!! 0%nat ->
+    pwc_blkN v I k pre false -∗ pecl' k ho H ==∗
+      pecl' k ho (ConsLog.cons_step H (ConsLog.EvOut b))
+      ∗ ((∃ (ps cs : list nat) (P : nat),
+            ⌜wr_blkN ps cs I P⌝ ∗ turn v (S (P + length pre))%nat
+            ∗ ps_lb v ps ∗ cs_lb v (cs ++ [plalt_code (PLRun pre)]) ∗ inp_lb v I) ∨ T).
+  Proof using K.
+    intros Ha Hbl Hne Hbv. iIntros "Hpw Hcl".
+    iDestruct "Hpw" as "[Hx | #HT]"; last first.
+    { iModIntro. iSplitR; [by iApply pecl'_taint | by iRight]. }
+    iDestruct "Hx" as (ps cs P) "(%Hw & #Hpin & Htn & #Hps & #Hcs & Hled & #HE)".
+    pose proof Hw as (Hpp & Hr & Hn & HP).
+    assert (HneI : I <> []) by (intros ->; rewrite nlines_nil in Hn; lia).
+    iDestruct "Hled" as "[%Hnil | Hled]"; [by destruct (Hne Hnil) |].
+    iDestruct "Hled" as (w gb) "(#Hpera & Hcur & #Hrlb)".
+    assert (Hok : lm_ok PM (lm_of PM (bodies_of I !!! (nlines I - 1)%nat))
+                    (lm_dec PM (plalt_code (PLRun pre)))).
+    { cbn [pipes_lm lm_ok lm_dec]. rewrite plalt_of_code. split; [exact Ha | exact Hbl]. }
+    assert (Hpan : lm_panic PM (lm_dec PM (plalt_code (PLRun pre))) = false).
+    { cbn [pipes_lm lm_panic lm_dec]. by rewrite plalt_of_code. }
+    assert (Hterm : lm_term PM (lm_dec PM (plalt_code (PLRun pre))) = false).
+    { cbn [pipes_lm lm_term lm_dec]. by rewrite plalt_of_code. }
+    assert (Hcont : lm_cont PM tt (lm_of PM (bodies_of I !!! (nlines I - 1)%nat))
+                      (lm_dec PM (plalt_code (PLRun pre))) = pre ++ u_prompt).
+    { cbn [pipes_lm lm_cont lm_dec]. by rewrite plalt_of_code. }
+    iMod (pecl'_blkN_file k v w gb P (nlines I - 1)%nat (plalt_code (PLRun pre)) b pre
+            ps cs I ho H HneI Hr eq_refl ltac:(lia) Hpp HP Hok Hpan Hterm Hcont Hbv
+            with "Hpin Hpera Htn Hcur Hrlb Hps Hcs HE Hcl") as "(Hcl & Hret)".
+    iModIntro. iFrame "Hcl".
+    iDestruct "Hret" as "[(Htn & _ & #Hcs' & _) | #HT]"; [| by iRight].
+    iLeft. iExists ps, cs, P. iFrame "Htn Hps Hcs' HE". by iPureIntro.
+  Qed.
 End pipes_out_n.

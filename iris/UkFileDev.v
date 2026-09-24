@@ -839,7 +839,9 @@ Section UkFileDev.
      carries it) as a fresh held tail handle with the input device at the
      whole content (offset 0) -- or the kernel's -1 with everything back
      -- or, tainted (header, item 1), the ledger's arm and nothing about
-     the deed.  The three continuations are ADDITIVE: the kernel picks. *)
+     the deed.  The three continuations are ADDITIVE: the kernel picks.
+     The handle's arm ends in an UPDATE: a payer can name the new device
+     in ghost state only once the kernel has named the descriptor. *)
   Lemma file_open_present (l : list fdstate) (cw : Z) (q1 q2 : Qp) (i : Z)
       (content : list (bv 8)) (K : Z -> iProp Σ) :
     fd_lowest_closed l = None ->
@@ -851,7 +853,7 @@ Section UkFileDev.
         UserFd.ustd γfd l -∗ UserCwd.ucwd (ukn_cwd N) cw -∗
         UserFd.ufd γfd fd (FdOpen true false (FdInode i γo OffHeld)) -∗
         file_in i γo q2 content content -∗ fdq r q1 (Some (i, content)) -∗
-        K (Z.of_nat fd))
+        |==> K (Z.of_nat fd))
      ∧ (UserFd.ustd γfd l -∗ UserCwd.ucwd (ukn_cwd N) cw -∗
         fdq r q1 (Some (i, content)) -∗ fdq r q2 (Some (i, content)) -∗
         K (-1))
@@ -921,11 +923,12 @@ Section UkFileDev.
       { rewrite Hr. apply bvs_moi_small. unfold NOFILE in Hfdlt.
         assert (E : (2 ^ 63 = 9223372036854775808)%Z) by (vm_compute; reflexivity).
         lia. }
-      iApply ("Hcont" $! h3 rv with "[%] [HK Hstd Hcwd Hh Hpub Hd1 Hd2] Hp Hrun").
+      iDestruct "HK" as "[HK _]".
+      iMod ("HK" $! fd γo with "[%] Hstd Hcwd Hh [Hpub Hd2] Hd1") as "HK"; [ lia | | ].
+      { iExists 0%nat. rewrite drop_0 /foff_pub. iFrame "Hpub Hd2". done. }
+      iApply ("Hcont" $! h3 rv with "[%] [HK] Hp Hrun").
       { right. rewrite Hsig. split; [ lia | exact Hr ]. }
-      rewrite Hsig. iDestruct "HK" as "[HK _]".
-      iApply ("HK" $! fd γo with "[%] Hstd Hcwd Hh [Hpub Hd2] Hd1"); [ lia | ].
-      iExists 0%nat. rewrite drop_0 /foff_pub. iFrame "Hpub Hd2". done.
+      rewrite Hsig. iExact "HK".
     - (* tainted *)
       iAssert (⌜open_ans_ok rv⌝)%I as %Hok.
       { rewrite /uk_open_taint_fd.

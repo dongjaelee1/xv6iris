@@ -392,45 +392,6 @@ Section UShPipeAssemblyGen.
   Qed.
 
   (* =================================================================== *)
-  (*  S2a  ...AND THE SAME AT A MULTI-BYTE CALL                           *)
-  (*                                                                     *)
-  (*  [UShPanic.prompt_chain] with the prompt taken out: a run of bytes   *)
-  (*  written by ONE [write(2, buf, n)] is a [cons_out_chain] over the    *)
-  (*  same step family, and cat's console turn                            *)
-  (*  ([UCatPipe.pcat_round_at_g]'s [Hw], whose FILE-era discharge is     *)
-  (*  [UCatKernel.cat_w_of_link]) is exactly that at the pipeline         *)
-  (*  family's RIGHT chain.  This is the half of that discharge which is  *)
-  (*  not cat's geometry.                                                 *)
-  (* =================================================================== *)
-  Definition out_step (bs : list (bv 8)) (F : nat -> iProp Σ) : iProp Σ :=
-    (□ (∀ (p : nat) (b : bv 8) (Φ : iProp Σ),
-          ⌜ bs !! p = Some b ⌝ -∗
-          F p -∗ (F (S p) -∗ Φ) -∗ out_link Uart0 (S gen_id) b Φ))%I.
-
-  Lemma out_chain_of_step (bs : list (bv 8)) (F : nat -> iProp Σ)
-      (M : gmap Z (bv 8)) (ua : mword 64) (fb : nat -> bv 8) :
-    forall (c i : nat),
-    (forall j : nat, (i <= j)%nat -> (j < i + c)%nat -> bs !! j = Some (fb j)) ->
-    (forall j : nat, (i <= j)%nat -> (j < i + c)%nat ->
-       M !! uint (add_vec_int ua (Z.of_nat j)) = Some (fb j)) ->
-    out_step bs F -∗ F i -∗ cons_out_chain (S gen_id) M ua F i c.
-  Proof using .
-    intros c. induction c as [| c IH]; intros i Hline HM.
-    - iIntros "_ Hc". cbn [cons_out_chain]. iExact "Hc".
-    - iIntros "#Hst Hc". cbn [cons_out_chain]. iSplit.
-      + iExact "Hc".
-      + iIntros (b) "%Hbm".
-        assert (Hbb : b = fb i).
-        { rewrite (HM i ltac:(lia) ltac:(lia)) in Hbm. by injection Hbm. }
-        subst b.
-        iApply ("Hst" $! i (fb i) _ with "[%] Hc").
-        { exact (Hline i ltac:(lia) ltac:(lia)). }
-        iIntros "Hc".
-        iApply (IH (S i) ltac:(intros j H1 H2; apply Hline; lia)
-                  ltac:(intros j H1 H2; apply HM; lia) with "Hst Hc").
-  Qed.
-
-  (* =================================================================== *)
   (*  S2b  THE RUNCMD CHILD'S OWN EXIT, PAID                              *)
   (*                                                                     *)
   (*  [UkShRun.wp_kshr_exit0] -- the [c.li a0,0; jal ra,<exit>] every     *)
@@ -1241,7 +1202,7 @@ Section UShPipeAssemblyDiag.
   (*  left diagnostic spent it into the family, so a failed [exec] is     *)
   (*  read off the CURSOR ([c1 = length dg_execL]) and not off the        *)
   (*  protocol.  The RIGHT arm's first case is cat's own [Cend]           *)
-  (*  ([UCatPipe.pcat_round_at_g]'s [Hend]: the frozen contents at the    *)
+  (*  (the round's end wand [Hend]: the frozen contents at the            *)
   (*  cursor) beside [UShPipeCatRound.pcat_ch]'s pair.                    *)
   (* =================================================================== *)
   Context `{!pipeProtoG Σ}.
@@ -1260,10 +1221,10 @@ Section UShPipeAssemblyDiag.
   (* ...AND THE RIGHT PAYLOAD CARRIES THE READER'S PERMIT where it used
      to carry the cursor's BOUND as a pure conjunct (lane
      SH-PIPE-ROUND-11).  The bound is not the right child's to state: cat
-     hands its payload over through [UCatPipe.pcat_round_at_g]'s [Hend],
-     a PURE wand, and [c <= length L] is an invariant access
+     hands its payload over through its round's end wand [Hend], a PURE
+     wand, and [c <= length L] is an invariant access
      ([pipe_rcur_bound] below).  The permit IS in [Hend]'s hand
-     ([pcat_hold]'s second conjunct), so it travels and the reading --
+     (the reader's hold), so it travels and the reading --
      which is a fancy update -- reads the bound off it. *)
   Definition pipe_PR (pn : pnames) (L : list (bv 8)) (gR gM : gname)
       : iProp Σ :=
@@ -2002,57 +1963,3 @@ Section UShPipeAssemblyReg.
   Qed.
 
 End UShPipeAssemblyReg.
-
-(* ===================================================================== *)
-(*  S7  ITEM 3 IS BLOCKED AT A PREMISE, AND HERE IS THE WITNESS          *)
-(*  (lane SH-PIPE-ROUND-9; design SS4.3r's item 3.)                       *)
-(*                                                                       *)
-(*  ROUND-8 priced item 3 as the copy of [UCatKernel.cat_w_of_link] at    *)
-(*  [Ch c := wcur gR (1/2) c * wcur gM (1/2) 1] over [out_chain_of_step]. *)
-(*  The copy is mechanical; what is NOT available is the premise it must  *)
-(*  be copied at.  [UCatPipe.pcat_round_at_g] is generic in the cursor    *)
-(*  family [Ch], and hands its [Hw] the pure fact                          *)
-(*                                                                       *)
-(*    forall j < cnt, pcont (pcat_line I0) (palt_of pcat_alt)             *)
-(*                      !! (c + j) = Some (fbb j)                        *)
-(*                                                                       *)
-(*  -- a lookup into the ALTERNATIVE, which is [L ++ u_prompt].  The       *)
-(*  two-writer family's right chain at mode 1 steps [PipeBoth.rsrc L 1 =  *)
-(*  L] and nothing else ([pblk2_cstep_R]'s [rsrc L n !! c2 = Some b]),    *)
-(*  and it also demands [Forall nodollar (rsrc L n)].  The three          *)
-(*  conjuncts below are the gap: AT [c + j = length L] THE PREMISE IS     *)
-(*  SATISFIED AND THE STEP IS UNAVAILABLE, and the byte in question is    *)
-(*  the prompt's '$', which the chain's own [nodollar] premise excludes.  *)
-(*                                                                       *)
-(*  NO CHOICE OF [Ch] REPAIRS IT.  What rules that index out is           *)
-(*  [c + cnt <= length L], and that is the READER's fact: it comes from   *)
-(*  [PipeProto.pipe_rQ]'s [acc = take (length acc) (drop c L)].           *)
-(*  [pcat_round_at_g] HAS it -- its content arm derives                   *)
-(*  [L !! (c + j) = Some (gb j)] ([UCatPipe.pcat_acc_line]) and then       *)
-(*  WEAKENS it with [UCatPipe.pcat_round_line] before calling [Hw] --      *)
-(*  and it keeps the reader's permit in [pcat_hold], which [Hw] never      *)
-(*  sees.  So the fact is unreachable from [Ch], whatever [Ch] is.        *)
-(*                                                                       *)
-(*  THE REPAIR IS ONE LINE, in a file this lane does not own: state       *)
-(*  [pcat_round_at_g]'s [Hw] premise at [L] ([pcat_out I0] is already a    *)
-(*  parameter of that lemma) instead of at [pcont ... (palt_of            *)
-(*  pcat_alt)]; the content arm passes [Hbytes] straight through and the  *)
-(*  landed instance [UCatPipe.pcat_round_at] weakens it back with         *)
-(*  [pcat_round_line], so NO STATEMENT outside [pcat_round_at_g]'s own    *)
-(*  premise moves.  It is SS4.3r's [p < n] guard once more, one file over. *)
-(* ===================================================================== *)
-Lemma pcat_hw_gap (l : pline) :
-  pcont l PRan !! length (wl_line (drop 1 (pline_ws l)))
-    = Some (u_prompt !!! 0%nat)
-  /\ wl_line (drop 1 (pline_ws l))
-       !! length (wl_line (drop 1 (pline_ws l))) = None
-  /\ ~ nodollar (u_prompt !!! 0%nat).
-Proof using.
-  split_and!.
-  - cbn [pcont].
-    rewrite (lookup_app_r (wl_line (drop 1 (pline_ws l))) u_prompt
-               (length (wl_line (drop 1 (pline_ws l)))) ltac:(lia)).
-    rewrite Nat.sub_diag. by vm_compute.
-  - apply lookup_ge_None_2. lia.
-  - intro Hq. apply Hq. by vm_compute.
-Qed.

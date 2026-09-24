@@ -189,11 +189,12 @@ Section UkFileEntriesTree.
 End UkFileEntriesTree.
 
 (* ===================================================================== *)
-(*  2.  cat f: [UCatKernel.cat_child_of_entry] FROM THE TREE               *)
+(*  2.  cat f FROM THE TREE                                                *)
 (* ===================================================================== *)
 
 Section UkFileEntriesCat.
-  (* [UCatKernel]'s [UCatEntry] binders, and the registry's class *)
+  (* cat's entry binders (the deleted [UCatKernel]'s), and the registry's
+     class *)
   Context `{HRg : !riscvGS Σ}.
   Context `{!xv6G Σ, !bioslotG Σ, !fdslotG Σ, !fileG Σ,
             !irefslotG Σ, !pavG Σ, !wchG Σ, !ufdG Σ}.
@@ -360,8 +361,9 @@ Section UkFileEntriesCat.
     iFrame "Hpool HPay".
   Qed.
 
-  (* THE COROLLARY: [UCatKernel.cat_child_of_entry]'s statement, with the
-     two facts the tree route needs that the landed entry never asks for:
+  (* THE COROLLARY: the statement of the per-program cat entry the file
+     sweep deleted ([UCatKernel.cat_child_of_entry]), with the two facts
+     the tree route needs that the landed entry never asks for:
      the round's block cursor's TAIL ([wr_tail_f], which the round holds as the second half of its
      [wr_blk_t_f]) and the content's C-int bound ([UkConsOut.cons_short]:
      the kernel reads a console write's count as an int) *)
@@ -453,10 +455,9 @@ End UkFileEntriesCat.
 (*  resource that rides beside the cursor -- sh's deed fraction, the     *)
 (*  round's [Hold] -- handed in and handed BACK at the exit.             *)
 (*                                                                       *)
-(*  The handing back is what [UkFileIface.fif_exit_k_echo_cons] cannot   *)
-(*  do: it drops the core's deed, which at this round is sh's own and    *)
-(*  must come back for the round's next prompt credential.  So the glue  *)
-(*  here is that lemma with the deed passed to the round's wand.          *)
+(*  The handing back is the point: the core's deed is, at this round,    *)
+(*  sh's own and must come back for the round's next prompt credential.  *)
+(*  So the glue passes the deed to the round's wand beside the post.      *)
 (* ===================================================================== *)
 
 Section UkFileEntriesEcho.
@@ -471,8 +472,8 @@ Section UkFileEntriesEcho.
   Context (g : file_gn).
   Context (Hcons : @riscv_cons_res Σ (@riscv_fixedGS Σ HRg) = fecl g).
 
-  (* THE GLUE, THREE, RETURNING THE DEED: [fif_exit_k_echo_cons] with the
-     core's deed handed to the round's wand beside the post *)
+  (* THE GLUE, THREE, RETURNING THE DEED: the console exit with the core's
+     deed handed to the round's wand beside the post *)
   Lemma fif_exit_k_echo_cons_d (r : file_names) (N : uk_names Σ) (γreg : gname)
       (D0 : list nat) (w0 : nat -> fdev) (qf : Qp) (sf : dst)
       (v : era_pins) (vf : file_era) (I0 : list (bv 8)) (s0 : fstate)
@@ -643,7 +644,7 @@ Section UkFileEntriesEcho.
 End UkFileEntriesEcho.
 
 (* ===================================================================== *)
-(*  4.  echo > f FROM THE TREE: [UEchoFile.efile_image_entry]              *)
+(*  4.  echo > f FROM THE TREE                                             *)
 (*                                                                       *)
 (*  At the WRITE MODE of the instance (lane DEED-SPLIT: the entry device *)
 (*  is `f` held for writing, [UkFileIface.fif_wr]) the core holds no     *)
@@ -715,7 +716,8 @@ Section UkFileEntriesRedir.
     Persistent (up_code (echo_prog N)).
   Proof using . simpl. apply _. Qed.
 
-  (* THE ENTRY: [UEchoFile.efile_image_entry]'s statement, at the file
+  (* THE ENTRY: the statement of the per-program redirect entry the file
+     sweep deleted ([UEchoFile.efile_image_entry]), at the file
      application's claim [c = fgn_cl g] (the instance's console needs the
      era's record, [Hcons]), with [udep] at the section's deposit instance
      ([PS := uprogSG_free] is the landed one's), and FOUR premises the

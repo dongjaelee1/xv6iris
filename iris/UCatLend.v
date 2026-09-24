@@ -1,13 +1,13 @@
 (* ===================================================================== *)
 (*  UCatLend.v -- what the file application lends cat and what cat owes   *)
-(*  back, plus the three count helpers the pipeline's cat round reads.    *)
+(*  back.                                                                 *)
 (*                                                                       *)
 (*  RELOCATED from [UCatKernel.v] by the file sweep (program-specs        *)
 (*  SS3.4g): that file's per-program payers are dead since the round's    *)
-(*  children run from the tree route ([UkFileEntries]), and these five    *)
-(*  are all that live code still names.  [catq_cat] and [cat_lend] are    *)
-(*  read by [UkFileEntries], [UkFileIface] and [UShRound]; [cat_count_is], *)
-(*  [cat_moi_uint] and [cat_fam] by [UShPipeCatRound].                    *)
+(*  children run from the tree route ([UkFileEntries]).  [catq_cat] and   *)
+(*  [cat_lend] are read by [UkFileEntries], [UkFileIface] and [UShRound]. *)
+(*  The three count helpers relocated with them went in the pipe sweep,   *)
+(*  with the pipeline cat round that read them.                           *)
 (* ===================================================================== *)
 From Stdlib Require Import ZArith Bool Lia List.
 From stdpp Require Import gmap list bitvector.definitions.
@@ -37,49 +37,6 @@ Require Import CtxIdDefs.
 Import Defs.
 
 Local Open Scope Z_scope.
-
-Section UCatCount.
-  Context `{HRg : !riscvGS Σ}.
-  Context `{!xv6G Σ, !bioslotG Σ, !fdslotG Σ, !fileG Σ,
-            !irefslotG Σ, !pavG Σ, !wchG Σ, !ufdG Σ}.
-  Context `{GEN : GenId} `{XI : CurCtx}.
-  Context `{!echoOutG Σ, !inG Σ (mono_listR (leibnizO Z)), !fileAppG Σ,
-            !fileOutG Σ}.
-  Context (N : uk_names Σ).
-
-  (* the syscall's count register, read as the C [int] it is.  The same
-     reading as [UEchoOut.echo_count_is] and [UShOut]'s, at the WORD
-     rather than at a [nat]: the payer may not compute the count from the
-     walk's [nb] (above 2^64 the equation [ret = mword_of_int nb] does not
-     identify it), so everything below reads it off [bv_unsigned].  Its
-     home is [SpecSysRead.v], whose cone is the whole read/write tower. *)
-  Lemma cat_count_is (nb : nat) :
-    (Z.of_nat nb < 2 ^ 31)%Z ->
-    sys_rw_count (mword_of_int (Z.of_nat nb) : mword 64) = Z.of_nat nb.
-  Proof using .
-    intros Hlt. change (2 ^ 31)%Z with 2147483648%Z in Hlt.
-    assert (Hu : uint (mword_of_int (Z.of_nat nb) : mword 64) = Z.of_nat nb)
-      by (apply uint_moi; unfold Z64; lia).
-    rewrite uint_unsigned in Hu.
-    rewrite /sys_rw_count. unfold bv_signed.
-    rewrite trunc32_subrange subrange_31_0_unsigned Hu.
-    rewrite (Z.mod_small (Z.of_nat nb) 4294967296); [| lia].
-    assert (Hhm : bv_half_modulus 32 = 2147483648) by (vm_compute; reflexivity).
-    rewrite bv_swrap_small; [ reflexivity | rewrite Hhm; lia ].
-  Qed.
-
-  (* ...and a word IS the machine integer of its own unsigned value, which
-     is how the count the payer reads off the word gets back into the
-     [mword_of_int] shape the walk's equation is stated at. *)
-  Lemma cat_moi_uint (v : mword 64) :
-    (mword_of_int (bv_unsigned v) : mword 64) = v.
-  Proof using . rewrite <- uint_unsigned. apply moi_of_uint. Qed.
-
-  (* the deposit family row 16 is read at, at cat's own cursor
-     ([UEchoOut.kec_fam]'s mould: an [xfam]-typed argument is not an
-     [sfam] until the instance is fixed) *)
-  Definition cat_fam (Q : nat -> iProp Σ) : sfam := xfam_wr Q (ukn_pay N).
-End UCatCount.
 
 Section UCatLend.
   Context `{HRg : !riscvGS Σ}.

@@ -12,7 +12,7 @@
 (*                                                                        *)
 (*   [file_in]    an INPUT device: the held offset [p] on the inode, the  *)
 (*                deed's fraction at the content, and what is left to     *)
-(*                read is [drop p content] ([UCatKernel]'s [Hold p]).     *)
+(*                read is [drop p content] (the file round's [Hold p]).   *)
 (*   [file_read]  [ei_read] at a held tail handle: a [chunk_ok] answer     *)
 (*                (the kernel's [ard_count] off the deed leaf).           *)
 (*   [file_out]   an OUTPUT device: echo-at-a-file's cursor              *)
@@ -270,7 +270,7 @@ Section UkFileDev.
   Context `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, !fileG Σ,
             !irefslotG Σ, !pavG Σ, !wchG Σ, !ufdG Σ}.
   Context `{GEN : GenId} `{XI : CurCtx}.
-  (* [UkCatDeed.v]'s binder rules, verbatim: no separate [ghost_varG] /
+  (* The deed leaves' binder rules: no separate [ghost_varG] /
      [ctokG] ([xv6G] carries both), no [uexecSG] variable (the deed leaves
      are at the ambient [uexecSG_xv6]), and the program-deposit instance
      SPELLED [UexecSG.uprogSG]. *)
@@ -662,8 +662,8 @@ Section UkFileDev.
       + apply Forall_singleton. lia.
   Qed.
 
-  (* [ei_write] at a HELD ledger slot on the deed's inum ([UEchoFile.
-     ef_w_of_deed] with the source the hole's and the slot a parameter).
+  (* [ei_write] at a HELD ledger slot on the deed's inum, with the source
+     the hole's and the slot a parameter.
 
      AT THE CHUNK GRANULARITY: the model files the content as a selection
      of the line's chunks ([FileWrite.file_wq]), so what a write may

@@ -605,9 +605,6 @@ Section UkFileIface.
   Lemma fif_cred_rd : fif_wr D0 w0 = false -> fif_cred ⊣⊢ ∃ jo : option Z, file_cons_cred c r jo.
   Proof using . intros Hrd. by rewrite /fif_cred Hrd. Qed.
 
-  Lemma fif_cred_wr : fif_wr D0 w0 = true -> ⊢ fif_cred.
-  Proof using . intros Hwr. by rewrite /fif_cred Hwr. Qed.
-
   (* the application's persistent facts the device laws read, and the
      taint's payload: the wand every landed entry takes *)
   Definition fif_env : iProp Σ :=

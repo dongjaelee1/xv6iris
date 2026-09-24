@@ -110,7 +110,6 @@ Require Import UkShPipeRound.
 Require Import UkShPipePaid.
 Require Import UkShPipeFork.
 Require Import UEchoPipe.
-Require Import UCatPipe.
 Require Import UShEcho.
 Require Import UShPanic.
 Require Import UShCatPay.
@@ -374,7 +373,8 @@ Qed.
 (* ...AND THE ROUND'S PURE FACTS THE TREE-ROUTE ENTRIES ARE STATED AT
    (lane REPOINT-PIPE): [UkPipeEntries]' section variables [Hnd] /
    [Hwit2] / [Hwit1], the line nonempty and under [2 ^ 31].  The first
-   three are [pl_cat_kround]'s own asserts, verbatim. *)
+   three are the asserts of the per-program cat round the pipe sweep
+   deleted, verbatim. *)
 Lemma pl_round_facts (I L : list (bv 8)) (ws : list (list (bv 8))) :
   PipeHooks.pline_at I = PipeDisc.LPipe ws ->
   L = wl_line (drop 1 ws) ->
@@ -516,153 +516,6 @@ Section UShPipeLaw.
 
 
   (* =================================================================== *)
-  (*  ...AND THE ROUND ITSELF, which is what the right child's EXEC       *)
-  (*  SUPPLY pays with ([UShCatPay.sh_exec_sup_cat_wq_holds_at]'s         *)
-  (*  [Hround], quantified over the EXEC'D image's own record [N'']).     *)
-  (*                                                                     *)
-  (*  THE SIDE TOKEN MUST NOT RIDE IN THE CURSOR FAMILY.  [Hw] and        *)
-  (*  [Hend] are both BOXED, but the third component of the answer -- the *)
-  (*  wand [Cend -* ukn_pay N'' (-1)] -- is LINEAR and is built inside    *)
-  (*  [Cr]'s own scope, so [PipeProto.side_R pn] is captured THERE        *)
-  (*  ([pl_qc_of_cend]) and the family stays the bare cursor              *)
-  (*  ([UShPipeCatRound.pcat_ch]).  Putting it in [Ch] needs a            *)
-  (*  [UkCat.kcat_wr_mono] at every turn and is strictly worse.           *)
-  (* =================================================================== *)
-  Lemma pl_cat_kround (v : era_pins) (I L : list (bv 8))
-      (ws : list (list (bv 8))) (pn : pnames) (gL gR gM : gname)
-      (gp : pipe_names) :
-    PipeHooks.pline_at I = PipeDisc.LPipe ws ->
-    L = wl_line (drop 1 ws) ->
-    line_ok ws ->
-    □ (T -∗ UkSh.sh_deps (PS := uprogSG_free)) -∗
-    PipeLinks.pipe_links g -∗
-    era_pin γ (S gen_id) v -∗
-    □ (∀ (N'' : uk_names Σ) (l : list fdstate),
-         ⌜ukn_pay N''
-          = (fun _ : Z => UShPipeAssembly.pipe_Qc_at g pn L gL gR gM)⌝ -∗
-         ⌜pl_cat_fd0 gp l⌝ -∗
-         UserFd.ustd (ukn_fd N'') l -∗
-         pl_RcR g v I L pn gL gR gM gp -∗
-         ∃ Ir Cend : iProp Σ,
-           UkCatCat.kcat_round (PS := uprogSG_free) N''
-             (mword_of_int 0) Ir Cend
-           ∗ Ir ∗ (Cend -∗ ukn_pay N'' (-1))).
-  Proof using Hcons Hkill.
-    intros Hpl HL Hok.
-    assert (HLne : L <> []).
-    { rewrite HL. intro Hq. pose proof (pl_L_pos ws) as Hp.
-      rewrite Hq in Hp. cbn [length] in Hp. lia. }
-    (* the line's bytes carry no '$' -- the right chain's own premise *)
-    assert (Hwf1 : wl_wf (drop 1 ws)).
-    { pose proof (line_ok_wf ws Hok) as Hwf.
-      rewrite /wl_wf in Hwf |- *.
-      apply Forall_lookup. intros i x Hx.
-      rewrite lookup_drop in Hx.
-      exact (Forall_lookup_1 _ _ _ _ Hwf Hx). }
-    assert (Hnd : Forall LineBytes.nodollar L).
-    { rewrite HL.
-      exact (proj1 (PipeDisc.pd_wl_line_shape (drop 1 ws) Hwf1)). }
-    (* the family's two witness obligations, [pipe_execR_law]'s verbatim *)
-    assert (Hwit2 : forall sel : list bool,
-               sel_wf2 dg_execR sel -> pblk2_wit I dg_execR sel)
-      by (intros sel Hs; exact (PipeBoth.pblk2_wit_both I ws sel Hpl Hs)).
-    assert (Hwit1 : forall sel : list bool,
-               count_true sel = 0%nat -> (length sel <= length L)%nat ->
-               pblk2_wit I L sel).
-    { rewrite HL. intros sel Hc Hlen.
-      exact (UShPipeAssembly.pblk2_wit_ran_at I ws sel Hpl Hc Hlen). }
-    (* [UCatPipe.pcat_line] and [PipeHooks.pline_at] ARE the same term *)
-    assert (Hout : UCatPipe.pcat_out I = L).
-    { rewrite /UCatPipe.pcat_out.
-      assert (Hcl : UCatPipe.pcat_line I = PipeDisc.LPipe ws) by exact Hpl.
-      rewrite Hcl. cbn [PipeDisc.pline_ws]. by rewrite HL. }
-    iIntros "#Hdps #Hlk #Hpin".
-    iDestruct (PipeLinks.pipe_links_taint g with "Hlk") as "#Ht".
-    iIntros "!>" (N'' l) "%Hpeq %Hfd0 Hstd Hcr".
-    pose proof (ukn_const_of_eq N'' _ Hpeq (fun x y => eq_refl)) as Hcn.
-    destruct Hfd0 as [[wb Hl0] [rb Hl1]].
-    rewrite /pl_RcR.
-    iDestruct "Hcr" as "(#Hinv & #Hpi & Hrt & HsR & HgR & HgM)".
-    iDestruct (PipeProto.pipe_excl_wtok_lb_pipeN pn gp L HLne with "Hpi")
-      as "#Hex".
-    iAssert (UkCatCat.kcat_round (PS := uprogSG_free) N'' (mword_of_int 0)
-               (UCatPipe.pcat_round_inv_g g N'' pn l
-                  (UShPipeCatRound.pcat_ch g gR gM))
-               (pl_Cend g pn L gR gM))%I as "#Hround".
-    { iApply (UCatPipe.pcat_round_at_g (PS := uprogSG_free) g Hcons Hkill
-                N'' pn gp L l wb I
-                (UShPipeCatRound.pcat_ch g gR gM) (pl_Cend g pn L gR gM)
-                Hout Hl0 with "Hpi [] [] [] []").
-      - (* [Hdg]: cat's `read error' tail, off the taint *)
-        iIntros "!> #HT".
-        iAssert (□ (ukn_pay N'' (-1)))%I as "#HC".
-        { iModIntro. rewrite Hpeq.
-          iApply (pl_qc_of_taint g Hkill pn L gL gR gM).
-          rewrite Hkill. iExact "HT". }
-        iPoseProof ("Hdps" with "HT") as "#Hwr".
-        (* NAME the conjunct, do not FRAME it (lane SH-PIPE-ROUND-14): an
-           [iDestruct ... as "[$ _]"] here sends the proofmode's [Frame]
-           search into [UkCat.kcat_pay_seq], a sixteen-deep fixpoint, and
-           it does NOT come back -- measured, [Set Default Timeout 300]
-           fires on exactly this command and on nothing else in the file. *)
-        iDestruct (pl_kcat_dg N'' with "HC Hwr") as "[Hcr _]".
-        iExact "Hcr".
-      - (* [Hdgw]: cat's `write error' tail AND the free write law *)
-        iIntros "!> #HT".
-        iAssert (□ (ukn_pay N'' (-1)))%I as "#HC".
-        { iModIntro. rewrite Hpeq.
-          iApply (pl_qc_of_taint g Hkill pn L gL gR gM).
-          rewrite Hkill. iExact "HT". }
-        iPoseProof ("Hdps" with "HT") as "#Hwr".
-        iDestruct (pl_kcat_dg N'' with "HC Hwr") as "[_ Hcw]".
-        iSplitL "Hcw"; [ iExact "Hcw" | ].
-        rewrite /UkSh.sh_deps. iExact "Hwr".
-      - (* [Hw]: the turn's write, at the family's RIGHT chain, mode 1 *)
-        iIntros "!>" (c nb rv fbb) "%Hrv %Hbytes Hjust Hstd2 Hc".
-        destruct Hbytes as [Hcap Hlkp].
-        iApply (UShPipeCatRound.pipe_cat_w (PS := uprogSG_free) g Hcons
-                  N'' v I L gL gR gM (pl_XL pn) (pl_YR pn L) l rb
-                  c nb rv fbb Hnd Hwit2 Hwit1 Hl1 Hrv Hcap
-                  with "Hex Ht Hpin Hinv [Hjust] [] Hstd2 Hc").
-        + (* the reader's bound, or the taint, or the EMPTY turn *)
-          destruct (decide (Z.to_nat (bv_unsigned rv) = 0%nat))
-            as [Hz | Hz].
-          { iRight. iRight. by iPureIntro. }
-          iDestruct "Hjust" as "[#Hlb | #HT]"; [ | iRight; by iLeft ].
-          iLeft. rewrite /pl_YR.
-          assert (E1 : take 1%nat L
-                       = take 1%nat
-                           (take (c + Z.to_nat (bv_unsigned rv))%nat L)).
-          { rewrite take_take. f_equal.
-            rewrite Nat.min_l; [ reflexivity | lia ]. }
-          iApply (PipeProto.pws_lb_weaken pn
-                    (take (c + Z.to_nat (bv_unsigned rv))%nat L)
-                    (take 1%nat L)
-                    ltac:(rewrite E1; eexists; symmetry; apply take_drop)
-                    with "Hlb").
-        + iLeft. iPureIntro. exact (conj Hcap Hlkp).
-      - (* [Hend]: end of file, and what the round hands back *)
-        iIntros "!>" (c) "Heof Hhold Hc".
-        rewrite /pl_Cend /UCatPipe.pcat_hold.
-        iDestruct "Hhold" as "[_ Hrc]".
-        iExists c. iFrame "Heof Hrc Hc". }
-    iExists (UCatPipe.pcat_round_inv_g g N'' pn l
-               (UShPipeCatRound.pcat_ch g gR gM)),
-            (pl_Cend g pn L gR gM).
-    iFrame "Hround".
-    iSplitL "Hstd Hrt HgR HgM".
-    - (* the round's invariant AT CURSOR 0 *)
-      rewrite /UCatPipe.pcat_round_inv_g. iExists 0%nat.
-      rewrite /UCatPipe.pcat_hold /UShPipeCatRound.pcat_ch.
-      iFrame "Hstd".
-      iSplitL "Hrt"; [ iLeft; iExact "Hrt" | ].
-      iLeft. iFrame "HgR HgM".
-    - (* ...AND THE EXIT, where the SIDE TOKEN is captured *)
-      rewrite Hpeq. iIntros "Hce".
-      iApply (pl_qc_of_cend g pn L gL gR gM). iFrame "Hce HsR".
-  Qed.
-
-  (* =================================================================== *)
   (*  S2d3  THE RIGHT CHILD (ROUND-11's table, the `right child' row)     *)
   (*                                                                     *)
   (*  [pl_left_child]'s twin one command over: sh's SECOND [fork1] child  *)
@@ -670,7 +523,8 @@ Section UShPipeLaw.
   (*  0 the pipe's read end.  [UShCatPay.wp_kshr_exec_cat_paid_of_entry]  *)
   (*  is the arm and its supply composed; the entry is cat's TREE-ROUTE   *)
   (*  one ([UkPipeEntries.pe_cat_image_entry_qc_alloc], lane               *)
-  (*  REPOINT-PIPE, where [pl_cat_kround] used to pay the landed entry),  *)
+  (*  REPOINT-PIPE; the per-program round the pipe sweep deleted paid     *)
+  (*  the landed entry),                                                  *)
   (*  [UShPipeAssembly.pipe_execR_law] at [F := side_R pn] read           *)
   (*  off [pl_RcR] through [exf_law_acc] is the exec-failed diagnostic,   *)
   (*  and [pl_cat_argv_bytes] its argv.                                   *)
@@ -785,7 +639,7 @@ Section UShPipeLaw.
   (*  pipe's write end.  [UkShEcho.wp_kshr_exec_echo_at_holds] is the     *)
   (*  arm, [UShEchoPipePay.sh_exec_sup_echo_pipe_of_entry] its supply at  *)
   (*  echo's TREE-ROUTE entry ([UkPipeEntries.pe_echo_image_entry_alloc], *)
-  (*  lane REPOINT-PIPE, where the landed [UEchoPipe.ep_image_entry] was) *)
+  (*  lane REPOINT-PIPE; the pipe sweep deleted the per-program entry)    *)
   (*  and [UShPipeAssembly.pipe_execL_law] at [F := side_L pn] the        *)
   (*  exec-failed diagnostic -- the frame is there because the child's    *)
   (*  exit payload is [pipe_Qc_at]'s SIDE-TAGGED arm while the arm's own  *)
@@ -991,11 +845,10 @@ Section UShPipeLaw.
   Local Lemma pl_fupd_mwp (e : expr riscv_lang) : (|={⊤}=> mWP e) ⊢ mWP e.
   Proof using . rewrite /wp_triv. iIntros "H". iApply fupd_wp. iExact "H". Qed.
 
-  (* THE PARENT'S ROW OF THE SPLIT.  [pl_split]'s landed third slot is the
-     protocol handle alone and [UShPipeAssembly.pipe_round_parent] also
-     reads the FAMILY; [PipeBoth.blk2_inv] is an [inv] and so persistent,
-     so the split may hand a copy to the parent as well.  [pl_split] is
-     untouched. *)
+  (* THE PARENT'S ROW OF THE SPLIT.  [UShPipeAssembly.pipe_round_parent]
+     reads the protocol handle AND the FAMILY; [PipeBoth.blk2_inv] is an
+     [inv] and so persistent, so the split may hand a copy to the parent
+     as well as to the children. *)
   Definition pl_Rk (v : era_pins) (I L : list (bv 8)) (pn : pnames)
       (gL gR gM : gname) (gp : pipe_names) : iProp Σ :=
     (PipeProto.pipe_inv pn gp L

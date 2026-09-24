@@ -373,8 +373,7 @@ Section UkWriteFile.
   Qed.
 
   (* =================================================================== *)
-  (*  6.  THE LEDGER SLOT (lane OFF-LINK, L5; lane SKELETON's [Hdep1] /   *)
-  (*      [Hwrite1] in [UEchoFile.v])                                     *)
+  (*  6.  THE LEDGER SLOT (lane OFF-LINK, L5)                             *)
   (*                                                                     *)
   (*  echo writes fd 1, which is BELOW [NSTD]: its descriptor knowledge   *)
   (*  is the whole ledger ([UserFd.ustd]) and its deposit is fixed at the  *)

@@ -8,11 +8,12 @@
 (*  ([UShEchoPay.echo_slot_of_kexec_at_at], over [UEchoOut]'s entry at     *)
 (*  fd 1 = [UkSh.ush_fd1p]).  The pipeline round's LEFT child execs the    *)
 (*  same image with fd 1 = the pipe's write end, so it needs the same      *)
-(*  supply at the OTHER slot -- [UEchoPipe.ep_image_entry], which is       *)
-(*  landed.  This file is the second discharge, and it costs no walk: the  *)
-(*  (W) half (the pin's resolution), the (L) half ([echo_elf_loadable])    *)
-(*  and the taint arm are the mould's verbatim, and the (E) half is one    *)
-(*  application of the pipe's entry.                                      *)
+(*  supply at the OTHER slot.  This file is the second discharge, and it  *)
+(*  costs no walk: the (W) half (the pin's resolution), the (L) half      *)
+(*  ([echo_elf_loadable]) and the taint arm are the mould's verbatim, and *)
+(*  the (E) half is the CALLER'S entry -- the tree route's                *)
+(*  ([UkPipeEntries.pe_echo_image_entry_alloc]; the per-program           *)
+(*  [UEchoPipe.ep_image_entry] was deleted by the pipe sweep).            *)
 (*                                                                       *)
 (*  THREE THINGS ARE PARAMETERS HERE THAT THE MOULD RESOLVED, because     *)
 (*  this supply is not about the ERA's stage at all -- echo writes NO      *)
@@ -74,7 +75,7 @@ Require Import UEchoOut.
 Require Import UShEcho.           (* the pinned bundle's inputs *)
 Require Import UShEchoOut.
 Require Import UShEchoPay.        (* the CONSOLE mould, for reference *)
-Require Import UEchoPipe.         (* THE (E) HALF: [ep_image_entry] *)
+Require Import UEchoPipe.         (* [ep_pay] / [ep_pay_of_alloc] *)
 Require User.EchoSyms.
 Local Open Scope Z_scope.
 Import Defs.
@@ -132,91 +133,17 @@ Section UShEchoPipePay.
   Qed.
 
   (* =================================================================== *)
-  (*  2.  THE SUPPLY                                                      *)
-  (*                                                                      *)
-  (*  [UShEchoPay.sh_exec_sup_echo_wq_holds_at_D]'s body with the stage    *)
-  (*  taken out and [UEchoPipe.ep_image_entry] in place of                 *)
-  (*  [echo_slot_of_kexec_at_at].  Every other line is the mould's.        *)
+  (*  2.  THE SUPPLY, AT A CALLER'S ENTRY                                 *)
   (* =================================================================== *)
-  Lemma sh_exec_sup_echo_pipe_at
-      (ws : list (list (bv 8))) (Qv Cr T : iProp Σ)
-      (pn : pnames) (γp : pipe_names)
-      `{!Persistent T} `{!Timeless T} :
-    EchoDisc.line_ok ws ->
-    (* the round's lend opens into echo's own payload... *)
-    □ (Cr -∗ ep_pay Wq pn γp (wl_line (drop 1 ws))) -∗
-    (* ...and echo's exit, or the kill, pays the child's exit payload *)
-    □ (ep_exit Wq pn (wl_line (drop 1 ws)) -∗ Qv) -∗
-    □ (app_taint -∗ Qv) -∗
-    udep (PS := uprogSG_free) -∗
-    UShEcho.sh_echo_slot T -∗
-    UkShEcho.sh_exec_sup_echo_at (ush_fd1pipe γp) ws (fun _ : Z => Qv) Cr.
-  Proof using Wq ghost_varG0 ghost_varG1 ufdG0.
-    intros Hokws.
-    iIntros "#Hop #Hex #Hkt #Hdep (#Hinv & #Hcl & #Hgen)".
-    rewrite /UkShEcho.sh_exec_sup_echo_at.
-    iIntros "!>" (N' m pc s0 t g ld)
-      "%Hpeq %Ha0 %Ha1 %Hbytes %Hfd1 Hstd #Hcmd Hcr".
-    destruct Hfd1 as [rb Hl1].
-    (* ---- THE TAINT ARM: the generic slot at the chosen payload.  It
-       names no key, so it is built before the deposit's own forall. ---- *)
-    iAssert (image_entry_taint T (fun _ : Z => Qv) uslot)%I as "#Hgen'".
-    { rewrite /image_entry_taint. iModIntro. iIntros (W') "HT Hmp".
-      iApply ("Hgen" $! Qv W' with "HT Hmp []"). iExact "Hkt". }
-    (* ---- ...AND THE REST IS THE U-TIER RULE (lane EX-4). ---- *)
-    iApply (udepw_at_refR_of_sup N' m pc
-              (mword_of_int s0) (mword_of_int (t + 8))
-              FsImg.ROOTINO T echo_pl ElfUser.echo_elf 1%nat
-              (UserFd.ustd (ukn_fd N') ld ∗ Cr)%I
-              _ echo_elf_loadable Ha0 Ha1 with "[] [] [Hstd Hcr]").
-    (* THE REFUND IS THE LEND, WHOLE *)
-    { iIntros "!> $". }
-    { rewrite Hpeq. iExact "Hgen'". }
-    rewrite /uexec_sup_run.
-    iIntros (M pm sz fdv cs pidv) "#Hnpw Hheap Hufd".
-    iDestruct (UkRun.urun_rows_nopipe _ _ with "Hnpw") as "#Hnp0".
-    iAssert (⌜ echo_node_img ws M s0 t g ⌝)%I as %Himg.
-    { iApply (echo_node_img_of_cmd ws _ _ _ M pm sz s0 t g Hokws
-                with "Hheap Hcmd"). }
-    iDestruct (ufd_auth_len with "Hufd") as %Hlen.
-    iDestruct (ustd_agree (ukn_fd N') fdv ld with "Hufd Hstd") as %Hl.
-    assert (Hl1' : take NSTD fdv !! 1%nat
-                   = Some (FdOpen rb true (FdPipe γp)))
-      by (rewrite Hl; exact Hl1).
-    iFrame "Hheap Hufd".
-    iSplitR "Hstd Hcr".
-    { iPureIntro.
-      exact (sh_echo_path_of_holds ws Hokws M s0 t g Himg Hbytes). }
-    iSplitR "Hstd Hcr".
-    { iApply (exec_walk_of_pin FsEchoPin.era0_echo_pins T FsImg.ROOTINO
-                echo_pl [FsImg.ROOTINO; FsEchoPin.ECHO_INO]
-                FsEchoPin.ECHO_INO
-                (MkAnode (AFile ElfUser.echo_elf) 1%nat) sh_echo_pin_resolves
-                with "Hcl Hinv"). }
-    iSplitR "Hstd Hcr".
-    { rewrite Hpeq.
-      iApply (image_entry_pay_mono ElfUser.echo_elf M
-                (mword_of_int (t + 8) : mword 64) fdv FsImg.ROOTINO cs pidv
-                (fun _ : Z => Qv) (ep_pay Wq pn γp (wl_line (drop 1 ws)))
-                (UserFd.ustd (ukn_fd N') ld ∗ Cr)%I uslot with "[] []").
-      - (* the ledger fragment is SPENT at the entry (the new image has its
-           own table); the lend becomes echo's payload *)
-        iIntros "!> [_ Hc]". iApply ("Hop" with "Hc").
-      - iApply (ep_image_entry (PS := uprogSG_free) Wq ws M s0 t g fdv
-                  FsImg.ROOTINO cs pidv pn γp rb (fun _ : Z => Qv)
-                  ltac:(intros x y; reflexivity) Hokws Himg Hbytes Hlen Hl1'
-                  with "Hex Hnp0 Hdep"). }
-    iFrame "Hstd Hcr".
-  Qed.
 
-  (* ...AND THE SAME SUPPLY AT A CALLER'S ENTRY (lane REPOINT-PIPE;
-     design program-specs SS3.4g).  [ep_image_entry] above is built here
-     out of echo's lend; this form takes the entry from the caller, at
-     every image the exec can produce, so the pipeline's round can hand
+  (* (lane REPOINT-PIPE; design program-specs SS3.4g.)  The pipe sweep
+     deleted the form that built [UEchoPipe.ep_image_entry] here out of
+     echo's lend; this one takes the entry from the caller, at every
+     image the exec can produce, so the pipeline's round can hand
      over the TREE-ROUTE entry ([UkPipeEntries.pe_echo_image_entry_alloc])
      without this file naming the pipeline's instance.  The caller's entry
      is at the round's WHOLE lend [Cr]; the ledger fragment is spent at
-     the exec.  No [udep] and no exit wand: only the landed entry read
+     the exec.  No [udep] and no exit wand: only the deleted entry read
      them. *)
   Lemma sh_exec_sup_echo_pipe_of_entry
       (ws : list (list (bv 8))) (Qv Cr T : iProp Σ) (γp : pipe_names)

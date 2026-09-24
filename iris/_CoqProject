@@ -1711,7 +1711,6 @@ PipeKillMark.v
 UEchoPipe.v
 UkPipeDev.v
 UShEchoPipePay.v
-UCatPipe.v
 PipeLinksLine.v
 PipeBoth.v
 PipeForkGap.v

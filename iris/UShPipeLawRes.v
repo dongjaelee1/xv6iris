@@ -88,7 +88,6 @@ Require Import UkShPipeRound.
 Require Import UkShPipePaid.
 Require Import UkShPipeFork.
 Require Import UEchoPipe.
-Require Import UCatPipe.
 Require Import UShEcho.
 Require Import UShPanic.
 Require Import UShPipeRound2.
@@ -253,17 +252,14 @@ Section UShPipeLawRes.
        (pl_XL pn) (pl_YR pn L)
      ∗ UEchoPipe.ep_pay (PipeBoth.wcur gL (1/2) 0%nat) pn γp L)%I.
 
-  (* THE RIGHT CHILD WILL ALSO NEED THE PROTOCOL'S HANDLE IN HERE (lane
-     SH-PIPE-ROUND-13, measured): [UShPipeCatRound.pipe_cat_w] fires the
-     family's MODE and the fire's exclusion witness
-     [box (XL -* YR ={pipeN}=* False)] comes off
+  (* THE RIGHT CHILD ALSO NEEDS THE PROTOCOL'S HANDLE IN HERE (lane
+     SH-PIPE-ROUND-13, measured): cat's first console byte fires the
+     family's MODE ([UShPipeCatRound.pcat_step_at]) and the fire's
+     exclusion witness [box (XL -* YR ={pipeN}=* False)] comes off
      [PipeProto.pipe_excl_wtok_lb_pipeN] at [pipe_inv pn gp L] -- and [gp]
      is bound by the WALK's own continuation, so the handle cannot be
-     framed in from outside.  It is PERSISTENT, so adding it costs
-     [pl_split] nothing (the parent keeps its own copy) and no other row
-     moves.  TAKEN (lane SH-PIPE-ROUND-14): [pl_cat_kround] below spends
-     it at exactly that place, and at [UShPipeCatRound.pipe_cat_w]'s
-     [Hex]. *)
+     framed in from outside.  It is PERSISTENT, so the parent keeps its
+     own copy and no other row moves. *)
   Definition pl_RcR (v : era_pins) (I L : list (bv 8)) (pn : pnames)
       (gL gR gM : gname) (γp : pipe_names) : iProp Σ :=
     (PipeBoth.blk2_inv g blk2N (S gen_id) v I L gL gR gM
@@ -271,24 +267,6 @@ Section UShPipeLawRes.
      ∗ PipeProto.pipe_inv pn γp L
      ∗ rtok pn ∗ PipeProto.side_R pn
      ∗ PipeBoth.wcur gR (1/2) 0%nat ∗ PipeBoth.wcur gM (1/2) 0%nat)%I.
-
-  Lemma pl_split (v : era_pins) (I L : list (bv 8)) (pn : pnames)
-      (gL gR gM : gname) (γp : pipe_names) :
-    pl_Cr v I L pn gL gR gM -∗
-    UShPipeAssembly.pipe_reg_pay pn emp%I L γp -∗
-    pl_RcL v I L pn gL gR gM γp
-    ∗ (pl_RcR v I L pn gL gR gM γp
-       ∗ (PipeProto.pipe_inv pn γp L ∗ emp)).
-  Proof using .
-    rewrite /pl_Cr /UShPipeAssembly.pipe_reg_pay /pl_RcL /pl_RcR
-            /UEchoPipe.ep_pay /UEchoPipe.ep_frame.
-    iIntros "(#Hinv & HgL & HgR & HgM) (Hr & HsR & (#Hpi & [HsL _] & Hw & Hlb))".
-    iSplitL "HgL HsL Hw Hlb".
-    { iFrame "Hinv Hpi HsL HgL Hw Hlb". }
-    iSplitL "HgR HgM Hr HsR".
-    { iFrame "Hinv Hpi Hr HsR HgR HgM". }
-    iSplitR; [ iExact "Hpi" | done ].
-  Qed.
 
   (* =================================================================== *)
   (*  S2b'''  THE TWO LAWS THE WALK TAKES, AT THE ROUND'S CREDENTIALS     *)
@@ -421,7 +399,7 @@ Section UShPipeLawRes.
     rewrite dg_execR_len. iFrame "HcR HcM".
   Qed.
 
-  (* WHAT CAT'S ROUND HANDS BACK.  [UCatPipe.pcat_round_at_g]'s [Hend] is
+  (* WHAT CAT'S ROUND HANDS BACK.  The round's end wand ([Hend]) is
      a PURE wand, so everything the payload needs has to be readable off
      the three things it is given -- the end-of-file shot, the reader's
      hold and the cursor family.  The READER'S PERMIT travels, because
@@ -448,52 +426,15 @@ Section UShPipeLawRes.
     iFrame "Hrc Heof HcR HcM".
   Qed.
 
-  (* =================================================================== *)
-  (*  S2d2  CAT'S ROUND AT THE FAMILY'S RIGHT CHAIN (lane                 *)
-  (*        SH-PIPE-ROUND-14; SH-PIPE-ROUND-13 wrote the text).           *)
-  (*                                                                     *)
-  (*  What stopped ROUND-13 was ONE unification and it was not the one    *)
-  (*  design SS4.3ab guessed: [UShPipeCatRound.v] bound neither           *)
-  (*  [ghost_varG Sigma Z] nor [ghost_varG Sigma (gset gname)], so        *)
-  (*  [UkCat.kcat_wr]'s two [ghost_var] classes were resolved through the *)
-  (*  [xv6G] bundle and BAKED IN, while [UCatPipe.v] binds both as        *)
-  (*  section variables and THIS file binds [ghost_varG Sigma Z] itself.  *)
-  (*  [uexecSG] was the same term on both sides all along.                *)
-  (* =================================================================== *)
-
   (* THE RIGHT CHILD'S TWO ROWS.  [UkShCat.ush_fd0p] says fd 0 is this
-     pipe's read end -- what [UCatPipe.pcat_round_at_g] reads -- and cat
-     also WRITES: [UShPipeCatRound.pipe_cat_w] needs fd 1 to be the
-     console, which [ush_fd0p] alone does not say.  [Fd0] is a parameter
-     of both [UkShCat.wp_kshr_exec_cat_at] and
-     [UShCatPay.sh_exec_sup_cat_wq_holds_at], so the conjunction is free. *)
+     pipe's read end -- what cat reads -- and cat also WRITES: its
+     console device needs fd 1 to be the console, which [ush_fd0p] alone
+     does not say.  [Fd0] is a parameter of both
+     [UkShCat.wp_kshr_exec_cat_at] and
+     [UShCatPay.sh_exec_sup_cat_of_entry], so the conjunction is free. *)
   Definition pl_cat_fd0 (gp : pipe_names) (l : list fdstate) : Prop :=
     UkShCat.ush_fd0p gp l
     /\ exists rb : bool,
          l !! 1%nat = Some (FdOpen rb true (FdDevice ConsoleInv.CONSOLE)).
 
-  (* ...AND CAT'S TWO DIAGNOSTIC TAILS, OUT OF THE TAINT.
-     [UCatPipe.pcat_round_at_g]'s [Hdg] and [Hdgw] had NO producer
-     anywhere in the tree.  Both are [UkCat.kcat_pay_seq]s (16 and 17
-     bytes) and [UkCat.kcat_pay_seq_of_law] builds either out of the
-     era's FREE WRITE LAW and a BOXED [-1] payload -- which is exactly
-     what a tainted pipeline round has: [UkSh.sh_deps] IS [udepw_law 16]
-     and the payload's taint arm is [pl_qc_of_taint]. *)
-  Lemma pl_kcat_dg (N' : uk_names Σ) `{!ukn_const N'} :
-    □ (ukn_pay N' (-1)) -∗ UkSh.sh_deps (PS := uprogSG_free) -∗
-    UkCatCat.kcat_dg_cr (PS := uprogSG_free) N'
-    ∗ UkCatCat.kcat_dg_cw (PS := uprogSG_free) N'.
-  Proof using .
-    iIntros "#HC #Hwr". rewrite /UkSh.sh_deps.
-    rewrite /UkCatCat.kcat_dg_cr /UkCatCat.kcat_dg_cw.
-    iAssert (□ UkCat.kcat_exit (PS := uprogSG_free) N' 1)%I as "#HC1".
-    { iModIntro. iApply (UkCat.kcat_exit_of_pay with "HC"). }
-    iSplitL.
-    - iApply (UkCat.kcat_pay_seq_of_law (PS := uprogSG_free) N'
-                _ _ 16%nat (UkCat.kcat_exit (PS := uprogSG_free) N' 1)
-                0%nat with "HC1 Hwr").
-    - iApply (UkCat.kcat_pay_seq_of_law (PS := uprogSG_free) N'
-                _ _ 17%nat (UkCat.kcat_exit (PS := uprogSG_free) N' 1)
-                0%nat with "HC1 Hwr").
-  Qed.
 End UShPipeLawRes.

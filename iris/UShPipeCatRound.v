@@ -1,37 +1,30 @@
 (* ===================================================================== *)
-(*  UShPipeCatRound.v -- CAT'S CONSOLE TURN AT THE PIPELINE ROUND'S      *)
+(*  UShPipeCatRound.v -- CAT'S CONSOLE BYTE AT THE PIPELINE ROUND'S      *)
 (*  TWO-WRITER FAMILY (lane SH-PIPE-ROUND-9, ROUND-8's bill item 3;      *)
 (*  design claude-notes/design/app-pipe.md SS4.3r/SS4.3s).                *)
 (*                                                                       *)
-(*  [UCatKernel.cat_w_of_link] is the FILE era's discharge of            *)
-(*  [UCatPipe.pcat_round_at_g]'s [Hw] -- the multi-byte [write(1, buf,   *)
-(*  n)] cat's loop makes -- and it writes through the LINK RECORD's own  *)
-(*  block family.  A pipeline round has no record behind its right       *)
-(*  chain: the bytes belong to the two-writer family                     *)
-(*  ([PipeBoth.blk2_inv]) at MODE 1.  This file is that discharge, and   *)
-(*  it is the mould's proof with three substitutions and nothing else:   *)
+(*  A pipeline round has no link record behind its right chain: cat's    *)
+(*  console bytes belong to the two-writer family ([PipeBoth.blk2_inv])  *)
+(*  at MODE 1.  This file holds the family cat's turn carries            *)
+(*  ([pcat_ch]: the right cursor and the mode, or the taint) and ONE     *)
+(*  BYTE of cat's output at it ([pcat_step_at]), which the tree route's  *)
+(*  console device reads.  The multi-byte discharge of the old per-      *)
+(*  program round's write ([pipe_cat_w] over [UCatPipe]) was deleted by  *)
+(*  the pipe sweep.                                                      *)
 (*                                                                       *)
-(*    [UCatOut.cch … (p + j)]      ->  [pcat_ch gR gM (c + j)]           *)
-(*    [UCatOut.cch_chain]          ->  [UShPipeAssembly.out_chain_of_step] *)
-(*    [UCatOut.cch_chain_taint]    ->  [pcat_chain_taint]                *)
-(*                                                                       *)
-(*  TWO THINGS THE MOULD DOES NOT HAVE TO DO.                            *)
+(*  TWO THINGS A BYTE HERE DOES THAT THE FILE ERA'S DOES NOT.            *)
 (*                                                                       *)
 (*   - THE MODE HAS TO FIRE, and it fires at cat's FIRST BYTE.           *)
-(*     [PipeBoth.blk2_mode_fire] is a FANCY UPDATE, and the round's      *)
-(*     entry into cat ([UShCatPay.sh_exec_sup_cat_wq_holds_at]'s         *)
-(*     [Hround]) is a PURE wand -- so there is no fupd site before the   *)
-(*     walk.  There is one INSIDE: [WpUart.out_link]'s conclusion is a   *)
+(*     [PipeBoth.blk2_mode_fire] is a FANCY UPDATE, and the only fupd    *)
+(*     site is INSIDE the byte: [WpUart.out_link]'s conclusion is a      *)
 (*     [={⊤ ∖ ↑uartN Uart0}=∗], and [↑blk2N] misses [↑uartN Uart0]       *)
 (*     ([UShPipeRound2.blk2N_uart]).  [fupd_out_link] is the peel and    *)
 (*     [pcat_ch]'s index carries the mode: 0 at cursor 0, 1 after.       *)
-(*   - THE TAINT ARM IS NOT FREE.  [UCatOut.cch] has a taint disjunct of *)
-(*     its own, so the mould's taint chain is [by iRight] at every byte; *)
-(*     the family here is two EXCLUSIVE cursor halves.  So [pcat_ch]     *)
-(*     gets the taint as its own second arm, and at a tainted turn the   *)
-(*     halves are simply dropped -- which is sound because a tainted     *)
-(*     round's exit is [PipeLinksLine.pwc_line2_taint] and wants no      *)
-(*     family at all.                                                    *)
+(*   - THE TAINT ARM IS NOT FREE.  The family here is two EXCLUSIVE      *)
+(*     cursor halves, so [pcat_ch] gets the taint as its own second arm, *)
+(*     and at a tainted turn the halves are simply dropped -- which is   *)
+(*     sound because a tainted round's exit is                           *)
+(*     [PipeLinksLine.pwc_line2_taint] and wants no family at all.       *)
 (* ===================================================================== *)
 From Stdlib Require Import ZArith Bool Lia List.
 From stdpp Require Import gmap list bitvector.definitions.
@@ -68,9 +61,8 @@ Require Import PipeOutPure PipeOut.
 Require Import PipeBothPure PipeBoth.
 Require Import PipeNames PipeQueue PipeProto.  (* [pipeN] *)
 Require Import PipeLinks PipeLinksLine PipeLinkInst.
-Require Import UCatLend.           (* [cat_fam] / [cat_count_is] / [cat_moi_uint] *)
 Require Import UShPipeRound2.      (* [blk2N] and its two mask facts *)
-Require Import UShPipeAssembly.    (* [out_step] / [out_chain_of_step] *)
+Require Import UShPipeAssembly.
 Require Import CtxIdDefs.
 Local Open Scope Z_scope.
 
@@ -83,22 +75,10 @@ Section UShPipeCatRound.
             !irefslotG Σ, !pavG Σ, !wchG Σ, !ufdG Σ}.
   Context `{GEN : GenId} `{XI : CurCtx}.
   (* ...AND THE TWO [ghost_var] CLASSES [UkCat.kcat_wr] IS INDEXED BY
-     (lane SH-PIPE-ROUND-14; design SS4.3ab's ruling REFUTED at its own
-     guess -- see below).  [UkCat.kcat_wr]'s implicit list is
-     [{Sigma riscvGS ufdG GEN ghost_varG0 ghost_varG1} N {ctokG SG PS}],
-     and THIS file bound neither [ghost_var] class, so both were resolved
-     THROUGH the [xv6G] bundle ([Xv6Cameras.offbox_offG (Xv6G.xv6_offbox
-     ...)] and [Xv6Cameras.uch_inG (Xv6G.xv6_uch ...)]) and BAKED INTO
-     [pipe_cat_w]'s conclusion.  [UCatPipe.v] binds both as SECTION
-     VARIABLES, so [pcat_round_at_g]'s [Hw] names them at whatever the
-     CALL SITE has -- and the call site ([UShPipeLaw.v]) binds
-     [ghost_varG Sigma Z] itself.  Two different [ghost_varG Sigma Z]
-     terms, one [kcat_wr] each: that is SH-PIPE-ROUND-13's "they print
-     identically and do not unify".  [uexecSG] was NOT the second
-     instance -- both sides elaborate it to [uexecSG_xv6 Sigma HRg xv6G0
-     fileG0 GEN], measured with [Set Printing Implicit] -- and a
-     [Context {SG}] here would in fact CREATE one, because
-     [UCatLend.cat_fam], which this file's proof applies, binds none. *)
+     (lane SH-PIPE-ROUND-14): bound here so a statement naming
+     [kcat_wr] takes them from its CALL SITE instead of resolving them
+     through the [xv6G] bundle -- two [ghost_varG Sigma Z] terms print
+     identically and do not unify (SH-PIPE-ROUND-13). *)
   Context `{!ghost_varG Σ Z}.
   Context `{!ghost_varG Σ (gset gname)}.
   Context `{!echoOutG Σ, !inG Σ (mono_listR (leibnizO Z))}.
@@ -159,25 +139,6 @@ Section UShPipeCatRound.
   Lemma pcat_ch_taint (gR gM : gname) (c : nat) : PT -∗ pcat_ch gR gM c.
   Proof using . iIntros "#HT". rewrite /pcat_ch. by iRight. Qed.
 
-  (* the mould's [cch_chain_taint]: at a tainted era every byte goes out
-     on the link's own taint leaf and the family is the taint arm *)
-  Lemma pcat_chain_taint (gR gM : gname) (M : gmap Z (bv 8))
-      (ua : mword 64) (c0 : nat) :
-    forall (c i : nat),
-    pipe_link_taint g -∗ PT -∗
-    cons_out_chain (S gen_id) M ua
-      (fun j : nat => pcat_ch gR gM (c0 + j)%nat) i c.
-  Proof using .
-    intros c. induction c as [| c IH]; intros i.
-    - iIntros "#Ht #HT". cbn [cons_out_chain].
-      iApply (pcat_ch_taint gR gM with "HT").
-    - iIntros "#Ht #HT". cbn [cons_out_chain]. iSplit.
-      + iApply (pcat_ch_taint gR gM with "HT").
-      + iIntros (b) "_".
-        iApply ("Ht" $! (S gen_id) b _ with "HT").
-        iIntros "_". iApply (IH (S i) with "Ht HT").
-  Qed.
-
   (* =================================================================== *)
   (*  S3  ONE BYTE OF CAT'S OUTPUT                                        *)
   (*                                                                     *)
@@ -230,221 +191,6 @@ Section UShPipeCatRound.
     { iApply pblk2_ecl_R_holds. }
     iIntros "HcR HcM". iApply "HΦ". rewrite /pcat_ch. iLeft.
     iFrame "HcR HcM".
-  Qed.
-
-  (* ...and the step family [out_chain_of_step] takes, at the OFFSET the
-     write's buffer is indexed by *)
-  Lemma pcat_out_step (v : era_pins) (I L : list (bv 8))
-      (gL gR gM : gname) (XL YR : iProp Σ)
-      `{!Timeless XL} `{!Timeless YR} `{!Persistent YR} (c0 : nat) :
-    Forall nodollar L ->
-    (forall sel : list bool,
-       sel_wf2 dg_execR sel -> pblk2_wit I dg_execR sel) ->
-    (forall sel : list bool,
-       count_true sel = 0%nat -> (length sel <= length L)%nat ->
-       pblk2_wit I L sel) ->
-    □ (XL -∗ YR ={↑pipeN}=∗ False) -∗
-    pipe_link_taint g -∗
-    era_pin γ (S gen_id) v -∗
-    blk2_inv g blk2N (S gen_id) v I L gL gR gM XL YR -∗
-    YR -∗
-    out_step (drop c0 L) (fun j : nat => pcat_ch gR gM (c0 + j)%nat).
-  Proof using Hcons.
-    intros Hnd Hwit2 Hwit1.
-    iIntros "#Hex #Ht #Hpin #Hinv #HYR".
-    rewrite /out_step. iIntros "!>" (p b Φ) "%Hb Hf HΦ".
-    assert (HbL : L !! (c0 + p)%nat = Some b)
-      by (rewrite -(lookup_drop L c0 p); exact Hb).
-    assert (Es : (c0 + S p)%nat = S (c0 + p)%nat) by lia.
-    rewrite Es.
-    iApply (pcat_step_at v I L gL gR gM XL YR (c0 + p)%nat b Φ
-              HbL Hnd Hwit2 Hwit1 with "Hex Ht Hpin Hinv HYR Hf HΦ").
-  Qed.
-
-  (* =================================================================== *)
-  (*  S4  [Hw] ITSELF -- [UCatKernel.cat_w_of_link] at the pipeline       *)
-  (*      round's right chain (ROUND-8's bill, item 3).                   *)
-  (* =================================================================== *)
-  Lemma pipe_cat_w (v : era_pins) (I L : list (bv 8))
-      (gL gR gM : gname) (XL YR : iProp Σ)
-      `{!Timeless XL} `{!Timeless YR} `{!Persistent YR}
-      (l : list fdstate) (rb : bool)
-      (c0 nb : nat) (rv : mword 64) (fbb : nat -> bv 8) :
-    Forall nodollar L ->
-    (forall sel : list bool,
-       sel_wf2 dg_execR sel -> pblk2_wit I dg_execR sel) ->
-    (forall sel : list bool,
-       count_true sel = 0%nat -> (length sel <= length L)%nat ->
-       pblk2_wit I L sel) ->
-    l !! 1%nat = Some (FdOpen rb true (FdDevice CONSOLE)) ->
-    rv = (mword_of_int (Z.of_nat nb) : mword 64) ->
-    (Z.to_nat (bv_unsigned rv) <= 512)%nat ->
-    □ (XL -∗ YR ={↑pipeN}=∗ False) -∗
-    pipe_link_taint g -∗
-    era_pin γ (S gen_id) v -∗
-    blk2_inv g blk2N (S gen_id) v I L gL gR gM XL YR -∗
-    (* THE READER'S BOUND, UNDER THE TAINT (design SS4.3aa, item 2).
-       [YR] is used at exactly ONE place below -- inside the left arm of the
-       [Hjust] split, where the family's right chain is actually stepped --
-       and the only supplier the round has is [UCatPipe.pcat_round_at_g]'s
-       [Hw] antecedent, which offers [pws_lb pn (take (c + cnt) L) or T].
-       So the premise is taken under the same disjunction and the taint arm
-       goes through [pcat_chain_taint] like the other two.  The landed form
-       re-derives by [iLeft].
-
-       ...AND A THIRD ARM, [cnt = 0] (lane SH-PIPE-ROUND-13).  The round's
-       supplier holds [pws_lb pn (take (c + cnt) L)], which entails
-       [YR = pws_lb pn (take 1 L)] only when [0 < c + cnt]; at a turn that
-       delivered NO byte there is no bound to weaken.  There is also nothing
-       to step: at [cnt = 0] the chain IS the cursor
-       ([SpecConsolewrite.cons_out_chain_0]) and [out_chain_of_step] never
-       looks at the step.  So the empty turn is its own arm, and the supplier
-       takes it by [decide (cnt = 0)] rather than by proving a bound it
-       cannot have. *)
-    (YR ∨ PT ∨ ⌜(Z.to_nat (bv_unsigned rv) = 0)%nat⌝) -∗
-    (⌜(Z.to_nat (bv_unsigned rv) <= 512)%nat
-      /\ forall j : nat, (j < Z.to_nat (bv_unsigned rv))%nat ->
-           L !! (c0 + j)%nat = Some (fbb j)⌝
-     ∨ PT) -∗
-    UserFd.ustd γfd l -∗
-    pcat_ch gR gM c0 -∗
-    UkCat.kcat_wr N (mword_of_int 1) (mword_of_int CatSyms.buf) nb
-      (ubytes γd CatSyms.buf 512 fbb)
-      (fun wret : mword 64 =>
-         (⌜wret = (mword_of_int (Z.of_nat nb) : mword 64)⌝
-          ∗ UserFd.ustd γfd l
-          ∗ pcat_ch gR gM (c0 + Z.to_nat (bv_unsigned rv))%nat
-          ∗ ubytes γd CatSyms.buf 512 fbb)).
-  Proof using Hcons.
-    intros Hnd Hwit2 Hwit1 Hl1 Hrv Hcap.
-    set (cnt := Z.to_nat (bv_unsigned rv)).
-    pose proof (bv_unsigned_in_range 64 rv) as [Hrvnn _].
-    assert (Hmoi : (mword_of_int (Z.of_nat cnt) : mword 64) = rv).
-    { unfold cnt. rewrite Z2Nat.id; [ | exact Hrvnn ].
-      exact (cat_moi_uint rv). }
-    assert (Hcz : sys_rw_count rv = Z.of_nat cnt).
-    { rewrite <- Hmoi. apply cat_count_is.
-      change (2 ^ 31)%Z with 2147483648%Z. lia. }
-    iIntros "#Hex #Ht #Hpin #Hinv #HYR Hjust Hstd Hc" (h m avail)
-      "%Ha0 %Ha1 %Ha2 #Hcode Hbuf Hrun Hcont".
-    assert (Hua : uint (m !!! Regidx a1_idx) = CatSyms.buf).
-    { rewrite Ha1. apply uint_moi. unfold Z64, CatSyms.buf. lia. }
-    assert (Ham1 : (<[Regidx a7_idx := (mword_of_int 16 : mword 64)]> m)
-                     !!! Regidx a1_idx = m !!! Regidx a1_idx)
-      by exact (upd_ne m (Regidx a7_idx) (Regidx a1_idx) _
-                  ltac:(vm_compute; discriminate)).
-    assert (Ham0 : (<[Regidx a7_idx := (mword_of_int 16 : mword 64)]> m)
-                     !!! Regidx a0_idx = (mword_of_int 1 : mword 64)).
-    { rewrite <- Ha0.
-      exact (upd_ne m (Regidx a7_idx) (Regidx a0_idx) _
-               ltac:(vm_compute; discriminate)). }
-    assert (Ham2 : (<[Regidx a7_idx := (mword_of_int 16 : mword 64)]> m)
-                     !!! Regidx a2_idx = rv).
-    { rewrite Hrv. rewrite <- Ha2.
-      exact (upd_ne m (Regidx a7_idx) (Regidx a2_idx) _
-               ltac:(vm_compute; discriminate)). }
-    assert (Hi0 : bv_signed (trunc32
-                    ((<[Regidx a7_idx := (mword_of_int 16 : mword 64)]> m)
-                       !!! Regidx a0_idx)) = Z.of_nat 1)
-      by (rewrite Ham0; vm_compute; reflexivity).
-    assert (Hcnt : Z.to_nat (sys_rw_count
-                     ((<[Regidx a7_idx := (mword_of_int 16 : mword 64)]> m)
-                        !!! Regidx a2_idx)) = cnt)
-      by (rewrite Ham2 Hcz; lia).
-    (* ---- THE CHAIN, from the family's right chain or from the taint ---- *)
-    iAssert (∀ M : gmap Z (bv 8),
-               ⌜forall j : nat, (j < cnt)%nat ->
-                  M !! uint (add_vec_int (m !!! Regidx a1_idx) (Z.of_nat j))
-                  = Some (fbb j)⌝ -∗
-               cons_out_chain (S gen_id) M (m !!! Regidx a1_idx)
-                 (fun j : nat => pcat_ch gR gM (c0 + j)%nat) 0%nat cnt)%I
-      with "[Hc Hjust]" as "Hmk".
-    { iDestruct "HYR" as "[#HYRy | [#HTy | %Hcz0]]".
-      3: { (* the EMPTY turn: no byte, no step, and the chain is the cursor *)
-           iIntros (M) "_". rewrite Hcz0 cons_out_chain_0 Nat.add_0_r.
-           iExact "Hc". }
-      2: { iIntros (M) "_".
-           iApply (pcat_chain_taint gR gM M (m !!! Regidx a1_idx) c0 cnt 0%nat
-                     with "Ht HTy"). }
-      iDestruct "Hjust" as "[[%_ %Hline] | #HT]"; last first.
-      { iIntros (M) "_".
-        iApply (pcat_chain_taint gR gM M (m !!! Regidx a1_idx) c0 cnt 0%nat
-                  with "Ht HT"). }
-      rewrite {1}/pcat_ch. iDestruct "Hc" as "[Hcur | #HT]"; last first.
-      { iIntros (M) "_".
-        iApply (pcat_chain_taint gR gM M (m !!! Regidx a1_idx) c0 cnt 0%nat
-                  with "Ht HT"). }
-      iIntros (M) "%HM".
-      iApply (out_chain_of_step (drop c0 L)
-                (fun j : nat => pcat_ch gR gM (c0 + j)%nat)
-                M (m !!! Regidx a1_idx) fbb cnt 0%nat
-                ltac:(intros j _ Hj;
-                      rewrite (lookup_drop L c0 j); apply Hline; lia)
-                ltac:(intros j _ Hj; apply HM; lia)
-                with "[] [Hcur]").
-      - iApply (pcat_out_step v I L gL gR gM XL YR c0 Hnd Hwit2 Hwit1
-                  with "Hex Ht Hpin Hinv HYRy").
-      - rewrite Nat.add_0_r /pcat_ch. iLeft. iExact "Hcur". }
-    (* ---- THE RUN: the prefix the call writes, and its two halves ---- *)
-    pose (nr := (512 - cnt)%nat).
-    assert (Hsz : (cnt + nr)%nat = 512%nat) by (unfold nr; lia).
-    iAssert (ubytes γd CatSyms.buf cnt fbb
-             ∗ ubytes γd (CatSyms.buf + Z.of_nat cnt) nr
-                 (fun j : nat => fbb (cnt + j)%nat))%I
-      with "[Hbuf]" as "[Hpre Hsuf]".
-    { rewrite <- (ubytes_app γd CatSyms.buf cnt nr fbb).
-      rewrite Hsz. iExact "Hbuf". }
-    iAssert (ubytesq γd (DfracOwn (1/2)) (uint (m !!! Regidx a1_idx)) cnt fbb
-             ∗ ubytesq γd (DfracOwn (1/2)) (uint (m !!! Regidx a1_idx))
-                 cnt fbb)%I with "[Hpre]" as "[Hh1 Hh2]".
-    { rewrite Hua. rewrite <- (ubytes_halve γd CatSyms.buf cnt fbb).
-      iExact "Hpre". }
-    (* ---- THE CALL ---- *)
-    iApply (UkCat.wp_kcat_write_chain N h m avail
-              (UCatLend.cat_fam N
-                 (fun j : nat =>
-                    (pcat_ch gR gM (c0 + j)%nat
-                     ∗ ubytesq γd (DfracOwn (1/2))
-                         (uint (m !!! Regidx a1_idx)) cnt fbb)%I))
-              l (DfracOwn (1/2)) cnt fbb
-              with "Hcode Hrun [Hmk Hh2] Hstd Hh1").
-    { iApply (uwrite_chain_sup_ret N
-                (fun j : nat => pcat_ch gR gM (c0 + j)%nat)
-                (ubytesq γd (DfracOwn (1/2))
-                   (uint (m !!! Regidx a1_idx)) cnt fbb)
-                (<[Regidx a7_idx := (mword_of_int 16 : mword 64)]> m)
-                (add_vec_int (mword_of_int CatSyms.write : mword 64) 2)
-                l 1%nat rb CONSOLE Hi0 ltac:(unfold NSTD; lia) Hl1).
-      iIntros (M pm sz) "Hheap".
-      iDestruct (uheap_ubytes_wat γt γd (ukn_s N) M pm sz
-                   (DfracOwn (1/2)) (m !!! Regidx a1_idx) cnt fbb
-                   with "Hheap Hh2") as %HM.
-      iFrame "Hheap Hh2".
-      rewrite Ham1 Hcnt.
-      iApply ("Hmk" $! M with "[%]"). exact HM. }
-    iIntros (h' ret W cw' cs')
-      "%Hka0 %Hka1 %Hka2 %Htk %Hlz %Hnf Hstd Hh1 Hpost Hrun".
-    iDestruct (uwrite_no_short
-                 (fun j : nat =>
-                    (pcat_ch gR gM (c0 + j)%nat
-                     ∗ ubytesq γd (DfracOwn (1/2))
-                         (uint (m !!! Regidx a1_idx)) cnt fbb)%I)
-                 (ukn_pay N) W ret (uvis_M W) (uvis_fd W) cw' cs'
-                 l 1%nat rb cnt
-                 ltac:(rewrite Hka0 Ha0; vm_compute; reflexivity)
-                 ltac:(unfold NSTD; lia) Htk Hl1
-                 ltac:(rewrite Hka2 Ha2 -Hrv; exact Hcz)
-                 Hlz
-                 ltac:(rewrite Hka1; exact Hnf)
-                 with "Hpost") as "[%Hws [Hcc Hh2]]".
-    iApply ("Hcont" $! h' ret with "[Hstd Hcc Hh1 Hh2 Hsuf] Hrun").
-    iSplitR.
-    { iPureIntro. rewrite Hws Hmoi. exact Hrv. }
-    iFrame "Hstd Hcc".
-    rewrite <- Hsz. rewrite (ubytes_app γd CatSyms.buf cnt nr fbb).
-    iSplitR "Hsuf"; [ | iExact "Hsuf" ].
-    rewrite (ubytes_halve γd CatSyms.buf cnt fbb) -Hua.
-    iFrame "Hh1 Hh2".
   Qed.
 
 End UShPipeCatRound.

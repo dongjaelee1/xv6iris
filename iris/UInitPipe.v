@@ -130,6 +130,7 @@ Require Import UInitConsPipe.
 Require Import UShPipeRound.
 Require Import PipeProto.          (* [pipeProtoG]: the protocol's ghosts *)
 Require Import UShPipeLaw.         (* the child law's DISCHARGE (SH-PIPE-ROUND-14) *)
+Require UkPipeIface.               (* [pifRegG]: the binder below needs it in scope *)
 Require Import UkShPipeFork.   (* [pterm_wc] -- design SS4.3p's WIDENED era credential *)
 Require Import UShPipeCatSlot.  (* [pipe_sh_cat_slot] -- the /cat pin, off
                                    the era equation (lane SH-PIPE-ROUND-6) *)
@@ -517,6 +518,12 @@ Section PipeInitBoot.
      [pipeProtoG pipeSigma] has no instance and the discharge is stated at
      the extended list in [UInitPipeAdequacy.v]. *)
   Context `{!pipeProtoG Σ}.
+  (* ...AND THE TREE-ROUTE ENTRIES' DEVICE REGISTRY (lane REPOINT-PIPE):
+     the discharge's two children allocate one inside the exec slot
+     ([UkPipeEntries.pe_cat_image_entry_qc_alloc] /
+     [pe_echo_image_entry_alloc]).  Like [pipeProtoG], [sh_pipe_child_law_all]'s
+     Prop does not mention it. *)
+  Context `{HpifR : !UkPipeIface.pifRegG Σ}.
 
   (* NAME THE LEAF, DO NOT SEARCH ([UShPipeRound.v]'s measured note, and
      it is the one that bites here): [iIntros "#H"] / [iAssert ... as "#H"]
@@ -1012,12 +1019,18 @@ Section PipeInitBoot.
      So the ONE hypothesis is the interface equation, which costs the
      consumer NOTHING: [pipe_prog_law_of_child] already receives
      [Hiface] from [pipe_prog_law]'s own binder list, and
-     [pipe_Hinit_boot] already derives [Hcons]/[Htag]/[Hkill] from it. *)
+     [pipe_Hinit_boot] already derives [Hcons]/[Htag]/[Hkill] from it.
+     AND THE ERA'S RECORD EQUATION on [file_app] (lane REPOINT-PIPE): the
+     two children now run the TREE-ROUTE entries, whose instance
+     ([UkPipeIface.pipe_iface]) is stated at it; it costs the consumer
+     nothing either -- [pipe_prog_law] binds [r] and the equation beside
+     [Hiface], and [pipe_Hinit_boot] already takes both. *)
   Definition sh_pipe_child_law_all : Prop :=
     forall (HR : riscvGS Σ) (GEN : GenId)
            (HBs : bioslotG Σ) (HFd : fdslotG Σ) (HIr : irefslotG Σ)
            (HPav : pavG Σ) (HWc : wchG Σ) (HF : fileG Σ)
-           (c : pipe_gn),
+           (c : pipe_gn) (r : echo_names),
+      @file_app Σ HF = MkAppcfg echo_names (pipe_pred (pgn_cl c)) r ->
       @riscvF_app_iface Σ (@riscv_fixedGS Σ HR) = pipe_ifc c ->
       ⊢ UShPipeRound.sh_pipe_child_law c.
 
@@ -1031,14 +1044,14 @@ Section PipeInitBoot.
   (*  project the record equation into the two the round is stated at.    *)
   (* =================================================================== *)
   Theorem sh_pipe_child_law_all_holds : sh_pipe_child_law_all.
-  Proof using HU HX pipeProtoG0.
-    intros HR GEN HBs HFd HIr HPav HWc HF c Hiface.
+  Proof using HU HX pipeProtoG0 HpifR.
+    intros HR GEN HBs HFd HIr HPav HWc HF c r Heq Hiface.
     assert (Hkill : @app_taint Σ (@riscv_fixedGS Σ HR)
                     = echo_taint (pgn_cl c))
       by (rewrite /app_taint Hiface; by cbn [pipe_ifc ai_kill pipe_kill]).
     assert (Hcons : @riscv_cons_res Σ (@riscv_fixedGS Σ HR) = pecl c)
       by (rewrite /riscv_cons_res Hiface; by cbn [pipe_ifc ai_cons pipe_cons]).
-    exact (UShPipeLaw.pl_child_law c Hcons Hkill).
+    exact (UShPipeLaw.pl_child_law c Hcons Hkill r Heq).
   Qed.
 
 End PipeInitBoot.

@@ -29,7 +29,22 @@ order verified at the instruction level -- N `execcmd` then N-1
 landed lemmas byte-identical as corollaries).  LEFT for C3b:
 `nulterminate`/`parseline`/`parsecmd` at N stages (the seam assumes
 the cut line, as the one-bar seam does) and the `UkShPipesRound` child
-walk.  C2 in flight.
+walk (C3b in flight).  C2 (5f2aa37ab: `PipesDisc.v`/`PipesDiscDec.v` --
+`stage_out` derived from C1's exit lemmas, `pipe_pairB` with the ruled
+corner (B), `sfx_run`/`line_run`, `merge_all`, `line_blocks`,
+`line_term_blocks`, `plalt`, `pipes_lm fc adm`; laws proved under
+`fc_ok`/`adm_ok`; n = 1 bridge `pipes_one_iff`, `disc_p_disc_ps`,
+`good_out_ps_good_out_p` at `adm1`).  C2 FINDINGS: (i) `lml_cont_shape`
+FAILS at `adm_echo`: corner (B) admits, at `echo fork | cat | cat`, the
+whole line `fork\n` followed by a middle cat's write error, which sits
+under the same wire as the panic line plus any continuation
+(`pipes_lm_fork2_no_laws`); working choice `adm_echo_safe` (the user
+does not type `echo fork | …` with two or more cats), alternative:
+weaken the law in `LineModel` to the actual prologues -- OPEN for the
+owner; (ii) `lm_merge` is line-independent, so D4 ends coverage on more
+byte patterns at N stages than the landed `pmergeable` (bridge stated at
+`adm1`); (iii) `cat f`'s content is a fixed function `fc` (C9 names it
+in the alternative or moves the state into `lm_ok`).  C5 next.
 
 # Design: arbitrary pipelines `P0 | cat | … | cat` by induction on the command tree
 

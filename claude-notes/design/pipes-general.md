@@ -100,7 +100,23 @@ open reading.  MODEL CHANGE: `lm_ok := plsafe l a ∨ (adm l ∧ plalt_ok)`
 failure) admitted at EVERY line, since the hooks' ok-laws quantify over
 every line; no line is excluded.  The landed claim cannot be renamed
 into `popenN` (mono-list of codes), so C8's bridge is pure-level: the
-application's claim is born at the new model).  The pipeline's exclusions are caller premises
+application's claim is born at the new model).  C6 (57124eb79/2c6603000/
+a28e2d902: `UkPipesIface.v` -- the per-process registry `pdev := PDCon w
+A | PDMute | PDWr | PDRd | PDCopy (pin) (CSCon w | CSPipe pn gp)`, each
+pipe's `pipe_invU` at its flow parameter, U-general pipe laws
+`pns_writeU`/`_write_haltU`/`_read_atU`/`_read_eofU`, the middle cat's
+write law `pns_pipe_copy_write` (its first read records the input byte,
+which is the output pipe's flow fact), exit wands per device kind into
+the node payload, every entry device protected, the taint via
+`fh_taint_pays`; `UkPipesEntries.v` -- `pse_echo_image_entry`,
+`pse_mid_image_entry` (`DCopy true`), `pse_last_image_entry`
+(`DCopy false`), shaped for C3b's `ush_left_law`/`ush_last_law`).  LEFT
+for C7: firing/step premises per writer (content vs exec failure is
+discharged via `flow_chain_excl`), silent writers' commits
+(`blkN_silence`) after the node's waits, the sh-side writers (sigma_k
+panics, exec failures), the halted-cat/diagnostic pairing at exit, and
+moving `pe_cat_1w_args`/`pe_line_len`/`pe_drop1_ne` before
+`UkPipeEntries` is deleted.  The pipeline's exclusions are caller premises
 (`fire_okN`/`silence_okN`), discharged in C6/C7 from the flow chain.
 
 # Design: arbitrary pipelines `P0 | cat | … | cat` by induction on the command tree

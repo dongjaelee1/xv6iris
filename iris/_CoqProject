@@ -1676,6 +1676,7 @@ UkShRedirChild.v
 UkCatDeed.v
 UCatOut.v
 UShCat.v
+UkTreeEntry.v
 UCatKernel.v
 UInitTree.v
 UInitTreeCons.v

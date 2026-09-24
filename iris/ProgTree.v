@@ -201,6 +201,17 @@ Definition cat_tree (argv : list bytes) : proc :=
   | paths => cat_files paths (exit_ 0)
   end.
 
+(* Both trees look only at [drop 1 argv] (the command name is argv[0]), so
+   a key's argument reading and a line's words that agree from argv[1] on
+   name the same tree. *)
+Lemma echo_tree_tail (a b : list bytes) :
+  drop 1 a = drop 1 b -> echo_tree a = echo_tree b.
+Proof. intros H. unfold echo_tree. rewrite H. reflexivity. Qed.
+
+Lemma cat_tree_tail (a b : list bytes) :
+  drop 1 a = drop 1 b -> cat_tree a = cat_tree b.
+Proof. intros H. unfold cat_tree. rewrite H. reflexivity. Qed.
+
 (* ===================================================================== *)
 (*  4.  A WORLD, AND ONE PROCESS RUN AGAINST IT                           *)
 (*                                                                        *)

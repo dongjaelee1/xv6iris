@@ -1749,3 +1749,6 @@ UShPipeLaw.v
 UkPipeEntries.v
 UkPipesIface.v
 UkPipesEntries.v
+UShPipesDefs.v
+UShPipesStage.v
+UShPipesNode.v

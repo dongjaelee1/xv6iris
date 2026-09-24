@@ -20,8 +20,9 @@
 (*  the empty source), its DEPOSIT [dep w s] -- the landed [XL]/[YR].     *)
 (*                                                                       *)
 (*  THE PURE INVARIANT.  While the round is not terminal the committed    *)
-(*  sources are COMPATIBLE ([PipeBothNPure.compatN]): they extend to a    *)
-(*  complete run of the model, so the block so far completes to one of   *)
+(*  sources, every uncommitted writer read as SILENT, ARE a complete run  *)
+(*  of the model ([PipeBothNPure.runS]; so they are compatible,           *)
+(*  [compatN]), so the block so far completes to one of                   *)
 (*  its blocks ([pendN_complete]) and the claim's witness for the next    *)
 (*  byte is DERIVED here, not supplied.  A writer COMMITS at its first    *)
 (*  byte ([blkN_fire]) or at a silent exit ([blkN_silence]), and that is  *)
@@ -57,6 +58,9 @@ Section blkN.
   Context {Σ : gFunctors} `{HRg : !riscvGS Σ}.
   Context `{!ghost_varG Σ nat} `{!ghost_varG Σ (option (list (bv 8)))}.
   Context {W : Type} `{EqW : !EqDecision W}.
+  (* the committed writers, at this family's writer type *)
+  Local Notation cmtN := (@PipeBothNPure.cmtN W EqW).
+  Local Notation rmd := (@PipeBothNPure.rmd W EqW).
   (* THE WRITERS, each once *)
   Context (ws : list W) (Hnd : stdpp.base.NoDup ws).
   (* THE CLAIM, as the port reads it *)
@@ -93,17 +97,11 @@ Section blkN.
   Definition tmN (md : W -> option (list (bv 8))) (sel : list W) : bool :=
     existsb (fun w => TERM w (srcN md w)) sel.
 
-  (* a COMMITTED writer: it has written, or fixed the empty source *)
-  Definition cmtN (md : W -> option (list (bv 8))) (sel : list W) (w : W) : bool :=
-    bool_decide (w ∈ sel \/ md w = Some []).
-
-  (* the committed sources *)
-  Definition rmd (md : W -> option (list (bv 8))) (sel : list W)
-      : W -> option (list (bv 8)) :=
-    fun w => if cmtN md sel w then md w else None.
+  (* the committed writers and their sources: [PipeBothNPure.cmtN] /
+     [PipeBothNPure.rmd] *)
 
   Definition invN (md : W -> option (list (bv 8))) (sel : list W) : Prop :=
-    (tmN md sel = false -> compatN RUN (rmd md sel))
+    (tmN md sel = false -> runS RUN (rmd md sel))
     /\ (tmN md sel = true -> TOK md sel).
 
   Definition famN (md : W -> option (list (bv 8))) (sel : list W) : Prop :=
@@ -343,13 +341,13 @@ Section blkN.
   (* THE ROUND'S LEND: the family at the empty block, every writer's two
      halves handed out *)
   Lemma blkN_alloc (E : coPset) (N : namespace) (k : nat) :
-    (exists src, RUN src) ->
+    runS RUN (fun _ => None) ->
     PW k [] false ={E}=∗
     ∃ γc γm : W -> gname,
       blkN_inv N k γc γm
       ∗ [∗ list] w ∈ ws, wcurN γc w (1/2) 0 ∗ wmodeN γm w (1/2) None.
   Proof using Hnd.
-    intros (src0 & Hr0). iIntros "HPW".
+    intros Hr0. iIntros "HPW".
     iMod (ghost_vars_alloc (A := nat) ws 0 Hnd) as (γc) "Hc".
     iMod (ghost_vars_alloc (A := option (list (bv 8))) ws None Hnd) as (γm) "Hm".
     iDestruct (big_sepL_sep_2 with "Hc Hm") as "Hcm".
@@ -369,8 +367,9 @@ Section blkN.
       - intros x Hx. by destruct (Hx eq_refl).
       - intros x Hx. by apply elem_of_nil in Hx.
       - intros x. cbn [cntN]. lia.
-      - split; [| discriminate]. intros _. exists src0. split; [exact Hr0 |].
-        intros w s Hs. rewrite /rmd in Hs. by destruct (cmtN _ _ w). }
+      - split; [| discriminate]. intros _.
+        apply (runS_ext RUN (fun _ => None)); [| exact Hr0].
+        intros w. rewrite /rmd. by destruct (cmtN _ _ w). }
     iModIntro. iExists γc, γm. iFrame "Hinv Hout".
   Qed.
 
@@ -386,7 +385,7 @@ Section blkN.
       (EXCL : W -> list (bv 8) -> Prop) : Prop :=
     forall md sel, famN md sel -> md w = None -> w ∉ sel ->
       (tmN (mdupd md w s) (sel ++ [w]) = false ->
-         compatN RUN (rmd (mdupd md w s) (sel ++ [w]))
+         runS RUN (rmd (mdupd md w s) (sel ++ [w]))
          \/ exists w' s', cmtN md sel w' = true /\ md w' = Some s' /\ EXCL w' s')
       /\ (tmN (mdupd md w s) (sel ++ [w]) = true ->
             (TOK (mdupd md w s) (sel ++ [w])
@@ -495,7 +494,7 @@ Section blkN.
           rewrite Hc0. apply lookup_lt_Some in Hb. exact Hb.
         - split; [intros _; exact Hcomp | by rewrite Htm']. }
       assert (Hwit : WIT false (pendN md sel ++ [b])).
-      { rewrite -Hpend. exact (witN_nt md' sel' Hfam' Hcomp). }
+      { rewrite -Hpend. exact (witN_nt md' sel' Hfam' (compatN_of_runS _ _ Hcomp)). }
       assert (Htm0 : tmN md sel = false).
       { destruct (tmN md sel); [| done]. cbn in Htm. congruence. }
       assert (HTw : TERM w s = false).
@@ -578,13 +577,15 @@ Section blkN.
       - apply sel_firedN_snoc; [exact Hfd | rewrite Hmw; by eexists].
       - exact Hwf'.
       - split.
-        + intros Hf. rewrite Htm in Hf. apply (compatN_ext (rmd md sel)); [exact Hrmd |].
+        + intros Hf. rewrite Htm in Hf.
+          apply (runS_ext RUN (rmd md sel)); [intros x; by rewrite Hrmd |].
           exact (proj1 Hinvn Hf).
         + intros Ht. rewrite Htm in Ht. exact (proj1 (Hok md sel Hfam Hmw Hcw Ht)). }
     assert (Hwit : WIT (tmN md sel) (pendN md sel ++ [b])).
     { rewrite -Hpend. destruct (tmN md sel) eqn:Ht.
       - exact (proj2 (Hok md sel Hfam Hmw Hcw Ht)).
-      - apply (witN_nt md sel' Hfam'). apply (compatN_ext (rmd md sel)); [exact Hrmd |].
+      - apply (witN_nt md sel' Hfam'). apply compatN_of_runS.
+        apply (runS_ext RUN (rmd md sel)); [intros x; by rewrite Hrmd |].
         exact (proj1 Hinvn Ht). }
     assert (HTw : TERM w s = true -> tmN md sel = true).
     { intros HT. rewrite /tmN existsb_exists. exists w.
@@ -699,13 +700,15 @@ Section blkN.
       - apply sel_firedN_snoc; [exact Hfd | rewrite Hmw; by eexists].
       - exact Hwf'.
       - split.
-        + intros Hf. rewrite Htm in Hf. apply (compatN_ext (rmd md sel)); [exact Hrmd |].
+        + intros Hf. rewrite Htm in Hf.
+          apply (runS_ext RUN (rmd md sel)); [intros x; by rewrite Hrmd |].
           exact (proj1 Hinvn Hf).
         + intros Ht. rewrite Htm in Ht. exact (proj1 (Hok md sel Hfam Hmw Hcw Hheld Ht)). }
     assert (Hwit : WIT (tmN md sel) (pendN md sel ++ [b])).
     { rewrite -Hpend. destruct (tmN md sel) eqn:Ht.
       - exact (proj2 (Hok md sel Hfam Hmw Hcw Hheld Ht)).
-      - apply (witN_nt md sel' Hfam'). apply (compatN_ext (rmd md sel)); [exact Hrmd |].
+      - apply (witN_nt md sel' Hfam'). apply compatN_of_runS.
+        apply (runS_ext RUN (rmd md sel)); [intros x; by rewrite Hrmd |].
         exact (proj1 Hinvn Ht). }
     assert (HTw : TERM w s = true -> tmN md sel = true).
     { intros HT. rewrite /tmN existsb_exists. exists w.
@@ -737,7 +740,7 @@ Section blkN.
   Definition silence_okN (w : W) (EXCL : W -> list (bv 8) -> Prop) : Prop :=
     forall md sel, famN md sel -> md w = None -> w ∉ sel ->
       (tmN md sel = false ->
-         compatN RUN (rmd (mdupd md w []) sel)
+         runS RUN (rmd (mdupd md w []) sel)
          \/ exists w' s', cmtN md sel w' = true /\ md w' = Some s' /\ EXCL w' s')
       /\ (tmN md sel = true ->
             TOK (mdupd md w []) sel
@@ -858,7 +861,7 @@ Section blkN.
     { apply not_true_iff_false. rewrite /tmN existsb_exists. intros (x & Hx & Ht).
       apply elem_of_list_In in Hx. pose proof (Hin x Hx) as Hxw.
       destruct (Hall x Hxw) as [Hmx _]. rewrite /srcN Hmx /= (HT x Hxw) in Ht. discriminate Ht. }
-    pose proof (proj1 Hinvn Htm) as Hcomp.
+    pose proof (compatN_of_runS _ _ (proj1 Hinvn Htm)) as Hcomp.
     assert (Hblk : blkN ws RUN (pendN md sel)).
     { rewrite -pendN_rmd. apply (pendN_file ws RUN (rmd md sel) sel Hnd Hin); [| exact Hcomp].
       intros w Hw. destruct (Hall w Hw) as [Hmw Hcw]. exists (sw w).

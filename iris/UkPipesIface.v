@@ -631,7 +631,7 @@ Section UkPipesIface.
     ((∃ EXCL : wid -> list (bv 8) -> Prop,
         ⌜fire_okN wsN RUNN WITN TERM TOK w s EXCL⌝
         ∗ □ (∀ w' s', ⌜EXCL w' s'⌝ -∗ dep w' s' -∗ dep w s ={↑pipeN}=∗ False))
-     ∗ ⌜forall c : nat, cstep_okN wsN RUNN WITN TERM TOK w s c⌝)%I.
+     ∗ ⌜forall c : nat, (0 < c < length s)%nat -> cstep_okN wsN RUNN WITN TERM TOK w s c⌝)%I.
 
   Global Instance pns_kit_persistent w s : Persistent (pns_kit w s).
   Proof using . rewrite /pns_kit. apply _. Qed.
@@ -653,6 +653,17 @@ Section UkPipesIface.
               with "[] Hinv HcW HmW [HΦ]").
     - iApply pblkN_ecl_holds.
     - iIntros "HcW HmW _". iApply ("HΦ" with "HcW HmW").
+  Qed.
+
+  (* a console byte may be preceded by a FANCY UPDATE at the port's mask:
+     [out_link]'s own body is one *)
+  Lemma pns_out_link_fupd (b : bv 8) (X Φ : iProp Σ) :
+    (|={⊤ ∖ ↑uartN Uart0}=> X) -∗ (X -∗ out_link Uart0 (S gen_id) b Φ) -∗
+    out_link Uart0 (S gen_id) b Φ.
+  Proof using .
+    iIntros "HX Hl". rewrite {2}/out_link. iIntros (o HH) "Hlb Hres".
+    iMod "HX". iDestruct ("Hl" with "HX") as "Hl". rewrite /out_link.
+    iApply ("Hl" $! o HH with "Hlb Hres").
   Qed.
 
   (* A WRITER'S FIRST BYTE: [PipeBothN.blkN_fire] at the kit's exclusion *)
@@ -730,7 +741,7 @@ Section UkPipesIface.
        ∗ [∗ list] a ∈ alts, (⌜a = []⌝ ∨ (pns_kit w a ∗ dep w a)))
       ∨ (∃ (s : list (bv 8)) (c : nat),
            ⌜((0 < c)%nat /\ (c <= length s)%nat) /\ alts = [drop c s] /\ s ∈ A⌝
-           ∗ ⌜forall c', cstep_okN wsN RUNN WITN TERM TOK w s c'⌝
+           ∗ ⌜forall c', (0 < c' < length s)%nat -> cstep_okN wsN RUNN WITN TERM TOK w s c'⌝
            ∗ wcurN γc w (1/2) c ∗ wmodeN γm w (1/2) (Some s))))%I.
 
   Lemma pns_con_short (w : wid) (A alts : list (list (bv 8))) :
@@ -780,7 +791,7 @@ Section UkPipesIface.
       injection Halts as ->.
       rewrite lookup_drop Nat.add_0_r in Hb.
       iApply (pns_fam_cstep w s c b with "Hinv Hcw Hmw");
-        [exact Hw | exact Hc0 | exact Hb | apply Hst |].
+        [exact Hw | exact Hc0 | exact Hb | apply Hst; split; [exact Hc0 | exact (lookup_lt_Some _ _ _ Hb)] |].
       iIntros "Hcw Hmw".
       iSplitR; [iPureIntro; exact (pns_short_drop (drop c s) 1 Hs) |].
       iSplitR; [by iPureIntro |]. iSplitR; [iExact "Hinv" |].
@@ -838,7 +849,7 @@ Section UkPipesIface.
      deposit of the content source is supplied from it *)
   Definition pns_wD (pin : pnames) (w : wid) (c : nat) (alts : list (list (bv 8))) : iProp Σ :=
     (⌜(c <= length L)%nat⌝ ∗ (⌜c = 0%nat⌝ ∨ pws_lb pin (take 1 L)) ∗ ⌜w ∈ wsN⌝ ∗ FAM
-     ∗ pns_kit w L ∗ □ (pws_lb pin (take 1 L) -∗ dep w L)
+     ∗ pns_kit w L ∗ □ (pws_lb pin (take 1 L) ={↑pipeN}=∗ dep w L)
      ∗ ∃ wc : nat, ⌜alts = [drop wc (take c L)] /\ (wc <= c)%nat⌝
          ∗ wcurN γc w (1/2) wc ∗ wmodeN γm w (1/2) (pns_cmode L wc))%I.
 
@@ -881,14 +892,17 @@ Section UkPipesIface.
     - (* THE FIRST BYTE: the family fires at the content source, whose
          deposit comes from the input's first byte *)
       iDestruct "H0" as "[%Hc0 | #Hlb]"; [lia |].
-      iDestruct ("Hdw" with "Hlb") as "Hdep".
+      iApply (pns_out_link_fupd b (dep w L) with "[]").
+      { iApply (fupd_mask_mono (↑pipeN)); [exact pns_pipeN_uart |].
+        iApply ("Hdw" with "Hlb"). }
+      iIntros "Hdep".
       cbn [pns_cmode].
       iApply (pns_fam_fire w L b with "Hkit Hinv Hcw Hmw Hdep"); [exact Hw | exact HbL |].
       iIntros "Hcw Hmw". iApply ("Hback" $! 1%nat with "[%] Hcw Hmw"). reflexivity.
     - iDestruct "Hkit" as "[_ %Hst]".
       cbn [pns_cmode].
       iApply (pns_fam_cstep w L (S wc0) b with "Hinv Hcw Hmw");
-        [exact Hw | lia | exact HbL | apply Hst |].
+        [exact Hw | lia | exact HbL | apply Hst; split; [lia | exact (lookup_lt_Some _ _ _ HbL)] |].
       iIntros "Hcw Hmw". iApply ("Hback" $! (S (S wc0)) with "[%] Hcw Hmw"). reflexivity.
   Qed.
 
@@ -1248,7 +1262,7 @@ Section UkPipesIface.
   Definition pns_sink (pin : pnames) (sk : csink) (wc : nat) : iProp Σ :=
     match sk with
     | CSCon w =>
-        ⌜w ∈ wsN⌝ ∗ FAM ∗ pns_kit w L ∗ □ (pws_lb pin (take 1 L) -∗ dep w L)
+        ⌜w ∈ wsN⌝ ∗ FAM ∗ pns_kit w L ∗ □ (pws_lb pin (take 1 L) ={↑pipeN}=∗ dep w L)
         ∗ wcurN γc w (1/2) wc ∗ wmodeN γm w (1/2) (pns_cmode L wc)
     | CSPipe pn _ => wcur pn wc ∗ pws_lb pn (take wc L)
     end%I.
@@ -2321,6 +2335,96 @@ Section UkPipesIface.
     rewrite E0 E1. cbn [pns_dev]. iSplitL "Htk0b Hc Hm Hks".
     - iLeft. iExists w2, A2. iFrame "Htk0b".
       iApply (pns_con_lend w2 A2 alts2 Hs2 Hw2 HA2 with "Hfam Hc Hm Hks").
+    - iExists pin, gin, sk. iSplitR; [by iPureIntro |]. iFrame "Htk1b".
+      iExists 0%nat, 0%nat. iSplitR; [iPureIntro; split; reflexivity |].
+      iSplitR; [iPureIntro; split; lia |]. iFrame "Hr Hsk". by iLeft.
+  Qed.
+
+  (* ---- THE LAST CAT'S LEND, fd 2 MUTE (lane PIPES-C7).  The last stage's
+          diagnostics are no writer of the model's ([PipesDisc.stage_out]'s
+          [SLast] prints its content only), so its fd 2 is [PDMute] and the
+          only console writer it holds is the sink's ---- *)
+  Definition pns_copy_lend_m (pin : pnames) (gin : pipe_names) (sk : csink)
+      (Q : Z -> iProp Σ) : iProp Σ :=
+    (pns_pk_inv (PDCopy (pin, gin) sk) ∗ rcur pin 0%nat ∗ pns_sink pin sk 0%nat
+     ∗ pns_xkQ [(0%nat, PDMute); (1%nat, PDCopy (pin, gin) sk)] Q)%I.
+
+  Lemma pns_copy_env_res_m (pin : pnames) (gin : pipe_names) (sk : csink)
+      (l : list fdstate) (wb rb1 rb2 : bool)
+      (wv : nat -> pdev) (files : list (bv 8) -> option (list (bv 8))) :
+    kds = [(0%nat, PDMute); (1%nat, PDCopy (pin, gin) sk)] ->
+    wv 0%nat = PDMute -> wv 1%nat = PDCopy (pin, gin) sk ->
+    l !! 0%nat = Some (FdOpen true wb (FdPipe gin)) ->
+    l !! 1%nat = Some (FdOpen rb1 true (pns_sink_ty sk)) ->
+    l !! 2%nat = Some (FdOpen rb2 true (FdDevice CONSOLE)) ->
+    UserFd.ustd γfd l -∗ own γreg (pns_pool ∅ wv) -∗
+    pns_copy_lend_m pin gin sk (ukn_pay N) -∗
+    env_res N P pipes_iface (copy_env (DCopy (pns_sink_h sk) L []) [[]] files [])
+      {[0%nat; 1%nat]}.
+  Proof using Heq.
+    intros Hk Hw0 Hw1 Hl0 Hl1 Hl2.
+    set (fdm := (<[0 := 1%nat]> (<[1 := 1%nat]> {[2 := 0%nat]}) : fdmap)).
+    set (vs := (<[0%nat := PDMute]> {[1%nat := PDCopy (pin, gin) sk]} : gmap nat pdev)).
+    assert (Hv0 : vs !! 0%nat = Some PDMute) by (rewrite /vs; apply lookup_insert).
+    assert (Hv1 : vs !! 1%nat = Some (PDCopy (pin, gin) sk)).
+    { rewrite /vs lookup_insert_ne; [| done]. apply lookup_singleton. }
+    assert (Hok : pns_ok fdm l vs).
+    { split; [| split; [| split]].
+      - intros fd d. rewrite /fdm lookup_insert_Some lookup_insert_Some lookup_singleton_Some.
+        intros [[<- _] | (_ & [[<- _] | (_ & <- & _)])]; lia.
+      - intros fd d. rewrite /fdm lookup_insert_Some lookup_insert_Some lookup_singleton_Some.
+        intros [[<- <-] | (_ & [[<- <-] | (_ & <- & <-)])].
+        + rewrite Hv1. cbn [pns_row]. left. split; [reflexivity | by exists wb].
+        + rewrite Hv1. cbn [pns_row]. right. split; [reflexivity | by exists rb1].
+        + rewrite Hv0. cbn [pns_row]. split; [unfold NSTD; lia | by exists rb2].
+      - intros d. rewrite /vs dom_insert_L dom_singleton_L elem_of_union !elem_of_singleton.
+        intros [-> | ->]; left; [exists 2 | exists 0].
+        + rewrite /fdm lookup_insert_ne; [| lia]. rewrite lookup_insert_ne; [| lia].
+          apply lookup_singleton.
+        + apply lookup_insert.
+      - intros fd d. rewrite /fdm lookup_insert_Some lookup_insert_Some lookup_singleton_Some.
+        rewrite /vs dom_insert_L dom_singleton_L.
+        intros [[_ <-] | (_ & [[_ <-] | (_ & _ & <-)])]; set_solver. }
+    assert (Hkd : pns_kds_ok vs).
+    { intros dk. rewrite Hk elem_of_cons elem_of_list_singleton.
+      intros [-> | ->]; cbn [fst snd]; [exact Hv0 | exact Hv1]. }
+    iIntros "Hstd Hpool (#Hinv & Hr & Hsk & Hxk)".
+    rewrite /env_res.
+    iDestruct (pns_pool_own_take ∅ wv 0%nat with "Hpool") as "[Hpool Htk0]"; [set_solver |].
+    iDestruct (pns_pool_own_take ({[0%nat]} ∪ ∅) wv 1%nat with "Hpool") as "[Hpool Htk1]";
+      [set_solver |].
+    rewrite Hw0 Hw1.
+    iDestruct (pns_tok_halves with "Htk0") as "[Htk0a Htk0b]".
+    iDestruct (pns_tok_halves with "Htk1") as "[Htk1a Htk1b]".
+    iAssert (pns_env vs) as "#He".
+    { iDestruct pns_env_taint as "[#Ha #Hb]". rewrite /pns_env. iFrame "Ha Hb".
+      rewrite /vs big_sepM_insert; [| by rewrite lookup_singleton_ne].
+      rewrite big_sepM_singleton. iSplitR; [cbn [pns_pk_inv]; done | iExact "Hinv"]. }
+    iSplit.
+    { iPureIntro. intros fd d. cbn [copy_env pe_fd].
+      rewrite lookup_insert_Some lookup_insert_Some lookup_singleton_Some.
+      intros [[_ <-] | (_ & [[_ <-] | (_ & _ & <-)])]; set_solver. }
+    iSplitL "Hstd Hxk Hpool Htk0a Htk1a".
+    { rewrite pns_ei_fds. iExists l, vs, wv. cbn [copy_env pe_fd].
+      iSplitL "Hstd"; [iExact "Hstd" |].
+      iSplitL "Hxk"; [rewrite /pns_xk /pns_xkQ Hk; iExact "Hxk" |].
+      iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
+      iSplitL "Hpool".
+      { rewrite (pns_pool_ext (dom vs) ({[1%nat]} ∪ ({[0%nat]} ∪ ∅)) wv wv);
+          [iExact "Hpool" | | intros; reflexivity].
+        rewrite /vs dom_insert_L dom_singleton_L. set_solver. }
+      iSplitL "Htk0a Htk1a"; [| iExact "He"].
+      rewrite /vs big_sepM_insert; [| by rewrite lookup_singleton_ne].
+      rewrite big_sepM_singleton. iFrame "Htk0a Htk1a". }
+    iSplitR.
+    { rewrite pns_ei_files /pns_filesr. cbn [copy_env pe_paths]. by iPureIntro. }
+    rewrite /dev_res big_sepS_union; [| set_solver]. rewrite !big_sepS_singleton !pns_dev_of.
+    assert (E0 : pe_dev (copy_env (DCopy (pns_sink_h sk) L []) [[]] files []) 0%nat
+                 = DOut [[]]) by reflexivity.
+    assert (E1 : pe_dev (copy_env (DCopy (pns_sink_h sk) L []) [[]] files []) 1%nat
+                 = DCopy (pns_sink_h sk) L []) by reflexivity.
+    rewrite E0 E1. cbn [pns_dev]. iSplitL "Htk0b".
+    - iRight. iFrame "Htk0b". by iPureIntro.
     - iExists pin, gin, sk. iSplitR; [by iPureIntro |]. iFrame "Htk1b".
       iExists 0%nat, 0%nat. iSplitR; [iPureIntro; split; reflexivity |].
       iSplitR; [iPureIntro; split; lia |]. iFrame "Hr Hsk". by iLeft.

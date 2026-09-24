@@ -345,6 +345,39 @@ Section mergeN.
   Definition compatN (RUN : (W -> bytes) -> Prop) (md : W -> option bytes) : Prop :=
     exists src, RUN src /\ forall w s, md w = Some s -> src w = s.
 
+  (* ...AND THE FAMILY'S INVARIANT, which is sharper (lane PIPES-C7): the
+     fired sources ARE a complete run once every writer that has not
+     committed is read as SILENT.  [compatN] lets an uncommitted writer
+     take any source in the completing run, and that is too weak to be
+     kept: a state whose committed writers exclude each other in reality
+     (an exec failure above the content writer) is compatible through a
+     completion that a later SILENT commit refutes.  Read at the silent
+     completion, a silent commit changes nothing, and every commit that
+     does change the vector is one writer's. *)
+  Definition runS (RUN : (W -> bytes) -> Prop) (md : W -> option bytes) : Prop :=
+    exists src, RUN src /\ forall w, src w = default [] (md w).
+
+  Lemma compatN_of_runS RUN md : runS RUN md -> compatN RUN md.
+  Proof using.
+    intros (src & Hr & Hag). exists src. split; [exact Hr |].
+    intros w s Hs. rewrite Hag, Hs. reflexivity.
+  Qed.
+
+  Lemma runS_ext RUN md md' :
+    (forall w, default [] (md' w) = default [] (md w)) -> runS RUN md -> runS RUN md'.
+  Proof using.
+    intros Hx (src & Hr & Hag). exists src. split; [exact Hr |]. intros w. rewrite Hag, Hx.
+    reflexivity.
+  Qed.
+
+  (* a COMMITTED writer: it has written, or fixed the empty source *)
+  Definition cmtN (md : W -> option bytes) (sel : list W) (w : W) : bool :=
+    bool_decide (w ∈ sel \/ md w = Some []).
+
+  (* the committed sources *)
+  Definition rmd (md : W -> option bytes) (sel : list W) : W -> option bytes :=
+    fun w => if cmtN md sel w then md w else None.
+
   (* THE BLOCKS OF A RUN: a merge of every writer's whole source *)
   Definition blkN (ws : list W) (RUN : (W -> bytes) -> Prop) (b : bytes) : Prop :=
     exists src, RUN src /\ merge_all (src <$> ws) b.
@@ -938,9 +971,32 @@ Definition prompt_okN (md : wid -> option bytes) (sel : list wid) : Prop :=
    terminal vector, and the prompt follows the waited stages *)
 Definition tokN (fc : bytes -> option bytes) (l : pline') (md : wid -> option bytes)
     (sel : list wid) : Prop :=
-  (exists src, termsN fc l src
-     /\ forall w s, (w ∈ sel \/ md w = Some []) -> md w = Some s -> src w = s)
-  /\ prompt_okN md sel.
+  runS (termsN fc l) (rmd md sel) /\ prompt_okN md sel.
+
+(* the committed sources agree with the silent completion *)
+(* A SILENT COMMIT leaves the silent completion as it was *)
+Lemma rmd_silence_src {W : Type} `{!EqDecision W} (md : W -> option bytes) (sel : list W)
+    (w x : W) :
+  w ∉ sel -> md w = None ->
+  default [] (rmd (mdupd md w []) sel x) = default [] (rmd md sel x).
+Proof using.
+  intros Hws Hmw. unfold rmd, cmtN, mdupd.
+  case_decide as Hxw.
+  - subst x.
+    rewrite (bool_decide_eq_false_2 (w ∈ sel \/ md w = Some []));
+      [| intros [Hin | Hq]; [exact (Hws Hin) | rewrite Hmw in Hq; discriminate Hq]].
+    case_bool_decide; reflexivity.
+  - reflexivity.
+Qed.
+
+Lemma runS_committed (RUN : (wid -> bytes) -> Prop) (md : wid -> option bytes) (sel : list wid) :
+  runS RUN (rmd md sel) ->
+  exists src, RUN src /\ forall w s, (w ∈ sel \/ md w = Some []) -> md w = Some s -> src w = s.
+Proof using.
+  intros (src & Hr & Hag). exists src. split; [exact Hr |].
+  intros w s Hc Hs. rewrite Hag. unfold rmd, cmtN. rewrite bool_decide_true by exact Hc.
+  rewrite Hs. reflexivity.
+Qed.
 
 (* THE TERMINAL WITNESS, DERIVED: the block of a family state the
    invariant holds at is a prefix of a terminal block *)
@@ -948,7 +1004,8 @@ Theorem tokN_blocks fc l (md : wid -> option bytes) (sel : list wid) :
   tokN fc l md sel -> sel_firedN md sel -> sel_wfN (srcN md) sel ->
   exists b', line_term_blocks fc l b' /\ pendN md sel `prefix_of` b'.
 Proof using.
-  intros ((src & (k & Htm) & Hag) & Hpo) Hfd Hwf.
+  intros (Hrs & Hpo) Hfd Hwf.
+  destruct (runS_committed _ md sel Hrs) as (src & (k & Htm) & Hag).
   assert (Heq : forall w, w ∈ sel -> srcN md w = src w).
   { intros w Hw. destruct (Hfd w Hw) as [s Hs]. unfold srcN. rewrite Hs. cbn.
     symmetry. exact (Hag w s (or_introl Hw) Hs). }

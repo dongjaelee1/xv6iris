@@ -344,4 +344,61 @@ Section UkPipesEntries.
              (CSCon wL) wb rb1 rb2 HQc Ht Hs Hbytes Himg Hfdl Hl0 Hl1 Hl2 Hnil
              (fun Hf => match Bool.diff_false_true Hf with end)).
   Qed.
+  (* THE LAST CAT, fd 2 MUTE (lane PIPES-C7): [pse_last_image_entry] with
+     the registry's device 0 [PDMute] -- the last stage's diagnostics are
+     no writer of the model's, so the only console writer it holds is the
+     sink's [wL] *)
+  Lemma pse_last_image_entry_m (a b : nat) (Mn : gmap Z (bv 8)) (sv t : Z) (gn : nat -> bv 8)
+      (sts : list fdstate) (cw : Z) (cs : gset gname) (pidv : mword 32) (Q : Z -> iProp Σ)
+      (pin : pnames) (gin : pipe_names) (wL : wid) (wb rb1 rb2 : bool) :
+    (forall x y : Z, Q x = Q y) ->
+    0 < t < 2 ^ 38 ->
+    0 < sv + Z.of_nat a < 2 ^ 38 ->
+    UkShCat.cat_argv_bytes a b gn ->
+    uargv_img Mn (t + 8) (UkShMain.ush_args sv gn (UkShCat.cat_toks a b)) ->
+    length sts = NOFILE ->
+    take NSTD sts !! 0%nat = Some (FdOpen true wb (FdPipe gin)) ->
+    take NSTD sts !! 1%nat = Some (FdOpen rb1 true (FdDevice CONSOLE)) ->
+    take NSTD sts !! 2%nat = Some (FdOpen rb2 true (FdDevice CONSOLE)) ->
+    UkRun.urun_nopipe sts -∗ udep -∗
+    image_entry ElfUser.cat_elf Mn (mword_of_int (t + 8) : mword 64) sts cw cs pidv Q
+      (pns_copy_lend_m g fc adm v I L TERM TOK dep γc γm pin gin (CSCon wL) Q) uslot.
+  Proof using HL31 Hadmit Hcons Heq Hfc Hkill Hplok dep_tl pnsRegG0 ufdG0.
+    intros HQc Ht Hs Hbytes Himg Hfdl Hl0 Hl1 Hl2.
+    destruct (pe_cat_1w_args a b Mn sv t gn Ht Hs Hbytes Himg) as (Hok & Hnode & Hab).
+    iIntros "#Hnpw #Hdep".
+    set (wv := fun d : nat => match d with O => PDMute | S _ => PDCopy (pin, gin) (CSCon wL) end).
+    rewrite /image_entry.
+    iIntros "!>" (na alen afun W') "%Hokk %Hcw %Hlz %Hch %Hpid %Hargs Hmp HPay".
+    iApply uslot_bupd.
+    iMod (pns_reg_alloc wv) as (γreg) "Hpool". iModIntro.
+    set (If := fun (N' : uk_names Σ) (Hpq : ukn_pay N' = Q) =>
+                 pse_iface_cat γreg [(0%nat, PDMute); (1%nat, PDCopy (pin, gin) (CSCon wL))]
+                   (pse_nodup01 _ _) N' (ukn_const_of_eq N' Q Hpq HQc)).
+    iPoseProof (cat_image_entry_env_c (PS := PS) [UkShCat.cmd_cat] Mn (sv + Z.of_nat a) t
+                  (fun j : nat => gn (a + j)%nat) sts cw cs pidv Q
+                  (own γreg (pns_pool ∅ wv)
+                   ∗ pns_copy_lend_m g fc adm v I L TERM TOK dep γc γm pin gin (CSCon wL) Q)%I
+                  If (copy_env (DCopy false L []) [[]] (fun _ => None) [])
+                  {[0%nat; 1%nat]}
+                  Hok Hnode Hab Hfdl
+                  (cat_copy_conforms false L [[]] (fun _ => None) []
+                     (elem_of_list_here _ _) (fun Hf => match Bool.diff_false_true Hf with end))
+                  (cat_tree_safe _ _) (pse_dp01 _ _)
+                  with "[] Hnpw Hdep") as "#He".
+    { iIntros "!>" (N' Hpq) "Hstd _ [Hpool Hlend]".
+      rewrite /If /pse_iface_cat.
+      iEval (rewrite -Hpq) in "Hlend".
+      iApply (pns_copy_env_res_m g fc adm LW Hcons Hkill rn Heq Hfc v I Hadmit Hplok L HL31
+                TERM TOK dep dep_tl γc γm N' (cat_prog N')
+                (HNc := ukn_const_of_eq N' Q Hpq HQc)
+                (cat_stub_read N') (cat_stub_write N') (cat_stub_open N')
+                (cat_stub_close N') (cat_stub_exit N') γreg _ (pse_nodup01 _ _)
+                pin gin (CSCon wL) (take NSTD sts) wb rb1 rb2 wv (fun _ => None)
+                eq_refl eq_refl eq_refl Hl0 Hl1 Hl2
+                with "Hstd Hpool Hlend"). }
+    iApply ("He" $! na alen afun W' with "[%] [%] [%] [%] [%] [%] Hmp [Hpool HPay]");
+      [ exact Hokk | exact Hcw | exact Hlz | exact Hch | exact Hpid | exact Hargs | ].
+    iFrame "Hpool HPay".
+  Qed.
 End UkPipesEntries.

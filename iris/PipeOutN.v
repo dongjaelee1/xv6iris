@@ -1107,6 +1107,36 @@ Proof using.
     replace (2 * S n)%nat with (S (2 * n + 1)) in Hx by lia. exact Hx.
 Qed.
 
+(* THE SILENT ROUND IS A RUN: every writer silent (the producer's argv[0]
+   empty, every cat's too) -- the family's invariant at its birth *)
+Lemma sfx_runV_silent (fc : bytes -> option bytes) (L : bytes) (m : nat) (win : wr_out)
+    (wc : bool) :
+  sfx_runV fc L (S m) win wc (replicate (2 * m + 1) []).
+Proof using.
+  revert win wc. induction m as [| m IH]; intros win wc.
+  - cbn. apply (srv_last fc L win wc (MkSO [] (Some RdGone) None) (so_silent fc L SLast)).
+    cbn. destruct win; exact I.
+  - replace (2 * S m + 1)%nat with (S (S (2 * m + 1))) by lia. cbn [replicate].
+    apply (srv_node fc L m win wc (MkSO [] (Some RdGone) (Some WrNone)) _
+             (so_silent fc L SMid)); [cbn; destruct win; exact I |].
+    exact (IH WrNone true).
+Qed.
+
+Lemma runN_silent (fc : bytes -> option bytes) (l : pline') :
+  pl_ok l -> runS (runN fc l) (fun _ => None).
+Proof using.
+  intros Hl. exists (fun _ => []). split; [| intros w; reflexivity].
+  destruct l as [ws | p n].
+  - rewrite /runN. cbn. apply lrv_echo_silent.
+  - destruct Hl as (_ & Hn & _). rewrite /runN. cbn [lcats].
+    destruct n as [| n]; [lia |]. rewrite /wids. cbn [wids_from].
+    rewrite !fmap_cons (wids_from_silent (fun _ => []) 1 n ltac:(lia) (fun _ _ => conj eq_refl eq_refl)
+                         eq_refl).
+    exact (lrv_node fc p (S n) (MkSO [] None (Some WrNone)) (replicate (2 * n + 1) [])
+             (so_silent fc (prod_content fc p) (SProd p))
+             (sfx_runV_silent fc (prod_content fc p) n WrNone (prod_cat p))).
+Qed.
+
 Section pipes_family.
   Context {Σ : gFunctors}.
   Context `{!echoOutG Σ, !pipeOutG Σ}.
@@ -1138,7 +1168,7 @@ Section pipes_family.
   Proof using Hl.
     iIntros "HPW".
     iApply (blkN_alloc wsN (wids_NoDup _) RUNN PWN
-              TERM TOK dep E N k (runN_inhabited fc lN Hl) with "HPW").
+              TERM TOK dep E N k (runN_silent fc lN Hl) with "HPW").
   Qed.
 
   (* A FURTHER BYTE by any writer of the pipeline *)
@@ -1289,10 +1319,8 @@ Section pipes_family.
     assert (Hws : w ∈ sel) by (apply cntN_elem; lia).
     assert (Htok : TOKN md (sel ++ [w])).
     { split.
-      - destruct Hcp as (src & Hr & Hag). exists src. split; [exact Hr |].
-        intros x sx [Hx | Hx] Hs; apply (Hag x sx); [| exact Hs | right; exact Hx | exact Hs].
-        left. apply elem_of_app in Hx as [Hx | Hx]; [exact Hx |].
-        apply elem_of_list_singleton in Hx as ->. exact Hws.
+      - apply (runS_ext _ (rmd md sel)); [| exact Hcp].
+        intros x. rewrite /rmd (cmtN_step md sel _ x Hws). reflexivity.
       - apply prompt_okN_snoc; [exact Hpo |]. intros k -> HmT.
         rewrite Hmw in HmT. injection HmT as HmT. rewrite Hcw. exact (Hnp k eq_refl HmT). }
     split; [exact Htok |].
@@ -1317,10 +1345,8 @@ Section pipes_family.
     assert (Hws : WSh k ∈ sel) by (apply cntN_elem; lia).
     assert (Htok : TOKN md (sel ++ [WSh k])).
     { split.
-      - destruct Hcp as (src & Hr & Hag). exists src. split; [exact Hr |].
-        intros x sx [Hx | Hx] Hs; apply (Hag x sx); [| exact Hs | right; exact Hx | exact Hs].
-        left. apply elem_of_app in Hx as [Hx | Hx]; [exact Hx |].
-        apply elem_of_list_singleton in Hx as ->. exact Hws.
+      - apply (runS_ext _ (rmd md sel)); [| exact Hcp].
+        intros x. rewrite /rmd (cmtN_step md sel _ x Hws). reflexivity.
       - apply prompt_okN_prompt; [exact Hpo |]. intros j Hj.
         destruct (Hheld (WLeft j, sw j, length (sw j))) as [Hm Hcn].
         { rewrite /heldN elem_of_list_fmap. exists j. split; [reflexivity |].
@@ -1339,11 +1365,11 @@ Section pipes_family.
     s <> [] ->
     (forall md sel, famN wsN RUNN termw TOKN md sel -> md w = None -> w ∉ sel ->
        tmN termw (mdupd md w s) (sel ++ [w]) = false ->
-       compatN RUNN (rmd (mdupd md w s) (sel ++ [w]))
+       runS RUNN (rmd (mdupd md w s) (sel ++ [w]))
        \/ exists w' s', cmtN md sel w' = true /\ md w' = Some s' /\ EXCL w' s') ->
     (forall md sel, famN wsN RUNN termw TOKN md sel -> md w = None -> w ∉ sel ->
        tmN termw (mdupd md w s) (sel ++ [w]) = true ->
-       compatN (termsN fc lN) (rmd (mdupd md w s) (sel ++ [w]))
+       runS (termsN fc lN) (rmd (mdupd md w s) (sel ++ [w]))
        \/ exists w' s', cmtN md sel w' = true /\ md w' = Some s' /\ EXCL w' s') ->
     fire_okN wsN RUNN WITN termw TOKN w s EXCL.
   Proof using Ha.
@@ -1356,7 +1382,7 @@ Section pipes_family.
       - exact (prompt_okN_nt md sel Htm). }
     assert (Hmw' : mdupd md w s w = Some s) by (rewrite /mdupd decide_True; done).
     assert (Htok : TOKN (mdupd md w s) (sel ++ [w])).
-    { split; [exact (tokN_compat _ _ Hc) |].
+    { split; [exact Hc |].
       apply prompt_okN_snoc; [exact (prompt_okN_mdupd md sel w s Hmw Hws Hpo) |].
       intros k -> _. rewrite (cntN_nil_notin sel _ Hws). rewrite dg_fork_b_len. lia. }
     split; [exact Htok |].
@@ -1368,22 +1394,21 @@ Section pipes_family.
   Qed.
 
   (* A SILENT EXIT, the same way *)
+  (* A SILENT EXIT, BY ANY WRITER, AT ANY STATE (lane PIPES-C7): the family
+     reads an uncommitted writer as silent already, so a silent commit
+     leaves both its invariants where they were -- no exclusion is spent *)
   Lemma silence_okN_tok (w : wid) (EXCL : wid -> list (bv 8) -> Prop) :
-    (forall md sel, famN wsN RUNN termw TOKN md sel -> md w = None -> w ∉ sel ->
-       tmN termw md sel = false ->
-       compatN RUNN (rmd (mdupd md w []) sel)
-       \/ exists w' s', cmtN md sel w' = true /\ md w' = Some s' /\ EXCL w' s') ->
-    (forall md sel, famN wsN RUNN termw TOKN md sel -> md w = None -> w ∉ sel ->
-       tmN termw md sel = true ->
-       compatN (termsN fc lN) (rmd (mdupd md w []) sel)
-       \/ exists w' s', cmtN md sel w' = true /\ md w' = Some s' /\ EXCL w' s') ->
     silence_okN wsN RUNN termw TOKN w EXCL.
   Proof using.
-    intros Hnt Ht md sel Hfam Hmw Hws. split; [exact (Hnt md sel Hfam Hmw Hws) |].
-    intros Htm. destruct (Ht md sel Hfam Hmw Hws Htm) as [Hc | Hx]; [left | right; exact Hx].
+    intros md sel Hfam Hmw Hws.
     pose proof Hfam as (_ & _ & _ & _ & Hinvn).
-    split; [exact (tokN_compat _ _ Hc) |].
-    exact (prompt_okN_mdupd md sel w [] Hmw Hws (proj2 (proj2 Hinvn Htm))).
+    split.
+    - intros Htm. left. apply (runS_ext _ (rmd md sel)); [| exact (proj1 Hinvn Htm)].
+      intros x. exact (rmd_silence_src md sel w x Hws Hmw).
+    - intros Htm. left. destruct (proj2 Hinvn Htm) as [Hr Hpo]. split.
+      + apply (runS_ext _ (rmd md sel)); [| exact Hr].
+        intros x. exact (rmd_silence_src md sel w x Hws Hmw).
+      + exact (prompt_okN_mdupd md sel w [] Hmw Hws Hpo).
   Qed.
 
   (* THE PROMPT at the pipeline: the main loop, after its waits, with the

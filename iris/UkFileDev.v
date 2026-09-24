@@ -755,7 +755,7 @@ Section UkFileDev.
                    (m1 !!! Regidx a2_idx)
                    (uvis_fd W) (uvis_M W) ret (uvis_M W) (uvis_fd W) cw' cs'
                    Hka0 Hka1 Hka2 eq_refl eq_refl with "Hpost")
-        as (Pt) "(_ & _ & _ & Hp)".
+        as "(_ & %Pt & _ & _ & _ & Hp)".
       assert (Hkey : fd_st_of_key (m1 !!! Regidx a0_idx) (uvis_fd W)
                      = FdOpen rb true (FdInode i γo OffHeld))
         by exact (uwr_fd_st_std _ (uvis_fd W) l fd
@@ -881,7 +881,7 @@ Section UkFileDev.
                    (m1 !!! Regidx a2_idx)
                    (uvis_fd W) (uvis_M W) ret (uvis_M W) (uvis_fd W) cw' cs'
                    Hka0 Hka1 Hka2 eq_refl eq_refl with "Hpost")
-        as (Pt) "(_ & _ & _ & Hp)".
+        as "(_ & %Pt & _ & _ & _ & Hp)".
       assert (Hkey : fd_st_of_key (m1 !!! Regidx a0_idx) (uvis_fd W)
                      = FdOpen rb true (FdInode i γo OffHeld))
         by exact (uwr_fd_st_std _ (uvis_fd W) l fd
@@ -907,6 +907,149 @@ Section UkFileDev.
     iIntros (Pt) "_".
     assert (Hw0 : wchunks 0 = 0%nat) by (vm_compute; reflexivity).
     rewrite Hw0 awrite_chain_adv_0. done.
+  Qed.
+
+  (* =================================================================== *)
+  (*  4b. THE ZERO-LENGTH WRITE AT A ROW THAT IS NOT WRITABLE (NIL-RET)   *)
+  (* =================================================================== *)
+  (* THE DEPOSIT COSTS NOTHING at a row that is open but not writable:
+     every paying arm of [SpecFilewrite.filewrite_in] is keyed on the
+     writable bit, so the arm the key selects is [emp] --
+     [UkWriteClosed.uwrite_sup_closed]'s argument at [FdOpen rb false t]
+     in place of [FdClosed], and at ANY reading [K] of the key's table that
+     pins the row (the ledger's, or a handle's). *)
+  Lemma fdev_udepwf_K_nowr (m : regfile) (pc : mword 64)
+      (K : list fdstate -> Prop) (rb : bool) (t : fdtype)
+      (Q : nat -> iProp Σ) :
+    (forall fdv : list fdstate,
+       K fdv -> fd_st_of_key (m !!! Regidx a0_idx) fdv = FdOpen rb false t) ->
+    ⊢ udepwf_K N m pc 16 (write_file_fam Q (ukn_pay N)) K.
+  Proof using .
+    intros Hk.
+    rewrite /udepwf_K. iSplitR; [ iPureIntro; reflexivity | ].
+    iIntros (M pm sz fdv cw gn cs pidv) "%HK _ Hheap Hufd".
+    iFrame "Hheap Hufd".
+    iApply (sbundle_at_write_intro_at uslot (write_file_fam Q (ukn_pay N))
+              (uvis_of_run m pc M pm sz fdv cw gn cs pidv false)
+              (m !!! Regidx a0_idx) (m !!! Regidx a1_idx)
+              (m !!! Regidx a2_idx) fdv M _ _ _
+              (tf_of_arg0 m pc) (tf_of_arg1 m pc) (tf_of_arg2 m pc)
+              (uvis_of_run_fd m pc M pm sz fdv cw gn cs pidv false)
+              eq_refl eq_refl eq_refl eq_refl).
+    rewrite (Hk fdv HK). rewrite /filewrite_in /=. done.
+  Qed.
+
+  (* ...AND THE LEAF, at ANY descriptor knowledge [D] that pins the row
+     ([file_read_at]'s shape): the arm pays nothing and reports nothing
+     ([SpecFilewrite.filewrite_extra] at a non-writable row is [emp]), so
+     what the caller learns is row 16's BLANKET at count 0 -- the answer
+     is 0 or -1 -- and nothing moves: [D] and the empty source come
+     straight back.  [file_write_nil]'s walk, with the blanket in place of
+     the arm's own return clause. *)
+  Lemma file_write_nil_at (D : iProp Σ) (fd : nat) (rb : bool) (t : fdtype)
+      (K : Z -> iProp Σ) :
+    (forall (v0 : mword 64) (fdv : list fdstate),
+       bv_signed (trunc32 v0) = Z.of_nat fd ->
+       ufd_auth γfd fdv -∗ D -∗ ⌜fd_st_of_key v0 fdv = FdOpen rb false t⌝) ->
+    D -∗ ((D -∗ K 0) ∧ (D -∗ K (-1))) -∗
+    wr_obl N P (Z.of_nat fd) [] K.
+  Proof using Hsw.
+    intros Hag.
+    iIntros "Hd HK".
+    iIntros (h m avail ua tx dq f) "%Hf %Ha0 %Ha1 %Ha2 Hcode Hsrc Hrun Hcont".
+    cbn [length] in *.
+    set (m1 := <[Regidx a7_idx := (mword_of_int 16 : mword 64)]> m).
+    assert (Hi0 : bv_signed (trunc32 (m1 !!! Regidx a0_idx)) = Z.of_nat fd).
+    { unfold m1. rewrite (upd_ne m (Regidx a7_idx) (Regidx a0_idx) _
+                            ltac:(vm_compute; discriminate)).
+      exact Ha0. }
+    assert (Hcz : sys_rw_count (mword_of_int (Z.of_nat 0) : mword 64) = Z.of_nat 0)
+      by (apply UEchoOut.echo_count_is; vm_compute; reflexivity).
+    assert (Hcnt : sys_rw_count (m1 !!! Regidx a2_idx) = 0).
+    { unfold m1. rewrite (upd_ne m (Regidx a7_idx) (Regidx a2_idx) _
+                            ltac:(vm_compute; discriminate)) Ha2 Hcz.
+      reflexivity. }
+    assert (Hnum : usysno m1 = 16).
+    { unfold m1, usysno.
+      rewrite (upd_eq m (Regidx a7_idx) (mword_of_int 16 : mword 64)).
+      vm_compute; reflexivity. }
+    (* the empty source: both rows are vacuous *)
+    assert (Hsrc0 : forall (M : gmap Z (bv 8)) (pmv : gmap (mword 27) uperm) (sz : Z),
+              uheap (ukn_t N) (ukn_d N) (ukn_s N) M pmv sz -∗
+              usrc_at N tx dq ua 0 f -∗
+              ⌜usrc_ok M pmv sz (m1 !!! Regidx a1_idx) 0 f⌝).
+    { intros M pmv sz. iIntros "_ _". iPureIntro. split.
+      - intros j Hj. lia.
+      - intros Pt j _ _ _ Hj. lia. }
+    iPoseProof Hsw as "#Hs".
+    iApply ("Hs" $! h m avail with "Hcode Hrun").
+    iIntros (h1) "%E6 %Al6 #Hi Hrun Hret".
+    assert (Hal4 : is_aligned_vaddr
+                     (Virtaddr (add_vec_int (mword_of_int (up_write P + 2) : mword 64) 4))
+                     2 = true)
+      by (rewrite E6; exact Al6).
+    iPoseProof (wp_uk_ecall_write_at N h1 m1 (mword_of_int (up_write P + 2))
+                  avail
+                  (write_file_fam (fun _ : nat => emp%I) (ukn_pay N))
+                  D (usrc_at N tx dq ua 0 f)
+                  (fun fdv => fd_st_of_key (m1 !!! Regidx a0_idx) fdv
+                              = FdOpen rb false t)
+                  0 f Hnum Hal4
+                  (fun fdv => Hag (m1 !!! Regidx a0_idx) fdv Hi0) Hsrc0)
+      as "Hleaf".
+    iApply ("Hleaf" with "Hi Hrun [] Hd Hsrc"); last first.
+    { (* ---- THE POST: the blanket at count 0 ---- *)
+      iIntros (h2 ret W cw' cs')
+        "%Hka0 %Hka1 %Hka2 %Hkey %Hlz %Hnf Hd Hs1 Hpost Hrun".
+      iDestruct (spost_at_write_elim_at uslot
+                   (write_file_fam (fun _ : nat => emp%I) (ukn_pay N)) W
+                   (m1 !!! Regidx a0_idx) (m1 !!! Regidx a1_idx)
+                   (m1 !!! Regidx a2_idx)
+                   (uvis_fd W) (uvis_M W) ret (uvis_M W) (uvis_fd W) cw' cs'
+                   Hka0 Hka1 Hka2 eq_refl eq_refl with "Hpost")
+        as "[%Hret _]".
+      rewrite Hcnt in Hret.
+      iEval (rewrite E6) in "Hrun".
+      iApply ("Hret" $! h2 ret with "Hrun").
+      iIntros (h3) "Hrun".
+      iApply ("Hcont" $! h3 ret with "[HK Hd] Hs1 Hrun").
+      destruct Hret as [-> | (x & -> & Hx)].
+      - rewrite fdev_m1. iDestruct "HK" as "[_ HK]". iApply ("HK" with "Hd").
+      - rewrite Z.max_id in Hx. assert (Hx0 : x = 0) by lia. subst x.
+        change (bv_signed (mword_of_int 0 : mword 64)) with 0.
+        iDestruct "HK" as "[HK _]". iApply ("HK" with "Hd"). }
+    (* ---- THE DEPOSIT: nothing, the row is not writable ---- *)
+    iApply (fdev_udepwf_K_nowr m1 (mword_of_int (up_write P + 2))
+              (fun fdv => fd_st_of_key (m1 !!! Regidx a0_idx) fdv
+                          = FdOpen rb false t)
+              rb t (fun _ : nat => emp%I) (fun fdv Hk => Hk)).
+  Qed.
+
+  (* the two readings of a read-only row: a LEDGER slot, and a HANDLE *)
+  Lemma file_write_nil_std_ro (fd : nat) (l : list fdstate) (rb : bool)
+      (t : fdtype) (K : Z -> iProp Σ) :
+    (fd < NSTD)%nat ->
+    l !! fd = Some (FdOpen rb false t) ->
+    UserFd.ustd γfd l -∗
+    ((UserFd.ustd γfd l -∗ K 0) ∧ (UserFd.ustd γfd l -∗ K (-1))) -∗
+    wr_obl N P (Z.of_nat fd) [] K.
+  Proof using Hsw.
+    intros Hfd Hl.
+    apply (file_write_nil_at (UserFd.ustd γfd l) fd rb t K).
+    intros v0 fdv H0. exact (fdev_ustd_key_agree l fd _ v0 fdv H0 Hfd Hl).
+  Qed.
+
+  Lemma file_write_nil_hdl_ro (fd : nat) (rb : bool) (t : fdtype)
+      (K : Z -> iProp Σ) :
+    (fd < NOFILE)%nat ->
+    UserFd.ufd γfd fd (FdOpen rb false t) -∗
+    ((UserFd.ufd γfd fd (FdOpen rb false t) -∗ K 0)
+     ∧ (UserFd.ufd γfd fd (FdOpen rb false t) -∗ K (-1))) -∗
+    wr_obl N P (Z.of_nat fd) [] K.
+  Proof using Hsw.
+    intros Hlt.
+    apply (file_write_nil_at (UserFd.ufd γfd fd (FdOpen rb false t)) fd rb t K).
+    intros v0 fdv H0. exact (UkReadRows.ufd_key_agree N fd _ v0 H0 Hlt fdv).
   Qed.
 
   (* =================================================================== *)

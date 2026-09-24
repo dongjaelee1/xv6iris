@@ -57,14 +57,12 @@
 (*             reached ([open_trunc_at_of_triv]), with the file arms of   *)
 (*             [SpecSysOpen.open_post_ok_plain] returning what the permit *)
 (*             took through [Ft].                                         *)
-(*   [Hnil_in]  the zero-length write at an INPUT (a tail handle, or the   *)
-(*             read-only standard slot of [FDIn true]): row 16 carries no *)
-(*             return blanket (design/user-write.md SS3d), and at a        *)
-(*             read-only descriptor [SpecFilewrite.filewrite_extra] is    *)
-(*             [emp], so the U tier cannot tell 0 or -1 from any other    *)
-(*             answer.  (At the console it is proved, [fif_cons_nil]; at  *)
-(*             the file held for writing too, [fif_file_nil] over          *)
-(*             [UkFileDev.file_write_nil].)                                *)
+(*   (The zero-length write at an INPUT -- a tail handle, or the read-only *)
+(*   standard slot of [FDIn true] -- WAS on this list while row 16 carried *)
+(*   no return blanket; it is proved now, [fif_nil_in], off the blanket   *)
+(*   at count 0 (lane NIL-RET).  At the console: [fif_cons_nil]; at the    *)
+(*   file held for writing: [fif_file_nil] over                            *)
+(*   [UkFileDev.file_write_nil].)                                          *)
 (*                                                                        *)
 (* THE TAINT PAYS ANY DISCIPLINED TREE ([fif_taint_pays]): the free       *)
 (* handler at every hole, out of the application's supply (write, read,   *)
@@ -1531,7 +1529,54 @@ Section UkFileIface.
      ∧ (∀ x, ⌜x = -1 \/ 0 <= x⌝ -∗ fif_taint (open_held fdm x) -∗ K x)) -∗
     op_obl N P path m K.
 
-  Hypothesis Hnil_in : fif_nil_in_law.
+  (* THE INPUT'S ZERO-LENGTH WRITE IS PROVED (lane NIL-RET): row 16
+     carries [SpecFilewrite.filewrite_ret], so at a read-only row -- where
+     [filewrite_extra] is [emp] -- the U tier still learns the answer is 0
+     or -1, and nothing moves.  [UkFileDev.file_write_nil_std_ro] at the
+     standard slot [FDIn true] pins in the ledger,
+     [UkFileDev.file_write_nil_hdl_ro] at the tail handle [FDIn false]
+     holds; the taint arm is never taken. *)
+  Lemma fif_nil_in : fif_nil_in_law.
+  Proof using Hsw.
+    intros fdm fd d Sin K Hfd. iIntros "Hfds Hin HK".
+    iDestruct "Hin" as (s i γo) "[Htk Hin]".
+    iDestruct "Hfds" as (l vs w) "(Hstd & Hcwd & Hpay & %Hok & Hpool & Htoks & Hhs & #He)".
+    destruct (fif_ok_lookup _ _ _ _ _ Hok Hfd) as [v Hv].
+    iDestruct (fif_toks_agree vs d v with "Htoks Htk") as "(%Hvv & Htoks & Htk)"; [exact Hv |].
+    subst v.
+    pose proof Hok as (H1 & H2 & _). destruct (H1 fd d Hfd) as [H0 Hlt].
+    pose proof (H2 fd d Hfd) as Hs. rewrite Hv in Hs. simpl in Hs.
+    destruct (Z_of_nat_complete fd H0) as [k ->].
+    destruct s.
+    - (* a standard slot: the ledger is the handle *)
+      destruct Hs as (Hsk & Hrow). rewrite Nat2Z.id in Hrow.
+      iApply (file_write_nil_std_ro N P Hsw k l true (FdInode i γo OffHeld) K
+                ltac:(unfold NSTD in *; lia) Hrow with "Hstd").
+      iSplit; iIntros "Hstd".
+      + iDestruct "HK" as "[HK _]". iApply ("HK" with "[-Hin Htk] [Htk Hin]").
+        * iExists l, vs, w. iFrame "Hstd Hcwd Hpay Hpool Htoks Hhs He". by iPureIntro.
+        * iExists true, i, γo. iFrame "Htk". iExact "Hin".
+      + iDestruct "HK" as "[_ [HK _]]". iApply ("HK" with "[-Hin Htk] [Htk Hin]").
+        * iExists l, vs, w. iFrame "Hstd Hcwd Hpay Hpool Htoks Hhs He". by iPureIntro.
+        * iExists true, i, γo. iFrame "Htk". iExact "Hin".
+    - (* a tail handle *)
+      iDestruct (big_sepM_lookup_acc _ _ _ _ Hfd with "Hhs") as "[Hh Hcl]".
+      iEval (rewrite /fif_hdl Hv) in "Hh". iEval (rewrite Nat2Z.id) in "Hh".
+      iApply (file_write_nil_hdl_ro N P Hsw k true (FdInode i γo OffHeld) K
+                ltac:(lia) with "Hh").
+      iSplit; iIntros "Hh".
+      + iDestruct "HK" as "[HK _]". iApply ("HK" with "[-Hin Htk] [Htk Hin]").
+        * iExists l, vs, w. iFrame "Hstd Hcwd Hpay Hpool Htoks He".
+          iSplit; [by iPureIntro |].
+          iApply "Hcl". rewrite /fif_hdl Hv Nat2Z.id. iExact "Hh".
+        * iExists false, i, γo. iFrame "Htk". iExact "Hin".
+      + iDestruct "HK" as "[_ [HK _]]". iApply ("HK" with "[-Hin Htk] [Htk Hin]").
+        * iExists l, vs, w. iFrame "Hstd Hcwd Hpay Hpool Htoks He".
+          iSplit; [by iPureIntro |].
+          iApply "Hcl". rewrite /fif_hdl Hv Nat2Z.id. iExact "Hh".
+        * iExists false, i, γo. iFrame "Htk". iExact "Hin".
+  Qed.
+
   Hypothesis Hopen_trunc : fif_open_trunc_law.
 
 
@@ -1542,7 +1587,7 @@ Section UkFileIface.
     ((fif_fds fdm -∗ fif_dev d x -∗ K 0) ∧ (fif_fds fdm -∗ fif_dev d x -∗ K (-1))
      ∧ (∀ y, fif_taint (dom fdm) -∗ K y)) -∗
     wr_obl N P fd [] K.
-  Proof using Hsw HPc Hnil_in.
+  Proof using Hsw HPc.
     intros Hfd. iIntros "Hfds Hd HK".
     destruct x as [alts | | cs | | Sin | | | | |]; simpl; try (iDestruct "Hd" as "[]").
     - (* the console *)
@@ -1562,7 +1607,7 @@ Section UkFileIface.
       iApply (fif_file_nil fdm fd d cs K Hfd with "Hfds Hd").
       iSplit; [iDestruct "HK" as "[HK _]" | iDestruct "HK" as "[_ [HK _]]"]; iExact "HK".
     - (* an input: the header's list *)
-      iApply (Hnil_in fdm fd d Sin K Hfd with "Hfds Hd HK").
+      iApply (fif_nil_in fdm fd d Sin K Hfd with "Hfds Hd HK").
   Qed.
 
   Lemma fif_open_absent (fdm : fdmap) (files : list (bv 8) -> option (list (bv 8)))
@@ -1659,7 +1704,7 @@ Section UkFileIface.
   (* ------------------------------------------------------------------- *)
 
   Definition file_iface : ep_iface N P.
-  Proof using Hcons Heq HPc HNc Hsr Hsw Hso Hsc Hse Hnil_in Hopen_trunc.
+  Proof using Hcons Heq HPc HNc Hsr Hsw Hso Hsc Hse Hopen_trunc.
     refine (MkEI N P fif_fds fif_out (fun _ _ => False%I) (fun _ => False%I) fif_outm
               fif_in (fun _ _ => False%I) (fun _ => False%I)
               (fun _ _ _ _ => False%I) (fun _ _ _ => False%I) (fun _ => False%I)
@@ -1695,7 +1740,7 @@ Section UkFileIface.
     files fname_f = Some content ->
     env_res N P file_iface (cat_env0 [content; cat_dg_open fname_f] files [fname_f]) {[0%nat]} -∗
     tree_pay N P (cat_tree [sb "cat"; fname_f]).
-  Proof using Hcons Heq HPc HNc Hsr Hsw Hso Hsc Hse Hnil_in Hopen_trunc.
+  Proof using Hcons Heq HPc HNc Hsr Hsw Hso Hsc Hse Hopen_trunc.
     intros Hf. iIntros "H".
     iApply (tree_pay_of_conforms N P file_iface _ _ _
               (cat_file_conforms fname_f content files Hf) (cat_tree_safe _ _) with "H").
@@ -1705,7 +1750,7 @@ Section UkFileIface.
     files fname_f = None ->
     env_res N P file_iface (cat_env0 [cat_dg_open fname_f] files [fname_f]) {[0%nat]} -∗
     tree_pay N P (cat_tree [sb "cat"; fname_f]).
-  Proof using Hcons Heq HPc HNc Hsr Hsw Hso Hsc Hse Hnil_in Hopen_trunc.
+  Proof using Hcons Heq HPc HNc Hsr Hsw Hso Hsc Hse Hopen_trunc.
     intros Hf. iIntros "H".
     iApply (tree_pay_of_conforms N P file_iface _ _ _
               (cat_file_absent_conforms fname_f files Hf) (cat_tree_safe _ _) with "H").
@@ -1715,7 +1760,7 @@ Section UkFileIface.
     drop 1 argv <> [] -> Forall (fun w => w <> []) (drop 1 argv) ->
     env_res N P file_iface (pipe_env (DOutM (echo_chunks argv)) files) {[0%nat]} -∗
     tree_pay N P (echo_tree argv).
-  Proof using Hcons Heq HPc HNc Hsr Hsw Hso Hsc Hse Hnil_in Hopen_trunc.
+  Proof using Hcons Heq HPc HNc Hsr Hsw Hso Hsc Hse Hopen_trunc.
     intros Hne Hnn. iIntros "H".
     iApply (tree_pay_of_conforms N P file_iface _ _ _
               (echo_file_conforms argv files Hne Hnn) (echo_tree_safe _ _) with "H").
@@ -1779,7 +1824,7 @@ Section UkFileIface.
     fif_env -∗ fdq r q (Some (i, content)) -∗ own γreg (fif_pool ∅ w) -∗
     cons_dev file_lm (file_params g) (file_links g) [content; cat_dg_open fname_f] -∗
     tree_pay N P (cat_tree [sb "cat"; fname_f]).
-  Proof using Hcons Heq HPc HNc Hsr Hsw Hso Hsc Hse Hnil_in Hopen_trunc.
+  Proof using Hcons Heq HPc HNc Hsr Hsw Hso Hsc Hse Hopen_trunc.
     intros Hw Hl1 Hl2. iIntros "Hstd Hcwd Hpay He Hd Hp Hc".
     iApply (cat_f_paid content _ (fif_files_f _)).
     iApply (cat_env_res l rb1 rb2 (Some (i, content)) q w with "Hstd Hcwd Hpay He Hd Hp Hc");
@@ -1795,7 +1840,7 @@ Section UkFileIface.
     fif_env -∗ fdq r q None -∗ own γreg (fif_pool ∅ w) -∗
     cons_dev file_lm (file_params g) (file_links g) [cat_dg_open fname_f] -∗
     tree_pay N P (cat_tree [sb "cat"; fname_f]).
-  Proof using Hcons Heq HPc HNc Hsr Hsw Hso Hsc Hse Hnil_in Hopen_trunc.
+  Proof using Hcons Heq HPc HNc Hsr Hsw Hso Hsc Hse Hopen_trunc.
     intros Hw Hl1 Hl2. iIntros "Hstd Hcwd Hpay He Hd Hp Hc".
     iApply (cat_f_absent_paid _ (fif_files_f None)).
     iApply (cat_env_res l rb1 rb2 None q w with "Hstd Hcwd Hpay He Hd Hp Hc"); assumption.
@@ -1856,7 +1901,7 @@ Section UkFileIface.
     UserFd.ustd γfd l -∗ UserCwd.ucwd (ukn_cwd N) FsImg.ROOTINO -∗ ukn_pay N (-1) -∗
     fif_env -∗ fdq r q s -∗ own γreg (fif_pool ∅ w) -∗ file_out c r i γo argv 0 -∗
     tree_pay N P (echo_tree argv).
-  Proof using Hcons Heq HPc HNc Hsr Hsw Hso Hsc Hse Hnil_in Hopen_trunc.
+  Proof using Hcons Heq HPc HNc Hsr Hsw Hso Hsc Hse Hopen_trunc.
     intros Hw Hl1 Hwok Hne Hnn. iIntros "Hstd Hcwd Hpay He Hd Hp Hc".
     iApply (echo_f_paid argv _ Hne Hnn).
     iApply (echo_env_res l rb i γo s q w argv with "Hstd Hcwd Hpay He Hd Hp Hc"); assumption.
@@ -1923,13 +1968,12 @@ Section UkFileIfaceEcho.
   Context (Hcons : @riscv_cons_res Σ (@riscv_fixedGS Σ HRg) = fecl g).
   Context (N : uk_names Σ) `{!ukn_const N}.
   Context (γreg : gname).
-  Hypothesis Hnil_in : fif_nil_in_law g r N (echo_prog N) γreg.
   Hypothesis Hopen_trunc : fif_open_trunc_law g r N (echo_prog N) γreg.
 
   Definition file_iface_echo : ep_iface N (echo_prog N) :=
     file_iface g r Heq Hcons N (echo_prog N) (echo_stub_read N) (echo_stub_write N)
       (echo_stub_open N) (echo_stub_close N) (echo_stub_exit N) γreg
-      Hnil_in Hopen_trunc.
+      Hopen_trunc.
 
   Definition echo_f_paid_echo (argv : list (list (bv 8)))
       (files : list (bv 8) -> option (list (bv 8))) :
@@ -1938,7 +1982,7 @@ Section UkFileIfaceEcho.
     -∗ tree_pay N (echo_prog N) (echo_tree argv) :=
     echo_f_paid g r Heq Hcons N (echo_prog N) (echo_stub_read N) (echo_stub_write N)
       (echo_stub_open N) (echo_stub_close N) (echo_stub_exit N) γreg
-      Hnil_in Hopen_trunc argv files.
+      Hopen_trunc argv files.
 
   Definition echo_f_paid_of_redirect_echo (l : list fdstate) (rb : bool) (i : Z) (γo : gname)
       (s : dst) (q : Qp) (w : nat -> fdev) (argv : list (list (bv 8))) :
@@ -1952,5 +1996,5 @@ Section UkFileIfaceEcho.
     tree_pay N (echo_prog N) (echo_tree argv) :=
     echo_f_paid_of_redirect g r Heq Hcons N (echo_prog N) (echo_stub_read N)
       (echo_stub_write N) (echo_stub_open N) (echo_stub_close N) (echo_stub_exit N)
-      γreg Hnil_in Hopen_trunc l rb i γo s q w argv.
+      γreg Hopen_trunc l rb i γo s q w argv.
 End UkFileIfaceEcho.

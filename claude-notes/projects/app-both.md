@@ -359,8 +359,11 @@ unless `fd_shared`, the scope `pe_paths` and `mode_create` at an open,
 (`ei_taint held`, `ei_taint_pays` under `safe_fds`), `drained` at the
 exit; design §3.3/§3.4 say why.  NEXT: `UkFileIface.v` rebuilt against
 it (lane/fileiface: console + file, `ei_taint_pays` from the free
-handler, whose read hole needs the count bound lane/rdbound is buying
-as a kernel row: `usys_read_ret`, `wp_uk_ecall_read`'s post) with
+handler; the read hole's count bound LANDED from lane/rdbound
+983c9475e, merge 6b5271c47, VM build rdbmerge1 EXIT=0: `UsysMemOk.
+usys_read_ret` in the read row, threaded through `SpecSyscall`'s
+contract, `ProofSyscall`'s tails, `wp_uk_ecall_window/_read_win/_read`,
+`UkCat.wp_kcat_read`; `_at`/`_recv` untouched) with
 `cat f`/`echo > f` paid end to end from `tree_pay_of_conforms`; then the
 pipeline's instance (console at `pecl`, a `UkConsOut` variant); then
 cut 5.

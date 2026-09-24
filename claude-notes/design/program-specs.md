@@ -367,6 +367,41 @@ application's from the console and the file, the pipeline's from the
 console and the pipe; the union of the two applications (M5) unites the
 registries.
 
+### 3.4d The pipeline's console (planned 2026-09-24)
+
+The pipeline's claim is `pecl = gcl ∨ popen`: the generic claim between
+rounds and at every single-writer round, `popen` while a two-writer
+round is open.  `UkConsOut.cons_write` depends on the claim ONLY through
+`cons_dev_step` (one console byte as an `out_link`), itself proved from
+the three generic link leaves `gwrite_link`/`_blk`/`_taint`, which both
+claims already bundle (`GenLinksGl.gcl_glinks` at `gcl`,
+`PipeLinksLine.pipe_links_gl` at `pecl`).  So the console instance
+splits in two:
+
+- a CLAIM-FREE CORE over an abstract device `D` with three laws
+  (`D_short`, `D_sub`, `D_step`: a byte is an `out_link`), holding
+  `cons_chain` and `cons_write` verbatim; and an instance over
+  `(M, gen_params M, LINKS, LINKS ⊢ gl_w/gl_blk/gl_taint)` in place of
+  `Hcons = gcl`, which the file application, echo and the pipeline's
+  single-writer rounds all instantiate;
+- `UkPipeConsOut.v`, the `popen` device for the RIGHT writer of a
+  two-writer round: `pcons_dev [drop c L]` is cat's cursor half
+  (`pcat_ch gR gM c`) with the round's persistent context (`era_pin`,
+  `blk2_inv`, the link taint, the exclusion `□ (XL -∗ YR ={pipeN}=∗
+  False)`); `D_step` is `UShPipeCatRound.pcat_step_at`.  The alternative
+  is the writer's OWN source `rsrc L n`, never the merge (the pipe module
+  files the merge `sel` at the prompt), and cat exits drained.
+
+OPEN (owner ruling): the mode fire at the right writer's FIRST byte needs
+`YR`, a fact about the READ side (a byte reached the reader, from
+`rcur`), which `ei_write` cannot supply -- a tree at `DOut [L]` may
+write before it reads.  Either a coupled device kind (`DOutOf din alts`:
+the console owes at least what the input still has to deliver; a law
+`ei_write_of` that also takes the input device) or `YR` as a
+section variable of the pipeline's instance (today's supply, which
+restricts the instance to programs that read before they write, i.e.
+cat).  The lane takes the second for now.
+
 ### 3.5 The line model's continuation becomes a theorem
 
 `lmodel`'s `lm_cont s l a` is hand-written bytes per alternative.  With

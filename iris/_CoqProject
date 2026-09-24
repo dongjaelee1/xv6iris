@@ -1485,6 +1485,7 @@ PinnedObs.v
 PinnedExec.v
 PinnedOpen.v
 PipeReg.v
+PipesPair.v
 PipeProto.v
 UexecExecInst.v
 ExecRun.v
@@ -1503,6 +1504,7 @@ LineWords.v
 ProgTree.v
 FileState.v
 ProgTreeFile.v
+ProgTreePipes.v
 EchoDisc.v
 LineBytes.v
 LineModel.v

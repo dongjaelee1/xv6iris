@@ -530,13 +530,14 @@ Section UShPipeAssemblyProto.
     pipe_inv pn gp L ∗ pipe_reg gp.
   Proof using .
     iIntros "(Hh & Hw & Hr & He & Ho) Hfrag".
-    iMod (inv_alloc pipeN ⊤ (pipe_body pn gp L)
+    iMod (inv_alloc pipeN ⊤ (pipe_bodyU pn gp L True)
             with "[Hfrag Hh Hw Hr He Ho]") as "#Hinv".
     { iNext. iExists pst0. rewrite /pst0 /=. iFrame "Hfrag Hh Hw Hr".
       iSplitR; [ iPureIntro; apply prefix_nil | ].
       iSplitR; [ iPureIntro; cbn; lia | ].
-      iSplitL "He"; [ by iLeft | by iLeft ]. }
-    iModIntro. rewrite /pipe_inv. iFrame "Hinv".
+      iSplitL "He"; [ by iLeft | ].
+      iSplitL "Ho"; [ by iLeft | by iRight ]. }
+    iModIntro. rewrite /pipe_inv /pipe_invU. iFrame "Hinv".
     iApply (pipe_reg_of_inv pn gp L with "Hinv").
   Qed.
 

@@ -4,8 +4,13 @@ Owner ask (2026-09-24): `echo | cat | cat` must not be a special case of
 three; `echo | cat | cat | cat`, `cat f.txt | cat`, etc.  Standing ruling:
 cat is the only program at a pipe's end.  This file is the design of
 record for that effort; program-specs.md (the programs' trees, the copy
-device) is its base.  STATUS: proposal; OPEN rulings at the end
-(SS2.4's corner, PSilent, M5's re-scope).  Cut C1 in flight.
+device) is its base.  STATUS: RULED (owner, 2026-09-24): SS2.4's corner is (B), the loose
+corner (a middle cat's `cat: write error` may sit beside any prefix of
+the content; only at three or more stages); PSilent (argv[0] empty)
+stays a stage outcome; M5's pipe shape IS this N-stage module (M5 had
+not started, so the general route goes first: N stages in the pipeline
+application with echo as producer, then the union adds `cat f`).
+Cuts C1 (pure trees), C3 (sh claim-free), C4 (protocol) in flight.
 
 # Design: arbitrary pipelines `P0 | cat | … | cat` by induction on the command tree
 

@@ -1356,3 +1356,25 @@ Proof using.
   - rewrite -(palt_to_term (LPipe ws) pa Hpa). exact Hterm.
   - rewrite pend2_pendN -(palt_to_cont (LPipe ws) pa Hpa). exact Hpref.
 Qed.
+
+(* ...AND THE LANDED BYTE STEPS' OWN PURE CORE, re-derived from
+   [pendN_snoc] -- a byte at a writer's cursor appends exactly it --
+   through the same reading: [PipeBothPure.pend2_true] (the left child's
+   byte) and [pend2_false] (the right child's), statement for statement *)
+Theorem pend2_true_N (R : list (bv 8)) (sel : list bool) (b : bv 8) :
+  sel_wf2 R sel -> dg_execL !! count_true sel = Some b ->
+  pend2 R (sel ++ [true]) = pend2 R sel ++ [b].
+Proof using.
+  intros Hwf Hb. rewrite !pend2_pendN fmap_app.
+  apply (pendN_snoc (md2 R) (b2w <$> sel) (WLeft 0) dg_execL b (sel_wf2_N R sel Hwf) eq_refl).
+  rewrite cntN_b2w_L. exact Hb.
+Qed.
+
+Theorem pend2_false_N (R : list (bv 8)) (sel : list bool) (b : bv 8) :
+  sel_wf2 R sel -> R !! (length sel - count_true sel)%nat = Some b ->
+  pend2 R (sel ++ [false]) = pend2 R sel ++ [b].
+Proof using.
+  intros Hwf Hb. rewrite !pend2_pendN fmap_app.
+  apply (pendN_snoc (md2 R) (b2w <$> sel) WLast R b (sel_wf2_N R sel Hwf) eq_refl).
+  rewrite cntN_b2w_R. exact Hb.
+Qed.

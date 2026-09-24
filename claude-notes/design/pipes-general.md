@@ -39,7 +39,11 @@ payment with three per-node laws `ush_left_law`/`ush_last_law`/
 `wp_kshm_child_pipes_closed_um`).  C3b FINDING: an inner node can only
 use the FREE wait reading, since `UkShRun.wp_kshr_fork1` drops the pid
 fragment the child would need for `ush_pid`/`ush_wait_pid_ans`
-(lane PID-CHILD fixes it).  C2 (5f2aa37ab: `PipesDisc.v`/`PipesDiscDec.v` --
+-- CORRECTED by PID-CHILD (ba9b3036e): `fork1` and the kernel spec
+did hand the child `ush_pid`; the PIPE arm's proof dropped it.
+`wp_kshr_pipe_arm_g3` passes `UkSh.ush_pid N'` to both children,
+`ush_entry_law_g` hands it to the next node, and the taint instance's
+inner nodes take the paid pid-naming wait (`ush_node_obl_free_pid`).  C2 (5f2aa37ab: `PipesDisc.v`/`PipesDiscDec.v` --
 `stage_out` derived from C1's exit lemmas, `pipe_pairB` with the ruled
 corner (B), `sfx_run`/`line_run`, `merge_all`, `line_blocks`,
 `line_term_blocks`, `plalt`, `pipes_lm fc adm`; laws proved under

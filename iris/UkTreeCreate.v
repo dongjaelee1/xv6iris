@@ -829,7 +829,7 @@ Section UkTreeCreate.
   Proof using .
     intros Htr Hpath Hlast.
     rewrite /open_post_fail_create /open_au_create_at /cre_child_unfired
-            /cre_child_pair /cre_cur_kept /cre_rcpt_kept /cre_fail_kept Htr.
+            /cre_child_pair /cur_kept /cre_rcpt_kept /cre_fail_kept Htr.
     iIntros "H". iDestruct "H" as "[Hau | Hf]".
     { iDestruct "Hau" as "(_ & _ & _ & _ & _ & Harm & _)".
       iLeft. iApply (pf_at_refund with "Harm"). }
@@ -942,7 +942,7 @@ Section UkTreeCreate.
     iEval (rewrite /open_receipt Hcr) in "Hrc".
     iEval (cbn [tree_opencreate_fam xfam_tree of_P of_Pmiss of_Farm of_Fun
                 of_Fok of_Fex of_Fo of_Ft]) in "Hrc".
-    rewrite /open_receipt_create /cre_cur_kept /cre_rcpt_kept /cre_child_kept
+    rewrite /open_receipt_create /cur_kept /cre_rcpt_kept /cre_child_kept
             Htr.
     iDestruct "Hrc" as "[(%Hr & %Hfdv & Hfail) | Hok]".
     - (* THE CALL FAILED: the ledger is back untouched and the deed comes

@@ -272,9 +272,9 @@ Section ProofSysOpenJoin.
     (pa_add (pa_stk sp0 23) 4) ↦₄[KT1] om -∗
     (pa_stk sp0 24) ↦₈[KT1] w24 -∗
     (* ---- THE AU RESIDUE, inert across this block ---- *)
-    P (length (path_elems pl)) (bv_unsigned inum) -∗
+    cur_kept vom P (length (path_elems pl)) (bv_unsigned inum) -∗
     so_obs Fo (bv_unsigned inum) (era_node dn bm data) -∗
-    open_trunc_at (fs_gamma_L fsc_fs) vom (bv_unsigned inum) Ft -∗
+    plain_trunc_kept (fs_gamma_L fsc_fs) vom pl P (bv_unsigned inum) Ft -∗
     wp_next true (proc_addr jx)
       (so_cont_au omo gf nsj
                dqb dqs (proc_addr jx) pidv Mim pvv vom U sts P Pmiss Fo Ft m K eb b lks) -∗

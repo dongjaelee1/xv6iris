@@ -501,6 +501,104 @@ Section SysOpenArms.
   Implicit Types Γ : fs_view_names Σ.
 
   (* ------------------------------------------------------------------ *)
+  (*  2e'.  WHAT A TRUNCATING OPEN KEEPS OF ITS CURSOR                    *)
+  (*                                                                      *)
+  (*  On both surfaces the truncate's permit is paid out of a cursor the  *)
+  (*  walk delivered -- the parent's on the O_CREATE surface, the         *)
+  (*  terminal's on the plain one (lane TRUNC-PERMIT) -- and [P] is an     *)
+  (*  arbitrary, possibly linear, predicate.  So the arms of a TRUNCATING  *)
+  (*  open do not report that cursor: where the truncate did not fire it  *)
+  (*  rides the keyed piece's refund ([SysOpenDefs.cre_ft_kept]), and     *)
+  (*  where it did, it went through the application's own step and comes  *)
+  (*  back only if the application threaded it into its [Ft] receipt.  At *)
+  (*  [om_trunc vom = false] the cursor is what it always was.            *)
+  (* ------------------------------------------------------------------ *)
+
+  Definition cur_kept (vom : mword 64) (P : nat -> Z -> iProp Σ)
+      (k : nat) (d : Z) : iProp Σ :=
+    (if om_trunc vom then emp else P k d)%I.
+
+  Lemma cur_kept_none (vom : mword 64) (P : nat -> Z -> iProp Σ)
+      (k : nat) (d : Z) : om_trunc vom = true -> ⊢ cur_kept vom P k d.
+  Proof using . intros Hv. rewrite /cur_kept Hv. done. Qed.
+
+  Lemma cur_kept_of (vom : mword 64) (P : nat -> Z -> iProp Σ)
+      (k : nat) (d : Z) : P k d -∗ cur_kept vom P k d.
+  Proof using .
+    iIntros "H". rewrite /cur_kept. destruct (om_trunc vom); done.
+  Qed.
+
+  (* THE PLAIN SURFACE'S KEYED PIECE: the commit at the node the walk
+     reached, with the terminal cursor on the refund side *)
+  Definition plain_trunc_kept Γ (vom : mword 64) (pl : list (bv 8))
+      (P : nat -> Z -> iProp Σ) (i : Z)
+      (Ft : pfam Σ (aview -> Z -> list (bv 8) -> iProp Σ)) : iProp Σ :=
+    open_trunc_at Γ vom i (cre_ft_kept (trunc_term_at pl P) i Ft).
+
+  (* PAYING THE PLAIN PERMIT (the kernel's one move, at the join): the
+     cursor splits into the permit's payment and what the arms keep *)
+  Lemma plain_trunc_key Γ (vom : mword 64) (pl : list (bv 8))
+      (P : nat -> Z -> iProp Σ) (i : Z)
+      (Ft : pfam Σ (aview -> Z -> list (bv 8) -> iProp Σ)) :
+    open_trunc_piece Γ vom (trunc_term_at pl P) Ft -∗
+    P (length (path_elems pl)) i -∗
+    cur_kept vom P (length (path_elems pl)) i
+    ∗ plain_trunc_kept Γ vom pl P i Ft.
+  Proof using .
+    iIntros "Ht HP". rewrite /plain_trunc_kept.
+    iAssert (cur_kept vom P (length (path_elems pl)) i
+             ∗ (if om_trunc vom then trunc_term_at pl P i else emp))%I
+      with "[HP]" as "[Hc Hk]".
+    { rewrite /cur_kept /trunc_term_at. destruct (om_trunc vom); iFrame "HP". }
+    iFrame "Hc".
+    iApply (open_trunc_at_of_permit Γ vom (trunc_term_at pl P) i Ft with "Ht Hk").
+  Qed.
+
+  (* ...AND READING IT BACK where the truncate did not fire: the two
+     halves together are the cursor *)
+  Lemma plain_cur_of_kept Γ (vom : mword 64) (pl : list (bv 8))
+      (P : nat -> Z -> iProp Σ) (i : Z)
+      (Ft : pfam Σ (aview -> Z -> list (bv 8) -> iProp Σ)) :
+    cur_kept vom P (length (path_elems pl)) i -∗
+    plain_trunc_kept Γ vom pl P i Ft -∗
+    P (length (path_elems pl)) i.
+  Proof using .
+    rewrite /cur_kept /plain_trunc_kept /open_trunc_at.
+    iIntros "Hc Ht". destruct (om_trunc vom); [| iExact "Hc"].
+    rewrite /pf_at /cre_ft_kept /trunc_term_at. cbn [pf_refund].
+    iDestruct "Ht" as "[_ [_ $]]".
+  Qed.
+
+  (* a consumer that keeps the commit drops the cursor instead *)
+  Lemma plain_trunc_kept_forget Γ (vom : mword 64) (pl : list (bv 8))
+      (P : nat -> Z -> iProp Σ) (i : Z)
+      (Ft : pfam Σ (aview -> Z -> list (bv 8) -> iProp Σ)) :
+    plain_trunc_kept Γ vom pl P i Ft -∗ open_trunc_at Γ vom i Ft.
+  Proof using .
+    rewrite /plain_trunc_kept. iApply open_trunc_at_kept_forget.
+  Qed.
+
+  (* ...and a PURE fact of the cursor survives both halves, with the piece
+     untouched: how a tagged cursor pins the arm's existential inum
+     ([ProofSysOpenCreArm.socr_P]) *)
+  Lemma plain_trunc_kept_pure Γ (vom : mword 64) (pl : list (bv 8))
+      (P : nat -> Z -> iProp Σ) (φ : Z -> Prop) (i : Z)
+      (Ft : pfam Σ (aview -> Z -> list (bv 8) -> iProp Σ)) :
+    (forall (k : nat) (d : Z), P k d ⊢ ⌜φ d⌝) ->
+    cur_kept vom P (length (path_elems pl)) i -∗
+    plain_trunc_kept Γ vom pl P i Ft -∗
+    ⌜φ i⌝ ∗ plain_trunc_kept Γ vom pl P i Ft.
+  Proof using .
+    intros Hφ. rewrite /cur_kept /plain_trunc_kept /open_trunc_at.
+    iIntros "Hc Ht". destruct (om_trunc vom).
+    - iAssert (⌜φ i⌝)%I as %Hi.
+      { rewrite /pf_at /cre_ft_kept /trunc_term_at. cbn [pf_refund].
+        iDestruct "Ht" as "[_ [_ Hk]]". iApply (Hφ with "Hk"). }
+      iFrame "Ht". by iPureIntro.
+    - iDestruct (Hφ with "Hc") as %Hi. iFrame "Ht". by iPureIntro.
+  Qed.
+
+  (* ------------------------------------------------------------------ *)
   (*  2f.  The PLAIN arms                                                 *)
   (* ------------------------------------------------------------------ *)
 
@@ -519,14 +617,17 @@ Section SysOpenArms.
           holds at [pv] ([ArgPath.arg_path_of], sys_exec's guard), so a
           caller that knows its image knows WHICH file it opened. *)
        ⌜arg_path_of M pv pl⌝ ∗
-       P (length (path_elems pl)) i ∗
+       (* THE TERMINAL CURSOR, as the truncate's permit left it (2e'):
+          whole at [om_trunc vom = false], on the kept piece's refund
+          where the truncate did not fire, spent where it did *)
+       cur_kept vom P (length (path_elems pl)) i ∗
        ((* DEVICE (the init arm): the major is in range, the fragment is
            [FdDevice ma], and O_TRUNC never applies *)
         (∃ (ma mi : Z) (nl : nat),
            ⌜arow_at av i (MkAnode (ADev ma mi) nl)⌝ ∗
            ⌜0 <= ma <= NDEV_max⌝ ∗
            Fo.(pf_recv) av i (MkAnode (ADev ma mi) nl) ∗
-           open_trunc_at Γ vom i Ft ∗
+           plain_trunc_kept Γ vom pl P i Ft ∗
            open_fd_ok γf p pid UW (om_readable vom) (om_writable vom)
              (FdDevice ma) sts r)
         ∨ (* FILE: the ONE delta of this surface, iff O_TRUNC -- the trunc
@@ -554,7 +655,7 @@ Section SysOpenArms.
            ⌜arow_at av i (MkAnode (ADir ents) nl)⌝ ∗
            ⌜om_arg vom = 0⌝ ∗
            Fo.(pf_recv) av i (MkAnode (ADir ents) nl) ∗
-           open_trunc_at Γ vom i Ft ∗
+           plain_trunc_kept Γ vom pl P i Ft ∗
            ∃ γo : gname,
              open_fd_ok γf p pid UW true false (FdInode i γo omo) sts r
              ∗ foff_pub omo γo)))%I.
@@ -580,14 +681,15 @@ Section SysOpenArms.
           ⌜arg_path_of M pv pl⌝ ∗
           ((namei_walk_dead_era γfs P Pmiss pl
               ∗ pf_at (aopen_commit_at Γ appE) Fo
-              ∗ open_trunc_piece Γ vom trunc_permit_triv Ft)
+              ∗ open_trunc_piece Γ vom (trunc_term_at pl P) Ft)
            ∨ (∃ i : Z,
-                P (length (path_elems pl)) i
+                cur_kept vom P (length (path_elems pl)) i
                 ∗ (∃ (av : aview) (a : anode),
                      ⌜arow_at av i a⌝ ∗ Fo.(pf_recv) av i a)
                 (* the piece is KEYED once the walk has an inode: the
-                   permit was paid where what pays it was in hand *)
-                ∗ open_trunc_at Γ vom i Ft))))%I.
+                   permit was paid where what pays it was in hand, and
+                   the cursor that paid it rides its refund (2e') *)
+                ∗ plain_trunc_kept Γ vom pl P i Ft))))%I.
 
   (* the armed disjunction the continuation receives, keyed on a0, with
      the landed post's fd-side bundle folded in per arm (the caller's
@@ -677,10 +779,6 @@ Section SysOpenArms.
     iApply (trunc_permit_of_ex with "H").
   Qed.
 
-  Definition cre_cur_kept (vom : mword 64) (P : nat -> Z -> iProp Σ)
-      (k : nat) (d : Z) : iProp Σ :=
-    (if om_trunc vom then emp else P k d)%I.
-
   Definition cre_rcpt_kept (vom : mword 64)
       (F : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ))
       (av : aview) (d : Z) (nm : fname) (i : Z) : iProp Σ :=
@@ -691,16 +789,6 @@ Section SysOpenArms.
     (if om_trunc vom
      then pf_at (aunarm_of_arm Γ appE Farm) Fun
      else cre_child_unfired Γ (AFile []) Farm Fun)%I.
-
-  Lemma cre_cur_kept_none (vom : mword 64) (P : nat -> Z -> iProp Σ)
-      (k : nat) (d : Z) : om_trunc vom = true -> ⊢ cre_cur_kept vom P k d.
-  Proof using . intros Hv. rewrite /cre_cur_kept Hv. done. Qed.
-
-  Lemma cre_cur_kept_of (vom : mword 64) (P : nat -> Z -> iProp Σ)
-      (k : nat) (d : Z) : P k d -∗ cre_cur_kept vom P k d.
-  Proof using .
-    iIntros "H". rewrite /cre_cur_kept. destruct (om_trunc vom); done.
-  Qed.
 
   Lemma cre_rcpt_kept_of (vom : mword 64)
       (F : pfam Σ (aview -> Z -> fname -> Z -> iProp Σ))
@@ -790,7 +878,7 @@ Section SysOpenArms.
        (* the path is the caller's own argument 0, as on the plain side *)
        ⌜arg_path_of M pv pl⌝ ∗
        ⌜list_basics.last (path_elems pl) = Some nm⌝ ∗
-       cre_cur_kept vom P (length (npar_elems pl)) d ∗
+       cur_kept vom P (length (npar_elems pl)) d ∗
        ((* FRESH *)
         (∃ (av : aview) (ents : gmap fname Z) (nl : nat),
            ⌜cre_pre av d nm ents nl i (AFile [])⌝ ∗
@@ -890,7 +978,7 @@ Section SysOpenArms.
              ∗ open_trunc_piece Γ vom (cre_permit Γ pl P Farm Fok Fex) Ft
              ∗ cre_child_unfired Γ (AFile []) Farm Fun)
           ∨ (∃ d : Z,
-               cre_cur_kept vom P (length (npar_elems pl)) d
+               cur_kept vom P (length (npar_elems pl)) d
                ∗ ((* (a) create succeeded FRESH; open failed past it *)
                   (∃ (av : aview) (i : Z) (nm : fname)
                      (ents : gmap fname Z) (nl : nat),
@@ -1162,13 +1250,13 @@ Section SysOpenArms.
              the DEVICE arm below an answer to "which file did I open?"
              rather than "some file somewhere was a device". *)
           ⌜arg_path_of M pv pl⌝ ∗
-          P (length (path_elems pl)) i ∗
+          cur_kept vom P (length (path_elems pl)) i ∗
           ((* DEVICE *)
            (∃ (ma mi : Z) (nl : nat),
               ⌜arow_at av i (MkAnode (ADev ma mi) nl)⌝ ∗
               ⌜0 <= ma <= NDEV_max⌝ ∗
               Fo.(pf_recv) av i (MkAnode (ADev ma mi) nl) ∗
-              open_trunc_at Γ vom i Ft ∗
+              plain_trunc_kept Γ vom pl P i Ft ∗
               ⌜open_fd_rcpt (om_readable vom) (om_writable vom)
                  (FdDevice ma) sts r fdv'⌝)
            ∨ (* FILE, with the trunc leg *)
@@ -1192,7 +1280,7 @@ Section SysOpenArms.
               ⌜arow_at av i (MkAnode (ADir ents) nl)⌝ ∗
               ⌜om_arg vom = 0⌝ ∗
               Fo.(pf_recv) av i (MkAnode (ADir ents) nl) ∗
-              open_trunc_at Γ vom i Ft ∗
+              plain_trunc_kept Γ vom pl P i Ft ∗
               ∃ γo : gname,
                 ⌜open_fd_rcpt true false (FdInode i γo omo) sts r fdv'⌝
                 ∗ foff_pub omo γo))))%I.
@@ -1210,7 +1298,7 @@ Section SysOpenArms.
      ∨ (∃ (pl : list (bv 8)) (d i : Z) (nm : fname),
           ⌜arg_path_of M pv pl⌝ ∗
           ⌜list_basics.last (path_elems pl) = Some nm⌝ ∗
-          cre_cur_kept vom P (length (npar_elems pl)) d ∗
+          cur_kept vom P (length (npar_elems pl)) d ∗
           ((* FRESH *)
            (∃ (av : aview) (ents : gmap fname Z) (nl : nat),
               ⌜cre_pre av d nm ents nl i (AFile [])⌝ ∗
@@ -1673,7 +1761,7 @@ Section SysOpenArms.
            TRUNCATE'S PIECE IS STILL THE CALLER'S here -- create returned
            0, so sys_open never reached the node and the permit was never
            paid ([cre_fail_kept]'s right disjunct). *)
-        iSplitL "HP"; [ iApply (cre_cur_kept_of with "HP") |].
+        iSplitL "HP"; [ iApply (cur_kept_of with "HP") |].
         iRight. iLeft.
         iDestruct "Hfired" as (av i nm ents nl) "(%Hl & %Hrow & %Hent & HΦ)".
         iExists av, i, nm, ents, nl.
@@ -1685,7 +1773,7 @@ Section SysOpenArms.
         { iApply (cre_fail_kept_of_piece with "Ht Hcl"). }
         iLeft. iExact "Ho".
       + (* (c): nothing observed *)
-        iSplitL "HP"; [ iApply (cre_cur_kept_of with "HP") |].
+        iSplitL "HP"; [ iApply (cur_kept_of with "HP") |].
         iRight. iRight. iFrame "Hac Hdl Ho Ht Hcl".
   Qed.
 
@@ -1700,8 +1788,8 @@ Global Typeclasses Opaque open_post_ok_plain open_post_fail_plain
   open_receipt_plain open_receipt_create open_receipt
   (* the O_CREATE surface's guarded slots, for the same reason (lane
      F-OPEN-3) *)
-  cre_permit cre_permit_ex cre_trunc_kept cre_trunc_kept_ex cre_cur_kept
-  cre_rcpt_kept cre_child_kept cre_fail_kept.
+  cre_permit cre_permit_ex cre_trunc_kept cre_trunc_kept_ex cur_kept
+  cre_rcpt_kept cre_child_kept cre_fail_kept plain_trunc_kept.
 
 (* ===================================================================== *)
 (*  THE WHOLE-FUNCTION FRAME, abstracted over the caller's bundle and the *)

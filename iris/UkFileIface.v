@@ -1,62 +1,58 @@
 (* ===================================================================== *)
 (* UkFileIface.v -- THE FILE APPLICATION'S ENDPOINT INTERFACE: one         *)
-(* [UkHandler.ep_iface] from the console ([UkConsOut]) and the file        *)
-(* ([UkFileDev]), and cat f / echo > f paid end to end through the once-  *)
-(* glue [UkHandler.tree_pay_of_conforms] (program-specs cut 4(c)).         *)
+(* [UkHandler.ep_ifaceP] from the console ([UkConsOut]) and the file       *)
+(* ([UkFileDev]), and cat f / echo > f / echo paid end to end through the *)
+(* once-glue [UkHandler.tree_pay_of_conforms_p] (program-specs cut 4(c),  *)
+(* cut 5 lane D).                                                         *)
 (*                                                                        *)
-(* Design: claude-notes/design/program-specs.md SS3.4b-SS3.4c.             *)
+(* Design: claude-notes/design/program-specs.md SS3.4b-SS3.4e.             *)
 (*                                                                        *)
 (* THE REGISTRY IS GHOST STATE.  A device is a natural number in the pure *)
-(* layer; what it IS -- the console, the file `f` held at a standard slot *)
-(* for writing ([FDFile i γo]), or an input on `f` ([FDIn s i γo]: at a   *)
-(* tail handle, or with [s] set at a STANDARD slot the ledger names,      *)
-(* where the open of a program that closed a standard stream lands) --   *)
-(* is a token [fif_tok d q v] in one camera, a function                   *)
-(* from device numbers to a fraction of an agreement.  [ei_fds] holds the *)
-(* POOL (the whole token of every number no descriptor names) and HALF of *)
-(* the token of every number one does; the device's resource holds the   *)
-(* other half.  So a device resource names exactly the kind and the      *)
-(* kernel object its descriptors point at, an open mints the token of a  *)
-(* fresh number out of the pool (after the kernel named the descriptor:  *)
-(* [UkFileDev.file_open_present]'s handle arm ends in an update), and a  *)
-(* close of the last descriptor gives it back ([UkHandler.ei_close] hands *)
-(* the device over).                                                     *)
+(* layer; what it IS -- the console at the ROUND [(v, I)] owing one of    *)
+(* the codes [C] it was lent ([FDCons v I C]), the file `f` held at a     *)
+(* standard slot for writing at the LINE [ws] ([FDFile i γo ws]), or an   *)
+(* input on `f` ([FDIn s i γo]: at a tail handle, or with [s] set at a    *)
+(* STANDARD slot the ledger names) -- is a token [fif_tok d q v] in one   *)
+(* camera.  [ei_fds] holds the POOL (the whole token of every number no   *)
+(* device is registered at) and HALF of the token of every registered    *)
+(* number; the device's resource holds the other half.  An open mints the *)
+(* token of a fresh number out of the pool, a close of the last           *)
+(* descriptor of an UNPROTECTED device gives it back.                      *)
 (*                                                                        *)
-(* WHAT IS PROVED: the console write ([UkConsOut.cons_write]), the file   *)
-(* write ([UkFileDev.file_write], chunk [b] of the line at a held ledger  *)
-(* slot), the READ ([file_read] at the tail handle the token names,       *)
-(* [file_read_std] at a standard slot), the open of `f` present -- the    *)
-(* descriptor landing where the LEDGER says ([UserFd.ualloc]: the lowest  *)
-(* closed standard slot, else a fresh tail handle) -- and absent at a     *)
-(* non-truncating mode, EVERY close (an input's, at its handle or its     *)
-(* standard slot, with the deed's fraction home and the token back to the *)
-(* pool; a standard stream of any kind, its ledger slot to [FdClosed];    *)
-(* a shared standard stream keeping its device; a shared tail descriptor  *)
-(* is impossible, an input has one), the exit, and the pipe laws          *)
-(* (vacuous).  So the ledger's invariant carries closed standard slots    *)
-(* and needs no [fd_lowest_closed l = None] (lane leaf-payers).           *)
+(* THE EXIT RETURNS THE ASSEMBLY'S POSTCONDITION (SS3.4e).  The exit       *)
+(* payload is not held up front: [ei_fds] is the CORE ([fif_core]: the    *)
+(* ledger, the cwd, the registry, the handles, the deed at a FIXED        *)
+(* fraction and content [fdq r qf sf], the application's facts) beside   *)
+(* the EXIT WAND [fif_exit_k], universal over the final state, which the  *)
+(* round supplies and the exit applies to the final core, files and      *)
+(* drained devices.  The round's indices are PINNED in the registry: the  *)
+(* entry devices [D0] have the values [w0] throughout ([fif_ok]'s last    *)
+(* clause), so the wand finds the console at the round's [(v, I, C)] and *)
+(* the file at its [(i, γo, ws)].  The three glue lemmas prove the wand   *)
+(* from the landed entries' payloads: [fif_exit_k_cat] from                *)
+(* [UCatKernel.catq_cat]'s wand (the drained console names a code of      *)
+(* [RCRan; RCNoOpen], and its body's length is [UCatOut.cat_out_len]),    *)
+(* [fif_exit_k_redir] from [UEchoFile.ef_exit]'s, [fif_exit_k_echo_cons]   *)
+(* from a wand at [GenLinksLine.gwc_post] (the round's [lk_post] shape). *)
 (*                                                                        *)
-(* WHAT IS NOT, as section hypotheses at the narrowest refused case:      *)
+(* THE PROTECTED DEVICES.  A close of an entry device's last descriptor  *)
+(* would drop the very cursor the wand needs, so the record's [Dp] is     *)
+(* [D0] here: such a close is a SHARED close ([fif_close_shared]: the     *)
+(* ledger slot closes, the device stays registered and with the handler) *)
+(* and the exit finds every entry device among the drained ones          *)
+(* ([UkHandler.dom_ok_p]).  So [fif_ok]'s registration clause reads: a   *)
+(* registered device is bound or protected.                              *)
 (*                                                                        *)
-(*   [Hopen_trunc]  the open of an absent `f` at a truncating mode that    *)
-(*             does not create.  NOT a leaf artefact (lane leaf-filedev,  *)
-(*             2026-09-23): the kernel's plain open surface                *)
-(*             ([SysOpenDefs.open_au_plain_at]) owes the truncate piece   *)
-(*             at the TRIVIAL permit ([SysOpenDefs.trunc_permit_triv]) -- *)
-(*             an [AppInv.app_step] at EVERY file row, handed in before   *)
-(*             the walk and untied to its terminal -- and the file claim  *)
-(*             cannot pay that at the four pinned binaries                *)
-(*             ([FileFsPure.file_fs_pure]); only the taint's [app_sup]     *)
-(*             can ([FsAbsInvFire]).  [UkFileOpen]'s miss leaf takes      *)
-(*             [om_trunc = false] because [PinnedOpen]'s dead bundle       *)
-(*             supplies the piece by [open_trunc_piece_none], which is the *)
-(*             only supplier outside the taint.  Closing it is kernel     *)
-(*             work: a plain-surface permit tied to the walk's terminal   *)
-(*             cursor, as the create surface's [trunc_permit_of] is, paid *)
-(*             where [ProofSysOpenWalk] keys the piece at the inode namei *)
-(*             reached ([open_trunc_at_of_triv]), with the file arms of   *)
-(*             [SpecSysOpen.open_post_ok_plain] returning what the permit *)
-(*             took through [Ft].                                         *)
+(* THE DEED LIVES IN THE CORE, not in [ei_files]: the read law receives  *)
+(* no files, and [UkFileDev.file_in] needs the deed's fraction at every  *)
+(* read.  [fif_filesr] is the pure scope ([f] is the one path described, *)
+(* [files f] is the deed's content); an input device holds the program's *)
+(* half of the offset ([UserOff.uoff]) and the deed is lent to each leaf *)
+(* from the core and comes straight back, at [qf] throughout.  The       *)
+(* console device remembers its codes ([UkConsOut.cons_dev_atc]).         *)
+(*                                                                        *)
+(* WHAT IS NOT, as a section hypothesis at the narrowest refused case:    *)
+(*                                                                        *)
 (*   [Hnil_in]  the zero-length write at an INPUT (a tail handle, or the   *)
 (*             read-only standard slot of [FDIn true]): row 16 carries no *)
 (*             return blanket (design/user-write.md SS3d), and at a        *)
@@ -66,19 +62,15 @@
 (*             the file held for writing too, [fif_file_nil] over          *)
 (*             [UkFileDev.file_write_nil].)                                *)
 (*                                                                        *)
-(* THE TAINT PAYS ANY DISCIPLINED TREE ([fif_taint_pays]): the free       *)
-(* handler at every hole, out of the application's supply (write, read,   *)
-(* open rows) and the machine's credential (close), with the ledger and   *)
-(* the handles of the held descriptors; the read row's count bound is     *)
-(* [UkRunSys.wp_uk_ecall_read]'s (lane rdbound).                           *)
+(* THE TAINT PAYS ANY DISCIPLINED TREE: [UkFreeHandler.fh_taint_pays] at  *)
+(* [T := file_taint c]; the payload the free handler needs comes from the *)
+(* persistent wand [file_taint c -* ukn_pay N (-1)] in [fif_env], which   *)
+(* every landed entry already takes.                                      *)
 (*                                                                        *)
-(* AND AT ECHO: [ep_iface] asks for every law whatever tree it pays, and  *)
-(* [UkEchoTree.echo_prog] names all five stubs at echo's own addresses    *)
-(* ([UkStub.echo_stub_read] and its siblings, for the three echo never    *)
-(* calls), so SS4 instantiates the record and the two echo theorems at   *)
-(* echo's program with no stub hypothesis ([file_iface_echo],             *)
-(* [echo_f_paid_echo], [echo_f_paid_of_redirect_echo]); the four gaps    *)
-(* above remain its hypotheses, by name.                                  *)
+(* AND AT ECHO: [UkEchoTree.echo_prog] names all five stubs at echo's own *)
+(* addresses, so SS5 instantiates the record and the theorems at echo's  *)
+(* program with no stub hypothesis; the gap above remains its hypothesis, *)
+(* by name.                                                               *)
 (* ===================================================================== *)
 From Stdlib Require Import ZArith Bool Lia List.
 From stdpp Require Import gmap list bitvector.definitions.
@@ -119,9 +111,11 @@ Require Import FileWrite UEchoFile.
 Require Import FsImg FsImgCheck.
 Require Import SysOpenDefs.
 Require Import LineModel LineModelInst FileDisc GenOut FileOut.
-Require Import FileLinks FileLinkGen.       (* [file_links], [file_params] *)
+Require Import FileLinks FileLinksLine FileLinkGen.   (* [file_links], [f0w], [file_params] *)
 Require Import UkConsOut UkFileDev.
-Require Import UkHandler ProgTreeFile.
+Require Import UkHandler UkFreeHandler ProgTreeFile.
+Require Import GenLinksLine LineModelLinks FileHooks.   (* [gwc_post], [lm_body], [fline] *)
+Require Import UCatOut UCatKernel.        (* [cch], [catq_cat]: the round's cat payload *)
 Require Import UCodeCat UkCatTree.
 Require Import UCodeEcho UkEchoTree.   (* echo's instance: [echo_prog] *)
 Local Open Scope Z_scope.
@@ -131,9 +125,16 @@ Import Defs.
 (*  0.  THE REGISTRY                                                      *)
 (* ===================================================================== *)
 
-(* what a device is: the console, `f` held for writing at a standard slot,
-   or an input on `f` at a tail handle *)
-Inductive fdev := FDCons | FDFile (i : Z) (γo : gname) | FDIn (s : bool) (i : Z) (γo : gname).
+(* ===================================================================== *)
+(*  0.  THE REGISTRY                                                      *)
+(* ===================================================================== *)
+
+(* what a device is: the console at its round and codes, `f` held for
+   writing at a standard slot at its line, or an input on `f` *)
+Inductive fdev :=
+  | FDCons (v : era_pins) (I : list (bv 8)) (C : list nat)
+  | FDFile (i : Z) (γo : gname) (ws : wordline)
+  | FDIn (s : bool) (i : Z) (γo : gname).
 
 Definition fifRegR := discrete_funUR (fun _ : nat => optionUR (dfrac_agreeR (leibnizO fdev))).
 Class fifRegG (Σ : gFunctors) := FifRegG { fif_reg_inG :: inG Σ fifRegR }.
@@ -198,9 +199,9 @@ Proof. unfold fif_files. case_decide; [reflexivity | done]. Qed.
 (* the row a descriptor's device demands of it *)
 Definition fif_row (ov : option fdev) (fd : Z) (l : list fdstate) : Prop :=
   match ov with
-  | Some FDCons => fd < Z.of_nat NSTD
+  | Some (FDCons _ _ _) => fd < Z.of_nat NSTD
                    /\ exists rb, l !! Z.to_nat fd = Some (FdOpen rb true (FdDevice CONSOLE))
-  | Some (FDFile i γo) => fd < Z.of_nat NSTD
+  | Some (FDFile i γo _) => fd < Z.of_nat NSTD
                    /\ exists rb, l !! Z.to_nat fd = Some (FdOpen rb true (FdInode i γo OffHeld))
   | Some (FDIn true i γo) => fd < Z.of_nat NSTD
                    /\ l !! Z.to_nat fd = Some (FdOpen true false (FdInode i γo OffHeld))
@@ -215,191 +216,216 @@ Proof.
 Qed.
 
 (* THE PURE HALF OF [ei_fds]: the binding against the ledger [l] and the
-   registry's values [vs] *)
-Definition fif_ok (fdm : fdmap) (l : list fdstate) (vs : gmap nat fdev) : Prop :=
+   registry's values [vs], with the entry devices [D0] at their values
+   [w0] throughout (a registered device is bound or protected) *)
+Definition fif_ok (D0 : list nat) (w0 : nat -> fdev) (fdm : fdmap) (l : list fdstate)
+    (vs : gmap nat fdev) : Prop :=
   (forall fd d, fdm !! fd = Some d -> 0 <= fd < Z.of_nat NOFILE)
   /\ (forall fd d, fdm !! fd = Some d -> fif_row (vs !! d) fd l)
-  /\ (forall d, d ∈ dom vs <-> exists fd, fdm !! fd = Some d)
+  /\ (forall d, d ∈ dom vs -> (exists fd, fdm !! fd = Some d) \/ d ∈ D0)
+  /\ (forall fd d, fdm !! fd = Some d -> d ∈ dom vs)
   /\ (forall fd fd' d s i γo, fdm !! fd = Some d -> fdm !! fd' = Some d ->
-        vs !! d = Some (FDIn s i γo) -> fd = fd').
+        vs !! d = Some (FDIn s i γo) -> fd = fd')
+  /\ (forall d, d ∈ D0 -> vs !! d = Some (w0 d)).
 
-Lemma fif_ok_lookup fdm l vs fd d :
-  fif_ok fdm l vs -> fdm !! fd = Some d -> exists v, vs !! d = Some v.
-Proof.
-  intros (_ & _ & H3 & _) Hfd. apply elem_of_dom. apply H3. by exists fd.
-Qed.
+Section fif_ok_lemmas.
+  Context (D0 : list nat) (w0 : nat -> fdev).
 
-Lemma fif_ok_open fdm l vs (k : nat) (d : nat) (i : Z) (γo : gname) :
-  fif_ok fdm l vs -> (NSTD <= k < NOFILE)%nat ->
-  fdm !! Z.of_nat k = None -> (forall fd', fdm !! fd' <> Some d) ->
-  fif_ok (<[Z.of_nat k := d]> fdm) l (<[d := FDIn false i γo]> vs).
-Proof.
-  intros (H1 & H2 & H3 & H4) Hk Hnone Hfr.
-  split; [| split; [| split]].
-  - intros fd d'. destruct (decide (fd = Z.of_nat k)) as [-> |].
-    + intros _. lia.
-    + rewrite lookup_insert_ne; [| congruence]. apply H1.
-  - intros fd d'. destruct (decide (fd = Z.of_nat k)) as [-> |].
-    + rewrite lookup_insert. intros [= <-]. rewrite lookup_insert. simpl. lia.
-    + rewrite (lookup_insert_ne fdm); [| congruence]. intros Hfd.
-      rewrite (lookup_insert_ne vs); [| intros ->; exact (Hfr fd Hfd)]. exact (H2 fd d' Hfd).
-  - intros d'. rewrite dom_insert_L elem_of_union elem_of_singleton H3. split.
-    + intros [-> | (fd & Hfd)].
-      * exists (Z.of_nat k). apply lookup_insert.
-      * exists fd. rewrite lookup_insert_ne; [exact Hfd |]. intros Heq.
+  Lemma fif_ok_lookup fdm l vs fd d :
+    fif_ok D0 w0 fdm l vs -> fdm !! fd = Some d -> exists v, vs !! d = Some v.
+  Proof using .
+    intros (_ & _ & _ & H4 & _) Hfd. apply elem_of_dom. exact (H4 fd d Hfd).
+  Qed.
+
+  Lemma fif_ok_D0 fdm l vs d :
+    fif_ok D0 w0 fdm l vs -> d ∈ D0 -> vs !! d = Some (w0 d).
+  Proof using . intros (_ & _ & _ & _ & _ & H6). exact (H6 d). Qed.
+
+  (* the two registration clauses after a fresh device is bound at a fresh
+     descriptor *)
+  Lemma fif_ok_reg_insert (fdm : fdmap) (vs : gmap nat fdev) (k : nat) (d : nat) (v : fdev) :
+    (forall d, d ∈ dom vs -> (exists fd, fdm !! fd = Some d) \/ d ∈ D0) ->
+    (forall fd d, fdm !! fd = Some d -> d ∈ dom vs) ->
+    fdm !! Z.of_nat k = None ->
+    (forall d', d' ∈ dom (<[d := v]> vs) ->
+       (exists fd, <[Z.of_nat k := d]> fdm !! fd = Some d') \/ d' ∈ D0)
+    /\ (forall fd d', <[Z.of_nat k := d]> fdm !! fd = Some d' -> d' ∈ dom (<[d := v]> vs)).
+  Proof using .
+    intros H3 H4 Hnone. split.
+    - intros d'. rewrite dom_insert_L elem_of_union elem_of_singleton. intros [-> | Hd'].
+      + left. exists (Z.of_nat k). apply lookup_insert.
+      + destruct (H3 d' Hd') as [(fd & Hfd) | HD]; [left | by right].
+        exists fd. rewrite lookup_insert_ne; [exact Hfd |]. intros Heq.
         rewrite <- Heq in Hfd. congruence.
-    + intros (fd & Hfd). destruct (decide (fd = Z.of_nat k)) as [-> |].
-      * rewrite lookup_insert in Hfd. injection Hfd as <-. by left.
-      * rewrite lookup_insert_ne in Hfd; [| congruence]. right. by exists fd.
-  - intros fd fd' d' s' i' γo'.
-    destruct (decide (d' = d)) as [-> |].
-    + intros Ha Hb _.
-      destruct (decide (fd = Z.of_nat k)) as [-> |];
-        [| rewrite lookup_insert_ne in Ha; [by destruct (Hfr fd) | congruence]].
-      destruct (decide (fd' = Z.of_nat k)) as [-> |];
-        [done | rewrite lookup_insert_ne in Hb; [by destruct (Hfr fd') | congruence]].
-    + rewrite (lookup_insert_ne vs); [| congruence].
-      intros Ha Hb.
-      destruct (decide (fd = Z.of_nat k)) as [-> |];
-        [rewrite lookup_insert in Ha; congruence | rewrite lookup_insert_ne in Ha; [| congruence]].
-      destruct (decide (fd' = Z.of_nat k)) as [-> |];
-        [rewrite lookup_insert in Hb; congruence | rewrite lookup_insert_ne in Hb; [| congruence]].
-      apply (H4 fd fd' d' s' i' γo' Ha Hb).
-Qed.
+    - intros fd d'. rewrite dom_insert_L elem_of_union elem_of_singleton.
+      destruct (decide (fd = Z.of_nat k)) as [-> |].
+      + rewrite lookup_insert. intros [= <-]. by left.
+      + rewrite lookup_insert_ne; [| congruence]. intros Hfd. right. exact (H4 fd d' Hfd).
+  Qed.
 
-(* every standard slot a descriptor names is OPEN, so a closed one is
-   named by none: where the next open lands is free *)
-Lemma fif_ok_closed_fresh fdm l vs (k : nat) :
-  fif_ok fdm l vs -> length l = NSTD -> l !! k = Some FdClosed ->
-  fdm !! Z.of_nat k = None.
-Proof.
-  intros (_ & H2 & H3 & _) Hlen Hk.
-  destruct (fdm !! Z.of_nat k) as [d |] eqn:E; [exfalso | reflexivity].
-  assert (Hd : exists v, vs !! d = Some v).
-  { apply elem_of_dom. apply H3. by exists (Z.of_nat k). }
-  destruct Hd as [v Hv]. specialize (H2 _ _ E). rewrite Hv in H2.
-  pose proof (lookup_lt_Some _ _ _ Hk) as Hkl.
-  destruct v as [| i γo | [|] i γo]; simpl in H2.
-  - destruct H2 as (_ & rb & Hl). rewrite Nat2Z.id in Hl. congruence.
-  - destruct H2 as (_ & rb & Hl). rewrite Nat2Z.id in Hl. congruence.
-  - destruct H2 as (_ & Hl). rewrite Nat2Z.id in Hl. congruence.
-  - lia.
-Qed.
+  Lemma fif_ok_open fdm l vs (k : nat) (d : nat) (i : Z) (γo : gname) :
+    fif_ok D0 w0 fdm l vs -> (NSTD <= k < NOFILE)%nat ->
+    fdm !! Z.of_nat k = None -> (forall fd', fdm !! fd' <> Some d) -> d ∉ D0 ->
+    fif_ok D0 w0 (<[Z.of_nat k := d]> fdm) l (<[d := FDIn false i γo]> vs).
+  Proof using .
+    intros (H1 & H2 & H3 & H4 & H5 & H6) Hk Hnone Hfr HD.
+    destruct (fif_ok_reg_insert fdm vs k d (FDIn false i γo) H3 H4 Hnone) as [H3' H4'].
+    split; [| split; [| split; [exact H3' | split; [exact H4' | split]]]].
+    - intros fd d'. destruct (decide (fd = Z.of_nat k)) as [-> |].
+      + intros _. lia.
+      + rewrite lookup_insert_ne; [| congruence]. apply H1.
+    - intros fd d'. destruct (decide (fd = Z.of_nat k)) as [-> |].
+      + rewrite lookup_insert. intros [= <-]. rewrite lookup_insert. simpl. lia.
+      + rewrite (lookup_insert_ne fdm); [| congruence]. intros Hfd.
+        rewrite (lookup_insert_ne vs); [| intros ->; exact (Hfr fd Hfd)]. exact (H2 fd d' Hfd).
+    - intros fd fd' d' s' i' γo'.
+      destruct (decide (d' = d)) as [-> |].
+      + intros Ha Hb _.
+        destruct (decide (fd = Z.of_nat k)) as [-> |];
+          [| rewrite lookup_insert_ne in Ha; [by destruct (Hfr fd) | congruence]].
+        destruct (decide (fd' = Z.of_nat k)) as [-> |];
+          [done | rewrite lookup_insert_ne in Hb; [by destruct (Hfr fd') | congruence]].
+      + rewrite (lookup_insert_ne vs); [| congruence].
+        intros Ha Hb.
+        destruct (decide (fd = Z.of_nat k)) as [-> |];
+          [rewrite lookup_insert in Ha; congruence | rewrite lookup_insert_ne in Ha; [| congruence]].
+        destruct (decide (fd' = Z.of_nat k)) as [-> |];
+          [rewrite lookup_insert in Hb; congruence | rewrite lookup_insert_ne in Hb; [| congruence]].
+        apply (H5 fd fd' d' s' i' γo' Ha Hb).
+    - intros d' Hd'. rewrite lookup_insert_ne; [exact (H6 d' Hd') |]. intros ->. done.
+  Qed.
 
-(* the binding reads the ledger only at the standard slots the descriptors
-   name *)
-Lemma fif_ok_ledger fdm l l' vs :
-  fif_ok fdm l vs ->
-  (forall fd d, fdm !! fd = Some d -> l' !! Z.to_nat fd = l !! Z.to_nat fd) ->
-  fif_ok fdm l' vs.
-Proof.
-  intros (H1 & H2 & H3 & H4) Hl. split; [exact H1 | split; [| exact (conj H3 H4)]].
-  intros fd d Hfd. specialize (H2 fd d Hfd). unfold fif_row in *. revert H2.
-  destruct (vs !! d) as [[| i γo | [|] i γo] |]; intros H2; rewrite ?(Hl fd d Hfd); exact H2.
-Qed.
+  (* every standard slot a descriptor names is OPEN, so a closed one is
+     named by none: where the next open lands is free *)
+  Lemma fif_ok_closed_fresh fdm l vs (k : nat) :
+    fif_ok D0 w0 fdm l vs -> length l = NSTD -> l !! k = Some FdClosed ->
+    fdm !! Z.of_nat k = None.
+  Proof using .
+    intros (_ & H2 & _ & H4 & _) Hlen Hk.
+    destruct (fdm !! Z.of_nat k) as [d |] eqn:E; [exfalso | reflexivity].
+    assert (Hd : exists v, vs !! d = Some v) by (apply elem_of_dom; exact (H4 _ _ E)).
+    destruct Hd as [v Hv]. specialize (H2 _ _ E). rewrite Hv in H2.
+    pose proof (lookup_lt_Some _ _ _ Hk) as Hkl.
+    destruct v as [vc Ic Cc | i γo ws | [|] i γo]; simpl in H2.
+    - destruct H2 as (_ & rb & Hl). rewrite Nat2Z.id in Hl. congruence.
+    - destruct H2 as (_ & rb & Hl). rewrite Nat2Z.id in Hl. congruence.
+    - destruct H2 as (_ & Hl). rewrite Nat2Z.id in Hl. congruence.
+    - lia.
+  Qed.
 
-(* ...and an open landing in the lowest CLOSED standard slot [k]: the new
-   descriptor's row is the slot, the others are untouched *)
-Lemma fif_ok_open_std fdm l vs (k : nat) (d : nat) (i : Z) (γo : gname) :
-  fif_ok fdm l vs -> length l = NSTD -> l !! k = Some FdClosed ->
-  (forall fd', fdm !! fd' <> Some d) ->
-  fif_ok (<[Z.of_nat k := d]> fdm) (<[k := FdOpen true false (FdInode i γo OffHeld)]> l)
-    (<[d := FDIn true i γo]> vs).
-Proof.
-  intros Hok Hlen Hk Hfr.
-  pose proof (fif_ok_closed_fresh fdm l vs k Hok Hlen Hk) as Hnone.
-  pose proof (lookup_lt_Some _ _ _ Hk) as Hkl.
-  destruct Hok as (H1 & H2 & H3 & H4).
-  split; [| split; [| split]].
-  - intros fd d'. destruct (decide (fd = Z.of_nat k)) as [-> |].
-    + intros _. unfold NSTD, NOFILE in *. lia.
-    + rewrite lookup_insert_ne; [| congruence]. apply H1.
-  - intros fd d'. destruct (decide (fd = Z.of_nat k)) as [-> | Hne].
-    + rewrite lookup_insert. intros [= <-]. rewrite lookup_insert. simpl.
-      split; [unfold NSTD in *; lia |]. rewrite Nat2Z.id. apply list_lookup_insert. exact Hkl.
-    + rewrite (lookup_insert_ne fdm); [| congruence]. intros Hfd.
-      rewrite (lookup_insert_ne vs); [| intros ->; exact (Hfr fd Hfd)].
-      specialize (H2 fd d' Hfd). destruct (H1 fd d' Hfd) as [H0 _].
-      pose proof (fif_slot_ne k fd H0 Hne) as Hkne.
-      unfold fif_row in *. revert H2.
-      destruct (vs !! d') as [[| i' γo' | [|] i' γo'] |]; intros H2;
-        rewrite ?(list_lookup_insert_ne l k (Z.to_nat fd)
-                    (FdOpen true false (FdInode i γo OffHeld)) Hkne); exact H2.
-  - intros d'. rewrite dom_insert_L elem_of_union elem_of_singleton H3. split.
-    + intros [-> | (fd & Hfd)].
-      * exists (Z.of_nat k). apply lookup_insert.
-      * exists fd. rewrite lookup_insert_ne; [exact Hfd |]. intros Heq.
-        rewrite <- Heq in Hfd. congruence.
-    + intros (fd & Hfd). destruct (decide (fd = Z.of_nat k)) as [-> |].
-      * rewrite lookup_insert in Hfd. injection Hfd as <-. by left.
-      * rewrite lookup_insert_ne in Hfd; [| congruence]. right. by exists fd.
-  - intros fd fd' d' s' i' γo'.
-    destruct (decide (d' = d)) as [-> |].
-    + intros Ha Hb _.
-      destruct (decide (fd = Z.of_nat k)) as [-> |];
-        [| rewrite lookup_insert_ne in Ha; [by destruct (Hfr fd) | congruence]].
-      destruct (decide (fd' = Z.of_nat k)) as [-> |];
-        [done | rewrite lookup_insert_ne in Hb; [by destruct (Hfr fd') | congruence]].
-    + rewrite (lookup_insert_ne vs); [| congruence].
-      intros Ha Hb.
-      destruct (decide (fd = Z.of_nat k)) as [-> |];
-        [rewrite lookup_insert in Ha; congruence | rewrite lookup_insert_ne in Ha; [| congruence]].
-      destruct (decide (fd' = Z.of_nat k)) as [-> |];
-        [rewrite lookup_insert in Hb; congruence | rewrite lookup_insert_ne in Hb; [| congruence]].
-      apply (H4 fd fd' d' s' i' γo' Ha Hb).
-Qed.
+  (* the binding reads the ledger only at the standard slots the descriptors
+     name *)
+  Lemma fif_ok_ledger fdm l l' vs :
+    fif_ok D0 w0 fdm l vs ->
+    (forall fd d, fdm !! fd = Some d -> l' !! Z.to_nat fd = l !! Z.to_nat fd) ->
+    fif_ok D0 w0 fdm l' vs.
+  Proof using .
+    intros (H1 & H2 & H3 & H4 & H5 & H6) Hl. split; [exact H1 | split; [| exact (conj H3 (conj H4 (conj H5 H6)))]].
+    intros fd d Hfd. specialize (H2 fd d Hfd). unfold fif_row in *. revert H2.
+    destruct (vs !! d) as [[vc Ic Cc | i γo ws | [|] i γo] |]; intros H2; rewrite ?(Hl fd d Hfd); exact H2.
+  Qed.
 
-Lemma fif_not_shared fdm fd d :
-  ~ fd_shared fdm fd d -> forall fd', fd' <> fd -> fdm !! fd' <> Some d.
-Proof.
-  intros Hns fd' Hne Hfd'. apply Hns. exists fd'. split; [| exact Hfd'].
-  apply elem_of_dom. rewrite lookup_delete_ne; [| congruence]. by eexists.
-Qed.
+  (* ...and an open landing in the lowest CLOSED standard slot [k]: the new
+     descriptor's row is the slot, the others are untouched *)
+  Lemma fif_ok_open_std fdm l vs (k : nat) (d : nat) (i : Z) (γo : gname) :
+    fif_ok D0 w0 fdm l vs -> length l = NSTD -> l !! k = Some FdClosed ->
+    (forall fd', fdm !! fd' <> Some d) -> d ∉ D0 ->
+    fif_ok D0 w0 (<[Z.of_nat k := d]> fdm) (<[k := FdOpen true false (FdInode i γo OffHeld)]> l)
+      (<[d := FDIn true i γo]> vs).
+  Proof using .
+    intros Hok Hlen Hk Hfr HD.
+    pose proof (fif_ok_closed_fresh fdm l vs k Hok Hlen Hk) as Hnone.
+    pose proof (lookup_lt_Some _ _ _ Hk) as Hkl.
+    destruct Hok as (H1 & H2 & H3 & H4 & H5 & H6).
+    destruct (fif_ok_reg_insert fdm vs k d (FDIn true i γo) H3 H4 Hnone) as [H3' H4'].
+    split; [| split; [| split; [exact H3' | split; [exact H4' | split]]]].
+    - intros fd d'. destruct (decide (fd = Z.of_nat k)) as [-> |].
+      + intros _. unfold NSTD, NOFILE in *. lia.
+      + rewrite lookup_insert_ne; [| congruence]. apply H1.
+    - intros fd d'. destruct (decide (fd = Z.of_nat k)) as [-> | Hne].
+      + rewrite lookup_insert. intros [= <-]. rewrite lookup_insert. simpl.
+        split; [unfold NSTD in *; lia |]. rewrite Nat2Z.id. apply list_lookup_insert. exact Hkl.
+      + rewrite (lookup_insert_ne fdm); [| congruence]. intros Hfd.
+        rewrite (lookup_insert_ne vs); [| intros ->; exact (Hfr fd Hfd)].
+        specialize (H2 fd d' Hfd). destruct (H1 fd d' Hfd) as [H0 _].
+        pose proof (fif_slot_ne k fd H0 Hne) as Hkne.
+        unfold fif_row in *. revert H2.
+        destruct (vs !! d') as [[vc Ic Cc | i' γo' ws' | [|] i' γo'] |]; intros H2;
+          rewrite ?(list_lookup_insert_ne l k (Z.to_nat fd)
+                      (FdOpen true false (FdInode i γo OffHeld)) Hkne); exact H2.
+    - intros fd fd' d' s' i' γo'.
+      destruct (decide (d' = d)) as [-> |].
+      + intros Ha Hb _.
+        destruct (decide (fd = Z.of_nat k)) as [-> |];
+          [| rewrite lookup_insert_ne in Ha; [by destruct (Hfr fd) | congruence]].
+        destruct (decide (fd' = Z.of_nat k)) as [-> |];
+          [done | rewrite lookup_insert_ne in Hb; [by destruct (Hfr fd') | congruence]].
+      + rewrite (lookup_insert_ne vs); [| congruence].
+        intros Ha Hb.
+        destruct (decide (fd = Z.of_nat k)) as [-> |];
+          [rewrite lookup_insert in Ha; congruence | rewrite lookup_insert_ne in Ha; [| congruence]].
+        destruct (decide (fd' = Z.of_nat k)) as [-> |];
+          [rewrite lookup_insert in Hb; congruence | rewrite lookup_insert_ne in Hb; [| congruence]].
+        apply (H5 fd fd' d' s' i' γo' Ha Hb).
+    - intros d' Hd'. rewrite lookup_insert_ne; [exact (H6 d' Hd') |]. intros ->. done.
+  Qed.
 
-Lemma fif_ok_close fdm l vs fd d :
-  fif_ok fdm l vs -> fdm !! fd = Some d -> ~ fd_shared fdm fd d ->
-  fif_ok (delete fd fdm) l (delete d vs).
-Proof.
-  intros (H1 & H2 & H3 & H4) Hfd Hns.
-  pose proof (fif_not_shared fdm fd d Hns) as Hn.
-  split; [| split; [| split]].
-  - intros fd' d'. rewrite lookup_delete_Some. intros [_ Hf]. exact (H1 fd' d' Hf).
-  - intros fd' d'. rewrite lookup_delete_Some. intros [Hne Hf].
-    rewrite (lookup_delete_ne vs); [exact (H2 fd' d' Hf) |].
-    intros Heq. subst d'. exact (Hn fd' (not_eq_sym Hne) Hf).
-  - intros d'. rewrite dom_delete_L elem_of_difference elem_of_singleton H3. split.
-    + intros ((fd' & Hfd') & Hne). exists fd'. apply lookup_delete_Some. split; [| exact Hfd'].
+  Lemma fif_not_shared fdm fd d :
+    ~ fd_shared fdm fd d -> forall fd', fd' <> fd -> fdm !! fd' <> Some d.
+  Proof using .
+    intros Hns fd' Hne Hfd'. apply Hns. exists fd'. split; [| exact Hfd'].
+    apply elem_of_dom. rewrite lookup_delete_ne; [| congruence]. by eexists.
+  Qed.
+
+  (* the close of an UNPROTECTED device's last descriptor unregisters it *)
+  Lemma fif_ok_close fdm l vs fd d :
+    fif_ok D0 w0 fdm l vs -> fdm !! fd = Some d -> ~ fd_shared fdm fd d -> d ∉ D0 ->
+    fif_ok D0 w0 (delete fd fdm) l (delete d vs).
+  Proof using .
+    intros (H1 & H2 & H3 & H4 & H5 & H6) Hfd Hns HD.
+    pose proof (fif_not_shared fdm fd d Hns) as Hn.
+    split; [| split; [| split; [| split; [| split]]]].
+    - intros fd' d'. rewrite lookup_delete_Some. intros [_ Hf]. exact (H1 fd' d' Hf).
+    - intros fd' d'. rewrite lookup_delete_Some. intros [Hne Hf].
+      rewrite (lookup_delete_ne vs); [exact (H2 fd' d' Hf) |].
+      intros Heq. subst d'. exact (Hn fd' (not_eq_sym Hne) Hf).
+    - intros d'. rewrite dom_delete_L elem_of_difference elem_of_singleton.
+      intros [Hd' Hne]. destruct (H3 d' Hd') as [(fd' & Hfd') | HD']; [left | by right].
+      exists fd'. apply lookup_delete_Some. split; [| exact Hfd'].
       intros Heq. subst fd. rewrite Hfd in Hfd'. injection Hfd' as Hdd. exact (Hne (eq_sym Hdd)).
-    + intros (fd' & Hfd'). apply lookup_delete_Some in Hfd' as [Hne Hf].
-      split; [by exists fd' |]. intros Heq. subst d'. exact (Hn fd' (not_eq_sym Hne) Hf).
-  - intros fa fb d' s' i' γo' Ha Hb Hv.
-    apply lookup_delete_Some in Ha as [_ Ha]. apply lookup_delete_Some in Hb as [_ Hb].
-    apply lookup_delete_Some in Hv as [_ Hv].
-    exact (H4 fa fb d' s' i' γo' Ha Hb Hv).
-Qed.
+    - intros fd' d'. rewrite lookup_delete_Some. intros [Hne Hf].
+      rewrite dom_delete_L elem_of_difference elem_of_singleton.
+      split; [exact (H4 fd' d' Hf) |]. intros Heq. subst d'. exact (Hn fd' (not_eq_sym Hne) Hf).
+    - intros fa fb d' s' i' γo' Ha Hb Hv.
+      apply lookup_delete_Some in Ha as [_ Ha]. apply lookup_delete_Some in Hb as [_ Hb].
+      apply lookup_delete_Some in Hv as [_ Hv].
+      exact (H5 fa fb d' s' i' γo' Ha Hb Hv).
+    - intros d' Hd'. rewrite lookup_delete_ne; [exact (H6 d' Hd') |]. intros ->. done.
+  Qed.
 
-(* ...and of a descriptor another one shares the device of: the registry
-   keeps the device *)
-Lemma fif_ok_close_shared fdm l vs fd d :
-  fif_ok fdm l vs -> fdm !! fd = Some d -> fd_shared fdm fd d ->
-  fif_ok (delete fd fdm) l vs.
-Proof.
-  intros (H1 & H2 & H3 & H4) Hfd Hsh.
-  split; [| split; [| split]].
-  - intros fd' d'. rewrite lookup_delete_Some. intros [_ Hf]. exact (H1 fd' d' Hf).
-  - intros fd' d'. rewrite lookup_delete_Some. intros [_ Hf]. exact (H2 fd' d' Hf).
-  - intros d'. rewrite H3. split.
-    + intros (fd' & Hfd'). destruct (decide (fd' = fd)) as [-> | Hne].
-      * rewrite Hfd in Hfd'. injection Hfd' as <-.
-        destruct Hsh as (fd'' & Hin & Hfd''). exists fd''.
-        apply elem_of_dom in Hin as [d'' Hd'']. apply lookup_delete_Some in Hd'' as [Hne _].
+  (* ...and of a descriptor whose device stays: another one names it, or
+     it is protected *)
+  Lemma fif_ok_close_shared fdm l vs fd d :
+    fif_ok D0 w0 fdm l vs -> fdm !! fd = Some d -> fd_shared_p D0 fdm fd d ->
+    fif_ok D0 w0 (delete fd fdm) l vs.
+  Proof using .
+    intros (H1 & H2 & H3 & H4 & H5 & H6) Hfd Hsh. apply fd_shared_p_iff in Hsh.
+    split; [| split; [| split; [| split; [| split; [| exact H6]]]]].
+    - intros fd' d'. rewrite lookup_delete_Some. intros [_ Hf]. exact (H1 fd' d' Hf).
+    - intros fd' d'. rewrite lookup_delete_Some. intros [_ Hf]. exact (H2 fd' d' Hf).
+    - intros d' Hd'. destruct (H3 d' Hd') as [(fd' & Hfd') | HD']; [| by right].
+      destruct (decide (fd' = fd)) as [-> | Hne].
+      + rewrite Hfd in Hfd'. injection Hfd' as <-.
+        destruct Hsh as [HD | (fd'' & Hin & Hfd'')]; [by right | left].
+        exists fd''. apply elem_of_dom in Hin as [d'' Hd'']. apply lookup_delete_Some in Hd'' as [Hne _].
         apply lookup_delete_Some. by split.
-      * exists fd'. apply lookup_delete_Some. by split.
-    + intros (fd' & Hfd'). apply lookup_delete_Some in Hfd' as [_ Hf]. by exists fd'.
-  - intros fa fb d' s' i' γo' Ha Hb Hv.
-    apply lookup_delete_Some in Ha as [_ Ha]. apply lookup_delete_Some in Hb as [_ Hb].
-    exact (H4 fa fb d' s' i' γo' Ha Hb Hv).
-Qed.
+      + left. exists fd'. apply lookup_delete_Some. by split.
+    - intros fd' d'. rewrite lookup_delete_Some. intros [_ Hf]. exact (H4 fd' d' Hf).
+    - intros fa fb d' s' i' γo' Ha Hb Hv.
+      apply lookup_delete_Some in Ha as [_ Ha]. apply lookup_delete_Some in Hb as [_ Hb].
+      exact (H5 fa fb d' s' i' γo' Ha Hb Hv).
+  Qed.
+End fif_ok_lemmas.
 
 (* the chunk a write at the line's cursor carries *)
 Lemma fif_drop_cons {A : Type} `{!Inhabited A} (xs : list A) (b : nat) (y : A) (ys : list A) :
@@ -426,6 +452,15 @@ Proof.
   pose proof (Z.land_spec m 512 9) as Hs. rewrite Hl Z.bits_0 in Hs.
   change (Z.testbit 512 9) with true in Hs. rewrite andb_true_r in Hs. by rewrite <- Hs.
 Qed.
+
+
+(* the deed's content, read off the scope's files *)
+Lemma dst_some_of_snd (s : dst) (content : list (bv 8)) :
+  snd <$> s = Some content -> exists i : Z, s = Some (i, content).
+Proof. destruct s as [[i c] |]; simpl; [intros [= ->]; by exists i | discriminate]. Qed.
+
+Lemma dst_none_of_snd (s : dst) : snd <$> s = None -> s = None.
+Proof. destruct s as [[i c] |]; simpl; [discriminate | reflexivity]. Qed.
 
 (* ===================================================================== *)
 (*  1.  THE INSTANCE                                                      *)
@@ -464,6 +499,7 @@ Section UkFileIface.
   Local Notation a1_idx := (mword_of_int 11 : mword 5).
   Local Notation a2_idx := (mword_of_int 12 : mword 5).
   Local Notation a7_idx := (mword_of_int 17 : mword 5).
+  Local Notation fcons_atc := (cons_dev_atc file_lm (file_params g) (file_links g)).
 
   (* ------------------------------------------------------------------- *)
   (*  the registry's tokens                                               *)
@@ -492,7 +528,7 @@ Section UkFileIface.
     d ∉ B -> own γreg (fif_pool B w) ⊣⊢ own γreg (fif_pool ({[d]} ∪ B) w) ∗ fif_tok d 1 (w d).
   Proof using . intros Hd. rewrite /fif_tok -own_op -fif_pool_take //. Qed.
 
-  (* a token of a device a descriptor names comes home to the pool *)
+  (* a token of a registered device comes home to the pool *)
   Lemma fif_pool_give (vs : gmap nat fdev) (w : nat -> fdev) (d : nat) (v : fdev) :
     d ∈ dom vs ->
     own γreg (fif_pool (dom vs) w) -∗ fif_tok d 1 v -∗
@@ -512,13 +548,20 @@ Section UkFileIface.
     rewrite (fif_pool_ext (dom vs) ({[d]} ∪ dom (delete d vs)) w w' HB Hww). done.
   Qed.
 
+  (* THE ROUND'S INDICES, PINNED: the entry devices and their values (a
+     protected device is never an input), the deed's fraction and content *)
+  Context (D0 : list nat) (w0 : nat -> fdev).
+  Context (qf : Qp) (sf : dst).
+
   (* ------------------------------------------------------------------- *)
   (*  the resources                                                       *)
   (* ------------------------------------------------------------------- *)
 
-  (* the application's persistent facts the device laws read *)
+  (* the application's persistent facts the device laws read, and the
+     taint's payload: the wand every landed entry takes *)
   Definition fif_env : iProp Σ :=
     (□ (app_taint -∗ file_taint c) ∗ □ (file_taint c -∗ app_taint)
+     ∗ □ (file_taint c -∗ ukn_pay N (-1))
      ∗ app_inv fsc_fs ∗ ∃ jo : option Z, file_cons_cred c r jo)%I.
 
   Global Instance fif_env_persistent : Persistent fif_env.
@@ -533,22 +576,10 @@ Section UkFileIface.
     | _ => emp
     end%I.
 
-  (* [ei_fds], at its ledger, its registry's values and its pool *)
-  Definition fif_fds_at (fdm : fdmap) (l : list fdstate) (vs : gmap nat fdev)
-      (w : nat -> fdev) : iProp Σ :=
-    (UserFd.ustd γfd l ∗ UserCwd.ucwd (ukn_cwd N) FsImg.ROOTINO ∗ ukn_pay N (-1)
-     ∗ ⌜fif_ok fdm l vs⌝
-     ∗ own γreg (fif_pool (dom vs) w)
-     ∗ ([∗ map] d ↦ v ∈ vs, fif_tok d (1/2) v)
-     ∗ ([∗ map] fd ↦ d ∈ fdm, fif_hdl fd (vs !! d))
-     ∗ fif_env)%I.
-
-  Definition fif_fds (fdm : fdmap) : iProp Σ :=
-    (∃ (l : list fdstate) (vs : gmap nat fdev) (w : nat -> fdev), fif_fds_at fdm l vs w)%I.
-
-  (* the console, at the generic claim of the file model *)
+  (* the console at its round, remembering its codes *)
   Definition fif_out (d : nat) (alts : list (list (bv 8))) : iProp Σ :=
-    (fif_tok d (1/2) FDCons ∗ cons_dev file_lm (file_params g) (file_links g) alts)%I.
+    (∃ (v : era_pins) (I : list (bv 8)) (C : list nat),
+       fif_tok d (1/2) (FDCons v I C) ∗ fcons_atc C v I alts)%I.
 
   (* the file a redirect holds: the line's chunks from [b] on are owed *)
   Definition fif_out_ok (i : Z) (ws : wordline) : Prop :=
@@ -556,15 +587,16 @@ Section UkFileIface.
     /\ Forall (fun ch => (length ch <= EchoDisc.line_max)%nat) (echo_chunks ws).
 
   Definition fif_outm (d : nat) (chunks : list (list (bv 8))) : iProp Σ :=
-    (∃ (i : Z) (γo : gname), fif_tok d (1/2) (FDFile i γo)
-       ∗ ∃ (ws : wordline) (b : nat),
-           ⌜chunks = drop b (echo_chunks ws)⌝ ∗ ⌜fif_out_ok i ws⌝
+    (∃ (i : Z) (γo : gname) (ws : wordline), fif_tok d (1/2) (FDFile i γo ws)
+       ∗ ∃ b : nat, ⌜chunks = drop b (echo_chunks ws)⌝ ∗ ⌜fif_out_ok i ws⌝
            ∗ file_out c r i γo ws b)%I.
 
-  (* an input the process opened on `f`, at a tail handle or a standard slot *)
+  (* an input the process opened on `f`, at a tail handle or a standard
+     slot: the program's half of the offset; the deed is the core's *)
   Definition fif_in (d : nat) (S : list (bv 8)) : iProp Σ :=
-    (∃ (s : bool) (i : Z) (γo : gname), fif_tok d (1/2) (FDIn s i γo)
-       ∗ ∃ (q : Qp) (content : list (bv 8)), file_in r i γo q content S)%I.
+    (∃ (s : bool) (i : Z) (γo : gname) (p : nat), fif_tok d (1/2) (FDIn s i γo)
+       ∗ ⌜exists content, sf = Some (i, content) /\ S = drop p content⌝
+       ∗ uoff γo p)%I.
 
   Definition fif_dev (d : nat) (x : dspec) : iProp Σ :=
     match x with
@@ -573,25 +605,46 @@ Section UkFileIface.
     | DCopy _ _ _ => False | DCopyEnd _ _ => False | DCopyHalt => False
     end%I.
 
-  (* the deed at `f`, the one path described *)
+  (* the scope: `f` is the one path described, at the deed's content *)
   Definition fif_filesr (files : list (bv 8) -> option (list (bv 8))) (paths : list (list (bv 8)))
       : iProp Σ :=
-    (⌜forall p, p ∈ paths -> p = fname_f⌝
-     ∗ ∃ (s : dst) (q : Qp), ⌜files fname_f = snd <$> s⌝ ∗ fdq r q s)%I.
+    (⌜forall p, p ∈ paths -> p = fname_f⌝ ∗ ⌜files fname_f = snd <$> sf⌝)%I.
 
-  (* THE TAINT at the held descriptors: the flag and its credential, the
-     payload, the ledger and the handles, with every held descriptor an
-     open standard slot or a handle *)
-  Definition fif_held_ok (held : gset Z) (l : list fdstate) (hm : gmap Z fdstate) : Prop :=
-    forall fd, fd ∈ held -> (0 <= fd < Z.of_nat NOFILE)
-      /\ ((fd < Z.of_nat NSTD /\ exists st, l !! Z.to_nat fd = Some st /\ st <> FdClosed)
-          \/ (Z.of_nat NSTD <= fd /\ is_Some (hm !! fd))).
+  Global Instance fif_filesr_persistent files paths : Persistent (fif_filesr files paths).
+  Proof using . rewrite /fif_filesr. apply _. Qed.
 
-  Definition fif_taint (held : gset Z) : iProp Σ :=
-    (file_taint c ∗ □ (file_taint c -∗ app_taint) ∗ ukn_pay N (-1)
-     ∗ ∃ (l : list fdstate) (hm : gmap Z fdstate),
-         UserFd.ustd γfd l ∗ ⌜fif_held_ok held l hm⌝
-         ∗ [∗ map] fd ↦ st ∈ hm, UserFd.ufd γfd (Z.to_nat fd) st)%I.
+  (* THE CORE: the process's resources at its ledger, the registry's values
+     and its pool, and the deed *)
+  Definition fif_core (fdm : fdmap) (l : list fdstate) (vs : gmap nat fdev)
+      (w : nat -> fdev) : iProp Σ :=
+    (UserFd.ustd γfd l ∗ UserCwd.ucwd (ukn_cwd N) FsImg.ROOTINO
+     ∗ ⌜fif_ok D0 w0 fdm l vs⌝
+     ∗ own γreg (fif_pool (dom vs) w)
+     ∗ ([∗ map] d ↦ v ∈ vs, fif_tok d (1/2) v)
+     ∗ ([∗ map] fd ↦ d ∈ fdm, fif_hdl fd (vs !! d))
+     ∗ fdq r qf sf
+     ∗ fif_env)%I.
+
+  (* THE EXIT WAND: the round's payload, from the final core, files and
+     drained devices, with every entry device among them *)
+  Definition fif_exit_k : iProp Σ :=
+    (∀ (fdm : fdmap) (l : list fdstate) (vs : gmap nat fdev) (w : nat -> fdev)
+       (files : list (bv 8) -> option (list (bv 8))) (paths : list (list (bv 8)))
+       (dv : nat -> dspec) (ds : gset nat),
+       ⌜forall d, d ∈ ds -> drained (dv d)⌝ -∗ ⌜dom_ok_p D0 fdm ds⌝ -∗
+       fif_core fdm l vs w -∗ fif_filesr files paths -∗
+       ([∗ set] d ∈ ds, fif_dev d (dv d)) -∗ ukn_pay N (-1))%I.
+
+  (* [ei_fds], at its ledger, its registry's values and its pool *)
+  Definition fif_fds_at (fdm : fdmap) (l : list fdstate) (vs : gmap nat fdev)
+      (w : nat -> fdev) : iProp Σ :=
+    (fif_core fdm l vs w ∗ fif_exit_k)%I.
+
+  Definition fif_fds (fdm : fdmap) : iProp Σ :=
+    (∃ (l : list fdstate) (vs : gmap nat fdev) (w : nat -> fdev), fif_fds_at fdm l vs w)%I.
+
+  (* THE TAINT: the free handler's, at the application's flag *)
+  Definition fif_taint (held : gset Z) : iProp Σ := fh_taint (file_taint c) N held.
 
   (* ------------------------------------------------------------------- *)
   (*  small facts                                                         *)
@@ -608,16 +661,16 @@ Section UkFileIface.
     ⊣⊢ [∗ map] fd ↦ st ∈ omap (fif_hf vs) fdm, UserFd.ufd γfd (Z.to_nat fd) st.
   Proof using .
     rewrite big_sepM_omap. apply big_sepM_proper. intros fd d _.
-    rewrite /fif_hdl /fif_hf. destruct (vs !! d) as [[| i γo | [|] i γo] |]; done.
+    rewrite /fif_hdl /fif_hf. destruct (vs !! d) as [[vc Ic Cc | i γo ws | [|] i γo] |]; done.
   Qed.
 
   Lemma fif_held_ok_fds (fdm : fdmap) (l : list fdstate) (vs : gmap nat fdev) :
-    fif_ok fdm l vs -> fif_held_ok (dom fdm) l (omap (fif_hf vs) fdm).
-  Proof.
+    fif_ok D0 w0 fdm l vs -> fh_held_ok (dom fdm) l (omap (fif_hf vs) fdm).
+  Proof using .
     intros Hok fd Hfd. apply elem_of_dom in Hfd as [d Hd].
     pose proof Hok as (H1 & H2 & _). split; [exact (H1 fd d Hd) |].
     pose proof (H2 fd d Hd) as Hr.
-    destruct (vs !! d) as [[| i γo | [|] i γo] |] eqn:Ev; simpl in Hr.
+    destruct (vs !! d) as [[vc Ic Cc | i γo ws | [|] i γo] |] eqn:Ev; simpl in Hr.
     - left. destruct Hr as (Hs & rb & Hl). split; [exact Hs |].
       eexists; split; [exact Hl | discriminate].
     - left. destruct Hr as (Hs & rb & Hl). split; [exact Hs |].
@@ -628,32 +681,27 @@ Section UkFileIface.
     - done.
   Qed.
 
+  Lemma fif_app_sup : file_taint c -∗ app_sup.
+  Proof using Heq.
+    iIntros "#HT". rewrite /AppInv.app_sup. rewrite Heq. cbn [app_pred app_run].
+    iApply (AppFile.file_sup_of_taint c r with "HT").
+  Qed.
+
   (* the taint, out of what a law holds at a taint arm *)
   Lemma fif_taint_of_fds (fdm : fdmap) (l : list fdstate) (vs : gmap nat fdev) :
-    fif_ok fdm l vs ->
-    file_taint c -∗ □ (file_taint c -∗ app_taint) -∗ ukn_pay N (-1) -∗ UserFd.ustd γfd l -∗
+    fif_ok D0 w0 fdm l vs ->
+    file_taint c -∗ fif_env -∗ UserFd.ustd γfd l -∗
     ([∗ map] fd ↦ d ∈ fdm, fif_hdl fd (vs !! d)) -∗ fif_taint (dom fdm).
-  Proof using .
-    intros Hok. iIntros "#Ht #Hk Hpay Hstd Hhs". rewrite /fif_taint. iFrame "Ht Hk Hpay".
+  Proof using Heq.
+    intros Hok. iIntros "#Ht #(Hbr & Hk & Hpay & Hinv & Hm) Hstd Hhs". rewrite /fif_taint /fh_taint.
+    iFrame "Ht Hk". iSplitR; [iIntros "!> HT"; iApply (fif_app_sup with "HT") |].
+    iSplitR; [iApply ("Hpay" with "Ht") |].
     iExists l, (omap (fif_hf vs) fdm). iFrame "Hstd". iSplit.
     - iPureIntro. by apply fif_held_ok_fds.
     - by rewrite fif_hdls_hm.
   Qed.
 
-  (* a handle the kernel handed back is none the taint holds *)
-  Lemma fif_hm_fresh (hm : gmap Z fdstate) (k : nat) (st : fdstate) :
-    ([∗ map] fd ↦ st ∈ hm, UserFd.ufd γfd (Z.to_nat fd) st) -∗ UserFd.ufd γfd k st -∗
-    ⌜hm !! Z.of_nat k = None⌝ ∗ ([∗ map] fd ↦ st ∈ hm, UserFd.ufd γfd (Z.to_nat fd) st)
-    ∗ UserFd.ufd γfd k st.
-  Proof using .
-    iIntros "Hm Hh".
-    destruct (hm !! Z.of_nat k) as [st' |] eqn:E; [| by iFrame].
-    iDestruct (big_sepM_lookup_acc _ _ _ _ E with "Hm") as "[Hx _]".
-    rewrite Nat2Z.id. iDestruct "Hx" as "[Hx _]". iDestruct "Hh" as "[Hh _]".
-    iDestruct (ghost_map_elem_ne with "Hx Hh") as %Hne. by destruct Hne.
-  Qed.
-
-  (* the value the registry holds for a named device, read off its token *)
+  (* the value the registry holds for a registered device, read off its token *)
   Lemma fif_toks_agree (vs : gmap nat fdev) (d : nat) (v v' : fdev) (q : Qp) :
     vs !! d = Some v ->
     ([∗ map] d ↦ v ∈ vs, fif_tok d (1/2) v) -∗ fif_tok d q v' -∗
@@ -668,16 +716,16 @@ Section UkFileIface.
   (* a descriptor the kernel just handed back is none the process names *)
   Lemma fif_fresh_fd (fdm : fdmap) (l : list fdstate) (vs : gmap nat fdev) (k : nat)
       (st : fdstate) :
-    fif_ok fdm l vs -> (NSTD <= k)%nat ->
+    fif_ok D0 w0 fdm l vs -> (NSTD <= k)%nat ->
     ([∗ map] fd ↦ d ∈ fdm, fif_hdl fd (vs !! d)) -∗ UserFd.ufd γfd k st -∗
     ⌜fdm !! Z.of_nat k = None⌝ ∗ ([∗ map] fd ↦ d ∈ fdm, fif_hdl fd (vs !! d))
     ∗ UserFd.ufd γfd k st.
   Proof using .
     intros Hok Hk. iIntros "Hm Hh".
     destruct (fdm !! Z.of_nat k) as [d |] eqn:E; [| by iFrame].
-    destruct (fif_ok_lookup _ _ _ _ _ Hok E) as [v Hv].
+    destruct (fif_ok_lookup D0 w0 _ _ _ _ _ Hok E) as [v Hv].
     pose proof Hok as (_ & H2 & _). specialize (H2 _ _ E). rewrite Hv in H2.
-    destruct v as [| i γo | [|] i γo];
+    destruct v as [vc Ic Cc | i γo ws | [|] i γo];
       [destruct H2 as [Hlt _]; lia | destruct H2 as [Hlt _]; lia
        | destruct H2 as [Hlt _]; lia |].
     iDestruct (big_sepM_lookup_acc _ _ _ _ E with "Hm") as "[Hx _]".
@@ -689,6 +737,7 @@ Section UkFileIface.
   Lemma fif_ans_ok (l : list fdstate) (ret : mword 64) :
     uk_open_taint_fd γfd l ret -∗ ⌜bv_signed ret = -1 \/ 0 <= bv_signed ret⌝.
   Proof using .
+    clear D0 w0 qf sf.
     rewrite /uk_open_taint_fd. iIntros "[Hal | [%Hr _]]".
     - iDestruct "Hal" as (fd rd wr t) "[%Hb _]". destruct Hb as (Hr & Hfdlt & _).
       iPureIntro. right. rewrite Hr bvs_moi_small; [lia |].
@@ -699,13 +748,13 @@ Section UkFileIface.
 
   Lemma fif_open_taint (l : list fdstate) (ret : mword 64) (fdm : fdmap)
       (vs : gmap nat fdev) :
-    length l = NSTD -> fif_ok fdm l vs ->
-    file_taint c -∗ □ (file_taint c -∗ app_taint) -∗ ukn_pay N (-1) -∗
+    length l = NSTD -> fif_ok D0 w0 fdm l vs ->
+    file_taint c -∗ fif_env -∗
     uk_open_taint_fd γfd l ret -∗
     ([∗ map] fd ↦ d ∈ fdm, fif_hdl fd (vs !! d)) -∗
     fif_taint (open_held fdm (bv_signed ret)).
-  Proof using .
-    intros Hlen Hok. iIntros "#Htn #Hk Hpay Hof Hhs".
+  Proof using Heq GEN.
+    intros Hlen Hok. iIntros "#Htn #(Hbr & Hk & Hpay & Hinv & Hm) Hof Hhs".
     rewrite /uk_open_taint_fd.
     iDestruct "Hof" as "[Hal | [%Hr Hstd]]".
     - iDestruct "Hal" as (fd rd wr t) "[%Hb Hal]". destruct Hb as (Hr & Hfdlt & _).
@@ -715,7 +764,9 @@ Section UkFileIface.
       rewrite Hsig /open_held decide_True; [| lia].
       rewrite fif_hdls_hm.
       pose proof (fif_held_ok_fds fdm l vs Hok) as Hho.
-      rewrite /fif_taint. iFrame "Htn Hk Hpay".
+      rewrite /fif_taint /fh_taint. iFrame "Htn Hk".
+      iSplitR; [iIntros "!> HT"; iApply (fif_app_sup with "HT") |].
+      iSplitR; [iApply ("Hpay" with "Htn") |].
       destruct (fd_lowest_closed l) as [k0 |] eqn:Elc.
       + (* the lowest closed standard slot *)
         iDestruct (ualloc_std γfd l fd k0 _ Elc with "Hal") as "[%Hfk Hstd]". subst fd.
@@ -737,7 +788,7 @@ Section UkFileIface.
       + (* a fresh tail handle *)
         iDestruct (ualloc_hi γfd l fd (FdOpen rd wr t) Elc with "Hal")
           as "(%Hhi & Hstd & Hh)".
-        iDestruct (fif_hm_fresh with "Hhs Hh") as "(%Hfr & Hhs & Hh)".
+        iDestruct (fh_hm_fresh N with "Hhs Hh") as "(%Hfr & Hhs & Hh)".
         iExists l, (<[Z.of_nat fd := FdOpen rd wr t]> (omap (fif_hf vs) fdm)). iFrame "Hstd".
         iSplit.
         * iPureIntro. intros x Hx. apply elem_of_union in Hx as [Hx | Hx].
@@ -749,269 +800,69 @@ Section UkFileIface.
                [rewrite lookup_insert; by eexists | rewrite lookup_insert_ne; [exact Hsm | congruence]].
         * rewrite big_sepM_insert; [| exact Hfr]. rewrite Nat2Z.id. iFrame "Hh Hhs".
     - rewrite Hr fdev_m1 /open_held. case_decide; [lia |].
-      iApply (fif_taint_of_fds fdm l vs Hok with "Htn Hk Hpay Hstd Hhs").
+      iApply (fif_taint_of_fds fdm l vs Hok with "Htn [] Hstd Hhs").
+      iFrame "Hbr Hk Hpay Hinv Hm".
   Qed.
 
-  (* [ei_exit]: the exit stub law, and the payload *)
-  Lemma fif_exit_pay (s : Z) : ukn_pay N (-1) -∗ ex_obl N P s.
+  (* the deed lent to an input's leaf, and back: [UkFileDev.file_in] out of
+     the core's deed and the device's offset half *)
+  Lemma fif_in_file_in (d : nat) (S : list (bv 8)) :
+    fif_in d S -∗ fdq r qf sf -∗
+    ∃ (s : bool) (i : Z) (γo : gname) (content : list (bv 8)),
+      ⌜sf = Some (i, content)⌝ ∗ fif_tok d (1/2) (FDIn s i γo) ∗ file_in r i γo qf content S.
+  Proof using .
+    iIntros "Hin Hd". iDestruct "Hin" as (s i γo p) "(Htk & %Hc & Hu)".
+    destruct Hc as (content & Hsf & HS). iExists s, i, γo, content. iSplit; [done |].
+    iFrame "Htk". iExists p. iFrame "Hu". iSplit; [iPureIntro; exact HS |].
+    rewrite -Hsf. iExact "Hd".
+  Qed.
+
+  Lemma fif_in_of_file_in (d : nat) (S content : list (bv 8)) (s : bool) (i : Z)
+      (γo : gname) :
+    sf = Some (i, content) ->
+    fif_tok d (1/2) (FDIn s i γo) -∗ file_in r i γo qf content S -∗
+    fif_in d S ∗ fdq r qf sf.
+  Proof using .
+    intros Hsf. iIntros "Htk Hin". iDestruct "Hin" as (p) "(%HS & Hu & Hd)".
+    rewrite Hsf. iFrame "Hd". iExists s, i, γo, p. iFrame "Htk Hu". iPureIntro.
+    by exists content.
+  Qed.
+
+  (* ------------------------------------------------------------------- *)
+  (*  THE FREE HANDLER, and the exit                                      *)
+  (* ------------------------------------------------------------------- *)
+
+  Definition fif_taint_pays := fh_taint_pays (file_taint c) N P Hsr Hsw Hso Hsc Hse.
+
+  Lemma fif_exit (s : Z) (fdm : fdmap) (files : list (bv 8) -> option (list (bv 8)))
+      (paths : list (list (bv 8))) (dv : nat -> dspec) (ds : gset nat) :
+    (forall d, d ∈ ds -> drained (dv d)) ->
+    dom_ok_p D0 fdm ds ->
+    fif_fds fdm -∗ fif_filesr files paths -∗ ([∗ set] d ∈ ds, fif_dev d (dv d)) -∗
+    ex_obl N P s.
   Proof using HNc Hse.
-    iIntros "Hpay" (h m avail) "_ Hcode Hrun".
-    iPoseProof Hse as "#Hs".
-    iApply ("Hs" $! h m avail with "Hcode Hrun").
-    iIntros (h1) "#Hi Hrun".
-    set (m1 := <[Regidx a7_idx := (mword_of_int 2 : mword 64)]> m).
-    assert (Hnum : usysno m1 = USYS_exit).
-    { unfold m1, usysno.
-      rewrite (upd_eq m (Regidx a7_idx) (mword_of_int 2 : mword 64)).
-      vm_compute; reflexivity. }
-    iApply (wp_uk_ecall_exit N h1 m1 (mword_of_int (up_exit P + 2)) avail Hnum
-              with "Hi [Hpay] Hrun").
-    by rewrite (ukn_const_eq (N := N) (uexitst m1) (-1)).
-  Qed.
-
-  (* ------------------------------------------------------------------- *)
-  (*  THE FREE HANDLER: the taint pays any disciplined tree               *)
-  (* ------------------------------------------------------------------- *)
-
-  Lemma fif_app_sup : file_taint c -∗ app_sup.
-  Proof using Heq.
-    iIntros "#HT". rewrite /AppInv.app_sup. rewrite Heq. cbn [app_pred app_run].
-    iApply (AppFile.file_sup_of_taint c r with "HT").
-  Qed.
-
-  Lemma fif_t_write (held : gset Z) (fd : Z) (bs : list (bv 8)) (K : Z -> iProp Σ) :
-    fif_taint held -∗ (∀ x, fif_taint held -∗ K x) -∗ wr_obl N P fd bs K.
-  Proof using Heq Hsw.
-    iIntros "Ht HK" (h m avail ua tx dq f) "%Hf %Ha0 %Ha1 %Ha2 Hcode Hsrc Hrun Hcont".
-    iAssert (file_taint c ∗ □ (file_taint c -∗ app_taint))%I as "[#HT #Hkc]".
-    { iDestruct "Ht" as "(#HT & #Hkc & _)". iFrame "HT Hkc". }
-    iPoseProof (fif_app_sup with "HT") as "#Hsup".
-    iPoseProof ("Hkc" with "HT") as "#Hk".
-    iPoseProof (udepw_law_of_sup_write with "Hsup Hk") as "#Hlaw".
-    set (m1 := <[Regidx a7_idx := (mword_of_int 16 : mword 64)]> m).
-    assert (Hnum : usysno m1 = 16).
-    { unfold m1, usysno. rewrite (upd_eq m (Regidx a7_idx) (mword_of_int 16 : mword 64)).
-      vm_compute; reflexivity. }
-    iPoseProof Hsw as "#Hs".
-    iApply ("Hs" $! h m avail with "Hcode Hrun").
-    iIntros (h1) "%E6 %Al6 #Hi Hrun Hret".
-    assert (Hal4 : is_aligned_vaddr
-                     (Virtaddr (add_vec_int (mword_of_int (up_write P + 2) : mword 64) 4))
-                     2 = true) by (rewrite E6; exact Al6).
-    iApply (wp_uk_ecall_quiet N h1 m1 (mword_of_int (up_write P + 2)) 16 avail Hnum
-              ltac:(discriminate) ltac:(discriminate) ltac:(discriminate)
-              ltac:(discriminate) ltac:(discriminate) ltac:(discriminate)
-              ltac:(discriminate) ltac:(discriminate) ltac:(discriminate)
-              ltac:(discriminate) ltac:(discriminate) ltac:(discriminate)
-              Hal4 with "Hi Hrun [Hlaw]").
-    { iApply (udepw_of_law with "Hlaw"). }
-    iIntros (h2 ret) "Hrun". iEval (rewrite E6) in "Hrun".
-    iApply ("Hret" $! h2 ret with "Hrun"). iIntros (h3) "Hrun".
-    iApply ("Hcont" $! h3 ret with "[HK Ht] Hsrc Hrun").
-    iApply ("HK" with "Ht").
-  Qed.
-
-  Lemma fif_t_read (held : gset Z) (fd : Z) (n : nat) (K : rd_ans -> iProp Σ) :
-    fif_taint held -∗ (∀ x, fif_taint held -∗ K x) -∗ rd_obl N P fd n K.
-  Proof using Heq Hsr.
-    iIntros "Ht HK" (h m avail a f) "%Ha0 %Ha1 %Ha2 Hcode Hbuf Hrun Hcont".
-    iAssert (file_taint c ∗ □ (file_taint c -∗ app_taint))%I as "[#HT #Hkc]".
-    { iDestruct "Ht" as "(#HT & #Hkc & _)". iFrame "HT Hkc". }
-    iPoseProof (fif_app_sup with "HT") as "#Hsup".
-    iPoseProof ("Hkc" with "HT") as "#Hk".
-    iPoseProof (udepw_law_of_sup_read with "Hsup Hk") as "#Hlaw".
-    set (m1 := <[Regidx a7_idx := (mword_of_int 5 : mword 64)]> m).
-    assert (Hnum : usysno m1 = USYS_read).
-    { unfold m1, usysno. rewrite (upd_eq m (Regidx a7_idx) (mword_of_int 5 : mword 64)).
-      vm_compute; reflexivity. }
-    assert (Ha1r : m1 !!! Regidx (mword_of_int 11) = (mword_of_int a : mword 64)).
-    { rewrite <- Ha1. exact (upd_ne m (Regidx a7_idx) (Regidx (mword_of_int 11)) _
-                               ltac:(vm_compute; discriminate)). }
-    assert (Hcnt : bv_signed (subrange_vec_dec (m1 !!! Regidx (mword_of_int 12)) 31 0
-                              : mword 32) = Z.of_nat n).
-    { unfold m1. rewrite (upd_ne m (Regidx a7_idx) (Regidx (mword_of_int 12)) _
-                            ltac:(vm_compute; discriminate)).
-      exact Ha2. }
-    iPoseProof Hsr as "#Hs".
-    iApply ("Hs" $! h m avail with "Hcode Hrun").
-    iIntros (h1) "%E6 %Al6 #Hi Hrun Hret".
-    assert (Hal4 : is_aligned_vaddr
-                     (Virtaddr (add_vec_int (mword_of_int (up_read P + 2) : mword 64) 4))
-                     2 = true) by (rewrite E6; exact Al6).
-    iApply (wp_uk_ecall_read N h1 m1 (mword_of_int (up_read P + 2)) a n f avail
-              Hnum Ha1r Hcnt Hal4 with "Hi Hbuf Hrun [Hlaw]").
-    { iApply (udepw_of_law with "Hlaw"). }
-    iIntros (h2 ret gb) "%Hb Hbuf Hrun". iEval (rewrite E6) in "Hrun".
-    iApply ("Hret" $! h2 ret with "Hrun"). iIntros (h3) "Hrun".
-    iApply ("Hcont" $! h3 ret gb with "[%] [HK Ht] Hbuf Hrun"); [exact Hb |].
-    iApply ("HK" with "Ht").
-  Qed.
-
-  Lemma fif_t_close (held : gset Z) (fd : Z) (K : Z -> iProp Σ) :
-    fd ∈ held ->
-    fif_taint held -∗ (∀ x, fif_taint (held ∖ {[fd]}) -∗ K x) -∗ cl_obl N P fd K.
-  Proof using Hsc.
-    intros Hin. iIntros "Ht HK" (h m avail) "%Ha0 Hcode Hrun Hcont".
-    iDestruct "Ht" as "(#HT & #Hkc & Hpay & %l & %hm & Hstd & %Hok & Hhm)".
-    iPoseProof ("Hkc" with "HT") as "#Hk".
-    iPoseProof (udepw_law_of_sup_close with "Hk") as "#Hlaw".
-    destruct (Hok fd Hin) as [[H0 Hlt] Hc].
-    destruct (Z_of_nat_complete fd H0) as [k ->].
-    set (m1 := <[Regidx a7_idx := (mword_of_int 21 : mword 64)]> m).
-    assert (Hnum : usysno m1 = USYS_close).
-    { unfold m1, usysno. rewrite (upd_eq m (Regidx a7_idx) (mword_of_int 21 : mword 64)).
-      vm_compute; reflexivity. }
-    assert (Ha0r : bv_signed (trunc32 (m1 !!! Regidx (mword_of_int 10))) = Z.of_nat k).
-    { unfold m1. rewrite (upd_ne m (Regidx a7_idx) (Regidx (mword_of_int 10)) _
-                            ltac:(vm_compute; discriminate)).
-      exact Ha0. }
-    iPoseProof Hsc as "#Hs".
-    iApply ("Hs" $! h m avail with "Hcode Hrun").
-    iIntros (h1) "%E6 %Al6 #Hi Hrun Hret".
-    assert (Hal4 : is_aligned_vaddr
-                     (Virtaddr (add_vec_int (mword_of_int (up_close P + 2) : mword 64) 4))
-                     2 = true) by (rewrite E6; exact Al6).
-    destruct Hc as [(Hs & st & Hl & Hne) | (Hs & [st Hst])].
-    - rewrite Nat2Z.id in Hl.
-      iApply (wp_uk_ecall_close_std N h1 m1 (mword_of_int (up_close P + 2)) l k st avail
-                Hnum Ha0r ltac:(unfold NSTD in *; lia) Hl Hne Hal4
-                with "Hi Hrun [Hlaw] Hstd").
-      { iApply udepw_cl_of_udepw. iApply (udepw_of_law with "Hlaw"). }
-      iIntros (h2 ret) "_ Hstd Hrun". iEval (rewrite E6) in "Hrun".
-      iApply ("Hret" $! h2 ret with "Hrun"). iIntros (h3) "Hrun".
-      iApply ("Hcont" $! h3 ret with "[-Hrun] Hrun").
-      iApply "HK". rewrite /fif_taint. iFrame "HT Hkc Hpay".
-      iExists (<[k := FdClosed]> l), hm. iFrame "Hstd Hhm". iPureIntro.
-      intros x Hx. apply elem_of_difference in Hx as [Hx Hnx].
-      destruct (Hok x Hx) as [Hb Hc]. split; [exact Hb |].
-      destruct Hc as [(Hs' & st' & Hl' & Hne') | Hc]; [left | by right].
-      split; [exact Hs' |]. exists st'. split; [| exact Hne'].
-      rewrite list_lookup_insert_ne; [exact Hl' |].
-      intros Heq0. apply Hnx. apply elem_of_singleton. lia.
-    - iDestruct (big_sepM_delete _ _ _ _ Hst with "Hhm") as "[Hh Hhm]".
-      rewrite Nat2Z.id.
-      iApply (wp_uk_ecall_close N h1 m1 (mword_of_int (up_close P + 2)) k st avail
-                Hnum Ha0r Hal4 with "Hi Hrun [Hlaw] Hh").
-      { iApply udepw_cl_of_udepw. iApply (udepw_of_law with "Hlaw"). }
-      iIntros (h2 ret) "_ Hrun". iEval (rewrite E6) in "Hrun".
-      iApply ("Hret" $! h2 ret with "Hrun"). iIntros (h3) "Hrun".
-      iApply ("Hcont" $! h3 ret with "[-Hrun] Hrun").
-      iApply "HK". rewrite /fif_taint. iFrame "HT Hkc Hpay".
-      iExists l, (delete (Z.of_nat k) hm). iFrame "Hstd Hhm". iPureIntro.
-      intros x Hx. apply elem_of_difference in Hx as [Hx Hnx].
-      destruct (Hok x Hx) as [Hb Hc]. split; [exact Hb |].
-      destruct Hc as [Hc | (Hs' & Hsm)]; [by left | right]. split; [exact Hs' |].
-      rewrite lookup_delete_ne; [exact Hsm |].
-      intros Heq0. apply Hnx. apply elem_of_singleton. done.
-  Qed.
-
-  Lemma fif_t_open (held : gset Z) (p : list (bv 8)) (mo : Z) (K : Z -> iProp Σ) :
-    fif_taint held -∗
-    (∀ x, ((⌜x = -1⌝ ∗ fif_taint held) ∨ (⌜0 <= x⌝ ∗ fif_taint ({[x]} ∪ held))) -∗ K x) -∗
-    op_obl N P p mo K.
-  Proof using Heq Hso.
-    iIntros "Ht HK" (h m avail pv tx f) "%Hf %Ha0 %Ha1 Hcode Hp Hrun Hcont".
-    iDestruct "Ht" as "(#HT & #Hkc & Hpay & %l & %hm & Hstd & %Hok & Hhm)".
-    iPoseProof (fif_app_sup with "HT") as "#Hsup".
-    iPoseProof (udepw_law_of_sup 15 ltac:(by left) with "Hsup") as "#Hlaw".
-    iAssert (⌜length l = NSTD⌝ ∗ UserFd.ustd γfd l)%I with "[Hstd]" as "[%Hlen Hstd]".
-    { rewrite /UserFd.ustd. iDestruct "Hstd" as "[%H $]". done. }
-    set (m1 := <[Regidx a7_idx := (mword_of_int 15 : mword 64)]> m).
-    assert (Hnum : usysno m1 = USYS_open).
-    { unfold m1, usysno. rewrite (upd_eq m (Regidx a7_idx) (mword_of_int 15 : mword 64)).
-      vm_compute; reflexivity. }
-    iPoseProof Hso as "#Hs".
-    iApply ("Hs" $! h m avail with "Hcode Hrun").
-    iIntros (h1) "%E6 %Al6 #Hi Hrun Hret".
-    assert (Hal4 : is_aligned_vaddr
-                     (Virtaddr (add_vec_int (mword_of_int (up_open P + 2) : mword 64) 4))
-                     2 = true) by (rewrite E6; exact Al6).
-    iApply (wp_uk_ecall_open N h1 m1 (mword_of_int (up_open P + 2)) l avail Hnum Hal4
-              with "Hi Hrun [Hlaw] Hstd").
-    { iApply (udepw_of_law with "Hlaw"). }
-    iIntros (h2 ret) "Hans Hrun". iEval (rewrite E6) in "Hrun".
-    iApply ("Hret" $! h2 ret with "Hrun"). iIntros (h3) "Hrun".
-    iDestruct "Hans" as "[Hal | [%Hr Hstd]]".
-    - iDestruct "Hal" as (fd rd wr t) "[%Hb Hal]". destruct Hb as (Hr & Hfdlt & _).
-      assert (Hsig : bv_signed ret = Z.of_nat fd).
-      { rewrite Hr. apply bvs_moi_small. unfold NOFILE in Hfdlt.
-        assert (E : (2 ^ 63 = 9223372036854775808)%Z) by (vm_compute; reflexivity). lia. }
-      iApply ("Hcont" $! h3 ret with "[%] [-Hp Hrun] Hp Hrun").
-      { right. split; [rewrite Hsig; unfold NOFILE in *; lia | rewrite Hsig; exact Hr]. }
-      rewrite Hsig. iApply "HK". iRight. iSplit; [iPureIntro; lia |].
-      rewrite /fif_taint. iFrame "HT Hkc Hpay".
-      rewrite /ualloc /ualloc_at /ustd_after.
-      iDestruct "Hal" as "[Hstd Hat]".
-      destruct (fd_lowest_closed l) as [k0 |] eqn:Elc.
-      + iDestruct "Hat" as %->.
-        pose proof (fd_lowest_closed_is_closed l k0 Elc) as Hk0.
-        assert (Hk0l : (k0 < NSTD)%nat)
-          by (rewrite <- Hlen; exact (lookup_lt_Some _ _ _ Hk0)).
-        iExists (<[k0 := FdOpen rd wr t]> l), hm. iFrame "Hstd Hhm". iPureIntro.
-        intros x Hx. apply elem_of_union in Hx as [Hx | Hx].
-        * apply elem_of_singleton in Hx as ->. split; [unfold NSTD, NOFILE in *; lia |].
-          left. split; [unfold NSTD in *; lia |]. exists (FdOpen rd wr t).
-          rewrite Nat2Z.id list_lookup_insert; [split; [done | discriminate] |].
-          rewrite <- Hlen in Hk0l. rewrite Hlen. unfold NSTD in *; lia.
-        * destruct (Hok x Hx) as [Hb Hc]. split; [exact Hb |].
-          destruct Hc as [(Hs' & st' & Hl' & Hne') | Hc]; [left | by right].
-          split; [exact Hs' |].
-          destruct (decide (Z.to_nat x = k0)) as [-> | Hne].
-          -- exists (FdOpen rd wr t). rewrite list_lookup_insert; [split; [done | discriminate] |].
-             exact (lookup_lt_Some _ _ _ Hk0).
-          -- exists st'. rewrite list_lookup_insert_ne; [split; [exact Hl' | exact Hne'] |].
-             congruence.
-      + iDestruct "Hat" as "[%Hhi Hh]".
-        iDestruct (fif_hm_fresh with "Hhm Hh") as "(%Hfr & Hhm & Hh)".
-        iExists l, (<[Z.of_nat fd := FdOpen rd wr t]> hm). iFrame "Hstd". iSplit.
-        * iPureIntro. intros x Hx. apply elem_of_union in Hx as [Hx | Hx].
-          -- apply elem_of_singleton in Hx as ->. split; [unfold NOFILE in *; lia |].
-             right. split; [lia |]. rewrite lookup_insert. by eexists.
-          -- destruct (Hok x Hx) as [Hb Hc]. split; [exact Hb |].
-             destruct Hc as [Hc | (Hs' & Hsm)]; [by left | right]. split; [exact Hs' |].
-             destruct (decide (x = Z.of_nat fd)) as [-> |];
-               [rewrite lookup_insert; by eexists | rewrite lookup_insert_ne; [exact Hsm | congruence]].
-        * rewrite big_sepM_insert; [| exact Hfr]. rewrite Nat2Z.id. iFrame "Hh Hhm".
-    - iApply ("Hcont" $! h3 ret with "[%] [-Hp Hrun] Hp Hrun").
-      { left. rewrite Hr. exact fdev_m1. }
-      rewrite Hr fdev_m1. iApply "HK". iLeft. iSplit; [done |].
-      rewrite /fif_taint. iFrame "HT Hkc Hpay". iExists l, hm. by iFrame.
-  Qed.
-
-  (* ...and by coinduction, the whole tree *)
-  Definition fif_tinv (t : proc) : iProp Σ :=
-    (∃ held : gset Z, ⌜safe_fds held t⌝ ∗ fif_taint held)%I.
-
-  Lemma fif_taint_pays (held : gset Z) (t : proc) :
-    safe_fds held t -> fif_taint held -∗ tree_pay N P t.
-  Proof using Heq HNc Hsr Hsw Hso Hsc Hse.
-    intros Hs. iIntros "Ht".
-    iApply (tree_pay_coind N P fif_tinv with "[] [Ht]"); last first.
-    { iExists held. by iFrame. }
-    iIntros "!>" (t') "(%hd & %Hs' & Ht)".
-    apply safe_fds_unfold in Hs'.
-    destruct t' as [v | t'' | e k]; [destruct v | |].
-    - simpl in Hs' |- *. iExists hd. by iFrame.
-    - destruct e as [p mo | fd | fd n | fd bs | s]; simpl in Hs' |- *.
-      + destruct Hs' as [Hso' Hsm].
-        iApply (fif_t_open hd p mo with "Ht").
-        iIntros (x) "[[-> Ht] | [%Hx Ht]]".
-        * iExists hd. by iFrame.
-        * iExists ({[x]} ∪ hd). iFrame "Ht". iPureIntro. by apply Hso'.
-      + destruct Hs' as [Hin Hk].
-        iApply (fif_t_close hd fd with "Ht"); [exact Hin |].
-        iIntros (x) "Ht". iExists (hd ∖ {[fd]}). iFrame "Ht". iPureIntro. apply Hk.
-      + destruct Hs' as [_ Hk].
-        iApply (fif_t_read hd fd n with "Ht").
-        iIntros (x) "Ht". iExists hd. iFrame "Ht". iPureIntro. apply Hk.
-      + iApply (fif_t_write hd fd bs with "Ht").
-        iIntros (x) "Ht". iExists hd. iFrame "Ht". iPureIntro. apply Hs'.
-      + iDestruct "Ht" as "(_ & _ & Hpay & _)". iApply (fif_exit_pay with "Hpay").
+    intros Hdr Hdom. iIntros "Hfds Hfiles Hdev".
+    iDestruct "Hfds" as (l vs w) "[Hcore Hk]".
+    iApply (fh_exit_pay N P Hse).
+    iApply ("Hk" $! fdm l vs w files paths dv ds with "[%] [%] Hcore Hfiles Hdev");
+      [exact Hdr | exact Hdom].
   Qed.
 
   (* ------------------------------------------------------------------- *)
   (*  THE LAWS                                                            *)
   (* ------------------------------------------------------------------- *)
+
+  (* the core and the wand, reassembled *)
+  Lemma fif_fds_of (fdm : fdmap) (l : list fdstate) (vs : gmap nat fdev) (w : nat -> fdev) :
+    fif_ok D0 w0 fdm l vs ->
+    UserFd.ustd γfd l -∗ UserCwd.ucwd (ukn_cwd N) FsImg.ROOTINO -∗
+    own γreg (fif_pool (dom vs) w) -∗ ([∗ map] d ↦ v ∈ vs, fif_tok d (1/2) v) -∗
+    ([∗ map] fd ↦ d ∈ fdm, fif_hdl fd (vs !! d)) -∗ fdq r qf sf -∗ fif_env -∗
+    fif_exit_k -∗ fif_fds fdm.
+  Proof using .
+    intros Hok. iIntros "Hstd Hcwd Hpool Htoks Hhs Hdq #He Hk".
+    iExists l, vs, w. iFrame "Hk Hstd Hcwd Hpool Htoks Hhs Hdq He". by iPureIntro.
+  Qed.
 
   (* [ei_write] at the console: the device's slot is a console row *)
   Lemma fif_write (fdm : fdmap) (fd : Z) (d : nat) (alts : list (list (bv 8)))
@@ -1022,35 +873,36 @@ Section UkFileIface.
      ∧ (∀ x, fif_taint (dom fdm) -∗ K x)) -∗
     wr_obl N P fd bs K.
   Proof using Hcons Hsw HPc.
-    intros _ Hfd Ha Hpre. iIntros "Hfds [Htk Hout] HK".
-    iDestruct "Hfds" as (l vs w) "(Hstd & Hcwd & Hpay & %Hok & Hpool & Htoks & Hhs & #He)".
-    destruct (fif_ok_lookup _ _ _ _ _ Hok Hfd) as [v Hv].
-    iDestruct (fif_toks_agree vs d v with "Htoks Htk") as "(%Hvv & Htoks & Htk)"; [exact Hv |].
-    subst v.
+    intros _ Hfd Ha Hpre. iIntros "Hfds Hout HK".
+    iDestruct "Hout" as (v I C) "[Htk Hout]".
+    iDestruct "Hfds" as (l vs w) "[(Hstd & Hcwd & %Hok & Hpool & Htoks & Hhs & Hdq & #He) Hk]".
+    destruct (fif_ok_lookup D0 w0 _ _ _ _ _ Hok Hfd) as [v' Hv].
+    iDestruct (fif_toks_agree vs d v' with "Htoks Htk") as "(%Hvv & Htoks & Htk)"; [exact Hv |].
+    subst v'.
     pose proof Hok as (H1 & H2 & _). destruct (H1 fd d Hfd) as [H0 Hlt].
     pose proof (H2 fd d Hfd) as Hrow. rewrite Hv in Hrow. destruct Hrow as (Hs & rb & Hrow).
     destruct (Z_of_nat_complete fd H0) as [k ->]. rewrite Nat2Z.id in Hrow.
-    iApply (cons_write_gl file_lm (file_params g) (file_links g)
+    iApply (cons_write_gl_atc file_lm (file_params g) (file_links g)
               (LINKS_pers := file_links_persistent g)
               (file_links_gl_w g) (file_links_gl_blk g) (file_links_gl_taint g)
-              N P Hsw l k rb alts a bs K
+              N P Hsw C v I l k rb alts a bs K
               ltac:(unfold NSTD in *; lia) Hrow Ha Hpre with "Hstd Hout").
     iIntros "Hstd Hout". iDestruct "HK" as "[HK _]".
-    iApply ("HK" with "[-Hout Htk] [$Htk $Hout]").
-    iExists l, vs, w. iFrame "Hstd Hcwd Hpay Hpool Htoks Hhs He". by iPureIntro.
+    iApply ("HK" with "[-Hout Htk] [Htk Hout]").
+    - iApply (fif_fds_of fdm l vs w Hok with "Hstd Hcwd Hpool Htoks Hhs Hdq He Hk").
+    - iExists v, I, C. iFrame "Htk Hout".
   Qed.
 
   (* a ZERO-LENGTH write at the console: [UkConsOut.cons_write]'s walk at
-     no bytes, where the chain is its own stop and the device comes back
-     unnarrowed *)
-  Lemma fif_cons_nil (l : list fdstate) (fd : nat) (rb : bool)
-      (alts : list (list (bv 8))) (K : Z -> iProp Σ) :
+     no bytes, where the chain is its own stop and the device [D] -- any
+     resource -- comes back untouched *)
+  Lemma fif_cons_nil (l : list fdstate) (fd : nat) (rb : bool) (D : iProp Σ)
+      (K : Z -> iProp Σ) :
     (fd < NSTD)%nat -> l !! fd = Some (FdOpen rb true (FdDevice CONSOLE)) ->
-    UserFd.ustd γfd l -∗ cons_dev file_lm (file_params g) (file_links g) alts -∗
-    (UserFd.ustd γfd l -∗ cons_dev file_lm (file_params g) (file_links g) alts -∗ K 0) -∗
+    UserFd.ustd γfd l -∗ D -∗ (UserFd.ustd γfd l -∗ D -∗ K 0) -∗
     wr_obl N P (Z.of_nat fd) [] K.
   Proof using Hsw HPc.
-    intros Hfd Hl. iIntros "Hstd Hd HK".
+    clear D0 w0 qf sf. intros Hfd Hl. iIntros "Hstd Hd HK".
     iIntros (h m avail ua tx dq f) "%Hf %Ha0 %Ha1 %Ha2 #Hcode Hsrc Hrun Hcont".
     cbn [length] in *.
     iEval (rewrite (usrc_at_rebase N tx dq ua (uint (m !!! Regidx a1_idx)) 0 f
@@ -1079,20 +931,16 @@ Section UkFileIface.
                   = true) by (rewrite E6; exact Hal6).
     unfold stub_ret.
     iApply (cons_leaf N h1 m1 _ avail
-              (xfam_wr (fun _ : nat => (cons_dev file_lm (file_params g) (file_links g) alts ∗ emp)%I)
-                 (ukn_pay N))
+              (xfam_wr (fun _ : nat => (D ∗ emp)%I) (ukn_pay N))
               l tx dq 0 f Hsys Hal with "Hec Hrun [Hd] Hstd [Hsrc]").
-    { iApply (uwrite_chain_sup_ret N (fun _ : nat => cons_dev file_lm (file_params g) (file_links g) alts)
-                emp%I _ _ l fd rb CONSOLE Hi0 Hfd Hl).
+    { iApply (uwrite_chain_sup_ret N (fun _ : nat => D) emp%I _ _ l fd rb CONSOLE Hi0 Hfd Hl).
       iIntros (Mh pm sz) "Hheap". iFrame "Hheap". iSplitR; [done |].
       rewrite Hcnt. cbn [cons_out_chain]. iExact "Hd". }
     { rewrite Ham1. iExact "Hsrc". }
     iIntros (h' ret Wv cw' cs')
       "%Hka0 %Hka1 %Hka2 %Htk %Hlz %Hnf Hstd Hs1 Hpost Hrun".
-    iDestruct (uwrite_no_short
-                 (fun _ : nat => (cons_dev file_lm (file_params g) (file_links g) alts ∗ emp)%I)
-                 (ukn_pay N) Wv ret (uvis_M Wv) (uvis_fd Wv) cw' cs'
-                 l fd rb 0
+    iDestruct (uwrite_no_short (fun _ : nat => (D ∗ emp)%I) (ukn_pay N) Wv ret (uvis_M Wv)
+                 (uvis_fd Wv) cw' cs' l fd rb 0
                  ltac:(rewrite Hka0; exact Hi0)
                  Hfd Htk Hl
                  ltac:(rewrite Hka2 Ham2 Ha2; exact Hcz)
@@ -1121,9 +969,9 @@ Section UkFileIface.
     wr_obl N P fd [] K.
   Proof using Hsw.
     intros Hfd. iIntros "Hfds Hout HK".
-    iDestruct "Hout" as (i γo) "[Htk Hout]".
-    iDestruct "Hfds" as (l vs w) "(Hstd & Hcwd & Hpay & %Hok & Hpool & Htoks & Hhs & #He)".
-    destruct (fif_ok_lookup _ _ _ _ _ Hok Hfd) as [v Hv].
+    iDestruct "Hout" as (i γo ws) "[Htk Hout]".
+    iDestruct "Hfds" as (l vs w) "[(Hstd & Hcwd & %Hok & Hpool & Htoks & Hhs & Hdq & #He) Hk]".
+    destruct (fif_ok_lookup D0 w0 _ _ _ _ _ Hok Hfd) as [v Hv].
     iDestruct (fif_toks_agree vs d v with "Htoks Htk") as "(%Hvv & Htoks & Htk)"; [exact Hv |].
     subst v.
     pose proof Hok as (H1 & H2 & _). destruct (H1 fd d Hfd) as [H0 Hlt].
@@ -1132,11 +980,11 @@ Section UkFileIface.
     iApply (file_write_nil N P Hsw k l rb i γo K ltac:(unfold NSTD in *; lia) Hrow with "Hstd").
     iSplit; iIntros "Hstd".
     - iDestruct "HK" as "[HK _]". iApply ("HK" with "[-Hout Htk] [Htk Hout]").
-      + iExists l, vs, w. iFrame "Hstd Hcwd Hpay Hpool Htoks Hhs He". by iPureIntro.
-      + iExists i, γo. iFrame "Htk Hout".
+      + iApply (fif_fds_of fdm l vs w Hok with "Hstd Hcwd Hpool Htoks Hhs Hdq He Hk").
+      + iExists i, γo, ws. iFrame "Htk Hout".
     - iDestruct "HK" as "[_ HK]". iApply ("HK" with "[-Hout Htk] [Htk Hout]").
-      + iExists l, vs, w. iFrame "Hstd Hcwd Hpay Hpool Htoks Hhs He". by iPureIntro.
-      + iExists i, γo. iFrame "Htk Hout".
+      + iApply (fif_fds_of fdm l vs w Hok with "Hstd Hcwd Hpool Htoks Hhs Hdq He Hk").
+      + iExists i, γo, ws. iFrame "Htk Hout".
   Qed.
 
   (* [ei_write_m] at the file a redirect holds: chunk [b] of the line *)
@@ -1150,20 +998,21 @@ Section UkFileIface.
     wr_obl N P fd bs K.
   Proof using Heq Hsw.
     intros Hne Hfd. iIntros "Hfds Hout HK".
-    iDestruct "Hout" as (i γo) "[Htk Hout]".
-    iDestruct "Hout" as (ws b) "(%Hch & %Hwok & Hout)".
+    iDestruct "Hout" as (i γo ws) "[Htk Hout]".
+    iDestruct "Hout" as (b) "(%Hch & %Hwok & Hout)".
     destruct (fif_drop_cons _ _ _ _ (eq_sym Hch)) as (Hb & Hbs & Hrest).
     pose proof Hwok as (Hi1 & Hi2 & Hi3 & Hi4 & Hlm).
     assert (Hbl : (length bs <= EchoDisc.line_max)%nat).
     { rewrite <- Hbs. apply (proj1 (Forall_lookup _ _) Hlm b).
       apply list_lookup_lookup_total_lt. exact Hb. }
-    iDestruct "Hfds" as (l vs w) "(Hstd & Hcwd & Hpay & %Hok & Hpool & Htoks & Hhs & #He)".
-    destruct (fif_ok_lookup _ _ _ _ _ Hok Hfd) as [v Hv].
+    iDestruct "Hfds" as (l vs w) "[(Hstd & Hcwd & %Hok & Hpool & Htoks & Hhs & Hdq & #He) Hk]".
+    destruct (fif_ok_lookup D0 w0 _ _ _ _ _ Hok Hfd) as [v Hv].
     iDestruct (fif_toks_agree vs d v with "Htoks Htk") as "(%Hvv & Htoks & Htk)"; [exact Hv |].
     subst v.
     pose proof Hok as (H1 & H2 & _). destruct (H1 fd d Hfd) as [H0 Hlt].
     pose proof (H2 fd d Hfd) as Hrow. rewrite Hv in Hrow. destruct Hrow as (Hs & rb & Hrow).
-    iDestruct "He" as "(#Hbr & #Hrb & #Hinv & #Hm)".
+    iDestruct "He" as "#(Hbr & Hrb & Hpay & Hinv & Hm)".
+    iAssert fif_env with "[]" as "#He"; [by iFrame "Hbr Hrb Hpay Hinv Hm" |].
     destruct (Z_of_nat_complete fd H0) as [k ->]. rewrite Nat2Z.id in Hrow.
     iApply (file_write c r Heq N P Hsw k l rb i γo ws b b bs K
               ltac:(unfold NSTD in *; lia) Hrow Hb ltac:(lia) Hbs
@@ -1171,18 +1020,18 @@ Section UkFileIface.
               with "Hbr Hinv Hstd Hout").
     iSplit.
     - iIntros "Hstd Hout". iDestruct "HK" as "[HK _]".
-      iApply ("HK" with "[Hstd Hcwd Hpay Hpool Htoks Hhs] [Htk Hout]").
-      + iExists l, vs, w. iFrame "Hstd Hcwd Hpay Hpool Htoks Hhs Hbr Hrb Hinv Hm". by iPureIntro.
-      + iExists i, γo. iFrame "Htk". iExists ws, (S b). iFrame "Hout". by iPureIntro.
+      iApply ("HK" with "[-Htk Hout] [Htk Hout]").
+      + iApply (fif_fds_of fdm l vs w Hok with "Hstd Hcwd Hpool Htoks Hhs Hdq He Hk").
+      + iExists i, γo, ws. iFrame "Htk". iExists (S b). iFrame "Hout". by iPureIntro.
     - iIntros "Hstd Hout". iDestruct "HK" as "[_ [HK _]]".
-      iApply ("HK" with "[Hstd Hcwd Hpay Hpool Htoks Hhs] [Htk Hout]").
-      + iExists l, vs, w. iFrame "Hstd Hcwd Hpay Hpool Htoks Hhs Hbr Hrb Hinv Hm". by iPureIntro.
-      + iExists i, γo. iFrame "Htk". iExists ws, (S b). iFrame "Hout". by iPureIntro.
+      iApply ("HK" with "[-Htk Hout] [Htk Hout]").
+      + iApply (fif_fds_of fdm l vs w Hok with "Hstd Hcwd Hpool Htoks Hhs Hdq He Hk").
+      + iExists i, γo, ws. iFrame "Htk". iExists (S b). iFrame "Hout". by iPureIntro.
   Qed.
 
   (* [ei_read] at an input: the token names the inode and the offset, and
      whether the descriptor is a tail handle or a standard slot the ledger
-     holds *)
+     holds; the deed is lent from the core and comes back *)
   Lemma fif_read (fdm : fdmap) (fd : Z) (d : nat) (Sin : list (bv 8)) (n : nat)
       (K : rd_ans -> iProp Σ) :
     (0 < n)%nat -> fdm !! fd = Some d ->
@@ -1193,45 +1042,43 @@ Section UkFileIface.
     rd_obl N P fd n K.
   Proof using Heq Hsr.
     intros Hn Hfd. iIntros "Hfds Hin HK".
-    iDestruct "Hin" as (s i γo) "[Htk Hin]". iDestruct "Hin" as (q content) "Hin".
-    iDestruct "Hfds" as (l vs w) "(Hstd & Hcwd & Hpay & %Hok & Hpool & Htoks & Hhs & #He)".
-    destruct (fif_ok_lookup _ _ _ _ _ Hok Hfd) as [v Hv].
+    iDestruct "Hfds" as (l vs w) "[(Hstd & Hcwd & %Hok & Hpool & Htoks & Hhs & Hdq & #He) Hk]".
+    iDestruct (fif_in_file_in d Sin with "Hin Hdq") as (s i γo content) "(%Hsf & Htk & Hin)".
+    destruct (fif_ok_lookup D0 w0 _ _ _ _ _ Hok Hfd) as [v Hv].
     iDestruct (fif_toks_agree vs d v with "Htoks Htk") as "(%Hvv & Htoks & Htk)"; [exact Hv |].
     subst v.
     pose proof Hok as (H1 & H2 & _). destruct (H1 fd d Hfd) as [H0 Hlt].
     pose proof (H2 fd d Hfd) as Hs. rewrite Hv in Hs. simpl in Hs.
-    iDestruct "He" as "(#Hbr & #Hrb & #Hinv & %jo & #Hm)".
+    iDestruct "He" as "#(Hbr & Hrb & Hpay & Hinv & %jo & Hm)".
+    iAssert fif_env with "[]" as "#He"; [iFrame "Hbr Hrb Hpay Hinv"; by iExists jo |].
     destruct (Z_of_nat_complete fd H0) as [k ->].
     destruct s.
     - (* a standard slot: the ledger is the handle *)
       destruct Hs as (Hsk & Hrow). rewrite Nat2Z.id in Hrow.
-      iApply (file_read_std c r Heq N P Hsr k l false i γo q jo content Sin n K
+      iApply (file_read_std c r Heq N P Hsr k l false i γo qf jo content Sin n K
                 ltac:(unfold NSTD in *; lia) Hrow Hn with "Hbr Hrb Hm Hinv Hstd Hin").
       iSplit.
       + iIntros (cb S') "%Hc Hstd Hin". iDestruct "HK" as "[HK _]".
-        iApply ("HK" $! cb S' with "[%] [-Hin Htk] [Htk Hin]"); [exact Hc | |].
-        * iExists l, vs, w. iFrame "Hstd Hcwd Hpay Hpool Htoks Hhs Hbr Hrb Hinv".
-          iSplit; [by iPureIntro |]. by iExists jo.
-        * iExists true, i, γo. iFrame "Htk". iExists q, content. iExact "Hin".
+        iDestruct (fif_in_of_file_in d S' content true i γo Hsf with "Htk Hin") as "[Hin Hdq]".
+        iApply ("HK" $! cb S' with "[%] [-Hin] Hin"); [exact Hc |].
+        iApply (fif_fds_of fdm l vs w Hok with "Hstd Hcwd Hpool Htoks Hhs Hdq He Hk").
       + iIntros (x) "#Htn Hstd Hin". iDestruct "HK" as "[_ HK]". iApply "HK".
-        iApply (fif_taint_of_fds fdm l vs Hok with "Htn Hrb Hpay Hstd Hhs").
+        iApply (fif_taint_of_fds fdm l vs Hok with "Htn He Hstd Hhs").
     - (* a tail handle *)
       iDestruct (big_sepM_lookup_acc _ _ _ _ Hfd with "Hhs") as "[Hh Hcl]".
       iEval (rewrite /fif_hdl Hv) in "Hh". iEval (rewrite Nat2Z.id) in "Hh".
-      iApply (file_read c r Heq N P Hsr k false i γo q jo content Sin n K
+      iApply (file_read c r Heq N P Hsr k false i γo qf jo content Sin n K
                 ltac:(lia) Hn with "Hbr Hrb Hm Hinv Hh Hin").
       iSplit.
       + iIntros (cb S') "%Hc Hh Hin". iDestruct "HK" as "[HK _]".
-        iApply ("HK" $! cb S' with "[%] [-Hin Htk] [Htk Hin]"); [exact Hc | |].
-        * iExists l, vs, w. iFrame "Hstd Hcwd Hpay Hpool Htoks Hbr Hrb Hinv".
-          iSplit; [by iPureIntro |].
-          iSplitL; [| by iExists jo].
-          iApply "Hcl". rewrite /fif_hdl Hv Nat2Z.id. iExact "Hh".
-        * iExists false, i, γo. iFrame "Htk". iExists q, content. iExact "Hin".
+        iDestruct (fif_in_of_file_in d S' content false i γo Hsf with "Htk Hin") as "[Hin Hdq]".
+        iApply ("HK" $! cb S' with "[%] [-Hin] Hin"); [exact Hc |].
+        iApply (fif_fds_of fdm l vs w Hok with "Hstd Hcwd Hpool Htoks [Hh Hcl] Hdq He Hk").
+        iApply "Hcl". rewrite /fif_hdl Hv Nat2Z.id. iExact "Hh".
       + iIntros (x) "#Htn Hh Hin". iDestruct "HK" as "[_ HK]". iApply "HK".
         iAssert ([∗ map] fd ↦ d ∈ fdm, fif_hdl fd (vs !! d))%I with "[Hh Hcl]" as "Hhs".
         { iApply "Hcl". rewrite /fif_hdl Hv Nat2Z.id. iExact "Hh". }
-        iApply (fif_taint_of_fds fdm l vs Hok with "Htn Hrb Hpay Hstd Hhs").
+        iApply (fif_taint_of_fds fdm l vs Hok with "Htn He Hstd Hhs").
   Qed.
 
   (* [ei_open] for `f` present: the descriptor the LEDGER names -- the
@@ -1242,62 +1089,69 @@ Section UkFileIface.
     path ∈ paths -> files path = Some content ->
     fif_fds fdm -∗ fif_filesr files paths -∗
     ((∀ fd : Z, ⌜0 <= fd⌝ -∗ ⌜fdm !! fd = None⌝ -∗
-        (∀ d : nat, ⌜forall fd', fdm !! fd' <> Some d⌝ -∗
+        (∀ d : nat, ⌜dev_fresh_p D0 fdm d⌝ -∗
            fif_fds (<[fd := d]> fdm) ∗ fif_in d content) -∗
         fif_filesr files paths -∗ K fd)
      ∧ (fif_fds fdm -∗ fif_filesr files paths -∗ K (-1))
      ∧ (∀ x, ⌜x = -1 \/ 0 <= x⌝ -∗ fif_taint (open_held fdm x) -∗ K x)) -∗
     op_obl N P path 0 K.
   Proof using Heq Hso.
-    intros Hp Hf. iIntros "Hfds Hfiles HK".
-    iDestruct "Hfiles" as "[%Hpaths Hfiles]". pose proof (Hpaths path Hp) as ->.
-    iDestruct "Hfiles" as (s q) "[%Hfs Hd]".
+    intros Hp Hf. iIntros "Hfds #Hfiles HK".
+    iAssert (⌜(forall p, p ∈ paths -> p = fname_f) /\ files fname_f = snd <$> sf⌝)%I
+      as %[Hpaths Hfs].
+    { iDestruct "Hfiles" as "[%A %B]". by iPureIntro. }
+    pose proof (Hpaths path Hp) as ->.
     rewrite Hf in Hfs.
-    destruct s as [[i content'] |]; [| discriminate]. simpl in Hfs. injection Hfs as <-.
-    iDestruct "Hfds" as (l vs w) "(Hstd & Hcwd & Hpay & %Hok & Hpool & Htoks & Hhs & #He)".
-    iDestruct "He" as "(#Hbr & #Hrb & #Hinv & #Hm)".
+    destruct (dst_some_of_snd sf content (eq_sym Hfs)) as [i Hsf].
+    iDestruct "Hfds" as (l vs w) "[(Hstd & Hcwd & %Hok & Hpool & Htoks & Hhs & Hd & #He) Hk]".
+    iDestruct "He" as "#(Hbr & Hrb & Hpay & Hinv & Hm)".
+    iAssert fif_env with "[]" as "#He"; [by iFrame "Hbr Hrb Hpay Hinv Hm" |].
     iDestruct (UserFd.ustd_len with "Hstd") as %Hlen.
-    iAssert (fdq r (q / 2) (Some (i, content)) ∗ fdq r (q / 2) (Some (i, content)))%I
-      with "[Hd]" as "[Hd1 Hd2]".
-    { iApply fdq_split. by rewrite Qp.div_2. }
-    iApply (file_open_present c r Heq N P Hso l FsImg.ROOTINO (q / 2) (q / 2) i content K
+    iAssert (fdq r qf (Some (i, content))) with "[Hd]" as "Hd". { rewrite -Hsf. iExact "Hd". }
+    iPoseProof (fdq_split r (qf / 2) (qf / 2) (Some (i, content)) with "[Hd]") as "[Hd1 Hd2]".
+    { rewrite Qp.div_2. iExact "Hd". }
+    iAssert (□ (fdq r (qf / 2) (Some (i, content)) -∗ fdq r (qf / 2) (Some (i, content))
+                -∗ fdq r qf sf))%I as "#Hjoin".
+    { iIntros "!> Ha Hb". iDestruct (fdq_join with "Ha Hb") as "Hd". rewrite Qp.div_2 Hsf.
+      iExact "Hd". }
+    iApply (file_open_present c r Heq N P Hso l FsImg.ROOTINO (qf / 2) (qf / 2) i content K
               eq_refl with "Hinv Hstd Hcwd Hd1 Hd2").
     iSplit; [| iSplit].
     - (* the handle, where the ledger says the allocation landed *)
       iIntros (fd γo) "%Hfdlt Hal Hcwd Hin Hd1".
+      iDestruct "Hin" as (p) "(%Hp0 & Hu & Hd2)".
+      iDestruct ("Hjoin" with "Hd1 Hd2") as "Hd".
       destruct (fd_lowest_closed l) as [k0 |] eqn:Elc.
       + (* the lowest closed standard slot: its row in the ledger *)
         iDestruct (ualloc_std γfd l fd k0 _ Elc with "Hal") as "[%Hfk Hstd]". subst fd.
         pose proof (fd_lowest_closed_is_closed l k0 Elc) as Hk0.
-        pose proof (fif_ok_closed_fresh fdm l vs k0 Hok Hlen Hk0) as Hnb.
+        pose proof (fif_ok_closed_fresh D0 w0 fdm l vs k0 Hok Hlen Hk0) as Hnb.
         iMod (own_update with "Hpool") as "Hpool";
           [apply (fif_pool_update _ w (FDIn true i γo)) |].
         iModIntro.
         iDestruct "HK" as "[HK _]".
-        iApply ("HK" $! (Z.of_nat k0) with "[%] [%] [-Hd1] [Hd1]"); [lia | exact Hnb | |].
-        * iIntros (d) "%Hfr".
-          assert (Hvd : vs !! d = None).
-          { apply not_elem_of_dom. pose proof Hok as (_ & _ & H3 & _).
-            rewrite H3. intros (fd' & Hfd'). exact (Hfr fd' Hfd'). }
-          assert (Hdn : d ∉ dom vs) by (by apply not_elem_of_dom).
-          iEval (rewrite (fif_pool_own_take _ _ d Hdn) fif_tok_halves) in "Hpool".
-          iDestruct "Hpool" as "(Hpool & Htk1 & Htk2)".
-          iSplitR "Htk2 Hin".
-          -- iExists (<[k0 := FdOpen true false (FdInode i γo OffHeld)]> l),
-               (<[d := FDIn true i γo]> vs), (fun _ => FDIn true i γo).
-             iFrame "Hstd Hcwd Hpay Hbr Hrb Hinv Hm".
-             iSplit.
-             { iPureIntro. apply fif_ok_open_std; [exact Hok | exact Hlen | exact Hk0 | exact Hfr]. }
-             iSplitL "Hpool"; [by rewrite dom_insert_L |].
-             iSplitL "Htoks Htk1".
-             { rewrite big_sepM_insert; [| exact Hvd]. iFrame "Htk1 Htoks". }
-             rewrite big_sepM_insert; [| exact Hnb]. iSplitR.
-             { rewrite /fif_hdl lookup_insert. done. }
-             iApply (big_sepM_impl with "Hhs"). iIntros "!>" (fd' d' Hfd') "Hx".
-             rewrite lookup_insert_ne; [iExact "Hx" |]. intros ->. exact (Hfr fd' Hfd').
-          -- iExists true, i, γo. iFrame "Htk2". iExists (q / 2)%Qp, content. iExact "Hin".
-        * iSplit; [by iPureIntro |]. iExists (Some (i, content)), (q / 2)%Qp. iFrame "Hd1".
-          iPureIntro. rewrite Hf. reflexivity.
+        iApply ("HK" $! (Z.of_nat k0) with "[%] [%] [-] []"); [lia | exact Hnb | | iExact "Hfiles"].
+        iIntros (d) "%Hfr". apply dev_fresh_p_iff in Hfr as [HD Hfr].
+        assert (Hvd : vs !! d = None).
+        { apply not_elem_of_dom. pose proof Hok as (_ & _ & H3 & _). intros Hd.
+          destruct (H3 d Hd) as [(fd' & Hfd') | HD']; [exact (Hfr fd' Hfd') | done]. }
+        assert (Hdn : d ∉ dom vs) by (by apply not_elem_of_dom).
+        iEval (rewrite (fif_pool_own_take _ _ d Hdn) fif_tok_halves) in "Hpool".
+        iDestruct "Hpool" as "(Hpool & Htk1 & Htk2)".
+        iSplitR "Htk2 Hu".
+        * iExists (<[k0 := FdOpen true false (FdInode i γo OffHeld)]> l),
+            (<[d := FDIn true i γo]> vs), (fun _ => FDIn true i γo).
+          iFrame "Hk Hstd Hcwd Hd He".
+          iSplit.
+          { iPureIntro. apply fif_ok_open_std; [exact Hok | exact Hlen | exact Hk0 | exact Hfr | exact HD]. }
+          iSplitL "Hpool"; [by rewrite dom_insert_L |].
+          iSplitL "Htoks Htk1".
+          { rewrite big_sepM_insert; [| exact Hvd]. iFrame "Htk1 Htoks". }
+          rewrite big_sepM_insert; [| exact Hnb]. iSplitR.
+          { rewrite /fif_hdl lookup_insert. done. }
+          iApply (big_sepM_impl with "Hhs"). iIntros "!>" (fd' d' Hfd') "Hx".
+          rewrite lookup_insert_ne; [iExact "Hx" |]. intros ->. exact (Hfr fd' Hfd').
+        * iExists true, i, γo, p. iFrame "Htk2 Hu". iPureIntro. by exists content.
       + (* a fresh tail handle *)
         iDestruct (ualloc_hi γfd l fd _ Elc with "Hal") as "(%Hhi & Hstd & Hh)".
         iDestruct (fif_fresh_fd fdm l vs fd with "Hhs Hh") as "(%Hnb & Hhs & Hh)";
@@ -1306,100 +1160,100 @@ Section UkFileIface.
           [apply (fif_pool_update _ w (FDIn false i γo)) |].
         iModIntro.
         iDestruct "HK" as "[HK _]".
-        iApply ("HK" $! (Z.of_nat fd) with "[%] [%] [-Hd1] [Hd1]"); [lia | exact Hnb | |].
-        * iIntros (d) "%Hfr".
-          assert (Hvd : vs !! d = None).
-          { apply not_elem_of_dom. pose proof Hok as (_ & _ & H3 & _).
-            rewrite H3. intros (fd' & Hfd'). exact (Hfr fd' Hfd'). }
-          assert (Hdn : d ∉ dom vs) by (by apply not_elem_of_dom).
-          iEval (rewrite (fif_pool_own_take _ _ d Hdn) fif_tok_halves) in "Hpool".
-          iDestruct "Hpool" as "(Hpool & Htk1 & Htk2)".
-          iSplitR "Htk2 Hin".
-          -- iExists l, (<[d := FDIn false i γo]> vs), (fun _ => FDIn false i γo).
-             iFrame "Hstd Hcwd Hpay Hbr Hrb Hinv Hm".
-             iSplit.
-             { iPureIntro. apply fif_ok_open; [exact Hok | exact (conj Hhi Hfdlt) | exact Hnb | exact Hfr]. }
-             iSplitL "Hpool"; [by rewrite dom_insert_L |].
-             iSplitL "Htoks Htk1".
-             { rewrite big_sepM_insert; [| exact Hvd]. iFrame "Htk1 Htoks". }
-             rewrite big_sepM_insert; [| exact Hnb]. iSplitL "Hh".
-             { rewrite /fif_hdl lookup_insert Nat2Z.id. iExact "Hh". }
-             iApply (big_sepM_impl with "Hhs"). iIntros "!>" (fd' d' Hfd') "Hx".
-             rewrite lookup_insert_ne; [iExact "Hx" |]. intros ->. exact (Hfr fd' Hfd').
-          -- iExists false, i, γo. iFrame "Htk2". iExists (q / 2)%Qp, content. iExact "Hin".
-        * iSplit; [by iPureIntro |]. iExists (Some (i, content)), (q / 2)%Qp. iFrame "Hd1".
-          iPureIntro. rewrite Hf. reflexivity.
+        iApply ("HK" $! (Z.of_nat fd) with "[%] [%] [-] []"); [lia | exact Hnb | | iExact "Hfiles"].
+        iIntros (d) "%Hfr". apply dev_fresh_p_iff in Hfr as [HD Hfr].
+        assert (Hvd : vs !! d = None).
+        { apply not_elem_of_dom. pose proof Hok as (_ & _ & H3 & _). intros Hd.
+          destruct (H3 d Hd) as [(fd' & Hfd') | HD']; [exact (Hfr fd' Hfd') | done]. }
+        assert (Hdn : d ∉ dom vs) by (by apply not_elem_of_dom).
+        iEval (rewrite (fif_pool_own_take _ _ d Hdn) fif_tok_halves) in "Hpool".
+        iDestruct "Hpool" as "(Hpool & Htk1 & Htk2)".
+        iSplitR "Htk2 Hu".
+        * iExists l, (<[d := FDIn false i γo]> vs), (fun _ => FDIn false i γo).
+          iFrame "Hk Hstd Hcwd Hd He".
+          iSplit.
+          { iPureIntro. apply fif_ok_open; [exact Hok | exact (conj Hhi Hfdlt) | exact Hnb | exact Hfr | exact HD]. }
+          iSplitL "Hpool"; [by rewrite dom_insert_L |].
+          iSplitL "Htoks Htk1".
+          { rewrite big_sepM_insert; [| exact Hvd]. iFrame "Htk1 Htoks". }
+          rewrite big_sepM_insert; [| exact Hnb]. iSplitL "Hh".
+          { rewrite /fif_hdl lookup_insert Nat2Z.id. iExact "Hh". }
+          iApply (big_sepM_impl with "Hhs"). iIntros "!>" (fd' d' Hfd') "Hx".
+          rewrite lookup_insert_ne; [iExact "Hx" |]. intros ->. exact (Hfr fd' Hfd').
+        * iExists false, i, γo, p. iFrame "Htk2 Hu". iPureIntro. by exists content.
     - (* -1 *)
       iIntros "Hstd Hcwd Hd1 Hd2". iDestruct "HK" as "[_ [HK _]]".
-      iApply ("HK" with "[Hstd Hcwd Hpay Hpool Htoks Hhs] [Hd1 Hd2]").
-      + iExists l, vs, w. iFrame "Hstd Hcwd Hpay Hpool Htoks Hhs Hbr Hrb Hinv Hm". by iPureIntro.
-      + iSplit; [by iPureIntro |]. iExists (Some (i, content)), (q / 2 + q / 2)%Qp.
-        iSplit; [iPureIntro; rewrite Hf; reflexivity |].
-        iApply (fdq_join with "Hd1 Hd2").
+      iApply ("HK" with "[-] []"); [| iExact "Hfiles"].
+      iApply (fif_fds_of fdm l vs w Hok with "Hstd Hcwd Hpool Htoks Hhs [Hd1 Hd2] He Hk").
+      iApply ("Hjoin" with "Hd1 Hd2").
     - (* the taint *)
       iIntros (ret) "#Htn Hof Hcwd". iDestruct "HK" as "[_ [_ HK]]".
       iDestruct (fif_ans_ok with "Hof") as %Hans.
       iApply ("HK" with "[%]"); [exact Hans |].
-      iApply (fif_open_taint l ret fdm vs Hlen Hok with "Htn Hrb Hpay Hof Hhs").
+      iApply (fif_open_taint l ret fdm vs Hlen Hok with "Htn He Hof Hhs").
   Qed.
 
-  (* [ei_open_absent] for `f`, at a mode that does not truncate *)
+  (* [ei_open_absent] for `f`, at any mode that does not create (the
+     truncate's permit at an absent `f` is the dead walk's cursor, paid
+     out of the taint: [UkFileDev.file_open_absent], lane TRUNC-PERMIT) *)
   Lemma fif_open_absent_nt (fdm : fdmap) (files : list (bv 8) -> option (list (bv 8)))
       (paths : list (list (bv 8))) (path : list (bv 8)) (m : Z) (K : Z -> iProp Σ) :
     path ∈ paths -> ~ mode_create m -> files path = None ->
-    SysOpenDefs.om_trunc (mword_of_int m : mword 64) = false ->
     fif_fds fdm -∗ fif_filesr files paths -∗
     ((fif_fds fdm -∗ fif_filesr files paths -∗ K (-1))
      ∧ (∀ x, ⌜x = -1 \/ 0 <= x⌝ -∗ fif_taint (open_held fdm x) -∗ K x)) -∗
     op_obl N P path m K.
   Proof using Heq Hso.
-    intros Hp Hcm Hf Htr. iIntros "Hfds Hfiles HK".
-    iDestruct "Hfiles" as "[%Hpaths Hfiles]". pose proof (Hpaths path Hp) as ->.
-    iDestruct "Hfiles" as (s q) "[%Hfs Hd]".
-    assert (Hs : s = None).
-    { rewrite Hf in Hfs. destruct s; [discriminate | reflexivity]. }
-    subst s.
-    iDestruct "Hfds" as (l vs w) "(Hstd & Hcwd & Hpay & %Hok & Hpool & Htoks & Hhs & #He)".
-    iDestruct "He" as "(#Hbr & #Hrb & #Hinv & #Hm)".
+    intros Hp Hcm Hf. iIntros "Hfds #Hfiles HK".
+    iAssert (⌜(forall p, p ∈ paths -> p = fname_f) /\ files fname_f = snd <$> sf⌝)%I
+      as %[Hpaths Hfs].
+    { iDestruct "Hfiles" as "[%A %B]". by iPureIntro. }
+    pose proof (Hpaths path Hp) as ->.
+    rewrite Hf in Hfs. pose proof (dst_none_of_snd sf (eq_sym Hfs)) as Hs.
+    iDestruct "Hfds" as (l vs w) "[(Hstd & Hcwd & %Hok & Hpool & Htoks & Hhs & Hd & #He) Hk]".
+    iDestruct "He" as "#(Hbr & Hrb & Hpay & Hinv & Hm)".
+    iAssert fif_env with "[]" as "#He"; [by iFrame "Hbr Hrb Hpay Hinv Hm" |].
     iDestruct (UserFd.ustd_len with "Hstd") as %Hlen.
-    iApply (file_open_absent c r Heq N P Hso l FsImg.ROOTINO q m K eq_refl
-              (fif_om_create m Hcm) Htr with "Hinv Hstd Hcwd Hd").
+    iAssert (fdq r qf None) with "[Hd]" as "Hd". { rewrite -Hs. iExact "Hd". }
+    iApply (file_open_absent c r Heq N P Hso l FsImg.ROOTINO qf m K eq_refl
+              (fif_om_create m Hcm) with "Hinv Hstd Hcwd Hd").
     iSplit.
     - iIntros "Hstd Hcwd Hd". iDestruct "HK" as "[HK _]".
-      iApply ("HK" with "[Hstd Hcwd Hpay Hpool Htoks Hhs] [Hd]").
-      + iExists l, vs, w. iFrame "Hstd Hcwd Hpay Hpool Htoks Hhs Hbr Hrb Hinv Hm". by iPureIntro.
-      + iSplit; [by iPureIntro |]. iExists None, q. iFrame "Hd". by iPureIntro.
+      iApply ("HK" with "[-] []"); [| iExact "Hfiles"].
+      iApply (fif_fds_of fdm l vs w Hok with "Hstd Hcwd Hpool Htoks Hhs [Hd] He Hk").
+      rewrite Hs. iExact "Hd".
     - iIntros (ret) "#Htn Hof Hcwd". iDestruct "HK" as "[_ HK]".
       iDestruct (fif_ans_ok with "Hof") as %Hans.
       iApply ("HK" with "[%]"); [exact Hans |].
-      iApply (fif_open_taint l ret fdm vs Hlen Hok with "Htn Hrb Hpay Hof Hhs").
+      iApply (fif_open_taint l ret fdm vs Hlen Hok with "Htn He Hof Hhs").
   Qed.
 
-  (* the ledger after a close of a device's last descriptor, rebuilt: the
-     device's token home to the pool, the descriptor's handle (if a tail
-     one) gone with it, the ledger [l'] agreeing with [l] at every other
-     descriptor's slot (the same [l], or the slot closed) *)
+  (* the ledger after a close of an unprotected device's last descriptor,
+     rebuilt: the device's token home to the pool, the descriptor's handle
+     (if a tail one) gone with it, the ledger [l'] agreeing with [l] at
+     every other descriptor's slot *)
   Lemma fif_fds_close (fdm : fdmap) (fd : Z) (d : nat) (v : fdev) (l l' : list fdstate)
       (vs : gmap nat fdev) (w : nat -> fdev) :
-    fdm !! fd = Some d -> ~ fd_shared fdm fd d -> fif_ok fdm l vs -> vs !! d = Some v ->
+    fdm !! fd = Some d -> ~ fd_shared fdm fd d -> d ∉ D0 ->
+    fif_ok D0 w0 fdm l vs -> vs !! d = Some v ->
     (forall fd' d', fd' <> fd -> fdm !! fd' = Some d' ->
        l' !! Z.to_nat fd' = l !! Z.to_nat fd') ->
-    UserFd.ustd γfd l' -∗ UserCwd.ucwd (ukn_cwd N) FsImg.ROOTINO -∗ ukn_pay N (-1) -∗
+    UserFd.ustd γfd l' -∗ UserCwd.ucwd (ukn_cwd N) FsImg.ROOTINO -∗
     own γreg (fif_pool (dom vs) w) -∗
     ([∗ map] d ↦ v ∈ delete d vs, fif_tok d (1/2) v) -∗ fif_tok d 1 v -∗
-    ([∗ map] fd ↦ d ∈ delete fd fdm, fif_hdl fd (vs !! d)) -∗ fif_env -∗
-    fif_fds (delete fd fdm).
+    ([∗ map] fd ↦ d ∈ delete fd fdm, fif_hdl fd (vs !! d)) -∗ fdq r qf sf -∗ fif_env -∗
+    fif_exit_k -∗ fif_fds (delete fd fdm).
   Proof using .
-    intros Hfd Hns Hok Hv Hl. iIntros "Hstd Hcwd Hpay Hpool Htoks Htk Hhs #He".
-    pose proof (fif_ok_close fdm l vs fd d Hok Hfd Hns) as Hok'.
+    intros Hfd Hns HD Hok Hv Hl. iIntros "Hstd Hcwd Hpool Htoks Htk Hhs Hdq #He Hk".
+    pose proof (fif_ok_close D0 w0 fdm l vs fd d Hok Hfd Hns HD) as Hok'.
     pose proof (fif_not_shared fdm fd d Hns) as Hn.
     assert (Hdd : d ∈ dom vs) by (apply elem_of_dom; by eexists).
     iDestruct (fif_pool_give vs w d v Hdd with "Hpool Htk") as "Hpool".
-    iExists l', (delete d vs), _. iFrame "Hstd Hcwd Hpay Hpool Htoks He".
-    iSplit.
-    { iPureIntro. apply (fif_ok_ledger (delete fd fdm) l l' (delete d vs) Hok').
+    assert (Hok'' : fif_ok D0 w0 (delete fd fdm) l' (delete d vs)).
+    { apply (fif_ok_ledger D0 w0 (delete fd fdm) l l' (delete d vs) Hok').
       intros fd' d' Hfd'. apply lookup_delete_Some in Hfd' as [Hne Hfd'].
       exact (Hl fd' d' (not_eq_sym Hne) Hfd'). }
+    iApply (fif_fds_of (delete fd fdm) l' (delete d vs) _ Hok'' with "Hstd Hcwd Hpool Htoks [Hhs] Hdq He Hk").
     iApply (big_sepM_impl with "Hhs"). iIntros "!>" (fd' d' Hfd') "Hx".
     rewrite lookup_delete_ne; [iExact "Hx" |].
     intros ->. apply lookup_delete_Some in Hfd' as [Hne Hfd'].
@@ -1407,21 +1261,21 @@ Section UkFileIface.
   Qed.
 
   (* [ei_close] of an input's descriptor: the handle (or the ledger's
-     slot), the deed's fraction home to the files, the token home to the
+     slot), the deed straight back to the core, the token home to the
      pool *)
   Lemma fif_close_in (fdm : fdmap) (fd : Z) (d : nat) (Sin : list (bv 8))
       (files : list (bv 8) -> option (list (bv 8))) (paths : list (list (bv 8)))
       (K : Z -> iProp Σ) :
-    fdm !! fd = Some d -> ~ fd_shared fdm fd d ->
+    fdm !! fd = Some d -> ~ fd_shared fdm fd d -> d ∉ D0 ->
     fif_fds fdm -∗ fif_filesr files paths -∗ fif_in d Sin -∗
     ((fif_fds (delete fd fdm) -∗ fif_filesr files paths -∗ K 0)
      ∧ (∀ y, fif_taint (dom fdm ∖ {[fd]}) -∗ K y)) -∗
     cl_obl N P fd K.
   Proof using Hsc.
-    intros Hfd Hns. iIntros "Hfds Hfiles Hin HK".
-    iDestruct "Hin" as (s i γo) "[Htk Hin]". iDestruct "Hin" as (q content) "Hin".
-    iDestruct "Hfds" as (l vs w) "(Hstd & Hcwd & Hpay & %Hok & Hpool & Htoks & Hhs & #He)".
-    destruct (fif_ok_lookup _ _ _ _ _ Hok Hfd) as [v Hv].
+    intros Hfd Hns HD. iIntros "Hfds #Hfiles Hin HK".
+    iDestruct "Hfds" as (l vs w) "[(Hstd & Hcwd & %Hok & Hpool & Htoks & Hhs & Hdq & #He) Hk]".
+    iDestruct (fif_in_file_in d Sin with "Hin Hdq") as (s i γo content) "(%Hsf & Htk & Hin)".
+    destruct (fif_ok_lookup D0 w0 _ _ _ _ _ Hok Hfd) as [v Hv].
     iDestruct (fif_toks_agree vs d v with "Htoks Htk") as "(%Hvv & Htoks & Htk)"; [exact Hv |].
     subst v.
     pose proof Hok as (H1 & H2 & _). destruct (H1 fd d Hfd) as [H0 Hlt].
@@ -1432,50 +1286,46 @@ Section UkFileIface.
     iAssert (fif_tok d 1 (FDIn s i γo)) with "[Htk Htk']" as "Htk".
     { rewrite fif_tok_halves. iFrame "Htk Htk'". }
     destruct (Z_of_nat_complete fd H0) as [k ->].
-    iDestruct "Hfiles" as "[%Hpaths Hfiles]". iDestruct "Hfiles" as (s' q') "[%Hfs Hd']".
     iDestruct "HK" as "[HK _]".
     destruct s.
     - (* a standard slot: the ledger's row goes to [FdClosed] *)
       destruct Hs as (Hsk & Hrow). rewrite Nat2Z.id in Hrow.
-      iApply (file_close_in_std r N P Hsc k l false i γo q content Sin K
+      iApply (file_close_in_std r N P Hsc k l false i γo qf content Sin K
                 ltac:(unfold NSTD in *; lia) Hrow with "Hstd Hin").
-      iIntros "Hstd Hd".
-      iApply ("HK" with "[-Hd Hd'] [Hd Hd']").
-      + iApply (fif_fds_close fdm (Z.of_nat k) d (FDIn true i γo) l (<[k := FdClosed]> l) vs w
-                  Hfd Hns Hok Hv with "Hstd Hcwd Hpay Hpool Htoks Htk Hhs He").
-        intros fd' d' Hne Hfd'. destruct (H1 fd' d' Hfd') as [H0' _].
-        apply list_lookup_insert_ne. exact (fif_slot_ne k fd' H0' Hne).
-      + iSplit; [by iPureIntro |]. iExists s', (q' + q)%Qp. iSplit; [by iPureIntro |].
-        iApply (fdq_join with "Hd' Hd").
+      iIntros "Hstd Hd". iAssert (fdq r qf sf) with "[Hd]" as "Hd". { rewrite Hsf. iExact "Hd". }
+      iApply ("HK" with "[-] []"); [| iExact "Hfiles"].
+      iApply (fif_fds_close fdm (Z.of_nat k) d (FDIn true i γo) l (<[k := FdClosed]> l) vs w
+                Hfd Hns HD Hok Hv with "Hstd Hcwd Hpool Htoks Htk Hhs Hd He Hk").
+      intros fd' d' Hne Hfd'. destruct (H1 fd' d' Hfd') as [H0' _].
+      apply list_lookup_insert_ne. exact (fif_slot_ne k fd' H0' Hne).
     - (* a tail handle *)
       iEval (rewrite Nat2Z.id) in "Hh".
-      iApply (file_close_in r N P Hsc k false i γo q content Sin K with "Hh Hin").
-      iIntros "Hd".
-      iApply ("HK" with "[-Hd Hd'] [Hd Hd']").
-      + iApply (fif_fds_close fdm (Z.of_nat k) d (FDIn false i γo) l l vs w
-                  Hfd Hns Hok Hv with "Hstd Hcwd Hpay Hpool Htoks Htk Hhs He").
-        intros; reflexivity.
-      + iSplit; [by iPureIntro |]. iExists s', (q' + q)%Qp. iSplit; [by iPureIntro |].
-        iApply (fdq_join with "Hd' Hd").
+      iApply (file_close_in r N P Hsc k false i γo qf content Sin K with "Hh Hin").
+      iIntros "Hd". iAssert (fdq r qf sf) with "[Hd]" as "Hd". { rewrite Hsf. iExact "Hd". }
+      iApply ("HK" with "[-] []"); [| iExact "Hfiles"].
+      iApply (fif_fds_close fdm (Z.of_nat k) d (FDIn false i γo) l l vs w
+                Hfd Hns HD Hok Hv with "Hstd Hcwd Hpool Htoks Htk Hhs Hd He Hk").
+      intros; reflexivity.
   Qed.
 
   (* ...of a STANDARD stream of any other kind (the console, the file a
-     redirect holds): the ledger's slot to [FdClosed], the device dropped,
-     the token home *)
+     redirect holds), unprotected: the ledger's slot to [FdClosed], the
+     device dropped, the token home *)
   Lemma fif_close_std_dev (fdm : fdmap) (fd : Z) (d : nat) (v : fdev) (l : list fdstate)
       (vs : gmap nat fdev) (w : nat -> fdev) (st : fdstate) (K : Z -> iProp Σ) :
-    fdm !! fd = Some d -> ~ fd_shared fdm fd d -> fif_ok fdm l vs -> vs !! d = Some v ->
+    fdm !! fd = Some d -> ~ fd_shared fdm fd d -> d ∉ D0 ->
+    fif_ok D0 w0 fdm l vs -> vs !! d = Some v ->
     0 <= fd -> fd < Z.of_nat NSTD -> l !! Z.to_nat fd = Some st -> st <> FdClosed ->
     fdst_nopipe st ->
-    UserFd.ustd γfd l -∗ UserCwd.ucwd (ukn_cwd N) FsImg.ROOTINO -∗ ukn_pay N (-1) -∗
+    UserFd.ustd γfd l -∗ UserCwd.ucwd (ukn_cwd N) FsImg.ROOTINO -∗
     own γreg (fif_pool (dom vs) w) -∗
     ([∗ map] d ↦ v ∈ vs, fif_tok d (1/2) v) -∗ fif_tok d (1/2) v -∗
-    ([∗ map] fd ↦ d ∈ fdm, fif_hdl fd (vs !! d)) -∗ fif_env -∗
+    ([∗ map] fd ↦ d ∈ fdm, fif_hdl fd (vs !! d)) -∗ fdq r qf sf -∗ fif_env -∗ fif_exit_k -∗
     (fif_fds (delete fd fdm) -∗ K 0) -∗
     cl_obl N P fd K.
   Proof using Hsc.
-    intros Hfd Hns Hok Hv H0 Hs Hl Hne Hnp.
-    iIntros "Hstd Hcwd Hpay Hpool Htoks Htk Hhs #He HK".
+    intros Hfd Hns HD Hok Hv H0 Hs Hl Hne Hnp.
+    iIntros "Hstd Hcwd Hpool Htoks Htk Hhs Hdq #He Hk HK".
     pose proof Hok as (H1 & _).
     iDestruct (big_sepM_delete _ _ _ _ Hfd with "Hhs") as "[_ Hhs]".
     iDestruct (big_sepM_delete _ _ _ _ Hv with "Htoks") as "[Htk' Htoks]".
@@ -1485,29 +1335,17 @@ Section UkFileIface.
     iApply (file_close_std N P Hsc k l st K ltac:(unfold NSTD in *; lia) Hl Hne Hnp
               with "Hstd").
     iIntros "Hstd". iApply "HK".
-    iApply (fif_fds_close fdm (Z.of_nat k) d v l (<[k := FdClosed]> l) vs w Hfd Hns Hok Hv
-              with "Hstd Hcwd Hpay Hpool Htoks Htk Hhs He").
+    iApply (fif_fds_close fdm (Z.of_nat k) d v l (<[k := FdClosed]> l) vs w Hfd Hns HD Hok Hv
+              with "Hstd Hcwd Hpool Htoks Htk Hhs Hdq He Hk").
     intros fd' d' Hne' Hfd'. destruct (H1 fd' d' Hfd') as [H0' _].
     apply list_lookup_insert_ne. exact (fif_slot_ne k fd' H0' Hne').
-  Qed.
-
-  Lemma fif_exit (s : Z) (fdm : fdmap) (files : list (bv 8) -> option (list (bv 8)))
-      (paths : list (list (bv 8))) (dv : nat -> dspec) (ds : gset nat) :
-    (forall d, d ∈ ds -> drained (dv d)) ->
-    (forall fd d, fdm !! fd = Some d -> d ∈ ds) ->
-    fif_fds fdm -∗ fif_filesr files paths -∗ ([∗ set] d ∈ ds, fif_dev d (dv d)) -∗
-    ex_obl N P s.
-  Proof using HNc Hse.
-    intros _ _. iIntros "Hfds _ _".
-    iDestruct "Hfds" as (l vs w) "(_ & _ & Hpay & _)".
-    iApply (fif_exit_pay with "Hpay").
   Qed.
 
   (* ------------------------------------------------------------------- *)
   (*  THE FIELDS THE KERNEL REFUSES (the header's list)                   *)
   (* ------------------------------------------------------------------- *)
 
-  (* each gap is a NAMED proposition, so that an instance section (SS4,
+  (* the gap is a NAMED proposition, so that an instance section (SS5,
      echo's) can assume it at its own program by name *)
   Definition fif_nil_in_law : Prop :=
     forall (fdm : fdmap) (fd : Z) (d : nat) (Sin : list (bv 8)) (K : Z -> iProp Σ),
@@ -1517,23 +1355,7 @@ Section UkFileIface.
      ∧ (∀ y, fif_taint (dom fdm) -∗ K y)) -∗
     wr_obl N P fd [] K.
 
-  (* NOT PROVABLE AT THE LEAF (header, WHAT IS NOT): the plain open
-     surface owes its truncate piece at the trivial permit, an application
-     step at every file row, and the file claim has no such step outside
-     the taint.  A kernel-side permit tied to the walk's terminal closes it. *)
-  Definition fif_open_trunc_law : Prop :=
-    forall (fdm : fdmap) (files : list (bv 8) -> option (list (bv 8)))
-      (paths : list (list (bv 8))) (path : list (bv 8)) (m : Z) (K : Z -> iProp Σ),
-    path ∈ paths -> ~ mode_create m -> files path = None ->
-    SysOpenDefs.om_trunc (mword_of_int m : mword 64) = true ->
-    fif_fds fdm -∗ fif_filesr files paths -∗
-    ((fif_fds fdm -∗ fif_filesr files paths -∗ K (-1))
-     ∧ (∀ x, ⌜x = -1 \/ 0 <= x⌝ -∗ fif_taint (open_held fdm x) -∗ K x)) -∗
-    op_obl N P path m K.
-
   Hypothesis Hnil_in : fif_nil_in_law.
-  Hypothesis Hopen_trunc : fif_open_trunc_law.
-
 
   (* the laws assembled from their cases *)
   Lemma fif_write_nil (fdm : fdmap) (fd : Z) (d : nat) (x : dspec) (K : Z -> iProp Σ) :
@@ -1546,18 +1368,20 @@ Section UkFileIface.
     intros Hfd. iIntros "Hfds Hd HK".
     destruct x as [alts | | cs | | Sin | | | | |]; simpl; try (iDestruct "Hd" as "[]").
     - (* the console *)
-      iDestruct "Hd" as "[Htk Hd]".
-      iDestruct "Hfds" as (l vs w) "(Hstd & Hcwd & Hpay & %Hok & Hpool & Htoks & Hhs & #He)".
-      destruct (fif_ok_lookup _ _ _ _ _ Hok Hfd) as [v Hv].
-      iDestruct (fif_toks_agree vs d v with "Htoks Htk") as "(%Hvv & Htoks & Htk)"; [exact Hv |].
-      subst v.
+      iDestruct "Hd" as (v I C) "[Htk Hd]".
+      iDestruct "Hfds" as (l vs w) "[(Hstd & Hcwd & %Hok & Hpool & Htoks & Hhs & Hdq & #He) Hk]".
+      destruct (fif_ok_lookup D0 w0 _ _ _ _ _ Hok Hfd) as [v' Hv].
+      iDestruct (fif_toks_agree vs d v' with "Htoks Htk") as "(%Hvv & Htoks & Htk)"; [exact Hv |].
+      subst v'.
       pose proof Hok as (H1 & H2 & _). destruct (H1 fd d Hfd) as [H0 Hlt].
       pose proof (H2 fd d Hfd) as Hrow. rewrite Hv in Hrow. destruct Hrow as (Hs & rb & Hrow).
       destruct (Z_of_nat_complete fd H0) as [k ->]. rewrite Nat2Z.id in Hrow.
-      iApply (fif_cons_nil l k rb alts K ltac:(unfold NSTD in *; lia) Hrow with "Hstd Hd").
+      iApply (fif_cons_nil l k rb (fcons_atc C v I alts) K ltac:(unfold NSTD in *; lia) Hrow
+                with "Hstd Hd").
       iIntros "Hstd Hd". iDestruct "HK" as "[HK _]".
-      iApply ("HK" with "[-Hd Htk] [$Htk $Hd]").
-      iExists l, vs, w. iFrame "Hstd Hcwd Hpay Hpool Htoks Hhs He". by iPureIntro.
+      iApply ("HK" with "[-Hd Htk] [Htk Hd]").
+      + iApply (fif_fds_of fdm l vs w Hok with "Hstd Hcwd Hpool Htoks Hhs Hdq He Hk").
+      + iExists v, I, C. iFrame "Htk Hd".
     - (* the file held for writing *)
       iApply (fif_file_nil fdm fd d cs K Hfd with "Hfds Hd").
       iSplit; [iDestruct "HK" as "[HK _]" | iDestruct "HK" as "[_ [HK _]]"]; iExact "HK".
@@ -1572,95 +1396,107 @@ Section UkFileIface.
     ((fif_fds fdm -∗ fif_filesr files paths -∗ K (-1))
      ∧ (∀ x, ⌜x = -1 \/ 0 <= x⌝ -∗ fif_taint (open_held fdm x) -∗ K x)) -∗
     op_obl N P path m K.
-  Proof using Heq Hso Hopen_trunc.
-    intros Hp Hcm Hf.
-    destruct (SysOpenDefs.om_trunc (mword_of_int m : mword 64)) eqn:Etr.
-    - exact (Hopen_trunc fdm files paths path m K Hp Hcm Hf Etr).
-    - exact (fif_open_absent_nt fdm files paths path m K Hp Hcm Hf Etr).
+  Proof using Heq Hso.
+    exact (fif_open_absent_nt fdm files paths path m K).
   Qed.
 
+  (* [ei_close]: the last descriptor of an UNPROTECTED device *)
   Lemma fif_close (fdm : fdmap) (fd : Z) (d : nat) (x : dspec)
       (files : list (bv 8) -> option (list (bv 8))) (paths : list (list (bv 8)))
       (K : Z -> iProp Σ) :
-    fdm !! fd = Some d -> ~ fd_shared fdm fd d ->
+    fdm !! fd = Some d -> ~ fd_shared_p D0 fdm fd d ->
     fif_fds fdm -∗ fif_filesr files paths -∗ fif_dev d x -∗
     ((fif_fds (delete fd fdm) -∗ fif_filesr files paths -∗ K 0)
      ∧ (∀ y, fif_taint (dom fdm ∖ {[fd]}) -∗ K y)) -∗
     cl_obl N P fd K.
   Proof using Hsc.
-    intros Hfd Hns.
-    iIntros "Hfds Hfiles Hdev HK".
+    intros Hfd Hnsp.
+    assert (HD : d ∉ D0) by (intros H; apply Hnsp; apply fd_shared_p_iff; by left).
+    assert (Hns : ~ fd_shared fdm fd d) by (intros H; apply Hnsp; apply fd_shared_p_iff; by right).
+    iIntros "Hfds #Hfiles Hdev HK".
     destruct x as [alts | alts | cs | | Sin | Sin | | | |]; simpl;
       try (iDestruct "Hdev" as "[]").
     - (* the console: a standard slot, its row a console row *)
-      iDestruct "Hdev" as "[Htk _]".
-      iDestruct "Hfds" as (l vs w) "(Hstd & Hcwd & Hpay & %Hok & Hpool & Htoks & Hhs & #He)".
-      destruct (fif_ok_lookup _ _ _ _ _ Hok Hfd) as [v Hv].
-      iDestruct (fif_toks_agree vs d v with "Htoks Htk") as "(%Hvv & Htoks & Htk)"; [exact Hv |].
-      subst v. pose proof Hok as (H1 & H2 & _). destruct (H1 fd d Hfd) as [H0 _].
+      iDestruct "Hdev" as (v Ic C) "[Htk _]".
+      iDestruct "Hfds" as (l vs w) "[(Hstd & Hcwd & %Hok & Hpool & Htoks & Hhs & Hdq & #He) Hk]".
+      destruct (fif_ok_lookup D0 w0 _ _ _ _ _ Hok Hfd) as [v' Hv].
+      iDestruct (fif_toks_agree vs d v' with "Htoks Htk") as "(%Hvv & Htoks & Htk)"; [exact Hv |].
+      subst v'. pose proof Hok as (H1 & H2 & _). destruct (H1 fd d Hfd) as [H0 _].
       pose proof (H2 fd d Hfd) as Hrow. rewrite Hv in Hrow. destruct Hrow as (Hs & rb & Hrow).
-      iApply (fif_close_std_dev fdm fd d FDCons l vs w _ K Hfd Hns Hok Hv H0 Hs Hrow
-                ltac:(discriminate) I with "Hstd Hcwd Hpay Hpool Htoks Htk Hhs He").
+      iApply (fif_close_std_dev fdm fd d (FDCons v Ic C) l vs w _ K Hfd Hns HD Hok Hv H0 Hs Hrow
+                ltac:(discriminate) I with "Hstd Hcwd Hpool Htoks Htk Hhs Hdq He Hk").
       iIntros "Hfds". iDestruct "HK" as "[HK _]". iApply ("HK" with "Hfds Hfiles").
     - (* the file a redirect holds: a standard slot, its row the held one *)
-      iDestruct "Hdev" as (i γo) "[Htk _]".
-      iDestruct "Hfds" as (l vs w) "(Hstd & Hcwd & Hpay & %Hok & Hpool & Htoks & Hhs & #He)".
-      destruct (fif_ok_lookup _ _ _ _ _ Hok Hfd) as [v Hv].
-      iDestruct (fif_toks_agree vs d v with "Htoks Htk") as "(%Hvv & Htoks & Htk)"; [exact Hv |].
-      subst v. pose proof Hok as (H1 & H2 & _). destruct (H1 fd d Hfd) as [H0 _].
+      iDestruct "Hdev" as (i γo ws) "[Htk _]".
+      iDestruct "Hfds" as (l vs w) "[(Hstd & Hcwd & %Hok & Hpool & Htoks & Hhs & Hdq & #He) Hk]".
+      destruct (fif_ok_lookup D0 w0 _ _ _ _ _ Hok Hfd) as [v' Hv].
+      iDestruct (fif_toks_agree vs d v' with "Htoks Htk") as "(%Hvv & Htoks & Htk)"; [exact Hv |].
+      subst v'. pose proof Hok as (H1 & H2 & _). destruct (H1 fd d Hfd) as [H0 _].
       pose proof (H2 fd d Hfd) as Hrow. rewrite Hv in Hrow. destruct Hrow as (Hs & rb & Hrow).
-      iApply (fif_close_std_dev fdm fd d (FDFile i γo) l vs w _ K Hfd Hns Hok Hv H0 Hs Hrow
-                ltac:(discriminate) I with "Hstd Hcwd Hpay Hpool Htoks Htk Hhs He").
+      iApply (fif_close_std_dev fdm fd d (FDFile i γo ws) l vs w _ K Hfd Hns HD Hok Hv H0 Hs Hrow
+                ltac:(discriminate) I with "Hstd Hcwd Hpool Htoks Htk Hhs Hdq He Hk").
       iIntros "Hfds". iDestruct "HK" as "[HK _]". iApply ("HK" with "Hfds Hfiles").
-    - iApply (fif_close_in fdm fd d Sin files paths K Hfd Hns with "Hfds Hfiles Hdev HK").
+    - iApply (fif_close_in fdm fd d Sin files paths K Hfd Hns HD with "Hfds Hfiles Hdev HK").
   Qed.
 
+  (* a protected device is never a tail input: its close is a standard
+     slot's *)
+  Context (Hw0 : forall d, d ∈ D0 -> forall i γo, w0 d <> FDIn false i γo).
+
+  (* [ei_close_shared]: a dup, or a PROTECTED device's descriptor -- the
+     device stays registered and with the handler, only the ledger's slot
+     closes *)
   Lemma fif_close_shared (fdm : fdmap) (fd : Z) (d : nat) (K : Z -> iProp Σ) :
-    fdm !! fd = Some d -> fd_shared fdm fd d ->
+    fdm !! fd = Some d -> fd_shared_p D0 fdm fd d ->
     fif_fds fdm -∗
     ((fif_fds (delete fd fdm) -∗ K 0) ∧ (∀ y, fif_taint (dom fdm ∖ {[fd]}) -∗ K y)) -∗
     cl_obl N P fd K.
-  Proof using Hsc.
+  Proof using Hsc Hw0.
     intros Hfd Hsh. iIntros "Hfds HK".
-    iDestruct "Hfds" as (l vs w) "(Hstd & Hcwd & Hpay & %Hok & Hpool & Htoks & Hhs & #He)".
-    destruct (fif_ok_lookup _ _ _ _ _ Hok Hfd) as [v Hv].
-    pose proof Hok as (H1 & H2 & _ & H4). destruct (H1 fd d Hfd) as [H0 _].
+    iDestruct "Hfds" as (l vs w) "[(Hstd & Hcwd & %Hok & Hpool & Htoks & Hhs & Hdq & #He) Hk]".
+    destruct (fif_ok_lookup D0 w0 _ _ _ _ _ Hok Hfd) as [v Hv].
+    pose proof Hok as (H1 & H2 & _ & _ & H5 & H6). destruct (H1 fd d Hfd) as [H0 _].
     pose proof (H2 fd d Hfd) as Hr. rewrite Hv in Hr.
-    pose proof (fif_ok_close_shared fdm l vs fd d Hok Hfd Hsh) as Hok'.
+    pose proof (fif_ok_close_shared D0 w0 fdm l vs fd d Hok Hfd Hsh) as Hok'.
+    apply fd_shared_p_iff in Hsh.
     iDestruct (big_sepM_delete _ _ _ _ Hfd with "Hhs") as "[_ Hhs]".
-    (* a shared descriptor is a standard stream of any kind but a tail
-       input, which has one descriptor *)
+    (* a shared or protected descriptor is a standard stream of any kind
+       but a tail input, which has one descriptor and is never protected *)
     assert (Hrow : exists st, fd < Z.of_nat NSTD /\ l !! Z.to_nat fd = Some st
                               /\ st <> FdClosed /\ fdst_nopipe st).
-    { destruct v as [| i γo | [|] i γo].
+    { destruct v as [vc Ic Cc | i γo ws | [|] i γo].
       - destruct Hr as (Hs & rb & Hl). exists (FdOpen rb true (FdDevice CONSOLE)).
-        split_and!; [exact Hs | exact Hl | discriminate | exact I].
+        split_and!; [exact Hs | exact Hl | discriminate | exact Logic.I].
       - destruct Hr as (Hs & rb & Hl). exists (FdOpen rb true (FdInode i γo OffHeld)).
-        split_and!; [exact Hs | exact Hl | discriminate | exact I].
+        split_and!; [exact Hs | exact Hl | discriminate | exact Logic.I].
       - destruct Hr as (Hs & Hl). exists (FdOpen true false (FdInode i γo OffHeld)).
-        split_and!; [exact Hs | exact Hl | discriminate | exact I].
-      - exfalso. destruct Hsh as (fd' & Hin' & Hfd').
-        apply elem_of_dom in Hin' as [d'' Hd'']. apply lookup_delete_Some in Hd'' as [Hne _].
-        exact (Hne (H4 fd fd' d false i γo Hfd Hfd' Hv)). }
+        split_and!; [exact Hs | exact Hl | discriminate | exact Logic.I].
+      - exfalso. destruct Hsh as [HD | (fd' & Hin' & Hfd')].
+        + pose proof (H6 d HD) as Hw. rewrite Hv in Hw. injection Hw as Hw.
+          exact (Hw0 d HD i γo (eq_sym Hw)).
+        + apply elem_of_dom in Hin' as [d'' Hd'']. apply lookup_delete_Some in Hd'' as [Hne _].
+          exact (Hne (H5 fd fd' d false i γo Hfd Hfd' Hv)). }
     destruct Hrow as (st & Hs & Hl & Hne & Hnp).
     destruct (Z_of_nat_complete fd H0) as [k ->]. rewrite Nat2Z.id in Hl.
     iApply (file_close_std N P Hsc k l st K ltac:(unfold NSTD in *; lia) Hl Hne Hnp
               with "Hstd").
     iIntros "Hstd". iDestruct "HK" as "[HK _]". iApply "HK".
-    iExists (<[k := FdClosed]> l), vs, w. iFrame "Hstd Hcwd Hpay Hpool Htoks Hhs He".
-    iPureIntro. apply (fif_ok_ledger (delete (Z.of_nat k) fdm) l _ vs Hok').
-    intros fd' d' Hfd'. apply lookup_delete_Some in Hfd' as [Hne' Hfd'].
-    destruct (H1 fd' d' Hfd') as [H0' _].
-    apply list_lookup_insert_ne. exact (fif_slot_ne k fd' H0' (not_eq_sym Hne')).
+    assert (Hok'' : fif_ok D0 w0 (delete (Z.of_nat k) fdm) (<[k := FdClosed]> l) vs).
+    { apply (fif_ok_ledger D0 w0 (delete (Z.of_nat k) fdm) l _ vs Hok').
+      intros fd' d' Hfd'. apply lookup_delete_Some in Hfd' as [Hne' Hfd'].
+      destruct (H1 fd' d' Hfd') as [H0' _].
+      apply list_lookup_insert_ne. exact (fif_slot_ne k fd' H0' (not_eq_sym Hne')). }
+    iApply (fif_fds_of (delete (Z.of_nat k) fdm) (<[k := FdClosed]> l) vs w Hok''
+              with "Hstd Hcwd Hpool Htoks Hhs Hdq He Hk").
   Qed.
 
   (* ------------------------------------------------------------------- *)
-  (*  THE RECORD                                                          *)
+  (*  THE RECORD, at the protected devices [D0]                           *)
   (* ------------------------------------------------------------------- *)
 
-  Definition file_iface : ep_iface N P.
-  Proof using Hcons Heq HPc HNc Hsr Hsw Hso Hsc Hse Hnil_in Hopen_trunc.
-    refine (MkEI N P fif_fds fif_out (fun _ _ => False%I) (fun _ => False%I) fif_outm
+  Definition file_iface : ep_ifaceP (Dp := D0) N P.
+  Proof using Hcons Heq HPc HNc Hsr Hsw Hso Hsc Hse D0 w0 Hw0 qf sf Hnil_in.
+    refine (MkEIP (Dp := D0) N P fif_fds fif_out (fun _ _ => False%I) (fun _ => False%I) fif_outm
               fif_in (fun _ _ => False%I) (fun _ => False%I)
               (fun _ _ _ _ => False%I) (fun _ _ _ => False%I) (fun _ => False%I)
               fif_filesr fif_taint fif_taint_pays
@@ -1688,178 +1524,639 @@ Section UkFileIface.
   Proof. by destruct x. Qed.
 
   (* =================================================================== *)
-  (*  2.  END TO END: cat f and echo > f                                  *)
+  (*  2.  THE EXIT WAND, PROVED FROM THE LANDED ENTRIES' PAYLOADS         *)
+  (*      (program-specs SS3.4e, lane D)                                  *)
+  (* =================================================================== *)
+
+  (* ---- the pure identities: the file model's block bodies ---- *)
+
+  (* the round's alternative at the file model is [FileDisc.cont] at the
+     state the choice list filed and the line the input parsed to *)
+  Lemma fif_lm_abs (s0 : fstate) (cs : list nat) (I : list (bv 8)) (a : nat) :
+    lm_abs file_lm s0 cs I a = cont (UCatOut.cat_st cs s0 I) (fline I) (ralt_dec a).
+  Proof using .
+    rewrite /lm_abs /lm_line_at /UCatOut.cat_st fstate_upto_lm. reflexivity.
+  Qed.
+
+  (* at cat's line, a body's length is cat's own end cursor *)
+  Lemma fif_cat_body_len (s0 : fstate) (cs : list nat) (I : list (bv 8)) (a : nat) :
+    fline I = LCat ->
+    length (lm_body file_lm s0 cs I a) = UCatOut.cat_out_len cs s0 I a.
+  Proof using .
+    intros Hfl. rewrite (lm_body_length file_lm) fif_lm_abs Hfl /UCatOut.cat_out_len
+      UCatOut.cat_prompt_len. reflexivity.
+  Qed.
+
+  Lemma fif_cat_dg_open : cat_dg_open fname_f = dg_catopen.
+  Proof using . apply (bool_decide_unpack _). vm_compute. exact Logic.I. Qed.
+
+  Lemma fif_fname_img : fname_f = FsImgCheck.fname_f.
+  Proof using . apply (bool_decide_unpack _). vm_compute. exact Logic.I. Qed.
+
+  (* cat's two bodies at a present deed, its one at an absent one *)
+  Lemma fif_cat_body_ran (s0 : fstate) (cs : list nat) (I : list (bv 8)) (i : Z)
+      (content : list (bv 8)) :
+    fline I = LCat -> cat_tie cs s0 I (Some (i, content)) ->
+    lm_body file_lm s0 cs I (ralt_enc RCRan) = content.
+  Proof using .
+    clear Hnil_in Hw0 D0 w0 qf sf. intros Hfl Htie. rewrite /lm_body fif_lm_abs Hfl ralt_dec_enc
+      (UCatOut.cat_out_of_tie cs s0 I _ i content Htie eq_refl).
+    rewrite length_app UCatOut.cat_prompt_len.
+    replace (length content + 2 - 2)%nat with (length content) by lia.
+    rewrite take_app_length. reflexivity.
+  Qed.
+
+  Lemma fif_cat_body_ran_none (s0 : fstate) (cs : list nat) (I : list (bv 8)) :
+    fline I = LCat -> cat_tie cs s0 I None ->
+    lm_body file_lm s0 cs I (ralt_enc RCRan) = cat_dg_open fname_f.
+  Proof using .
+    intros Hfl Htie. rewrite /lm_body fif_lm_abs Hfl ralt_dec_enc
+      (UCatOut.cat_out_of_tie_none cs s0 I _ Htie eq_refl) fif_cat_dg_open.
+    apply (bool_decide_unpack _). vm_compute. exact Logic.I.
+  Qed.
+
+  Lemma fif_cat_body_noopen (s0 : fstate) (cs : list nat) (I : list (bv 8)) :
+    fline I = LCat ->
+    lm_body file_lm s0 cs I (ralt_enc RCNoOpen) = cat_dg_open fname_f.
+  Proof using .
+    intros Hfl. rewrite /lm_body fif_lm_abs Hfl ralt_dec_enc UCatOut.cat_cont_noopen
+      fif_cat_dg_open. apply (bool_decide_unpack _). vm_compute. exact Logic.I.
+  Qed.
+
+  (* echo's body at the console: the line, at code 0 *)
+  Lemma fif_echo_body (s0 : fstate) (cs : list nat) (I : list (bv 8))
+      (ws : list (list (bv 8))) :
+    fline I = LEcho ws ->
+    lm_body file_lm s0 cs I 0%nat = wl_line (drop 1 ws).
+  Proof using .
+    clear Hnil_in Hw0 D0 w0 qf sf. intros Hfl. rewrite /lm_body fif_lm_abs Hfl.
+    replace (ralt_dec 0%nat) with (REcho 0%nat) by (vm_compute; reflexivity).
+    cbn [cont uline_ws]. rewrite EchoDisc.line_alts_of_0.
+    rewrite length_app UCatOut.cat_prompt_len.
+    replace (length (wl_line (drop 1 ws)) + 2 - 2)%nat with (length (wl_line (drop 1 ws))) by lia.
+    rewrite take_app_length. reflexivity.
+  Qed.
+
+  (* the admissibility [UkConsOut.cons_adm] asks of a code, at the file
+     model: the line admits it *)
+  Lemma fif_cons_adm (I : list (bv 8)) (a : nat) :
+    ralt_ok (fline I) (ralt_dec a) -> cons_adm file_lm I a.
+  Proof using . intros Hok. split; [exact Hok | reflexivity]. Qed.
+
+  (* the file parameters' projections, by name *)
+  Lemma fif_gT : gT (file_params g) = file_taint c.
+  Proof using . reflexivity. Qed.
+  Lemma fif_gPIN : gPIN (file_params g) = era_pin (fgn_echo g).
+  Proof using . reflexivity. Qed.
+  Lemma fif_gW : gW (file_params g) = f0w g.
+  Proof using . reflexivity. Qed.
+  Lemma fif_gT_at (s0 : fstate) : gT (file_params_at g s0) = file_taint c.
+  Proof using . reflexivity. Qed.
+  Lemma fif_gW_at (s0 : fstate) : gW (file_params_at g s0) = f0w_at g s0.
+  Proof using . reflexivity. Qed.
+
+  (* ---- the lend: the console device out of the round's cursor ---- *)
+
+  (* the era's cursor at the block's first byte, at codes [codes] of [C] *)
+  Lemma fif_cons_lend (C codes : list nat) (v : era_pins) (vf : file_era)
+      (ps cs : list nat) (s0 : fstate) (I : list (bv 8)) (pos : nat) :
+    lm_wr_blk_t file_lm ps cs s0 I pos ->
+    codes ⊆ C -> Forall (fun a => ralt_ok (fline I) (ralt_dec a)) codes ->
+    cons_short (lm_body file_lm s0 cs I <$> codes) ->
+    file_links g -∗ era_pin (fgn_echo g) (S gen_id) v -∗ file_era_pin g (S gen_id) vf -∗
+    turn v pos -∗ ps_lb v ps -∗ cs_lb v cs -∗ inp_lb v I -∗ f0_lb vf s0 -∗
+    fcons_atc C v I (lm_body file_lm s0 cs I <$> codes).
+  Proof using .
+    intros Hw Hsub Hadm Hs. iIntros "#Hlk #Hpin #Hvf Ht #Hps #Hcs #HI #Hf0".
+    iApply (cons_dev_atc_of_blk0 file_lm (file_params g) (file_links g) C v I ps cs s0 pos codes
+              Hw Hsub ltac:(apply Forall_forall; intros a Ha; apply fif_cons_adm;
+                            exact (proj1 (Forall_forall _ _) Hadm a Ha))
+              Hs with "Hlk [] [Ht]").
+    { rewrite fif_gPIN. iExact "Hpin". }
+    rewrite /cons_cur. cbn [lm_blkcs]. rewrite Nat.add_0_r. iFrame "Ht Hps Hcs HI".
+    rewrite fif_gW /f0w. iSplit; [done |]. iExists vf. iFrame "Hvf Hf0".
+  Qed.
+
+  (* ...and the taint lends the device at any short alternatives *)
+  Lemma fif_cons_lend_taint (C : list nat) (v : era_pins) (I : list (bv 8))
+      (alts : list (list (bv 8))) :
+    cons_short alts -> file_links g -∗ file_taint c -∗ fcons_atc C v I alts.
+  Proof using .
+    intros Hs. iIntros "#Hlk #HT".
+    iApply (cons_dev_atc_taint file_lm (file_params g) (file_links g) C v I alts Hs with "Hlk").
+    rewrite fif_gT. iExact "HT".
+  Qed.
+
+  (* cat's lend ([UCatKernel.cat_lend]'s cursor, [UCatOut.cch] at the block's
+     first byte) is the console owing content-or-diagnostic at a present
+     deed, the diagnostic at an absent one *)
+  Lemma fif_cat_lend_some (v : era_pins) (vf : file_era) (ps cs : list nat) (s0 : fstate)
+      (I : list (bv 8)) (pos : nat) (i : Z) (content : list (bv 8)) :
+    lm_wr_blk_t file_lm ps cs s0 I pos -> fline I = LCat ->
+    cat_tie cs s0 I (Some (i, content)) ->
+    (Z.of_nat (length content) < 2 ^ 31)%Z ->
+    file_links g -∗ era_pin (fgn_echo g) (S gen_id) v -∗ file_era_pin g (S gen_id) vf -∗
+    UCatOut.cch g v vf ps cs s0 I (ralt_enc RCRan) pos 0%nat -∗
+    fcons_atc [ralt_enc RCRan; ralt_enc RCNoOpen] v I [content; cat_dg_open fname_f].
+  Proof using .
+    intros Hw Hfl Htie Hshort. iIntros "#Hlk #Hpin #Hvf Hc".
+    assert (Hs : cons_short [content; cat_dg_open fname_f]).
+    { unfold cons_short. constructor; [exact Hshort |]. constructor; [| constructor].
+      cbv beta. rewrite fif_cat_dg_open. vm_compute. reflexivity. }
+    assert (Hbodies : lm_body file_lm s0 cs I <$> [ralt_enc RCRan; ralt_enc RCNoOpen]
+                      = [content; cat_dg_open fname_f]).
+    { cbn [fmap list_fmap].
+      rewrite (fif_cat_body_ran s0 cs I i content Hfl Htie) (fif_cat_body_noopen s0 cs I Hfl).
+      reflexivity. }
+    rewrite /UCatOut.cch /UCatOut.catcs. iDestruct "Hc" as "[(Ht & #Hps & #Hcs & #HI & #Hf0) | #HT]".
+    - rewrite Nat.add_0_r. rewrite -Hbodies.
+      iApply (fif_cons_lend _ [ralt_enc RCRan; ralt_enc RCNoOpen] v vf ps cs s0 I pos Hw
+                ltac:(intros x Hx; exact Hx)
+                ltac:(rewrite Hfl; constructor; [rewrite ralt_dec_enc; exact Logic.I |];
+                      constructor; [rewrite ralt_dec_enc; exact Logic.I | constructor])
+                ltac:(rewrite Hbodies; exact Hs)
+                with "Hlk Hpin Hvf Ht Hps Hcs HI Hf0").
+    - iApply (fif_cons_lend_taint with "Hlk HT"). exact Hs.
+  Qed.
+
+  Lemma fif_cat_lend_none (v : era_pins) (vf : file_era) (ps cs : list nat) (s0 : fstate)
+      (I : list (bv 8)) (pos : nat) :
+    lm_wr_blk_t file_lm ps cs s0 I pos -> fline I = LCat -> cat_tie cs s0 I None ->
+    file_links g -∗ era_pin (fgn_echo g) (S gen_id) v -∗ file_era_pin g (S gen_id) vf -∗
+    UCatOut.cch g v vf ps cs s0 I (ralt_enc RCRan) pos 0%nat -∗
+    fcons_atc [ralt_enc RCRan; ralt_enc RCNoOpen] v I [cat_dg_open fname_f].
+  Proof using .
+    intros Hw Hfl Htie. iIntros "#Hlk #Hpin #Hvf Hc".
+    assert (Hs : cons_short [cat_dg_open fname_f]).
+    { unfold cons_short. constructor; [| constructor].
+      cbv beta. rewrite fif_cat_dg_open. vm_compute. reflexivity. }
+    assert (Hbodies : lm_body file_lm s0 cs I <$> [ralt_enc RCRan] = [cat_dg_open fname_f]).
+    { cbn [fmap list_fmap]. rewrite (fif_cat_body_ran_none s0 cs I Hfl Htie). reflexivity. }
+    rewrite /UCatOut.cch /UCatOut.catcs. iDestruct "Hc" as "[(Ht & #Hps & #Hcs & #HI & #Hf0) | #HT]".
+    - rewrite Nat.add_0_r. rewrite -Hbodies.
+      iApply (fif_cons_lend _ [ralt_enc RCRan] v vf ps cs s0 I pos Hw
+                ltac:(intros x Hx; apply elem_of_list_singleton in Hx as ->; constructor)
+                ltac:(rewrite Hfl; constructor; [rewrite ralt_dec_enc; exact Logic.I | constructor])
+                ltac:(rewrite Hbodies; exact Hs)
+                with "Hlk Hpin Hvf Ht Hps Hcs HI Hf0").
+    - iApply (fif_cons_lend_taint with "Hlk HT"). exact Hs.
+  Qed.
+
+  (* echo's lend at the console ([GenLinksLine.gwc_blk] at the block's first
+     byte, code 0): the console owing the line *)
+  Lemma fif_echo_lend (v : era_pins) (I : list (bv 8)) (ws : list (list (bv 8))) :
+    fline I = LEcho ws ->
+    (Z.of_nat (length (wl_line (drop 1 ws))) < 2 ^ 31)%Z ->
+    file_links g -∗ era_pin (fgn_echo g) (S gen_id) v -∗
+    gwc_blk file_lm (file_params g) (S gen_id) v I 0%nat 0%nat -∗
+    fcons_atc [0%nat] v I [wl_line (drop 1 ws)].
+  Proof using .
+    clear Hnil_in Hw0 D0 w0 qf sf. intros Hfl Hshort. iIntros "#Hlk #Hpin Hb".
+    assert (Hs : cons_short [wl_line (drop 1 ws)]).
+    { unfold cons_short. constructor; [exact Hshort | constructor]. }
+    rewrite /gwc_blk fif_gT fif_gW. iDestruct "Hb" as "[Hb | #HT]"; last first.
+    { iApply (fif_cons_lend_taint with "Hlk HT"). exact Hs. }
+    iDestruct "Hb" as (ps cs s0 pos) "(%Hw & Ht & #Hps & #Hcs & #HI & #HW)".
+    iEval (cbn [lm_blkcs]) in "Hcs". rewrite /f0w. iDestruct "HW" as "[_ HW]".
+    iDestruct "HW" as (vf) "[#Hvf #Hf0]".
+    rewrite Nat.add_0_r.
+    assert (Hbodies : lm_body file_lm s0 cs I <$> [0%nat] = [wl_line (drop 1 ws)]).
+    { cbn [fmap list_fmap]. rewrite (fif_echo_body s0 cs I ws Hfl). reflexivity. }
+    rewrite -Hbodies.
+    iApply (fif_cons_lend [0%nat] [0%nat] v vf ps cs s0 I pos Hw ltac:(intros x Hx; exact Hx)
+              ltac:(rewrite Hfl; constructor; [| constructor];
+                    replace (ralt_dec 0%nat) with (REcho 0%nat) by (vm_compute; reflexivity);
+                    simpl; lia)
+              ltac:(rewrite Hbodies; exact Hs)
+              with "Hlk Hpin Hvf Ht Hps Hcs HI Hf0").
+  Qed.
+
+  (* ---- the exit: what the drained console gives back ---- *)
+
+  (* at the round's own state: the boot state the device carries is the
+     one the round's file pin names *)
+  Lemma fif_cons_drained (C : list nat) (v : era_pins) (vf : file_era) (I : list (bv 8))
+      (s0 : fstate) (alts : list (list (bv 8))) :
+    [] ∈ alts ->
+    file_era_pin g (S gen_id) vf -∗ f0_lb vf s0 -∗ fcons_atc C v I alts -∗
+    (file_taint c
+     ∨ ∃ (ps cs : list nat) (pos c : nat),
+         ⌜lm_wr_blk_t file_lm ps cs s0 I pos⌝ ∗ ⌜c ∈ C⌝ ∗ ⌜cons_adm file_lm I c⌝
+         ∗ era_pin (fgn_echo g) (S gen_id) v
+         ∗ turn v (pos + length (lm_body file_lm s0 cs I c))
+         ∗ ps_lb v ps ∗ cs_lb v (lm_blkcs cs c (length (lm_body file_lm s0 cs I c)))
+         ∗ inp_lb v I).
+  Proof using .
+    intros Hin. iIntros "#Hvf #Hf0 Hd".
+    iDestruct (cons_dev_atc_sub file_lm (file_params g) (file_links g) C v I alts [] Hin
+                 with "Hd") as "Hd".
+    iDestruct (cons_dev_atc_drained file_lm (file_params g) (file_links g) C v I with "Hd")
+      as "[_ [HT | Hd]]".
+    { iLeft. iEval (rewrite fif_gT) in "HT". iExact "HT". }
+    iRight. iDestruct "Hd" as (ps cs s1 pos c) "(%Hw & %HcC & %Hadm & Hpin & Ht & Hps & Hcs & HI & HW)".
+    iEval (rewrite fif_gPIN) in "Hpin". iEval (rewrite fif_gW /f0w) in "HW".
+    iDestruct "HW" as "[_ HW]". iDestruct "HW" as (vf') "[#Hvf' #Hf0']".
+    iDestruct (file_era_pin_agree with "Hvf Hvf'") as %<-.
+    iDestruct (f0_lb_agree with "Hf0' Hf0") as %->.
+    iExists ps, cs, pos, c. iFrame "Hpin Ht Hps Hcs HI". by iPureIntro.
+  Qed.
+
+  (* the round's post out of the drained device, and the same at the
+     record's state-pinned parameters ([FileLinkGen.file_params_at]) *)
+  Lemma fif_cons_drained_post (C : list nat) (v : era_pins) (vf : file_era) (I : list (bv 8))
+      (s0 : fstate) (alts : list (list (bv 8))) :
+    [] ∈ alts ->
+    file_era_pin g (S gen_id) vf -∗ f0_lb vf s0 -∗ fcons_atc C v I alts -∗
+    (file_taint c
+     ∨ ∃ c : nat, ⌜c ∈ C⌝ ∗ ⌜cons_adm file_lm I c⌝
+         ∗ gwc_post file_lm (file_params g) (S gen_id) v I c).
+  Proof using .
+    intros Hin. iIntros "#Hvf #Hf0 Hd".
+    iDestruct (fif_cons_drained C v vf I s0 alts Hin with "Hvf Hf0 Hd") as "[HT | Hd]";
+      [by iLeft | iRight].
+    iDestruct "Hd" as (ps cs pos c) "(%Hw & %HcC & %Hadm & _ & Ht & Hps & Hcs & HI)".
+    iExists c. iSplit; [done |]. iSplit; [done |].
+    iApply (cons_cur_gwc_post file_lm (file_params g) v ps cs s0 I pos c Hw).
+    rewrite /cons_cur. iFrame "Ht Hps Hcs HI". rewrite fif_gW /f0w.
+    iSplit; [done |]. iExists vf. iFrame "Hvf Hf0".
+  Qed.
+
+  Lemma gwc_post_file_at (s0 : fstate) (vf : file_era) (v : era_pins) (I : list (bv 8))
+      (a : nat) :
+    file_era_pin g (S gen_id) vf -∗ f0_lb vf s0 -∗
+    gwc_post file_lm (file_params g) (S gen_id) v I a -∗
+    gwc_post file_lm (file_params_at g s0) (S gen_id) v I a.
+  Proof using .
+    iIntros "#Hvf #Hf0". rewrite /gwc_post fif_gT fif_gW fif_gT_at fif_gW_at.
+    iIntros "[Hp | HT]"; [iLeft | by iRight].
+    iDestruct "Hp" as (ps cs s1 pos) "(%Hw & Ht & Hps & Hcs & HI & #HW)".
+    iAssert (⌜s1 = s0⌝)%I as %->.
+    { rewrite /f0w. iDestruct "HW" as "[_ HW]". iDestruct "HW" as (vf') "[#Hvf' #Hf0']".
+      iDestruct (file_era_pin_agree with "Hvf Hvf'") as %<-.
+      iDestruct (f0_lb_agree with "Hf0' Hf0") as %->. done. }
+    iExists ps, cs, s0, pos. iFrame "Ht Hps Hcs HI". iSplit; [done |].
+    rewrite /f0w_at. iFrame "HW". done.
+  Qed.
+
+  (* the preamble every glue lemma shares: entry device 0 is among the
+     drained devices, at its pinned value *)
+  Lemma fif_exit_dev0 (fdm : fdmap) (l : list fdstate) (vs : gmap nat fdev) (dv : nat -> dspec)
+      (ds : gset nat) :
+    D0 = [0%nat] ->
+    (forall d, d ∈ ds -> drained (dv d)) -> dom_ok_p D0 fdm ds -> fif_ok D0 w0 fdm l vs ->
+    ([∗ set] d ∈ ds, fif_dev d (dv d)) -∗
+    ⌜drained (dv 0%nat)⌝ ∗ ⌜vs !! 0%nat = Some (w0 0%nat)⌝ ∗ fif_dev 0%nat (dv 0%nat).
+  Proof using .
+    intros HD0 Hdr Hdom Hok. iIntros "Hdev".
+    rewrite HD0 in Hdom, Hok. apply dom_ok_p_iff in Hdom as [Hdp _].
+    assert (H0 : 0%nat ∈ ds) by (apply Hdp; constructor).
+    iDestruct (big_sepS_delete _ _ 0%nat H0 with "Hdev") as "[Hd0 _]".
+    iFrame "Hd0". iPureIntro. split; [exact (Hdr _ H0) |].
+    apply (fif_ok_D0 [0%nat] w0 fdm l vs 0%nat Hok). constructor.
+  Qed.
+
+  (* THE GLUE, ONE: cat at `f` -- the payload [UCatKernel.catq_cat] the
+     landed entry ([cat_child_of_entry]) is paid with, at the round's cat
+     line, out of the drained console (its code is one of the two lent)
+     and the core's deed *)
+  Lemma fif_exit_k_cat (v : era_pins) (vf : file_era) (I0 : list (bv 8)) (s0 : fstate)
+      (F : iProp Σ) :
+    D0 = [0%nat] -> w0 0%nat = FDCons v I0 [ralt_enc RCRan; ralt_enc RCNoOpen] ->
+    fline I0 = LCat ->
+    file_era_pin g (S gen_id) vf -∗ f0_lb vf s0 -∗
+    □ (∀ (ps cs : list nat) (pos : nat), ⌜lm_wr_blk_t file_lm ps cs s0 I0 pos⌝ -∗
+         UCatKernel.catq_cat g c r qf sf v vf ps cs s0 I0 pos (-1) -∗ F -∗ ukn_pay N (-1)) -∗
+    F -∗ fif_exit_k.
+  Proof using .
+    intros HD0 Hw Hfl. iIntros "#Hvf #Hf0 #HQ HF".
+    iIntros (fdm l vs w files paths dv ds) "%Hdr %Hdom Hcore _ Hdev".
+    iDestruct "Hcore" as "(_ & _ & %Hok & _ & Htoks & _ & Hdq & #(_ & _ & Hpay & _))".
+    iDestruct (fif_exit_dev0 fdm l vs dv ds HD0 Hdr Hdom Hok with "Hdev") as "(%Hd0 & %Hv0 & Hd0)".
+    rewrite Hw in Hv0.
+    destruct (dv 0%nat) as [alts | | cs' | | S' | | | | |]; simpl in Hd0; simpl;
+      try (iDestruct "Hd0" as "[]").
+    - iDestruct "Hd0" as (v' I' C') "[Htk Hd]".
+      iDestruct (fif_toks_agree vs 0%nat _ _ _ Hv0 with "Htoks Htk") as "(%Heqv & _ & _)".
+      injection Heqv as <- <- <-.
+      iDestruct (fif_cons_drained _ v vf I0 s0 alts Hd0 with "Hvf Hf0 Hd") as "[#HT | Hd]".
+      { iApply ("Hpay" with "HT"). }
+      iDestruct "Hd" as (ps cs pos a) "(%Hw' & %HaC & %Hadm & _ & Ht & #Hps & #Hcs & #HI)".
+      iApply ("HQ" $! ps cs pos with "[%] [Ht Hdq] HF"); [exact Hw' |].
+      rewrite /UCatKernel.catq_cat. iSplitL "Ht"; [| iLeft; iExact "Hdq"].
+      iEval (rewrite (fif_cat_body_len s0 cs I0 a Hfl)) in "Ht".
+      iEval (rewrite (fif_cat_body_len s0 cs I0 a Hfl) /lm_blkcs) in "Hcs".
+      apply elem_of_cons in HaC as [-> | HaC];
+        [iLeft | apply elem_of_list_singleton in HaC as ->; iRight];
+        rewrite /UCatOut.catq_filed /UCatOut.cch /UCatOut.catcs; iLeft;
+        iFrame "Ht Hps HI Hf0"; iExact "Hcs".
+    - iDestruct "Hd0" as (i γo ws) "[Htk _]".
+      iDestruct (fif_toks_agree vs 0%nat _ _ _ Hv0 with "Htoks Htk") as "(%Heqv & _ & _)".
+      discriminate Heqv.
+    - iDestruct "Hd0" as (s i γo p) "(Htk & _)".
+      iDestruct (fif_toks_agree vs 0%nat _ _ _ Hv0 with "Htoks Htk") as "(%Heqv & _ & _)".
+      discriminate Heqv.
+  Qed.
+
+  (* THE GLUE, TWO: echo > f -- the payload [UEchoFile.ef_exit] the landed
+     entry ([efile_image_entry]) is paid with: the era's credential as
+     lent (framed, [Wq]) and the deed's cursor at whatever landed *)
+  Lemma fif_exit_k_redir (i : Z) (γo : gname) (ws : wordline) (Wq : iProp Σ) :
+    D0 = [0%nat] -> w0 0%nat = FDFile i γo ws ->
+    □ (UEchoFile.ef_exit c r Wq i γo ws -∗ ukn_pay N (-1)) -∗ Wq -∗ fif_exit_k.
+  Proof using .
+    intros HD0 Hw. iIntros "#HQ HWq".
+    iIntros (fdm l vs w files paths dv ds) "%Hdr %Hdom Hcore _ Hdev".
+    iDestruct "Hcore" as "(_ & _ & %Hok & _ & Htoks & _ & _ & _)".
+    iDestruct (fif_exit_dev0 fdm l vs dv ds HD0 Hdr Hdom Hok with "Hdev") as "(%Hd0 & %Hv0 & Hd0)".
+    rewrite Hw in Hv0.
+    destruct (dv 0%nat) as [alts | | cs' | | S' | | | | |]; simpl in Hd0; simpl;
+      try (iDestruct "Hd0" as "[]").
+    - iDestruct "Hd0" as (v' I' C') "[Htk _]".
+      iDestruct (fif_toks_agree vs 0%nat _ _ _ Hv0 with "Htoks Htk") as "(%Heqv & _ & _)".
+      discriminate Heqv.
+    - iDestruct "Hd0" as (i' γo' ws') "[Htk Hd]".
+      iDestruct (fif_toks_agree vs 0%nat _ _ _ Hv0 with "Htoks Htk") as "(%Heqv & _ & _)".
+      injection Heqv as <- <- <-.
+      iDestruct "Hd" as (b) "(_ & _ & Hq)". rewrite /file_out /UEchoFile.efany.
+      iDestruct "Hq" as (sel) "[_ Hq]".
+      iApply "HQ". rewrite /UEchoFile.ef_exit. iFrame "HWq". iExists sel. iExact "Hq".
+    - iDestruct "Hd0" as (s i' γo' p) "(Htk & _)".
+      iDestruct (fif_toks_agree vs 0%nat _ _ _ Hv0 with "Htoks Htk") as "(%Heqv & _ & _)".
+      discriminate Heqv.
+  Qed.
+
+  (* THE GLUE, THREE: echo at the console -- the round's wand at the block
+     written up to its prompt ([GenLinksLine.gwc_post], [lk_post]'s
+     shape), at the code the console filed, one of those lent *)
+  Lemma fif_exit_k_echo_cons (v : era_pins) (vf : file_era) (I0 : list (bv 8)) (s0 : fstate)
+      (C : list nat) (F : iProp Σ) :
+    D0 = [0%nat] -> w0 0%nat = FDCons v I0 C ->
+    file_era_pin g (S gen_id) vf -∗ f0_lb vf s0 -∗
+    □ (∀ a : nat, ⌜a ∈ C⌝ -∗ ⌜cons_adm file_lm I0 a⌝ -∗
+         gwc_post file_lm (file_params_at g s0) (S gen_id) v I0 a -∗ F -∗ ukn_pay N (-1)) -∗
+    F -∗ fif_exit_k.
+  Proof using .
+    intros HD0 Hw. iIntros "#Hvf #Hf0 #HQ HF".
+    iIntros (fdm l vs w files paths dv ds) "%Hdr %Hdom Hcore _ Hdev".
+    iDestruct "Hcore" as "(_ & _ & %Hok & _ & Htoks & _ & _ & #(_ & _ & Hpay & _))".
+    iDestruct (fif_exit_dev0 fdm l vs dv ds HD0 Hdr Hdom Hok with "Hdev") as "(%Hd0 & %Hv0 & Hd0)".
+    rewrite Hw in Hv0.
+    destruct (dv 0%nat) as [alts | | cs' | | S' | | | | |]; simpl in Hd0; simpl;
+      try (iDestruct "Hd0" as "[]").
+    - iDestruct "Hd0" as (v' I' C') "[Htk Hd]".
+      iDestruct (fif_toks_agree vs 0%nat _ _ _ Hv0 with "Htoks Htk") as "(%Heqv & _ & _)".
+      injection Heqv as <- <- <-.
+      iDestruct (fif_cons_drained_post C v vf I0 s0 alts Hd0 with "Hvf Hf0 Hd") as "[#HT | Hd]".
+      { iApply ("Hpay" with "HT"). }
+      iDestruct "Hd" as (a) "(%HaC & %Hadm & Hpost)".
+      iApply ("HQ" $! a with "[%] [%] [Hpost] HF"); [exact HaC | exact Hadm |].
+      iApply (gwc_post_file_at s0 vf v I0 a with "Hvf Hf0 Hpost").
+    - iDestruct "Hd0" as (i γo ws) "[Htk _]".
+      iDestruct (fif_toks_agree vs 0%nat _ _ _ Hv0 with "Htoks Htk") as "(%Heqv & _ & _)".
+      discriminate Heqv.
+    - iDestruct "Hd0" as (s i γo p) "(Htk & _)".
+      iDestruct (fif_toks_agree vs 0%nat _ _ _ Hv0 with "Htoks Htk") as "(%Heqv & _ & _)".
+      discriminate Heqv.
+  Qed.
+
+  (* =================================================================== *)
+  (*  3.  END TO END: cat f, echo > f, echo                              *)
   (* =================================================================== *)
 
   Theorem cat_f_paid (content : list (bv 8)) (files : list (bv 8) -> option (list (bv 8))) :
-    files fname_f = Some content ->
+    dp_in D0 {[0%nat]} -> files fname_f = Some content ->
     env_res N P file_iface (cat_env0 [content; cat_dg_open fname_f] files [fname_f]) {[0%nat]} -∗
     tree_pay N P (cat_tree [sb "cat"; fname_f]).
-  Proof using Hcons Heq HPc HNc Hsr Hsw Hso Hsc Hse Hnil_in Hopen_trunc.
-    intros Hf. iIntros "H".
-    iApply (tree_pay_of_conforms N P file_iface _ _ _
-              (cat_file_conforms fname_f content files Hf) (cat_tree_safe _ _) with "H").
+  Proof using Hcons Heq HPc HNc Hsr Hsw Hso Hsc Hse D0 w0 Hw0 qf sf Hnil_in.
+    intros Hdp Hf. iIntros "H".
+    iApply (tree_pay_of_conforms_p N P file_iface _ _ _
+              (cat_file_conforms fname_f content files Hf) (cat_tree_safe _ _) Hdp with "H").
   Qed.
 
   Theorem cat_f_absent_paid (files : list (bv 8) -> option (list (bv 8))) :
-    files fname_f = None ->
+    dp_in D0 {[0%nat]} -> files fname_f = None ->
     env_res N P file_iface (cat_env0 [cat_dg_open fname_f] files [fname_f]) {[0%nat]} -∗
     tree_pay N P (cat_tree [sb "cat"; fname_f]).
-  Proof using Hcons Heq HPc HNc Hsr Hsw Hso Hsc Hse Hnil_in Hopen_trunc.
-    intros Hf. iIntros "H".
-    iApply (tree_pay_of_conforms N P file_iface _ _ _
-              (cat_file_absent_conforms fname_f files Hf) (cat_tree_safe _ _) with "H").
+  Proof using Hcons Heq HPc HNc Hsr Hsw Hso Hsc Hse D0 w0 Hw0 qf sf Hnil_in.
+    intros Hdp Hf. iIntros "H".
+    iApply (tree_pay_of_conforms_p N P file_iface _ _ _
+              (cat_file_absent_conforms fname_f files Hf) (cat_tree_safe _ _) Hdp with "H").
   Qed.
 
   Theorem echo_f_paid (argv : list (list (bv 8))) (files : list (bv 8) -> option (list (bv 8))) :
-    drop 1 argv <> [] -> Forall (fun w => w <> []) (drop 1 argv) ->
+    dp_in D0 {[0%nat]} -> drop 1 argv <> [] -> Forall (fun w => w <> []) (drop 1 argv) ->
     env_res N P file_iface (pipe_env (DOutM (echo_chunks argv)) files) {[0%nat]} -∗
     tree_pay N P (echo_tree argv).
-  Proof using Hcons Heq HPc HNc Hsr Hsw Hso Hsc Hse Hnil_in Hopen_trunc.
-    intros Hne Hnn. iIntros "H".
-    iApply (tree_pay_of_conforms N P file_iface _ _ _
-              (echo_file_conforms argv files Hne Hnn) (echo_tree_safe _ _) with "H").
+  Proof using Hcons Heq HPc HNc Hsr Hsw Hso Hsc Hse D0 w0 Hw0 qf sf Hnil_in.
+    intros Hdp Hne Hnn. iIntros "H".
+    iApply (tree_pay_of_conforms_p N P file_iface _ _ _
+              (echo_file_conforms argv files Hne Hnn) (echo_tree_safe _ _) Hdp with "H").
   Qed.
 
-  (* ---- what the round lends cat: the ledger with fds 1 and 2 the console
-          and every standard stream open, the cwd, the payload, the
-          application's facts, the deed at `f`, the registry's pool with
-          device 0 the console, and the console owing [alts] ---- *)
-  Lemma cat_env_res (l : list fdstate) (rb1 rb2 : bool) (s : dst) (q : Qp)
-      (w : nat -> fdev) (alts : list (list (bv 8))) :
-    w 0%nat = FDCons ->
-    l !! 1%nat = Some (FdOpen rb1 true (FdDevice CONSOLE)) ->
-    l !! 2%nat = Some (FdOpen rb2 true (FdDevice CONSOLE)) ->
-    UserFd.ustd γfd l -∗ UserCwd.ucwd (ukn_cwd N) FsImg.ROOTINO -∗ ukn_pay N (-1) -∗
-    fif_env -∗ fdq r q s -∗ own γreg (fif_pool ∅ w) -∗
-    cons_dev file_lm (file_params g) (file_links g) alts -∗
-    env_res N P file_iface (cat_env0 alts (fif_files (snd <$> s)) [fname_f]) {[0%nat]}.
+  Theorem echo_cons_paid (argv : list (list (bv 8))) (files : list (bv 8) -> option (list (bv 8))) :
+    dp_in D0 {[0%nat]} -> drop 1 argv <> [] ->
+    env_res N P file_iface (cons_env (wl_line (drop 1 argv)) files) {[0%nat]} -∗
+    tree_pay N P (echo_tree argv).
+  Proof using Hcons Heq HPc HNc Hsr Hsw Hso Hsc Hse D0 w0 Hw0 qf sf Hnil_in.
+    intros Hdp Hne. iIntros "H".
+    iApply (tree_pay_of_conforms_p N P file_iface _ _ _
+              (echo_conforms argv files Hne) (echo_tree_safe _ _) Hdp with "H").
+  Qed.
+
+  (* ---- what the round lends: the ledger with the standard streams the
+          environment names, the cwd, the exit wand, the application's
+          facts, the deed at `f`, the registry's pool with device 0 the
+          entry device, and the device ---- *)
+  Lemma fif_ok_entry (fdm : fdmap) (l : list fdstate) :
+    D0 = [0%nat] ->
+    (forall fd d, fdm !! fd = Some d -> d = 0%nat) ->
+    (forall fd d, fdm !! fd = Some d -> fif_row (Some (w0 0%nat)) fd l) ->
+    (forall fd d, fdm !! fd = Some d -> 0 <= fd < Z.of_nat NOFILE) ->
+    (forall s i γo, w0 0%nat <> FDIn s i γo) ->
+    fif_ok D0 w0 fdm l {[0%nat := w0 0%nat]}.
   Proof using .
-    intros Hw Hl1 Hl2.
-    set (fdm := (<[1 := 0%nat]> {[2 := 0%nat]} : fdmap)).
-    assert (Hok : fif_ok fdm l {[0%nat := FDCons]}).
-    { split; [| split; [| split]].
-      - intros fd d. rewrite /fdm lookup_insert_Some lookup_singleton_Some.
-        unfold NOFILE. intros [[<- _] | (_ & <- & _)]; lia.
-      - intros fd d. rewrite /fdm lookup_insert_Some lookup_singleton_Some.
-        intros [[<- <-] | (_ & <- & <-)]; rewrite lookup_singleton; simpl;
-          (split; [unfold NSTD; lia |]); [by exists rb1 | by exists rb2].
-      - intros d. rewrite dom_singleton_L elem_of_singleton. split.
-        + intros ->. exists 1. apply lookup_insert.
-        + intros (fd & Hfd). revert Hfd. rewrite /fdm lookup_insert_Some lookup_singleton_Some.
-          intros [[_ <-] | (_ & _ & <-)]; done.
-      - intros fd fd' d s' i γo _ _ Hv. apply lookup_singleton_Some in Hv as [_ Hv]. discriminate. }
-    iIntros "Hstd Hcwd Hpay #He Hd Hpool Hc". rewrite /env_res.
-    iDestruct (fif_pool_own_take ∅ w 0%nat with "Hpool") as "[Hpool Htk]"; [set_solver |].
-    rewrite Hw. iDestruct (fif_tok_halves with "Htk") as "[Htk1 Htk2]".
+    intros HD0 Hd0 Hrow Hbnd Hnin. rewrite HD0.
+    split; [exact Hbnd | split; [| split; [| split; [| split]]]].
+    - intros fd d Hfd. rewrite (Hd0 fd d Hfd) lookup_singleton. exact (Hrow fd d Hfd).
+    - intros d. rewrite dom_singleton_L elem_of_singleton. intros ->. right. constructor.
+    - intros fd d Hfd. rewrite (Hd0 fd d Hfd) dom_singleton_L. by apply elem_of_singleton.
+    - intros fd fd' d s i γo Hfd _ Hv. apply lookup_singleton_Some in Hv as [<- Hv].
+      by destruct (Hnin s i γo).
+    - intros d Hd. apply elem_of_list_singleton in Hd as ->. apply lookup_singleton.
+  Qed.
+
+  Lemma fif_env_res (E : penv) (l : list fdstate) :
+    D0 = [0%nat] ->
+    (forall fd d, pe_fd E !! fd = Some d -> d = 0%nat) ->
+    (forall fd d, pe_fd E !! fd = Some d -> fif_row (Some (w0 0%nat)) fd l) ->
+    (forall fd d, pe_fd E !! fd = Some d -> 0 <= fd < Z.of_nat NOFILE) ->
+    (forall s i γo, w0 0%nat <> FDIn s i γo) ->
+    (forall fd d, pe_fd E !! fd = Some d -> fif_hdl fd (Some (w0 0%nat)) = emp%I) ->
+    (forall p, p ∈ pe_paths E -> p = fname_f) ->
+    pe_files E fname_f = snd <$> sf ->
+    UserFd.ustd γfd l -∗ UserCwd.ucwd (ukn_cwd N) FsImg.ROOTINO -∗ fif_exit_k -∗
+    fif_env -∗ fdq r qf sf -∗ own γreg (fif_pool ∅ w0) -∗
+    (fif_tok 0%nat (1/2) (w0 0%nat) -∗ fif_dev 0%nat (pe_dev E 0%nat)) -∗
+    env_res N P file_iface E {[0%nat]}.
+  Proof using .
+    intros HD0 Hd0 Hrow Hbnd Hnin Hhdl Hpaths Hfiles.
+    iIntros "Hstd Hcwd Hk #He Hd Hpool Hdev". rewrite /env_res.
+    iDestruct (fif_pool_own_take ∅ w0 0%nat with "Hpool") as "[Hpool Htk]"; [set_solver |].
+    iDestruct (fif_tok_halves with "Htk") as "[Htk1 Htk2]".
     iSplit.
-    { iPureIntro. intros fd d. cbn [cat_env0 pe_fd].
-      rewrite lookup_insert_Some lookup_singleton_Some. intros [[_ <-] | (_ & _ & <-)]; set_solver. }
-    iSplitL "Hstd Hcwd Hpay Hpool Htk1".
-    { rewrite fif_ei_fds. iExists l, {[0%nat := FDCons]}, w. cbn [cat_env0 pe_fd].
-      iFrame "Hstd Hcwd Hpay He". iSplit; [by iPureIntro |].
+    { iPureIntro. intros fd d Hfd. rewrite (Hd0 fd d Hfd). set_solver. }
+    iSplitL "Hstd Hcwd Hk Hd Hpool Htk1".
+    { rewrite fif_ei_fds. iExists l, {[0%nat := w0 0%nat]}, w0.
+      iFrame "Hk Hstd Hcwd Hd He".
+      iSplit; [iPureIntro; exact (fif_ok_entry (pe_fd E) l HD0 Hd0 Hrow Hbnd Hnin) |].
       iSplitL "Hpool"; [by rewrite dom_singleton_L right_id_L |].
       iSplitL "Htk1"; [by rewrite big_sepM_singleton |].
-      rewrite big_sepM_insert; [| by rewrite lookup_singleton_ne].
-      rewrite big_sepM_singleton lookup_singleton /fif_hdl. done. }
-    iSplitL "Hd".
-    { rewrite fif_ei_files. cbn [cat_env0 pe_files pe_paths]. iSplit.
-      - iPureIntro. intros p. rewrite elem_of_list_singleton. done.
-      - iExists s, q. iFrame "Hd". iPureIntro. apply fif_files_f. }
-    rewrite /dev_res big_sepS_singleton fif_dev_of. cbn [cat_env0 pe_dev].
-    case_decide as Hc0; [| done]. simpl. iFrame "Htk2 Hc".
+      iApply big_sepM_intro. iIntros "!>" (fd d) "%Hfd".
+      rewrite (Hd0 fd d Hfd) lookup_singleton (Hhdl fd d Hfd). done. }
+    iSplitR.
+    { rewrite fif_ei_files. iPureIntro. split; [exact Hpaths | exact Hfiles]. }
+    rewrite /dev_res big_sepS_singleton fif_dev_of. iApply ("Hdev" with "Htk2").
   Qed.
 
-  Theorem cat_f_paid_of_round (l : list fdstate) (rb1 rb2 : bool) (q : Qp) (w : nat -> fdev)
-      (i : Z) (content : list (bv 8)) :
-    w 0%nat = FDCons ->
-    l !! 1%nat = Some (FdOpen rb1 true (FdDevice CONSOLE)) ->
-    l !! 2%nat = Some (FdOpen rb2 true (FdDevice CONSOLE)) ->
-    UserFd.ustd γfd l -∗ UserCwd.ucwd (ukn_cwd N) FsImg.ROOTINO -∗ ukn_pay N (-1) -∗
-    fif_env -∗ fdq r q (Some (i, content)) -∗ own γreg (fif_pool ∅ w) -∗
-    cons_dev file_lm (file_params g) (file_links g) [content; cat_dg_open fname_f] -∗
-    tree_pay N P (cat_tree [sb "cat"; fname_f]).
-  Proof using Hcons Heq HPc HNc Hsr Hsw Hso Hsc Hse Hnil_in Hopen_trunc.
-    intros Hw Hl1 Hl2. iIntros "Hstd Hcwd Hpay He Hd Hp Hc".
-    iApply (cat_f_paid content _ (fif_files_f _)).
-    iApply (cat_env_res l rb1 rb2 (Some (i, content)) q w with "Hstd Hcwd Hpay He Hd Hp Hc");
-      assumption.
-  Qed.
 
-  Theorem cat_f_absent_paid_of_round (l : list fdstate) (rb1 rb2 : bool) (q : Qp)
-      (w : nat -> fdev) :
-    w 0%nat = FDCons ->
-    l !! 1%nat = Some (FdOpen rb1 true (FdDevice CONSOLE)) ->
-    l !! 2%nat = Some (FdOpen rb2 true (FdDevice CONSOLE)) ->
-    UserFd.ustd γfd l -∗ UserCwd.ucwd (ukn_cwd N) FsImg.ROOTINO -∗ ukn_pay N (-1) -∗
-    fif_env -∗ fdq r q None -∗ own γreg (fif_pool ∅ w) -∗
-    cons_dev file_lm (file_params g) (file_links g) [cat_dg_open fname_f] -∗
-    tree_pay N P (cat_tree [sb "cat"; fname_f]).
-  Proof using Hcons Heq HPc HNc Hsr Hsw Hso Hsc Hse Hnil_in Hopen_trunc.
-    intros Hw Hl1 Hl2. iIntros "Hstd Hcwd Hpay He Hd Hp Hc".
-    iApply (cat_f_absent_paid _ (fif_files_f None)).
-    iApply (cat_env_res l rb1 rb2 None q w with "Hstd Hcwd Hpay He Hd Hp Hc"); assumption.
-  Qed.
+  Lemma fif_files_some (i : Z) (content : list (bv 8)) :
+    sf = Some (i, content) -> fif_files (snd <$> sf) fname_f = Some content.
+  Proof using . intros Hsf. rewrite fif_files_f Hsf. reflexivity. Qed.
 
-  (* ---- what the redirect lends echo: fd 1 at the held row on `f`, every
-          standard stream open, the pool with device 0 the file, and the
-          line's cursor at chunk 0 ---- *)
-  Lemma echo_env_res (l : list fdstate) (rb : bool) (i : Z) (γo : gname) (s : dst)
-      (q : Qp) (w : nat -> fdev) (argv : list (list (bv 8))) :
-    w 0%nat = FDFile i γo ->
-    l !! 1%nat = Some (FdOpen rb true (FdInode i γo OffHeld)) ->
-    fif_out_ok i argv ->
-    UserFd.ustd γfd l -∗ UserCwd.ucwd (ukn_cwd N) FsImg.ROOTINO -∗ ukn_pay N (-1) -∗
-    fif_env -∗ fdq r q s -∗ own γreg (fif_pool ∅ w) -∗ file_out c r i γo argv 0 -∗
-    env_res N P file_iface (pipe_env (DOutM (echo_chunks argv)) (fif_files (snd <$> s)))
-      {[0%nat]}.
+  Lemma fif_files_none : sf = None -> fif_files (snd <$> sf) fname_f = None.
+  Proof using . intros Hsf. rewrite fif_files_f Hsf. reflexivity. Qed.
+
+  Lemma fif_dp0 : D0 = [0%nat] -> dp_in D0 {[0%nat]}.
   Proof using .
-    intros Hw Hl1 Hwok.
-    set (fdm := ({[1 := 0%nat]} : fdmap)).
-    assert (Hok : fif_ok fdm l {[0%nat := FDFile i γo]}).
-    { split; [| split; [| split]].
-      - intros fd d. rewrite /fdm lookup_singleton_Some. unfold NOFILE. intros [<- _]. lia.
-      - intros fd d. rewrite /fdm lookup_singleton_Some. intros [<- <-].
-        rewrite lookup_singleton. simpl. split; [unfold NSTD; lia | by exists rb].
-      - intros d. rewrite dom_singleton_L elem_of_singleton. split.
-        + intros ->. exists 1. apply lookup_singleton.
-        + intros (fd & Hfd). revert Hfd. rewrite /fdm lookup_singleton_Some. by intros [_ <-].
-      - intros fd fd' d s' i' γo' _ _ Hv. apply lookup_singleton_Some in Hv as [_ Hv]. discriminate. }
-    iIntros "Hstd Hcwd Hpay #He Hd Hpool Hc". rewrite /env_res.
-    iDestruct (fif_pool_own_take ∅ w 0%nat with "Hpool") as "[Hpool Htk]"; [set_solver |].
-    rewrite Hw. iDestruct (fif_tok_halves with "Htk") as "[Htk1 Htk2]".
-    iSplit.
-    { iPureIntro. intros fd d. cbn [pipe_env pe_fd].
-      rewrite lookup_singleton_Some. intros [_ <-]. set_solver. }
-    iSplitL "Hstd Hcwd Hpay Hpool Htk1".
-    { rewrite fif_ei_fds. iExists l, {[0%nat := FDFile i γo]}, w. cbn [pipe_env pe_fd].
-      iFrame "Hstd Hcwd Hpay He". iSplit; [by iPureIntro |].
-      iSplitL "Hpool"; [by rewrite dom_singleton_L right_id_L |].
-      iSplitL "Htk1"; [by rewrite big_sepM_singleton |].
-      rewrite big_sepM_singleton lookup_singleton /fif_hdl. done. }
-    iSplitL "Hd".
-    { rewrite fif_ei_files. cbn [pipe_env pe_files pe_paths]. iSplit.
-      - iPureIntro. intros p Hp. by apply elem_of_nil in Hp.
-      - iExists s, q. iFrame "Hd". iPureIntro. apply fif_files_f. }
-    rewrite /dev_res big_sepS_singleton fif_dev_of. cbn [pipe_env pe_dev].
-    case_decide as Hc0; [| done]. simpl.
-    iExists i, γo. iFrame "Htk2". iExists argv, 0%nat. iFrame "Hc". iPureIntro.
-    split; [done | exact Hwok].
+    intros HD0 d Hd. rewrite HD0 in Hd. apply elem_of_list_singleton in Hd as ->. set_solver.
+  Qed.
+
+  (* the two-descriptor console environment's pure side, once *)
+  Lemma fif_cat_env_pure (l : list fdstate) (rb1 rb2 : bool) (v : era_pins) (I0 : list (bv 8))
+      (C : list nat) (alts : list (list (bv 8))) files :
+    w0 0%nat = FDCons v I0 C ->
+    l !! 1%nat = Some (FdOpen rb1 true (FdDevice CONSOLE)) ->
+    l !! 2%nat = Some (FdOpen rb2 true (FdDevice CONSOLE)) ->
+    (forall fd d, pe_fd (cat_env0 alts files [fname_f]) !! fd = Some d -> d = 0%nat)
+    /\ (forall fd d, pe_fd (cat_env0 alts files [fname_f]) !! fd = Some d ->
+          fif_row (Some (w0 0%nat)) fd l)
+    /\ (forall fd d, pe_fd (cat_env0 alts files [fname_f]) !! fd = Some d ->
+          0 <= fd < Z.of_nat NOFILE).
+  Proof using .
+    intros Hw Hl1 Hl2. cbn [cat_env0 pe_fd]. split_and!.
+    - intros fd d. rewrite lookup_insert_Some lookup_singleton_Some.
+      intros [[_ <-] | (_ & _ & <-)]; reflexivity.
+    - intros fd d. rewrite lookup_insert_Some lookup_singleton_Some Hw. simpl.
+      intros [[<- _] | (_ & <- & _)]; (split; [unfold NSTD; lia |]); [by exists rb1 | by exists rb2].
+    - intros fd d. rewrite lookup_insert_Some lookup_singleton_Some. unfold NOFILE.
+      intros [[<- _] | (_ & <- & _)]; lia.
+  Qed.
+
+  (* THE END-TO-END FORMS AT THE ROUND'S LEND: no payload up front, the
+     console device at the round's own body *)
+  Theorem cat_f_paid_of_round (l : list fdstate) (rb1 rb2 : bool) (v : era_pins)
+      (I0 : list (bv 8)) (i : Z) (content : list (bv 8)) :
+    D0 = [0%nat] -> w0 0%nat = FDCons v I0 [ralt_enc RCRan; ralt_enc RCNoOpen] ->
+    sf = Some (i, content) ->
+    l !! 1%nat = Some (FdOpen rb1 true (FdDevice CONSOLE)) ->
+    l !! 2%nat = Some (FdOpen rb2 true (FdDevice CONSOLE)) ->
+    UserFd.ustd γfd l -∗ UserCwd.ucwd (ukn_cwd N) FsImg.ROOTINO -∗ fif_exit_k -∗
+    fif_env -∗ fdq r qf sf -∗ own γreg (fif_pool ∅ w0) -∗
+    fcons_atc [ralt_enc RCRan; ralt_enc RCNoOpen] v I0 [content; cat_dg_open fname_f] -∗
+    tree_pay N P (cat_tree [sb "cat"; fname_f]).
+  Proof using Hcons Heq HPc HNc Hsr Hsw Hso Hsc Hse D0 w0 Hw0 qf sf Hnil_in.
+    intros HD0 Hw Hsf Hl1 Hl2. iIntros "Hstd Hcwd Hk He Hd Hp Hc".
+    destruct (fif_cat_env_pure l rb1 rb2 v I0 _ [content; cat_dg_open fname_f]
+                (fif_files (snd <$> sf)) Hw Hl1 Hl2) as (Hd0 & Hrow & Hbnd).
+    iApply (cat_f_paid content (fif_files (snd <$> sf)) (fif_dp0 HD0) (fif_files_some i content Hsf)).
+    iApply (fif_env_res (cat_env0 [content; cat_dg_open fname_f] (fif_files (snd <$> sf)) [fname_f])
+              l HD0 Hd0 Hrow Hbnd ltac:(rewrite Hw; discriminate)
+              ltac:(intros; rewrite Hw; reflexivity)
+              ltac:(cbn [cat_env0 pe_paths]; intros p; rewrite elem_of_list_singleton; done)
+              ltac:(cbn [cat_env0 pe_files]; apply fif_files_f)
+              with "Hstd Hcwd Hk He Hd Hp [Hc]").
+    iIntros "Htk". cbn [cat_env0 pe_dev]. case_decide as Hc0; [| done]. simpl.
+    iExists v, I0, _. rewrite Hw. iFrame "Htk Hc".
+  Qed.
+
+  Theorem cat_f_absent_paid_of_round (l : list fdstate) (rb1 rb2 : bool) (v : era_pins)
+      (I0 : list (bv 8)) :
+    D0 = [0%nat] -> w0 0%nat = FDCons v I0 [ralt_enc RCRan; ralt_enc RCNoOpen] ->
+    sf = None ->
+    l !! 1%nat = Some (FdOpen rb1 true (FdDevice CONSOLE)) ->
+    l !! 2%nat = Some (FdOpen rb2 true (FdDevice CONSOLE)) ->
+    UserFd.ustd γfd l -∗ UserCwd.ucwd (ukn_cwd N) FsImg.ROOTINO -∗ fif_exit_k -∗
+    fif_env -∗ fdq r qf sf -∗ own γreg (fif_pool ∅ w0) -∗
+    fcons_atc [ralt_enc RCRan; ralt_enc RCNoOpen] v I0 [cat_dg_open fname_f] -∗
+    tree_pay N P (cat_tree [sb "cat"; fname_f]).
+  Proof using Hcons Heq HPc HNc Hsr Hsw Hso Hsc Hse D0 w0 Hw0 qf sf Hnil_in.
+    intros HD0 Hw Hsf Hl1 Hl2. iIntros "Hstd Hcwd Hk He Hd Hp Hc".
+    destruct (fif_cat_env_pure l rb1 rb2 v I0 _ [cat_dg_open fname_f]
+                (fif_files (snd <$> sf)) Hw Hl1 Hl2) as (Hd0 & Hrow & Hbnd).
+    iApply (cat_f_absent_paid (fif_files (snd <$> sf)) (fif_dp0 HD0) (fif_files_none Hsf)).
+    iApply (fif_env_res (cat_env0 [cat_dg_open fname_f] (fif_files (snd <$> sf)) [fname_f])
+              l HD0 Hd0 Hrow Hbnd ltac:(rewrite Hw; discriminate)
+              ltac:(intros; rewrite Hw; reflexivity)
+              ltac:(cbn [cat_env0 pe_paths]; intros p; rewrite elem_of_list_singleton; done)
+              ltac:(cbn [cat_env0 pe_files]; apply fif_files_f)
+              with "Hstd Hcwd Hk He Hd Hp [Hc]").
+    iIntros "Htk". cbn [cat_env0 pe_dev]. case_decide as Hc0; [| done]. simpl.
+    iExists v, I0, _. rewrite Hw. iFrame "Htk Hc".
   Qed.
 
   Theorem echo_f_paid_of_redirect (l : list fdstate) (rb : bool) (i : Z) (γo : gname)
-      (s : dst) (q : Qp) (w : nat -> fdev) (argv : list (list (bv 8))) :
-    w 0%nat = FDFile i γo ->
+      (argv : list (list (bv 8))) :
+    D0 = [0%nat] -> w0 0%nat = FDFile i γo argv ->
     l !! 1%nat = Some (FdOpen rb true (FdInode i γo OffHeld)) ->
     fif_out_ok i argv ->
     drop 1 argv <> [] -> Forall (fun w => w <> []) (drop 1 argv) ->
-    UserFd.ustd γfd l -∗ UserCwd.ucwd (ukn_cwd N) FsImg.ROOTINO -∗ ukn_pay N (-1) -∗
-    fif_env -∗ fdq r q s -∗ own γreg (fif_pool ∅ w) -∗ file_out c r i γo argv 0 -∗
+    UserFd.ustd γfd l -∗ UserCwd.ucwd (ukn_cwd N) FsImg.ROOTINO -∗ fif_exit_k -∗
+    fif_env -∗ fdq r qf sf -∗ own γreg (fif_pool ∅ w0) -∗ file_out c r i γo argv 0 -∗
     tree_pay N P (echo_tree argv).
-  Proof using Hcons Heq HPc HNc Hsr Hsw Hso Hsc Hse Hnil_in Hopen_trunc.
-    intros Hw Hl1 Hwok Hne Hnn. iIntros "Hstd Hcwd Hpay He Hd Hp Hc".
-    iApply (echo_f_paid argv _ Hne Hnn).
-    iApply (echo_env_res l rb i γo s q w argv with "Hstd Hcwd Hpay He Hd Hp Hc"); assumption.
+  Proof using Hcons Heq HPc HNc Hsr Hsw Hso Hsc Hse D0 w0 Hw0 qf sf Hnil_in.
+    intros HD0 Hw Hl1 Hwok Hne Hnn. iIntros "Hstd Hcwd Hk He Hd Hp Hc".
+    iApply (echo_f_paid argv (fif_files (snd <$> sf)) (fif_dp0 HD0) Hne Hnn).
+    iApply (fif_env_res (pipe_env (DOutM (echo_chunks argv)) (fif_files (snd <$> sf))) l HD0
+              ltac:(cbn [pipe_env pe_fd]; intros fd d; rewrite lookup_singleton_Some; intros [_ <-]; reflexivity)
+              ltac:(cbn [pipe_env pe_fd]; intros fd d; rewrite lookup_singleton_Some Hw; simpl;
+                    intros [<- _]; split; [unfold NSTD; lia | by exists rb])
+              ltac:(cbn [pipe_env pe_fd]; intros fd d; rewrite lookup_singleton_Some; unfold NOFILE;
+                    intros [<- _]; lia)
+              ltac:(rewrite Hw; discriminate)
+              ltac:(intros; rewrite Hw; reflexivity)
+              ltac:(cbn [pipe_env pe_paths]; intros p Hp; by apply elem_of_nil in Hp)
+              ltac:(cbn [pipe_env pe_files]; apply fif_files_f)
+              with "Hstd Hcwd Hk He Hd Hp [Hc]").
+    iIntros "Htk". cbn [pipe_env pe_dev]. case_decide as Hc0; [| done]. simpl.
+    iExists i, γo, argv. rewrite Hw. iFrame "Htk". iExists 0%nat. iFrame "Hc". iPureIntro.
+    split; [done | exact Hwok].
+  Qed.
+
+  Theorem echo_paid_of_cons (l : list fdstate) (rb : bool) (v : era_pins) (I0 : list (bv 8))
+      (C : list nat) (argv : list (list (bv 8))) :
+    D0 = [0%nat] -> w0 0%nat = FDCons v I0 C ->
+    l !! 1%nat = Some (FdOpen rb true (FdDevice CONSOLE)) ->
+    drop 1 argv <> [] ->
+    UserFd.ustd γfd l -∗ UserCwd.ucwd (ukn_cwd N) FsImg.ROOTINO -∗ fif_exit_k -∗
+    fif_env -∗ fdq r qf sf -∗ own γreg (fif_pool ∅ w0) -∗
+    fcons_atc C v I0 [wl_line (drop 1 argv)] -∗
+    tree_pay N P (echo_tree argv).
+  Proof using Hcons Heq HPc HNc Hsr Hsw Hso Hsc Hse D0 w0 Hw0 qf sf Hnil_in.
+    intros HD0 Hw Hl1 Hne. iIntros "Hstd Hcwd Hk He Hd Hp Hc".
+    iApply (echo_cons_paid argv (fif_files (snd <$> sf)) (fif_dp0 HD0) Hne).
+    iApply (fif_env_res (cons_env (wl_line (drop 1 argv)) (fif_files (snd <$> sf))) l HD0
+              ltac:(cbn [cons_env pe_fd]; intros fd d; rewrite lookup_singleton_Some; intros [_ <-]; reflexivity)
+              ltac:(cbn [cons_env pe_fd]; intros fd d; rewrite lookup_singleton_Some Hw; simpl;
+                    intros [<- _]; split; [unfold NSTD; lia | by exists rb])
+              ltac:(cbn [cons_env pe_fd]; intros fd d; rewrite lookup_singleton_Some; unfold NOFILE;
+                    intros [<- _]; lia)
+              ltac:(rewrite Hw; discriminate)
+              ltac:(intros; rewrite Hw; reflexivity)
+              ltac:(cbn [cons_env pe_paths]; intros p Hp; by apply elem_of_nil in Hp)
+              ltac:(cbn [cons_env pe_files]; apply fif_files_f)
+              with "Hstd Hcwd Hk He Hd Hp [Hc]").
+    iIntros "Htk". cbn [cons_env pe_dev]. case_decide as Hc0; [| done]. simpl.
+    iExists v, I0, C. rewrite Hw. iFrame "Htk Hc".
   Qed.
 
 End UkFileIface.
@@ -1869,7 +2166,7 @@ Lemma fif_reg_alloc `{!fifRegG Σ} (w : nat -> fdev) : ⊢ |==> ∃ γ, own γ (
 Proof. iApply own_alloc. apply fif_pool_valid. Qed.
 
 (* ===================================================================== *)
-(*  3.  THE VACUITY WITNESSES: every proved law at cat's instance         *)
+(*  4.  THE VACUITY WITNESSES: every proved law at cat's instance         *)
 (* ===================================================================== *)
 
 Section UkFileIfaceCat.
@@ -1885,29 +2182,30 @@ Section UkFileIfaceCat.
   Context (Hcons : @riscv_cons_res Σ (@riscv_fixedGS Σ HRg) = fecl g).
   Context (N : uk_names Σ) `{!ukn_const N}.
   Context (γreg : gname).
+  Context (D0 : list nat) (w0 : nat -> fdev) (qf : Qp) (sf : dst).
 
   Local Instance fif_cat_code_persistent : Persistent (up_code (cat_prog N)).
   Proof using . simpl. apply _. Qed.
 
   Definition fif_write_cat :=
-    fif_write g r Hcons N (cat_prog N) (cat_stub_write N) γreg.
+    fif_write g r Hcons N (cat_prog N) (cat_stub_write N) γreg D0 w0 qf sf.
   Definition fif_write_m_cat :=
-    fif_write_m g r Heq N (cat_prog N) (cat_stub_write N) γreg.
+    fif_write_m g r Heq N (cat_prog N) (cat_stub_write N) γreg D0 w0 qf sf.
   Definition fif_read_cat :=
-    fif_read g r Heq N (cat_prog N) (cat_stub_read N) γreg.
+    fif_read g r Heq N (cat_prog N) (cat_stub_read N) γreg D0 w0 qf sf.
   Definition fif_open_cat :=
-    fif_open g r Heq N (cat_prog N) (cat_stub_open N) γreg.
+    fif_open g r Heq N (cat_prog N) (cat_stub_open N) γreg D0 w0 qf sf.
   Definition fif_open_absent_nt_cat :=
-    fif_open_absent_nt g r Heq N (cat_prog N) (cat_stub_open N) γreg.
+    fif_open_absent_nt g r Heq N (cat_prog N) (cat_stub_open N) γreg D0 w0 qf sf.
   Definition fif_close_in_cat :=
-    fif_close_in g r N (cat_prog N) (cat_stub_close N) γreg.
+    fif_close_in g r N (cat_prog N) (cat_stub_close N) γreg D0 w0 qf sf.
   Definition fif_exit_cat :=
-    fif_exit g r N (cat_prog N) (cat_stub_exit N) γreg.
+    fif_exit g r N (cat_prog N) (cat_stub_exit N) γreg D0 w0 qf sf.
 End UkFileIfaceCat.
 
 (* ===================================================================== *)
-(*  4.  ECHO'S INSTANCE: the record and the two theorems at [echo_prog],  *)
-(*      no stub hypothesis (the four gaps by name)                        *)
+(*  5.  ECHO'S INSTANCE: the record and the theorems at [echo_prog],      *)
+(*      no stub hypothesis (the gap by name)                              *)
 (* ===================================================================== *)
 
 Section UkFileIfaceEcho.
@@ -1923,34 +2221,41 @@ Section UkFileIfaceEcho.
   Context (Hcons : @riscv_cons_res Σ (@riscv_fixedGS Σ HRg) = fecl g).
   Context (N : uk_names Σ) `{!ukn_const N}.
   Context (γreg : gname).
-  Hypothesis Hnil_in : fif_nil_in_law g r N (echo_prog N) γreg.
-  Hypothesis Hopen_trunc : fif_open_trunc_law g r N (echo_prog N) γreg.
+  Context (D0 : list nat) (w0 : nat -> fdev).
+  Context (Hw0 : forall d, d ∈ D0 -> forall i γo, w0 d <> FDIn false i γo).
+  Context (qf : Qp) (sf : dst).
+  Hypothesis Hnil_in : fif_nil_in_law g r N (echo_prog N) γreg D0 w0 qf sf.
 
-  Definition file_iface_echo : ep_iface N (echo_prog N) :=
+  Definition file_iface_echo : ep_ifaceP (Dp := D0) N (echo_prog N) :=
     file_iface g r Heq Hcons N (echo_prog N) (echo_stub_read N) (echo_stub_write N)
-      (echo_stub_open N) (echo_stub_close N) (echo_stub_exit N) γreg
-      Hnil_in Hopen_trunc.
-
-  Definition echo_f_paid_echo (argv : list (list (bv 8)))
-      (files : list (bv 8) -> option (list (bv 8))) :
-    drop 1 argv <> [] -> Forall (fun w => w <> []) (drop 1 argv) ->
-    env_res N (echo_prog N) file_iface_echo (pipe_env (DOutM (echo_chunks argv)) files) {[0%nat]}
-    -∗ tree_pay N (echo_prog N) (echo_tree argv) :=
-    echo_f_paid g r Heq Hcons N (echo_prog N) (echo_stub_read N) (echo_stub_write N)
-      (echo_stub_open N) (echo_stub_close N) (echo_stub_exit N) γreg
-      Hnil_in Hopen_trunc argv files.
+      (echo_stub_open N) (echo_stub_close N) (echo_stub_exit N) γreg D0 w0 qf sf
+      Hnil_in Hw0.
 
   Definition echo_f_paid_of_redirect_echo (l : list fdstate) (rb : bool) (i : Z) (γo : gname)
-      (s : dst) (q : Qp) (w : nat -> fdev) (argv : list (list (bv 8))) :
-    w 0%nat = FDFile i γo ->
+      (argv : list (list (bv 8))) :
+    D0 = [0%nat] -> w0 0%nat = FDFile i γo argv ->
     l !! 1%nat = Some (FdOpen rb true (FdInode i γo OffHeld)) ->
     fif_out_ok i argv ->
     drop 1 argv <> [] -> Forall (fun w => w <> []) (drop 1 argv) ->
-    UserFd.ustd (ukn_fd N) l -∗ UserCwd.ucwd (ukn_cwd N) FsImg.ROOTINO -∗ ukn_pay N (-1) -∗
-    fif_env g r -∗ fdq r q s -∗ own γreg (fif_pool ∅ w) -∗
-    file_out (fgn_cl g) r i γo argv 0 -∗
+    UserFd.ustd (ukn_fd N) l -∗ UserCwd.ucwd (ukn_cwd N) FsImg.ROOTINO -∗
+    fif_exit_k g r N γreg D0 w0 qf sf -∗ fif_env g r N -∗ fdq r qf sf -∗
+    own γreg (fif_pool ∅ w0) -∗ file_out (fgn_cl g) r i γo argv 0 -∗
     tree_pay N (echo_prog N) (echo_tree argv) :=
     echo_f_paid_of_redirect g r Heq Hcons N (echo_prog N) (echo_stub_read N)
       (echo_stub_write N) (echo_stub_open N) (echo_stub_close N) (echo_stub_exit N)
-      γreg Hnil_in Hopen_trunc l rb i γo s q w argv.
+      γreg D0 w0 qf sf Hnil_in Hw0 l rb i γo argv.
+
+  Definition echo_paid_of_cons_echo (l : list fdstate) (rb : bool) (v : era_pins)
+      (I0 : list (bv 8)) (C : list nat) (argv : list (list (bv 8))) :
+    D0 = [0%nat] -> w0 0%nat = FDCons v I0 C ->
+    l !! 1%nat = Some (FdOpen rb true (FdDevice CONSOLE)) ->
+    drop 1 argv <> [] ->
+    UserFd.ustd (ukn_fd N) l -∗ UserCwd.ucwd (ukn_cwd N) FsImg.ROOTINO -∗
+    fif_exit_k g r N γreg D0 w0 qf sf -∗ fif_env g r N -∗ fdq r qf sf -∗
+    own γreg (fif_pool ∅ w0) -∗
+    cons_dev_atc file_lm (file_params g) (file_links g) C v I0 [wl_line (drop 1 argv)] -∗
+    tree_pay N (echo_prog N) (echo_tree argv) :=
+    echo_paid_of_cons g r Heq Hcons N (echo_prog N) (echo_stub_read N)
+      (echo_stub_write N) (echo_stub_open N) (echo_stub_close N) (echo_stub_exit N)
+      γreg D0 w0 qf sf Hnil_in Hw0 l rb v I0 C argv.
 End UkFileIfaceEcho.

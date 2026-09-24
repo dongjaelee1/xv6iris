@@ -1162,14 +1162,14 @@ Section UkFileDev.
   Qed.
 
   (* [ei_open_absent] for `f`: the deed says absent, the answer is -1 with
-     everything back, or the taint.  At any mode that neither creates nor
-     truncates (a create-mode open of an absent `f` is the redirect's, and
-     it CREATES). *)
+     everything back, or the taint.  At any mode that does not create (a
+     create-mode open of an absent `f` is the redirect's, and it CREATES);
+     O_TRUNC costs nothing here, the kernel refuses at the lookup and its
+     truncate permit is the dead walk's own cursor (lane TRUNC-PERMIT). *)
   Lemma file_open_absent (l : list fdstate) (cw : Z) (q : Qp) (mode : Z)
       (K : Z -> iProp Σ) :
     cw = FsImg.ROOTINO ->
     om_create (mword_of_int mode : mword 64) = false ->
-    om_trunc (mword_of_int mode : mword 64) = false ->
     app_inv fsc_fs -∗
     UserFd.ustd γfd l -∗ UserCwd.ucwd (ukn_cwd N) cw -∗ fdq r q None -∗
     ((UserFd.ustd γfd l -∗ UserCwd.ucwd (ukn_cwd N) cw -∗ fdq r q None -∗
@@ -1179,7 +1179,7 @@ Section UkFileDev.
         K (bv_signed ret))) -∗
     op_obl N P fname_f mode K.
   Proof using Heq Hso.
-    intros Hcw Hcr0 Htr0.
+    intros Hcw Hcr0.
     iIntros "#Hinv Hstd Hcwd Hd HK".
     iIntros (h m avail pv tx f) "%Hf %Ha0 %Ha1 Hcode Hp Hrun Hcont".
     change (length fname_f) with 1%nat.
@@ -1197,8 +1197,6 @@ Section UkFileDev.
                ltac:(vm_compute; discriminate)). }
     assert (Hcr : om_create (m1 !!! Regidx a1_idx) = false)
       by (rewrite Ha1r; exact Hcr0).
-    assert (Htr : om_trunc (m1 !!! Regidx a1_idx) = false)
-      by (rewrite Ha1r; exact Htr0).
     assert (Hnum : usysno m1 = USYS_open).
     { unfold m1, usysno.
       rewrite (upd_eq m (Regidx a7_idx) (mword_of_int 15 : mword 64)).
@@ -1215,7 +1213,7 @@ Section UkFileDev.
     iPoseProof (wp_uk_ecall_open_miss_deed_v N h1 m1
                   (mword_of_int (up_open P + 2)) l avail c r q cw
                   (fdev_fimg pv f) (mword_of_int pv) fname_f Heq Hnum Hal4
-                  Hpath Ha0r Hcr Htr fdev_fname_elems Hst) as "Hleaf".
+                  Hpath Ha0r Hcr fdev_fname_elems Hst) as "Hleaf".
     iApply ("Hleaf" with "Hi Hv Hrun Hcwd Hstd Hinv Hd").
     iIntros (h2 rv) "Hans Hcwd Hrun".
     iEval (rewrite E6) in "Hrun".

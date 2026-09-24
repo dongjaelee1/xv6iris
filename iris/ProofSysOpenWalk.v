@@ -303,11 +303,11 @@ Section ProofSysOpenWalk.
        block is already [FsAbsEra.ex_start] at the one path. *)
     ex_start fsc_fs (pv_cwi (us_V U)) P Pmiss (bview plen bp) -∗
     pf_at (aopen_commit_at (fs_gamma_L fsc_fs) appE) Fo -∗
-    (* the piece as the PLAIN bundle carries it: unkeyed, at the trivial
-       permit -- nothing rides on this walk's terminal, and the blocks
-       below the join take it KEYED at the inode namei reached
-       ([SysOpenDefs.open_trunc_at_of_triv]) *)
-    open_trunc_piece (fs_gamma_L fsc_fs) vom trunc_permit_triv Ft -∗
+    (* the piece as the PLAIN bundle carries it at this path: unkeyed,
+       at the TERMINAL permit -- the walk's own cursor at the inode namei
+       reaches -- and the blocks below the join take it KEYED there, paid
+       with that cursor ([SpecSysOpen.plain_trunc_key], lane TRUNC-PERMIT) *)
+    open_trunc_piece (fs_gamma_L fsc_fs) vom (trunc_term_at (bview plen bp) P) Ft -∗
     wp_next true (proc_addr jx)
       (so_cont0_au omo gf ns
                 dqb dqs dqbs dqn (proc_addr jx) pidv Mim pvv vom U sts
@@ -794,10 +794,11 @@ Section ProofSysOpenWalk.
                   Hsbn Hsbi Hsbs Hsbb Hbsl Hisl Hpost").
         { exact Hcsf. }
         { unfold sys_open_slots, create_slots in *. lia. } }
-      (* THE PERMIT, PAID: the plain surface's is [True], so the piece is
-         keyed at the inode namei reached for nothing. *)
-      iDestruct (open_trunc_at_of_triv (fs_gamma_L fsc_fs) vom
-                   (bv_unsigned inum) Ft with "Htc") as "Htc".
+      (* THE PERMIT, PAID: the walk's terminal cursor keys the piece at the
+         inode namei reached, and what the arms keep of the cursor is
+         [SpecSysOpen.cur_kept]. *)
+      iDestruct (plain_trunc_key (fs_gamma_L fsc_fs) vom (bview plen bp) P
+                   (bv_unsigned inum) Ft with "Htc HP") as "[HP Htc]".
       iApply (Join.so_join_au (CID0 := CID10) omo gfl gf gs jx gl pd pav pu
                 gil gisl
  kk (qq/2)%Qp (qq/2)%Qp gy loy tly inum dn bm om lo
@@ -890,10 +891,11 @@ Section ProofSysOpenWalk.
         { unfold sys_open_slots, create_slots in *. lia. } }
       (* a DIRECTORY at O_RDONLY, so the device arm is unreachable and the
          major bound is vacuous *)
-      (* THE PERMIT, PAID: the plain surface's is [True], so the piece is
-         keyed at the inode namei reached for nothing. *)
-      iDestruct (open_trunc_at_of_triv (fs_gamma_L fsc_fs) vom
-                   (bv_unsigned inum) Ft with "Htc") as "Htc".
+      (* THE PERMIT, PAID: the walk's terminal cursor keys the piece at the
+         inode namei reached, and what the arms keep of the cursor is
+         [SpecSysOpen.cur_kept]. *)
+      iDestruct (plain_trunc_key (fs_gamma_L fsc_fs) vom (bview plen bp) P
+                   (bv_unsigned inum) Ft with "Htc HP") as "[HP Htc]".
       iApply (Alloc.so_alloc_au (CID0 := CID12) omo gfl gf gs jx gl pd pav pu
                 gil gisl
  kk (qq/2)%Qp (qq/2)%Qp gy loy tly inum dn bm om lo
@@ -968,8 +970,8 @@ Section ProofSysOpenWalk.
     { unfold sys_open_slots, create_slots in *. lia. }
     { (* ARM C-FAIL: a directory opened for writing.  The observation HAS
          fired -- this refusal is inside the child's lock window. *)
-      iDestruct (open_trunc_at_of_triv (fs_gamma_L fsc_fs) vom
-                   (bv_unsigned inum) Ft with "Htc") as "Htc".
+      iDestruct (plain_trunc_key (fs_gamma_L fsc_fs) vom (bview plen bp) P
+                   (bv_unsigned inum) Ft with "Htc HP") as "[HP Htc]".
       iApply (so_arm_fail omo gf (proc_addr jx) pidv Mim pvv vom P Pmiss Fo Ft U sts _
                 (bview plen bp) (bv_unsigned inum) (era_node dn bm data) Hpof Ha0f
                 with "Hpriv Hfrag Hfds HP Hobs Htc"). }

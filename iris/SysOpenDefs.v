@@ -346,6 +346,20 @@ Section OpenDefs.
     by iFrame "Ha'".
   Qed.
 
+  (* ...and at a PERSISTENT post the supplier already holds: what an
+     application pays out of its taint, whose receipt is the taint again
+     ([PinnedOpen.pobs_dead_trunc_piece]) *)
+  Lemma atrunc_commit_at_unit_pers (γfs : fs_names) E (T : iProp Σ)
+      `{!Persistent T} :
+    app_sup -∗ T -∗ atrunc_commit_at (fs_gamma_L γfs) E (fun _ _ _ => T).
+  Proof using .
+    iIntros "#Hsup #HT". rewrite /atrunc_commit_at. iIntros (I i bs0 nl) "%Hpre Ha".
+    iDestruct (app_step_acc i I (delta_trunc i (abs_view I))
+                 with "Hsup") as "Hstep".
+    iModIntro. iFrame "Ha Hstep". iIntros (I') "%Heq Ha'". iModIntro.
+    by iFrame "Ha' HT".
+  Qed.
+
   Lemma atrunc_commit_at_pinned (γfs : fs_names) E (q : Qp) (jpin : Z) (b : anode)
       (Φ : aview -> Z -> list (bv 8) -> iProp Σ) :
     app_sup -∗
@@ -393,9 +407,11 @@ Section OpenDefs.
   (*  inum to the WALK'S TERMINAL IDENTIFICATION, which is what            *)
   (*  [trunc_permit_of] adds -- the tie beside the DISJUNCTION the kernel  *)
   (*  pays from whichever of create's two arms ran.  The plain surface     *)
-  (*  carries the same piece at the TRIVIAL permit                         *)
-  (*  ([trunc_permit_triv]): nothing rides on its walk's terminal, and     *)
-  (*  every non-file caller supplies the piece through                     *)
+  (*  carries the same piece at the TERMINAL permit ([trunc_term_at] /     *)
+  (*  [trunc_term_arg], lane TRUNC-PERMIT): its walk's terminal cursor,    *)
+  (*  so an application whose walk cannot reach a terminal refutes the    *)
+  (*  permit instead of stepping a truncate at every file row.  Every     *)
+  (*  generic caller still supplies the piece through                     *)
   (*  [open_trunc_piece_of_all] in one line.                              *)
   (* ------------------------------------------------------------------ *)
 
@@ -471,10 +487,20 @@ Section OpenDefs.
   (* ------------------------------------------------------------------ *)
   (*  THE PERMIT ITSELF (lane F-OPEN-3).                                  *)
   (*                                                                      *)
-  (*  THE PLAIN SURFACE PAYS NOTHING.  Its walk's terminal IS the inum     *)
-  (*  the truncate reaches, and a caller that wants to know which inum     *)
-  (*  that is already holds its own cursor there; so the plain bundle's    *)
-  (*  permit is [True] and the piece is exactly the unkeyed one was.       *)
+  (*  THE PLAIN SURFACE PAYS ITS WALK'S TERMINAL CURSOR (lane              *)
+  (*  TRUNC-PERMIT).  Its walk's terminal IS the inum the truncate         *)
+  (*  reaches, and the cursor there is the one thing a constraining        *)
+  (*  application can refute: at a name its claim says is absent the walk  *)
+  (*  dies at its first hop and the terminal cursor is the taint           *)
+  (*  ([PinnedObs.pobs_dead_term]), so the application pays the step out   *)
+  (*  of the taint alone -- where a trivial permit asked it for an         *)
+  (*  [AppInv.app_step] at EVERY file row, which a claim pinning rows      *)
+  (*  cannot give.  The cursor is SPENT into the permit exactly as the     *)
+  (*  parent cursor is below: a truncating plain open's arms report it     *)
+  (*  inside the kept piece's refund where the truncate did not fire       *)
+  (*  ([cre_ft_kept]) and not at all where it did; an application that     *)
+  (*  wants it back threads it through its own [Ft] receipt               *)
+  (*  ([SpecSysOpen.cur_kept], [SpecSysOpen.plain_trunc_kept]).           *)
   (*                                                                      *)
   (*  THE O_CREATE SURFACE PAYS TWO THINGS, and both are what the kernel   *)
   (*  HOLDS at the [itrunc] and the caller could not name at supply time:  *)
@@ -490,7 +516,7 @@ Section OpenDefs.
   (*  is discharged and the two facts stand bare ([trunc_tie_at]).  The    *)
   (*  cursor is SPENT, not read: [P] is an arbitrary (possibly linear)     *)
   (*  predicate, so the arms of a TRUNCATING create do not report the      *)
-  (*  terminal cursor -- see [SpecSysOpen.cre_cur_kept].                   *)
+  (*  terminal cursor -- see [SpecSysOpen.cur_kept].                       *)
   (*                                                                      *)
   (*  (2) THE DISJUNCTION create's two arms pay from.  On the FRESH run    *)
   (*  the child was made and the create leg fired, so the kernel hands     *)
@@ -503,7 +529,36 @@ Section OpenDefs.
   (*  so the piece's refund carries it) and reads it back here.           *)
   (* ------------------------------------------------------------------ *)
 
-  Definition trunc_permit_triv : Z -> iProp Σ := fun _ => True%I.
+  (* THE PLAIN SURFACE'S PERMIT: the walk's terminal cursor, bare at the
+     ONE-PATH tier... *)
+  Definition trunc_term_at (pl : list (bv 8)) (P : nat -> Z -> iProp Σ)
+      (i : Z) : iProp Σ :=
+    P (length (path_elems pl)) i.
+
+  (* ...and under the reading of argument 0 at the SYSCALL tier
+     ([SysMknodDefs.npar_cur]'s shape over the FULL element list) *)
+  Definition trunc_term_arg (M : gmap Z (bv 8)) (pv : mword 64)
+      (P : nat -> Z -> iProp Σ) (i : Z) : iProp Σ :=
+    (∀ pl : list (bv 8), ⌜arg_path_of M pv pl⌝ -∗ P (length (path_elems pl)) i)%I.
+
+  Lemma trunc_term_arg_of_at (M : gmap Z (bv 8)) (pv : mword 64)
+      (pl : list (bv 8)) (P : nat -> Z -> iProp Σ) (i : Z) :
+    arg_path_of M pv pl ->
+    trunc_term_at pl P i -∗ trunc_term_arg M pv P i.
+  Proof using .
+    intros Hpl. rewrite /trunc_term_at /trunc_term_arg.
+    iIntros "HP" (pl') "%Hpl'".
+    rewrite (arg_path_of_uniq M pv pl' pl Hpl' Hpl). iExact "HP".
+  Qed.
+
+  Lemma trunc_term_at_of_arg (M : gmap Z (bv 8)) (pv : mword 64)
+      (pl : list (bv 8)) (P : nat -> Z -> iProp Σ) (i : Z) :
+    arg_path_of M pv pl ->
+    trunc_term_arg M pv P i -∗ trunc_term_at pl P i.
+  Proof using .
+    intros Hpl. rewrite /trunc_term_at /trunc_term_arg.
+    iIntros "H". iApply ("H" $! pl with "[%]"). exact Hpl.
+  Qed.
 
   (* the tie at the ONE-PATH tier: the two pure-and-cursor facts bare *)
   Definition trunc_tie_at (pl : list (bv 8)) (P : nat -> Z -> iProp Σ)
@@ -627,20 +682,17 @@ Section OpenDefs.
      [Ft] is still named at [om_trunc vom = false], and what it is worth
      there is [emp].
 
-     THE COMMIT IS NOT KEYED AT THE OPENED INUM, and that is forced rather
-     than chosen.  The bundle is handed in BEFORE [argstr] runs: the walk
-     sits under [∀ pl, ⌜arg_path_of M pv pl⌝ -∗ …] and the commits sit
-     OUTSIDE that wand (the note at [open_au_plain_at] says why -- argstr
-     can fail, and then no [pl] satisfies the reading, so a failure-fold
-     consumer must get the commits back on the nose).  So no inum exists to
-     name at supply time, and an [i]-indexed [atrunc_commit_at] would have
-     to be handed in as [∀ i, …], which is the obligation the unguarded
-     shape already has.  The walk's terminal cursor is no tie either: the
-     O_CREATE FRESH arm fires this piece at the child CREATE just made
-     ([SpecSysOpen.open_post_ok_create]), which went through no hop.  The
-     guard is what a constraining application needs anyway -- with the bit
-     clear it owes nothing, so [FsConsPin.file_pin_trunc]'s [i <> ino] is
-     never demanded of it. *)
+     THE COMMIT IS NOT KEYED AT THE OPENED INUM AT SUPPLY TIME, and that
+     is forced rather than chosen.  The bundle is handed in BEFORE [argstr]
+     runs: the walk sits under [∀ pl, ⌜arg_path_of M pv pl⌝ -∗ …] and the
+     commits sit OUTSIDE that wand (the note at [open_au_plain_at] says
+     why -- argstr can fail, and then no [pl] satisfies the reading, so a
+     failure-fold consumer must get the commits back on the nose).  So no
+     inum exists to name when the piece is handed in, and what names it
+     later is the PERMIT below, paid by the kernel where it holds what
+     pays it.  The guard is what a constraining application needs anyway
+     -- with the bit clear it owes nothing, so [FsConsPin.file_pin_trunc]'s
+     [i <> ino] is never demanded of it. *)
   (* THE PIECE IS KEYED BY A PERMIT (lane F-OPEN-3).  [Kt] is what the
      kernel pays at the [itrunc] to name the inum the call reached; a
      caller that answers at every row ignores it
@@ -741,12 +793,39 @@ Section OpenDefs.
     iApply (trunc_tie_at_of_arg M pv pl P d nm Hpl with "HT").
   Qed.
 
+  (* ...and the PLAIN surface's pair, one permit over *)
+  Lemma open_trunc_piece_term_arg_to_at Γ (vom : mword 64)
+      (M : gmap Z (bv 8)) (pv : mword 64) (pl : list (bv 8))
+      (P : nat -> Z -> iProp Σ)
+      (Ft : pfam Σ (aview -> Z -> list (bv 8) -> iProp Σ)) :
+    arg_path_of M pv pl ->
+    open_trunc_piece Γ vom (trunc_term_arg M pv P) Ft -∗
+    open_trunc_piece Γ vom (trunc_term_at pl P) Ft.
+  Proof using .
+    intros Hpl. iIntros "H".
+    iApply (open_trunc_piece_mono with "[] H"). iIntros "!>" (i) "Hk".
+    iApply (trunc_term_arg_of_at M pv pl P i Hpl with "Hk").
+  Qed.
+
+  Lemma open_trunc_piece_term_at_to_arg Γ (vom : mword 64)
+      (M : gmap Z (bv 8)) (pv : mword 64) (pl : list (bv 8))
+      (P : nat -> Z -> iProp Σ)
+      (Ft : pfam Σ (aview -> Z -> list (bv 8) -> iProp Σ)) :
+    arg_path_of M pv pl ->
+    open_trunc_piece Γ vom (trunc_term_at pl P) Ft -∗
+    open_trunc_piece Γ vom (trunc_term_arg M pv P) Ft.
+  Proof using .
+    intros Hpl. iIntros "H".
+    iApply (open_trunc_piece_mono with "[] H"). iIntros "!>" (i) "Hk".
+    iApply (trunc_term_at_of_arg M pv pl P i Hpl with "Hk").
+  Qed.
+
   (* ------------------------------------------------------------------ *)
   (*  THE PIECE ONCE THE INUM IS KNOWN.  Between the point the call has   *)
   (*  an inode in hand and the [itrunc] the piece travels KEYED at that   *)
   (*  inum: the permit is paid ONCE, where what pays it is still in hand  *)
-  (*  (the walk's terminal on the plain surface -- nothing -- and         *)
-  (*  create's own payout on the O_CREATE one), and every block below     *)
+  (*  (the walk's terminal cursor on the plain surface, create's own      *)
+  (*  payout on the O_CREATE one), and every block below                  *)
   (*  carries [atrunc_commit_i].  A caller whose truncate never fires     *)
   (*  gets this back and eliminates to its own refund, which is where the *)
   (*  investment it parked in the permit comes home ([pf_at] is a         *)
@@ -763,8 +842,8 @@ Section OpenDefs.
      at, and it is what makes an open that fails PAST a fired create hand
      the caller back what it parked in the permit ([SpecSysOpen]'s arm (a)
      -- [itrunc] runs after fdalloc, so that arm is reachable and its
-     investment must come home).  At the trivial permit it is the caller's
-     own family up to a [True]. *)
+     investment must come home).  Both surfaces travel at it: the name
+     is create's, which keyed first. *)
   Definition cre_ft_kept (Kt : Z -> iProp Σ) (i : Z)
       (Ft : pfam Σ (aview -> Z -> list (bv 8) -> iProp Σ))
       : pfam Σ (aview -> Z -> list (bv 8) -> iProp Σ) :=
@@ -839,19 +918,29 @@ Section OpenDefs.
     - iDestruct "H" as "[_ [$ Hk]]". iApply ("Hmv" with "Hk").
   Qed.
 
-  (* ...and its trivial instance, which is what the PLAIN surface pays:
-     nothing at all rides on the walk's terminal there, so the piece keys
-     at the caller's own family. *)
-  Lemma open_trunc_at_of_triv Γ (vom : mword 64) (i : Z)
-      (Ft : pfam Σ (aview -> Z -> list (bv 8) -> iProp Σ)) :
-    open_trunc_piece Γ vom trunc_permit_triv Ft -∗ open_trunc_at Γ vom i Ft.
+  (* THE KEPT PIECE, READ: a consumer that does not fire the commit may
+     drop the permit its refund carries... *)
+  Lemma open_trunc_at_kept_forget Γ (vom : mword 64) (Kt : Z -> iProp Σ)
+      (i : Z) (Ft : pfam Σ (aview -> Z -> list (bv 8) -> iProp Σ)) :
+    open_trunc_at Γ vom i (cre_ft_kept Kt i Ft) -∗ open_trunc_at Γ vom i Ft.
   Proof using .
-    iIntros "H". rewrite /open_trunc_piece /open_trunc_at.
-    destruct (om_trunc vom); [| done].
-    rewrite /pf_at /atrunc_of_permit. iSplit.
-    - iDestruct "H" as "[H _]". iApply ("H" with "[]").
-      rewrite /trunc_permit_triv. done.
-    - iDestruct "H" as "[_ $]".
+    iIntros "H". rewrite /open_trunc_at. destruct (om_trunc vom); [| done].
+    rewrite /pf_at /cre_ft_kept. cbn [pf_recv pf_refund].
+    iSplit; [iDestruct "H" as "[$ _]" | iDestruct "H" as "[_ [$ _]]"].
+  Qed.
+
+  (* ...and a keyed piece takes a permit onto its refund side for nothing:
+     how the create surface enters the blocks the plain surface states at
+     its own kept family ([ProofSysOpenCreArm.socr_key_plain]) *)
+  Lemma open_trunc_at_kept_intro Γ (vom : mword 64) (Kt : Z -> iProp Σ)
+      (i : Z) (Ft : pfam Σ (aview -> Z -> list (bv 8) -> iProp Σ)) :
+    open_trunc_at Γ vom i Ft -∗
+    (if om_trunc vom then Kt i else emp) -∗
+    open_trunc_at Γ vom i (cre_ft_kept Kt i Ft).
+  Proof using .
+    iIntros "H Hk". rewrite /open_trunc_at. destruct (om_trunc vom); [| done].
+    rewrite /pf_at /cre_ft_kept. cbn [pf_recv pf_refund].
+    iSplit; [iDestruct "H" as "[$ _]" | iDestruct "H" as "[_ H]"; iFrame "H Hk"].
   Qed.
 
 
@@ -922,7 +1011,9 @@ Section OpenDefs.
       (Ft : pfam Σ (aview -> Z -> list (bv 8) -> iProp Σ)) : iProp Σ :=
     (ex_start γfs cw P Pmiss pl
      ∗ pf_at (aopen_commit_at Γ appE) Fo
-     ∗ open_trunc_piece Γ vom trunc_permit_triv Ft)%I.
+     (* THE TRUNCATE'S PERMIT is the walk's own terminal cursor (lane
+        TRUNC-PERMIT): paid where the kernel holds it, at the join *)
+     ∗ open_trunc_piece Γ vom (trunc_term_at pl P) Ft)%I.
 
   (* ...and the O_CREATE caller: the parent-prefix one-shot REUSED from
      the mknod era file at that same path ([FsAbsEra.ep_start]), create's
@@ -983,7 +1074,7 @@ Section OpenDefs.
       (Ft : pfam Σ (aview -> Z -> list (bv 8) -> iProp Σ)) : iProp Σ :=
     ((∀ pl : list (bv 8), ⌜arg_path_of M pv pl⌝ -∗ ex_start γfs cw P Pmiss pl)
      ∗ pf_at (aopen_commit_at Γ appE) Fo
-     ∗ open_trunc_piece Γ vom trunc_permit_triv Ft)%I.
+     ∗ open_trunc_piece Γ vom (trunc_term_arg M pv P) Ft)%I.
 
   Definition open_au_create_at Γ (γfs : fs_names) (cw : Z)
       (M : gmap Z (bv 8)) (pv vom : mword 64)
@@ -1015,8 +1106,11 @@ Section OpenDefs.
     open_au_plain_at Γ γfs cw M pv vom P Pmiss Fo Ft -∗
     open_au_pre_plain Γ γfs cw pl vom P Pmiss Fo Ft.
   Proof using .
-    iIntros (Hpl) "(Hw & Ho & Ht)". rewrite /open_au_pre_plain. iFrame "Ho Ht".
-    iApply ("Hw" $! pl with "[%]"). exact Hpl.
+    iIntros (Hpl) "(Hw & Ho & Ht)". rewrite /open_au_pre_plain. iFrame "Ho".
+    iSplitL "Hw". { iApply ("Hw" $! pl with "[%]"). exact Hpl. }
+    (* the permit at this path: the cursor stands bare once the reading
+       has answered *)
+    iApply (open_trunc_piece_term_arg_to_at Γ vom M pv pl P Ft Hpl with "Ht").
   Qed.
 
   (* THE CURSOR'S TWO READINGS, as one move (lane TL-3K);
@@ -1079,7 +1173,7 @@ Section OpenDefs.
       (Ft : pfam Σ (aview -> Z -> list (bv 8) -> iProp Σ)) :
     namei_walk_pre_era γfs cw P Pmiss -∗
     pf_at (aopen_commit_at Γ appE) Fo -∗
-    open_trunc_piece Γ vom trunc_permit_triv Ft -∗
+    open_trunc_piece Γ vom (trunc_term_arg M pv P) Ft -∗
     open_au_plain_at Γ γfs cw M pv vom P Pmiss Fo Ft.
   Proof using .
     iIntros "Hw Ho Ht". rewrite /open_au_plain_at. iFrame "Ho Ht".
@@ -1121,7 +1215,7 @@ Section OpenDefs.
       (Ft : pfam Σ (aview -> Z -> list (bv 8) -> iProp Σ)) :
     namei_walk_pre_era γfs cw P Pmiss -∗
     pf_at (aopen_commit_at Γ appE) Fo -∗
-    open_trunc_piece Γ vom trunc_permit_triv Ft -∗
+    open_trunc_piece Γ vom (trunc_term_at pl P) Ft -∗
     open_au_pre_plain Γ γfs cw pl vom P Pmiss Fo Ft.
   Proof using .
     iIntros "Hw Ho Ht". rewrite /open_au_pre_plain. iFrame "Ho Ht".
@@ -1273,4 +1367,4 @@ Global Typeclasses Opaque namei_walk_pre_era namei_walk_dead_era
    a twenty-minute [ProofSysOpenCreArm]. *)
 Global Typeclasses Opaque open_trunc_piece open_trunc_at cre_ft_kept
   trunc_permit_of trunc_permit_ex trunc_tie_at trunc_tie_arg
-  trunc_permit_cre trunc_permit_triv.
+  trunc_permit_cre trunc_term_at trunc_term_arg.

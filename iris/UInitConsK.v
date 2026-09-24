@@ -518,7 +518,7 @@ Section UInitConsK.
             (uvis_M W) (mword_of_int 0x970) (mword_of_int 2)
             (pfam_triv (fun (_ : aview) (_ : Z) (_ : anode) => True%I))
             (pfam_triv (fun (_ : aview) (_ : Z) (_ : list (bv 8)) => True%I))
-            (uvis_fd W) ret fdv' HPT Hpath with "Hrc") as "Hans".
+            (uvis_fd W) ret fdv' HPT init_cons_om2_trunc Hpath with "Hrc") as "Hans".
     iModIntro.
     (* ---- 0x3b8  c.jr ra ---- *)
     set (m2 := <[Regidx a0_idx := ret]> m1).
@@ -631,7 +631,7 @@ Section UInitConsK.
     iDestruct (init_cons_recv fsc_fs T i
                  (uvis_M W) (mword_of_int 0x970) (mword_of_int 2)
                  (pfam_triv (fun (_ : aview) (_ : Z) (_ : list (bv 8)) => True%I))
-                 (uvis_fd W) ret fdv' Hpath with "Hrc") as "Hans".
+                 (uvis_fd W) ret fdv' Hpath init_cons_om2_trunc with "Hrc") as "Hans".
     (* ---- 0x3b8  c.jr ra ---- *)
     set (m2 := <[Regidx a0_idx := ret]> m1).
     assert (Hra : m2 !!! Regidx ra_idx = m !!! Regidx ra_idx).

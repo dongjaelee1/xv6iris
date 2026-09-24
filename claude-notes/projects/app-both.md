@@ -385,8 +385,13 @@ at a standard slot), `Hopen_trunc` (`UkFileOpen`'s miss leaf takes
 (no zero-length write leaf at a file, none at the read-only handle).
 Also `echo_prog` names only write/exit stubs, so `file_iface` is built
 at any program with the five stubs, not at echo's own.  NEXT: leaf lanes
-for the three gaps + echo's three missing stub instances; the pipeline's
-instance (lane/pcons, design SS3.4d); then cut 5.
+for the three gaps + echo's three missing stub instances (in flight:
+lane/leaf-filedev, lane/leaf-pipedev, lane/leaf-payers).  The
+pipeline's CONSOLE device LANDED (lane/pcons 246f51ca4, design SS3.4d:
+`UkConsOut` split into a claim-free core and a `gen_params` instance,
+`UkPipeConsOut.v` with the single-writer and the `popen` devices).
+NEXT: the pipeline's `ep_iface` instance (console + `UkPipeDev`, a ghost
+registry like `UkFileIface`'s); cut 5 (planned).
 
 FileOutPure DEAD CODE REMOVED (2026-09-23): 92 of 169 declarations
 (the whole claim-stage layer -- `D_f`, `pending_f`, `pcount_f`, the

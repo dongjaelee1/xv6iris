@@ -1,7 +1,7 @@
 (* ===================================================================== *)
 (* UkConsOut.v -- THE CONSOLE AS AN OUTPUT DEVICE of the endpoint         *)
 (* interface, at the GENERIC console claim, for ANY program instance      *)
-(* (program-specs cut 4(c), the console).                                 *)
+(* (program-specs cut 4(c), the console; SS3.4d's claim-free core).       *)
 (*                                                                        *)
 (* Design: claude-notes/design/program-specs.md SS3.4, SS3.4b.  [UkHandler. *)
 (* ep_iface]'s write law, specialised to the console: a device owing one  *)
@@ -33,16 +33,26 @@
 (*       [alts = [drop i (lm_abs s0 cs I c)]];                             *)
 (*   - or the era's taint, which funds every byte and stays.              *)
 (*                                                                        *)
-(* [gwc_blk] itself is not used because it lives over M2's link           *)
-(* parameters ([gen_params]) and hides its witnesses; here the claim's    *)
-(* own parameters ([gen_cparams]) and [GenLinks]' links are the whole     *)
-(* supply, and the arm is [gwc_blk]'s word for word.                      *)
+(* [gwc_blk] itself is not used because it hides its witnesses; the arm   *)
+(* here is [gwc_blk]'s word for word over M2's link parameters            *)
+(* ([GenLinksLine.gen_params]) and a persistent LINKS bundle that entails *)
+(* the three leaves a console byte needs ([gl_w], [gl_blk], [gl_taint]),  *)
+(* which every claim with a byte law supplies ([FileLinkGen.file_links_gl] *)
+(* at the file application, [PipeLinksLine.pipe_links_gl] at the          *)
+(* pipeline's single-writer rounds).                                       *)
 (*                                                                        *)
-(* THE PROOF.  [cons_dev_sub] narrows the device to [[a]]; [cons_dev_step] *)
-(* is one byte ([GenLinks.gwrite_link_blk] at an unfiled device -- it     *)
-(* files the code -- and [gwrite_link] at a filed one; the taint through  *)
-(* [gwrite_link_taint]); [cons_chain] is the console chain the write      *)
-(* leaf's deposit asks for, at the cursor [j ↦ cons_dev [drop j a]];      *)
+(* THE SPLIT (program-specs SS3.4d).  [cons_write] depends on the claim   *)
+(* ONLY through one byte as an [out_link], so S3 is a CLAIM-FREE CORE over *)
+(* an abstract device [D] with three laws ([D_short], [D_sub], [D_step])  *)
+(* holding [cons_chain] and [cons_write]; S3b is the generic claim's      *)
+(* device [cons_dev] at those laws ([cons_dev_sub] narrows the device to  *)
+(* [[a]]; [cons_dev_step] is one byte -- [gl_blk] at an unfiled device,   *)
+(* which files the code, [gl_w] at a filed one, the taint through          *)
+(* [gl_taint]); and [UkPipeConsOut] is the pipeline's two-writer device at *)
+(* the same core.                                                          *)
+(*                                                                        *)
+(* THE PROOF OF THE CORE.  [cons_chain] is the console chain the write    *)
+(* leaf's deposit asks for, at the cursor [j ↦ D [drop j a]];             *)
 (* [cons_write] runs the stub law to the ecall, the leaf of the source's  *)
 (* half ([cons_leaf]) between, reads the exact count off                  *)
 (* [UkWriteLeaf.uwrite_no_short] and returns through the stub.  The       *)
@@ -99,7 +109,9 @@ Require Import GenOutPure.
 Require Import EchoOut.
 Require Import GenOutHist.
 Require Import GenOut.
-Require Import GenLinks.
+Require Import GenLinksLine.       (* [gen_params], [gl_w]/[gl_blk]/[gl_taint] *)
+(* the file application's links, for S4's witnesses *)
+Require Import FileDisc FileOutPure AppFile FileOut FileLinks FileLinkGen.
 Require Import CtxIdDefs.
 Require Import UCodeEcho UCodeCat.
 Require User.EchoSyms User.CatSyms.
@@ -318,30 +330,38 @@ Section cons_src.
 End cons_src.
 
 (* ===================================================================== *)
-(*  S3  THE DEVICE AND ITS WRITE LAW                                      *)
+(*  S3  THE CLAIM-FREE CORE: the chain and the write law at an ABSTRACT   *)
+(*      device (program-specs SS3.4d)                                     *)
+(*                                                                        *)
+(*  [cons_write] depends on the console claim ONLY through one byte as an *)
+(*  [out_link] ([D_step]), the narrowing to the chosen alternative        *)
+(*  ([D_sub]) and the count bound ([D_short]).  So the device is a        *)
+(*  section variable with those three laws, and the chain and the write   *)
+(*  law are stated once for every claim that has a byte law: the generic  *)
+(*  claim (S3b below, at [GenLinksLine]'s link families) and the          *)
+(*  pipeline's two-writer round ([UkPipeConsOut]).                        *)
 (* ===================================================================== *)
-Section UkConsOut.
+Section UkConsOutCore.
   Context `{HRg : !riscvGS Σ}.
   Context `{!xv6G Σ, !bioslotG Σ, !fdslotG Σ, !fileG Σ,
             !irefslotG Σ, !pavG Σ, !wchG Σ, !ufdG Σ}.
   Context `{GEN : GenId} `{XI : CurCtx}.
   Context `{!ghost_varG Σ Z}.
   Context `{!ghost_varG Σ (gset gname)}.
-  Context `{!echoOutG Σ}.
   Context `{PS : UexecSG.uprogSG Σ}.
-  (* [GenLinks]' section context: the model, the claim's parameters, and
-     the record equation *)
-  Context (M : lmodel) (G : gen_cparams M) (B : lm_byte_laws M) (sd : lm_st M).
-  Context (A : gen_wa M G sd).
-  Context (Hcons : @riscv_cons_res Σ (@riscv_fixedGS Σ HRg) = gcl M G sd A).
-  (* ...and the program instance, with its write stub's law *)
+  (* the program instance, with its write stub's law *)
   Context (N : uk_names Σ) (P : uprog Σ).
   Context `{HPc : !Persistent (up_code P)}.
   Context (Hstub : ⊢ stub_law N (up_code P) 16 (up_write P)).
+  (* THE DEVICE, owing one of its alternatives, and its three laws *)
+  Context (D : list (list (bv 8)) -> iProp Σ).
+  Context (D_short : forall alts : list (list (bv 8)), D alts -∗ ⌜cons_short alts⌝).
+  Context (D_sub : forall (alts : list (list (bv 8))) (a : list (bv 8)),
+             a ∈ alts -> D alts -∗ D [a]).
+  Context (D_step : forall (x : list (bv 8)) (b : bv 8),
+             x !! 0%nat = Some b ->
+             D [x] -∗ out_link Uart0 (S gen_id) b (D [drop 1 x])).
 
-  Local Notation T := (gcT G).
-  Local Notation PIN := (gcPIN G).
-  Local Notation W := (gcW G).
   (* the era the console chain of a write is at *)
   Local Notation ke := (S gen_id).
 
@@ -350,141 +370,28 @@ Section UkConsOut.
   Local Notation a2_idx := (mword_of_int 12 : mword 5).
   Local Notation a7_idx := (mword_of_int 17 : mword 5).
 
-  (* the era's cursor at a block of the stage, [i] bytes out, the first of
-     which filed [c] ([GenLinksLine.gwc_blk]'s left arm) *)
-  Definition cons_cur (v : era_pins) (ps cs : list nat) (s0 : lm_st M)
-      (I : list (bv 8)) (pos c i : nat) : iProp Σ :=
-    (turn v (pos + i)%nat ∗ ps_lb v ps ∗ cs_lb v (lm_blkcs cs c i)
-     ∗ inp_lb v I ∗ W ke s0)%I.
-
-  (* THE DEVICE, owing one of [alts] (the file header has the encoding) *)
-  Definition cons_dev (alts : list (list (bv 8))) : iProp Σ :=
-    (⌜cons_short alts⌝
-     ∗ ((∃ (v : era_pins) (ps cs : list nat) (s0 : lm_st M) (I : list (bv 8))
-           (pos : nat),
-           ⌜lm_wr_blk_t M ps cs s0 I pos⌝ ∗ PIN ke v
-           ∗ ((∃ codes : list nat,
-                 ⌜alts = lm_abs M s0 cs I <$> codes⌝
-                 ∗ ⌜Forall (cons_adm M I) codes⌝
-                 ∗ cons_cur v ps cs s0 I pos 0 0)
-              ∨ (∃ c i : nat,
-                   ⌜(0 < i)%nat⌝ ∗ ⌜alts = [drop i (lm_abs M s0 cs I c)]⌝
-                   ∗ cons_cur v ps cs s0 I pos c i)))
-        ∨ T))%I.
-
-  Lemma cons_dev_short (alts : list (list (bv 8))) :
-    cons_dev alts -∗ ⌜cons_short alts⌝.
-  Proof using . iIntros "[$ _]". Qed.
-
-  Lemma cons_dev_taint (alts : list (list (bv 8))) :
-    cons_short alts -> T -∗ cons_dev alts.
-  Proof using . iIntros (Hs) "HT". iSplit; [done |]. by iRight. Qed.
-
-  (* the device narrows to the alternative the program chose *)
-  Lemma cons_dev_sub (alts : list (list (bv 8))) (a : list (bv 8)) :
-    a ∈ alts -> cons_dev alts -∗ cons_dev [a].
-  Proof using .
-    intros Ha. iIntros "[%Hs Hd]". iSplit.
-    { iPureIntro. unfold cons_short in *. apply Forall_singleton.
-      exact (proj1 (Forall_forall _ _) Hs a (proj1 (elem_of_list_In _ _) Ha)). }
-    iDestruct "Hd" as "[Hd | HT]"; [| by iRight]. iLeft.
-    iDestruct "Hd" as (v ps cs s0 I pos) "(%Hw & Hpin & Hd)".
-    iExists v, ps, cs, s0, I, pos.
-    iSplit; [iPureIntro; exact Hw |]. iSplitL "Hpin"; [iExact "Hpin" |].
-    iDestruct "Hd" as "[(%codes & %Hal & %Hadm & Hc) | (%c & %i & %Hi & %Hal & Hc)]".
-    - iLeft. subst alts. apply elem_of_list_fmap in Ha as (c & -> & Hc).
-      iExists [c].
-      iSplit; [iPureIntro; reflexivity |].
-      iSplit; [iPureIntro; apply Forall_singleton;
-               exact (proj1 (Forall_forall _ _) Hadm c (proj1 (elem_of_list_In _ _) Hc)) |].
-      iExact "Hc".
-    - iRight. subst alts. apply elem_of_list_singleton in Ha as ->.
-      iExists c, i.
-      iSplit; [iPureIntro; exact Hi |].
-      iSplit; [iPureIntro; reflexivity |].
-      iExact "Hc".
-  Qed.
-
-  (* ONE BYTE: the head of what the device owes *)
-  Lemma cons_dev_step (x : list (bv 8)) (b : bv 8) :
-    x !! 0%nat = Some b ->
-    cons_dev [x] -∗ out_link Uart0 ke b (cons_dev [drop 1 x]).
-  Proof using B Hcons.
-    intros Hb. iIntros "[%Hs Hd]".
-    assert (Hs' : cons_short [drop 1 x]).
-    { unfold cons_short in *. apply Forall_singleton. rewrite Forall_singleton in Hs.
-      eapply Z.le_lt_trans; [| exact Hs].
-      apply Nat2Z.inj_le. rewrite length_drop. lia. }
-    iDestruct "Hd" as "[Hd | #HT]"; last first.
-    { iApply (gwrite_link_taint M G sd A Hcons ke b with "HT").
-      iIntros "#HT'". by iApply cons_dev_taint. }
-    iDestruct "Hd" as (v ps cs s0 I pos) "(%Hw & #Hpin & Hd)".
-    pose proof Hw as [Hwb Htl].
-    pose proof Hwb as (Hpin0 & Hr & Hn & HP).
-    iDestruct "Hd" as "[(%codes & %Hal & %Hadm & Hc) | (%c & %i & %Hi & %Hal & Hc)]".
-    - (* UNFILED: the block's first byte files the code *)
-      destruct codes as [| c [| c' codes]]; cbn [fmap list_fmap] in Hal;
-        try discriminate.
-      injection Hal as Hx. subst x.
-      rewrite Forall_singleton in Hadm. destruct Hadm as [Hok Hterm].
-      iDestruct "Hc" as "(Ht & #Hps & #Hcs & #Hin & #HW)".
-      cbn [lm_blkcs]. iEval (rewrite Nat.add_0_r) in "Ht".
-      iApply (gwrite_link_blk M G B sd A Hcons ke v pos c b ps cs s0 I _
-                (lm_wr_blk_nonnil M ps cs s0 I pos Hwb) Hr ltac:(lia) Hpin0 HP
-                Hok Hterm Hb
-                with "Hpin Ht Hps Hcs Hin HW").
-      iIntros "[(Ht & _ & #Hcs' & _ & _) | #HT]"; last by iApply cons_dev_taint.
-      iSplit; [iPureIntro; exact Hs' |]. iLeft. iExists v, ps, cs, s0, I, pos.
-      iSplit; [iPureIntro; exact Hw |]. iSplit; [iExact "Hpin" |].
-      iRight. iExists c, 1%nat.
-      iSplit; [iPureIntro; lia |]. iSplit; [iPureIntro; reflexivity |].
-      rewrite /cons_cur. cbn [lm_blkcs].
-      replace (pos + 1)%nat with (S pos) by lia.
-      iFrame "Ht Hps Hcs' Hin HW".
-    - (* FILED at [c], [i] bytes out: an ordinary byte of the stream *)
-      injection Hal as Hx. subst x.
-      rewrite lookup_drop Nat.add_0_r in Hb.
-      destruct i as [| i']; [lia |].
-      iDestruct "Hc" as "(Ht & #Hps & #Hcs & #Hin & #HW)". cbn [lm_blkcs].
-      iApply (gwrite_link M G sd A Hcons ke v (pos + S i') b ps (cs ++ [c]) s0 I _
-                ltac:(rewrite length_app /=; lia)
-                (lm_wr_blk_pin_snoc M ps cs s0 I pos c Hwb)
-                (cons_blk_byte M ps cs s0 I pos c (S i') b Hwb Hb)
-                with "Hpin Ht Hps Hcs Hin HW").
-      iIntros "[(Ht & _ & _ & _ & _) | #HT]"; last by iApply cons_dev_taint.
-      iSplit; [iPureIntro; exact Hs' |]. iLeft. iExists v, ps, cs, s0, I, pos.
-      iSplit; [iPureIntro; exact Hw |]. iSplit; [iExact "Hpin" |].
-      iRight. iExists c, (S (S i')).
-      iSplit; [iPureIntro; lia |].
-      iSplit.
-      { iPureIntro. f_equal. rewrite drop_drop. f_equal. lia. }
-      rewrite /cons_cur. cbn [lm_blkcs].
-      replace (pos + S (S i'))%nat with (S (pos + S i')) by lia.
-      iFrame "Ht Hps Hcs Hin HW".
-  Qed.
-
-  (* THE CONSOLE CHAIN at the cursor [j ↦ cons_dev [drop j a]] *)
+  (* THE CONSOLE CHAIN at the cursor [j ↦ D [drop j a]] *)
   Lemma cons_chain (a : list (bv 8)) (Mh : gmap Z (bv 8)) (ua : mword 64)
       (fb : nat -> bv 8) :
     forall (cnt j : nat),
     (forall t : nat, (j <= t)%nat -> (t < j + cnt)%nat -> a !! t = Some (fb t)) ->
     (forall t : nat, (j <= t)%nat -> (t < j + cnt)%nat ->
        Mh !! uint (add_vec_int ua (Z.of_nat t)) = Some (fb t)) ->
-    cons_dev [drop j a] -∗
-    cons_out_chain ke Mh ua (fun t : nat => cons_dev [drop t a]) j cnt.
-  Proof using B Hcons.
+    D [drop j a] -∗
+    cons_out_chain ke Mh ua (fun t : nat => D [drop t a]) j cnt.
+  Proof using D_step.
     intros cnt. induction cnt as [| cnt IH]; intros j Ha HM.
     - iIntros "Hd". cbn [cons_out_chain]. iExact "Hd".
     - iIntros "Hd". cbn [cons_out_chain]. iSplit; [iExact "Hd" |].
       iIntros (b) "%Hbm".
       rewrite (HM j ltac:(lia) ltac:(lia)) in Hbm. injection Hbm as <-.
-      iApply (out_link_mono Uart0 ke (fb j) (cons_dev [drop 1 (drop j a)])
+      iApply (out_link_mono Uart0 ke (fb j) (D [drop 1 (drop j a)])
                 with "[] [Hd]").
       { iIntros "Hd". rewrite drop_drop.
         replace (j + 1)%nat with (S j) by lia.
         iApply (IH (S j) ltac:(intros t H1 H2; apply Ha; lia)
                   ltac:(intros t H1 H2; apply HM; lia) with "Hd"). }
-      iApply (cons_dev_step with "Hd").
+      iApply (D_step with "Hd").
       rewrite lookup_drop Nat.add_0_r. apply Ha; lia.
   Qed.
 
@@ -498,14 +405,14 @@ Section UkConsOut.
       (alts : list (list (bv 8))) (a bs : list (bv 8)) (K : Z -> iProp Σ) :
     (fd < NSTD)%nat -> l !! fd = Some (FdOpen rb true (FdDevice CONSOLE)) ->
     a ∈ alts -> bs `prefix_of` a ->
-    UserFd.ustd (ukn_fd N) l -∗ cons_dev alts -∗
-    (UserFd.ustd (ukn_fd N) l -∗ cons_dev [drop (length bs) a]
+    UserFd.ustd (ukn_fd N) l -∗ D alts -∗
+    (UserFd.ustd (ukn_fd N) l -∗ D [drop (length bs) a]
      -∗ K (Z.of_nat (length bs))) -∗
     wr_obl N P (Z.of_nat fd) bs K.
-  Proof using B HPc Hcons Hstub.
+  Proof using D_short D_step D_sub HPc Hstub.
     intros Hfd Hl Ha Hpre. iIntros "Hstd Hd HK".
-    iDestruct (cons_dev_sub alts a Ha with "Hd") as "Hd".
-    iDestruct (cons_dev_short with "Hd") as %Hs.
+    iDestruct (D_sub alts a Ha with "Hd") as "Hd".
+    iDestruct (D_short with "Hd") as %Hs.
     assert (Hn31 : (Z.of_nat (length bs) < 2 ^ 31)%Z).
     { unfold cons_short in Hs. rewrite Forall_singleton in Hs.
       eapply Z.le_lt_trans; [| exact Hs].
@@ -565,14 +472,14 @@ Section UkConsOut.
     iApply (cons_leaf N h1 (<[Regidx a7_idx := (mword_of_int 16 : mword 64)]> m)
               _ avail
               (cons_fam (fun t : nat =>
-                 (cons_dev [drop t a]
+                 (D [drop t a]
                   ∗ usrc_at N tx (dq_half dq) (uint (m !!! Regidx a1_idx))
                       (length bs) f)%I))
               l tx (dq_half dq) (length bs) f Hsys Hal
               with "Hec Hrun [Hd Hs2] Hstd [Hs1]").
     { (* THE DEPOSIT: the console chain at the device, and the half of the
          run the chain's premise is read off, handed back beside it *)
-      iApply (uwrite_chain_sup_ret N (fun t : nat => cons_dev [drop t a])
+      iApply (uwrite_chain_sup_ret N (fun t : nat => D [drop t a])
                 (usrc_at N tx (dq_half dq) (uint (m !!! Regidx a1_idx))
                    (length bs) f)
                 _ _ l fd rb CONSOLE Hi0 Hfd Hl).
@@ -591,7 +498,7 @@ Section UkConsOut.
       "%Hka0 %Hka1 %Hka2 %Htk %Hlz %Hnf Hstd Hs1 Hpost Hrun".
     iDestruct (uwrite_no_short
                  (fun t : nat =>
-                    (cons_dev [drop t a]
+                    (D [drop t a]
                      ∗ usrc_at N tx (dq_half dq) (uint (m !!! Regidx a1_idx))
                          (length bs) f)%I)
                  (ukn_pay N) Wv ret (uvis_M Wv) (uvis_fd Wv) cw' cs'
@@ -615,12 +522,19 @@ Section UkConsOut.
                  (length bs) f Hua).
       rewrite (usrc_at_split N tx dq). iFrame "Hs1 Hs2".
   Qed.
-End UkConsOut.
+End UkConsOutCore.
 
 (* ===================================================================== *)
-(*  S4  THE WITNESSES: the law at echo and at cat                         *)
+(*  S3b THE GENERIC CLAIM'S DEVICE, at [GenLinksLine]'s link families     *)
+(*                                                                        *)
+(*  The device of the file header, over M2's link parameters              *)
+(*  ([gen_params]) and a persistent links bundle [LINKS] that entails the *)
+(*  three leaves a console byte needs ([gl_w], [gl_blk], [gl_taint]) --   *)
+(*  which the file application ([FileLinkGen.file_links_gl]), echo and    *)
+(*  the pipeline's single-writer rounds ([PipeLinksLine.pipe_links_gl])   *)
+(*  all supply.  [LINKS] rides in the device so that a byte can spend it. *)
 (* ===================================================================== *)
-Section UkConsOutInst.
+Section UkConsOutGen.
   Context `{HRg : !riscvGS Σ}.
   Context `{!xv6G Σ, !bioslotG Σ, !fdslotG Σ, !fileG Σ,
             !irefslotG Σ, !pavG Σ, !wchG Σ, !ufdG Σ}.
@@ -629,10 +543,203 @@ Section UkConsOutInst.
   Context `{!ghost_varG Σ (gset gname)}.
   Context `{!echoOutG Σ}.
   Context `{PS : UexecSG.uprogSG Σ}.
-  Context (M : lmodel) (G : gen_cparams M) (B : lm_byte_laws M) (sd : lm_st M).
-  Context (A : gen_wa M G sd).
-  Context (Hcons : @riscv_cons_res Σ (@riscv_fixedGS Σ HRg) = gcl M G sd A).
+  (* the model, M2's link parameters, and the links bundle *)
+  Context (M : lmodel) (Pm : gen_params M).
+  Context (LINKS : iProp Σ) {LINKS_pers : Persistent LINKS}.
+  #[local] Existing Instance LINKS_pers.
+  Context (LINKS_w : LINKS -∗ gl_w M Pm).
+  Context (LINKS_blk : LINKS -∗ gl_blk M Pm).
+  Context (LINKS_taint : LINKS -∗ gl_taint M Pm).
+
+  Local Notation T := (gT Pm).
+  Local Notation PIN := (gPIN Pm).
+  Local Notation W := (gW Pm).
+  (* the era the console chain of a write is at *)
+  Local Notation ke := (S gen_id).
+
+  (* the era's cursor at a block of the stage, [i] bytes out, the first of
+     which filed [c] ([GenLinksLine.gwc_blk]'s left arm) *)
+  Definition cons_cur (v : era_pins) (ps cs : list nat) (s0 : lm_st M)
+      (I : list (bv 8)) (pos c i : nat) : iProp Σ :=
+    (turn v (pos + i)%nat ∗ ps_lb v ps ∗ cs_lb v (lm_blkcs cs c i)
+     ∗ inp_lb v I ∗ W ke s0)%I.
+
+  (* THE DEVICE, owing one of [alts] (the file header has the encoding),
+     with the links bundle folded in *)
+  Definition cons_dev (alts : list (list (bv 8))) : iProp Σ :=
+    (LINKS ∗ ⌜cons_short alts⌝
+     ∗ ((∃ (v : era_pins) (ps cs : list nat) (s0 : lm_st M) (I : list (bv 8))
+           (pos : nat),
+           ⌜lm_wr_blk_t M ps cs s0 I pos⌝ ∗ PIN ke v
+           ∗ ((∃ codes : list nat,
+                 ⌜alts = lm_abs M s0 cs I <$> codes⌝
+                 ∗ ⌜Forall (cons_adm M I) codes⌝
+                 ∗ cons_cur v ps cs s0 I pos 0 0)
+              ∨ (∃ c i : nat,
+                   ⌜(0 < i)%nat⌝ ∗ ⌜alts = [drop i (lm_abs M s0 cs I c)]⌝
+                   ∗ cons_cur v ps cs s0 I pos c i)))
+        ∨ T))%I.
+
+  Lemma cons_dev_short (alts : list (list (bv 8))) :
+    cons_dev alts -∗ ⌜cons_short alts⌝.
+  Proof using . iIntros "(_ & $ & _)". Qed.
+
+  Lemma cons_dev_taint (alts : list (list (bv 8))) :
+    cons_short alts -> LINKS -∗ T -∗ cons_dev alts.
+  Proof using .
+    iIntros (Hs) "Hlk HT". iSplitL "Hlk"; [iExact "Hlk" |].
+    iSplit; [done |]. by iRight.
+  Qed.
+
+  (* the device narrows to the alternative the program chose *)
+  Lemma cons_dev_sub (alts : list (list (bv 8))) (a : list (bv 8)) :
+    a ∈ alts -> cons_dev alts -∗ cons_dev [a].
+  Proof using .
+    intros Ha. iIntros "(Hlk & %Hs & Hd)". iSplitL "Hlk"; [iExact "Hlk" |].
+    iSplit.
+    { iPureIntro. unfold cons_short in *. apply Forall_singleton.
+      exact (proj1 (Forall_forall _ _) Hs a (proj1 (elem_of_list_In _ _) Ha)). }
+    iDestruct "Hd" as "[Hd | HT]"; [| by iRight]. iLeft.
+    iDestruct "Hd" as (v ps cs s0 I pos) "(%Hw & Hpin & Hd)".
+    iExists v, ps, cs, s0, I, pos.
+    iSplit; [iPureIntro; exact Hw |]. iSplitL "Hpin"; [iExact "Hpin" |].
+    iDestruct "Hd" as "[(%codes & %Hal & %Hadm & Hc) | (%c & %i & %Hi & %Hal & Hc)]".
+    - iLeft. subst alts. apply elem_of_list_fmap in Ha as (c & -> & Hc).
+      iExists [c].
+      iSplit; [iPureIntro; reflexivity |].
+      iSplit; [iPureIntro; apply Forall_singleton;
+               exact (proj1 (Forall_forall _ _) Hadm c (proj1 (elem_of_list_In _ _) Hc)) |].
+      iExact "Hc".
+    - iRight. subst alts. apply elem_of_list_singleton in Ha as ->.
+      iExists c, i.
+      iSplit; [iPureIntro; exact Hi |].
+      iSplit; [iPureIntro; reflexivity |].
+      iExact "Hc".
+  Qed.
+
+  (* ONE BYTE: the head of what the device owes, through the three leaves
+     ([gl_blk] at an unfiled device -- it files the code -- and [gl_w] at a
+     filed one; the taint through [gl_taint]) *)
+  Lemma cons_dev_step (x : list (bv 8)) (b : bv 8) :
+    x !! 0%nat = Some b ->
+    cons_dev [x] -∗ out_link Uart0 ke b (cons_dev [drop 1 x]).
+  Proof using LINKS_blk LINKS_pers LINKS_taint LINKS_w.
+    intros Hb. iIntros "(#Hlk & %Hs & Hd)".
+    iDestruct (LINKS_w with "Hlk") as "#Hw".
+    iDestruct (LINKS_blk with "Hlk") as "#Hblk".
+    iDestruct (LINKS_taint with "Hlk") as "#Htaint".
+    assert (Hs' : cons_short [drop 1 x]).
+    { unfold cons_short in *. apply Forall_singleton. rewrite Forall_singleton in Hs.
+      eapply Z.le_lt_trans; [| exact Hs].
+      apply Nat2Z.inj_le. rewrite length_drop. lia. }
+    iDestruct "Hd" as "[Hd | #HT]"; last first.
+    { iApply ("Htaint" $! ke b with "HT").
+      iIntros "#HT'". iApply (cons_dev_taint _ Hs' with "Hlk HT'"). }
+    iDestruct "Hd" as (v ps cs s0 I pos) "(%Hw & #Hpin & Hd)".
+    pose proof Hw as [Hwb Htl].
+    pose proof Hwb as (Hpin0 & Hr & Hn & HP).
+    iDestruct "Hd" as "[(%codes & %Hal & %Hadm & Hc) | (%c & %i & %Hi & %Hal & Hc)]".
+    - (* UNFILED: the block's first byte files the code *)
+      destruct codes as [| c [| c' codes]]; cbn [fmap list_fmap] in Hal;
+        try discriminate.
+      injection Hal as Hx. subst x.
+      rewrite Forall_singleton in Hadm. destruct Hadm as [Hok Hterm].
+      iDestruct "Hc" as "(Ht & #Hps & #Hcs & #Hin & #HW)".
+      cbn [lm_blkcs]. iEval (rewrite Nat.add_0_r) in "Ht".
+      iApply ("Hblk" $! ke v pos c b ps cs s0 I
+                with "[%] [%] [%] [%] [%] [%] [%] [%] Hpin HW Ht Hps Hcs Hin").
+      { exact (lm_wr_blk_nonnil M ps cs s0 I pos Hwb). }
+      { exact Hr. } { lia. } { exact Hpin0. } { exact HP. }
+      { exact Hok. } { exact Hterm. } { exact Hb. }
+      iIntros "[(Ht & _ & #Hcs' & _) | #HT]";
+        last by iApply (cons_dev_taint _ Hs' with "Hlk HT").
+      iSplitR; [iExact "Hlk" |].
+      iSplit; [iPureIntro; exact Hs' |]. iLeft. iExists v, ps, cs, s0, I, pos.
+      iSplit; [iPureIntro; exact Hw |]. iSplit; [iExact "Hpin" |].
+      iRight. iExists c, 1%nat.
+      iSplit; [iPureIntro; lia |]. iSplit; [iPureIntro; reflexivity |].
+      rewrite /cons_cur. cbn [lm_blkcs].
+      replace (pos + 1)%nat with (S pos) by lia.
+      iFrame "Ht Hps Hcs' Hin HW".
+    - (* FILED at [c], [i] bytes out: an ordinary byte of the stream *)
+      injection Hal as Hx. subst x.
+      rewrite lookup_drop Nat.add_0_r in Hb.
+      destruct i as [| i']; [lia |].
+      iDestruct "Hc" as "(Ht & #Hps & #Hcs & #Hin & #HW)". cbn [lm_blkcs].
+      iApply ("Hw" $! ke v (pos + S i')%nat b ps (cs ++ [c]) s0 I
+                with "[%] [%] [%] Hpin HW Ht Hps Hcs Hin").
+      { rewrite length_app /=. lia. }
+      { exact (lm_wr_blk_pin_snoc M ps cs s0 I pos c Hwb). }
+      { exact (cons_blk_byte M ps cs s0 I pos c (S i') b Hwb Hb). }
+      iIntros "[(Ht & _ & _ & _) | #HT]";
+        last by iApply (cons_dev_taint _ Hs' with "Hlk HT").
+      iSplitR; [iExact "Hlk" |].
+      iSplit; [iPureIntro; exact Hs' |]. iLeft. iExists v, ps, cs, s0, I, pos.
+      iSplit; [iPureIntro; exact Hw |]. iSplit; [iExact "Hpin" |].
+      iRight. iExists c, (S (S i')).
+      iSplit; [iPureIntro; lia |].
+      iSplit.
+      { iPureIntro. f_equal. rewrite drop_drop. f_equal. lia. }
+      rewrite /cons_cur. cbn [lm_blkcs].
+      replace (pos + S (S i'))%nat with (S (pos + S i')) by lia.
+      iFrame "Ht Hps Hcs Hin HW".
+  Qed.
+
+  (* THE CORE AT THIS DEVICE: the write law of any program instance *)
+  Section gen_prog.
+    Context (N : uk_names Σ) (P : uprog Σ).
+    Context `{HPc : !Persistent (up_code P)}.
+    Context (Hstub : ⊢ stub_law N (up_code P) 16 (up_write P)).
+
+    Lemma cons_write_gl (l : list fdstate) (fd : nat) (rb : bool)
+        (alts : list (list (bv 8))) (a bs : list (bv 8)) (K : Z -> iProp Σ) :
+      (fd < NSTD)%nat -> l !! fd = Some (FdOpen rb true (FdDevice CONSOLE)) ->
+      a ∈ alts -> bs `prefix_of` a ->
+      UserFd.ustd (ukn_fd N) l -∗ cons_dev alts -∗
+      (UserFd.ustd (ukn_fd N) l -∗ cons_dev [drop (length bs) a]
+       -∗ K (Z.of_nat (length bs))) -∗
+      wr_obl N P (Z.of_nat fd) bs K.
+    Proof using HPc Hstub LINKS_blk LINKS_pers LINKS_taint LINKS_w.
+      exact (cons_write N P Hstub cons_dev cons_dev_short cons_dev_sub
+               cons_dev_step l fd rb alts a bs K).
+    Qed.
+  End gen_prog.
+End UkConsOutGen.
+
+(* ===================================================================== *)
+(*  S4  THE WITNESSES: the law at echo and at cat, at the FILE            *)
+(*      application's links ([FileLinkGen.file_links_gl] at [file_params]) *)
+(* ===================================================================== *)
+Section UkConsOutInst.
+  Context `{HRg : !riscvGS Σ}.
+  Context `{!xv6G Σ, !bioslotG Σ, !fdslotG Σ, !fileG Σ,
+            !irefslotG Σ, !pavG Σ, !wchG Σ, !ufdG Σ}.
+  Context `{GEN : GenId} `{XI : CurCtx}.
+  Context `{!ghost_varG Σ Z}.
+  Context `{!ghost_varG Σ (gset gname)}.
+  (* [FileLinkGen]'s classes *)
+  Context `{!echoOutG Σ, !inG Σ (mono_listR (leibnizO Z)), !fileAppG Σ,
+            !fileOutG Σ}.
+  Context `{PS : UexecSG.uprogSG Σ}.
+  Context (g : file_gn).
   Context (N : uk_names Σ).
+
+  (* the three leaves, off the file application's links *)
+  Lemma file_links_gl_w : file_links g -∗ gl_w file_lm (file_params g).
+  Proof using .
+    iIntros "Hlk". iDestruct (file_links_gl g with "Hlk") as "(H & _)". iExact "H".
+  Qed.
+  Lemma file_links_gl_blk : file_links g -∗ gl_blk file_lm (file_params g).
+  Proof using .
+    iIntros "Hlk". iDestruct (file_links_gl g with "Hlk") as "(_ & H & _)". iExact "H".
+  Qed.
+  Lemma file_links_gl_taint : file_links g -∗ gl_taint file_lm (file_params g).
+  Proof using .
+    iIntros "Hlk". iDestruct (file_links_gl g with "Hlk") as "(_ & _ & _ & _ & H)".
+    iExact "H".
+  Qed.
+
+  Local Notation fcons_dev := (cons_dev file_lm (file_params g) (file_links g)).
 
   Local Instance cat_prog_code_persistent : Persistent (up_code (cat_prog N)).
   Proof using . simpl. apply _. Qed.
@@ -641,25 +748,29 @@ Section UkConsOutInst.
       (alts : list (list (bv 8))) (a bs : list (bv 8)) (K : Z -> iProp Σ) :
     (fd < NSTD)%nat -> l !! fd = Some (FdOpen rb true (FdDevice CONSOLE)) ->
     a ∈ alts -> bs `prefix_of` a ->
-    UserFd.ustd (ukn_fd N) l -∗ cons_dev M G alts -∗
-    (UserFd.ustd (ukn_fd N) l -∗ cons_dev M G [drop (length bs) a]
+    UserFd.ustd (ukn_fd N) l -∗ fcons_dev alts -∗
+    (UserFd.ustd (ukn_fd N) l -∗ fcons_dev [drop (length bs) a]
      -∗ K (Z.of_nat (length bs))) -∗
     wr_obl N (echo_prog N) (Z.of_nat fd) bs K.
-  Proof using B Hcons.
-    exact (cons_write M G B sd A Hcons N (echo_prog N) (echo_stub_write N)
-             l fd rb alts a bs K).
+  Proof using .
+    exact (cons_write_gl file_lm (file_params g) (file_links g)
+             (LINKS_pers := file_links_persistent g)
+             file_links_gl_w file_links_gl_blk file_links_gl_taint
+             N (echo_prog N) (echo_stub_write N) l fd rb alts a bs K).
   Qed.
 
   Lemma cons_write_cat (l : list fdstate) (fd : nat) (rb : bool)
       (alts : list (list (bv 8))) (a bs : list (bv 8)) (K : Z -> iProp Σ) :
     (fd < NSTD)%nat -> l !! fd = Some (FdOpen rb true (FdDevice CONSOLE)) ->
     a ∈ alts -> bs `prefix_of` a ->
-    UserFd.ustd (ukn_fd N) l -∗ cons_dev M G alts -∗
-    (UserFd.ustd (ukn_fd N) l -∗ cons_dev M G [drop (length bs) a]
+    UserFd.ustd (ukn_fd N) l -∗ fcons_dev alts -∗
+    (UserFd.ustd (ukn_fd N) l -∗ fcons_dev [drop (length bs) a]
      -∗ K (Z.of_nat (length bs))) -∗
     wr_obl N (cat_prog N) (Z.of_nat fd) bs K.
-  Proof using B Hcons.
-    exact (cons_write M G B sd A Hcons N (cat_prog N) (cat_stub_write N)
-             l fd rb alts a bs K).
+  Proof using .
+    exact (cons_write_gl file_lm (file_params g) (file_links g)
+             (LINKS_pers := file_links_persistent g)
+             file_links_gl_w file_links_gl_blk file_links_gl_taint
+             N (cat_prog N) (cat_stub_write N) l fd rb alts a bs K).
   Qed.
 End UkConsOutInst.

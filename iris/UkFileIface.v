@@ -109,6 +109,7 @@ Require Import FileWrite UEchoFile.
 Require Import FsImg FsImgCheck.
 Require Import SysOpenDefs.
 Require Import LineModel LineModelInst FileDisc GenOut FileOut.
+Require Import FileLinks FileLinkGen.       (* [file_links], [file_params] *)
 Require Import UkConsOut UkFileDev.
 Require Import UkHandler ProgTreeFile.
 Require Import UCodeCat UkCatTree.
@@ -421,7 +422,7 @@ Section UkFileIface.
 
   (* the console, at the generic claim of the file model *)
   Definition fif_out (d : nat) (alts : list (list (bv 8))) : iProp Σ :=
-    (fif_tok d (1/2) FDCons ∗ cons_dev file_lm (file_cparams g) alts)%I.
+    (fif_tok d (1/2) FDCons ∗ cons_dev file_lm (file_params g) (file_links g) alts)%I.
 
   (* the file a redirect holds: the line's chunks from [b] on are owed *)
   Definition fif_out_ok (i : Z) (ws : wordline) : Prop :=
@@ -879,8 +880,10 @@ Section UkFileIface.
     pose proof Hok as (H1 & H2 & _). destruct (H1 fd d Hfd) as [H0 Hlt].
     pose proof (H2 fd d Hfd) as Hrow. rewrite Hv in Hrow. destruct Hrow as (Hs & rb & Hrow).
     destruct (Z_of_nat_complete fd H0) as [k ->]. rewrite Nat2Z.id in Hrow.
-    iApply (cons_write file_lm (file_cparams g) file_lm_byte_laws None (file_wa g)
-              Hcons N P Hsw l k rb alts a bs K
+    iApply (cons_write_gl file_lm (file_params g) (file_links g)
+              (LINKS_pers := file_links_persistent g)
+              (file_links_gl_w g) (file_links_gl_blk g) (file_links_gl_taint g)
+              N P Hsw l k rb alts a bs K
               ltac:(unfold NSTD in *; lia) Hrow Ha Hpre with "Hstd Hout").
     iIntros "Hstd Hout". iDestruct "HK" as "[HK _]".
     iApply ("HK" with "[-Hout Htk] [$Htk $Hout]").
@@ -893,8 +896,8 @@ Section UkFileIface.
   Lemma fif_cons_nil (l : list fdstate) (fd : nat) (rb : bool)
       (alts : list (list (bv 8))) (K : Z -> iProp Σ) :
     (fd < NSTD)%nat -> l !! fd = Some (FdOpen rb true (FdDevice CONSOLE)) ->
-    UserFd.ustd γfd l -∗ cons_dev file_lm (file_cparams g) alts -∗
-    (UserFd.ustd γfd l -∗ cons_dev file_lm (file_cparams g) alts -∗ K 0) -∗
+    UserFd.ustd γfd l -∗ cons_dev file_lm (file_params g) (file_links g) alts -∗
+    (UserFd.ustd γfd l -∗ cons_dev file_lm (file_params g) (file_links g) alts -∗ K 0) -∗
     wr_obl N P (Z.of_nat fd) [] K.
   Proof using Hsw HPc.
     intros Hfd Hl. iIntros "Hstd Hd HK".
@@ -926,10 +929,10 @@ Section UkFileIface.
                   = true) by (rewrite E6; exact Hal6).
     unfold stub_ret.
     iApply (cons_leaf N h1 m1 _ avail
-              (xfam_wr (fun _ : nat => (cons_dev file_lm (file_cparams g) alts ∗ emp)%I)
+              (xfam_wr (fun _ : nat => (cons_dev file_lm (file_params g) (file_links g) alts ∗ emp)%I)
                  (ukn_pay N))
               l tx dq 0 f Hsys Hal with "Hec Hrun [Hd] Hstd [Hsrc]").
-    { iApply (uwrite_chain_sup_ret N (fun _ : nat => cons_dev file_lm (file_cparams g) alts)
+    { iApply (uwrite_chain_sup_ret N (fun _ : nat => cons_dev file_lm (file_params g) (file_links g) alts)
                 emp%I _ _ l fd rb CONSOLE Hi0 Hfd Hl).
       iIntros (Mh pm sz) "Hheap". iFrame "Hheap". iSplitR; [done |].
       rewrite Hcnt. cbn [cons_out_chain]. iExact "Hd". }
@@ -937,7 +940,7 @@ Section UkFileIface.
     iIntros (h' ret Wv cw' cs')
       "%Hka0 %Hka1 %Hka2 %Htk %Hlz %Hnf Hstd Hs1 Hpost Hrun".
     iDestruct (uwrite_no_short
-                 (fun _ : nat => (cons_dev file_lm (file_cparams g) alts ∗ emp)%I)
+                 (fun _ : nat => (cons_dev file_lm (file_params g) (file_links g) alts ∗ emp)%I)
                  (ukn_pay N) Wv ret (uvis_M Wv) (uvis_fd Wv) cw' cs'
                  l fd rb 0
                  ltac:(rewrite Hka0; exact Hi0)
@@ -1393,7 +1396,7 @@ Section UkFileIface.
     fd_lowest_closed l = None ->
     UserFd.ustd γfd l -∗ UserCwd.ucwd (ukn_cwd N) FsImg.ROOTINO -∗ ukn_pay N (-1) -∗
     fif_env -∗ fdq r q s -∗ own γreg (fif_pool ∅ w) -∗
-    cons_dev file_lm (file_cparams g) alts -∗
+    cons_dev file_lm (file_params g) (file_links g) alts -∗
     env_res N P file_iface (cat_env0 alts (fif_files (snd <$> s)) [fname_f]) {[0%nat]}.
   Proof using .
     intros Hw Hl1 Hl2 Hnone.
@@ -1439,7 +1442,7 @@ Section UkFileIface.
     fd_lowest_closed l = None ->
     UserFd.ustd γfd l -∗ UserCwd.ucwd (ukn_cwd N) FsImg.ROOTINO -∗ ukn_pay N (-1) -∗
     fif_env -∗ fdq r q (Some (i, content)) -∗ own γreg (fif_pool ∅ w) -∗
-    cons_dev file_lm (file_cparams g) [content; cat_dg_open fname_f] -∗
+    cons_dev file_lm (file_params g) (file_links g) [content; cat_dg_open fname_f] -∗
     tree_pay N P (cat_tree [sb "cat"; fname_f]).
   Proof using Hcons Heq HPc HNc Hsr Hsw Hso Hsc Hse
               Hnil_file Hclose_std Hclose_shared_std Hopen_trunc.
@@ -1457,7 +1460,7 @@ Section UkFileIface.
     fd_lowest_closed l = None ->
     UserFd.ustd γfd l -∗ UserCwd.ucwd (ukn_cwd N) FsImg.ROOTINO -∗ ukn_pay N (-1) -∗
     fif_env -∗ fdq r q None -∗ own γreg (fif_pool ∅ w) -∗
-    cons_dev file_lm (file_cparams g) [cat_dg_open fname_f] -∗
+    cons_dev file_lm (file_params g) (file_links g) [cat_dg_open fname_f] -∗
     tree_pay N P (cat_tree [sb "cat"; fname_f]).
   Proof using Hcons Heq HPc HNc Hsr Hsw Hso Hsc Hse
               Hnil_file Hclose_std Hclose_shared_std Hopen_trunc.

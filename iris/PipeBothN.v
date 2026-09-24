@@ -345,7 +345,7 @@ Section blkN.
     ∃ γc γm : W -> gname,
       blkN_inv N k γc γm
       ∗ [∗ list] w ∈ ws, wcurN γc w (1/2) 0 ∗ wmodeN γm w (1/2) None.
-  Proof using Hnd PW_tl dep_tl.
+  Proof using Hnd.
     intros (src0 & Hr0). iIntros "HPW".
     iMod (ghost_vars_alloc (A := nat) ws 0 Hnd) as (γc) "Hc".
     iMod (ghost_vars_alloc (A := option (list (bv 8))) ws None Hnd) as (γm) "Hm".

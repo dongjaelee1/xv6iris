@@ -28,7 +28,7 @@
 From Stdlib Require Import ZArith Lia List.
 From stdpp Require Import gmap list bitvector.definitions.
 From iris.proofmode Require Import proofmode.
-From iris.base_logic.lib Require Import mono_nat own ghost_var ghost_map.
+From iris.base_logic.lib Require Import mono_nat own ghost_var ghost_map invariants.
 From iris.algebra.lib Require Import mono_list.
 Require Import SailStdpp.Operators_mwords.
 Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values
@@ -50,11 +50,14 @@ Require Import GenOut.
 Require Import AppEcho.
 Require Import PipeOut.
 Require Import ProgTree.
+Require Import PipesPair.
 Require Import PipesDisc.
 Require Import PipeBothNPure.
 Require Import PipeBothN.
 Require Import PipeHooks.         (* [pline_at] *)
 Require Import PipeBoth.          (* the N = 2 check: [pblk2_wit] *)
+Require Import RiscvPtsto.
+Require Import WpUart.
 (* stdpp's list names over the ones the Stdlib import above re-exports *)
 From stdpp Require Import list.
 Local Open Scope list_scope.
@@ -1054,3 +1057,302 @@ Section pipes_out_n.
     iLeft. iExists ps, cs, P. iFrame "Htn Hps Hcs' HE". by iPureIntro.
   Qed.
 End pipes_out_n.
+
+(* ===================================================================== *)
+(*  4.  THE FAMILY AT THE PIPELINE, AT THE REAL CLAIM                      *)
+(*                                                                       *)
+(*  [PipeBothN]'s laws with every parameter instantiated: the writers of *)
+(*  the round's line ([wids]), its complete runs ([runN]), the claim     *)
+(*  [pecl'] behind the port's record equation, the credential            *)
+(*  [pwc_blkN], and the obligation paid by [pblkN_ecl_holds].  What      *)
+(*  stays open is exactly what the round's walk (C6/C7) supplies: the    *)
+(*  terminal sources and invariant, the deposits, and the pure premises  *)
+(*  of each step.                                                        *)
+(* ===================================================================== *)
+
+(* a line has a run: the top node's pipe panic, or a silent echo *)
+Lemma wids_from_silent (src : wid -> bytes) (k m : nat) :
+  (1 <= k)%nat -> (forall j, (1 <= j)%nat -> src (WSh j) = [] /\ src (WLeft j) = []) ->
+  src WLast = [] -> src <$> wids_from k m = replicate (2 * m + 1) [].
+Proof using.
+  intros Hk Hs Hl. revert k Hk. induction m as [| m IH]; intros k Hk; cbn [wids_from].
+  - by rewrite fmap_cons fmap_nil Hl.
+  - destruct (Hs k Hk) as [H1 H2]. rewrite !fmap_cons H1 H2 (IH (S k) ltac:(lia)).
+    replace (2 * S m + 1)%nat with (S (S (2 * m + 1))) by lia. reflexivity.
+Qed.
+
+Lemma runN_inhabited (fc : bytes -> option bytes) (l : pline') :
+  pl_ok l -> exists src, runN fc l src.
+Proof using.
+  intros Hl. destruct l as [ws | p n].
+  - exists (fun _ => []). rewrite /runN. cbn. apply lrv_echo_silent.
+  - destruct Hl as (_ & Hn & _).
+    set (src := fun w : wid => if decide (w = WSh 0) then dg_pipe_b else ([] : bytes)).
+    assert (Hs : forall j, (1 <= j)%nat -> src (WSh j) = [] /\ src (WLeft j) = []).
+    { intros j Hj. unfold src; cbv beta.
+      split; (case_decide as Hq; [inversion Hq; lia | reflexivity]). }
+    assert (HL : src WLast = []).
+    { unfold src; cbv beta. case_decide as Hq; [discriminate Hq | reflexivity]. }
+    assert (H0 : src (WSh 0) = dg_pipe_b).
+    { unfold src; cbv beta. case_decide as Hq; [reflexivity | by destruct Hq]. }
+    assert (H0' : src (WLeft 0) = []).
+    { unfold src; cbv beta. case_decide as Hq; [discriminate Hq | reflexivity]. }
+    exists src. rewrite /runN. cbn [lcats]. destruct n as [| n]; [lia |].
+    rewrite /wids. cbn [wids_from].
+    rewrite !fmap_cons H0 H0' (wids_from_silent src 1 n ltac:(lia) Hs HL).
+    pose proof (lrv_pipe_fail fc p (S n) Hn) as Hx.
+    replace (2 * S n)%nat with (S (2 * n + 1)) in Hx by lia. exact Hx.
+Qed.
+
+Section pipes_family.
+  Context {Σ : gFunctors}.
+  Context `{!echoOutG Σ, !pipeOutG Σ}.
+  Context `{HRg : !riscvGS Σ}.
+  Context `{!ghost_varG Σ (option (list (bv 8)))}.
+  Context (g : pipe_gn) (fc : bytes -> option bytes) (adm : pline' -> bool).
+  Context (Lw : lm_laws (pipes_lm fc adm)) (K : lm_hooks (pipes_lm fc adm)).
+  Context (Hcons : @riscv_cons_res Σ (@riscv_fixedGS Σ HRg) = pecl' g fc adm Lw K).
+  Context (Hfc : fc_ok fc) (Hadm : adm_ok fc adm).
+  Context (v : era_pins) (I : list (bv 8)).
+  Context (Ha : adm (lineN fc adm I) = true) (Hl : pl_ok (lineN fc adm I)).
+
+  Local Notation lN := (lineN fc adm I).
+  Local Notation wsN := (wids (lcats (lineN fc adm I))).
+  Local Notation RUNN := (runN fc (lineN fc adm I)).
+  Local Notation PWN := (pwc_blkN g fc adm v I).
+  Local Notation TKN := (ptkN g v I).
+  Local Notation WITN := (pwitN fc adm I).
+
+  (* THE ROUND'S LEND at the pipeline *)
+  Lemma pipesN_alloc (E : coPset) (N : namespace) (k : nat)
+      (TERM : wid -> list (bv 8) -> bool)
+      (TOK : (wid -> option (list (bv 8))) -> list wid -> Prop)
+      (dep : wid -> list (bv 8) -> iProp Σ) :
+    PWN k [] false ={E}=∗
+    ∃ γc γm : wid -> gname,
+      blkN_inv wsN RUNN PWN TERM TOK dep N k γc γm
+      ∗ [∗ list] w ∈ wsN, wcurN γc w (1/2) 0 ∗ wmodeN γm w (1/2) None.
+  Proof using Hl.
+    iIntros "HPW".
+    iApply (blkN_alloc wsN (wids_NoDup _) RUNN PWN
+              TERM TOK dep E N k (runN_inhabited fc lN Hl) with "HPW").
+  Qed.
+
+  (* A FURTHER BYTE by any writer of the pipeline *)
+  Lemma pipesN_cstep (N : namespace) (k : nat) (γc γm : wid -> gname)
+      (TERM : wid -> list (bv 8) -> bool)
+      (TOK : (wid -> option (list (bv 8))) -> list wid -> Prop)
+      (dep : wid -> list (bv 8) -> iProp Σ) (dep_tl : forall w s, Timeless (dep w s))
+      (w : wid) (s : list (bv 8)) (c : nat) (b : bv 8) (Φ : iProp Σ) :
+    (↑N : coPset) ## (↑uartN Uart0 : coPset) ->
+    w ∈ wsN -> (0 < c)%nat -> s !! c = Some b ->
+    cstep_okN wsN RUNN WITN TERM TOK w s c ->
+    blkN_inv wsN RUNN PWN TERM TOK dep N k γc γm -∗
+    wcurN γc w (1/2) c -∗ wmodeN γm w (1/2) (Some s) -∗
+    (wcurN γc w (1/2) (S c) -∗ wmodeN γm w (1/2) (Some s)
+     -∗ (⌜TERM w s = false⌝ ∨ TKN k) -∗ Φ) -∗
+    out_link Uart0 k b Φ.
+  Proof using Hcons Hfc Hadm Ha Hl.
+    intros Hns Hw Hc Hb Hok. iIntros "#Hinv HcW HmW HΦ".
+    iApply (blkN_cstep wsN (wids_NoDup _) (pecl' g fc adm Lw K) Hcons RUNN PWN
+              (pwc_blkN_timeless g fc adm v I) TKN (ptkN_persistent g v I) WITN
+              (pipesN_HWIT fc adm I Hfc Hadm Ha Hl) TERM TOK dep dep_tl
+              N k γc γm w s c b Φ Hns Hw Hc Hb Hok
+              with "[] Hinv HcW HmW HΦ").
+    iApply pblkN_ecl_holds.
+  Qed.
+
+  (* A WRITER'S FIRST BYTE, spending the exclusions *)
+  Lemma pipesN_fire (N : namespace) (Eex : coPset) (k : nat) (γc γm : wid -> gname)
+      (TERM : wid -> list (bv 8) -> bool)
+      (TOK : (wid -> option (list (bv 8))) -> list wid -> Prop)
+      (dep : wid -> list (bv 8) -> iProp Σ) (dep_tl : forall w s, Timeless (dep w s))
+      (w : wid) (s : list (bv 8)) (b : bv 8)
+      (EXCL : wid -> list (bv 8) -> Prop) (Φ : iProp Σ) :
+    (↑N : coPset) ## (↑uartN Uart0 : coPset) ->
+    Eex ⊆ (⊤ ∖ ↑uartN Uart0 ∖ ↑N : coPset) ->
+    w ∈ wsN -> s !! 0%nat = Some b ->
+    fire_okN wsN RUNN WITN TERM TOK w s EXCL ->
+    □ (∀ w' s', ⌜EXCL w' s'⌝ -∗ dep w' s' -∗ dep w s ={Eex}=∗ False) -∗
+    blkN_inv wsN RUNN PWN TERM TOK dep N k γc γm -∗
+    wcurN γc w (1/2) 0 -∗ wmodeN γm w (1/2) None -∗ dep w s -∗
+    (wcurN γc w (1/2) 1 -∗ wmodeN γm w (1/2) (Some s)
+     -∗ (⌜TERM w s = false⌝ ∨ TKN k) -∗ Φ) -∗
+    out_link Uart0 k b Φ.
+  Proof using Hcons Hfc Hadm Ha Hl.
+    intros Hns HEx Hw Hb Hok. iIntros "#Hex #Hinv HcW HmW Hdep HΦ".
+    iApply (blkN_fire wsN (wids_NoDup _) (pecl' g fc adm Lw K) Hcons RUNN PWN
+              (pwc_blkN_timeless g fc adm v I) TKN (ptkN_persistent g v I) WITN
+              (pipesN_HWIT fc adm I Hfc Hadm Ha Hl) TERM TOK dep dep_tl
+              N Eex k γc γm w s b EXCL Φ Hns HEx Hw Hb Hok
+              with "Hex [] Hinv HcW HmW Hdep HΦ").
+    iApply pblkN_ecl_holds.
+  Qed.
+
+  (* AT THE PROMPT, WITH EVERY HALF BACK: the block is one of the line's,
+     and the claim's credential comes back at the flag [false] -- which
+     [pwc_blkN_file] files at the prompt's first byte (a block nobody
+     wrote is filed by the single-writer [GenOut.gcl_step_write_blk]) *)
+  Lemma pipesN_file (E : coPset) (N : namespace) (k : nat) (γc γm : wid -> gname)
+      (TERM : wid -> list (bv 8) -> bool)
+      (TOK : (wid -> option (list (bv 8))) -> list wid -> Prop)
+      (dep : wid -> list (bv 8) -> iProp Σ) (dep_tl : forall w s, Timeless (dep w s))
+      (sw : wid -> list (bv 8)) :
+    (↑N : coPset) ⊆ E ->
+    (forall w, w ∈ wsN -> TERM w (sw w) = false) ->
+    blkN_inv wsN RUNN PWN TERM TOK dep N k γc γm -∗
+    ([∗ list] w ∈ wsN, wcurN γc w (1/2) (length (sw w))
+                        ∗ wmodeN γm w (1/2) (Some (sw w))) ={E}=∗
+    ∃ pre : list (bv 8), PWN k pre false ∗ ⌜line_blocks fc lN pre⌝.
+  Proof using Hfc Hadm Ha Hl.
+    intros HN HT. iIntros "#Hinv Hall".
+    iMod (blkN_file wsN (wids_NoDup _) RUNN PWN (pwc_blkN_timeless g fc adm v I)
+            WITN (pipesN_HWIT fc adm I Hfc Hadm Ha Hl) TERM TOK dep dep_tl
+            E N k γc γm sw HN ltac:(rewrite /wids; destruct (lcats _); discriminate) HT
+            with "Hinv Hall") as (pre) "[HPW %Hb]".
+    iModIntro. iExists pre. iFrame "HPW". iPureIntro. exact (blkN_line_blocks fc lN pre Hb).
+  Qed.
+End pipes_family.
+
+(* ===================================================================== *)
+(*  5.  THE N = 2 CHECK                                                    *)
+(*                                                                       *)
+(*  The landed two-writer merge [PipeBothPure.pend2] IS [pendN] at the    *)
+(*  two writers lambda_0 (the left child, [true]) and rho (the right      *)
+(*  child, [false]) of [echo .. | cat], and the landed                     *)
+(*  [PipeBoth.pblk2_wit_both] -- the witness the landed byte steps spend  *)
+(*  at a [PBoth] round -- is re-derived, STATEMENT FOR STATEMENT, from     *)
+(*  the N-form's completion lemma [pipesN_complete] at [adm1] and the n = *)
+(*  1 bridge of C2 ([PipesDisc.pipes_one_iff], [palt_to_cont/_panic/      *)
+(*  _term]).                                                               *)
+(* ===================================================================== *)
+
+Lemma mergeN_map_inj {A B : Type} `{!EqDecision A} `{!EqDecision B}
+    (f : A -> B) (src : B -> bytes) (sel : list A) :
+  (forall x y, f x = f y -> x = y) ->
+  mergeN src (f <$> sel) = mergeN (fun x => src (f x)) sel.
+Proof using.
+  intros Hf. revert src. induction sel as [| x s IH]; intros src; [reflexivity |].
+  rewrite fmap_cons. cbn [mergeN]. destruct (src (f x)) as [| b r]; [reflexivity |].
+  f_equal. rewrite IH. apply mergeN_ext. intros y. unfold supd.
+  destruct (decide (f y = f x)) as [Hq | Hq].
+  - rewrite decide_True; [done | exact (Hf _ _ Hq)].
+  - rewrite decide_False; [done | intros ->; exact (Hq eq_refl)].
+Qed.
+
+Lemma pmerge_mergeN (sel : list bool) (d1 d2 : bytes) :
+  pmerge sel d1 d2 = mergeN (fun x : bool => if x then d1 else d2) sel.
+Proof using.
+  revert d1 d2. induction sel as [| [|] s IH]; intros d1 d2; [reflexivity | |].
+  - destruct d1 as [| b d1]; [reflexivity |].
+    rewrite pmerge_true_cons. cbn [mergeN]. f_equal. rewrite IH. apply mergeN_ext.
+    intros [|]; reflexivity.
+  - destruct d2 as [| b d2]; [reflexivity |].
+    rewrite pmerge_false_cons. cbn [mergeN]. f_equal. rewrite IH. apply mergeN_ext.
+    intros [|]; reflexivity.
+Qed.
+
+(* the two writers: the left child and the last cat *)
+Definition b2w (x : bool) : wid := if x then WLeft 0 else WLast.
+
+Lemma b2w_inj x y : b2w x = b2w y -> x = y.
+Proof using. destruct x, y; cbn; congruence. Qed.
+
+(* the sources of [echo .. | cat] whose two children both failed their
+   exec (the right one's at [R]); sigma_0 is silent *)
+Definition src2 (R : bytes) (w : wid) : bytes :=
+  match w with WLeft 0 => dg_execL | WLast => R | _ => [] end.
+
+Definition md2 (R : bytes) : wid -> option bytes := fun w => Some (src2 R w).
+
+(* THE LANDED MERGE IS THE N-FORM *)
+Lemma pend2_pendN (R : bytes) (sel : list bool) :
+  pend2 R sel = pendN (md2 R) (b2w <$> sel).
+Proof using.
+  rewrite /pend2 /pendN pmerge_mergeN (mergeN_map_inj b2w _ sel b2w_inj).
+  apply mergeN_ext. intros [|]; reflexivity.
+Qed.
+
+Lemma cntN_b2w_L sel : cntN (b2w <$> sel) (WLeft 0) = count_true sel.
+Proof using.
+  induction sel as [| x s IH]; [reflexivity |].
+  rewrite fmap_cons. cbn [cntN]. rewrite IH.
+  destruct x; cbn [b2w count_true]; case_decide as Hq.
+  - lia.
+  - exfalso. apply Hq. reflexivity.
+  - discriminate Hq.
+  - lia.
+Qed.
+
+Lemma cntN_b2w_R sel : cntN (b2w <$> sel) WLast = (length sel - count_true sel)%nat.
+Proof using.
+  induction sel as [| x s IH]; [reflexivity |].
+  rewrite fmap_cons. cbn [cntN length]. rewrite IH.
+  pose proof (count_true_le s) as Hle.
+  destruct x; cbn [b2w count_true]; case_decide as Hq.
+  - discriminate Hq.
+  - lia.
+  - lia.
+  - exfalso. apply Hq. reflexivity.
+Qed.
+
+Lemma cntN_b2w_other sel w : w <> WLeft 0 -> w <> WLast -> cntN (b2w <$> sel) w = 0%nat.
+Proof using.
+  intros H1 H2. induction sel as [| x s IH]; [reflexivity |].
+  rewrite fmap_cons. cbn [cntN]. rewrite IH.
+  destruct x; cbn [b2w]; case_decide as Hq.
+  - exfalso. exact (H1 (eq_sym Hq)).
+  - lia.
+  - exfalso. exact (H2 (eq_sym Hq)).
+  - lia.
+Qed.
+
+Lemma sel_wf2_N (R : bytes) (sel : list bool) :
+  sel_wf2 R sel -> sel_wfN (srcN (md2 R)) (b2w <$> sel).
+Proof using.
+  intros [H1 H2] w. rewrite /srcN /md2. cbn [default].
+  destruct (decide (w = WLeft 0)) as [-> | Hn1]; [rewrite cntN_b2w_L; exact H1 |].
+  destruct (decide (w = WLast)) as [-> | Hn2]; [rewrite cntN_b2w_R; exact H2 |].
+  rewrite (cntN_b2w_other sel w Hn1 Hn2). lia.
+Qed.
+
+(* the run: both children's exec failed *)
+Lemma runN_both (fc : bytes -> option bytes) (ws : list bytes) :
+  runN fc (LPipes (PrEcho ws) 1) (src2 dg_execR).
+Proof using.
+  rewrite /runN /wids. cbn.
+  refine (lrv_node fc (PrEcho ws) 1 (MkSO dg_execL None (Some WrNone)) [dg_execR] _ _).
+  - exact (so_exec fc _ (SProd (PrEcho ws))).
+  - refine (srv_last fc _ _ _ (MkSO dg_execR (Some RdGone) None) _ _).
+    + exact (so_exec fc _ SLast).
+    + cbn. exact I.
+Qed.
+
+(* THE LANDED WITNESS, RE-DERIVED FROM THE N-FORM: [PipeBoth.pblk2_wit_both]'s
+   statement, proved by the completion lemma at the N-writer merge and
+   the n = 1 bridge -- no [pmerge]-specific padding *)
+Theorem pblk2_wit_both_N (I : list (bv 8)) (ws : list (list (bv 8)))
+    (sel : list bool) :
+  pline_at I = LPipe ws -> sel_wf2 dg_execR sel ->
+  pblk2_wit I dg_execR sel.
+Proof using.
+  intros Hl Hwf.
+  set (fc := fun _ : bytes => @None bytes).
+  assert (Hin : forall x, x ∈ (b2w <$> sel) -> x ∈ wids (lcats (LPipes (PrEcho ws) 1))).
+  { intros x Hx. apply elem_of_list_fmap in Hx as ([|] & -> & _); cbn;
+      [right; left | right; right; left]. }
+  assert (Hfd : sel_firedN (md2 dg_execR) (b2w <$> sel)).
+  { intros x _. rewrite /md2. by eexists. }
+  assert (Hc : compatN (runN fc (LPipes (PrEcho ws) 1)) (md2 dg_execR)).
+  { exists (src2 dg_execR). split; [apply runN_both |].
+    intros w s Hs. rewrite /md2 in Hs. by injection Hs. }
+  destruct (pipesN_complete fc adm1 (LPipes (PrEcho ws) 1) (md2 dg_execR) (b2w <$> sel)
+              eq_refl Hin Hfd (sel_wf2_N dg_execR sel Hwf) Hc)
+    as (a & Hok & Hpan & Hterm & Hpref).
+  destruct (proj1 (pipes_one_iff fc adm1 ws a eq_refl) Hok) as (pa & Hpa & ->).
+  exists (palt_code pa). rewrite palt_of_code Hl.
+  split_and!; [exact Hpa | | |].
+  - rewrite -(palt_to_panic (LPipe ws) pa Hpa). exact Hpan.
+  - rewrite -(palt_to_term (LPipe ws) pa Hpa). exact Hterm.
+  - rewrite pend2_pendN -(palt_to_cont (LPipe ws) pa Hpa). exact Hpref.
+Qed.

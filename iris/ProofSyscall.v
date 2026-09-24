@@ -3579,16 +3579,27 @@ Section SyscallArms.
     ProcPtOwn.proc_pt_wf (pv_upt (us_V U)) ->
     (pv_lazy (us_V U) = false ->
        lazy_free (ud_um (pv_upt (us_V U))) (uint (pv_sz (us_V U)))) ->
+    (* ...AND THE ANSWER IS IN RANGE (lane NIL-RET), row 5's clause at row
+       16: [SpecFilewrite.filewrite_ret] at the key's own count, which the
+       walk has off [SpecSysWrite.sys_write_arms]' blanket -- argfd's own
+       -1 satisfies it ([SpecFilewrite.filewrite_ret_m1]) and the
+       descriptor arm carries filewrite's verbatim. *)
+    filewrite_ret (sys_rw_count v2) r ->
     filewrite_extra gn (pv_upt (us_V U)) (fd_st_of_key v0 sts) (sys_rw_count v2)
       (us_M U) v1 (wf_Q f) (wf_Qe f) r -∗
     sysc_sys_out U sts gn cs pid f r M' sts' cw' cs'.
   Proof using .
-    intros Hn Hv0 Hv1 Hv2 Hwf Hlz. iIntros "H".
+    intros Hn Hv0 Hv1 Hv2 Hwf Hlz Hret. iIntros "H".
     iApply (sysc_sys_out_at U sts gn cs pid f r M' sts' cw' cs' 16 Hn
               ltac:(vm_compute; discriminate)
               ltac:(vm_compute; discriminate)).
+    assert (Hretk : filewrite_ret
+              (sys_rw_count (tf_w (uvis_tf (uvis_of U sts gn cs pid))
+                               (tf_arg_idx 2))) r).
+    { rewrite /uvis_of /tf_w. cbn [uvis_tf].
+      rewrite (list_lookup_total_correct _ _ _ Hv2). exact Hret. }
     iApply (spost_at_write_intro uslot f (uvis_of U sts gn cs pid)
-              (pv_upt (us_V U)) r M' sts' cw' cs'
+              (pv_upt (us_V U)) r M' sts' cw' cs' Hretk
               ltac:(rewrite /uvis_of; cbn [uvis_sz uvis_perm]; reflexivity)
               Hwf Hlz).
     rewrite /uvis_of /tf_w. cbn [uvis_tf uvis_fd uvis_M].
@@ -5884,8 +5895,16 @@ Section SyscallArms.
               with "Hcg Hcpu Htext Hdata Hpc Hpanic Hpriv Hufrag Hkalloc Hprocs
                     Hfse Hcaps Htbl Hswin").
     iIntros (CIDy Hsy mf r P') "%Hcs %Hextz %Hmfa0 Hcg Hcpu Hpc Hpriv Hufrag _ Hout Harms".
+    (* THE ANSWER'S RANGE, off the contract's own blanket and BEFORE the
+       arms are spent (lane NIL-RET): row 16 states it at the process's
+       key, as row 5 does, and [SpecSysWrite.sys_write_ret]'s two
+       disjuncts are argfd's -1 and filewrite's verbatim clause. *)
+    iDestruct (sys_write_arms_ret with "Harms") as %Hswret.
+    assert (Hfwret : filewrite_ret (sys_rw_count v2) r).
+    { destruct Hswret as [[Hm1 _] | (fdn & fvv & _ & Hfw)];
+        [ rewrite Hm1; apply filewrite_ret_m1 | exact Hfw ]. }
     (* WHAT THE PROCESS GETS BACK, at the deposit's own descriptor key --
-       see the read arm for why the blanket stays behind. *)
+       see the read arm for why the kernel's own blanket stays behind. *)
     iDestruct (sys_write_arms_extra with "Harms") as "Hex".
     iEval (rewrite Hfdk) in "Hex".
     (* [Hextz] is the SIZED extension the callee reports, and it is what
@@ -5958,7 +5977,7 @@ Section SyscallArms.
     rewrite Hmfa0.
     iEval (rewrite -Hgnq) in "Hex".
     iApply (sysc_out_write U sts gn cs pid fdep v0 v1 v2 r _ _ _ _
-              ltac:(rewrite Hnum; reflexivity) Hv0 Hv1 Hv2 Hptwf Hlzp
+              ltac:(rewrite Hnum; reflexivity) Hv0 Hv1 Hv2 Hptwf Hlzp Hfwret
               with "Hex").
   Qed.
 

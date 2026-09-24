@@ -203,6 +203,10 @@ Section UkWriteLeaf.
     uvis_fd W = sts ->
     uvis_M W = Mv ->
     spost_at X 16 f W r M' fdv' cw' cs' -∗
+    (* THE BLANKET COMES OUT FIRST (lane NIL-RET): [filewrite_ret] at the
+       caller's own count, which is all the row says at a pipe or a
+       read-only descriptor, where the arm below is [emp]. *)
+    ⌜filewrite_ret (sys_rw_count v2) r⌝ ∗
     (* THE TABLE COMES OUT WITH THE ARM (lane TRAP-ROWS, T1), exactly as it
        does on the read side ([UShLine.spost_at_read_elim_at]): the short
        console write's reason is a fact about the process's page table and
@@ -219,6 +223,41 @@ Section UkWriteLeaf.
     rewrite /spost_at /= /xv6_spost /xk_a.
     xv6_skip. xv6_skip. xv6_skip. xv6_take. iExact "H".
   Qed.
+
+  (* ...AND THE BLANKET IN THE PROGRAM'S OWN READING: the answer is [-1]
+     or a count between 0 and the request, read as the C reads the return
+     register.  [filewrite_ret] names the WORD [mword_of_int i]; below the
+     sign boundary that word's signed reading is [i], and a count that came
+     off argument 2 as a 32-bit int is ([SpecSysRead.sys_rw_count_lt]). *)
+  Lemma filewrite_ret_signed (n : Z) (r : mword 64) :
+    n < 2 ^ 63 ->
+    filewrite_ret n r ->
+    bv_signed r = -1 \/ (0 <= bv_signed r <= Z.max 0 n)%Z.
+  Proof using .
+    intros Hn [-> | (i & -> & Hi)]; [ left; vm_compute; reflexivity | right ].
+    assert (Hs : bv_signed (mword_of_int i : mword 64) = i).
+    { unfold bv_signed, bv_swrap. rewrite moi64_unsigned. unfold bv_wrap.
+      assert (Eh : bv_half_modulus (MachineWord.Z_idx 64) = (2 ^ 63)%Z)
+        by (vm_compute; reflexivity).
+      assert (Em : bv_modulus (MachineWord.Z_idx 64) = (2 ^ 64)%Z)
+        by (vm_compute; reflexivity).
+      rewrite Eh Em.
+      rewrite (Z.mod_small i (2 ^ 64)); [ | lia ].
+      rewrite (Z.mod_small (i + 2 ^ 63) (2 ^ 64)); lia. }
+    rewrite Hs. exact Hi.
+  Qed.
+
+  (* the same at a count the caller named as a [nat], which is how every
+     member states its request *)
+  Lemma filewrite_ret_nat (nb : nat) (r : mword 64) :
+    Z.of_nat nb < 2 ^ 63 ->
+    filewrite_ret (Z.of_nat nb) r ->
+    bv_signed r = -1 \/ (0 <= bv_signed r <= Z.of_nat nb)%Z.
+  Proof using .
+    intros Hn Hr. destruct (filewrite_ret_signed _ _ Hn Hr) as [H | H];
+      [ left; exact H | right; rewrite Z.max_r in H; [ exact H | lia ] ].
+  Qed.
+
 
   (* =================================================================== *)
   (*  S3  THE ARM, OUT OF THE CALLER'S OWN LEDGER                         *)
@@ -402,7 +441,7 @@ Section UkWriteLeaf.
                  (tf_w (uvis_tf W) (tf_arg_idx 2))
                  (uvis_fd W) (uvis_M W) r M' fdv' cw' cs'
                  eq_refl eq_refl eq_refl eq_refl eq_refl with "H") as "H".
-    iDestruct "H" as (P) "(%Hperm & %Hwf & %Hlz & H)".
+    iDestruct "H" as "(_ & %P & %Hperm & %Hwf & %Hlz & H)".
     iExists P. iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
     iSplitR; [by iPureIntro |].
     rewrite (uwr_fd_st_dev (tf_w (uvis_tf W) (tf_arg_idx 0)) (uvis_fd W)

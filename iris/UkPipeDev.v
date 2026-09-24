@@ -441,7 +441,7 @@ Section UkPipeDev.
                  (m !!! Regidx a2_idx) (uvis_fd W) (uvis_M W)
                  r (uvis_M W) (uvis_fd W) cw' cs'
                  Hk0 Hk1 Hk2 eq_refl eq_refl with "Hpost")
-      as (Pt) "(%Hpmp & %Hwfp & %Hlzp & Hextra)".
+      as "(_ & %Pt & %Hpmp & %Hwfp & %Hlzp & Hextra)".
     iDestruct (uwrite_pipe_extra (uvis_gen W) Pt
                  (fd_st_of_key (m !!! Regidx a0_idx) (uvis_fd W)) rb γp
                  (sys_rw_count (m !!! Regidx a2_idx)) (uvis_M W)

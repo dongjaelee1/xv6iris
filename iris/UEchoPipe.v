@@ -418,7 +418,7 @@ Section UEchoPipe.
                    (m !!! Regidx a2_idx) (uvis_fd W) (uvis_M W)
                    ret (uvis_M W) (uvis_fd W) cw' cs'
                    Hka0 Hka1 Hka2 eq_refl eq_refl with "Hpost")
-        as (Pt) "(%Hpmp & %Hwfp & %Hlzp & Hextra)".
+        as "(_ & %Pt & %Hpmp & %Hwfp & %Hlzp & Hextra)".
       iDestruct (uwrite_pipe_extra (uvis_gen W) Pt
                    (fd_st_of_key (m !!! Regidx a0_idx) (uvis_fd W)) rb γp
                    (sys_rw_count (m !!! Regidx a2_idx)) (uvis_M W)
@@ -463,7 +463,7 @@ Section UEchoPipe.
                    (m !!! Regidx a2_idx) (uvis_fd W) (uvis_M W)
                    ret (uvis_M W) (uvis_fd W) cw' cs'
                    Hka0 Hka1 Hka2 eq_refl eq_refl with "Hpost")
-        as (Pt) "(%Hpmp & %Hwfp & %Hlzp & Hextra)".
+        as "(_ & %Pt & %Hpmp & %Hwfp & %Hlzp & Hextra)".
       iDestruct (uwrite_pipe_extra (uvis_gen W) Pt
                    (fd_st_of_key (m !!! Regidx a0_idx) (uvis_fd W)) rb γp
                    (sys_rw_count (m !!! Regidx a2_idx)) (uvis_M W)
@@ -573,7 +573,7 @@ Section UEchoPipe.
                    (m !!! Regidx a2_idx) (uvis_fd W) (uvis_M W)
                    ret (uvis_M W) (uvis_fd W) cw' cs'
                    Hka0 Hka1 Hka2 eq_refl eq_refl with "Hpost")
-        as (Pt) "(%Hpmp & %Hwfp & %Hlzp & Hextra)".
+        as "(_ & %Pt & %Hpmp & %Hwfp & %Hlzp & Hextra)".
       iDestruct (uwrite_pipe_extra (uvis_gen W) Pt
                    (fd_st_of_key (m !!! Regidx a0_idx) (uvis_fd W)) rb γp
                    (sys_rw_count (m !!! Regidx a2_idx)) (uvis_M W)
@@ -618,7 +618,7 @@ Section UEchoPipe.
                    (m !!! Regidx a2_idx) (uvis_fd W) (uvis_M W)
                    ret (uvis_M W) (uvis_fd W) cw' cs'
                    Hka0 Hka1 Hka2 eq_refl eq_refl with "Hpost")
-        as (Pt) "(%Hpmp & %Hwfp & %Hlzp & Hextra)".
+        as "(_ & %Pt & %Hpmp & %Hwfp & %Hlzp & Hextra)".
       iDestruct (uwrite_pipe_extra (uvis_gen W) Pt
                    (fd_st_of_key (m !!! Regidx a0_idx) (uvis_fd W)) rb γp
                    (sys_rw_count (m !!! Regidx a2_idx)) (uvis_M W)

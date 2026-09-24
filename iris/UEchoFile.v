@@ -629,7 +629,7 @@ Section UEchoFile.
                       !!! Regidx a2_idx)
                    (uvis_fd W) (uvis_M W) ret (uvis_M W) (uvis_fd W) cw' cs'
                    Hka0 Hka1 Hka2 eq_refl eq_refl with "Hpost")
-        as (P) "(_ & _ & _ & Hp)".
+        as "(_ & %P & _ & _ & _ & Hp)".
       assert (Hkey : fd_st_of_key
                        ((<[Regidx a7_idx := (mword_of_int 16 : mword 64)]> m)
                           !!! Regidx a0_idx) (uvis_fd W)
@@ -760,7 +760,7 @@ Section UEchoFile.
                       !!! Regidx a2_idx)
                    (uvis_fd W) (uvis_M W) ret (uvis_M W) (uvis_fd W) cw' cs'
                    Hka0 Hka1 Hka2 eq_refl eq_refl with "Hpost")
-        as (P) "(_ & _ & _ & Hp)".
+        as "(_ & %P & _ & _ & _ & Hp)".
       assert (Hkey : fd_st_of_key
                        ((<[Regidx a7_idx := (mword_of_int 16 : mword 64)]> m)
                           !!! Regidx a0_idx) (uvis_fd W)

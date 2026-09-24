@@ -1515,6 +1515,8 @@ FileDiscDec.v
 PipeDisc.v
 PipeUline.v
 PipeDiscDec.v
+PipesDisc.v
+PipesDiscDec.v
 LogEntryDefs.v
 ConsLog.v
 EchoOutPure.v

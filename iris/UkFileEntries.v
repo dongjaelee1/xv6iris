@@ -1,0 +1,428 @@
+(* ===================================================================== *)
+(* UkFileEntries.v -- THE FILE APPLICATION'S PROGRAM ENTRIES FROM THE     *)
+(* TREE ROUTE (program-specs cut 5, lane E): the entries the round        *)
+(* consumes, reproduced as corollaries of the entries at a handler        *)
+(* parameter ([UkTreeEntry]) at the file application's instance          *)
+(* ([UkFileIface.file_iface]) and its exit wand ([fif_exit_k]).           *)
+(*                                                                        *)
+(* Design: claude-notes/design/program-specs.md SS3.4e.  Nothing here is  *)
+(* consumed yet; the round still applies the landed entries.              *)
+(*                                                                        *)
+(* THE INTERFACE AT A CONSTANT PAYLOAD.  [file_iface] exists only at a   *)
+(* record whose payload is status-independent (its [ukn_const N] binder: *)
+(* the free handler and the exit spend the payload at the kill status),  *)
+(* so the entries are [UkTreeEntry]'s [_c] forms, whose interface reads   *)
+(* the pay fact, and the record's constancy is [ukn_const_of_eq] off it   *)
+(* and the constancy of [Q] every landed entry states.                    *)
+(*                                                                        *)
+(* THE REGISTRY IS BORN AT THE ENTRY (SS3).  [file_iface] is indexed by   *)
+(* its registry's name, and nothing the round lends carries one, so the  *)
+(* corollary allocates it inside the slot ([UexecRet.uslot_bupd]) and     *)
+(* hands its whole pool to the environment beside the landed payment.    *)
+(* That is the one CLASS the statement gains ([fifRegG]).                  *)
+(* ===================================================================== *)
+From Stdlib Require Import ZArith Bool Lia List.
+From stdpp Require Import gmap list bitvector.definitions.
+From iris.proofmode Require Import proofmode.
+From iris.base_logic.lib Require Import ghost_map ghost_var invariants.
+From iris.algebra.lib Require Import mono_list dfrac_agree.
+From iris.program_logic Require Import language lifting.
+Require Import SailStdpp.ConcurrencyInterface SailStdpp.ConcurrencyInterfaceBuiltins SailStdpp.ConcurrencyInterfaceTypes SailStdpp.Operators_mwords.
+Require Import Riscv.rv64d_types Riscv.rv64d Riscv.riscv_extras.
+Require Import SailStdpp.Base SailStdpp.TypeCasts SailStdpp.Values SailStdpp.MachineWord.
+Require Import RiscvLang RiscvPtsto RiscvExtras RiscvModelBytes.
+Require Import RegFile.
+Require Import Xv6Cameras Xv6G FdSlots IrefSlots ProcAvail FileInvDefs.
+Require Import ProcGeom.              (* [NOFILE] *)
+Require Import UserPerm UexecSlot UexecRet UexecSG.
+Require Import UserHeap UkRun.
+Require Import UserFd UserCwd.
+Require Import ChildTok.
+Require Import ElfFile ElfUser.
+Require Import UmodeArith UmodeAbi.
+Require Import SpecKexec.             (* [kexec_image_ok] and its readings *)
+Require Import ExecEntry.             (* [image_entry] / [image_entry_of_at] *)
+Require Import UexecExecInst.         (* THE INSTANCES: [uexecSG_xv6] *)
+Require Import UkAbi.                 (* [uka_argc] *)
+Require Import UCodeEcho UCodeCat.
+From User Require EchoInstrs EchoData.
+Require Import UEchoKernel.           (* [uvis_sp] / [uvis_av] / [uvis_argc], [echo_args] *)
+Require Import UShKernel.             (* [uimg_sub_union_l] *)
+Require Import LineWords EchoDisc ExecWords.
+Require Import UkShEcho.              (* [echo_argv_bytes] / [echo_alen] / [echo_off] *)
+Require Import UShEcho.               (* echo's key geometry *)
+Require Import UEchoOut.              (* [echo_out_argv] *)
+Require Import UShEchoOut.            (* [echo_out_argv_of_image] *)
+Require Import UShCat.                (* cat's key geometry and [cat_entry_run] *)
+Require Import FsImgCheck.            (* [fname_f] *)
+Require Import ProgTree UkTree UkStub UkHandler.
+Require Import UkEcho UkEchoTree.
+Require Import UkCatMain UkCatTree.
+Require Import UkTreeEntry.           (* the argv bridges, the .rodata fact *)
+Require Import CtxIdDefs.
+Require User.EchoSyms User.CatSyms.
+Require Import AppCfg AppInv AppFile AppFileCons FileOpen FsCfg FsImg.
+Require Import EchoOut.               (* [ps_lb] / [cs_lb] and their comparisons *)
+Require Import FileState FileDisc FileOut.
+Require Import LineModel LineModelInst LineModelLinks.
+Require Import FileLinks FileLinksLine FileLinkGen FileHooks.
+Require Import ConsoleInv.             (* [CONSOLE] *)
+Require Import UkConsOut ProgTreeFile.
+Require Import UCatOut UCatKernel.    (* [cch], [catq_cat], [cat_lend], [cat_child_of_entry] *)
+Require Import UkFileIface.
+Local Open Scope Z_scope.
+Import Defs.
+
+(* ===================================================================== *)
+(*  0.  THE ROUND'S CURSOR IS PINNED BY ITS BOUNDS (pure)                  *)
+(* ===================================================================== *)
+
+(* two block-first cursors of one input whose prologue lists line up are
+   the same cursor: the block pins the prologue's settled rounds from
+   below ([lm_pro_pin]) and its tail from above ([lm_wr_tail]) *)
+Lemma blk_t_ps_app (M : lmodel) (ps z cs : list nat) (s : lm_st M) (I : list (bv 8))
+    (P P' : nat) :
+  lm_wr_blk_t M ps cs s I P -> lm_wr_blk_t M (ps ++ z) cs s I P' -> z = [].
+Proof.
+  intros [Hw _] [_ Ht].
+  pose proof (lm_wr_blk_started M ps cs s I P Hw) as Hst.
+  destruct Hw as (Hpin & _).
+  assert (Hk : (lm_pro_idx M cs (length cs) < pro_rounds ps)%nat)
+    by (apply Hpin; rewrite Hst; lia).
+  unfold lm_wr_tail in Ht.
+  rewrite (pro_from_app_le (S (lm_pro_idx M cs (length cs))) ps z ltac:(lia)) in Ht.
+  by apply app_eq_nil in Ht as [_ Hz].
+Qed.
+
+Lemma blk_t_pins (M : lmodel) (ps cs ps0 cs0 t : list nat) (s : lm_st M)
+    (I : list (bv 8)) (pos P : nat) :
+  lm_wr_blk_t M ps cs s I pos -> lm_wr_blk_t M ps0 cs0 s I P ->
+  (ps `prefix_of` ps0 \/ ps0 `prefix_of` ps) ->
+  (cs ++ t `prefix_of` cs0 \/ cs0 `prefix_of` cs ++ t) ->
+  ps = ps0 /\ cs = cs0 /\ pos = P.
+Proof.
+  intros Hw Hw0 Hps Hcs.
+  pose proof (lm_wr_blk_lines M ps cs s I pos (proj1 Hw)) as Hn.
+  pose proof (lm_wr_blk_lines M ps0 cs0 s I P (proj1 Hw0)) as Hn0.
+  assert (Hlen : length cs = length cs0) by lia.
+  assert (Hc : cs = cs0).
+  { destruct Hcs as [[k Hk] | [k Hk]].
+    - assert (H1 : take (length cs) cs0 = cs)
+        by (rewrite Hk -app_assoc take_app_length; done).
+      rewrite Hlen take_ge in H1; [by symmetry | lia].
+    - assert (H1 : take (length cs) (cs ++ t) = take (length cs) (cs0 ++ k))
+        by (by rewrite Hk).
+      rewrite take_app_length Hlen take_app_length in H1. exact H1. }
+  subst cs0. clear Hcs Hlen Hn0.
+  assert (Hp : ps = ps0).
+  { destruct Hps as [[z ->] | [z ->]].
+    - by rewrite (blk_t_ps_app M ps z cs s I pos P Hw Hw0) app_nil_r.
+    - by rewrite (blk_t_ps_app M ps0 z cs s I P pos Hw0 Hw) app_nil_r. }
+  subst ps0. split; [done | split; [done |]].
+  destruct Hw as [(_ & _ & _ & H1) _]. destruct Hw0 as [(_ & _ & _ & H2) _]. lia.
+Qed.
+
+(* ===================================================================== *)
+(*  1.  cat's ENTRY AT THE LINE `cat f`, IN THE [_c] FORM                  *)
+(* ===================================================================== *)
+
+Section UkFileEntriesTree.
+  (* [UkTreeEntry]'s binders, verbatim *)
+  Context `{!riscvGS Σ, !xv6G Σ, !bioslotG Σ, !fdslotG Σ, !fileG Σ,
+            !irefslotG Σ, !pavG Σ, !wchG Σ, !ufdG Σ}.
+  Context `{GEN : GenId} `{XI : CurCtx}.
+  Context `{!ghost_varG Σ Z}.
+  Context `{!ghost_varG Σ (gset gname)}.
+  Context `{!uartGhostG Σ}.
+  Context `{PS : UexecSG.uprogSG Σ}.
+
+  (* [UkTreeEntry.cat_image_entry_env_f]'s shape over
+     [UkTreeEntry.cat_image_entry_env_c] *)
+  Lemma cat_image_entry_env_f_c (ws : list (list (bv 8))) (Mn : gmap Z (bv 8))
+      (sv t : Z) (gn : nat -> bv 8)
+      (sts : list fdstate) (cw : Z) (cs : gset gname) (pidv : mword 32)
+      (Q : Z -> iProp Σ) (Pay : iProp Σ)
+      {Dp : list nat}
+      (I : forall N' : uk_names Σ, ukn_pay N' = Q -> ep_ifaceP (Dp := Dp) N' (cat_prog N'))
+      (E : penv) (ds : gset nat) :
+    exec_ok ws ->
+    UShEcho.echo_node_img ws Mn sv t gn ->
+    UkShEcho.echo_argv_bytes ws gn ->
+    length sts = NOFILE ->
+    length ws = 2%nat ->
+    UkShEcho.echo_alen ws 1%nat = 1%nat ->
+    (forall j : nat, (j < 1)%nat ->
+       wl_line ws !!! (UkShEcho.echo_off ws 1%nat + j)%nat
+       = FsImgCheck.fname_f !!! j) ->
+    conforms E (cat_tree [sb "cat"; FsImgCheck.fname_f]) ->
+    safe_fds (dom (pe_fd E)) (cat_tree [sb "cat"; FsImgCheck.fname_f]) ->
+    dp_in Dp ds ->
+    □ (∀ (N' : uk_names Σ) (Hpq : ukn_pay N' = Q),
+         UserFd.ustd (ukn_fd N') (take NSTD sts) -∗
+         UserCwd.ucwd (ukn_cwd N') cw -∗
+         Pay -∗
+         env_res N' (cat_prog N') (I N' Hpq) E ds) -∗
+    UkRun.urun_nopipe sts -∗
+    udep -∗
+    image_entry ElfUser.cat_elf Mn (mword_of_int (t + 8) : mword 64) sts
+      cw cs pidv Q Pay uslot.
+  Proof using .
+    intros Hok Himg Hbytes Hfdl Hws2 Halen1 Hfname Hc Hs Hdp.
+    assert (Htail : cat_tree ws = cat_tree [sb "cat"; FsImgCheck.fname_f]).
+    { apply cat_tree_tail. rewrite (cat_f_tail ws Hws2 Halen1 Hfname). reflexivity. }
+    rewrite <- Htail in Hc, Hs.
+    iIntros "#Henv #Hnpw #Hdep".
+    iApply (cat_image_entry_env_c ws Mn sv t gn sts cw cs pidv Q Pay I E ds
+              Hok Himg Hbytes Hfdl Hc Hs Hdp with "Henv Hnpw Hdep").
+  Qed.
+
+End UkFileEntriesTree.
+
+(* ===================================================================== *)
+(*  2.  cat f: [UCatKernel.cat_child_of_entry] FROM THE TREE               *)
+(* ===================================================================== *)
+
+Section UkFileEntriesCat.
+  (* [UCatKernel]'s [UCatEntry] binders, and the registry's class *)
+  Context `{HRg : !riscvGS Σ}.
+  Context `{!xv6G Σ, !bioslotG Σ, !fdslotG Σ, !fileG Σ,
+            !irefslotG Σ, !pavG Σ, !wchG Σ, !ufdG Σ}.
+  Context `{GEN : GenId} `{XI : CurCtx}.
+  Context `{PS : UexecSG.uprogSG Σ}.
+  Context `{!echoOutG Σ, !inG Σ (mono_listR (leibnizO Z)), !fileAppG Σ,
+            !fileOutG Σ}.
+  Context `{!fifRegG Σ}.
+  Context (g : file_gn).
+  Context (Hcons : @riscv_cons_res Σ (@riscv_fixedGS Σ HRg) = fecl g).
+
+  Local Instance fe_cat_code_persistent (N : uk_names Σ) :
+    Persistent (up_code (cat_prog N)).
+  Proof using . simpl. apply _. Qed.
+
+  (* the round's cursor, pinned: what the drained console hands back at
+     ANY block-first cursor of the round is the payload at the lend's *)
+  Lemma cch_pins (v : era_pins) (ps cs ps0 cs0 : list nat) (s0 : fstate)
+      (I0 : list (bv 8)) (a pos P p : nat) :
+    lm_wr_blk_t file_lm ps cs s0 I0 pos -> lm_wr_blk_t file_lm ps0 cs0 s0 I0 P ->
+    ps_lb v ps -∗ ps_lb v ps0 -∗ cs_lb v (UCatOut.catcs cs a p) -∗ cs_lb v cs0 -∗
+    ⌜ps = ps0 /\ cs = cs0 /\ pos = P⌝.
+  Proof using .
+    intros Hw Hw0. iIntros "#Hps #Hps0 #Hcs #Hcs0".
+    iDestruct (ps_lb_cmp with "Hps Hps0") as %Hpc.
+    iDestruct (cs_lb_cmp with "Hcs Hcs0") as %Hcc.
+    iPureIntro.
+    assert (Ht : exists t, UCatOut.catcs cs a p = cs ++ t).
+    { destruct p; [exists []; by rewrite app_nil_r | by exists [a]]. }
+    destruct Ht as [t Ht]. rewrite Ht in Hcc.
+    exact (blk_t_pins file_lm ps cs ps0 cs0 t s0 I0 pos P Hw Hw0 Hpc Hcc).
+  Qed.
+
+  Lemma catq_cat_pin (v : era_pins) (vf : file_era) (ps cs ps0 cs0 : list nat)
+      (s0 : fstate) (I0 : list (bv 8)) (pos P : nat)
+      (r : file_names) (q : Qp) (s : dst) (x : Z) :
+    lm_wr_blk_t file_lm ps cs s0 I0 pos -> lm_wr_blk_t file_lm ps0 cs0 s0 I0 P ->
+    ps_lb v ps0 -∗ cs_lb v cs0 -∗
+    UCatKernel.catq_cat g (fgn_cl g) r q s v vf ps cs s0 I0 pos x -∗
+    UCatKernel.catq_cat g (fgn_cl g) r q s v vf ps0 cs0 s0 I0 P x.
+  Proof using .
+    intros Hw Hw0. iIntros "#Hps0 #Hcs0 [Hf Hd]".
+    rewrite /UCatKernel.catq_cat. iFrame "Hd".
+    rewrite /UCatOut.catq_filed /UCatOut.cch.
+    iDestruct "Hf" as "[[(Ht & #Hps & #Hcs & #HI & #Hf0) | #HT] | [(Ht & #Hps & #Hcs & #HI & #Hf0) | #HT]]".
+    - iDestruct (cch_pins v ps cs ps0 cs0 s0 I0 _ pos P _ Hw Hw0 with "Hps Hps0 Hcs Hcs0")
+        as %(-> & -> & ->).
+      iLeft. iLeft. iFrame "Ht Hps Hcs HI Hf0".
+    - iLeft. by iRight.
+    - iDestruct (cch_pins v ps cs ps0 cs0 s0 I0 _ pos P _ Hw Hw0 with "Hps Hps0 Hcs Hcs0")
+        as %(-> & -> & ->).
+      iRight. iLeft. iFrame "Ht Hps Hcs HI Hf0".
+    - iRight. by iRight.
+  Qed.
+
+  (* a tainted round's exit wand: the payload off the taint in the core *)
+  Lemma fif_exit_k_taint (r : file_names) (N : uk_names Σ) (γreg : gname)
+      (D0 : list nat) (w0 : nat -> fdev) (qf : Qp) (sf : dst) :
+    file_taint (fgn_cl g) -∗ fif_exit_k g r N γreg D0 w0 qf sf.
+  Proof using .
+    iIntros "#HT". rewrite /fif_exit_k.
+    iIntros (fdm l vs w files paths dv ds) "_ _ Hcore _ _".
+    iDestruct "Hcore" as "(_ & _ & _ & _ & _ & _ & _ & #(_ & _ & Hpay & _))".
+    iApply ("Hpay" with "HT").
+  Qed.
+
+  (* THE ONE ENTRY, at the environment the round lends, at either state of
+     `f`: [alts] is what the console owes, and the lend's cursor is turned
+     into the console device by [lendw] ([fif_cat_lend_some/none]) *)
+  Lemma cat_entry_of_tree_at (ws : list (list (bv 8))) (Mn : gmap Z (bv 8))
+      (sv t : Z) (gn : nat -> bv 8)
+      (sts : list fdstate) (cw : Z) (cs : gset gname) (pidv : mword 32)
+      (v : era_pins) (vf : file_era) (ps0 cs0 : list nat) (s0 : fstate)
+      (I0 : list (bv 8)) (P : nat)
+      (r : file_names) (q : Qp) (s : dst)
+      (rb rb2 : bool) (jo : option Z) (Q : Z -> iProp Σ) (F : iProp Σ)
+      (alts : list (list (bv 8))) :
+    (forall x y : Z, Q x = Q y) ->
+    file_app = MkAppcfg file_names (file_pred (fgn_cl g)) r ->
+    lm_wr_blk_t file_lm ps0 cs0 s0 I0 P ->
+    fline I0 = LCat ->
+    exec_ok ws ->
+    UShEcho.echo_node_img ws Mn sv t gn ->
+    UkShEcho.echo_argv_bytes ws gn ->
+    length sts = NOFILE ->
+    length ws = 2%nat ->
+    UkShEcho.echo_alen ws 1%nat = 1%nat ->
+    (forall j : nat, (j < 1)%nat ->
+       wl_line ws !!! (UkShEcho.echo_off ws 1%nat + j)%nat
+       = FsImgCheck.fname_f !!! j) ->
+    cw = FsImg.ROOTINO ->
+    take NSTD sts !! 1%nat = Some (FdOpen rb true (FdDevice CONSOLE)) ->
+    take NSTD sts !! 2%nat = Some (FdOpen rb2 true (FdDevice CONSOLE)) ->
+    conforms (cat_env0 alts (fif_files (snd <$> s)) [FileDisc.fname_f])
+      (cat_tree [sb "cat"; FsImgCheck.fname_f]) ->
+    □ (UCatOut.cch g v vf ps0 cs0 s0 I0 (ralt_enc RCRan) P 0%nat -∗
+       cons_dev_atc file_lm (file_params g) (file_links g)
+         [ralt_enc RCRan; ralt_enc RCNoOpen] v I0 alts) -∗
+    □ (app_taint -∗ file_taint (fgn_cl g)) -∗ □ (file_taint (fgn_cl g) -∗ app_taint) -∗
+    □ (UCatKernel.catq_cat g (fgn_cl g) r q s v vf ps0 cs0 s0 I0 P (-1) -∗ F -∗ Q (-1)) -∗
+    □ (file_taint (fgn_cl g) -∗ Q (-1)) -∗
+    file_cons_cred (fgn_cl g) r jo -∗
+    app_inv fsc_fs -∗
+    file_era_pin g (S gen_id) vf -∗
+    UkRun.urun_nopipe sts -∗ udep -∗
+    image_entry ElfUser.cat_elf Mn (mword_of_int (t + 8) : mword 64) sts
+      cw cs pidv Q
+      (UCatKernel.cat_lend g r q s v vf ps0 cs0 s0 I0 P ∗ F) uslot.
+  Proof using Hcons fifRegG0 ufdG0.
+    intros HQc Heq Hwb Hfl Hok Himg Hbytes Hfdl Hws2 Halen1 Hfname Hcw Hl1 Hl2 Hconf.
+    iIntros "#Hlendw #Hbr #Hkc #HQ #HQt #Hmade #Hinv #Hfp #Hnpw #Hdep".
+    set (w0 := fun _ : nat => FDCons v I0 [ralt_enc RCRan; ralt_enc RCNoOpen]).
+    assert (Hw0 : forall d, d ∈ [0%nat] -> forall i γo, w0 d <> FDIn false i γo)
+      by (intros; discriminate).
+    rewrite /image_entry.
+    iIntros "!>" (na alen afun W') "%Hok' %Hcw' %Hlz %Hch %Hpid %Hargs Hmp HPay".
+    iApply uslot_bupd.
+    iMod (fif_reg_alloc w0) as (γreg) "Hpool". iModIntro.
+    set (I := fun (N' : uk_names Σ) (Hpq : ukn_pay N' = Q) =>
+                file_iface g r Heq Hcons N' (cat_prog N') (HNc := ukn_const_of_eq N' Q Hpq HQc)
+                  (cat_stub_read N') (cat_stub_write N') (cat_stub_open N')
+                  (cat_stub_close N') (cat_stub_exit N') γreg [0%nat] w0 q s Hw0).
+    iPoseProof (cat_image_entry_env_f_c ws Mn sv t gn sts cw cs pidv Q
+                  (own γreg (fif_pool ∅ w0)
+                   ∗ (UCatKernel.cat_lend g r q s v vf ps0 cs0 s0 I0 P ∗ F))%I
+                  I (cat_env0 alts (fif_files (snd <$> s)) [FileDisc.fname_f]) {[0%nat]}
+                  Hok Himg Hbytes Hfdl Hws2 Halen1 Hfname Hconf
+                  (cat_tree_safe _ _) (fif_dp0 [0%nat] eq_refl)
+                  with "[] Hnpw Hdep") as "#He".
+    { iIntros "!>" (N' Hpq) "Hstd Hcwd (Hpool & (Hdq & Hcch) & HF)".
+      destruct (fif_cat_env_pure w0 (take NSTD sts) rb rb2 v I0 _ alts
+                  (fif_files (snd <$> s)) eq_refl Hl1 Hl2) as (Hd0 & Hrow & Hbnd).
+      (* the exit wand, off the lend's bounds or the taint *)
+      iAssert (fif_exit_k g r N' γreg [0%nat] w0 q s ∗ UCatOut.cch g v vf ps0 cs0 s0 I0
+                 (ralt_enc RCRan) P 0%nat)%I with "[Hcch HF]" as "[Hk Hcch]".
+      { rewrite {2}/UCatOut.cch.
+        iDestruct "Hcch" as "[(Ht & #Hps0 & #Hcs0 & #HI & #Hf0) | #HT]"; last first.
+        { iSplitL; [iApply (fif_exit_k_taint with "HT") | by iRight]. }
+        iSplitL "HF"; [| iLeft; iFrame "Ht Hps0 Hcs0 HI Hf0"].
+        iApply (fif_exit_k_cat g r N' γreg [0%nat] w0 q s v vf I0 s0 F eq_refl eq_refl Hfl
+                  with "Hfp Hf0 [] HF").
+        iIntros "!>" (ps cs1 pos) "%Hw Hq HF".
+        iDestruct (catq_cat_pin with "Hps0 Hcs0 Hq") as "Hq"; [exact Hw | exact Hwb |].
+        rewrite Hpq. iApply ("HQ" with "Hq HF"). }
+      iApply (fif_env_res g r Heq Hcons N' (cat_prog N') (HNc := ukn_const_of_eq N' Q Hpq HQc)
+                (cat_stub_read N') (cat_stub_write N') (cat_stub_open N')
+                (cat_stub_close N') (cat_stub_exit N') γreg [0%nat] w0 q s Hw0
+                (cat_env0 alts (fif_files (snd <$> s)) [FileDisc.fname_f])
+                (take NSTD sts) eq_refl Hd0 Hrow Hbnd ltac:(discriminate)
+                ltac:(intros; reflexivity)
+                ltac:(cbn [cat_env0 pe_paths]; intros p; rewrite elem_of_list_singleton; done)
+                ltac:(cbn [cat_env0 pe_files]; apply fif_files_f)
+                with "Hstd [Hcwd] Hk [] Hdq Hpool [Hcch]").
+      - by rewrite Hcw.
+      - rewrite /fif_env. iFrame "Hbr Hkc Hinv". iSplitR; [| by iExists jo].
+        iIntros "!> HT". rewrite Hpq. iApply ("HQt" with "HT").
+      - iIntros "Htk". cbn [cat_env0 pe_dev]. case_decide as Hc0; [| done]. simpl.
+        iExists v, I0, _. iFrame "Htk". iApply ("Hlendw" with "Hcch"). }
+    iApply ("He" $! na alen afun W' with "[%] [%] [%] [%] [%] [%] Hmp [Hpool HPay]");
+      [ exact Hok' | exact Hcw' | exact Hlz | exact Hch | exact Hpid | exact Hargs | ].
+    iFrame "Hpool HPay".
+  Qed.
+
+  (* THE COROLLARY: [UCatKernel.cat_child_of_entry]'s statement, with the
+     two facts the tree route needs that the landed entry never asks for
+     (see the report in the lane's commit): the round's block cursor's
+     TAIL ([wr_tail_f], which the round holds as the second half of its
+     [wr_blk_t_f]) and the content's C-int bound ([UkConsOut.cons_short]:
+     the kernel reads a console write's count as an int) *)
+  Lemma cat_child_of_entry_of_tree (ws : list (list (bv 8))) (Mn : gmap Z (bv 8))
+      (sv t : Z) (gn : nat -> bv 8)
+      (sts : list fdstate) (cw : Z) (cs : gset gname) (pidv : mword 32)
+      (v : era_pins) (vf : file_era) (ps0 cs0 : list nat) (s0 : fstate)
+      (I0 : list (bv 8)) (P : nat)
+      (c : file_fixed) (r : file_names) (q : Qp) (s : dst)
+      (rb rb2 : bool) (jo : option Z) (Q : Z -> iProp Σ) (F : iProp Σ) :
+    (forall x y : Z, Q x = Q y) ->
+    file_app = MkAppcfg file_names (file_pred c) r ->
+    c = fgn_cl g ->
+    UCatOut.cat_stage ps0 cs0 s0 I0 P ->
+    cat_tie cs0 s0 I0 s ->
+    exec_ok ws ->
+    UShEcho.echo_node_img ws Mn sv t gn ->
+    UkShEcho.echo_argv_bytes ws gn ->
+    length sts = NOFILE ->
+    length ws = 2%nat ->
+    UkShEcho.echo_alen ws 1%nat = 1%nat ->
+    (forall j : nat, (j < 1)%nat ->
+       wl_line ws !!! (UkShEcho.echo_off ws 1%nat + j)%nat
+       = FsImgCheck.fname_f !!! j) ->
+    cw = FsImg.ROOTINO ->
+    take NSTD sts !! 1%nat = Some (FdOpen rb true (FdDevice CONSOLE)) ->
+    take NSTD sts !! 2%nat = Some (FdOpen rb2 true (FdDevice CONSOLE)) ->
+    fd_lowest_closed (take NSTD sts) = None ->
+    (* THE TWO FACTS THE TREE ROUTE ADDS *)
+    wr_tail_f ps0 cs0 ->
+    (forall (i : Z) (bs : list (bv 8)), s = Some (i, bs) ->
+       (Z.of_nat (length bs) < 2 ^ 31)%Z) ->
+    □ (app_taint -∗ file_taint c) -∗ □ (file_taint c -∗ app_taint) -∗
+    □ (UCatKernel.catq_cat g c r q s v vf ps0 cs0 s0 I0 P (-1) -∗ F -∗ Q (-1)) -∗
+    □ (file_taint c -∗ Q (-1)) -∗
+    file_cons_cred c r jo -∗
+    app_inv fsc_fs -∗
+    era_pin (fgn_echo g) (S gen_id) v -∗
+    file_era_pin g (S gen_id) vf -∗
+    UkRun.urun_nopipe sts -∗ udep -∗
+    image_entry ElfUser.cat_elf Mn (mword_of_int (t + 8) : mword 64) sts
+      cw cs pidv Q
+      (UCatKernel.cat_lend g r q s v vf ps0 cs0 s0 I0 P ∗ F) uslot.
+  Proof using Hcons fifRegG0 ufdG0.
+    intros HQc Heq Hgc Hst Htie Hok Himg Hbytes Hfdl Hws2 Halen1 Hfname
+           Hcw Hl1 Hl2 Hnone Htail Hshort.
+    subst c.
+    iIntros "#Hbr #Hkc #HQ #HQt #Hmade #Hinv #Hpin #Hfp #Hnpw #Hdep".
+    (* the stage and its tail are the round's block cursor *)
+    assert (Hwb : lm_wr_blk_t file_lm ps0 cs0 s0 I0 P).
+    { rewrite -wr_blk_t_f_lm. split; [| exact Htail].
+      destruct Hst as (Hr & Hn & _ & HP & Hpin0). split_and!; assumption. }
+    assert (Hfl : fline I0 = LCat) by (destruct Hst as (_ & _ & Hl & _); exact Hl).
+    iPoseProof (file_links_holds g Hcons) as "#Hlk".
+    destruct s as [[i bs] |].
+    - iApply (cat_entry_of_tree_at ws Mn sv t gn sts cw cs pidv v vf ps0 cs0 s0 I0 P
+                r q (Some (i, bs)) rb rb2 jo Q F [bs; cat_dg_open FileDisc.fname_f]
+                HQc Heq Hwb Hfl Hok Himg Hbytes Hfdl Hws2 Halen1 Hfname Hcw Hl1 Hl2
+                with "[] Hbr Hkc HQ HQt Hmade Hinv Hfp Hnpw Hdep").
+      + rewrite -fif_fname_img.
+        apply cat_file_conforms. by apply fif_files_some with (i := i).
+      + iIntros "!> Hc".
+        iApply (fif_cat_lend_some g v vf ps0 cs0 s0 I0 P i bs Hwb Hfl Htie
+                  (Hshort i bs eq_refl) with "Hlk Hpin Hfp Hc").
+    - iApply (cat_entry_of_tree_at ws Mn sv t gn sts cw cs pidv v vf ps0 cs0 s0 I0 P
+                r q None rb rb2 jo Q F [cat_dg_open FileDisc.fname_f]
+                HQc Heq Hwb Hfl Hok Himg Hbytes Hfdl Hws2 Halen1 Hfname Hcw Hl1 Hl2
+                with "[] Hbr Hkc HQ HQt Hmade Hinv Hfp Hnpw Hdep").
+      + rewrite -fif_fname_img.
+        apply cat_file_absent_conforms. by apply fif_files_none.
+      + iIntros "!> Hc".
+        iApply (fif_cat_lend_none g v vf ps0 cs0 s0 I0 P Hwb Hfl Htie
+                  with "Hlk Hpin Hfp Hc").
+  Qed.
+
+End UkFileEntriesCat.

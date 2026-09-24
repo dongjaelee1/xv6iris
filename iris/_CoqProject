@@ -1703,6 +1703,7 @@ UEchoFile.v
 UkFileDev.v
 UkFreeHandler.v
 UkFileIface.v
+UkFileEntries.v
 UShRedirPay.v
 UShRound.v
 UInitFileCC.v

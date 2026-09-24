@@ -426,8 +426,30 @@ the dead pin pays the piece from `□ (T -∗ app_sup)` at a trivial family
 `Ft` (`pinned_open_dev/_dead`, `init_cons_recv`, `cons_open_dead_recv`,
 `tree_open_recv_file/_dev`, `file_open_recv_file`) now state `om_trunc
 = false` (a truncating open spends the cursor; every consumer had the
-fact).  The file instance's remaining gap: `Hnil_in` (NIL-RET, in
-flight on lane/krow-pipedev).  The
+fact).  NIL-RET LANDED (lane/krow-pipedev cd0fa5f1e, merge e63ee59d0,
+VM kr16merge2 EXIT=0, audits 13/13/14/14): row 16 carries its return
+blanket (`filewrite_ret` at the key's own count, discharged in
+`ProofSyscall` from `sys_write_arms`), exported by the write leaves;
+`fif_nil_in` proved.  THE FILE INSTANCE HAS NO SECTION HYPOTHESES LEFT.
+
+Cut 5 lane D LANDED (b49fd3aa6, VM c5dmerge1 EXIT=0): `UkFileIface`'s
+ledger is `fif_core` beside the EXIT WAND `fif_exit_k` (universal over
+the final core, files and drained devices; the round supplies it, the
+exit applies it); the round's indices are pinned (`FDCons v I C`,
+`FDFile i γo ws`, entry devices `D0`/`w0`, the deed in the core at a
+fixed `qf`/`sf`, the input holds only its offset); glue
+`fif_exit_k_cat` (from `catq_cat`'s wand), `fif_exit_k_redir` (from
+`ef_exit`'s), `fif_exit_k_echo_cons` (from a wand at `gwc_post`); the
+taint through `UkFreeHandler.fh_taint_pays`; `UkConsOut.cons_dev_atc`
+(the console remembering its codes).  INTERFACE CHANGE: `UkHandler`'s
+record is `ep_ifaceP` over a PROTECTED-DEVICE list `Dp`
+(`fd_shared_p`/`dev_fresh_p`/`dom_ok_p`, each definitionally the old
+premise at `Dp = []`, so `ep_iface`/`MkEI` are the record at `[]`):
+the last close of an entry device is a SHARED close, since dropping it
+would lose the cursor the exit wand needs; `tree_pay_of_conforms_p`
+takes `dp_in Dp ds`.  (The pipe instance instead applies its wand at
+the copy device's close, since a closed copy device's end IS what the
+round is owed.)  NEXT: lane E (`UkFileEntries.v`), lane F (in flight).  The
 pipeline's CONSOLE device LANDED (lane/pcons 246f51ca4, design SS3.4d:
 `UkConsOut` split into a claim-free core and a `gen_params` instance,
 `UkPipeConsOut.v` with the single-writer and the `popen` devices).

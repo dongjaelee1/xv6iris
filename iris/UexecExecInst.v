@@ -650,9 +650,11 @@ Section UexecExecInst.
            receipt names the bytes read() put in the caller's buffer -- with
            [SpecFileread.fileread_ret] in front of it, the return value's
            range at the key's own count (lane CONS-ROWS, B3); and 16
-           [SpecFilewrite.filewrite_extra] at the same key, WITHOUT
-           [filewrite_ret], the round carrying [UsysMemOk.usys_fd_ok]
-           instead.  The SYSCALL's own blankets ([SpecSysRead.sys_read_ret]
+           [SpecFilewrite.filewrite_extra] at the same key, with
+           [filewrite_ret] in front of it for the same reason (lane
+           NIL-RET: at a pipe or a read-only descriptor the arm is [emp],
+           so the blanket is the only thing a U-tier writer learns about
+           its answer).  The SYSCALL's own blankets ([SpecSysRead.sys_read_ret]
            / [SpecSysWrite]'s) stay behind either way: they read
            [pv_ofile V], a kernel array no process can name;
        17/18/19/20  the contract's arms verbatim ([mknod_arms] /
@@ -781,7 +783,14 @@ Section UexecExecInst.
           with the well-formedness and the lazy-bit claim exactly as read's
           is, which is what lets a process that owns its buffer and is not
           lazy refute the short arm. *)
-       (∃ P : uptd,
+       (* ...AND THE RETURN VALUE IS IN RANGE, exactly as row 5's is (lane
+          NIL-RET): [SpecFilewrite.filewrite_ret] IS [fileread_ret]
+          ([PipeInvDefs.pipe_rw_ret] at the key's own count), the walk has
+          it off [SpecSysWrite.sys_write_arms]' blanket, and it is the one
+          fact about the answer a writer at a PIPE or a READ-ONLY
+          descriptor gets, since [filewrite_extra] is [emp] there. *)
+       (⌜filewrite_ret (sys_rw_count (xk_a W 2)) r⌝ ∗
+        ∃ P : uptd,
           ⌜perm_of (ud_um P) (uvis_sz W) = uvis_perm W⌝ ∗
           ⌜ProcPtOwn.proc_pt_wf P⌝ ∗
           ⌜uvis_lazy W = false -> lazy_free (ud_um P) (uvis_sz W)⌝ ∗
@@ -1788,6 +1797,7 @@ Section UexecExecInst.
   Lemma spost_at_write_intro (X : uvis -d> iPropO Σ) (f : xfam) (W : uvis)
       (P : uptd)
       (r : mword 64) (M' : gmap Z (bv 8)) (fdv' : list fdstate) (cw' : Z) (cs' : gset gname) :
+    filewrite_ret (sys_rw_count (tf_w (uvis_tf W) (tf_arg_idx 2))) r ->
     perm_of (ud_um P) (uvis_sz W) = uvis_perm W ->
     ProcPtOwn.proc_pt_wf P ->
     (uvis_lazy W = false -> lazy_free (ud_um P) (uvis_sz W)) ->
@@ -1796,8 +1806,8 @@ Section UexecExecInst.
       (tf_w (uvis_tf W) (tf_arg_idx 1)) (wf_Q f) (wf_Qe f) r -∗
     spost_at X 16 f W r M' fdv' cw' cs'.
   Proof using .
-    intros Hpm Hwf Hlz. iIntros "H". rewrite /spost_at /= /xv6_spost /xk_a.
-    xv6_skip. xv6_skip. xv6_skip. xv6_take. iExists P.
+    intros Hret Hpm Hwf Hlz. iIntros "H". rewrite /spost_at /= /xv6_spost /xk_a.
+    xv6_skip. xv6_skip. xv6_skip. xv6_take. iSplitR; [by iPureIntro |]. iExists P.
     iSplitR; [by iPureIntro |]. iSplitR; [by iPureIntro |].
     iSplitR; [by iPureIntro |]. iExact "H".
   Qed.

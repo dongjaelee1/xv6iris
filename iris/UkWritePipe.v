@@ -19,15 +19,14 @@
 (*    [PipeQueue.pipe_wpost]: the chain at the STOP CURSOR [k], and the    *)
 (*    answer with its reason -- [k] itself (the whole request, or copyin's *)
 (*    fault at byte [k]), or -1 with the shut read end observed at node    *)
-(*    [k], or -1 by kill.  So row 16's missing blanket no longer costs a   *)
-(*    pipe writer its return value: a caller that paid links reads the     *)
-(*    count off its own post.  A caller that paid the TAINT still learns   *)
-(*    nothing about [r], which is the honest strength and is unchanged.    *)
+(*    [k], or -1 by kill.  A caller that paid links reads the count off    *)
+(*    its own post; a caller that paid the TAINT reads row 16's RETURN     *)
+(*    BLANKET (lane NIL-RET: [UexecExecInst.xv6_spost]'s 16 arm carries    *)
+(*    [SpecFilewrite.filewrite_ret], as row 5 carries read's), which the   *)
+(*    members hand over in the program's own reading -- the answer is -1  *)
+(*    or a count no larger than the request.                              *)
 (*                                                                        *)
-(* WHAT IS STILL OWED: nothing at this tier.  The remaining row is row     *)
-(* 16's return blanket ([UexecExecInst.xv6_spost]'s 16 arm carries no      *)
-(* [SpecFilewrite.filewrite_ret]), which costs a TAINTED pipe writer and   *)
-(* nobody else, and is a one-line kernel-side edit with a wide cone.       *)
+(* WHAT IS STILL OWED: nothing at this tier.                               *)
 (*                                                                        *)
 (* AND WHO A PIPE WRITER IS.  Holding a pipe row costs a process its       *)
 (* [UkRun.urun_nopipe] pure arm, so as the tree stands every pipe writer   *)
@@ -209,10 +208,11 @@ Section UkWritePipe.
      WHAT COMES BACK is the handle, the source run, and -- unlike before --
      THE PIPE'S OWN POST: the chain at the stop cursor [k], the answer's
      reason (the whole request, copyin's fault, the read end observed shut,
-     or the writer's kill shot), or the taint with the payment back.  The
-     row still carries no [filewrite_ret] blanket, so [r] is constrained
-     only by what the post says about it -- which, at a caller that paid
-     links, is now everything: [k] IS the count on the two non-negative
+     or the writer's kill shot), or the taint with the payment back --
+     and, in front of it, row 16's blanket in the program's reading: [r]
+     is -1 or a count no larger than [nb] (lane NIL-RET), which is what a
+     caller that paid the taint learns.  At a caller that paid links the
+     post says everything: [k] IS the count on the two non-negative
      arms.  The image [Mv] and the page-table view [Pt] the post is stated
      at are bound by the trapping key, so they come out under the
      continuation's own binders, with the row that says the caller's own
@@ -240,6 +240,9 @@ Section UkWritePipe.
        pipe_wpay (pn_queue γp) M (m !!! Regidx a1_idx) Q Qe nb) -∗
     (∀ (h' : CpuId) (r : mword 64) (Pt : uptd) (Mv : gmap Z (bv 8))
        (Rk : iProp Σ),
+       (* WHAT IT ANSWERED, off row 16's blanket (lane NIL-RET): -1, or a
+          count no larger than the one asked for *)
+       ⌜bv_signed r = -1 \/ (0 <= bv_signed r <= Z.of_nat nb)%Z⌝ -∗
        (* the chain's nodes were pinned to the caller's OWN bytes *)
        ⌜ forall j : nat, (j < nb)%nat ->
            Mv !! uint (add_vec_int (m !!! Regidx a1_idx) (Z.of_nat j))
@@ -276,14 +279,19 @@ Section UkWritePipe.
                  (m !!! Regidx a2_idx) (uvis_fd W) (uvis_M W)
                  r (uvis_M W) (uvis_fd W) cw' cs'
                  Hk0 Hk1 Hk2 eq_refl eq_refl with "Hpost")
-      as (Pt) "(%Hpmp & %Hwfp & %Hlzp & Hextra)".
+      as "(%Hfwret & %Pt & %Hpmp & %Hwfp & %Hlzp & Hextra)".
     iDestruct (uwrite_pipe_extra (uvis_gen W) Pt
                  (fd_st_of_key (m !!! Regidx a0_idx) (uvis_fd W)) rb γp
                  (sys_rw_count (m !!! Regidx a2_idx)) (uvis_M W)
                  (m !!! Regidx a1_idx) Q Qe r Hkey with "Hextra") as "Hwp".
     rewrite Hcnt Nat2Z.id.
     iApply ("Hcont" $! h' r Pt (uvis_M W) ((ChildTok.kill_shot (uvis_gen W) ∗ app_taint)%I)
-              with "[%] Hwp Hufdh Hbuf Hrun").
+              with "[%] [%] Hwp Hufdh Hbuf Hrun").
+    { (* the blanket, at the count the caller named; a 32-bit count is
+         below the sign boundary *)
+      rewrite Hcnt in Hfwret. apply (filewrite_ret_nat nb r); [ | exact Hfwret ].
+      pose proof (sys_rw_count_lt (m !!! Regidx a2_idx)) as Hlt31. rewrite Hcnt in Hlt31.
+      assert (E : (2 ^ 31 < 2 ^ 63)%Z) by (vm_compute; reflexivity). lia. }
     (* the source row's first component: the chain's nodes were pinned to
        the caller's own bytes, which is exactly [usrc_ok]'s reading, and
        the walk already states it at the caller's own [a1] *)
@@ -316,6 +324,9 @@ Section UkWritePipe.
        pipe_wpay (pn_queue γp) M (m !!! Regidx a1_idx) Q Qe nb) -∗
     (∀ (h' : CpuId) (r : mword 64) (Pt : uptd) (Mv : gmap Z (bv 8))
        (Rk : iProp Σ),
+       (* WHAT IT ANSWERED, off row 16's blanket (lane NIL-RET): -1, or a
+          count no larger than the one asked for *)
+       ⌜bv_signed r = -1 \/ (0 <= bv_signed r <= Z.of_nat nb)%Z⌝ -∗
        ⌜ forall j : nat, (j < nb)%nat ->
            Mv !! uint (add_vec_int (m !!! Regidx a1_idx) (Z.of_nat j))
            = Some (f j) ⌝ -∗
@@ -427,6 +438,9 @@ Section UkWritePipe.
        pipe_wpay (pn_queue γp) M (m !!! Regidx a1_idx) Q Qe nb) -∗
     (∀ (h' : CpuId) (r : mword 64) (Pt : uptd) (Mv : gmap Z (bv 8))
        (Rk : iProp Σ),
+       (* WHAT IT ANSWERED, off row 16's blanket (lane NIL-RET): -1, or a
+          count no larger than the one asked for *)
+       ⌜bv_signed r = -1 \/ (0 <= bv_signed r <= Z.of_nat nb)%Z⌝ -∗
        (* the chain's nodes were pinned to the caller's OWN bytes *)
        ⌜ forall j : nat, (j < nb)%nat ->
            Mv !! uint (add_vec_int (m !!! Regidx a1_idx) (Z.of_nat j))
@@ -462,7 +476,7 @@ Section UkWritePipe.
                  (m !!! Regidx a2_idx) (uvis_fd W) (uvis_M W)
                  r (uvis_M W) (uvis_fd W) cw' cs'
                  Hk0 Hk1 Hk2 eq_refl eq_refl with "Hpost")
-      as (Pt) "(%Hpmp & %Hwfp & %Hlzp & Hextra)".
+      as "(%Hfwret & %Pt & %Hpmp & %Hwfp & %Hlzp & Hextra)".
     (* THE ARM, OUT OF THE CALLER'S OWN LEDGER: the key's low [NSTD] slots
        ARE the ledger ([Htake], the walk's row), so the row at [fd] is the
        state the call ran on. *)
@@ -475,7 +489,10 @@ Section UkWritePipe.
                  with "Hextra") as "Hwp".
     rewrite Hcnt Nat2Z.id.
     iApply ("Hcont" $! h' r Pt (uvis_M W) ((ChildTok.kill_shot (uvis_gen W) ∗ app_taint)%I)
-              with "[%] Hwp Hstd Hbuf Hrun").
+              with "[%] [%] Hwp Hstd Hbuf Hrun").
+    { rewrite Hcnt in Hfwret. apply (filewrite_ret_nat nb r); [ | exact Hfwret ].
+      pose proof (sys_rw_count_lt (m !!! Regidx a2_idx)) as Hlt31. rewrite Hcnt in Hlt31.
+      assert (E : (2 ^ 31 < 2 ^ 63)%Z) by (vm_compute; reflexivity). lia. }
     exact (proj1 Hsrc).
   Qed.
 

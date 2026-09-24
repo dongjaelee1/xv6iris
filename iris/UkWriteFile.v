@@ -357,7 +357,7 @@ Section UkWriteFile.
                  (m !!! Regidx a2_idx) (uvis_fd W) (uvis_M W)
                  r (uvis_M W) (uvis_fd W) cw' cs'
                  Hk0 Hk1 Hk2 eq_refl eq_refl with "Hpost")
-      as (P) "(_ & _ & _ & Hp)".
+      as "(_ & %P & _ & _ & _ & Hp)".
     iEval (rewrite Hkey Hcnt;
            cbn [write_file_fam xfam_wr wf_Q];
            rewrite /filewrite_extra /=) in "Hp".
